@@ -1,0 +1,37 @@
+// user.routes.js
+
+const { authJwt } = require("../middleware");
+const { verifySignUp } = require("../middleware");
+const user = require("../controllers/user.controller");
+const auth = require("../controllers/auth.controller");
+
+module.exports = function(app) {
+  app.use(function(req, res, next) {
+    res.header(
+      "Access-Control-Allow-Headers",
+      "x-access-token, Origin, Content-Type, Accept"
+    );
+    next();
+  });
+
+  app.get("/api/users/all", user.allAccess);
+  app.get("/api/users/user", [authJwt.verifyToken], user.userBoard);
+  app.get("/api/users/admin", [authJwt.verifyToken, authJwt.isAdmin], user.adminBoard);
+  app.get("/api/users/roles", [authJwt.verifyToken, authJwt.isAdmin], user.getUserRoles);
+
+  app.put("/api/users/:userId/change-password", [authJwt.verifyToken], user.changePassword);
+  app.put("/api/users/:userId/change-email", [authJwt.verifyToken], user.changeEmail);
+  app.put("/api/users/:userId/promote", [authJwt.verifyToken], user.promoteToModerator);
+  app.put("/api/users/:userId/demote", [authJwt.verifyToken, authJwt.isModeratorOrAdmin], user.demoteToUser);
+  app.put("/api/users/:userId/suspend", [authJwt.verifyToken, authJwt.isAdmin], auth.suspendUser);
+  app.put("/api/users/:userId/resume", [authJwt.verifyToken, authJwt.isAdmin], auth.resumeUser);
+  app.delete("/api/users/:userId", [authJwt.verifyToken, authJwt.isAdmin], auth.deleteUser);
+  app.get("/api/user", [authJwt.verifyToken], user.getUserProfile);
+
+  app.get("/api/organizations", [authJwt.verifyToken], user.organization);
+  //app.get("/api/organization/:organizationName/users", [authJwt.verifyToken], user.findAll);
+  app.post("/api/organization/:organizationName/users", [authJwt.verifyToken, verifySignUp.checkDuplicateUsernameOrEmail, verifySignUp.checkRolesExisted], auth.signup);
+  app.get("/api/organization/:organizationName/users/:userName", [authJwt.verifyToken, authJwt.isAdmin], user.findOne);
+  app.put("/api/organization/:organizationName/users/:userName", [authJwt.verifyToken, authJwt.isAdmin], user.update);
+  app.delete("/api/organization/:organizationName/users/:username", [authJwt.verifyToken, authJwt.isAdmin], user.delete);
+};

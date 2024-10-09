@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+**/resources/static/assets/uploads/
+app/config/app.config.yaml
+app/config/auth.config.yaml
+app/config/db.config.yaml
+yarn.lock
+.env

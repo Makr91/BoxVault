@@ -1,0 +1,11 @@
+mysql:
+  host: 10.11.0.247
+  user: hv02
+  password: WH2022@!
+  database: boxvault
+  dialect: mysql
+mysql_pool:
+  max: 5
+  min: 0
+  acquire: 30000
+  idle: 10000

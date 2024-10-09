@@ -1,0 +1,63 @@
+const fs = require('fs');
+const path = require('path');
+const yaml = require('js-yaml');
+
+const dbConfigPath = path.join(__dirname, '../config/db.config.yaml');
+let dbConfig;
+try {
+  const fileContents = fs.readFileSync(dbConfigPath, 'utf8');
+  dbConfig = yaml.load(fileContents);
+} catch (e) {
+  console.error(`Failed to load auth configuration: ${e.message}`);
+}
+
+const Sequelize = require("sequelize");
+const sequelize = new Sequelize(
+  dbConfig.mysql.database,
+  dbConfig.mysql.user,
+  dbConfig.mysql.password,
+  {
+    host: dbConfig.mysql.host,
+    dialect: dbConfig.mysql.dialect,
+    pool: {
+      max: dbConfig.mysql_pool.max,
+      min: dbConfig.mysql_pool.min,
+      acquire: dbConfig.mysql_pool.acquire,
+      idle: dbConfig.mysql_pool.idle
+    }
+  }
+);
+
+const db = {};
+
+db.Sequelize = Sequelize;
+db.sequelize = sequelize;
+
+
+db.organization = require("../models/organizations.model.js")(sequelize, Sequelize);
+db.user = require("../models/user.model.js")(sequelize, Sequelize);
+db.role = require("../models/role.model.js")(sequelize, Sequelize);
+db.box = require("../models/box.model.js")(sequelize, Sequelize);
+db.versions = require("../models/version.model.js")(sequelize, Sequelize);
+db.providers = require("../models/provider.model.js")(sequelize, Sequelize);
+db.architectures = require("../models/architecture.model.js")(sequelize, Sequelize);
+db.files = require("../models/file.model.js")(sequelize, Sequelize);
+
+// Define associations
+db.role.belongsToMany(db.user, {
+  through: "user_roles"
+});
+db.user.belongsToMany(db.role, {
+  through: "user_roles"
+});
+
+// Call associate methods
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.ROLES = ["user", "admin", "moderator"];
+
+module.exports = db;

@@ -1,0 +1,3 @@
+jwt:
+  jwt_secret: boxvault-secret-key
+  jwt_token_time_valid: 3600

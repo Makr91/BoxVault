@@ -1,0 +1,27 @@
+boxvault:
+  origin: https://boxvault.home.m4kr.net
+  api_url: https://boxvault.home.m4kr.net/api
+gravatar:
+  base_url: https://api.gravatar.com/v3/profiles/
+  api_key: 1238:gk-hGrxeLZtnocRXp-rQIB_R2Rm-z6Oe6_0j2dzxzOzs0J8qtdk5mARF5AQZ6I6s
+
+#boxvault:
+#  -
+#    name: origin
+#    type: url
+#    value: https://boxvault.home.m4kr.net
+#  -
+#    name: api_url
+#    type: url
+#    value: https://boxvault.home.m4kr.net/api
+#
+#gravatar:
+#  -
+#    name: base_url
+#    type: url
+#    value: https://api.gravatar.com/v3/profiles/
+#  -
+#    name: api_key
+#    type: string
+#    value: 1238:gk-hGrxeLZtnocRXp-rQIB_R2Rm-z6Oe6_0j2dzxzOzs0J8qtdk5mARF5AQZ6I6s
+
