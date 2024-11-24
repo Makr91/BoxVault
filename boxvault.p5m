@@ -1,0 +1,78 @@
+set name=pkg.fmri value=application/boxvault@0.1.0
+set name=pkg.summary value="BoxVault Application"
+set name=pkg.description value="BoxVault - A web application for managing boxes"
+set name=info.classification value="org.opensolaris.category.2008:Applications/System Utilities"
+set name=variant.arch value=$(ARCH)
+
+# Directories
+dir path=opt/boxvault owner=root group=bin mode=0755
+dir path=opt/boxvault/app owner=root group=bin mode=0755
+dir path=opt/boxvault/app/config owner=root group=bin mode=0755
+dir path=opt/boxvault/app/controllers owner=root group=bin mode=0755
+dir path=opt/boxvault/app/middleware owner=root group=bin mode=0755
+dir path=opt/boxvault/app/models owner=root group=bin mode=0755
+dir path=opt/boxvault/app/routes owner=root group=bin mode=0755
+dir path=opt/boxvault/app/views owner=root group=bin mode=0755
+dir path=opt/boxvault/app/views/assets owner=root group=bin mode=0755
+dir path=opt/boxvault/resources owner=root group=bin mode=0755
+dir path=opt/boxvault/resources/static owner=root group=bin mode=0755
+dir path=opt/boxvault/resources/static/assets owner=root group=bin mode=0755
+dir path=opt/boxvault/resources/static/assets/uploads owner=root group=bin mode=0755
+
+# Files
+file path=opt/boxvault/startup.sh  owner=root group=bin mode=0755
+file path=opt/boxvault/server.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/config/app.config.yaml  owner=root group=bin mode=0644
+file path=opt/boxvault/app/config/auth.config.yaml  owner=root group=bin mode=0644
+file path=opt/boxvault/app/config/db.config.yaml  owner=root group=bin mode=0644
+file path=opt/boxvault/app/config/mail.config.yaml  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/architecture.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/auth.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/box.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/config.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/file.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/mail.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/organization.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/provider.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/service_account.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/user.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/controllers/version.controller.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/authJwt.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/index.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/upload.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/verifyArchitecture.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/verifyBoxName.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/verifyOrganization.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/verifyProvider.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/verifySignUp.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/middleware/verifyVersion.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/architecture.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/box.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/file.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/index.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/invitation.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/organizations.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/provider.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/role.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/service_account.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/user.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/models/version.model.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/architecture.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/auth.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/box.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/config.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/file.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/mail.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/organization.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/provider.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/service_account.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/user.routes.js  owner=root group=bin mode=0644
+file path=opt/boxvault/app/routes/version.routes.js  owner=root group=bin mode=0644
+
+# Views and Assets
+file path=opt/boxvault/app/views/index.html  owner=root group=bin mode=0644
+file path=opt/boxvault/app/views/assets/BoxVault.svg owner=root group=bin mode=0644
+file path=opt/boxvault/app/views/assets/logo192.png owner=root group=bin mode=0644
+file path=opt/boxvault/app/views/assets/index.css owner=root group=bin mode=0644
+file path=opt/boxvault/app/views/assets/index.js owner=root group=bin mode=0644
+file path=opt/boxvault/app/views/assets/BoxVaultDark.svg owner=root group=bin mode=0644

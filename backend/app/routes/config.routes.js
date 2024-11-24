@@ -11,7 +11,7 @@
        );
        next();
      });
-
-     app.get("/api/config/:configName", [authJwt.verifyToken, authJwt.isAdmin], configController.getConfig);
-     app.put("/api/config/:configName", [authJwt.verifyToken, authJwt.isAdmin], configController.updateConfig);
+     app.get("/api/config/gravatar", configController.getGravatarConfig);
+     app.get("/api/config/:configName", [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], configController.getConfig);
+     app.put("/api/config/:configName", [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], configController.updateConfig);
    };

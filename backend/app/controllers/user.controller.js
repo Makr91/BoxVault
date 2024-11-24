@@ -1,9 +1,22 @@
-// user.controller.js
 const db = require("../models");
+const fs = require('fs');
+const path = require('path');
+const yaml = require('js-yaml');
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const crypto = require('crypto');
 const User = db.user;
 const Role = db.role;
 const Organization = db.organization;
+
+const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
+let authConfig;
+try {
+  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
+  authConfig = yaml.load(fileContents);
+} catch (e) {
+  console.error(`Failed to load auth configuration: ${e.message}`);
+}
 
 exports.allAccess = (req, res) => {
   const projectData = {
@@ -38,6 +51,34 @@ exports.allAccess = (req, res) => {
   };
 
   res.status(200).json(projectData);
+};
+
+exports.isOnlyUserInOrg = async (req, res) => {
+  const { organizationName } = req.params;
+
+  try {
+    const organization = await Organization.findOne({
+      where: { name: organizationName }
+    });
+
+    if (!organization) {
+      return res.status(404).send({ message: `Organization ${organizationName} not found.` });
+    }
+
+    const users = await User.findAll({
+      where: { organizationId: organization.id }
+    });
+
+    if (users.length === 1) {
+      return res.status(200).send({ isOnlyUser: true });
+    } else {
+      return res.status(200).send({ isOnlyUser: false });
+    }
+  } catch (err) {
+    res.status(500).send({
+      message: err.message || "Some error occurred while checking the organization users."
+    });
+  }
 };
 
 exports.userBoard = (req, res) => {
@@ -96,8 +137,8 @@ exports.getUserProfile = async (req, res) => {
       return res.status(404).send({ message: "User Not found." });
     }
 
-    const token = jwt.sign({ id: user.id }, authConfig.jwt.jwt_secret, {
-      expiresIn: authConfig.jwt.jwt_token_time_valid,
+    const token = jwt.sign({ id: user.id }, authConfig.jwt.jwt_secret.value, {
+      expiresIn: authConfig.jwt.jwt_token_time_valid.value,
     });
 
     const authorities = user.roles.map(role => "ROLE_" + role.name.toUpperCase());
@@ -106,14 +147,17 @@ exports.getUserProfile = async (req, res) => {
       id: user.id,
       username: user.username,
       email: user.email,
+      verified: user.verified,
+      emailHash: user.emailHash,
       roles: authorities,
       organization: user.organization ? user.organization.name : null,
       accessToken: token,
-      gravatarUrl: user.gravatarUrl // Make sure this is included
+      gravatarUrl: user.gravatarUrl
     });
   } catch (error) {
-    res.status(500).send({ message: "Error retrieving user profile" });
-  }
+      console.error("Error retrieving user profile:", error); // Ensure this is logging the error
+      res.status(500).send({ message: "Error retrieving user profile" });
+    }
 };
 
 exports.findOne = async (req, res) => {
@@ -288,11 +332,14 @@ exports.promoteToModerator = async (req, res) => {
       return res.status(404).send({ message: "User not found." });
     }
 
-    const roles = await user.getRoles();
-    await user.removeRoles(roles);
+    const userRole = await Role.findOne({ where: { name: "user" } });
+    const moderatorRole = await Role.findOne({ where: { name: "moderator" } });
 
-    const userRole = await Role.findOne({ where: { name: "moderator" } });
-    await user.addRole(userRole);
+    // Remove the user role if it exists
+    await user.removeRole(userRole);
+
+    // Add the moderator role
+    await user.addRole(moderatorRole);
 
     res.status(200).send({ message: "Promoted to moderator successfully!" });
   } catch (err) {
@@ -309,12 +356,13 @@ exports.demoteToUser = async (req, res) => {
       return res.status(404).send({ message: "User not found." });
     }
 
-    // Remove all roles
-    const roles = await user.getRoles();
-    await user.removeRoles(roles);
-
-    // Add the "user" role
     const userRole = await Role.findOne({ where: { name: "user" } });
+    const moderatorRole = await Role.findOne({ where: { name: "moderator" } });
+
+    // Remove the moderator role if it exists
+    await user.removeRole(moderatorRole);
+
+    // Add the user role
     await user.addRole(userRole);
 
     res.status(200).send({ message: "Demoted to user successfully!" });
@@ -322,6 +370,7 @@ exports.demoteToUser = async (req, res) => {
     res.status(500).send({ message: err.message || "Some error occurred while demoting the user." });
   }
 };
+
 
 exports.getUserRoles = async (req, res) => {
   try {

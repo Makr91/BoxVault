@@ -14,13 +14,13 @@ module.exports = function(app) {
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture", architecture.findAllByProvider);
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName", architecture.findOne);
   app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture", 
-    [authJwt.verifyToken, verifyArchitecture.validateArchitecture, verifyArchitecture.checkArchitectureDuplicate], 
+    [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyArchitecture.validateArchitecture, verifyArchitecture.checkArchitectureDuplicate], 
     architecture.create
   );
   app.put("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName", 
-    [authJwt.verifyToken, verifyArchitecture.validateArchitecture], 
+    [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyArchitecture.validateArchitecture], 
     architecture.update
   );
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName", [authJwt.verifyToken], architecture.delete);
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture", [authJwt.verifyToken], architecture.deleteAllByProvider);
+  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], architecture.delete);
+  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], architecture.deleteAllByProvider);
 };

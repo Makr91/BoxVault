@@ -1,0 +1,13 @@
+// Import all of Bootstrap's CSS
+@import "~bootstrap/scss/bootstrap";
+
+
+.btn-dark {
+    --bs-btn-border-color: #807769;
+}
+
+.list {
+  text-align: left;
+  max-width: 90vw;
+  margin: auto;
+}

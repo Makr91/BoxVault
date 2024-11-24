@@ -2,6 +2,7 @@
 const db = require("../models");
 const Version = db.versions;
 
+
 function validateVersion(req, res, next) {
   console.log("Full request body:", req.body);
   
@@ -35,26 +36,57 @@ function validateVersion(req, res, next) {
     });
   }
 
-  console.log("Version number is valid");
   next();
 }
 
-// Function to check for duplicate version numbers
 async function checkVersionDuplicate(req, res, next) {
-  const { organization, boxId } = req.params;
-  const { versionNumber } = req.body;
+  const { organization, boxId, versionNumber: currentVersionNumber } = req.params; // Get currentVersionNumber from params
+  const { versionNumber } = req.body; // Get the new versionNumber from the request body
+
+  // If versionNumber is not null and matches the currentVersionNumber in req.params, allow changes
+  if (versionNumber && versionNumber === currentVersionNumber) {
+    return next();
+  }
+
+  // If versionNumber is not provided, skip duplicate check
+  if (!versionNumber) {
+    return next();
+  }
 
   try {
+    const organizationData = await db.organization.findOne({
+      where: { name: organization },
+      include: [{
+        model: db.user,
+        as: 'users',
+        include: [{
+          model: db.box,
+          as: 'box',
+          where: { name: boxId }
+        }]
+      }]
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({
+        message: `Organization not found with name: ${organization}.`
+      });
+    }
+
+    // Extract the box from the organization data
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+
+    if (!box) {
+      return res.status(404).send({
+        message: `Box ${boxId} not found in organization ${organization}.`
+      });
+    }
+
     const existingVersion = await Version.findOne({
       where: {
         versionNumber: versionNumber,
-        boxId: boxId
-      },
-      include: [{
-        model: db.box,
-        as: "box",
-        where: { name: boxId, organization }
-      }]
+        boxId: box.id
+      }
     });
 
     if (existingVersion) {

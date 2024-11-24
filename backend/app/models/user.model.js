@@ -1,4 +1,3 @@
-// user.model.js
 module.exports = (sequelize, Sequelize) => {
   const User = sequelize.define("users", {
     username: {
@@ -13,6 +12,16 @@ module.exports = (sequelize, Sequelize) => {
     emailHash: {
       type: Sequelize.STRING
     },
+    verified: {
+      type: Sequelize.BOOLEAN,
+      defaultValue: false
+    },
+    verificationToken: {
+      type: Sequelize.STRING
+    },
+    verificationTokenExpires: {
+      type: Sequelize.DATE
+    },
     suspended: {
       type: Sequelize.BOOLEAN,
       defaultValue: false
@@ -20,7 +29,6 @@ module.exports = (sequelize, Sequelize) => {
   });
 
   User.associate = function(models) {
-    console.log("Associating User with Organization using alias 'organization'");
     User.belongsTo(models.organization, {
       foreignKey: "organizationId",
       as: "organization"

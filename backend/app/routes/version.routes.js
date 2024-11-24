@@ -11,10 +11,10 @@ module.exports = function(app) {
     next();
   });
 
-  app.post("/api/organization/:organization/box/:boxId/version", [authJwt.verifyToken, verifyVersion.validateVersion, verifyVersion.checkVersionDuplicate], version.create );
-  app.get("/api/organization/:organization/box/:boxId/version",  [authJwt.verifyToken], version.findAllByBox);
-  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber",  [authJwt.verifyToken], version.findOne);
-  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber",[authJwt.verifyToken, verifyVersion.validateVersion], version.update );
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber", [authJwt.verifyToken], version.delete);
-  app.delete("/api/organization/:organization/box/:boxId/version", [authJwt.verifyToken], version.deleteAllByBox);
+  app.post("/api/organization/:organization/box/:boxId/version",              [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyVersion.validateVersion, verifyVersion.checkVersionDuplicate], version.create );
+  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber",[authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyVersion.validateVersion, verifyVersion.checkVersionDuplicate], version.update );
+  app.get("/api/organization/:organization/box/:boxId/version", version.findAllByBox);
+  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber",  version.findOne);
+  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], version.delete);
+  app.delete("/api/organization/:organization/box/:boxId/version", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], version.deleteAllByBox);
 };

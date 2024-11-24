@@ -1,8 +1,5 @@
 module.exports = (sequelize, Sequelize) => {
   const Box = sequelize.define("box", {
-    organization: {
-      type: Sequelize.STRING
-    },
     name: {
       type: Sequelize.STRING
     },

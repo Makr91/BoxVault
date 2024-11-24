@@ -11,10 +11,12 @@ module.exports = function(app) {
     next();
   });
 
-  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider", [authJwt.verifyToken, verifyProvider.validateProvider, verifyProvider.checkProviderDuplicate], provider.create );
-  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider", provider.findAllByVersion );
+  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider", [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyProvider.validateProvider, verifyProvider.checkProviderDuplicate], provider.create );
+  
+  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider", provider.findAllByVersion ); 
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName", provider.findOne );
-  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName", [authJwt.verifyToken, verifyProvider.validateProvider], provider.update );
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName", [authJwt.verifyToken], provider.delete );
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider", [authJwt.verifyToken], provider.deleteAllByVersion );
+  
+  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName", [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyProvider.validateProvider], provider.update );
+  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], provider.delete );
+  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], provider.deleteAllByVersion );
 };

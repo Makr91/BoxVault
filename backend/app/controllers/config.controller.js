@@ -5,6 +5,7 @@ const configFiles = {
   app: path.join(__dirname, '../config/app.config.yaml'),
   auth: path.join(__dirname, '../config/auth.config.yaml'),
   db: path.join(__dirname, '../config/db.config.yaml'),
+  mail: path.join(__dirname, '../config/mail.config.yaml'),
 };
 
 const readConfig = (filePath) => {
@@ -58,6 +59,19 @@ exports.updateConfig = async (req, res) => {
   try {
     await writeConfig(filePath, req.body);
     res.send({ message: "Configuration updated successfully." });
+  } catch (err) {
+    res.status(500).send({ message: err.message });
+  }
+};
+
+exports.getGravatarConfig = async (req, res) => {
+  try {
+    const data = await readConfig(configFiles.app);
+    if (data && data.gravatar) {
+      res.send({ gravatar: data.gravatar });
+    } else {
+      res.status(404).send({ message: "Gravatar configuration not found." });
+    }
   } catch (err) {
     res.status(500).send({ message: err.message });
   }

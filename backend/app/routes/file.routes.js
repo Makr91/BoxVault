@@ -10,9 +10,9 @@ module.exports = function(app) {
     next();
   });
 
-  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload", [authJwt.verifyToken], file.update);
-  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload", [authJwt.verifyToken], file.upload);
+  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.update);
+  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.upload);
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info", file.info);
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download", file.download);
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete", [authJwt.verifyToken], file.remove);
+  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.remove);
 };

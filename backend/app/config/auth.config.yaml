@@ -1,3 +1,9 @@
 jwt:
-  jwt_secret: boxvault-secret-key
-  jwt_token_time_valid: 3600
+  jwt_secret:
+    type: password
+    value: boxvault-secret-key
+    description: Secret key for JWT
+  jwt_token_time_valid:
+    type: integer
+    value: 3600
+    description: JWT token validity time in seconds

@@ -1,27 +1,55 @@
 boxvault:
-  origin: https://boxvault.home.m4kr.net
-  api_url: https://boxvault.home.m4kr.net/api
+  origin:
+    type: url
+    value: https://boxvault.home.m4kr.net
+    description: The origin URL for BoxVault
+    required: true
+  api_url:
+    type: url
+    value: https://boxvault.home.m4kr.net/api
+    description: The API URL for BoxVault
+    required: true
+  api_listen_port_unencrypted:
+    type: integer
+    value: 5000
+    description: The Port that BoxVault API listens on for HTTP(may not be the proxied port)
+    required: true
+  api_listen_port_encrypted:
+    type: integer
+    value: 443
+    description: The Port that BoxVault API listens on for HTTPS(may not be the proxied port)
+    required: true
+  box_storage_directory:
+    type: string
+    value: /Array-0/boxvault/data/
+    description: The Directory on the OS in which the boxes are stored.
+    required: true
+  box_max_file_size:
+    type: integer
+    value: 10
+    description: The file size in GBs as to how large a upload box can be.
+    required: true
 gravatar:
-  base_url: https://api.gravatar.com/v3/profiles/
-  api_key: 1238:gk-hGrxeLZtnocRXp-rQIB_R2Rm-z6Oe6_0j2dzxzOzs0J8qtdk5mARF5AQZ6I6s
-
-#boxvault:
-#  -
-#    name: origin
-#    type: url
-#    value: https://boxvault.home.m4kr.net
-#  -
-#    name: api_url
-#    type: url
-#    value: https://boxvault.home.m4kr.net/api
-#
-#gravatar:
-#  -
-#    name: base_url
-#    type: url
-#    value: https://api.gravatar.com/v3/profiles/
-#  -
-#    name: api_key
-#    type: string
-#    value: 1238:gk-hGrxeLZtnocRXp-rQIB_R2Rm-z6Oe6_0j2dzxzOzs0J8qtdk5mARF5AQZ6I6s
-
+  base_url:
+    type: url
+    value: https://api.gravatar.com/v3/profiles/
+    description: The base URL for Gravatar API
+    required: false
+  api_key:
+    type: password
+    value: 1238:gk-hGrxeLZtnocRXp-rQIB_R2Rm-z6Oe6_0j2dzxzOzs0J8qtdk5mARF5AQZ6I6s
+    description: API key for Gravatar
+    required: false
+ssl:
+  cert_path:
+    type: string
+    value: public.crt
+    description: Path to the SSL certificate file
+    required: false
+    upload: true
+  key_path:
+    type: string
+    value: private.key
+    description: Path to the SSL private key file
+    required: false
+    upload: true

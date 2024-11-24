@@ -13,17 +13,19 @@ try {
 
 const Sequelize = require("sequelize");
 const sequelize = new Sequelize(
-  dbConfig.mysql.database,
-  dbConfig.mysql.user,
-  dbConfig.mysql.password,
+  dbConfig.sql.database.value,
+  dbConfig.sql.user.value,
+  dbConfig.sql.password.value,
   {
-    host: dbConfig.mysql.host,
-    dialect: dbConfig.mysql.dialect,
+    logging: dbConfig.sql.logging.value,
+    host: dbConfig.sql.host.value,
+    port: dbConfig.sql.port.value,
+    dialect: dbConfig.sql.dialect.value,
     pool: {
-      max: dbConfig.mysql_pool.max,
-      min: dbConfig.mysql_pool.min,
-      acquire: dbConfig.mysql_pool.acquire,
-      idle: dbConfig.mysql_pool.idle
+      max: dbConfig.mysql_pool.max.value,
+      min: dbConfig.mysql_pool.min.value,
+      acquire: dbConfig.mysql_pool.acquire.value,
+      idle: dbConfig.mysql_pool.idle.value
     }
   }
 );
@@ -42,6 +44,8 @@ db.versions = require("../models/version.model.js")(sequelize, Sequelize);
 db.providers = require("../models/provider.model.js")(sequelize, Sequelize);
 db.architectures = require("../models/architecture.model.js")(sequelize, Sequelize);
 db.files = require("../models/file.model.js")(sequelize, Sequelize);
+db.invitation = require("../models/invitation.model.js")(sequelize, Sequelize);
+db.service_account = require("../models/service_account.model.js")(sequelize, Sequelize);
 
 // Define associations
 db.role.belongsToMany(db.user, {
