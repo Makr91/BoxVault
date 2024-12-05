@@ -4,7 +4,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
-const uploadFile = require("../middleware/upload");
+const { uploadFileMiddleware } = require("../middleware/upload");
 
 const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
@@ -69,7 +69,7 @@ const upload = async (req, res) => {
 
     // Proceed with upload only if the file does not exist
     if (!fs.existsSync(filePath)) {
-      await uploadFile(req, res);
+      await uploadFileMiddleware(req, res);
 
       let checksum = req.body.checksum;
       let checksumType = req.body.checksumType;
@@ -489,7 +489,7 @@ const update = async (req, res) => {
       }
     }
 
-    await uploadFile(req, res);
+    await uploadFileMiddleware(req, res);
 
     let checksum = req.body.checksum;
     let checksumType = req.body.checksumType;
