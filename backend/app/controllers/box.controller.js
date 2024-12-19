@@ -600,16 +600,68 @@ exports.findOne = async (req, res) => {
       return res.status(404).send({ message: `Box not found with name: ${name}.` });
     }
 
+    // Check access based on box status and user permissions
+    const canAccess = await (async () => {
+      // Published + Public: Anyone can access
+      if (box.published && box.isPublic) {
+        return true;
+      }
+
+      // Unpublished + Public: Not accessible
+      if (!box.published && box.isPublic) {
+        return false;
+      }
+
+      // If no user is authenticated
+      if (!userId) {
+        return false;
+      }
+
+      // Service accounts can access all boxes
+      if (isServiceAccount) {
+        return true;
+      }
+
+      // Get the user's organization
+      const user = organizationData.users.find(u => u.id === userId);
+      if (!user) {
+        return false;
+      }
+
+      // Published + Private: Organization members can access
+      if (box.published && !box.isPublic) {
+        return true;
+      }
+
+      // Unpublished + Private: Only box owner can access
+      if (!box.published && !box.isPublic) {
+        return box.userId === userId;
+      }
+
+      return false;
+    })();
+
+    if (!canAccess) {
+      return res.status(403).json({ 
+        message: box.published 
+          ? "This box is private. Please authenticate to access it."
+          : "This box is not published. Only the owner can access it."
+      });
+    }
+
+    // Format and send response
     let response;
     if (req.isVagrantRequest) {
-      // Format response for Vagrant metadata request
       const baseUrl = appConfig.boxvault.origin.value;
-      // Always use the requested name from vagrantInfo
-      // Use the requested name from vagrantInfo if available, otherwise construct it
       const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;
       response = formatVagrantResponse(box, organizationData, baseUrl, requestedName);
+      
+      res.set({
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Vary': 'Accept'
+      });
     } else {
-      // Format response for frontend
       response = {
         ...box.toJSON(),
         organization: {
@@ -620,36 +672,6 @@ exports.findOne = async (req, res) => {
       };
     }
 
-    // Set response headers for Vagrant requests
-    if (req.isVagrantRequest) {
-      res.set({
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Vary': 'Accept'
-      });
-    }
-
-    // If the box is public, allow access
-    if (box.isPublic) {
-      return res.json(response);
-    }
-
-    // If the box is private, check if the user belongs to the organization or is a service account
-    if (!userId) {
-      return res.status(403).json({ message: "Unauthorized access to private box." });
-    }
-
-    if (isServiceAccount) {
-      // Service accounts can access all boxes
-      return res.json(response);
-    }
-
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
-      return res.status(403).json({ message: "Unauthorized access to private box." });
-    }
-
-    // If the user belongs to the organization, allow access
     return res.json(response);
 
   } catch (err) {
@@ -841,10 +863,91 @@ exports.deleteAll = async (req, res) => {
 // Handle Vagrant box downloads
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
-  
-  // Redirect to our actual file download endpoint
-  const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
-  res.redirect(downloadUrl);
+  let userId = req.userId;
+  let isServiceAccount = req.isServiceAccount;
+
+  try {
+    // Find the organization and box
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+      include: [{
+        model: Users,
+        as: 'users',
+        include: [{
+          model: Box,
+          as: 'box',
+          where: { name },
+          include: [{
+            model: Users,
+            as: 'user'
+          }]
+        }]
+      }]
+    });
+
+    if (!organizationData) {
+      return res.status(404).json({ message: `Organization not found: ${organization}` });
+    }
+
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === name);
+    if (!box) {
+      return res.status(404).json({ message: `Box not found: ${name}` });
+    }
+
+    // Check access based on box status and user permissions
+    const canAccess = await (async () => {
+      // Published + Public: Anyone can download
+      if (box.published && box.isPublic) {
+        return true;
+      }
+
+      // Unpublished boxes cannot be downloaded
+      if (!box.published) {
+        return false;
+      }
+
+      // If no user is authenticated
+      if (!userId) {
+        return false;
+      }
+
+      // Service accounts can access all published boxes
+      if (isServiceAccount) {
+        return true;
+      }
+
+      // Get the user's organization
+      const user = organizationData.users.find(u => u.id === userId);
+      if (!user) {
+        return false;
+      }
+
+      // Published + Private: Organization members can download
+      if (box.published && !box.isPublic) {
+        return true;
+      }
+
+      return false;
+    })();
+
+    if (!canAccess) {
+      return res.status(403).json({ 
+        message: !box.published
+          ? "This box is not published and cannot be downloaded."
+          : "This box is private. Please authenticate to download it."
+      });
+    }
+
+    // Redirect to our actual file download endpoint
+    const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+    res.redirect(downloadUrl);
+  } catch (err) {
+    console.error('Error handling box download:', err);
+    res.status(500).json({ 
+      message: "Error processing download request",
+      error: err.message 
+    });
+  }
 };
 
 // Find all published Boxes under an organization

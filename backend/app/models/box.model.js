@@ -7,7 +7,8 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.STRING
     },
     published: {
-      type: Sequelize.BOOLEAN
+      type: Sequelize.BOOLEAN,
+      defaultValue: false
     },
     isPublic: {
       type: Sequelize.BOOLEAN,

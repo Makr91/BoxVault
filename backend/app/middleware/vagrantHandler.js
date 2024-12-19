@@ -1,6 +1,64 @@
+const fs = require('fs');
+const path = require('path');
+const yaml = require('js-yaml');
+const jwt = require("jsonwebtoken");
+const db = require("../models");
+const User = db.user;
+const ServiceAccount = db.service_account;
+
+const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
+let authConfig;
+try {
+  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
+  authConfig = yaml.load(fileContents);
+} catch (e) {
+  console.error(`Failed to load auth configuration: ${e.message}`);
+}
+
 const isVagrantRequest = (req) => {
   const userAgent = req.headers['user-agent'] || '';
   return userAgent.startsWith('Vagrant/');
+};
+
+const authenticateVagrantRequest = async (req) => {
+  // Check for token in headers
+  let token = req.headers["x-access-token"] || req.headers["authorization"];
+  
+  // Check for ATLAS_TOKEN in environment
+  if (!token && process.env.ATLAS_TOKEN) {
+    token = process.env.ATLAS_TOKEN;
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  // Remove Bearer if present
+  token = token.replace(/^Bearer\s+/, '');
+
+  try {
+    // First try as JWT token
+    const decoded = await jwt.verify(token, authConfig.jwt.jwt_secret.value);
+    if (decoded.id) {
+      const user = await User.findByPk(decoded.id);
+      return { user, isServiceAccount: decoded.isServiceAccount };
+    }
+  } catch (err) {
+    // Not a valid JWT, try as service account token
+    const serviceAccount = await ServiceAccount.findOne({
+      where: { token },
+      include: [{
+        model: User,
+        as: 'user'
+      }]
+    });
+
+    if (serviceAccount && serviceAccount.user) {
+      return { user: serviceAccount.user, isServiceAccount: true };
+    }
+  }
+
+  return null;
 };
 
 const parseVagrantUrl = (url) => {
@@ -61,82 +119,98 @@ const parseVagrantUrl = (url) => {
   return null;
 };
 
-const vagrantHandler = (req, res, next) => {
-  // Only process GET and HEAD requests
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    return next();
-  }
+const vagrantHandler = async (req, res, next) => {
+  try {
+    // Only process GET and HEAD requests
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return next();
+    }
 
-  // Check if this is a Vagrant request
-  req.isVagrantRequest = isVagrantRequest(req);
-  if (!req.isVagrantRequest) {
-    return next();
-  }
+    // Check if this is a Vagrant request
+    req.isVagrantRequest = isVagrantRequest(req);
+    if (!req.isVagrantRequest) {
+      return next();
+    }
 
-  // Parse the URL
-  const parsedUrl = parseVagrantUrl(req.url);
-  if (!parsedUrl) {
-    return next();
-  }
+    // Authenticate the request
+    const auth = await authenticateVagrantRequest(req);
+    if (auth) {
+      req.userId = auth.user.id;
+      req.isServiceAccount = auth.isServiceAccount;
+      req.user = auth.user;
+    }
 
-  // For HEAD requests, handle metadata detection
-  if (req.method === 'HEAD') {
-    // Only set Content-Type to indicate this is metadata
-    res.set('Content-Type', 'application/json');
-    res.status(200).end();
-    return;
-  }
+    // Parse the URL
+    const parsedUrl = parseVagrantUrl(req.url);
+    if (!parsedUrl) {
+      return next();
+    }
 
-  // For box downloads
-  if (parsedUrl.isDownload) {
-    // For box downloads, rewrite Vagrant's URL format to our API endpoint
-    req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
+    // For HEAD requests, handle metadata detection
+    if (req.method === 'HEAD') {
+      // Only set Content-Type to indicate this is metadata
+      res.set('Content-Type', 'application/json');
+      res.status(200).end();
+      return;
+    }
+
+    // For box downloads
+    if (parsedUrl.isDownload) {
+      // For box downloads, rewrite Vagrant's URL format to our API endpoint
+      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
+      
+      // Don't set Content-Type for downloads
+      // Let the download endpoint handle streaming the file
+      next();
+      return;
+    }
+
+    // For GET requests to metadata endpoint
+    if (!parsedUrl.isDownload) {
+      // Set headers for JSON metadata response
+      res.set({
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Vary': 'Accept'
+      });
+
+      // Ensure Accept header is set for Vagrant
+      if (!req.headers.accept) {
+        req.headers.accept = 'application/json';
+      }
+    }
+
+    // Rewrite the URL to our API format
+    req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
     
-    // Don't set Content-Type for downloads
-    // Let the download endpoint handle streaming the file
-    next();
-    return;
-  }
+    // Store parsed URL info for the controller
+    req.vagrantInfo = {
+      originalUrl: req.originalUrl,
+      organization: parsedUrl.organization,
+      boxName: parsedUrl.boxName,
+      // Store the full requested name for Vagrant metadata
+      requestedName: `${parsedUrl.organization}/${parsedUrl.boxName}`,
+      isDownload: parsedUrl.isDownload,
+      version: parsedUrl.version,
+      provider: parsedUrl.provider,
+      architecture: parsedUrl.architecture
+    };
 
-  // For GET requests to metadata endpoint
-  if (!parsedUrl.isDownload) {
-    // Set headers for JSON metadata response
-    res.set({
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-      'Vary': 'Accept'
+    // Log request details for debugging
+    console.log('Vagrant Request:', {
+      ...req.vagrantInfo,
+      userAgent: req.headers['user-agent'],
+      headers: res.getHeaders()
     });
 
-    // Ensure Accept header is set for Vagrant
-    if (!req.headers.accept) {
-      req.headers.accept = 'application/json';
-    }
+    next();
+  } catch (error) {
+    console.error('Error in vagrant handler:', error);
+    res.status(500).json({ 
+      message: "Internal server error processing Vagrant request",
+      error: error.message 
+    });
   }
-
-  // Rewrite the URL to our API format
-  req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
-  
-  // Store parsed URL info for the controller
-  req.vagrantInfo = {
-    originalUrl: req.originalUrl,
-    organization: parsedUrl.organization,
-    boxName: parsedUrl.boxName,
-    // Store the full requested name for Vagrant metadata
-    requestedName: `${parsedUrl.organization}/${parsedUrl.boxName}`,
-    isDownload: parsedUrl.isDownload,
-    version: parsedUrl.version,
-    provider: parsedUrl.provider,
-    architecture: parsedUrl.architecture
-  };
-
-  // Log request details for debugging
-  console.log('Vagrant Request:', {
-    ...req.vagrantInfo,
-    userAgent: req.headers['user-agent'],
-    headers: res.getHeaders()
-  });
-
-  next();
 };
 
 module.exports = vagrantHandler;

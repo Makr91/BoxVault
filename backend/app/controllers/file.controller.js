@@ -296,28 +296,51 @@ const download = async (req, res) => {
       });
     }
 
-    // If the box is public or the requester is a service account, allow download
-    if (box.isPublic || isServiceAccount) {
-      return res.download(filePath, fileName, (err) => {
-        if (err) {
-          res.status(500).send({
-            message: "Could not download the file. " + err,
-          });
-        }
+    // Check access based on box status and user permissions
+    const canAccess = await (async () => {
+      // Published + Public: Anyone can download
+      if (box.published && box.isPublic) {
+        return true;
+      }
+
+      // Unpublished boxes cannot be downloaded
+      if (!box.published) {
+        return false;
+      }
+
+      // If no user is authenticated
+      if (!userId) {
+        return false;
+      }
+
+      // Service accounts can access all published boxes
+      if (isServiceAccount) {
+        return true;
+      }
+
+      // Get the user's organization
+      const user = organizationData.users.find(u => u.id === userId);
+      if (!user) {
+        return false;
+      }
+
+      // Published + Private: Organization members can download
+      if (box.published && !box.isPublic) {
+        return true;
+      }
+
+      return false;
+    })();
+
+    if (!canAccess) {
+      return res.status(403).json({ 
+        message: !box.published
+          ? "This box is not published and cannot be downloaded."
+          : "This box is private. Please authenticate to download it."
       });
     }
 
-    // If the box is private, check if the user belongs to the organization
-    if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to file download." });
-    }
-
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to file download." });
-    }
-
-    // If the user belongs to the organization, allow download
+    // If access is granted, stream the file
     return res.download(filePath, fileName, (err) => {
       if (err) {
         res.status(500).send({
@@ -392,40 +415,51 @@ const info = async (req, res) => {
       });
     }
 
-    // If the box is public or the requester is a service account, allow access
-    if (box.isPublic || isServiceAccount) {
-      const fileRecord = await File.findOne({
-        where: {
-          fileName: 'vagrant.box',
-          architectureId: box.versions[0].providers[0].architectures[0].id
-        }
-      });
-
-      if (fileRecord) {
-        return res.send({
-          fileName: fileRecord.fileName,
-          downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
-          downloadCount: fileRecord.downloadCount,
-          checksum: fileRecord.checksum,
-          checksumType: fileRecord.checksumType,
-          fileSize: fileRecord.fileSize
-        });
-      } else {
-        return res.status(404).send({ message: "File not found." });
+    // Check access based on box status and user permissions
+    const canAccess = await (async () => {
+      // Published + Public: Anyone can access
+      if (box.published && box.isPublic) {
+        return true;
       }
+
+      // Unpublished boxes cannot be accessed
+      if (!box.published) {
+        return false;
+      }
+
+      // If no user is authenticated
+      if (!userId) {
+        return false;
+      }
+
+      // Service accounts can access all published boxes
+      if (isServiceAccount) {
+        return true;
+      }
+
+      // Get the user's organization
+      const user = organizationData.users.find(u => u.id === userId);
+      if (!user) {
+        return false;
+      }
+
+      // Published + Private: Organization members can access
+      if (box.published && !box.isPublic) {
+        return true;
+      }
+
+      return false;
+    })();
+
+    if (!canAccess) {
+      return res.status(403).json({ 
+        message: !box.published
+          ? "This box is not published. File information is not available."
+          : "This box is private. Please authenticate to access file information."
+      });
     }
 
-    // If the box is private, check if the user belongs to the organization
-    if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to file information." });
-    }
-
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to file information." });
-    }
-
-    // If the user belongs to the organization, allow access
+    // If access is granted, return file information
     const fileRecord = await File.findOne({
       where: {
         fileName: 'vagrant.box',
