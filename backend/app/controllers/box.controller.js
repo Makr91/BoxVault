@@ -489,8 +489,8 @@ const formatVagrantResponse = (box, organization, baseUrl) => {
           architecture: arch.name,
           default_architecture: true,
           checksum: arch.files[0]?.checksum || "",
-          checksum_type: "sha256",
-          url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`
+          checksum_type: (arch.files[0]?.checksumType === "NULL" ? "sha256" : arch.files[0]?.checksumType?.toLowerCase()) || "sha256",
+          url: `${baseUrl}/api/organization/${organization.name}/box/${box.name}/version/${version.versionNumber.replace(/^v/, '')}/provider/${provider.name}/architecture/${arch.name}/file/download`
         }))
       )
     }))
