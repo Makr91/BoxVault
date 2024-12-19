@@ -490,7 +490,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
           return {
             // Required fields from Provider class
             name: provider.name,
-            url: `${baseUrl}/api/organization/${organization.name}/box/${box.name}/version/${version.versionNumber.replace(/^v/, '')}/provider/${provider.name}/architecture/${arch.name}/file/download`,
+            url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`,
             checksum: file?.checksum || "",
             checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
             architecture: arch.name,
@@ -605,7 +605,9 @@ exports.findOne = async (req, res) => {
       // Format response for Vagrant metadata request
       const baseUrl = appConfig.boxvault.origin.value;
       // Always use the requested name from vagrantInfo
-      response = formatVagrantResponse(box, organizationData, baseUrl, `${organization}/${box.name}`);
+      // Use the requested name from vagrantInfo if available, otherwise construct it
+      const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;
+      response = formatVagrantResponse(box, organizationData, baseUrl, requestedName);
     } else {
       // Format response for frontend
       response = {
@@ -834,6 +836,15 @@ exports.deleteAll = async (req, res) => {
       message: err.message || "Some error occurred while removing all boxes."
     });
   }
+};
+
+// Handle Vagrant box downloads
+exports.downloadBox = async (req, res) => {
+  const { organization, name, version, provider, architecture } = req.params;
+  
+  // Redirect to our actual file download endpoint
+  const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+  res.redirect(downloadUrl);
 };
 
 // Find all published Boxes under an organization
