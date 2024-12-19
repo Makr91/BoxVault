@@ -89,8 +89,8 @@ const vagrantHandler = (req, res, next) => {
 
   // For box downloads
   if (parsedUrl.isDownload) {
-    // Keep Vagrant's URL format for downloads
-    req.url = `/${parsedUrl.organization}/boxes/${parsedUrl.boxName}/versions/${parsedUrl.version}/providers/${parsedUrl.provider}/${parsedUrl.architecture}/vagrant.box`;
+    // Route to download endpoint
+    req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/file/download`;
     
     // Don't set Content-Type for downloads
     // Let the download endpoint handle streaming the file
@@ -113,8 +113,8 @@ const vagrantHandler = (req, res, next) => {
     }
   }
 
-  // Keep Vagrant's URL format for metadata
-  req.url = `/${parsedUrl.organization}/boxes/${parsedUrl.boxName}`;
+  // Route to metadata endpoint
+  req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
   
   // Store parsed URL info for the controller
   req.vagrantInfo = {
