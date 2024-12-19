@@ -237,26 +237,9 @@ const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
-  // Check for token in x-access-token header (browser) or Authorization header (Vagrant)
-  const token = req.headers["x-access-token"] || 
-                (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
-                  ? req.headers["authorization"].substring(7) 
-                  : null);
-  let userId = null;
-  let isServiceAccount = false;
-
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      console.warn("Invalid token provided");
-    }
-  }
 
   try {
+    // First, check if the box exists and if it's public
     const organizationData = await db.organization.findOne({
       where: { name: organization },
       include: [{
@@ -300,7 +283,49 @@ const download = async (req, res) => {
       });
     }
 
-    // Function to handle file download
+    // If the box is public, allow download without authentication
+    if (box.isPublic) {
+      return sendFile();
+    }
+
+    // For private boxes, check authentication
+    const token = req.headers["x-access-token"] || 
+                 (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
+                   ? req.headers["authorization"].substring(7) 
+                   : null);
+    
+    if (!token) {
+      return res.status(403).send({ message: "Unauthorized access to file download." });
+    }
+
+    let userId = null;
+    let isServiceAccount = false;
+
+    try {
+      // Verify the token and extract the user ID
+      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+      userId = decoded.id;
+      isServiceAccount = decoded.isServiceAccount || false;
+    } catch (err) {
+      console.warn("Invalid token provided");
+      return res.status(403).send({ message: "Invalid authentication token." });
+    }
+
+    // If it's a service account, allow download
+    if (isServiceAccount) {
+      return sendFile();
+    }
+
+    // Check if user belongs to the organization
+    const user = organizationData.users.find(user => user.id === userId);
+    if (!user) {
+      return res.status(403).send({ message: "Unauthorized access to file download." });
+    }
+
+    // User belongs to organization, allow download
+    return sendFile();
+
+    // Function to handle file download (moved to top level for clarity)
     const sendFile = () => {
       // For Vagrant requests, we need to handle the response differently
       if (req.isVagrantRequest) {
