@@ -210,31 +210,22 @@ exports.findAll = async (req, res) => {
 
 exports.getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
-  // Get auth info from vagrantHandler middleware
-  const userId = req.userId;
-  const isServiceAccount = req.isServiceAccount;
-  let userOrganizationId = null;
-
-  // Log auth info for debugging
-  console.log('Box details auth:', {
-    userId,
-    isServiceAccount,
-    hasUser: !!req.user,
-    isVagrantRequest: !!req.isVagrantRequest
-  });
-
   try {
-    // Get user's organization ID if they're not a service account
-    if (userId && !isServiceAccount) {
-      const user = await Users.findOne({
-        where: { id: userId },
-        include: [{ model: Organization, as: 'organization' }]
-      });
+    // Get the authenticated user's info
+    const userId = req.userId;
+    const isServiceAccount = req.isServiceAccount;
+    
+    // Get user's organization
+    const user = await Users.findOne({
+      where: { id: userId },
+      include: [{ model: Organization, as: 'organization' }]
+    });
 
-      if (user) {
-        userOrganizationId = user.organization.id;
-      }
+    if (!user) {
+      return res.status(401).send({ message: "User not found" });
     }
+
+    const userOrganizationId = user.organization.id;
 
     // Retrieve all boxes from the specified organization
     const organizationData = await Organization.findOne({
