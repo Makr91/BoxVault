@@ -353,7 +353,11 @@ const download = async (req, res) => {
 
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const token = req.headers["x-access-token"];
+  // Check for token in x-access-token header (browser) or Authorization header (Vagrant)
+  const token = req.headers["x-access-token"] || 
+                (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
+                  ? req.headers["authorization"].substring(7) 
+                  : null);
   let userId = null;
   let isServiceAccount = false;
 
