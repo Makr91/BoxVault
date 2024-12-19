@@ -43,23 +43,26 @@ module.exports = function(app) {
   app.use(function(req, res, next) {
     res.header(
       "Access-Control-Allow-Headers",
-      "x-access-token, Origin, Content-Type, Accept"
+      "x-access-token, Authorization, Origin, Content-Type, Accept"
     );
     next();
   });
 
-  app.put("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload", 
+  app.put("/api/organization/:organization/box/:name/version/:version/provider/:provider/architecture/:architecture/file/upload", 
     [authJwt.verifyToken, authJwt.isUserOrServiceAccount], 
     file.update,
     handleFileError
   );
   
-  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload", 
+  app.post("/api/organization/:organization/box/:name/version/:version/provider/:provider/architecture/:architecture/file/upload", 
     [authJwt.verifyToken, authJwt.isUserOrServiceAccount], 
     file.upload,
     handleFileError
   );
-  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info", vagrantHandler, file.info);
-  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download", vagrantHandler, file.download);
-  app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.remove);
+  app.get("/api/organization/:organization/box/:name/version/:version/provider/:provider/architecture/:architecture/file/info", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.info);
+  app.get("/api/organization/:organization/box/:name/version/:version/provider/:provider/architecture/:architecture/file/download", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.download);
+  app.delete("/api/organization/:organization/box/:name/version/:version/provider/:provider/architecture/:architecture/file/delete", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.remove);
+
+  // Vagrant-specific routes
+  app.get("/:organization/boxes/:name/versions/:version/providers/:provider/:architecture/vagrant.box", [vagrantHandler], file.download);
 };

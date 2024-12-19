@@ -28,9 +28,15 @@ const Architecture = db.architectures;
 const File = db.files;
 
 const upload = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  const params = {
+    organization: req.params.organization,
+    name: req.params.name,
+    version: req.params.version,
+    provider: req.params.provider,
+    architecture: req.params.architecture
+  };
   const fileName = `vagrant.box`;
-  const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
+  const filePath = path.join(appConfig.boxvault.box_storage_directory.value, params.organization, params.name, params.version, params.provider, params.architecture, fileName);
   const uploadStartTime = Date.now();
 
   // Set a longer timeout for the request
@@ -44,27 +50,27 @@ const upload = async (req, res) => {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName },
+    const architectureRecord = await Architecture.findOne({
+      where: { name: params.architecture },
       include: [{
         model: db.providers,
         as: "provider",
-        where: { name: providerName },
+        where: { name: params.provider },
         include: [{
           model: db.versions,
           as: "version",
-          where: { versionNumber },
+          where: { versionNumber: params.version },
           include: [{
             model: db.box,
             as: "box",
-            where: { name: boxId },
+            where: { name: params.name },
             include: [{
               model: db.user,
               as: "user",
               include: [{
                 model: db.organization,
                 as: "organization",
-                where: { name: organization }
+                where: { name: params.organization }
               }]
             }]
           }]
@@ -72,10 +78,10 @@ const upload = async (req, res) => {
       }]
     });
 
-    if (!architecture) {
+    if (!architectureRecord) {
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
+        message: `Architecture not found for provider ${params.provider} in version ${params.version} of box ${params.name}.`
       });
     }
 
@@ -121,7 +127,7 @@ const upload = async (req, res) => {
       let fileRecord = await File.findOne({
         where: {
           fileName: fileName,
-          architectureId: architecture.id
+          architectureId: architectureRecord.id
         }
       });
 
@@ -136,7 +142,7 @@ const upload = async (req, res) => {
           fileName,
           checksum,
           checksumType,
-          architectureId: architecture.id,
+          architectureId: architectureRecord.id,
           fileSize: req.file.size,
           path: req.file.path
         });
@@ -146,14 +152,14 @@ const upload = async (req, res) => {
           fileName: fileName,
           checksum: checksum,
           checksumType: checksumType,
-          architectureId: architecture.id,
+          architectureId: architectureRecord.id,
           fileSize: req.file.size
         });
         console.log('File record created:', {
           fileName,
           checksum,
           checksumType,
-          architectureId: architecture.id,
+          architectureId: architectureRecord.id,
           fileSize: req.file.size,
           path: req.file.path
         });
@@ -181,13 +187,7 @@ const upload = async (req, res) => {
       error: err.message,
       code: err.code,
       stack: err.stack,
-      params: {
-        organization,
-        boxId,
-        versionNumber,
-        providerName,
-        architectureName
-      }
+      params: params
     });
 
     // Handle specific error types
@@ -234,14 +234,20 @@ const upload = async (req, res) => {
 };
 
 const download = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  const params = {
+    organization: req.params.organization,
+    name: req.params.name,
+    version: req.params.version,
+    provider: req.params.provider,
+    architecture: req.params.architecture
+  };
   const fileName = `vagrant.box`;
-  const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
-  // Use auth info from vagrantHandler middleware
+  const filePath = path.join(appConfig.boxvault.box_storage_directory.value, params.organization, params.name, params.version, params.provider, params.architecture, fileName);
+  // Get auth info from middleware
   const userId = req.userId;
   const isServiceAccount = req.isServiceAccount;
   
-  console.log('Using auth from vagrantHandler:', {
+  console.log('Auth info:', {
     userId,
     isServiceAccount,
     hasUser: !!req.user
@@ -249,27 +255,27 @@ const download = async (req, res) => {
 
   try {
     const organizationData = await db.organization.findOne({
-      where: { name: organization },
+      where: { name: params.organization },
       include: [{
         model: db.user,
         as: 'users',
         include: [{
           model: db.box,
           as: 'box',
-          where: { name: boxId },
+          where: { name: params.name },
           attributes: ['id', 'name', 'isPublic', 'published'],
           include: [{
             model: db.versions,
             as: 'versions',
-            where: { versionNumber: versionNumber },
+            where: { versionNumber: params.version },
             include: [{
               model: db.providers,
               as: 'providers',
-              where: { name: providerName },
+              where: { name: params.provider },
               include: [{
                 model: db.architectures,
                 as: 'architectures',
-                where: { name: architectureName }
+                where: { name: params.architecture }
               }]
             }]
           }]
@@ -279,15 +285,15 @@ const download = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${params.organization}.`
       });
     }
 
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === params.name);
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${params.name} not found in organization ${params.organization}.`
       });
     }
 
@@ -320,29 +326,33 @@ const download = async (req, res) => {
         return false;
       }
 
-      // If no user is authenticated
-      if (!userId) {
+      // If user is authenticated
+      if (userId) {
+        // Service accounts can access all published boxes
+        if (isServiceAccount) {
+          accessReason = 'Service account access';
+          return true;
+        }
+
+        // For regular users, check organization membership
+        if (box.published && !box.isPublic) {
+          // Get user's organization
+          const user = await db.user.findOne({
+            where: { id: userId },
+            include: [{ model: db.organization, as: 'organization' }]
+          });
+
+          if (!user) {
+            accessReason = 'User not found';
+            return false;
+          }
+
+          const hasAccess = user.organization.id === organizationData.id;
+          accessReason = hasAccess ? 'Organization member access to private box' : 'User not in organization';
+          return hasAccess;
+        }
+      } else {
         accessReason = 'No authenticated user';
-        return false;
-      }
-
-      // Service accounts can access all published boxes
-      if (isServiceAccount) {
-        accessReason = 'Service account access';
-        return true;
-      }
-
-      // Get the user's organization
-      const user = organizationData.users.find(u => u.id === userId);
-      if (!user) {
-        accessReason = 'User not found in organization';
-        return false;
-      }
-
-      // Published + Private: Organization members can download
-      if (box.published && !box.isPublic) {
-        accessReason = 'Organization member access to private box';
-        return true;
       }
 
       accessReason = 'No access rule matched';
@@ -581,12 +591,18 @@ const download = async (req, res) => {
 };
 
 const info = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  // Use auth info from vagrantHandler middleware
+  const params = {
+    organization: req.params.organization,
+    name: req.params.name,
+    version: req.params.version,
+    provider: req.params.provider,
+    architecture: req.params.architecture
+  };
+  // Get auth info from middleware
   const userId = req.userId;
   const isServiceAccount = req.isServiceAccount;
   
-  console.log('Using auth from vagrantHandler:', {
+  console.log('Auth info:', {
     userId,
     isServiceAccount,
     hasUser: !!req.user
@@ -594,27 +610,27 @@ const info = async (req, res) => {
 
   try {
     const organizationData = await db.organization.findOne({
-      where: { name: organization },
+      where: { name: params.organization },
       include: [{
         model: db.user,
         as: 'users',
         include: [{
           model: db.box,
           as: 'box',
-          where: { name: boxId },
+          where: { name: params.name },
           attributes: ['id', 'name', 'isPublic', 'published'],
           include: [{
             model: db.versions,
             as: 'versions',
-            where: { versionNumber: versionNumber },
+            where: { versionNumber: params.version },
             include: [{
               model: db.providers,
               as: 'providers',
-              where: { name: providerName },
+              where: { name: params.provider },
               include: [{
                 model: db.architectures,
                 as: 'architectures',
-                where: { name: architectureName }
+                where: { name: params.architecture }
               }]
             }]
           }]
@@ -624,15 +640,15 @@ const info = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${params.organization}.`
       });
     }
 
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === params.name);
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${params.name} not found in organization ${params.organization}.`
       });
     }
 
@@ -648,25 +664,27 @@ const info = async (req, res) => {
         return false;
       }
 
-      // If no user is authenticated
-      if (!userId) {
-        return false;
-      }
+      // If user is authenticated
+      if (userId) {
+        // Service accounts can access all published boxes
+        if (isServiceAccount) {
+          return true;
+        }
 
-      // Service accounts can access all published boxes
-      if (isServiceAccount) {
-        return true;
-      }
+        // For regular users, check organization membership
+        if (box.published && !box.isPublic) {
+          // Get user's organization
+          const user = await db.user.findOne({
+            where: { id: userId },
+            include: [{ model: db.organization, as: 'organization' }]
+          });
 
-      // Get the user's organization
-      const user = organizationData.users.find(u => u.id === userId);
-      if (!user) {
-        return false;
-      }
+          if (!user) {
+            return false;
+          }
 
-      // Published + Private: Organization members can access
-      if (box.published && !box.isPublic) {
-        return true;
+          return user.organization.id === organizationData.id;
+        }
       }
 
       return false;
@@ -691,7 +709,7 @@ const info = async (req, res) => {
     if (fileRecord) {
       return res.send({
         fileName: fileRecord.fileName,
-        downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
+        downloadUrl: `${appConfig.boxvault.api_url.value}/api/organization/${params.organization}/box/${params.name}/version/${params.version}/provider/${params.provider}/architecture/${params.architecture}/file/download`,
         downloadCount: fileRecord.downloadCount,
         checksum: fileRecord.checksum,
         checksumType: fileRecord.checksumType,
@@ -707,33 +725,39 @@ const info = async (req, res) => {
 };
 
 const remove = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  const params = {
+    organization: req.params.organization,
+    name: req.params.name,
+    version: req.params.version,
+    provider: req.params.provider,
+    architecture: req.params.architecture
+  };
   const fileName = `vagrant.box`;
-  const basefilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
+  const basefilePath = path.join(appConfig.boxvault.box_storage_directory.value, params.organization, params.name, params.version, params.provider, params.architecture);
   const filePath = path.join(basefilePath, fileName);
 
   try {
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName },
+    const architectureRecord = await Architecture.findOne({
+      where: { name: params.architecture },
       include: [{
         model: db.providers,
         as: "provider",
-        where: { name: providerName },
+        where: { name: params.provider },
         include: [{
           model: db.versions,
           as: "version",
-          where: { versionNumber },
+          where: { versionNumber: params.version },
           include: [{
             model: db.box,
             as: "box",
-            where: { name: boxId },
+            where: { name: params.name },
             include: [{
               model: db.user,
               as: "user",
               include: [{
                 model: db.organization,
                 as: "organization",
-                where: { name: organization }
+                where: { name: params.organization }
               }]
             }]
           }]
@@ -741,16 +765,16 @@ const remove = async (req, res) => {
       }]
     });
 
-    if (!architecture) {
+    if (!architectureRecord) {
       return res.status(404).send({
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
+        message: `Architecture not found for provider ${params.provider} in version ${params.version} of box ${params.name}.`
       });
     }
 
     const fileRecord = await File.findOne({
       where: {
         fileName: fileName,
-        architectureId: architecture.id
+        architectureId: architectureRecord.id
       }
     });
 
@@ -794,10 +818,21 @@ const remove = async (req, res) => {
 };
 
 const update = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  const params = {
+    organization: req.params.organization,
+    name: req.params.name,
+    version: req.params.version,
+    provider: req.params.provider,
+    architecture: req.params.architecture
+  };
   const fileName = `vagrant.box`;
-  const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
-  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, req.body.newOrganization || organization, req.body.newBoxId || boxId, req.body.newVersionNumber || versionNumber, req.body.newProviderName || providerName, req.body.newArchitectureName || architectureName);
+  const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, params.organization, params.name, params.version, params.provider, params.architecture);
+  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, 
+    req.body.newOrganization || params.organization,
+    req.body.newName || params.name,
+    req.body.newVersion || params.version,
+    req.body.newProvider || params.provider,
+    req.body.newArchitecture || params.architecture);
   const uploadStartTime = Date.now();
 
   // Set a longer timeout for the request
@@ -805,27 +840,27 @@ const update = async (req, res) => {
   res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
 
   try {
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName },
+    const architectureRecord = await Architecture.findOne({
+      where: { name: params.architecture },
       include: [{
         model: db.providers,
         as: "provider",
-        where: { name: providerName },
+        where: { name: params.provider },
         include: [{
           model: db.versions,
           as: "version",
-          where: { versionNumber },
+          where: { versionNumber: params.version },
           include: [{
             model: db.box,
             as: "box",
-            where: { name: boxId },
+            where: { name: params.name },
             include: [{
               model: db.user,
               as: "user",
               include: [{
                 model: db.organization,
                 as: "organization",
-                where: { name: organization }
+                where: { name: params.organization }
               }]
             }]
           }]
@@ -833,9 +868,9 @@ const update = async (req, res) => {
       }]
     });
 
-    if (!architecture) {
+    if (!architectureRecord) {
       return res.status(404).send({
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
+        message: `Architecture not found for provider ${params.provider} in version ${params.version} of box ${params.name}.`
       });
     }
 
@@ -901,7 +936,7 @@ const update = async (req, res) => {
       fileName,
       checksum,
       checksumType,
-      architectureId: architecture.id,
+      architectureId: architectureRecord.id,
       fileSize: req.file.size,
       path: req.file.path
     });

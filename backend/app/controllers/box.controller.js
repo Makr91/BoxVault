@@ -489,7 +489,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
             return {
               name: provider.name,
               // Format URL exactly as Vagrant expects
-              url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`.replace(/\/+/g, '/').replace('http:/', 'http://').replace('https:/', 'https://'),
+              url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`,
               checksum: checksum,
               checksum_type: finalChecksumType,
               architecture: arch.name,
@@ -862,7 +862,7 @@ exports.deleteAll = async (req, res) => {
 };
 
 // Handle Vagrant box downloads
-exports.downloadBox = async (req, res) => {
+exports.downloadBox = async (req, res, next) => {
   const { organization, name, version, provider, architecture } = req.params;
   // Get auth info from vagrantHandler middleware
   const userId = req.userId;
@@ -953,9 +953,18 @@ exports.downloadBox = async (req, res) => {
       });
     }
 
-    // Redirect to our actual file download endpoint
-    const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
-    res.redirect(downloadUrl);
+    // Forward to API download endpoint
+    req.url = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+    // Preserve auth context
+    req.userId = userId;
+    req.isServiceAccount = isServiceAccount;
+    req.user = req.user;
+    if (isServiceAccount) {
+      // Ensure auth header is preserved
+      const token = req.headers['authorization']?.replace('Bearer ', '') || '';
+      req.headers['authorization'] = `Bearer ${token}`;
+    }
+    next();
   } catch (err) {
     console.error('Error handling box download:', err);
     res.status(500).json({ 

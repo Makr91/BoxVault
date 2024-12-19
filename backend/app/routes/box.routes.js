@@ -25,9 +25,9 @@ module.exports = function(app) {
   app.get("/api/organization/:organization/box/:name/metadata", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], box.findOne);
 
   // Vagrant-specific routes
-  app.get("/:organization/boxes/:name/versions/:version/providers/:provider/:architecture/vagrant.box", vagrantHandler, box.downloadBox);
-  app.get("/:organization/boxes/:name", vagrantHandler, box.findOne);  // Box metadata request
-  app.get("/:organization/:boxName", vagrantHandler, box.findOne);  // Root metadata request
+  app.get("/:organization/boxes/:name/versions/:version/providers/:provider/:architecture/vagrant.box", [vagrantHandler], box.downloadBox);
+  app.get("/:organization/boxes/:name", [vagrantHandler], box.findOne);  // Box metadata request
+  app.get("/:organization/:boxName", [vagrantHandler], box.findOne);  // Root metadata request
 
   // Administrative Actions
   app.post("/api/organization/:organization/box", [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyBoxName.validateBoxName, verifyBoxName.checkBoxDuplicate], box.create );
