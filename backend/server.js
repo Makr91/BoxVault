@@ -70,8 +70,13 @@ app.use(vagrantHandler);
 
 app.use(express.static(static_path));
 
-var corsOptions = {
-  origin: boxConfig.boxvault.origin.value
+// Enhanced CORS for Cloudflare
+const corsOptions = {
+  origin: boxConfig.boxvault.origin.value,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['x-access-token', 'Origin', 'Content-Type', 'Accept', 'Content-Length'],
+  maxAge: 600, // 10 minutes
+  credentials: true
 };
 
 app.use(cors(corsOptions));
@@ -82,9 +87,21 @@ const maxSize = boxConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
 // Configure body parsers with appropriate limits
 app.use(express.json({ limit: maxSize }));
 app.use(express.urlencoded({ extended: true, limit: maxSize }));
-
-// Increase the HTTP request size limit
 app.use(express.raw({ limit: maxSize }));
+
+// Add headers for Cloudflare
+app.use((req, res, next) => {
+  // Disable Cloudflare's Auto-Minify
+  res.setHeader('Cache-Control', 'no-transform');
+  // Indicate large file upload support
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Set longer timeout for uploads
+  if (req.url.includes('/file/upload')) {
+    // 24 hours in seconds
+    res.setHeader('CF-Max-Timeout', '86400');
+  }
+  next();
+});
 
 // Function to initialize the application
 function initializeApp() {
@@ -159,9 +176,9 @@ if (isSSLConfigured()) {
 
     const httpsServer = https.createServer(credentials, app);
 
-    // Set timeout to 30 minutes for large uploads
-    httpsServer.timeout = 30 * 60 * 1000; // 30 minutes
-    httpsServer.keepAliveTimeout = 30 * 60 * 1000; // 30 minutes
+    // Set timeout to 24 hours for large uploads
+    httpsServer.timeout = 24 * 60 * 60 * 1000; // 24 hours
+    httpsServer.keepAliveTimeout = 24 * 60 * 60 * 1000; // 24 hours
 
     httpsServer.listen(HTTPS_PORT, () => {
       console.log(`HTTPS Server is running on port ${HTTPS_PORT}.`);
@@ -189,9 +206,9 @@ if (isSSLConfigured()) {
 function startHTTPServer() {
   const httpServer = http.createServer(app);
   
-  // Set timeout to 30 minutes for large uploads
-  httpServer.timeout = 30 * 60 * 1000; // 30 minutes
-  httpServer.keepAliveTimeout = 30 * 60 * 1000; // 30 minutes
+  // Set timeout to 24 hours for large uploads
+  httpServer.timeout = 24 * 60 * 60 * 1000; // 24 hours
+  httpServer.keepAliveTimeout = 24 * 60 * 60 * 1000; // 24 hours
   
   httpServer.listen(HTTP_PORT, () => {
     console.log(`HTTP Server is running on port ${HTTP_PORT}.`);
