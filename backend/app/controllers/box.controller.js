@@ -473,13 +473,12 @@ exports.discoverAll = async (req, res) => {
 };
 
 const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
-  // Format response exactly as Vagrant expects based on box_metadata.rb
+  // Format response exactly as Vagrant expects based on vagrantcloud.com metadata
   const response = {
-    // Required fields from BoxMetadata class
     name: requestedName, // Use the exact name that Vagrant requested
     description: box.description || "Build",
+    short_description: "",
     versions: box.versions.map(version => ({
-      // Version must be a valid Gem::Version (no 'v' prefix)
       version: version.versionNumber.replace(/^v/, ''),
       status: "active",
       description_html: "<p>Build</p>\n",
@@ -488,13 +487,12 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
         provider.architectures.map(arch => {
           const file = arch.files[0];
           return {
-            // Required fields from Provider class
             name: provider.name,
-            url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`,
+            architecture: arch.name,
+            default_architecture: arch.defaultBox || true,
             checksum: file?.checksum || "",
             checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
-            architecture: arch.name,
-            default_architecture: arch.defaultBox || true
+            url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`
           };
         })
       )

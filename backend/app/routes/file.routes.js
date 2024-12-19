@@ -1,4 +1,5 @@
 const { authJwt } = require("../middleware");
+const vagrantHandler = require("../middleware/vagrantHandler");
 const file = require("../controllers/file.controller");
 
 // Error handling middleware for file operations
@@ -58,7 +59,7 @@ module.exports = function(app) {
     file.upload,
     handleFileError
   );
-  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info", file.info);
-  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download", file.download);
+  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info", vagrantHandler, file.info);
+  app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download", vagrantHandler, file.download);
   app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.remove);
 };

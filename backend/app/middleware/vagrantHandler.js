@@ -35,11 +35,19 @@ const authenticateVagrantRequest = async (req) => {
     return null;
   }
 
+  // Log raw token for debugging
+  console.log('Raw Authorization header:', {
+    value: token,
+    length: token.length
+  });
+
   // Remove Bearer if present
   token = token.replace(/^Bearer\s+/, '');
-  console.log('Token type:', {
+  console.log('Processed token:', {
+    value: token,
     isJWT: token.split('.').length === 3,
-    length: token.length
+    length: token.length,
+    startsWithBearer: token.startsWith('Bearer')
   });
 
   try {
@@ -59,6 +67,11 @@ const authenticateVagrantRequest = async (req) => {
     });
 
     // Not a valid JWT, try as service account token
+    console.log('Looking up service account with token:', {
+      tokenLength: token.length,
+      tokenPrefix: token.substring(0, 10) + '...'
+    });
+
     const serviceAccount = await ServiceAccount.findOne({
       where: { token },
       include: [{
@@ -67,10 +80,18 @@ const authenticateVagrantRequest = async (req) => {
       }]
     });
 
+    console.log('Service account lookup result:', {
+      found: !!serviceAccount,
+      hasUser: !!(serviceAccount?.user),
+      userId: serviceAccount?.user?.id,
+      username: serviceAccount?.user?.username
+    });
+
     if (serviceAccount && serviceAccount.user) {
       console.log('Service account authentication successful:', {
         userId: serviceAccount.user.id,
-        username: serviceAccount.user.username
+        username: serviceAccount.user.username,
+        organizationId: serviceAccount.user.organizationId
       });
       return { user: serviceAccount.user, isServiceAccount: true };
     }
@@ -114,7 +135,8 @@ const parseVagrantUrl = (url) => {
 
   // Then handle metadata request formats
   if (parts.length === 2) {
-    // Shorthand format: /:organization/:boxName
+    // Root metadata format: /:organization/:boxName
+    // This is the first request Vagrant makes to get box metadata
     return {
       organization: parts[0],
       boxName: parts[1],
@@ -135,6 +157,18 @@ const parseVagrantUrl = (url) => {
       isDownload: false
     };
   }
+
+  // Log URL parsing details for debugging
+  console.log('Parsing Vagrant URL:', {
+    urlPath,
+    parts,
+    length: parts.length,
+    hasBoxes: parts.includes('boxes'),
+    hasVagrantBox: parts.includes('vagrant.box'),
+    firstPart: parts[0],
+    secondPart: parts[1],
+    isMetadataRequest: parts.length === 2 && !parts.includes('boxes') && !parts.includes('vagrant.box')
+  });
   return null;
 };
 
@@ -190,19 +224,18 @@ const vagrantHandler = async (req, res, next) => {
       return;
     }
 
-    // For box downloads
+    // Rewrite the URL to our API format
+    const originalUrl = req.url;
     if (parsedUrl.isDownload) {
-      // For box downloads, rewrite Vagrant's URL format to our API endpoint
+      // For box downloads, rewrite to our download endpoint
       req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
       
       // Don't set Content-Type for downloads
       // Let the download endpoint handle streaming the file
-      next();
-      return;
-    }
-
-    // For GET requests to metadata endpoint
-    if (!parsedUrl.isDownload) {
+    } else {
+      // For metadata requests
+      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
+      
       // Set headers for JSON metadata response
       res.set({
         'Content-Type': 'application/json',
@@ -216,8 +249,16 @@ const vagrantHandler = async (req, res, next) => {
       }
     }
 
-    // Rewrite the URL to our API format
-    req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
+    console.log('URL rewrite:', {
+      from: originalUrl,
+      to: req.url,
+      isDownload: parsedUrl.isDownload,
+      organization: parsedUrl.organization,
+      boxName: parsedUrl.boxName,
+      version: parsedUrl.version,
+      provider: parsedUrl.provider,
+      architecture: parsedUrl.architecture
+    });
     
     // Store parsed URL info for the controller
     req.vagrantInfo = {
