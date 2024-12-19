@@ -6,9 +6,11 @@ const yaml = require('js-yaml');
 // Load app config for max file size
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let maxFileSize;
+let appConfig;
+
 try {
   const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  const appConfig = yaml.load(fileContents);
+  appConfig = yaml.load(fileContents);
   maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024; // Convert GB to bytes
 } catch (e) {
   console.error(`Failed to load app configuration: ${e.message}`);
@@ -18,19 +20,28 @@ try {
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-    const uploadDir = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
-    
-    // Create directory if it doesn't exist
-    fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
-    
-    // Log directory creation
-    console.log('Created upload directory:', {
-      path: uploadDir,
-      mode: '0755'
-    });
-    
-    cb(null, uploadDir);
+    try {
+      const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+      
+      // Load config for each request to ensure we have the latest
+      const configContents = fs.readFileSync(appConfigPath, 'utf8');
+      const config = yaml.load(configContents);
+      const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
+      
+      // Create directory if it doesn't exist
+      fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
+      
+      // Log directory creation
+      console.log('Created upload directory:', {
+        path: uploadDir,
+        mode: '0755'
+      });
+      
+      cb(null, uploadDir);
+    } catch (error) {
+      console.error('Error in multer destination handler:', error);
+      cb(error);
+    }
   },
   filename: (req, file, cb) => {
     // Always use vagrant.box as filename
@@ -45,15 +56,20 @@ const upload = multer({
     fileSize: maxFileSize
   },
   fileFilter: (req, file, cb) => {
-    // Log upload start
-    console.log('Starting file upload:', {
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      maxSize: maxFileSize,
-      params: req.params
-    });
-    cb(null, true);
+    try {
+      // Log upload start
+      console.log('Starting file upload:', {
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        maxSize: maxFileSize,
+        params: req.params
+      });
+      cb(null, true);
+    } catch (error) {
+      console.error('Error in multer fileFilter:', error);
+      cb(error);
+    }
   }
 }).single('file'); // Use single file upload with field name 'file'
 

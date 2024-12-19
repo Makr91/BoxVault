@@ -7,9 +7,9 @@ const baseURL = window.location.origin;
 class FileService {
   async upload(file, organization, name, version, provider, architecture, checksum, checksumType, onUploadProgress) {
     let formData = new FormData();
-    formData.append("file", file);
-    formData.append("checksum", checksum);
-    formData.append("checksumType", checksumType);
+    formData.append("file", file, "vagrant.box"); // Set filename to vagrant.box
+    formData.append("checksum", checksum || "");
+    formData.append("checksumType", checksumType || "NULL");
 
     const maxRetries = 3;
     let retryCount = 0;
@@ -32,6 +32,8 @@ class FileService {
           {
             headers: {
               "Content-Type": "multipart/form-data",
+              "Accept": "application/json",
+              "Cache-Control": "no-cache",
               ...authHeader()
             },
             onUploadProgress: (progressEvent) => {
@@ -51,7 +53,10 @@ class FileService {
             // Increase timeout for large files
             timeout: 24 * 60 * 60 * 1000, // 24 hours
             // Disable response timeout
-            timeoutErrorMessage: 'Upload timed out - please try again'
+            timeoutErrorMessage: 'Upload timed out - please try again',
+            // Ensure proper handling of large files
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity
           }
         );
 

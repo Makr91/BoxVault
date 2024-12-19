@@ -614,7 +614,7 @@ const Provider = () => {
                 </label>
                 {selectedFiles && (
                   <div>
-                    <div className="progress mb-2">
+                    <div className="progress mb-2" style={{ height: '25px' }}>
                       <div
                         className="progress-bar bg-success progress-bar-striped progress-bar-animated"
                         role="progressbar"
@@ -623,15 +623,27 @@ const Provider = () => {
                         aria-valuemax="100"
                         style={{ width: progress + "%" }}
                       >
-                        {progress}%
+                        <span style={{ fontSize: '0.9em', fontWeight: 'bold' }}>
+                          {progress}%
+                        </span>
                       </div>
                     </div>
                     <div className="text-muted">
                       {selectedFiles[0] && (
-                        <small>
-                          Uploaded: {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))} 
-                          {' '} of {formatFileSize(selectedFiles[0].size)}
-                        </small>
+                        <div>
+                          <small>
+                            <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
+                          </small>
+                          <br />
+                          <small>
+                            <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
+                            {' '} ({progress}%)
+                          </small>
+                          <br />
+                          <small>
+                            <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
+                          </small>
+                        </div>
                       )}
                     </div>
                   </div>
