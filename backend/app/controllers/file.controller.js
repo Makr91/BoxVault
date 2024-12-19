@@ -31,8 +31,19 @@ const upload = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
+  const uploadStartTime = Date.now();
+
+  // Set a longer timeout for the request
+  req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
+  res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
 
   try {
+    // Create directory if it doesn't exist
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
     const architecture = await Architecture.findOne({
       where: { name: architectureName },
       include: [{
@@ -123,10 +134,15 @@ const upload = async (req, res) => {
       });
     }
 
-    if (err.message.includes('Upload timeout')) {
+    if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
+      const uploadDuration = (Date.now() - uploadStartTime) / 1000;
       return res.status(408).send({
         message: "Upload timed out - Request took too long to complete",
-        error: "UPLOAD_TIMEOUT"
+        error: "UPLOAD_TIMEOUT",
+        details: {
+          duration: `${uploadDuration} seconds`,
+          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`
+        }
       });
     }
 
@@ -457,6 +473,11 @@ const update = async (req, res) => {
   const fileName = `vagrant.box`;
   const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
   const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, req.body.newOrganization || organization, req.body.newBoxId || boxId, req.body.newVersionNumber || versionNumber, req.body.newProviderName || providerName, req.body.newArchitectureName || architectureName);
+  const uploadStartTime = Date.now();
+
+  // Set a longer timeout for the request
+  req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
+  res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
 
   try {
     const architecture = await Architecture.findOne({
@@ -554,8 +575,30 @@ const update = async (req, res) => {
       });
     }
 
+    if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
+      const uploadDuration = (Date.now() - uploadStartTime) / 1000;
+      return res.status(408).send({
+        message: "Upload timed out - Request took too long to complete",
+        error: "UPLOAD_TIMEOUT",
+        details: {
+          duration: `${uploadDuration} seconds`,
+          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`
+        }
+      });
+    }
+
+    // Handle disk space errors
+    if (err.code === 'ENOSPC') {
+      return res.status(507).send({
+        message: "Not enough storage space available",
+        error: "NO_STORAGE_SPACE"
+      });
+    }
+
     res.status(500).send({
-      message: `Could not update the file: ${req.files ? req.files['file'][0].originalname : ''}. ${err}`,
+      message: `Could not update the file: ${req.files ? req.files['file'][0].originalname : ''}`,
+      error: err.message,
+      code: err.code || 'UNKNOWN_ERROR'
     });
   }
 };

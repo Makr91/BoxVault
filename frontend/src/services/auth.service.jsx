@@ -26,7 +26,11 @@ axios.interceptors.response.use(
   response => response,
   error => {
     if (error.response && error.response.status === 401) {
-      window.location.href = "/login";
+      // Don't redirect if this is a file upload request
+      const isFileUpload = error.config.url.includes('/file/upload');
+      if (!isFileUpload) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

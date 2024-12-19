@@ -5,5 +5,5 @@ jwt:
     description: Secret key for JWT
   jwt_token_time_valid:
     type: integer
-    value: 3600
-    description: JWT token validity time in seconds
+    value: 86400
+    description: JWT token validity time in seconds (24 hours)

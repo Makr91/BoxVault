@@ -76,11 +76,15 @@ var corsOptions = {
 
 app.use(cors(corsOptions));
 
-// parse requests of content-type - application/json
-app.use(express.json());
+// Calculate max size from config (converting GB to bytes)
+const maxSize = boxConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
 
-// parse requests of content-type - application/x-www-form-urlencoded
-app.use(express.urlencoded({ extended: true }));
+// Configure body parsers with appropriate limits
+app.use(express.json({ limit: maxSize }));
+app.use(express.urlencoded({ extended: true, limit: maxSize }));
+
+// Increase the HTTP request size limit
+app.use(express.raw({ limit: maxSize }));
 
 // Function to initialize the application
 function initializeApp() {

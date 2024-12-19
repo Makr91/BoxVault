@@ -4,19 +4,46 @@ import authHeader from "./auth-header";
 const baseURL = window.location.origin;
 
 class FileService {
-  upload(file, organization, name, version, provider, architecture, checksum, checksumType, onUploadProgress) {
+  async upload(file, organization, name, version, provider, architecture, checksum, checksumType, onUploadProgress) {
     let formData = new FormData();
     formData.append("file", file);
     formData.append("checksum", checksum);
     formData.append("checksumType", checksumType);
 
-    return axios.post(`${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        ...authHeader()
-      },
-      onUploadProgress,
-    });
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        return await axios.post(
+          `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`, 
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              ...authHeader()
+            },
+            onUploadProgress,
+            // Prevent axios from automatically retrying
+            maxRedirects: 0,
+            // Increase timeout for large files
+            timeout: 24 * 60 * 60 * 1000 // 24 hours
+          }
+        );
+      } catch (error) {
+        if (error.response?.status === 401 && retryCount < maxRetries - 1) {
+          // Try to refresh the token
+          const AuthService = (await import('./auth.service')).default;
+          const newUserData = await AuthService.refreshUserData();
+          if (!newUserData) {
+            throw new Error('Failed to refresh authentication');
+          }
+          retryCount++;
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   download(organization, name, version, provider, architecture) {
