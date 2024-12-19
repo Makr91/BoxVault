@@ -487,12 +487,12 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
             // Default to sha256 if no checksum type or if it's NULL
             const finalChecksumType = (!checksumType || checksumType === "null") ? "sha256" : checksumType;
 
-            // Build the full download URL
+            // Build the full download URL in Vagrant's expected format
             const downloadUrl = `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`;
 
             return {
               name: provider.name,
-              url: downloadUrl,
+              url: downloadUrl, // This matches the Vagrant route
               checksum: checksum,
               checksum_type: finalChecksumType,
               architecture: arch.name,
