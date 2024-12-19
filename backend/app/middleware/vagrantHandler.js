@@ -67,6 +67,11 @@ const authenticateVagrantRequest = async (req) => {
     });
 
     // Not a valid JWT, try as service account token
+    console.log('Looking up service account with token:', {
+      tokenLength: token.length,
+      tokenPrefix: token.substring(0, 10) + '...'
+    });
+
     const serviceAccount = await ServiceAccount.findOne({
       where: { token },
       include: [{
@@ -75,10 +80,18 @@ const authenticateVagrantRequest = async (req) => {
       }]
     });
 
+    console.log('Service account lookup result:', {
+      found: !!serviceAccount,
+      hasUser: !!(serviceAccount?.user),
+      userId: serviceAccount?.user?.id,
+      username: serviceAccount?.user?.username
+    });
+
     if (serviceAccount && serviceAccount.user) {
       console.log('Service account authentication successful:', {
         userId: serviceAccount.user.id,
-        username: serviceAccount.user.username
+        username: serviceAccount.user.username,
+        organizationId: serviceAccount.user.organizationId
       });
       return { user: serviceAccount.user, isServiceAccount: true };
     }
