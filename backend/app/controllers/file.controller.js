@@ -283,6 +283,34 @@ const download = async (req, res) => {
       });
     }
 
+    // Function to handle file download
+    const sendFile = () => {
+      // For Vagrant requests, we need to handle the response differently
+      if (req.isVagrantRequest) {
+        // Stream the file without setting additional headers
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+        // Handle errors during streaming
+        fileStream.on('error', (err) => {
+          if (!res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file. " + err,
+            });
+          }
+        });
+      } else {
+        // For browser downloads, use express's res.download
+        res.download(filePath, fileName, (err) => {
+          if (err && !res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file. " + err,
+            });
+          }
+        });
+      }
+    };
+
     // If the box is public, allow download without authentication
     if (box.isPublic) {
       return sendFile();
@@ -317,58 +345,12 @@ const download = async (req, res) => {
     }
 
     // Check if user belongs to the organization
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
+    const userRecord = organizationData.users.find(u => u.id === userId);
+    if (!userRecord) {
       return res.status(403).send({ message: "Unauthorized access to file download." });
     }
 
     // User belongs to organization, allow download
-    return sendFile();
-
-    // Function to handle file download (moved to top level for clarity)
-    const sendFile = () => {
-      // For Vagrant requests, we need to handle the response differently
-      if (req.isVagrantRequest) {
-        // Stream the file without setting additional headers
-        const fileStream = fs.createReadStream(filePath);
-        fileStream.pipe(res);
-        
-        // Handle errors during streaming
-        fileStream.on('error', (err) => {
-          if (!res.headersSent) {
-            res.status(500).send({
-              message: "Could not download the file. " + err,
-            });
-          }
-        });
-      } else {
-        // For browser downloads, use express's res.download
-        res.download(filePath, fileName, (err) => {
-          if (err && !res.headersSent) {
-            res.status(500).send({
-              message: "Could not download the file. " + err,
-            });
-          }
-        });
-      }
-    };
-
-    // If the box is public or the requester is a service account, allow download
-    if (box.isPublic || isServiceAccount) {
-      return sendFile();
-    }
-
-    // If the box is private, check if the user belongs to the organization
-    if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to file download." });
-    }
-
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to file download." });
-    }
-
-    // If the user belongs to the organization, allow download
     return sendFile();
 
   } catch (err) {
@@ -378,26 +360,9 @@ const download = async (req, res) => {
 
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  // Check for token in x-access-token header (browser) or Authorization header (Vagrant)
-  const token = req.headers["x-access-token"] || 
-                (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
-                  ? req.headers["authorization"].substring(7) 
-                  : null);
-  let userId = null;
-  let isServiceAccount = false;
-
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      console.warn("Invalid token provided");
-    }
-  }
 
   try {
+    // First, check if the box exists and if it's public
     const organizationData = await db.organization.findOne({
       where: { name: organization },
       include: [{
@@ -441,8 +406,8 @@ const info = async (req, res) => {
       });
     }
 
-    // If the box is public or the requester is a service account, allow access
-    if (box.isPublic || isServiceAccount) {
+    // Function to return file info
+    const sendFileInfo = async () => {
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
@@ -462,38 +427,49 @@ const info = async (req, res) => {
       } else {
         return res.status(404).send({ message: "File not found." });
       }
+    };
+
+    // If the box is public, allow access without authentication
+    if (box.isPublic) {
+      return await sendFileInfo();
     }
 
-    // If the box is private, check if the user belongs to the organization
-    if (!userId) {
+    // For private boxes, check authentication
+    const token = req.headers["x-access-token"] || 
+                 (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
+                   ? req.headers["authorization"].substring(7) 
+                   : null);
+    
+    if (!token) {
       return res.status(403).send({ message: "Unauthorized access to file information." });
     }
 
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
+    let userId = null;
+    let isServiceAccount = false;
+
+    try {
+      // Verify the token and extract the user ID
+      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+      userId = decoded.id;
+      isServiceAccount = decoded.isServiceAccount || false;
+    } catch (err) {
+      console.warn("Invalid token provided");
+      return res.status(403).send({ message: "Invalid authentication token." });
+    }
+
+    // If it's a service account, allow access
+    if (isServiceAccount) {
+      return await sendFileInfo();
+    }
+
+    // Check if user belongs to the organization
+    const userRecord = organizationData.users.find(u => u.id === userId);
+    if (!userRecord) {
       return res.status(403).send({ message: "Unauthorized access to file information." });
     }
 
-    // If the user belongs to the organization, allow access
-    const fileRecord = await File.findOne({
-      where: {
-        fileName: 'vagrant.box',
-        architectureId: box.versions[0].providers[0].architectures[0].id
-      }
-    });
-
-    if (fileRecord) {
-      return res.send({
-        fileName: fileRecord.fileName,
-        downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
-        downloadCount: fileRecord.downloadCount,
-        checksum: fileRecord.checksum,
-        checksumType: fileRecord.checksumType,
-        fileSize: fileRecord.fileSize
-      });
-    } else {
-      return res.status(404).send({ message: "File not found." });
-    }
+    // User belongs to organization, allow access
+    return await sendFileInfo();
 
   } catch (err) {
     res.status(500).send({ message: err.message || "Some error occurred while retrieving the file information." });
