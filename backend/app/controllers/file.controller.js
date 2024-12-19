@@ -78,39 +78,58 @@ const upload = async (req, res) => {
       });
     }
 
-    // Proceed with upload only if the file does not exist
-    if (!fs.existsSync(filePath)) {
-      await uploadFileMiddleware(req, res);
-
-      let checksum = req.body.checksum;
-      let checksumType = req.body.checksumType;
-
-      if (!req.files['file']) {
-        return res.status(404).send({ message: "No file uploaded!" });
-      }
-
-      if (!checksumType || checksumType.toUpperCase() === 'NULL') {
-        checksum = null;
-        checksumType = 'NULL';
-      }
-
-      // Get the file size
-      const fileSize = req.files['file'][0].size;
-
-      await File.create({
-        fileName: fileName,
-        checksum: checksum,
-        checksumType: checksumType,
-        architectureId: architecture.id,
-        fileSize: fileSize
+    // Check if file already exists
+    if (fs.existsSync(filePath)) {
+      return res.status(400).send({ 
+        message: "File already exists. Please use the update function to replace it.",
+        path: filePath
       });
-
-      return res.status(200).send({
-        message: "Uploaded the file successfully: " + req.files['file'][0].originalname,
-      });
-    } else {
-      return res.status(400).send({ message: "File already exists. Please use the update function to replace it." });
     }
+
+    // Process the upload
+    await uploadFileMiddleware(req, res);
+
+    // Verify the upload was successful
+    if (!req.file) {
+      return res.status(404).send({ message: "No file uploaded!" });
+    }
+
+    let checksum = req.body.checksum;
+    let checksumType = req.body.checksumType;
+
+    if (!checksumType || checksumType.toUpperCase() === 'NULL') {
+      checksum = null;
+      checksumType = 'NULL';
+    }
+
+    // Get the file size from the uploaded file
+    const fileSize = req.file.size;
+
+    // Create the file record in the database
+    await File.create({
+      fileName: fileName,
+      checksum: checksum,
+      checksumType: checksumType,
+      architectureId: architecture.id,
+      fileSize: fileSize
+    });
+
+    // Log successful upload
+    console.log('File record created:', {
+      fileName,
+      checksum,
+      checksumType,
+      architectureId: architecture.id,
+      fileSize,
+      path: req.file.path
+    });
+
+    return res.status(200).send({
+      message: "Uploaded the file successfully",
+      fileName: fileName,
+      fileSize: fileSize,
+      path: req.file.path
+    });
   } catch (err) {
     // Log detailed error information
     console.error('File upload error:', {
@@ -527,43 +546,45 @@ const update = async (req, res) => {
       });
     }
 
-    // Create the new directory if it doesn't exist
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
-    }
-
-    // Rename the directory if necessary
-    if (oldFilePath !== newFilePath) {
-      fs.renameSync(oldFilePath, newFilePath);
-
-      // Clean up the old directory if it still exists
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmdirSync(oldFilePath, { recursive: true });
-      }
-    }
-
+    // Process the upload
     await uploadFileMiddleware(req, res);
+
+    // Verify the upload was successful
+    if (!req.file) {
+      return res.status(404).send({ message: "No file uploaded!" });
+    }
 
     let checksum = req.body.checksum;
     let checksumType = req.body.checksumType;
-
-    if (!req.files['file']) {
-      return res.status(400).send({ message: "Please upload a file!" });
-    }
 
     if (!checksumType || checksumType.toUpperCase() === 'NULL') {
       checksum = null;
       checksumType = null;
     }
 
+    // Update the file record with new information
     await fileRecord.update({
       fileName: fileName,
       checksum: checksum,
-      checksumType: checksumType
+      checksumType: checksumType,
+      fileSize: req.file.size
     });
 
-    res.status(200).send({
-      message: "Updated the file successfully: " + req.files['file'][0].originalname,
+    // Log successful update
+    console.log('File record updated:', {
+      fileName,
+      checksum,
+      checksumType,
+      architectureId: architecture.id,
+      fileSize: req.file.size,
+      path: req.file.path
+    });
+
+    return res.status(200).send({
+      message: "Updated the file successfully",
+      fileName: fileName,
+      fileSize: req.file.size,
+      path: req.file.path
     });
   } catch (err) {
     console.log(err);

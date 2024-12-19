@@ -2,66 +2,86 @@ const multer = require("multer");
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { pipeline } = require('stream/promises');
 
 // Load app config for max file size
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
-let maxFileSize;
+let appConfig;
 try {
   const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  const appConfig = yaml.load(fileContents);
+  appConfig = yaml.load(fileContents);
   maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024; // Convert GB to bytes
 } catch (e) {
   console.error(`Failed to load app configuration: ${e.message}`);
   maxFileSize = 10 * 1024 * 1024 * 1024; // Default to 10GB
 }
 
-// Ensure upload directory exists with proper permissions
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
-}
-
-// Configure multer storage
+// Configure multer storage to write directly to final location
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Create a unique subdirectory for each upload
-    const uploadSubDir = path.join(uploadDir, Date.now().toString());
-    fs.mkdirSync(uploadSubDir, { recursive: true, mode: 0o755 });
-    cb(null, uploadSubDir);
+    // Get the final path from the request parameters
+    const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+    const finalDir = path.join(
+      appConfig.boxvault.box_storage_directory.value,
+      organization,
+      boxId,
+      versionNumber,
+      providerName,
+      architectureName
+    );
+
+    // Create directory if it doesn't exist
+    fs.mkdir(finalDir, { recursive: true, mode: 0o755 }, (err) => {
+      if (err) {
+        console.error('Error creating directory:', {
+          path: finalDir,
+          error: err.message
+        });
+        return cb(err);
+      }
+      cb(null, finalDir);
+    });
   },
   filename: (req, file, cb) => {
-    // Keep original filename but make it safe
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    cb(null, safeName);
+    // Always use vagrant.box as the filename
+    cb(null, 'vagrant.box');
   }
 });
 
-// Configure multer upload
+// Configure multer upload with detailed error handling
 const uploadFile = multer({
   storage: storage,
   limits: {
     fileSize: maxFileSize,
-    files: 1,
-    parts: 2 // file and optional metadata
+    files: 1
   },
   fileFilter: (req, file, cb) => {
-    // Accept all files but log the type
-    console.log('Uploading file:', {
+    // Log upload start
+    console.log('Starting file upload:', {
       originalName: file.originalname,
       mimeType: file.mimetype,
-      size: file.size
+      size: file.size,
+      params: req.params
     });
+
+    // Accept the file
     cb(null, true);
   }
 }).single("file");
 
-// Main upload middleware
+// Main upload middleware with enhanced error handling
 const uploadFileMiddleware = (req, res, next) => {
   const uploadStartTime = Date.now();
+  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
-  uploadFile(req, res, (err) => {
+  // Log upload attempt
+  console.log('Upload attempt:', {
+    startTime: new Date(uploadStartTime).toISOString(),
+    params: { organization, boxId, versionNumber, providerName, architectureName }
+  });
+
+  uploadFile(req, res, async (err) => {
     const uploadDuration = (Date.now() - uploadStartTime) / 1000;
-    console.log(`Upload took ${uploadDuration} seconds`);
 
     if (err instanceof multer.MulterError) {
       // Handle Multer-specific errors
@@ -69,7 +89,8 @@ const uploadFileMiddleware = (req, res, next) => {
         code: err.code,
         field: err.field,
         message: err.message,
-        duration: uploadDuration
+        duration: uploadDuration,
+        params: req.params
       });
 
       if (err.code === "LIMIT_FILE_SIZE") {
@@ -95,7 +116,8 @@ const uploadFileMiddleware = (req, res, next) => {
       console.error('Error during upload:', {
         error: err.message,
         stack: err.stack,
-        duration: uploadDuration
+        duration: uploadDuration,
+        params: req.params
       });
 
       // Check for specific error types
@@ -128,15 +150,22 @@ const uploadFileMiddleware = (req, res, next) => {
       });
     }
 
-    // Log successful upload
-    if (req.file) {
-      console.log('Upload completed successfully:', {
-        filename: req.file.filename,
-        size: req.file.size,
-        duration: uploadDuration,
-        path: req.file.path
+    // Verify the uploaded file
+    if (!req.file) {
+      console.error('No file in request after successful upload');
+      return res.status(400).send({
+        error: 'NO_FILE',
+        message: 'No file was uploaded'
       });
     }
+
+    // Log successful upload
+    console.log('Upload completed successfully:', {
+      filename: req.file.filename,
+      path: req.file.path,
+      size: req.file.size,
+      duration: uploadDuration
+    });
 
     next();
   });
@@ -159,38 +188,6 @@ const uploadSSLFileMiddleware = (req, res) => {
     });
   });
 };
-
-// Clean up temporary files periodically
-setInterval(() => {
-  fs.readdir(uploadDir, { withFileTypes: true }, (err, files) => {
-    if (err) {
-      console.error('Error reading upload directory:', err);
-      return;
-    }
-
-    const now = Date.now();
-    files.forEach(file => {
-      if (file.isDirectory()) {
-        const dirPath = path.join(uploadDir, file.name);
-        fs.stat(dirPath, (err, stats) => {
-          if (err) {
-            console.error('Error checking directory stats:', err);
-            return;
-          }
-
-          // Remove directories older than 24 hours
-          if (now - stats.mtime.getTime() > 24 * 60 * 60 * 1000) {
-            fs.rm(dirPath, { recursive: true, force: true }, err => {
-              if (err) {
-                console.error('Error removing old upload directory:', err);
-              }
-            });
-          }
-        });
-      }
-    });
-  });
-}, 60 * 60 * 1000); // Check every hour
 
 module.exports = {
   uploadFile: uploadFileMiddleware,
