@@ -350,19 +350,73 @@ const Provider = () => {
       let currentFile = selectedFiles[0];
       setProgress(0);
   
-      await FileService.upload(
-        currentFile,
-        organization,
-        name,
-        version,
-        providerName,
-        newArchitecture.name,
-        checksum,
-        checksumType,
-        (event) => {
-          setProgress(Math.round((100 * event.loaded) / event.total));
+      try {
+        // Set initial progress
+        setProgress(0);
+        console.log('Starting upload:', {
+          fileName: currentFile.name,
+          fileSize: formatFileSize(currentFile.size)
+        });
+
+        // Attempt upload with retry logic
+        const maxRetries = 3;
+        let attempt = 0;
+        let uploadSuccessful = false;
+
+        while (attempt < maxRetries && !uploadSuccessful) {
+          try {
+            await FileService.upload(
+              currentFile,
+              organization,
+              name,
+              version,
+              providerName,
+              newArchitecture.name,
+              checksum,
+              checksumType,
+              (event) => {
+                const percent = Math.round((100 * event.loaded) / event.total);
+                setProgress(percent);
+                console.log('Upload progress:', {
+                  percent: `${percent}%`,
+                  uploaded: formatFileSize(event.loaded),
+                  total: formatFileSize(event.total)
+                });
+              }
+            );
+            uploadSuccessful = true;
+          } catch (uploadError) {
+            attempt++;
+            console.error(`Upload attempt ${attempt} failed:`, uploadError);
+            
+            if (attempt === maxRetries) {
+              throw uploadError; // Re-throw if all retries failed
+            }
+            
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          }
         }
-      );
+      } catch (error) {
+        console.error('Upload failed after retries:', error);
+        let errorMessage = 'Upload failed';
+        
+        if (error.response) {
+          // Server responded with error
+          if (error.response.data && error.response.data.message) {
+            errorMessage = error.response.data.message;
+          } else if (error.response.status === 500) {
+            errorMessage = 'Server error during upload. The upload may have partially succeeded. Please check the server logs.';
+          }
+        } else if (error.request) {
+          // Request made but no response
+          errorMessage = 'No response from server. Please check your connection.';
+        }
+        
+        setMessage(errorMessage);
+        setMessageType("danger");
+        return;
+      }
   
       // Fetch the updated list of architectures after the file upload
       const updatedArchitecturesResponse = await ArchitectureService.getArchitectures(organization, name, version, providerName);
@@ -559,16 +613,26 @@ const Provider = () => {
                   <input type="file" onChange={selectFile} validations={[requiredFile]} />
                 </label>
                 {selectedFiles && (
-                  <div className="d-flex">
-                    <div
-                      className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                      role="progressbar"
-                      aria-valuenow={progress}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      style={{ width: progress + "%" }}
-                    >
-                      {progress}%
+                  <div>
+                    <div className="progress mb-2">
+                      <div
+                        className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                        role="progressbar"
+                        aria-valuenow={progress}
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        style={{ width: progress + "%" }}
+                      >
+                        {progress}%
+                      </div>
+                    </div>
+                    <div className="text-muted">
+                      {selectedFiles[0] && (
+                        <small>
+                          Uploaded: {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))} 
+                          {' '} of {formatFileSize(selectedFiles[0].size)}
+                        </small>
+                      )}
                     </div>
                   </div>
                 )}
