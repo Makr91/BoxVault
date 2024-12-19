@@ -473,41 +473,40 @@ exports.discoverAll = async (req, res) => {
 };
 
 const formatVagrantResponse = (box, organization, baseUrl) => {
-  return {
-    // VagrantCloud format
+  // Ensure we're using the exact format Vagrant expects
+  const response = {
     name: `${organization.name}/${box.name}`,
-    description: box.description,
+    description: "Build",
     short_description: "",
     versions: box.versions.map(version => ({
       version: version.versionNumber.replace(/^v/, ''),
       status: "active",
-      description_html: `<p>${version.description || 'Build'}</p>\n`,
-      description_markdown: version.description || 'Build',
+      description_html: "<p>Build</p>\n",
+      description_markdown: "Build",
       providers: version.providers.flatMap(provider => 
         provider.architectures.map(arch => ({
           name: provider.name,
           architecture: arch.name,
-          default_architecture: arch.defaultBox,
+          default_architecture: true,
           checksum: arch.files[0]?.checksum || "",
-          checksum_type: arch.files[0]?.checksumType?.toUpperCase() || "SHA256",
+          checksum_type: "sha256",
           url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`
         }))
       )
-    })),
-    // Additional fields for frontend
-    id: box.id,
-    isPublic: box.isPublic,
-    published: box.published,
-    userId: box.userId,
-    createdAt: box.createdAt,
-    updatedAt: box.updatedAt,
-    user: box.user,
-    organization: {
-      id: organization.id,
-      name: organization.name,
-      emailHash: organization.emailHash
-    }
+    }))
   };
+
+  // Log the complete response for debugging
+  console.log('Vagrant Response:', {
+    url: `${baseUrl}/${organization.name}/boxes/${box.name}`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(response, null, 2)
+  });
+
+  return response;
 };
 
 exports.findOne = async (req, res) => {
@@ -603,28 +602,37 @@ exports.findOne = async (req, res) => {
       };
     }
 
+    // Set response headers for Vagrant requests
+    if (req.isVagrantRequest) {
+      res.set({
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Vary': 'Accept'
+      });
+    }
+
     // If the box is public, allow access
     if (box.isPublic) {
-      return res.send(response);
+      return res.json(response);
     }
 
     // If the box is private, check if the user belongs to the organization or is a service account
     if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to private box." });
+      return res.status(403).json({ message: "Unauthorized access to private box." });
     }
 
     if (isServiceAccount) {
       // Service accounts can access all boxes
-      return res.send(response);
+      return res.json(response);
     }
 
     const user = organizationData.users.find(user => user.id === userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to private box." });
+      return res.status(403).json({ message: "Unauthorized access to private box." });
     }
 
     // If the user belongs to the organization, allow access
-    return res.send(response);
+    return res.json(response);
 
   } catch (err) {
     res.status(500).send({ message: "Error retrieving box with name=" + name });

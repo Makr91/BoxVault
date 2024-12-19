@@ -374,7 +374,11 @@ const Provider = () => {
         checksum,
         checksumType,
         (progressEvent) => {
-          if (progressEvent.total) {
+          // Use the progress value directly from the event
+          if (progressEvent.progress !== undefined) {
+            setProgress(progressEvent.progress);
+          } else if (progressEvent.total) {
+            // Fallback to calculating progress if not provided
             const percent = Math.round((100 * progressEvent.loaded) / progressEvent.total);
             setProgress(percent);
           }

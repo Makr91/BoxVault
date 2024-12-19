@@ -70,10 +70,36 @@ class FileService {
           {
             // Configure axios for upload
             headers: authHeader(),
-            onUploadProgress,
+            onUploadProgress: (progressEvent) => {
+              // Track total bytes including previous chunks
+              const loaded = progressEvent.loaded || 0;
+              const total = progressEvent.total || file.size;
+              
+              // Calculate actual progress
+              const percent = Math.round((loaded * 100) / total);
+              
+              // Log detailed progress
+              console.log('Upload progress:', {
+                loaded,
+                total,
+                percent: `${percent}%`,
+                rate: progressEvent.rate ? `${Math.round(progressEvent.rate / 1024 / 1024 * 100) / 100} MB/s` : 'calculating...'
+              });
+              
+              // Call the progress callback with the calculated values
+              if (onUploadProgress) {
+                onUploadProgress({
+                  loaded,
+                  total,
+                  progress: percent
+                });
+              }
+            },
             timeout: 24 * 60 * 60 * 1000, // 24 hour timeout
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
+            // Ensure proper chunking for large files
+            maxChunkSize: 5 * 1024 * 1024, // 5MB chunks
             validateStatus: (status) => status >= 200 && status < 300
           }
         );
