@@ -273,9 +273,14 @@ const download = async (req, res) => {
     const urlParts = req.url.split('/').filter(Boolean);
     organization = urlParts[0];
     boxId = urlParts[2];
-    versionNumber = urlParts[4];
-    providerName = urlParts[6];
-    architectureName = urlParts[7];
+    
+    // For initial metadata request, we don't have version/provider/arch info
+    const isInitialRequest = urlParts.length <= 3;
+    if (!isInitialRequest) {
+      versionNumber = urlParts[4];
+      providerName = urlParts[6];
+      architectureName = urlParts[7];
+    }
   } else {
     // Use API endpoint parameters
     ({ organization, boxId, versionNumber, providerName, architectureName } = req.params);
@@ -296,7 +301,7 @@ const download = async (req, res) => {
   });
 
   try {
-    // For initial Vagrant request, get all versions
+    // First, check if the box exists and if it's public
     const organizationData = await db.organization.findOne({
       where: { name: organization },
       include: [{
@@ -306,19 +311,19 @@ const download = async (req, res) => {
           model: db.box,
           as: 'box',
           where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic', 'description'],
+          attributes: ['id', 'name', 'isPublic', 'description', 'createdAt', 'updatedAt'],
           include: [{
             model: db.versions,
             as: 'versions',
-            ...(isInitialRequest ? {} : { where: { versionNumber } }),
+            where: versionNumber ? { versionNumber } : {},
             include: [{
               model: db.providers,
               as: 'providers',
-              ...(isInitialRequest ? {} : { where: { name: providerName } }),
+            where: providerName ? { name: providerName } : {},
               include: [{
                 model: db.architectures,
                 as: 'architectures',
-                ...(isInitialRequest ? {} : { where: { name: architectureName } })
+            where: architectureName ? { name: architectureName } : {}
               }]
             }]
           }]
@@ -424,9 +429,14 @@ const info = async (req, res) => {
     const urlParts = req.url.split('/').filter(Boolean);
     organization = urlParts[0];
     boxId = urlParts[2];
-    versionNumber = urlParts[4];
-    providerName = urlParts[6];
-    architectureName = urlParts[7];
+    
+    // For initial metadata request, we don't have version/provider/arch info
+    const isInitialRequest = urlParts.length <= 3;
+    if (!isInitialRequest) {
+      versionNumber = urlParts[4];
+      providerName = urlParts[6];
+      architectureName = urlParts[7];
+    }
 
     console.log('Vagrant metadata request:', {
       url: req.url,
@@ -452,19 +462,19 @@ const info = async (req, res) => {
           model: db.box,
           as: 'box',
           where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
+          attributes: ['id', 'name', 'isPublic', 'description', 'createdAt', 'updatedAt'],
           include: [{
             model: db.versions,
             as: 'versions',
-            where: { versionNumber: versionNumber },
+            where: versionNumber ? { versionNumber } : {},
             include: [{
               model: db.providers,
               as: 'providers',
-              where: { name: providerName },
+              where: providerName ? { name: providerName } : {},
               include: [{
                 model: db.architectures,
                 as: 'architectures',
-                where: { name: architectureName }
+                where: architectureName ? { name: architectureName } : {}
               }]
             }]
           }]
