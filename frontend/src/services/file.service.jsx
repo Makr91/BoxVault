@@ -1,5 +1,6 @@
 import axios from "axios";
 import authHeader from "./auth-header";
+import AuthService from './auth.service';
 
 const baseURL = window.location.origin;
 
@@ -33,7 +34,6 @@ class FileService {
       } catch (error) {
         if (error.response?.status === 401 && retryCount < maxRetries - 1) {
           // Try to refresh the token
-          const AuthService = (await import('./auth.service')).default;
           const newUserData = await AuthService.refreshUserData();
           if (!newUserData) {
             throw new Error('Failed to refresh authentication');
