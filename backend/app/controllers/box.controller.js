@@ -473,15 +473,11 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
         .replace(/[^0-9.]*/g, '') // Remove any non-numeric/non-dot characters
         .split('.').slice(0, 3).join('.'); // Ensure x.y.z format
 
-      // Build the download URL
-      const downloadUrl = `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers`;
-
       return {
         version: versionNumber,
         status: "active",
         description_html: "<p>Build</p>\n",
         description_markdown: "Build",
-        download_url: downloadUrl, // Add top-level download URL
         providers: version.providers.flatMap(provider => 
           provider.architectures.map(arch => {
             const file = arch.files[0];
@@ -491,9 +487,12 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
             // Default to sha256 if no checksum type or if it's NULL
             const finalChecksumType = (!checksumType || checksumType === "null") ? "sha256" : checksumType;
 
+            // Build the full download URL
+            const downloadUrl = `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`;
+
             return {
               name: provider.name,
-              url: `${downloadUrl}/${provider.name}/${arch.name}/vagrant.box`,
+              url: downloadUrl,
               checksum: checksum,
               checksum_type: finalChecksumType,
               architecture: arch.name,
@@ -957,9 +956,7 @@ exports.downloadBox = async (req, res, next) => {
       });
     }
 
-    // Forward to API download endpoint
-    req.url = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
-    // Preserve auth context
+    // Preserve auth context without rewriting URL
     req.userId = userId;
     req.isServiceAccount = isServiceAccount;
     req.user = req.user;
