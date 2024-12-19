@@ -36,9 +36,14 @@ const upload = async (req, res) => {
     const urlParts = req.url.split('/').filter(Boolean);
     organization = urlParts[0];
     boxId = urlParts[2];
-    versionNumber = urlParts[4];
-    providerName = urlParts[6];
-    architectureName = urlParts[7];
+    
+    // For initial metadata request, we don't have version/provider/arch info
+    const isInitialRequest = urlParts.length <= 3;
+    if (!isInitialRequest) {
+      versionNumber = urlParts[4];
+      providerName = urlParts[6];
+      architectureName = urlParts[7];
+    }
   } else {
     // Use API endpoint parameters
     ({ organization, boxId, versionNumber, providerName, architectureName } = req.params);
@@ -260,12 +265,38 @@ const upload = async (req, res) => {
 };
 
 const download = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  // Extract parameters from either Vagrant-style URL or API endpoint
+  let organization, boxId, versionNumber, providerName, architectureName;
+  
+  if (req.isVagrantRequest) {
+    // Parse from Vagrant URL format
+    const urlParts = req.url.split('/').filter(Boolean);
+    organization = urlParts[0];
+    boxId = urlParts[2];
+    versionNumber = urlParts[4];
+    providerName = urlParts[6];
+    architectureName = urlParts[7];
+  } else {
+    // Use API endpoint parameters
+    ({ organization, boxId, versionNumber, providerName, architectureName } = req.params);
+  }
+
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
 
+  console.log('Download request:', {
+    isVagrantRequest: req.isVagrantRequest,
+    url: req.url,
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName,
+    filePath
+  });
+
   try {
-    // First, check if the box exists and if it's public
+    // For initial Vagrant request, get all versions
     const organizationData = await db.organization.findOne({
       where: { name: organization },
       include: [{
@@ -275,19 +306,19 @@ const download = async (req, res) => {
           model: db.box,
           as: 'box',
           where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
+          attributes: ['id', 'name', 'isPublic', 'description'],
           include: [{
             model: db.versions,
             as: 'versions',
-            where: { versionNumber: versionNumber },
+            ...(isInitialRequest ? {} : { where: { versionNumber } }),
             include: [{
               model: db.providers,
               as: 'providers',
-              where: { name: providerName },
+              ...(isInitialRequest ? {} : { where: { name: providerName } }),
               include: [{
                 model: db.architectures,
                 as: 'architectures',
-                where: { name: architectureName }
+                ...(isInitialRequest ? {} : { where: { name: architectureName } })
               }]
             }]
           }]
@@ -385,7 +416,30 @@ const download = async (req, res) => {
 };
 
 const info = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  // Extract parameters from either Vagrant-style URL or API endpoint
+  let organization, boxId, versionNumber, providerName, architectureName;
+  
+  if (req.isVagrantRequest) {
+    // Parse from Vagrant URL format
+    const urlParts = req.url.split('/').filter(Boolean);
+    organization = urlParts[0];
+    boxId = urlParts[2];
+    versionNumber = urlParts[4];
+    providerName = urlParts[6];
+    architectureName = urlParts[7];
+
+    console.log('Vagrant metadata request:', {
+      url: req.url,
+      organization,
+      boxId,
+      versionNumber,
+      providerName,
+      architectureName
+    });
+  } else {
+    // Use API endpoint parameters
+    ({ organization, boxId, versionNumber, providerName, architectureName } = req.params);
+  }
 
   try {
     // First, check if the box exists and if it's public
@@ -442,14 +496,57 @@ const info = async (req, res) => {
       });
 
       if (fileRecord) {
-        return res.send({
-          fileName: fileRecord.fileName,
-          downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
-          downloadCount: fileRecord.downloadCount,
-          checksum: fileRecord.checksum,
-          checksumType: fileRecord.checksumType,
-          fileSize: fileRecord.fileSize
-        });
+        if (req.isVagrantRequest) {
+          if (isInitialRequest) {
+            // Return all versions for initial metadata request
+            const versions = box.versions.map(version => ({
+              version: version.versionNumber,
+              status: "active",
+              providers: version.providers.map(provider => ({
+                name: provider.name,
+                url: `${appConfig.boxvault.api_url.value}/${organization}/boxes/${boxId}/versions/${version.versionNumber}/providers/${provider.name}/${provider.architectures[0].name}/vagrant.box`,
+                checksum: fileRecord.checksum,
+                checksum_type: fileRecord.checksumType,
+                architecture: provider.architectures[0].name,
+                default_architecture: true
+              }))
+            }));
+
+            return res.send({
+              name: `${organization}/${boxId}`,
+              description: box.description || "",
+              versions
+            });
+          } else {
+            // Return specific version metadata
+            return res.send({
+              name: `${organization}/${boxId}`,
+              description: box.description || "",
+              versions: [{
+                version: versionNumber,
+                status: "active",
+                providers: [{
+                  name: providerName,
+                  url: `${appConfig.boxvault.api_url.value}/${organization}/boxes/${boxId}/versions/${versionNumber}/providers/${providerName}/${architectureName}/vagrant.box`,
+                  checksum: fileRecord.checksum,
+                  checksum_type: fileRecord.checksumType,
+                  architecture: architectureName,
+                  default_architecture: true
+                }]
+              }]
+            });
+          }
+        } else {
+          // Return standard API response
+          return res.send({
+            fileName: fileRecord.fileName,
+            downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
+            downloadCount: fileRecord.downloadCount,
+            checksum: fileRecord.checksum,
+            checksumType: fileRecord.checksumType,
+            fileSize: fileRecord.fileSize
+          });
+        }
       } else {
         return res.status(404).send({ message: "File not found." });
       }
