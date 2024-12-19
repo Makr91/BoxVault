@@ -59,7 +59,11 @@ const authenticateVagrantRequest = async (req) => {
         userId: decoded.id,
         isServiceAccount: decoded.isServiceAccount
       });
-      return { user, isServiceAccount: decoded.isServiceAccount };
+      return { 
+        user, 
+        isServiceAccount: decoded.isServiceAccount,
+        token: token 
+      };
     }
   } catch (err) {
     console.log('JWT verification failed, trying service account:', {
@@ -93,7 +97,11 @@ const authenticateVagrantRequest = async (req) => {
         username: serviceAccount.user.username,
         organizationId: serviceAccount.user.organizationId
       });
-      return { user: serviceAccount.user, isServiceAccount: true };
+      return { 
+        user: serviceAccount.user, 
+        isServiceAccount: true,
+        token: token 
+      };
     }
   }
 
@@ -134,28 +142,48 @@ const parseVagrantUrl = (url) => {
   }
 
   // Then handle metadata request formats
-  if (parts.length === 2) {
+  if (parts.length === 2 && !parts.includes('boxes') && !parts.includes('vagrant.box')) {
     // Root metadata format: /:organization/:boxName
     // This is the first request Vagrant makes to get box metadata
+    // Example: /STARTcloud/alma9-server
     return {
       organization: parts[0],
       boxName: parts[1],
       isDownload: false
     };
-  } else if (parts.length === 3 && parts[1] === 'boxes') {
-    // Expanded format: /:organization/boxes/:boxName
-    return {
-      organization: parts[0],
-      boxName: parts[2],
-      isDownload: false
-    };
-  } else if (parts.length === 5 && parts[0] === 'api' && parts[1] === 'v2' && parts[2] === 'vagrant') {
-    // API format: /api/v2/vagrant/:organization/:boxName
-    return {
-      organization: parts[3],
-      boxName: parts[4],
-      isDownload: false
-    };
+  }
+
+  // Handle expanded format with /boxes/
+  if (parts.includes('boxes') && !parts.includes('vagrant.box')) {
+    const boxesIndex = parts.indexOf('boxes');
+    if (boxesIndex > 0 && boxesIndex + 1 < parts.length) {
+      // Example: /STARTcloud/boxes/alma9-server
+      return {
+        organization: parts[0],
+        boxName: parts[boxesIndex + 1],
+        isDownload: false
+      };
+    }
+  }
+
+  // Handle API formats
+  if (parts[0] === 'api') {
+    // Handle /api/v2/vagrant/:org/:box format
+    if (parts[1] === 'v2' && parts[2] === 'vagrant' && parts.length === 5) {
+      return {
+        organization: parts[3],
+        boxName: parts[4],
+        isDownload: false
+      };
+    }
+    // Handle /api/organization/:org/box/:box format
+    if (parts[1] === 'organization' && parts[3] === 'box' && parts.length === 5) {
+      return {
+        organization: parts[2],
+        boxName: parts[4],
+        isDownload: false
+      };
+    }
   }
 
   // Log URL parsing details for debugging
@@ -185,12 +213,40 @@ const vagrantHandler = async (req, res, next) => {
       return next();
     }
 
+    // Log the incoming request with full details
+    console.log('Incoming Vagrant request:', {
+      url: req.url,
+      originalUrl: req.originalUrl,
+      method: req.method,
+      headers: {
+        'user-agent': req.headers['user-agent'],
+        'authorization': !!req.headers['authorization'],
+        'accept': req.headers['accept']
+      },
+      query: req.query,
+      params: req.params,
+      path: req.path
+    });
+
+    // Log request sequence for debugging
+    console.log('Request sequence:', {
+      isHeadRequest: req.method === 'HEAD',
+      isGetRequest: req.method === 'GET',
+      isMetadataCheck: req.method === 'HEAD' && req.headers['accept'] === 'application/json',
+      isMetadataFetch: req.method === 'GET' && req.headers['accept'] === 'application/json'
+    });
+
     // Authenticate the request
     const auth = await authenticateVagrantRequest(req);
     if (auth) {
       req.userId = auth.user.id;
       req.isServiceAccount = auth.isServiceAccount;
       req.user = auth.user;
+
+      // If this is a service account, ensure the token is passed through
+      if (auth.isServiceAccount) {
+        req.headers['authorization'] = auth.token;
+      }
     }
 
   // Parse the URL
@@ -218,8 +274,34 @@ const vagrantHandler = async (req, res, next) => {
 
     // For HEAD requests, handle metadata detection
     if (req.method === 'HEAD') {
-      // Only set Content-Type to indicate this is metadata
-      res.set('Content-Type', 'application/json');
+      // For metadata URLs (not download URLs), set application/json Content-Type
+      // This tells Vagrant this URL points to metadata
+      if (!parsedUrl.isDownload) {
+        res.set({
+          'Content-Type': 'application/json',
+          'Content-Length': '0',
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'no-cache',
+          'Vary': 'Accept'
+        });
+      } else {
+        // For box downloads, set application/octet-stream Content-Type
+        // This tells Vagrant this URL points to a box file
+        res.set({
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': '0',
+          'Accept-Ranges': 'bytes'
+        });
+      }
+
+      // Log HEAD request handling
+      console.log('Handling HEAD request:', {
+        url: req.url,
+        isMetadata: !parsedUrl.isDownload,
+        headers: res.getHeaders(),
+        parsedUrl
+      });
+
       res.status(200).end();
       return;
     }
@@ -233,14 +315,15 @@ const vagrantHandler = async (req, res, next) => {
       // Don't set Content-Type for downloads
       // Let the download endpoint handle streaming the file
     } else {
-      // For metadata requests
-      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
+      // For metadata requests, use the API endpoint
+      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}`;
       
       // Set headers for JSON metadata response
       res.set({
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Vary': 'Accept'
+        'Vary': 'Accept',
+        'Accept-Ranges': 'bytes'
       });
 
       // Ensure Accept header is set for Vagrant

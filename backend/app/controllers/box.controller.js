@@ -210,32 +210,29 @@ exports.findAll = async (req, res) => {
 
 exports.getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
-  const token = req.headers["x-access-token"];
-  let userId = null;
+  // Get auth info from vagrantHandler middleware
+  const userId = req.userId;
+  const isServiceAccount = req.isServiceAccount;
   let userOrganizationId = null;
-  let isServiceAccount = false;
+
+  // Log auth info for debugging
+  console.log('Box details auth:', {
+    userId,
+    isServiceAccount,
+    hasUser: !!req.user,
+    isVagrantRequest: !!req.isVagrantRequest
+  });
 
   try {
-    // If a token is provided, verify it and extract the user ID
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-        userId = decoded.id;
-        isServiceAccount = decoded.isServiceAccount || false;
+    // Get user's organization ID if they're not a service account
+    if (userId && !isServiceAccount) {
+      const user = await Users.findOne({
+        where: { id: userId },
+        include: [{ model: Organization, as: 'organization' }]
+      });
 
-        // Retrieve the user's organization ID
-        if (!isServiceAccount) {
-          const user = await Users.findOne({
-            where: { id: userId },
-            include: [{ model: Organization, as: 'organization' }]
-          });
-
-          if (user) {
-            userOrganizationId = user.organization.id;
-          }
-        }
-      } catch (err) {
-        console.warn(`Unauthorized User.`);
+      if (user) {
+        userOrganizationId = user.organization.id;
       }
     }
 
@@ -478,25 +475,39 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
     name: requestedName, // Use the exact name that Vagrant requested
     description: box.description || "Build",
     short_description: "",
-    versions: box.versions.map(version => ({
-      version: version.versionNumber.replace(/^v/, ''),
-      status: "active",
-      description_html: "<p>Build</p>\n",
-      description_markdown: "Build",
-      providers: version.providers.flatMap(provider => 
-        provider.architectures.map(arch => {
-          const file = arch.files[0];
-          return {
-            name: provider.name,
-            architecture: arch.name,
-            default_architecture: arch.defaultBox || true,
-            checksum: file?.checksum || "",
-            checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
-            url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`
-          };
-        })
-      )
-    }))
+    versions: box.versions.map(version => {
+      // Format version number exactly as Vagrant expects
+      const versionNumber = version.versionNumber
+        .replace(/^v/, '') // Remove 'v' prefix if present
+        .replace(/[^0-9.]*/g, '') // Remove any non-numeric/non-dot characters
+        .split('.').slice(0, 3).join('.'); // Ensure x.y.z format
+      return {
+        version: versionNumber,
+        status: "active",
+        description_html: "<p>Build</p>\n",
+        description_markdown: "Build",
+        providers: version.providers.flatMap(provider => 
+          provider.architectures.map(arch => {
+            const file = arch.files[0];
+            // Ensure we have valid checksum info
+            const checksum = file?.checksum || "";
+            const checksumType = file?.checksumType?.toLowerCase();
+            // Default to sha256 if no checksum type or if it's NULL
+            const finalChecksumType = (!checksumType || checksumType === "null") ? "sha256" : checksumType;
+
+            return {
+              name: provider.name,
+              // Format URL exactly as Vagrant expects
+              url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`.replace(/\/+/g, '/').replace('http:/', 'http://').replace('https:/', 'https://'),
+              checksum: checksum,
+              checksum_type: finalChecksumType,
+              architecture: arch.name,
+              default_architecture: arch.defaultBox || true
+            };
+          })
+        )
+      };
+    })
   };
 
   // Log the complete response for debugging
@@ -524,20 +535,17 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 
 exports.findOne = async (req, res) => {
   const { organization, name } = req.params;
-  const token = req.headers["x-access-token"];
-  let userId = null;
-  let isServiceAccount = false;
+  // Get auth info from vagrantHandler middleware
+  const userId = req.userId;
+  const isServiceAccount = req.isServiceAccount;
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
-    }
-  }
+  // Log auth info for debugging
+  console.log('Box findOne auth:', {
+    userId,
+    isServiceAccount,
+    hasUser: !!req.user,
+    isVagrantRequest: !!req.isVagrantRequest
+  });
 
   try {
     // Find the organization and include users and boxes
@@ -861,8 +869,18 @@ exports.deleteAll = async (req, res) => {
 // Handle Vagrant box downloads
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
-  let userId = req.userId;
-  let isServiceAccount = req.isServiceAccount;
+  // Get auth info from vagrantHandler middleware
+  const userId = req.userId;
+  const isServiceAccount = req.isServiceAccount;
+
+  // Log auth info for debugging
+  console.log('Box download auth:', {
+    userId,
+    isServiceAccount,
+    hasUser: !!req.user,
+    isVagrantRequest: !!req.isVagrantRequest,
+    params: { organization, name, version, provider, architecture }
+  });
 
   try {
     // Find the organization and box
