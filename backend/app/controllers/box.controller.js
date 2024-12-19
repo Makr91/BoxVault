@@ -473,25 +473,30 @@ exports.discoverAll = async (req, res) => {
 };
 
 const formatVagrantResponse = (box, organization, baseUrl) => {
-  // Ensure we're using the exact format Vagrant expects
+  // Format response exactly as Vagrant expects based on box_metadata.rb
   const response = {
+    // Required fields from BoxMetadata class
     name: `${organization.name}/${box.name}`,
-    description: "Build",
-    short_description: "",
+    description: box.description || "Build",
     versions: box.versions.map(version => ({
+      // Version must be a valid Gem::Version (no 'v' prefix)
       version: version.versionNumber.replace(/^v/, ''),
       status: "active",
       description_html: "<p>Build</p>\n",
       description_markdown: "Build",
       providers: version.providers.flatMap(provider => 
-        provider.architectures.map(arch => ({
-          name: provider.name,
-          architecture: arch.name,
-          default_architecture: true,
-          checksum: arch.files[0]?.checksum || "",
-          checksum_type: (arch.files[0]?.checksumType === "NULL" ? "sha256" : arch.files[0]?.checksumType?.toLowerCase()) || "sha256",
-          url: `${baseUrl}/api/organization/${organization.name}/box/${box.name}/version/${version.versionNumber.replace(/^v/, '')}/provider/${provider.name}/architecture/${arch.name}/file/info`
-        }))
+        provider.architectures.map(arch => {
+          const file = arch.files[0];
+          return {
+            // Required fields from Provider class
+            name: provider.name,
+            url: `${baseUrl}/api/organization/${organization.name}/box/${box.name}/version/${version.versionNumber.replace(/^v/, '')}/provider/${provider.name}/architecture/${arch.name}/file/download`,
+            checksum: file?.checksum || "",
+            checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
+            architecture: arch.name,
+            default_architecture: arch.defaultBox || true
+          };
+        })
       )
     }))
   };
