@@ -48,15 +48,41 @@ const storage = multer.diskStorage({
   },
 });
 
+// Configure multer with timeout and better error handling
+// Calculate max file size from config (converting GB to bytes)
+const maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
+
 const uploadFile = multer({
   storage: storage,
-  limits: { fileSize: 10000 * 1024 * 1024 }, // 10GB limit
+  limits: { 
+    fileSize: maxFileSize, // Use configured limit from app.config.yaml
+    fieldSize: maxFileSize // Match field size to file size limit
+  }
 }).fields([
   { name: 'file', maxCount: 1 },
   { name: 'checksum', maxCount: 1 },
   { name: 'checksumType', maxCount: 1 }
 ]);
 
-const uploadFileMiddleware = util.promisify(uploadFile);
+// Wrap multer middleware with timeout and error handling
+const uploadFileMiddleware = async (req, res) => {
+  return new Promise((resolve, reject) => {
+    const uploadTimeout = setTimeout(() => {
+      reject(new Error('Upload timeout - Request took longer than 30 minutes'));
+    }, 30 * 60 * 1000); // 30 minutes timeout
+
+    uploadFile(req, res, (err) => {
+      clearTimeout(uploadTimeout);
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          reject(new Error(`File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB`));
+        } else {
+          reject(err);
+        }
+      }
+      resolve();
+    });
+  });
+};
 const uploadSSLFileMiddleware = util.promisify(uploadSSLFile);
 module.exports = { uploadFileMiddleware, uploadSSLFileMiddleware };

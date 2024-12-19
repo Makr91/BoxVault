@@ -101,16 +101,48 @@ const upload = async (req, res) => {
       return res.status(400).send({ message: "File already exists. Please use the update function to replace it." });
     }
   } catch (err) {
-    console.log(err);
+    // Log detailed error information
+    console.error('File upload error:', {
+      error: err.message,
+      code: err.code,
+      stack: err.stack,
+      params: {
+        organization,
+        boxId,
+        versionNumber,
+        providerName,
+        architectureName
+      }
+    });
 
-    if (err.code == "LIMIT_FILE_SIZE") {
-      return res.status(500).send({
-        message: "File size cannot be larger than 10GB!",
+    // Handle specific error types
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).send({
+        message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
+        error: "FILE_TOO_LARGE"
       });
     }
 
+    if (err.message.includes('Upload timeout')) {
+      return res.status(408).send({
+        message: "Upload timed out - Request took too long to complete",
+        error: "UPLOAD_TIMEOUT"
+      });
+    }
+
+    // Handle disk space errors
+    if (err.code === 'ENOSPC') {
+      return res.status(507).send({
+        message: "Not enough storage space available",
+        error: "NO_STORAGE_SPACE"
+      });
+    }
+
+    // Generic error response with more details
     res.status(500).send({
-      message: `Could not upload the file: ${req.files ? req.files['file'][0].originalname : ''}. ${err}`,
+      message: "Could not upload the file",
+      error: err.message,
+      code: err.code || 'UNKNOWN_ERROR'
     });
   }
 };
@@ -515,9 +547,10 @@ const update = async (req, res) => {
   } catch (err) {
     console.log(err);
 
-    if (err.code == "LIMIT_FILE_SIZE") {
-      return res.status(500).send({
-        message: "File size cannot be larger than 10GB!",
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).send({
+        message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
+        error: "FILE_TOO_LARGE"
       });
     }
 

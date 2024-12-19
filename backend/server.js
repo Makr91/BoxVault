@@ -155,6 +155,10 @@ if (isSSLConfigured()) {
 
     const httpsServer = https.createServer(credentials, app);
 
+    // Set timeout to 30 minutes for large uploads
+    httpsServer.timeout = 30 * 60 * 1000; // 30 minutes
+    httpsServer.keepAliveTimeout = 30 * 60 * 1000; // 30 minutes
+
     httpsServer.listen(HTTPS_PORT, () => {
       console.log(`HTTPS Server is running on port ${HTTPS_PORT}.`);
     });
@@ -180,6 +184,11 @@ if (isSSLConfigured()) {
 
 function startHTTPServer() {
   const httpServer = http.createServer(app);
+  
+  // Set timeout to 30 minutes for large uploads
+  httpServer.timeout = 30 * 60 * 1000; // 30 minutes
+  httpServer.keepAliveTimeout = 30 * 60 * 1000; // 30 minutes
+  
   httpServer.listen(HTTP_PORT, () => {
     console.log(`HTTP Server is running on port ${HTTP_PORT}.`);
   });
