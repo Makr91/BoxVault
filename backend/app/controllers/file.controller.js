@@ -254,48 +254,45 @@ const download = async (req, res) => {
   });
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: params.organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: db.box,
-          as: 'box',
-          where: { name: params.name },
-          attributes: ['id', 'name', 'isPublic', 'published'],
+    // First find the box and its organization
+    const box = await db.box.findOne({
+      where: { name: params.name },
+      attributes: ['id', 'name', 'isPublic', 'published', 'userId'],
+      include: [
+        {
+          model: db.user,
+          as: 'user',
           include: [{
-            model: db.versions,
-            as: 'versions',
-            where: { versionNumber: params.version },
+            model: db.organization,
+            as: 'organization',
+            where: { name: params.organization }
+          }]
+        },
+        {
+          model: db.versions,
+          as: 'versions',
+          where: { versionNumber: params.version },
+          include: [{
+            model: db.providers,
+            as: 'providers',
+            where: { name: params.provider },
             include: [{
-              model: db.providers,
-              as: 'providers',
-              where: { name: params.provider },
-              include: [{
-                model: db.architectures,
-                as: 'architectures',
-                where: { name: params.architecture }
-              }]
+              model: db.architectures,
+              as: 'architectures',
+              where: { name: params.architecture }
             }]
           }]
-        }]
-      }]
+        }
+      ]
     });
 
-    if (!organizationData) {
-      return res.status(404).send({
-        message: `Organization not found with name: ${params.organization}.`
-      });
-    }
-
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === params.name);
-
-    if (!box) {
+    if (!box || !box.user || !box.user.organization) {
       return res.status(404).send({
         message: `Box ${params.name} not found in organization ${params.organization}.`
       });
     }
+
+    const organization = box.user.organization;
 
     // Log box status and auth details
     console.log('Box access check:', {
@@ -337,8 +334,7 @@ const download = async (req, res) => {
         // For regular users, check organization membership
         if (box.published && !box.isPublic) {
           // Get user's organization
-          const user = await db.user.findOne({
-            where: { id: userId },
+          const user = await db.user.findByPk(userId, {
             include: [{ model: db.organization, as: 'organization' }]
           });
 
@@ -347,7 +343,7 @@ const download = async (req, res) => {
             return false;
           }
 
-          const hasAccess = user.organization.id === organizationData.id;
+          const hasAccess = user.organization.id === organization.id;
           accessReason = hasAccess ? 'Organization member access to private box' : 'User not in organization';
           return hasAccess;
         }

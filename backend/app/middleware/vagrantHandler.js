@@ -307,25 +307,14 @@ const vagrantHandler = async (req, res, next) => {
       return;
     }
 
-    // Rewrite the URL to our API format
-    const originalUrl = req.url;
+    // Set headers based on request type
     if (parsedUrl.isDownload) {
-      // For box downloads, rewrite to our download endpoint
-      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
-      
-      // For service accounts, add Bearer prefix back to Authorization header
-      // only when forwarding to download endpoint
+      // For box downloads, let the download endpoint handle streaming
       if (req.serviceAccountToken) {
         req.headers['authorization'] = `Bearer ${req.serviceAccountToken}`;
       }
-      
-      // Don't set Content-Type for downloads
-      // Let the download endpoint handle streaming the file
     } else {
-      // For metadata requests, use the API endpoint
-      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}`;
-      
-      // Set headers for JSON metadata response
+      // For metadata requests, set JSON headers
       res.set({
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
@@ -337,17 +326,20 @@ const vagrantHandler = async (req, res, next) => {
       if (!req.headers.accept) {
         req.headers.accept = 'application/json';
       }
+
+      // For metadata, rewrite to API endpoint
+      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}`;
     }
 
-    console.log('URL rewrite:', {
-      from: originalUrl,
-      to: req.url,
+    console.log('Request handling:', {
+      url: req.url,
       isDownload: parsedUrl.isDownload,
       organization: parsedUrl.organization,
       boxName: parsedUrl.boxName,
       version: parsedUrl.version,
       provider: parsedUrl.provider,
-      architecture: parsedUrl.architecture
+      architecture: parsedUrl.architecture,
+      headers: res.getHeaders()
     });
     
     // Store parsed URL info for the controller
