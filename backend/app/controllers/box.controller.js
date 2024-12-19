@@ -472,12 +472,11 @@ exports.discoverAll = async (req, res) => {
   }
 };
 
-const formatVagrantResponse = (box, organization, baseUrl) => {
+const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
   // Format response exactly as Vagrant expects based on box_metadata.rb
-  const fullName = `${organization.name}/${box.name}`;
   const response = {
     // Required fields from BoxMetadata class
-    name: fullName, // This must match exactly what Vagrant requested
+    name: requestedName, // Use the exact name that Vagrant requested
     description: box.description || "Build",
     versions: box.versions.map(version => ({
       // Version must be a valid Gem::Version (no 'v' prefix)
@@ -595,8 +594,8 @@ exports.findOne = async (req, res) => {
     if (req.isVagrantRequest) {
       // Format response for Vagrant
       const baseUrl = appConfig.boxvault.origin.value;
-      // Don't modify the box object, let formatVagrantResponse handle the name format
-      response = formatVagrantResponse(box, organizationData, baseUrl);
+      // Pass the requested name from vagrantInfo
+      response = formatVagrantResponse(box, organizationData, baseUrl, req.vagrantInfo.requestedName);
     } else {
       // Format response for frontend
       response = {

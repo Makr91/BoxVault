@@ -122,6 +122,8 @@ const vagrantHandler = (req, res, next) => {
     originalUrl: req.originalUrl,
     organization: parsedUrl.organization,
     boxName: parsedUrl.boxName,
+    // Store the full requested name for Vagrant metadata
+    requestedName: `${parsedUrl.organization}/${parsedUrl.boxName}`,
     isDownload: parsedUrl.isDownload,
     version: parsedUrl.version,
     provider: parsedUrl.provider,
