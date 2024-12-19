@@ -369,17 +369,214 @@ const download = async (req, res) => {
       });
     }
 
-    // If access is granted, stream the file
-    return res.download(filePath, fileName, (err) => {
-      if (err) {
+    // Check if file exists before attempting to create stream
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send({
+        message: "File not found",
+        error: "ENOENT"
+      });
+    }
+
+    // If access is granted and file exists, stream the file
+    const stream = fs.createReadStream(filePath);
+    
+    // Handle stream errors
+    stream.on('error', (err) => {
+      console.error('Stream error:', err);
+      // Only send error if headers haven't been sent yet
+      if (!res.headersSent) {
         res.status(500).send({
-          message: "Could not download the file. " + err,
+          message: "Could not download the file. " + err.message
         });
       }
     });
 
+    // Handle client disconnect and cleanup
+    let isDisconnected = false;
+    req.on('close', () => {
+      isDisconnected = true;
+      stream.destroy();
+      console.log('Download interrupted - client disconnected');
+    });
+
+    // Handle stream end
+    stream.on('end', () => {
+      if (!isDisconnected) {
+        console.log('Download completed successfully');
+      }
+    });
+
+    // Handle stream errors with cleanup
+    stream.on('error', (err) => {
+      console.error('Stream error:', err);
+      if (!isDisconnected && !res.headersSent) {
+        res.status(500).send({
+          message: "Could not download the file. " + err.message
+        });
+      }
+      stream.destroy();
+    });
+
+    // Set response headers for Vagrant box downloads
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // Get file stats for Content-Length
+    const stats = fs.statSync(filePath);
+    if (!req.headers.range) {
+      res.setHeader('Content-Length', stats.size);
+    }
+
+    // Handle range requests
+    if (req.headers.range) {
+      let rangeStream;
+      try {
+        // Check if file exists before attempting to create stream
+        if (!fs.existsSync(filePath)) {
+          throw Object.assign(new Error('File not found'), { code: 'ENOENT' });
+        }
+        
+        const stats = fs.statSync(filePath);
+        const range = req.headers.range;
+        
+        // Parse range header
+        const match = range.match(/bytes=(\d+)-(\d*)/);
+        if (!match) {
+          throw new Error('Invalid range format');
+        }
+
+        const start = parseInt(match[1], 10);
+        const end = match[2] ? parseInt(match[2], 10) : stats.size - 1;
+        const chunksize = (end - start) + 1;
+
+        // Validate range values
+        if (start >= stats.size || end >= stats.size || start > end) {
+          throw new Error('Invalid range values');
+        }
+
+        console.log('Range request:', { 
+          range,
+          start,
+          end,
+          chunksize,
+          fileSize: stats.size,
+          headers: req.headers
+        });
+
+        // Set response headers for partial content
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${stats.size}`);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', chunksize);
+        res.status(206);
+
+        // Create a new stream for the range
+        const rangeStream = fs.createReadStream(filePath, { start, end });
+        
+        // Track stream state
+        let isDisconnected = false;
+
+        // Handle client disconnect and cleanup
+        req.on('close', () => {
+          isDisconnected = true;
+          rangeStream.destroy();
+          console.log('Range download interrupted - client disconnected:', {
+            range,
+            start,
+            end,
+            bytesRead: end - start + 1
+          });
+        });
+
+        // Handle stream end
+        rangeStream.on('end', () => {
+          if (!isDisconnected) {
+            console.log('Range download completed successfully:', {
+              range,
+              start,
+              end,
+              chunksize
+            });
+          }
+        });
+
+        // Handle stream errors with cleanup
+        rangeStream.on('error', (err) => {
+          console.error('Range stream error:', {
+            error: err.message,
+            code: err.code,
+            range,
+            start,
+            end
+          });
+          if (!isDisconnected && !res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file range. " + err.message
+            });
+          }
+          rangeStream.destroy();
+        });
+
+        rangeStream.pipe(res);
+      } catch (err) {
+        // Log detailed error info
+        console.error('Range request error:', {
+          error: err.message,
+          code: err.code,
+          range: req.headers.range,
+          headers: req.headers,
+          filePath,
+          fileExists: fs.existsSync(filePath)
+        });
+
+        // Clean up any existing stream
+        if (rangeStream) {
+          rangeStream.destroy();
+        }
+
+        // Send appropriate error response if headers haven't been sent
+        if (!res.headersSent) {
+          if (err.message.includes('Invalid range')) {
+            res.status(416).send({
+              message: "Invalid range request",
+              error: err.message
+            });
+          } else if (err.code === 'ENOENT') {
+            res.status(404).send({
+              message: "File not found",
+              error: err.message
+            });
+          } else {
+            res.status(500).send({
+              message: "Error processing range request",
+              error: err.message
+            });
+          }
+        }
+      }
+    } else {
+      // Stream the entire file
+      stream.pipe(res);
+    }
+
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while downloading the file." });
+    console.error('Download error:', {
+      error: err.message,
+      code: err.code,
+      url: req.url,
+      range: req.headers.range
+    });
+    
+    // Only send error response if headers haven't been sent
+    if (!res.headersSent) {
+      res.status(500).send({ 
+        message: err.message || "Some error occurred while downloading the file.",
+        code: err.code || 'UNKNOWN_ERROR'
+      });
+    }
   }
 };
 
