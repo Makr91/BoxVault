@@ -241,7 +241,14 @@ const upload = async (req, res) => {
 };
 
 const download = async (req, res) => {
-  const params = {
+  // Handle both API and Vagrant URL formats
+  const params = req.isVagrantRequest ? {
+    organization: req.vagrantInfo.organization,
+    name: req.vagrantInfo.boxName,
+    version: req.vagrantInfo.version,
+    provider: req.vagrantInfo.provider,
+    architecture: req.vagrantInfo.architecture
+  } : {
     organization: req.params.organization,
     name: req.params.name,
     version: req.params.version,

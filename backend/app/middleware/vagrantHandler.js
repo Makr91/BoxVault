@@ -138,6 +138,13 @@ const parseVagrantUrl = (url) => {
         architecture: parts[providersIndex + 2]
       };
     }
+    console.log('Failed to parse download URL:', {
+      url: urlPath,
+      parts,
+      boxesIndex,
+      versionsIndex,
+      providersIndex
+    });
     return null;
   }
 
