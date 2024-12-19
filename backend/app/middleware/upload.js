@@ -17,7 +17,7 @@ try {
   maxFileSize = 10 * 1024 * 1024 * 1024; // Default to 10GB
 }
 
-// Configure multer storage
+// Configure multer storage with overwrite support
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
@@ -31,10 +31,11 @@ const storage = multer.diskStorage({
       // Create directory if it doesn't exist
       fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
       
-      // Log directory creation
-      console.log('Created upload directory:', {
+      // Log directory creation/access
+      console.log('Using upload directory:', {
         path: uploadDir,
-        mode: '0755'
+        mode: '0755',
+        exists: fs.existsSync(uploadDir)
       });
       
       cb(null, uploadDir);
@@ -44,8 +45,31 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    // Always use vagrant.box as filename
-    cb(null, 'vagrant.box');
+    try {
+      const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+      const config = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
+      const filePath = path.join(
+        config.boxvault.box_storage_directory.value,
+        organization,
+        boxId,
+        versionNumber,
+        providerName,
+        architectureName,
+        'vagrant.box'
+      );
+
+      // If file exists, delete it first to ensure clean overwrite
+      if (fs.existsSync(filePath)) {
+        console.log('Existing file found, will overwrite:', filePath);
+        fs.unlinkSync(filePath);
+      }
+
+      // Always use vagrant.box as filename
+      cb(null, 'vagrant.box');
+    } catch (error) {
+      console.error('Error in multer filename handler:', error);
+      cb(error);
+    }
   }
 });
 
@@ -84,63 +108,76 @@ const uploadMiddleware = (req, res, next) => {
     contentType: req.headers['content-type']
   });
 
-  upload(req, res, (err) => {
-    const duration = Date.now() - startTime;
-    
-    if (err instanceof multer.MulterError) {
-      // Handle Multer-specific errors
-      console.error('Multer error:', {
-        code: err.code,
-        message: err.message,
-        field: err.field,
-        duration: duration
-      });
-
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(413).send({
-          error: 'FILE_TOO_LARGE',
-          message: `File size cannot be larger than ${maxFileSize / (1024 * 1024 * 1024)}GB`,
-          details: {
-            maxSize: maxFileSize,
-            duration: duration
-          }
+  try {
+    upload(req, res, async (err) => {
+      const duration = Date.now() - startTime;
+      
+      if (err) {
+        // Log error details
+        console.error('Upload error:', {
+          type: err instanceof multer.MulterError ? 'MulterError' : 'GeneralError',
+          message: err.message,
+          code: err.code,
+          field: err.field,
+          stack: err.stack,
+          duration: duration
         });
+
+        // Don't try to send response if headers are already sent
+        if (!res.headersSent) {
+          if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            res.status(413).json({
+              error: 'FILE_TOO_LARGE',
+              message: `File size cannot be larger than ${maxFileSize / (1024 * 1024 * 1024)}GB`,
+              details: {
+                maxSize: maxFileSize,
+                duration: duration
+              }
+            });
+          } else {
+            res.status(500).json({
+              error: err instanceof multer.MulterError ? err.code : 'UPLOAD_ERROR',
+              message: err.message,
+              details: { duration }
+            });
+          }
+        }
+        return;
       }
 
-      return res.status(400).send({
-        error: err.code,
-        message: err.message,
-        details: { duration }
-      });
-    } 
-    else if (err) {
-      // Handle other errors
-      console.error('Upload error:', {
-        message: err.message,
-        code: err.code,
-        stack: err.stack,
-        duration: duration
-      });
+      // Check if file was uploaded
+      if (!req.file) {
+        if (!res.headersSent) {
+          res.status(400).json({
+            error: 'NO_FILE',
+            message: 'No file was uploaded'
+          });
+        }
+        return;
+      }
 
-      return res.status(500).send({
-        error: 'UPLOAD_ERROR',
-        message: err.message,
-        details: { duration }
-      });
-    }
-
-    // Log successful upload
-    if (req.file) {
+      // Log successful upload
       console.log('Upload completed:', {
         filename: req.file.filename,
         path: req.file.path,
         size: req.file.size,
         duration: duration
       });
-    }
 
-    next();
-  });
+      // Continue only if headers haven't been sent
+      if (!res.headersSent) {
+        next();
+      }
+    });
+  } catch (error) {
+    console.error('Unexpected error in upload middleware:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'An unexpected error occurred during upload'
+      });
+    }
+  }
 };
 
 // SSL file upload middleware (Promise-based)

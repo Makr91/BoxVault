@@ -78,58 +78,82 @@ const upload = async (req, res) => {
       });
     }
 
-    // Check if file already exists
-    if (fs.existsSync(filePath)) {
-      return res.status(400).send({ 
-        message: "File already exists. Please use the update function to replace it.",
-        path: filePath
-      });
-    }
-
-    // Process the upload
+    // Process the upload (will overwrite if file exists)
     await uploadFileMiddleware(req, res);
+
+    // If headers are already sent by middleware, return
+    if (res.headersSent) {
+      return;
+    }
 
     // Verify the upload was successful
     if (!req.file) {
-      return res.status(404).send({ message: "No file uploaded!" });
+      return res.status(404).json({ message: "No file uploaded!" });
     }
 
-    let checksum = req.body.checksum;
-    let checksumType = req.body.checksumType;
+    try {
+      // Get checksum info
+      let checksum = req.body.checksum;
+      let checksumType = req.body.checksumType;
 
-    if (!checksumType || checksumType.toUpperCase() === 'NULL') {
-      checksum = null;
-      checksumType = 'NULL';
+      if (!checksumType || checksumType.toUpperCase() === 'NULL') {
+        checksum = null;
+        checksumType = 'NULL';
+      }
+
+      // Find existing file record or create new one
+      let fileRecord = await File.findOne({
+        where: {
+          fileName: fileName,
+          architectureId: architecture.id
+        }
+      });
+
+      if (fileRecord) {
+        // Update existing record
+        await fileRecord.update({
+          checksum: checksum,
+          checksumType: checksumType,
+          fileSize: req.file.size
+        });
+        console.log('File record updated:', {
+          fileName,
+          checksum,
+          checksumType,
+          architectureId: architecture.id,
+          fileSize: req.file.size,
+          path: req.file.path
+        });
+      } else {
+        // Create new record
+        fileRecord = await File.create({
+          fileName: fileName,
+          checksum: checksum,
+          checksumType: checksumType,
+          architectureId: architecture.id,
+          fileSize: req.file.size
+        });
+        console.log('File record created:', {
+          fileName,
+          checksum,
+          checksumType,
+          architectureId: architecture.id,
+          fileSize: req.file.size,
+          path: req.file.path
+        });
+      }
+
+      return res.status(200).json({
+        message: fileRecord ? "File updated successfully" : "File uploaded successfully",
+        fileName: fileName,
+        fileSize: req.file.size,
+        path: req.file.path,
+        fileRecord: fileRecord
+      });
+    } catch (dbError) {
+      console.error('Database error during file upload:', dbError);
+      throw dbError;
     }
-
-    // Get the file size from the uploaded file
-    const fileSize = req.file.size;
-
-    // Create the file record in the database
-    await File.create({
-      fileName: fileName,
-      checksum: checksum,
-      checksumType: checksumType,
-      architectureId: architecture.id,
-      fileSize: fileSize
-    });
-
-    // Log successful upload
-    console.log('File record created:', {
-      fileName,
-      checksum,
-      checksumType,
-      architectureId: architecture.id,
-      fileSize,
-      path: req.file.path
-    });
-
-    return res.status(200).send({
-      message: "Uploaded the file successfully",
-      fileName: fileName,
-      fileSize: fileSize,
-      path: req.file.path
-    });
   } catch (err) {
     // Log detailed error information
     console.error('File upload error:', {

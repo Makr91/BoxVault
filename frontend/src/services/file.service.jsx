@@ -6,57 +6,83 @@ const baseURL = window.location.origin;
 
 class FileService {
   async upload(file, organization, name, version, provider, architecture, checksum, checksumType, onUploadProgress) {
-    let formData = new FormData();
-    formData.append("file", file, "vagrant.box"); // Set filename to vagrant.box
-    formData.append("checksum", checksum || "");
-    formData.append("checksumType", checksumType || "NULL");
+    // Validate file
+    if (!file) {
+      throw new Error('No file provided');
+    }
+
+    // Log initial upload details
+    console.log('Starting upload process:', {
+      fileName: file.name,
+      fileSize: file.size,
+      checksum: checksum || 'none',
+      checksumType: checksumType || 'NULL',
+      organization,
+      provider,
+      architecture
+    });
 
     const maxRetries = 3;
+    const formData = new FormData();
     let retryCount = 0;
     let lastError = null;
 
     while (retryCount < maxRetries) {
       try {
-        // Log upload attempt
+        // Reset and prepare form data for each attempt
+        formData.delete('file');
+        formData.delete('checksum');
+        formData.delete('checksumType');
+        
+        formData.append("file", file);
+        formData.append("checksum", checksum || "");
+        formData.append("checksumType", checksumType || "NULL");
+
+        // Log retry attempt
         console.log(`Upload attempt ${retryCount + 1}/${maxRetries}`, {
           fileName: file.name,
           fileSize: file.size,
-          organization,
-          provider,
-          architecture
+          attempt: retryCount + 1,
+          totalAttempts: maxRetries
         });
 
         const response = await axios.post(
           `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`, 
           formData,
           {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              "Accept": "application/json",
-              "Cache-Control": "no-cache",
-              ...authHeader()
-            },
+            headers: authHeader(), // Let axios set the correct Content-Type for multipart/form-data
+            // Configure axios for large file upload with chunked transfer
             onUploadProgress: (progressEvent) => {
               if (onUploadProgress) {
-                // Log detailed progress
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                
+                // Log detailed progress
                 console.log('Upload progress:', {
                   loaded: progressEvent.loaded,
                   total: progressEvent.total,
-                  percent: `${percent}%`
+                  percent: `${percent}%`,
+                  speed: progressEvent.rate ? `${Math.round(progressEvent.rate / 1024 / 1024 * 100) / 100} MB/s` : 'calculating...'
                 });
+                
                 onUploadProgress(progressEvent);
               }
             },
-            // Prevent axios from automatically retrying
-            maxRedirects: 0,
-            // Increase timeout for large files
-            timeout: 24 * 60 * 60 * 1000, // 24 hours
-            // Disable response timeout
+            maxRedirects: 0, // Prevent automatic retries
+            timeout: 24 * 60 * 60 * 1000, // 24 hour timeout
             timeoutErrorMessage: 'Upload timed out - please try again',
-            // Ensure proper handling of large files
             maxContentLength: Infinity,
-            maxBodyLength: Infinity
+            maxBodyLength: Infinity,
+            // Prevent data transformation but ensure proper chunking
+            transformRequest: [(data) => {
+              console.log('Sending chunk:', {
+                type: data.constructor.name,
+                size: data instanceof FormData ? 'FormData' : data.length
+              });
+              return data;
+            }],
+            validateStatus: (status) => { // Custom status validation
+              return status >= 200 && status < 300 || status === 413; // Accept 413 for file too large
+            }
           }
         );
 
