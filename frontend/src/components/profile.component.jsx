@@ -379,7 +379,7 @@ const Profile = () => {
                               className="btn btn-outline-secondary btn-sm me-2" 
                               onClick={() => setShowPasswords(prev => ({...prev, [account.id]: !prev[account.id]}))}
                             >
-                               {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
+                               {showPasswords[account.id] ? <FaEyeSlash /> : <FaEye />}
                             </button>
                             <button className="btn btn-danger btn-sm" onClick={() => handleDeleteServiceAccount(account.id)}>Delete</button>
                           </div>
