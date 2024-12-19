@@ -619,15 +619,19 @@ exports.findOne = async (req, res) => {
         return true;
       }
 
-      // Get the user's organization
-      const user = organizationData.users.find(u => u.id === userId);
+      // Get user's organization
+      const user = await Users.findOne({
+        where: { id: userId },
+        include: [{ model: Organization, as: 'organization' }]
+      });
+
       if (!user) {
         return false;
       }
 
       // Published + Private: Organization members can access
       if (box.published && !box.isPublic) {
-        return true;
+        return user.organization.id === organizationData.id;
       }
 
       // Unpublished + Private: Only box owner can access
@@ -923,15 +927,19 @@ exports.downloadBox = async (req, res) => {
         return true;
       }
 
-      // Get the user's organization
-      const user = organizationData.users.find(u => u.id === userId);
+      // Get user's organization
+      const user = await Users.findOne({
+        where: { id: userId },
+        include: [{ model: Organization, as: 'organization' }]
+      });
+
       if (!user) {
         return false;
       }
 
       // Published + Private: Organization members can download
       if (box.published && !box.isPublic) {
-        return true;
+        return user.organization.id === organizationData.id;
       }
 
       return false;

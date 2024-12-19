@@ -7,7 +7,11 @@ module.exports = function(app) {
   app.use(function(req, res, next) {
     res.header(
       "Access-Control-Allow-Headers",
-      "x-access-token, Origin, Content-Type, Accept"
+      "x-access-token, Authorization, Origin, Content-Type, Accept"
+    );
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
     );
     next();
   });
@@ -16,12 +20,13 @@ module.exports = function(app) {
   app.get("/api/discover", box.discoverAll);
   app.get("/api/discover/:name", box.discoverAll);
   app.get("/api/organization/:organization/box", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], box.getOrganizationBoxDetails);
-  app.get("/api/organization/:organization/box/:name", vagrantHandler, box.findOne);
-  app.get("/api/organization/:organization/box/:name/metadata", vagrantHandler, box.findOne);
+  // API routes for frontend
+  app.get("/api/organization/:organization/box/:name", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], box.findOne);
+  app.get("/api/organization/:organization/box/:name/metadata", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], box.findOne);
 
-  // Then Vagrant routes (less specific)
+  // Vagrant-specific routes
   app.get("/:organization/boxes/:name/versions/:version/providers/:provider/:architecture/vagrant.box", vagrantHandler, box.downloadBox);
-  app.get("/:organization/:boxName", vagrantHandler, box.findOne);  // Root metadata request (most generic)
+  app.get("/:organization/:boxName", vagrantHandler, box.findOne);  // Root metadata request for Vagrant
 
   // Administrative Actions
   app.post("/api/organization/:organization/box", [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyBoxName.validateBoxName, verifyBoxName.checkBoxDuplicate], box.create );

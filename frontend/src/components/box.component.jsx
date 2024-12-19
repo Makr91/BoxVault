@@ -73,38 +73,66 @@ const Box = ({ theme }) => {
             setBoxOrganization(boxData.user.organization.name);
           }
 
-          // Check if the box is public or the user is authorized
-          if (boxData.isPublic || (user && user.organization === organization)) {
-            // Fetch versions using the box's organization
-            VersionDataService.getVersions(organization, name)
-              .then(response => {
-                setVersions(response.data);
-                setAllVersions(response.data);
-                response.data.forEach(version => {
-                  ProviderService.getProviders(organization, name, version.versionNumber)
-                    .then(providerResponse => {
-                      setProviders(prev => ({
-                        ...prev,
-                        [version.versionNumber]: providerResponse.data
-                      }));
-                    })
-                    .catch(e => {
-                      console.log(e);
-                    });
-                });
-              })
-              .catch(e => {
-                console.log(e);
+          // Fetch versions using the box's organization
+          VersionDataService.getVersions(organization, name)
+            .then(response => {
+              setVersions(response.data);
+              setAllVersions(response.data);
+              response.data.forEach(version => {
+                ProviderService.getProviders(organization, name, version.versionNumber)
+                  .then(providerResponse => {
+                    setProviders(prev => ({
+                      ...prev,
+                      [version.versionNumber]: providerResponse.data
+                    }));
+                  })
+                  .catch(e => {
+                    console.log(e);
+                    // Only show provider errors if no other error is currently showing
+                    if (!message) {
+                      if (e.response && e.response.status === 403) {
+                        setMessage(e.response.data.message);
+                      } else {
+                        setMessage("Error loading provider details");
+                      }
+                      setMessageType("danger");
+                    }
+                  });
               });
-          } else {
-            setMessage("No Box Found");
-            setMessageType("danger");
-          }
+            })
+            .catch(e => {
+              console.log(e);
+              if (e.response && e.response.status === 403) {
+                setMessage(e.response.data.message);
+                setMessageType("danger");
+                return;
+              } else if (e.response && e.response.status === 404) {
+                setMessage("Error loading versions");
+                setMessageType("danger");
+                return;
+              } else {
+                setMessage("Error loading versions");
+                setMessageType("danger");
+                return;
+              }
+            });
         })
         .catch(e => {
           console.log(e);
-          setMessage("No Box Found");
-          setMessageType("danger");
+          if (e.response && e.response.status === 403) {
+            setMessage(e.response.data.message);
+            setMessageType("danger");
+            // Don't try to fetch versions for unauthorized boxes
+            return;
+          } else if (e.response && e.response.status === 404) {
+            setMessage("No Box Found");
+            setMessageType("danger");
+            return;
+          } else {
+            setMessage("Error loading box details");
+            setMessageType("danger");
+            return;
+          }
         });
     }
   }, [organization, name]);
@@ -142,8 +170,18 @@ const Box = ({ theme }) => {
     BoxDataService.update(currentUser.organization, currentBox.name, data)
       .then(response => {
         setCurrentBox({ ...currentBox, published: status });
-        console.log(response.data);
+        setMessage(status ? "Box published successfully!" : "Box unpublished successfully!");
+        setMessageType("success");
       })
+      .catch(e => {
+        console.log(e);
+        if (e.response && e.response.data && e.response.data.message) {
+          setMessage(e.response.data.message);
+        } else {
+          setMessage(`Error ${status ? 'publishing' : 'unpublishing'} box`);
+        }
+        setMessageType("danger");
+      });
   };
 
   const updateBox = () => {
@@ -164,7 +202,10 @@ const Box = ({ theme }) => {
         setEditMode(false);
   
         if (originalName !== currentBox.name) {
-          navigate(`/${currentUser.organization}/${currentBox.name}`);
+          // Short delay to show success message before navigation
+          setTimeout(() => {
+            navigate(`/${currentUser.organization}/${currentBox.name}`);
+          }, 1000);
         }
       })
       .catch(e => {
@@ -181,12 +222,20 @@ const Box = ({ theme }) => {
   const deleteBox = () => {
     BoxDataService.remove(currentUser.organization, currentBox.name)
       .then(response => {
-        console.log(response.data);
-        navigate(`/${currentUser.organization}`);
+        setMessage("Box deleted successfully!");
+        setMessageType("success");
+        // Short delay to show success message before navigation
+        setTimeout(() => {
+          navigate(`/${currentUser.organization}`);
+        }, 1000);
       })
       .catch(e => {
         console.log(e);
-        setMessage("An error occurred while deleting the box.");
+        if (e.response && e.response.data && e.response.data.message) {
+          setMessage(e.response.data.message);
+        } else {
+          setMessage("An error occurred while deleting the box.");
+        }
         setMessageType("danger");
       });
   };
