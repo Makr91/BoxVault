@@ -35,11 +35,19 @@ const authenticateVagrantRequest = async (req) => {
     return null;
   }
 
+  // Log raw token for debugging
+  console.log('Raw Authorization header:', {
+    value: token,
+    length: token.length
+  });
+
   // Remove Bearer if present
   token = token.replace(/^Bearer\s+/, '');
-  console.log('Token type:', {
+  console.log('Processed token:', {
+    value: token,
     isJWT: token.split('.').length === 3,
-    length: token.length
+    length: token.length,
+    startsWithBearer: token.startsWith('Bearer')
   });
 
   try {
