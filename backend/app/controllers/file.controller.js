@@ -28,9 +28,35 @@ const Architecture = db.architectures;
 const File = db.files;
 
 const upload = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  // Extract parameters from either Vagrant-style URL or API endpoint
+  let organization, boxId, versionNumber, providerName, architectureName;
+  
+  if (req.isVagrantRequest) {
+    // Parse from Vagrant URL format
+    const urlParts = req.url.split('/').filter(Boolean);
+    organization = urlParts[0];
+    boxId = urlParts[2];
+    versionNumber = urlParts[4];
+    providerName = urlParts[6];
+    architectureName = urlParts[7];
+  } else {
+    // Use API endpoint parameters
+    ({ organization, boxId, versionNumber, providerName, architectureName } = req.params);
+  }
+
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
+
+  console.log('Download request:', {
+    isVagrantRequest: req.isVagrantRequest,
+    url: req.url,
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName,
+    filePath
+  });
   const uploadStartTime = Date.now();
 
   // Set a longer timeout for the request
