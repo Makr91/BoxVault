@@ -262,7 +262,7 @@ const download = async (req, res) => {
           model: db.box,
           as: 'box',
           where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
+          attributes: ['id', 'name', 'isPublic', 'published'],
           include: [{
             model: db.versions,
             as: 'versions',
@@ -296,47 +296,81 @@ const download = async (req, res) => {
       });
     }
 
+    // Log box status and auth details
+    console.log('Box access check:', {
+      box: {
+        name: box.name,
+        published: box.published,
+        isPublic: box.isPublic
+      },
+      auth: {
+        userId,
+        isServiceAccount,
+        hasToken: !!token
+      }
+    });
+
     // Check access based on box status and user permissions
+    let accessReason = '';
     const canAccess = await (async () => {
       // Published + Public: Anyone can download
       if (box.published && box.isPublic) {
+        accessReason = 'Public published box';
         return true;
       }
 
       // Unpublished boxes cannot be downloaded
       if (!box.published) {
+        accessReason = 'Box is not published';
         return false;
       }
 
       // If no user is authenticated
       if (!userId) {
+        accessReason = 'No authenticated user';
         return false;
       }
 
       // Service accounts can access all published boxes
       if (isServiceAccount) {
+        accessReason = 'Service account access';
         return true;
       }
 
       // Get the user's organization
       const user = organizationData.users.find(u => u.id === userId);
       if (!user) {
+        accessReason = 'User not found in organization';
         return false;
       }
 
       // Published + Private: Organization members can download
       if (box.published && !box.isPublic) {
+        accessReason = 'Organization member access to private box';
         return true;
       }
 
+      accessReason = 'No access rule matched';
       return false;
     })();
+
+    // Log access check result
+    console.log('Access check result:', {
+      canAccess,
+      reason: accessReason,
+      url: req.url,
+      method: req.method,
+      headers: req.headers
+    });
 
     if (!canAccess) {
       return res.status(403).json({ 
         message: !box.published
           ? "This box is not published and cannot be downloaded."
-          : "This box is private. Please authenticate to download it."
+          : "This box is private. Please authenticate to download it.",
+        details: {
+          reason: accessReason
+        }
       });
     }
 
@@ -381,7 +415,7 @@ const info = async (req, res) => {
           model: db.box,
           as: 'box',
           where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
+          attributes: ['id', 'name', 'isPublic', 'published'],
           include: [{
             model: db.versions,
             as: 'versions',

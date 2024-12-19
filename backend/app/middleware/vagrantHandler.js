@@ -21,29 +21,43 @@ const isVagrantRequest = (req) => {
 };
 
 const authenticateVagrantRequest = async (req) => {
-  // Check for token in headers
-  let token = req.headers["x-access-token"] || req.headers["authorization"];
-  
-  // Check for ATLAS_TOKEN in environment
-  if (!token && process.env.ATLAS_TOKEN) {
-    token = process.env.ATLAS_TOKEN;
-  }
+  console.log('Authenticating Vagrant request:', {
+    headers: {
+      'authorization': !!req.headers["authorization"],
+      'user-agent': req.headers['user-agent']
+    }
+  });
 
+  // Check for token in Authorization header
+  let token = req.headers["authorization"];
   if (!token) {
+    console.log('No Authorization header found');
     return null;
   }
 
   // Remove Bearer if present
   token = token.replace(/^Bearer\s+/, '');
+  console.log('Token type:', {
+    isJWT: token.split('.').length === 3,
+    length: token.length
+  });
 
   try {
     // First try as JWT token
     const decoded = await jwt.verify(token, authConfig.jwt.jwt_secret.value);
     if (decoded.id) {
       const user = await User.findByPk(decoded.id);
+      console.log('JWT authentication successful:', {
+        userId: decoded.id,
+        isServiceAccount: decoded.isServiceAccount
+      });
       return { user, isServiceAccount: decoded.isServiceAccount };
     }
   } catch (err) {
+    console.log('JWT verification failed, trying service account:', {
+      error: err.message
+    });
+
     // Not a valid JWT, try as service account token
     const serviceAccount = await ServiceAccount.findOne({
       where: { token },
@@ -54,10 +68,15 @@ const authenticateVagrantRequest = async (req) => {
     });
 
     if (serviceAccount && serviceAccount.user) {
+      console.log('Service account authentication successful:', {
+        userId: serviceAccount.user.id,
+        username: serviceAccount.user.username
+      });
       return { user: serviceAccount.user, isServiceAccount: true };
     }
   }
 
+  console.log('Authentication failed: No valid token found');
   return null;
 };
 
@@ -140,11 +159,28 @@ const vagrantHandler = async (req, res, next) => {
       req.user = auth.user;
     }
 
-    // Parse the URL
-    const parsedUrl = parseVagrantUrl(req.url);
-    if (!parsedUrl) {
-      return next();
-    }
+  // Parse the URL
+  const parsedUrl = parseVagrantUrl(req.url);
+  if (!parsedUrl) {
+    console.log('Not a Vagrant URL format:', {
+      url: req.url,
+      method: req.method,
+      headers: req.headers
+    });
+    return next();
+  }
+
+  // Log parsed URL and authentication details
+  console.log('Vagrant request details:', {
+    parsedUrl,
+    auth: {
+      hasToken: !!req.headers["authorization"],
+      userId: req.userId,
+      isServiceAccount: req.isServiceAccount
+    },
+    headers: req.headers,
+    method: req.method
+  });
 
     // For HEAD requests, handle metadata detection
     if (req.method === 'HEAD') {
