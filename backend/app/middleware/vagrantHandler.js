@@ -314,7 +314,7 @@ const vagrantHandler = async (req, res, next) => {
         req.headers['authorization'] = `Bearer ${req.serviceAccountToken}`;
       }
     } else {
-      // For metadata requests, set JSON headers
+      // For metadata requests, set JSON headers and forward to box controller
       res.set({
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
@@ -326,9 +326,6 @@ const vagrantHandler = async (req, res, next) => {
       if (!req.headers.accept) {
         req.headers.accept = 'application/json';
       }
-
-      // For metadata, rewrite to API endpoint
-      req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}`;
     }
 
     console.log('Request handling:', {
