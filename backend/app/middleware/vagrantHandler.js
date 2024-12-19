@@ -41,11 +41,14 @@ const authenticateVagrantRequest = async (req) => {
     length: token.length
   });
 
-  // Remove Bearer if present
-  token = token.replace(/^Bearer\s+/, '');
+  // Only remove Bearer prefix for JWT tokens
+  const isJWT = token.split('.').length === 3;
+  if (isJWT) {
+    token = token.replace(/^Bearer\s+/, '');
+  }
   console.log('Processed token:', {
     value: token,
-    isJWT: token.split('.').length === 3,
+    isJWT: isJWT,
     length: token.length,
     startsWithBearer: token.startsWith('Bearer')
   });
@@ -71,13 +74,14 @@ const authenticateVagrantRequest = async (req) => {
     });
 
     // Not a valid JWT, try as service account token
+    const serviceAccountToken = token.replace(/^Bearer\s+/, '');
     console.log('Looking up service account with token:', {
-      tokenLength: token.length,
-      tokenPrefix: token.substring(0, 10) + '...'
+      tokenLength: serviceAccountToken.length,
+      tokenPrefix: serviceAccountToken.substring(0, 10) + '...'
     });
 
     const serviceAccount = await ServiceAccount.findOne({
-      where: { token },
+      where: { token: serviceAccountToken },
       include: [{
         model: User,
         as: 'user'
@@ -158,9 +162,10 @@ const parseVagrantUrl = (url) => {
     const boxesIndex = parts.indexOf('boxes');
     if (boxesIndex > 0 && boxesIndex + 1 < parts.length) {
       // Example: /STARTcloud/boxes/alma9-server
+      // Example: /STARTcloud/boxes/alma9-server/metadata
       return {
         organization: parts[0],
-        boxName: parts[boxesIndex + 1],
+        boxName: parts[boxesIndex + 1].replace(/\/metadata$/, ''), // Remove /metadata if present
         isDownload: false
       };
     }
@@ -243,9 +248,10 @@ const vagrantHandler = async (req, res, next) => {
       req.isServiceAccount = auth.isServiceAccount;
       req.user = auth.user;
 
-      // If this is a service account, ensure the token is passed through
+      // If this is a service account, ensure Bearer prefix is present
       if (auth.isServiceAccount) {
-        req.headers['authorization'] = auth.token;
+        const token = auth.token.startsWith('Bearer ') ? auth.token : `Bearer ${auth.token}`;
+        req.headers['authorization'] = token;
       }
     }
 
