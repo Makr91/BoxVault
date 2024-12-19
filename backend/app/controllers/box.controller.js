@@ -472,11 +472,16 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
         .replace(/^v/, '') // Remove 'v' prefix if present
         .replace(/[^0-9.]*/g, '') // Remove any non-numeric/non-dot characters
         .split('.').slice(0, 3).join('.'); // Ensure x.y.z format
+
+      // Build the download URL
+      const downloadUrl = `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers`;
+
       return {
         version: versionNumber,
         status: "active",
         description_html: "<p>Build</p>\n",
         description_markdown: "Build",
+        download_url: downloadUrl, // Add top-level download URL
         providers: version.providers.flatMap(provider => 
           provider.architectures.map(arch => {
             const file = arch.files[0];
@@ -488,14 +493,11 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 
             return {
               name: provider.name,
-              // Format URL exactly as Vagrant expects
-              url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`,
+              url: `${downloadUrl}/${provider.name}/${arch.name}/vagrant.box`,
               checksum: checksum,
               checksum_type: finalChecksumType,
               architecture: arch.name,
-              default_architecture: arch.defaultBox || true,
-              // Add download_url field that Vagrant prefers
-              download_url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`
+              default_architecture: arch.defaultBox || true
             };
           })
         )
