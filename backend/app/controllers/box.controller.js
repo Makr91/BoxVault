@@ -490,7 +490,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
           return {
             // Required fields from Provider class
             name: provider.name,
-            url: `${baseUrl}/api/organization/${organization.name}/box/${box.name}/version/${version.versionNumber.replace(/^v/, '')}/provider/${provider.name}/architecture/${arch.name}/file/download`,
+            url: `${baseUrl}/api/file/download/${requestedName}/${version.versionNumber.replace(/^v/, '')}/${provider.name}/${arch.name}/vagrant.box`,
             checksum: file?.checksum || "",
             checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
             architecture: arch.name,
@@ -503,6 +503,8 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 
   // Log the complete response for debugging
   console.log('Vagrant Response:', {
+    requestedName,
+    actualName: response.name,
     url: `${baseUrl}/${organization.name}/boxes/${box.name}`,
     headers: {
       'Content-Type': 'application/json',
@@ -510,6 +512,14 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
     },
     body: JSON.stringify(response, null, 2)
   });
+
+  // Verify the name matches exactly what Vagrant requested
+  if (response.name !== requestedName) {
+    console.error('Name mismatch:', {
+      requested: requestedName,
+      actual: response.name
+    });
+  }
 
   return response;
 };
@@ -591,11 +601,11 @@ exports.findOne = async (req, res) => {
     }
 
     let response;
-    if (req.isVagrantRequest) {
-      // Format response for Vagrant
+    if (req.url.endsWith('/metadata')) {
+      // Format response for Vagrant metadata request
       const baseUrl = appConfig.boxvault.origin.value;
-      // Pass the requested name from vagrantInfo
-      response = formatVagrantResponse(box, organizationData, baseUrl, req.vagrantInfo.requestedName);
+      // Always use the requested name from vagrantInfo
+      response = formatVagrantResponse(box, organizationData, baseUrl, `${organization}/${name}`);
     } else {
       // Format response for frontend
       response = {

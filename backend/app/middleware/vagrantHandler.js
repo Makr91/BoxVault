@@ -15,19 +15,16 @@ const parseVagrantUrl = (url) => {
   // 4. /:organization/boxes/:boxName/versions/:version/providers/:provider/:arch/vagrant.box (download format)
 
   // First check if this is a box download URL
-  // Format: /:org/boxes/:box/versions/:version/providers/:provider/:arch/vagrant.box
+  // Format: /:org/:box/versions/:version/providers/:provider/:arch/vagrant.box
   if (parts.includes('vagrant.box')) {
-    const boxIndex = parts.indexOf('boxes');
     const versionsIndex = parts.indexOf('versions');
     const providersIndex = parts.indexOf('providers');
     
-    if (boxIndex !== -1 && boxIndex >= 1 && 
-        versionsIndex !== -1 && 
-        providersIndex !== -1 && 
-        parts.length >= providersIndex + 3) {
+    if (versionsIndex !== -1 && providersIndex !== -1 && parts.length >= providersIndex + 3) {
+      // In the download URL, org and box are the first two parts
       return {
-        organization: parts[boxIndex - 1],
-        boxName: parts[boxIndex + 1],
+        organization: parts[0],
+        boxName: parts[1],
         isDownload: true,
         version: parts[versionsIndex + 1],
         provider: parts[providersIndex + 1],
@@ -91,7 +88,8 @@ const vagrantHandler = (req, res, next) => {
   // For box downloads
   if (parsedUrl.isDownload) {
     // For box downloads, rewrite to our download endpoint
-    req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
+    // Note: Keep the URL format consistent with what we return in metadata
+    req.url = `/api/file/download/${parsedUrl.organization}/${parsedUrl.boxName}/${parsedUrl.version}/${parsedUrl.provider}/${parsedUrl.architecture}/vagrant.box`;
     
     // Don't set Content-Type for downloads
     // Let the download endpoint handle streaming the file
@@ -115,7 +113,7 @@ const vagrantHandler = (req, res, next) => {
   }
 
   // Rewrite the URL to our API format
-  req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}`;
+  req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
   
   // Store parsed URL info for the controller
   req.vagrantInfo = {
