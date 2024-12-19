@@ -99,10 +99,8 @@ const upload = multer({
         return cb(new Error('Invalid field name for file upload'));
       }
 
-      // Verify file name
-      if (file.originalname !== 'vagrant.box') {
-        console.log('Renaming file to vagrant.box');
-      }
+      // Always rename to vagrant.box regardless of original name
+      file.originalname = 'vagrant.box';
 
       cb(null, true);
     } catch (error) {
@@ -195,15 +193,17 @@ const uploadMiddleware = (req, res, next) => {
         return;
       }
 
-      // Log successful upload and continue
+      // Log successful upload
       console.log('Upload completed:', {
         filename: req.file.filename,
+        originalname: req.file.originalname,
         path: req.file.path,
         size: req.file.size,
         mimetype: req.file.mimetype,
         duration: duration
       });
-      
+
+      // Continue to next middleware
       next();
     });
   } catch (error) {
@@ -228,9 +228,42 @@ const uploadSSLMiddleware = (req, res) => {
           stack: err.stack
         });
         reject(err);
-      } else {
-        resolve();
+        return;
       }
+
+      if (!req.file) {
+        const error = new Error('No file uploaded');
+        console.error('SSL upload error:', {
+          message: error.message,
+          headers: req.headers,
+          body: req.body
+        });
+        reject(error);
+        return;
+      }
+
+      if (req.file.size === 0) {
+        const error = new Error('Empty file uploaded');
+        console.error('SSL upload error:', {
+          message: error.message,
+          file: req.file
+        });
+        fs.unlink(req.file.path, (unlinkErr) => {
+          if (unlinkErr) console.error('Error deleting empty file:', unlinkErr);
+        });
+        reject(error);
+        return;
+      }
+
+      console.log('SSL upload completed:', {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        path: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
+      resolve(req.file);
     });
   });
 };

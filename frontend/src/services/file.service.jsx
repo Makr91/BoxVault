@@ -34,8 +34,8 @@ class FileService {
         formData.delete('checksum');
         formData.delete('checksumType');
 
-        // Add file with proper name
-        formData.append('file', file, 'vagrant.box');
+        // Add file with original name
+        formData.append('file', file);
         
         // Add metadata
         formData.append('checksum', checksum || '');
@@ -69,22 +69,12 @@ class FileService {
           formData,
           {
             // Configure axios for upload
-            headers: {
-              ...authHeader(),
-              'Accept': 'application/json'
-              // Let browser set Content-Type with boundary
-            },
+            headers: authHeader(),
             onUploadProgress,
             timeout: 24 * 60 * 60 * 1000, // 24 hour timeout
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
-            validateStatus: (status) => status >= 200 && status < 300,
-            // Prevent axios from trying to transform FormData
-            transformRequest: [(data, headers) => {
-              // Remove Content-Type to let browser set it with boundary
-              delete headers['Content-Type'];
-              return data;
-            }]
+            validateStatus: (status) => status >= 200 && status < 300
           }
         );
 

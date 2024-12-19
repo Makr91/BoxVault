@@ -79,22 +79,23 @@ const upload = async (req, res) => {
       });
     }
 
-    // Process the upload (will overwrite if file exists)
-    await uploadFileMiddleware(req, res);
+    // Process the upload using Promise-based middleware
+    await new Promise((resolve, reject) => {
+      uploadFileMiddleware(req, res, (err) => {
+        if (err) {
+          reject(err);
+        } else if (!req.file) {
+          reject(new Error('No file uploaded'));
+        } else {
+          resolve(req.file);
+        }
+      });
+    });
 
     // If headers are already sent by middleware, return
     if (res.headersSent) {
       console.log('Headers already sent by middleware');
       return;
-    }
-
-    // Verify the upload was successful
-    if (!req.file) {
-      console.error('No file in request after upload middleware');
-      return res.status(400).json({ 
-        error: 'NO_FILE',
-        message: "No file uploaded!"
-      });
     }
 
     // Log successful file upload
@@ -596,13 +597,33 @@ const update = async (req, res) => {
       });
     }
 
-    // Process the upload
-    await uploadFileMiddleware(req, res);
+    // Process the upload using Promise-based middleware
+    await new Promise((resolve, reject) => {
+      uploadFileMiddleware(req, res, (err) => {
+        if (err) {
+          reject(err);
+        } else if (!req.file) {
+          reject(new Error('No file uploaded'));
+        } else {
+          resolve(req.file);
+        }
+      });
+    });
 
-    // Verify the upload was successful
-    if (!req.file) {
-      return res.status(404).send({ message: "No file uploaded!" });
+    // If headers are already sent by middleware, return
+    if (res.headersSent) {
+      console.log('Headers already sent by middleware');
+      return;
     }
+
+    // Log successful file upload
+    console.log('File updated successfully:', {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      path: req.file.path
+    });
 
     let checksum = req.body.checksum;
     let checksumType = req.body.checksumType;

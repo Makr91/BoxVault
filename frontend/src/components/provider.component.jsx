@@ -331,27 +331,23 @@ const Provider = () => {
     setMessage("");
     setProgress(0);
   
-    // Validate inputs
-    if (!selectedFiles || selectedFiles.length === 0) {
-      setMessage("Please select a file before adding an architecture.");
-      setMessageType("danger");
-      return;
-    }
-
-    if (!newArchitecture.name) {
-      setMessage("Please enter an architecture name.");
-      setMessageType("danger");
-      return;
-    }
-
-    const currentFile = selectedFiles[0];
-    console.log('Starting upload process:', {
-      fileName: currentFile.name,
-      fileSize: currentFile.size,
-      architectureName: newArchitecture.name
-    });
-  
     try {
+      // Validate inputs
+      if (!selectedFiles || selectedFiles.length === 0) {
+        throw new Error("Please select a file before adding an architecture.");
+      }
+
+      if (!newArchitecture.name) {
+        throw new Error("Please enter an architecture name.");
+      }
+
+      const currentFile = selectedFiles[0];
+      console.log('Starting upload process:', {
+        fileName: currentFile.name,
+        fileSize: currentFile.size,
+        architectureName: newArchitecture.name
+      });
+  
       // First create the architecture record
       const architectureData = {
         ...newArchitecture,
@@ -378,8 +374,10 @@ const Provider = () => {
         checksum,
         checksumType,
         (progressEvent) => {
-          const percent = Math.round((100 * progressEvent.loaded) / progressEvent.total);
-          setProgress(percent);
+          if (progressEvent.total) {
+            const percent = Math.round((100 * progressEvent.loaded) / progressEvent.total);
+            setProgress(percent);
+          }
         }
       );
 
@@ -388,6 +386,7 @@ const Provider = () => {
       // Show success message
       setMessage("Architecture and file uploaded successfully!");
       setMessageType("success");
+
       // Refresh architectures list
       const updatedArchitectures = await ArchitectureService.getArchitectures(
         organization, 
@@ -407,23 +406,15 @@ const Provider = () => {
       setSelectedFiles(undefined);
       setProgress(0);
     } catch (error) {
-      if (error.response && error.response.status === 404) {
-        setMessage("No file uploaded!");
-        setMessageType("danger");
-      } else if (error.response && error.response.data && error.response.data.message) {
-        setMessage(error.response.data.message);
-        setMessageType("danger");
-      } else {
-        setMessage(`Could not add the architecture: ` + error);
-        setMessageType("danger");
-      }
+      console.error('Upload failed:', error);
+      setMessage(error.response?.data?.message || error.message);
+      setMessageType("danger");
     }
   };
   
   const cancelEdit = () => {
     setEditMode(false);
   };
-
 
   return (
     <div className="list row">
