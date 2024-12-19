@@ -21,12 +21,12 @@ const isVagrantRequest = (req) => {
 };
 
 const authenticateVagrantRequest = async (req) => {
-  console.log('Authenticating Vagrant request:', {
-    headers: {
-      'authorization': !!req.headers["authorization"],
-      'user-agent': req.headers['user-agent']
-    }
-  });
+    console.log('Authenticating Vagrant request:', {
+      headers: {
+        'has-auth': !!req.headers["authorization"],
+        'is-vagrant': req.headers['user-agent']?.startsWith('Vagrant/') || false
+      }
+    });
 
   // Check for token in Authorization header
   let token = req.headers["authorization"];
@@ -35,22 +35,19 @@ const authenticateVagrantRequest = async (req) => {
     return null;
   }
 
-  // Log raw token for debugging
-  console.log('Raw Authorization header:', {
-    value: token,
-    length: token.length
-  });
-
-  // Only remove Bearer prefix for JWT tokens
+  // Log original token length
+  const originalLength = token.length;
+  
+  // Remove Bearer prefix
+  token = token.replace(/^Bearer\s+/, '');
   const isJWT = token.split('.').length === 3;
-  if (isJWT) {
-    token = token.replace(/^Bearer\s+/, '');
-  }
-  console.log('Processed token:', {
-    value: token,
+  
+  // Log token details for debugging (without exposing token)
+  console.log('Token details:', {
+    originalLength,
+    cleanLength: token.length,
     isJWT: isJWT,
-    length: token.length,
-    startsWithBearer: token.startsWith('Bearer')
+    type: isJWT ? 'JWT' : 'Service Account'
   });
 
   try {
@@ -74,14 +71,13 @@ const authenticateVagrantRequest = async (req) => {
     });
 
     // Not a valid JWT, try as service account token
-    const serviceAccountToken = token.replace(/^Bearer\s+/, '');
-    console.log('Looking up service account with token:', {
-      tokenLength: serviceAccountToken.length,
-      tokenPrefix: serviceAccountToken.substring(0, 10) + '...'
+    console.log('Looking up service account token:', {
+      tokenLength: token.length,
+      type: 'Service Account'
     });
 
     const serviceAccount = await ServiceAccount.findOne({
-      where: { token: serviceAccountToken },
+      where: { token: token },
       include: [{
         model: User,
         as: 'user'
@@ -218,15 +214,15 @@ const vagrantHandler = async (req, res, next) => {
       return next();
     }
 
-    // Log the incoming request with full details
+    // Log the incoming request (with minimal header info)
     console.log('Incoming Vagrant request:', {
       url: req.url,
       originalUrl: req.originalUrl,
       method: req.method,
       headers: {
-        'user-agent': req.headers['user-agent'],
-        'authorization': !!req.headers['authorization'],
-        'accept': req.headers['accept']
+        'has-auth': !!req.headers['authorization'],
+        'is-vagrant': req.headers['user-agent']?.startsWith('Vagrant/') || false,
+        'accepts-json': req.headers['accept']?.includes('application/json') || false
       },
       query: req.query,
       params: req.params,
@@ -248,10 +244,9 @@ const vagrantHandler = async (req, res, next) => {
       req.isServiceAccount = auth.isServiceAccount;
       req.user = auth.user;
 
-      // If this is a service account, ensure Bearer prefix is present
+      // Store the clean token for later
       if (auth.isServiceAccount) {
-        const token = auth.token.startsWith('Bearer ') ? auth.token : `Bearer ${auth.token}`;
-        req.headers['authorization'] = token;
+        req.serviceAccountToken = auth.token;
       }
     }
 
@@ -317,6 +312,12 @@ const vagrantHandler = async (req, res, next) => {
     if (parsedUrl.isDownload) {
       // For box downloads, rewrite to our download endpoint
       req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
+      
+      // For service accounts, add Bearer prefix back to Authorization header
+      // only when forwarding to download endpoint
+      if (req.serviceAccountToken) {
+        req.headers['authorization'] = `Bearer ${req.serviceAccountToken}`;
+      }
       
       // Don't set Content-Type for downloads
       // Let the download endpoint handle streaming the file
