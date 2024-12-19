@@ -586,10 +586,25 @@ exports.findOne = async (req, res) => {
       return res.status(404).send({ message: `Box not found with name: ${name}.` });
     }
 
+    let response;
+    if (req.isVagrantRequest) {
+      // Format response for Vagrant
+      const baseUrl = appConfig.boxvault.origin.value;
+      response = formatVagrantResponse(box, organizationData, baseUrl);
+    } else {
+      // Format response for frontend
+      response = {
+        ...box.toJSON(),
+        organization: {
+          id: organizationData.id,
+          name: organizationData.name,
+          emailHash: organizationData.emailHash
+        }
+      };
+    }
+
     // If the box is public, allow access
     if (box.isPublic) {
-      const baseUrl = appConfig.boxvault.origin.value;
-      const response = formatVagrantResponse(box, organizationData, baseUrl);
       return res.send(response);
     }
 
@@ -600,8 +615,6 @@ exports.findOne = async (req, res) => {
 
     if (isServiceAccount) {
       // Service accounts can access all boxes
-      const baseUrl = appConfig.boxvault.origin.value;
-      const response = formatVagrantResponse(box, organizationData, baseUrl);
       return res.send(response);
     }
 
@@ -611,8 +624,6 @@ exports.findOne = async (req, res) => {
     }
 
     // If the user belongs to the organization, allow access
-    const baseUrl = appConfig.boxvault.origin.value;
-    const response = formatVagrantResponse(box, organizationData, baseUrl);
     return res.send(response);
 
   } catch (err) {
