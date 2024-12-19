@@ -73,7 +73,8 @@ const upload = async (req, res) => {
     });
 
     if (!architecture) {
-      return res.status(404).send({
+      return res.status(404).json({
+        error: 'NOT_FOUND',
         message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
       });
     }
@@ -83,13 +84,27 @@ const upload = async (req, res) => {
 
     // If headers are already sent by middleware, return
     if (res.headersSent) {
+      console.log('Headers already sent by middleware');
       return;
     }
 
     // Verify the upload was successful
     if (!req.file) {
-      return res.status(404).json({ message: "No file uploaded!" });
+      console.error('No file in request after upload middleware');
+      return res.status(400).json({ 
+        error: 'NO_FILE',
+        message: "No file uploaded!"
+      });
     }
+
+    // Log successful file upload
+    console.log('File uploaded successfully:', {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      path: req.file.path
+    });
 
     try {
       // Get checksum info
@@ -143,11 +158,16 @@ const upload = async (req, res) => {
         });
       }
 
+      // Send detailed success response
       return res.status(200).json({
         message: fileRecord ? "File updated successfully" : "File uploaded successfully",
         fileName: fileName,
+        originalName: req.file.originalname,
         fileSize: req.file.size,
+        mimeType: req.file.mimetype,
         path: req.file.path,
+        checksum: checksum,
+        checksumType: checksumType,
         fileRecord: fileRecord
       });
     } catch (dbError) {
@@ -198,11 +218,17 @@ const upload = async (req, res) => {
     }
 
     // Generic error response with more details
-    res.status(500).send({
-      message: "Could not upload the file",
-      error: err.message,
-      code: err.code || 'UNKNOWN_ERROR'
-    });
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'UPLOAD_ERROR',
+        message: "Could not upload the file",
+        details: {
+          error: err.message,
+          code: err.code || 'UNKNOWN_ERROR',
+          duration: (Date.now() - uploadStartTime) / 1000
+        }
+      });
+    }
   }
 };
 
@@ -614,29 +640,37 @@ const update = async (req, res) => {
     console.log(err);
 
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(413).send({
+      return res.status(413).json({
+        error: "FILE_TOO_LARGE",
         message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
-        error: "FILE_TOO_LARGE"
+        details: {
+          maxSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
+          duration: (Date.now() - uploadStartTime) / 1000
+        }
       });
     }
 
     if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
       const uploadDuration = (Date.now() - uploadStartTime) / 1000;
-      return res.status(408).send({
-        message: "Upload timed out - Request took too long to complete",
+      return res.status(408).json({
         error: "UPLOAD_TIMEOUT",
+        message: "Upload timed out - Request took too long to complete",
         details: {
-          duration: `${uploadDuration} seconds`,
-          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`
+          duration: uploadDuration,
+          maxFileSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024
         }
       });
     }
 
     // Handle disk space errors
     if (err.code === 'ENOSPC') {
-      return res.status(507).send({
+      return res.status(507).json({
+        error: "NO_STORAGE_SPACE",
         message: "Not enough storage space available",
-        error: "NO_STORAGE_SPACE"
+        details: {
+          path: filePath,
+          duration: (Date.now() - uploadStartTime) / 1000
+        }
       });
     }
 

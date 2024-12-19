@@ -73,29 +73,44 @@ const storage = multer.diskStorage({
   }
 });
 
-// Configure multer upload
+// Configure multer upload with detailed logging
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: maxFileSize
+    fileSize: maxFileSize,
+    fieldSize: maxFileSize // Also set fieldSize limit
   },
   fileFilter: (req, file, cb) => {
     try {
-      // Log upload start
+      // Log upload start with full details
       console.log('Starting file upload:', {
         originalName: file.originalname,
         mimeType: file.mimetype,
         size: file.size,
+        fieldname: file.fieldname,
         maxSize: maxFileSize,
-        params: req.params
+        params: req.params,
+        headers: req.headers
       });
+
+      // Verify file field name
+      if (file.fieldname !== 'file') {
+        console.error('Invalid field name:', file.fieldname);
+        return cb(new Error('Invalid field name for file upload'));
+      }
+
+      // Verify file name
+      if (file.originalname !== 'vagrant.box') {
+        console.log('Renaming file to vagrant.box');
+      }
+
       cb(null, true);
     } catch (error) {
       console.error('Error in multer fileFilter:', error);
       cb(error);
     }
   }
-}).single('file'); // Use single file upload with field name 'file'
+}).single('file');
 
 // Main upload middleware
 const uploadMiddleware = (req, res, next) => {
@@ -145,29 +160,51 @@ const uploadMiddleware = (req, res, next) => {
         return;
       }
 
-      // Check if file was uploaded
+      // Process upload result
       if (!req.file) {
+        console.error('No file in request:', {
+          headers: req.headers,
+          body: req.body,
+          files: req.files
+        });
         if (!res.headersSent) {
           res.status(400).json({
             error: 'NO_FILE',
-            message: 'No file was uploaded'
+            message: 'No file was uploaded',
+            details: {
+              contentType: req.headers['content-type'],
+              contentLength: req.headers['content-length']
+            }
           });
         }
         return;
       }
 
-      // Log successful upload
+      // Validate file size
+      if (req.file.size === 0) {
+        console.error('Empty file uploaded');
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting empty file:', err);
+        });
+        if (!res.headersSent) {
+          res.status(400).json({
+            error: 'EMPTY_FILE',
+            message: 'Uploaded file is empty'
+          });
+        }
+        return;
+      }
+
+      // Log successful upload and continue
       console.log('Upload completed:', {
         filename: req.file.filename,
         path: req.file.path,
         size: req.file.size,
+        mimetype: req.file.mimetype,
         duration: duration
       });
-
-      // Continue only if headers haven't been sent
-      if (!res.headersSent) {
-        next();
-      }
+      
+      next();
     });
   } catch (error) {
     console.error('Unexpected error in upload middleware:', error);

@@ -29,14 +29,32 @@ class FileService {
 
     while (retryCount < maxRetries) {
       try {
-        // Reset and prepare form data for each attempt
+        // Clear any existing data
         formData.delete('file');
         formData.delete('checksum');
         formData.delete('checksumType');
+
+        // Add file with proper name
+        formData.append('file', file, 'vagrant.box');
         
-        formData.append("file", file);
-        formData.append("checksum", checksum || "");
-        formData.append("checksumType", checksumType || "NULL");
+        // Add metadata
+        formData.append('checksum', checksum || '');
+        formData.append('checksumType', checksumType || 'NULL');
+
+        // Verify form data
+        for (let [key, value] of formData.entries()) {
+          console.log('Form data entry:', {
+            field: key,
+            value: key === 'file' ? `File: ${value.name}` : value
+          });
+        }
+
+        // Log form data contents
+        console.log('Form data prepared:', {
+          fileName: file.name,
+          fileSize: file.size,
+          fields: Array.from(formData.entries()).map(([key]) => key)
+        });
 
         // Log retry attempt
         console.log(`Upload attempt ${retryCount + 1}/${maxRetries}`, {
@@ -50,50 +68,42 @@ class FileService {
           `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`, 
           formData,
           {
-            headers: authHeader(), // Let axios set the correct Content-Type for multipart/form-data
-            // Configure axios for large file upload with chunked transfer
-            onUploadProgress: (progressEvent) => {
-              if (onUploadProgress) {
-                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                
-                // Log detailed progress
-                console.log('Upload progress:', {
-                  loaded: progressEvent.loaded,
-                  total: progressEvent.total,
-                  percent: `${percent}%`,
-                  speed: progressEvent.rate ? `${Math.round(progressEvent.rate / 1024 / 1024 * 100) / 100} MB/s` : 'calculating...'
-                });
-                
-                onUploadProgress(progressEvent);
-              }
+            // Configure axios for upload
+            headers: {
+              ...authHeader(),
+              'Accept': 'application/json'
+              // Let browser set Content-Type with boundary
             },
-            maxRedirects: 0, // Prevent automatic retries
+            onUploadProgress,
             timeout: 24 * 60 * 60 * 1000, // 24 hour timeout
-            timeoutErrorMessage: 'Upload timed out - please try again',
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
-            // Prevent data transformation but ensure proper chunking
-            transformRequest: [(data) => {
-              console.log('Sending chunk:', {
-                type: data.constructor.name,
-                size: data instanceof FormData ? 'FormData' : data.length
-              });
+            validateStatus: (status) => status >= 200 && status < 300,
+            // Prevent axios from trying to transform FormData
+            transformRequest: [(data, headers) => {
+              // Remove Content-Type to let browser set it with boundary
+              delete headers['Content-Type'];
               return data;
-            }],
-            validateStatus: (status) => { // Custom status validation
-              return status >= 200 && status < 300 || status === 413; // Accept 413 for file too large
-            }
+            }]
           }
         );
+
+        // Log response
+        console.log('Upload response:', {
+          status: response.status,
+          data: response.data,
+          headers: response.headers
+        });
 
         // Log successful upload
         console.log('Upload completed successfully:', {
           fileName: file.name,
           fileSize: file.size,
-          attempts: retryCount + 1
+          attempts: retryCount + 1,
+          response: response.data
         });
 
-        return response;
+        return response.data;
       } catch (error) {
         lastError = error;
         console.error(`Upload attempt ${retryCount + 1} failed:`, {

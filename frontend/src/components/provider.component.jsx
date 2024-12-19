@@ -328,130 +328,84 @@ const Provider = () => {
 
   const addArchitecture = async (event) => {
     event.preventDefault();
+    setMessage("");
+    setProgress(0);
   
-    // Check if a file is selected
+    // Validate inputs
     if (!selectedFiles || selectedFiles.length === 0) {
       setMessage("Please select a file before adding an architecture.");
       setMessageType("danger");
       return;
     }
-  
-    const architectureData = {
-      ...newArchitecture,
-      checksum,
-      checksumType,
-    };
+
+    if (!newArchitecture.name) {
+      setMessage("Please enter an architecture name.");
+      setMessageType("danger");
+      return;
+    }
+
+    const currentFile = selectedFiles[0];
+    console.log('Starting upload process:', {
+      fileName: currentFile.name,
+      fileSize: currentFile.size,
+      architectureName: newArchitecture.name
+    });
   
     try {
-      await ArchitectureService.createArchitecture(organization, name, version, providerName, architectureData);
-      setMessage("The architecture was added successfully!");
-      setMessageType("success");
+      // First create the architecture record
+      const architectureData = {
+        ...newArchitecture,
+        checksum,
+        checksumType,
+      };
   
-      let currentFile = selectedFiles[0];
-      setProgress(0);
-  
-      try {
-        // Set initial progress
-        setProgress(0);
-        console.log('Starting upload:', {
-          fileName: currentFile.name,
-          fileSize: formatFileSize(currentFile.size)
-        });
-
-        // Attempt upload with retry logic
-        const maxRetries = 3;
-        let attempt = 0;
-        let uploadSuccessful = false;
-
-        while (attempt < maxRetries && !uploadSuccessful) {
-          try {
-            await FileService.upload(
-              currentFile,
-              organization,
-              name,
-              version,
-              providerName,
-              newArchitecture.name,
-              checksum,
-              checksumType,
-              (event) => {
-                const percent = Math.round((100 * event.loaded) / event.total);
-                setProgress(percent);
-                console.log('Upload progress:', {
-                  percent: `${percent}%`,
-                  uploaded: formatFileSize(event.loaded),
-                  total: formatFileSize(event.total)
-                });
-              }
-            );
-            uploadSuccessful = true;
-          } catch (uploadError) {
-            attempt++;
-            console.error(`Upload attempt ${attempt} failed:`, uploadError);
-            
-            if (attempt === maxRetries) {
-              throw uploadError; // Re-throw if all retries failed
-            }
-            
-            // Wait before retrying (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-          }
-        }
-      } catch (error) {
-        console.error('Upload failed after retries:', error);
-        let errorMessage = 'Upload failed';
-        
-        if (error.response) {
-          // Server responded with error
-          if (error.response.data && error.response.data.message) {
-            errorMessage = error.response.data.message;
-          } else if (error.response.status === 500) {
-            errorMessage = 'Server error during upload. The upload may have partially succeeded. Please check the server logs.';
-          }
-        } else if (error.request) {
-          // Request made but no response
-          errorMessage = 'No response from server. Please check your connection.';
-        }
-        
-        setMessage(errorMessage);
-        setMessageType("danger");
-        return;
-      }
-  
-      // Fetch the updated list of architectures after the file upload
-      const updatedArchitecturesResponse = await ArchitectureService.getArchitectures(organization, name, version, providerName);
-      const updatedArchitectures = await Promise.all(
-        updatedArchitecturesResponse.data.map(async (architecture) => {
-          try {
-            const fileInfoResponse = await FileService.info(organization, name, version, providerName, architecture.name);
-            return {
-              ...architecture,
-              fileName: fileInfoResponse.data.fileName,
-              downloadUrl: fileInfoResponse.data.downloadUrl,
-              fileSize: fileInfoResponse.data.fileSize,
-              checksum: fileInfoResponse.data.checksum,
-              checksumType: fileInfoResponse.data.checksumType,
-            };
-          } catch (error) {
-            return {
-              ...architecture,
-              fileName: null,
-              downloadUrl: null,
-              fileSize: null,
-              checksum: null,
-              checksumType: null,
-            };
-          }
-        })
+      await ArchitectureService.createArchitecture(
+        organization, 
+        name, 
+        version, 
+        providerName, 
+        architectureData
       );
   
-      setArchitectures(updatedArchitectures);
+      // Then upload the file
+      const uploadResult = await FileService.upload(
+        currentFile,
+        organization,
+        name,
+        version,
+        providerName,
+        newArchitecture.name,
+        checksum,
+        checksumType,
+        (progressEvent) => {
+          const percent = Math.round((100 * progressEvent.loaded) / progressEvent.total);
+          setProgress(percent);
+        }
+      );
+
+      console.log('Upload completed:', uploadResult);
+      
+      // Show success message
+      setMessage("Architecture and file uploaded successfully!");
+      setMessageType("success");
+      // Refresh architectures list
+      const updatedArchitectures = await ArchitectureService.getArchitectures(
+        organization, 
+        name, 
+        version, 
+        providerName
+      );
+      
+      // Update UI state
+      setArchitectures(updatedArchitectures.data);
   
+      // Reset form
       setShowAddArchitectureForm(false);
       setNewArchitecture({ name: "", defaultBox: false });
       setChecksum("");
-      setChecksumType("");
+      setChecksumType("NULL");
       setSelectedFiles(undefined);
+      setProgress(0);
     } catch (error) {
       if (error.response && error.response.status === 404) {
         setMessage("No file uploaded!");
@@ -609,9 +563,24 @@ const Provider = () => {
                     Default Box
                   </label>
                 </div>
-                <label className="btn btn-default">
-                  <input type="file" onChange={selectFile} validations={[requiredFile]} />
-                </label>
+                <div className="mb-3">
+                  <label className="btn btn-outline-primary">
+                    <input 
+                      type="file" 
+                      onChange={selectFile} 
+                      style={{ display: 'none' }}
+                      accept=".box,application/octet-stream"
+                    />
+                    Choose Box File
+                  </label>
+                  {selectedFiles && selectedFiles[0] && (
+                    <div className="mt-2">
+                      <small className="text-muted">
+                        Selected: {selectedFiles[0].name} ({formatFileSize(selectedFiles[0].size)})
+                      </small>
+                    </div>
+                  )}
+                </div>
                 {selectedFiles && (
                   <div>
                     <div className="progress mb-2" style={{ height: '25px' }}>
@@ -630,19 +599,28 @@ const Provider = () => {
                     </div>
                     <div className="text-muted">
                       {selectedFiles[0] && (
-                        <div>
-                          <small>
-                            <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
-                          </small>
-                          <br />
-                          <small>
-                            <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
-                            {' '} ({progress}%)
-                          </small>
-                          <br />
-                          <small>
-                            <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
-                          </small>
+                        <div className="upload-stats">
+                          <div className="mb-1">
+                            <small>
+                              <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
+                            </small>
+                          </div>
+                          <div className="mb-1">
+                            <small>
+                              <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
+                              {' '} ({progress}%)
+                            </small>
+                          </div>
+                          <div>
+                            <small>
+                              <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
+                            </small>
+                          </div>
+                          {message && (
+                            <div className={`alert alert-${messageType} mt-2 mb-0 py-2 px-3`} role="alert">
+                              <small>{message}</small>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
