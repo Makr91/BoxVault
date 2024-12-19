@@ -490,7 +490,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
           return {
             // Required fields from Provider class
             name: provider.name,
-            url: `${baseUrl}/api/file/download/${requestedName}/${version.versionNumber.replace(/^v/, '')}/${provider.name}/${arch.name}/vagrant.box`,
+            url: `${baseUrl}/api/organization/${organization.name}/box/${box.name}/version/${version.versionNumber.replace(/^v/, '')}/provider/${provider.name}/architecture/${arch.name}/file/download`,
             checksum: file?.checksum || "",
             checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
             architecture: arch.name,
@@ -601,11 +601,11 @@ exports.findOne = async (req, res) => {
     }
 
     let response;
-    if (req.url.endsWith('/metadata')) {
+    if (req.isVagrantRequest) {
       // Format response for Vagrant metadata request
       const baseUrl = appConfig.boxvault.origin.value;
       // Always use the requested name from vagrantInfo
-      response = formatVagrantResponse(box, organizationData, baseUrl, `${organization}/${name}`);
+      response = formatVagrantResponse(box, organizationData, baseUrl, `${organization}/${box.name}`);
     } else {
       // Format response for frontend
       response = {

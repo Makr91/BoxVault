@@ -15,20 +15,23 @@ const parseVagrantUrl = (url) => {
   // 4. /:organization/boxes/:boxName/versions/:version/providers/:provider/:arch/vagrant.box (download format)
 
   // First check if this is a box download URL
-  // Format: /:org/:box/versions/:version/providers/:provider/:arch/vagrant.box
-  if (parts.includes('vagrant.box')) {
-    const versionsIndex = parts.indexOf('versions');
-    const providersIndex = parts.indexOf('providers');
+  // Format: /api/organization/:org/box/:box/version/:version/provider/:provider/architecture/:arch/file/download
+  if (parts.includes('file') && parts.includes('download')) {
+    const orgIndex = parts.indexOf('organization');
+    const boxIndex = parts.indexOf('box');
+    const versionIndex = parts.indexOf('version');
+    const providerIndex = parts.indexOf('provider');
+    const archIndex = parts.indexOf('architecture');
     
-    if (versionsIndex !== -1 && providersIndex !== -1 && parts.length >= providersIndex + 3) {
-      // In the download URL, org and box are the first two parts
+    if (orgIndex !== -1 && boxIndex !== -1 && versionIndex !== -1 && 
+        providerIndex !== -1 && archIndex !== -1) {
       return {
-        organization: parts[0],
-        boxName: parts[1],
+        organization: parts[orgIndex + 1],
+        boxName: parts[boxIndex + 1],
         isDownload: true,
-        version: parts[versionsIndex + 1],
-        provider: parts[providersIndex + 1],
-        architecture: parts[providersIndex + 2]
+        version: parts[versionIndex + 1],
+        provider: parts[providerIndex + 1],
+        architecture: parts[archIndex + 1]
       };
     }
     return null;
@@ -89,7 +92,7 @@ const vagrantHandler = (req, res, next) => {
   if (parsedUrl.isDownload) {
     // For box downloads, rewrite to our download endpoint
     // Note: Keep the URL format consistent with what we return in metadata
-    req.url = `/api/file/download/${parsedUrl.organization}/${parsedUrl.boxName}/${parsedUrl.version}/${parsedUrl.provider}/${parsedUrl.architecture}/vagrant.box`;
+    req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
     
     // Don't set Content-Type for downloads
     // Let the download endpoint handle streaming the file
