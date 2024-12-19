@@ -237,7 +237,11 @@ const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
-  const token = req.headers["x-access-token"];
+  // Check for token in x-access-token header (browser) or Authorization header (Vagrant)
+  const token = req.headers["x-access-token"] || 
+                (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
+                  ? req.headers["authorization"].substring(7) 
+                  : null);
   let userId = null;
   let isServiceAccount = false;
 
@@ -296,15 +300,37 @@ const download = async (req, res) => {
       });
     }
 
+    // Function to handle file download
+    const sendFile = () => {
+      // For Vagrant requests, we need to handle the response differently
+      if (req.isVagrantRequest) {
+        // Stream the file without setting additional headers
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+        // Handle errors during streaming
+        fileStream.on('error', (err) => {
+          if (!res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file. " + err,
+            });
+          }
+        });
+      } else {
+        // For browser downloads, use express's res.download
+        res.download(filePath, fileName, (err) => {
+          if (err && !res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file. " + err,
+            });
+          }
+        });
+      }
+    };
+
     // If the box is public or the requester is a service account, allow download
     if (box.isPublic || isServiceAccount) {
-      return res.download(filePath, fileName, (err) => {
-        if (err) {
-          res.status(500).send({
-            message: "Could not download the file. " + err,
-          });
-        }
-      });
+      return sendFile();
     }
 
     // If the box is private, check if the user belongs to the organization
@@ -318,13 +344,7 @@ const download = async (req, res) => {
     }
 
     // If the user belongs to the organization, allow download
-    return res.download(filePath, fileName, (err) => {
-      if (err) {
-        res.status(500).send({
-          message: "Could not download the file. " + err,
-        });
-      }
-    });
+    return sendFile();
 
   } catch (err) {
     res.status(500).send({ message: err.message || "Some error occurred while downloading the file." });
