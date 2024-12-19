@@ -6,6 +6,7 @@ const yaml = require('js-yaml');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
+const { vagrantHandler } = require("./app/middleware");
 
 global.__basedir = __dirname;
 
@@ -63,6 +64,9 @@ function generateSetupToken() {
 const static_path = __dirname + '/app/views/';
 
 const app = express();
+
+// Add Vagrant request handler before static file serving
+app.use(vagrantHandler);
 
 app.use(express.static(static_path));
 

@@ -472,6 +472,44 @@ exports.discoverAll = async (req, res) => {
   }
 };
 
+const formatVagrantResponse = (box, organization, baseUrl) => {
+  return {
+    // VagrantCloud format
+    name: `${organization.name}/${box.name}`,
+    description: box.description,
+    short_description: "",
+    versions: box.versions.map(version => ({
+      version: version.versionNumber.replace(/^v/, ''),
+      status: "active",
+      description_html: `<p>${version.description || 'Build'}</p>\n`,
+      description_markdown: version.description || 'Build',
+      providers: version.providers.flatMap(provider => 
+        provider.architectures.map(arch => ({
+          name: provider.name,
+          architecture: arch.name,
+          default_architecture: arch.defaultBox,
+          checksum: arch.files[0]?.checksum || "",
+          checksum_type: arch.files[0]?.checksumType?.toUpperCase() || "SHA256",
+          url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`
+        }))
+      )
+    })),
+    // Additional fields for frontend
+    id: box.id,
+    isPublic: box.isPublic,
+    published: box.published,
+    userId: box.userId,
+    createdAt: box.createdAt,
+    updatedAt: box.updatedAt,
+    user: box.user,
+    organization: {
+      id: organization.id,
+      name: organization.name,
+      emailHash: organization.emailHash
+    }
+  };
+};
+
 exports.findOne = async (req, res) => {
   const { organization, name } = req.params;
   const token = req.headers["x-access-token"];
@@ -550,14 +588,9 @@ exports.findOne = async (req, res) => {
 
     // If the box is public, allow access
     if (box.isPublic) {
-      return res.send({
-        ...box.toJSON(),
-        organization: {
-          id: organizationData.id,
-          name: organizationData.name,
-          // Add more organization fields here if needed
-        }
-      });
+      const baseUrl = appConfig.boxvault.origin.value;
+      const response = formatVagrantResponse(box, organizationData, baseUrl);
+      return res.send(response);
     }
 
     // If the box is private, check if the user belongs to the organization or is a service account
@@ -567,14 +600,9 @@ exports.findOne = async (req, res) => {
 
     if (isServiceAccount) {
       // Service accounts can access all boxes
-      return res.send({
-        ...box.toJSON(),
-        organization: {
-          id: organizationData.id,
-          name: organizationData.name,
-          // Add more organization fields here if needed
-        }
-      });
+      const baseUrl = appConfig.boxvault.origin.value;
+      const response = formatVagrantResponse(box, organizationData, baseUrl);
+      return res.send(response);
     }
 
     const user = organizationData.users.find(user => user.id === userId);
@@ -583,14 +611,9 @@ exports.findOne = async (req, res) => {
     }
 
     // If the user belongs to the organization, allow access
-    return res.send({
-      ...box.toJSON(),
-      organization: {
-        id: organizationData.id,
-        name: organizationData.name,
-        // Add more organization fields here if needed
-      }
-    });
+    const baseUrl = appConfig.boxvault.origin.value;
+    const response = formatVagrantResponse(box, organizationData, baseUrl);
+    return res.send(response);
 
   } catch (err) {
     res.status(500).send({ message: "Error retrieving box with name=" + name });
