@@ -493,7 +493,9 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
               checksum: checksum,
               checksum_type: finalChecksumType,
               architecture: arch.name,
-              default_architecture: arch.defaultBox || true
+              default_architecture: arch.defaultBox || true,
+              // Add download_url field that Vagrant prefers
+              download_url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${versionNumber}/providers/${provider.name}/${arch.name}/vagrant.box`
             };
           })
         )
