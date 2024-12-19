@@ -4,7 +4,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
-const { uploadFileMiddleware } = require("../middleware/upload");
+const { uploadFile: uploadFileMiddleware } = require("../middleware/upload");
 
 const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
@@ -617,9 +617,12 @@ const update = async (req, res) => {
     }
 
     res.status(500).send({
-      message: `Could not update the file: ${req.files ? req.files['file'][0].originalname : ''}`,
+      message: `Could not update the file: ${req.file ? req.file.originalname : ''}`,
       error: err.message,
-      code: err.code || 'UNKNOWN_ERROR'
+      code: err.code || 'UNKNOWN_ERROR',
+      details: {
+        duration: (Date.now() - uploadStartTime) / 1000
+      }
     });
   }
 };
