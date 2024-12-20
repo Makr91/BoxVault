@@ -60,6 +60,6 @@ module.exports = function(app) {
   );
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info", file.info);
   app.get("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download", file.download);
-  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link", [authJwt.verifyToken], file.getDownloadLink);
+  app.post("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link", file.getDownloadLink);
   app.delete("/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete", [authJwt.verifyToken, authJwt.isUserOrServiceAccount], file.remove);
 };

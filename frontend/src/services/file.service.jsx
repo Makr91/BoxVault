@@ -163,10 +163,19 @@ class FileService {
 
   async getDownloadLink(organization, name, version, provider, architecture) {
     try {
+      // First check if the box is public
+      const boxResponse = await axios.get(
+        `${baseURL}/api/organization/${organization}/box/${name}`,
+        { headers: authHeader() }
+      );
+      
+      // Send auth header only if box is private
+      const headers = boxResponse.data.isPublic ? {} : authHeader();
+      
       const response = await axios.post(
         `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/get-download-link`,
         {},
-        { headers: authHeader() }
+        { headers }
       );
       return response.data.downloadUrl;
     } catch (error) {
