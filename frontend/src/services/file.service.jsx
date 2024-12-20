@@ -161,32 +161,13 @@ class FileService {
     throw lastError;
   }
 
-  async download(organization, name, version, provider, architecture) {
-    try {
-      const response = await fetch(
-        `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`,
-        {
-          headers: authHeader()
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'vagrant.box');
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      throw error;
-    }
+  download(organization, name, version, provider, architecture) {
+    const link = document.createElement('a');
+    link.href = `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+    link.setAttribute('download', 'vagrant.box');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
   }
 
   info(organization, name, version, provider, architecture) {
