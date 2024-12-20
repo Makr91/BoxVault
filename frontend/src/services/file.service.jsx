@@ -162,12 +162,7 @@ class FileService {
   }
 
   download(organization, name, version, provider, architecture) {
-    const link = document.createElement('a');
-    link.href = `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
-    link.setAttribute('download', 'vagrant.box');
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
+    window.location.href = `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
   }
 
   info(organization, name, version, provider, architecture) {
