@@ -237,22 +237,35 @@ const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
-  // Get auth info either from vagrantHandler or x-access-token
-  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
-  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
-
-  // If not set by vagrantHandler, try x-access-token
-  if (!userId) {
-    const token = req.headers["x-access-token"];
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-        userId = decoded.id;
-        isServiceAccount = decoded.isServiceAccount || false;
-      } catch (err) {
-        console.warn("Invalid x-access-token:", err.message);
+  // Get auth info from download token
+  let userId;
+  let isServiceAccount;
+  
+  const downloadToken = req.query.token;
+  if (downloadToken) {
+    try {
+      const decoded = jwt.verify(downloadToken, authConfig.jwt.jwt_secret.value);
+      userId = decoded.userId;
+      isServiceAccount = decoded.isServiceAccount;
+      
+      // Verify the token matches the requested download
+      if (decoded.organization !== organization ||
+          decoded.boxId !== boxId ||
+          decoded.versionNumber !== versionNumber ||
+          decoded.providerName !== providerName ||
+          decoded.architectureName !== architectureName) {
+        return res.status(403).send({ message: "Invalid download token." });
       }
+    } catch (err) {
+      console.warn("Invalid download token:", err.message);
+      return res.status(403).send({ message: "Invalid or expired download token." });
     }
+  } else if (req.isVagrantRequest) {
+    // For Vagrant requests, use the auth info set by vagrantHandler
+    userId = req.userId;
+    isServiceAccount = req.isServiceAccount;
+  } else {
+    return res.status(403).send({ message: "No download token provided." });
   }
 
   console.log('Auth context in download:', {
@@ -439,9 +452,27 @@ const info = async (req, res) => {
       });
 
       if (fileRecord) {
+        // Generate a secure download token
+        const downloadToken = jwt.sign(
+          { 
+            userId,
+            isServiceAccount,
+            organization,
+            boxId,
+            versionNumber,
+            providerName,
+            architectureName
+          },
+          authConfig.jwt.jwt_secret.value,
+          { expiresIn: '1h' }
+        );
+
+        // Create secure download URL
+        const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+
         return res.send({
           fileName: fileRecord.fileName,
-          downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
+          downloadUrl,
           downloadCount: fileRecord.downloadCount,
           checksum: fileRecord.checksum,
           checksumType: fileRecord.checksumType,
@@ -471,9 +502,27 @@ const info = async (req, res) => {
     });
 
     if (fileRecord) {
+      // Generate a secure download token
+      const downloadToken = jwt.sign(
+        { 
+          userId,
+          isServiceAccount,
+          organization,
+          boxId,
+          versionNumber,
+          providerName,
+          architectureName
+        },
+        authConfig.jwt.jwt_secret.value,
+        { expiresIn: '1h' }
+      );
+
+      // Create secure download URL
+      const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+
       return res.send({
         fileName: fileRecord.fileName,
-        downloadUrl: `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download`,
+        downloadUrl,
         downloadCount: fileRecord.downloadCount,
         checksum: fileRecord.checksum,
         checksumType: fileRecord.checksumType,
@@ -743,10 +792,116 @@ const update = async (req, res) => {
   }
 };
 
+const getDownloadLink = async (req, res) => {
+  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  
+  // Get auth info from x-access-token
+  let userId = req.userId;
+  let isServiceAccount = req.isServiceAccount;
+
+  // If not set, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
+    }
+  }
+
+  try {
+    const organizationData = await db.organization.findOne({
+      where: { name: organization },
+      include: [{
+        model: db.user,
+        as: 'users',
+        include: [{
+          model: db.box,
+          as: 'box',
+          where: { name: boxId },
+          attributes: ['id', 'name', 'isPublic'],
+          include: [{
+            model: db.versions,
+            as: 'versions',
+            where: { versionNumber: versionNumber },
+            include: [{
+              model: db.providers,
+              as: 'providers',
+              where: { name: providerName },
+              include: [{
+                model: db.architectures,
+                as: 'architectures',
+                where: { name: architectureName }
+              }]
+            }]
+          }]
+        }]
+      }]
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({
+        message: `Organization not found with name: ${organization}.`
+      });
+    }
+
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+
+    if (!box) {
+      return res.status(404).send({
+        message: `Box ${boxId} not found in organization ${organization}.`
+      });
+    }
+
+    // Check authorization
+    if (!box.isPublic && !isServiceAccount) {
+      if (!userId) {
+        return res.status(403).send({ message: "Unauthorized access to file." });
+      }
+
+      const user = organizationData.users.find(user => user.id === userId);
+      if (!user) {
+        return res.status(403).send({ message: "Unauthorized access to file." });
+      }
+    }
+
+    // Generate a secure download token
+    const downloadToken = jwt.sign(
+      { 
+        userId,
+        isServiceAccount,
+        organization,
+        boxId,
+        versionNumber,
+        providerName,
+        architectureName
+      },
+      authConfig.jwt.jwt_secret.value,
+      { expiresIn: '1h' }
+    );
+
+    // Return the secure download URL
+    const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+
+    return res.status(200).json({ downloadUrl });
+
+  } catch (err) {
+    res.status(500).send({ 
+      message: err.message || "Some error occurred while generating the download link.",
+      error: err
+    });
+  }
+};
+
 module.exports = {
   upload,
   download,
   remove,
   update,
   info,
+  getDownloadLink
 };

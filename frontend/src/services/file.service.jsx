@@ -161,28 +161,16 @@ class FileService {
     throw lastError;
   }
 
-  async download(organization, name, version, provider, architecture) {
+  async getDownloadLink(organization, name, version, provider, architecture) {
     try {
-      const response = await fetch(
-        `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`,
+      const response = await axios.post(
+        `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/get-download-link`,
+        {},
         { headers: authHeader() }
       );
-      
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'vagrant.box');
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      return response.data.downloadUrl;
     } catch (error) {
-      console.error('Error downloading file:', error);
+      console.error('Error getting download link:', error);
       throw error;
     }
   }

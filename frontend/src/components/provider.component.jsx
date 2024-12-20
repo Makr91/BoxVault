@@ -65,7 +65,7 @@ const Provider = () => {
     ProviderService.getProvider(organization, name, version, providerName)
       .then(response => {
         setCurrentProvider(response.data);
-        setOriginalProviderName(response.data.name); // Store the original name
+        setOriginalProviderName(response.data.name);
       })
       .catch(e => {
         console.log(e);
@@ -75,28 +75,33 @@ const Provider = () => {
       });
   
     ArchitectureService.getArchitectures(organization, name, version, providerName)
-      .then(response => {
-        const architecturesWithInfo = response.data.map(architecture => {
-          return FileService.info(organization, name, version, providerName, architecture.name)
-            .then(fileInfoResponse => ({
+      .then(async response => {
+        const architecturesWithInfo = await Promise.all(response.data.map(async architecture => {
+          try {
+            const [fileInfo, downloadLink] = await Promise.all([
+              FileService.info(organization, name, version, providerName, architecture.name),
+              FileService.getDownloadLink(organization, name, version, providerName, architecture.name)
+            ]);
+            return {
               ...architecture,
-              fileName: fileInfoResponse.data.fileName,
-              downloadUrl: fileInfoResponse.data.downloadUrl,
-              fileSize: fileInfoResponse.data.fileSize,
-              checksum: fileInfoResponse.data.checksum,
-              checksumType: fileInfoResponse.data.checksumType,
-            }))
-            .catch(() => ({
+              fileName: fileInfo.data.fileName,
+              downloadUrl: downloadLink,
+              fileSize: fileInfo.data.fileSize,
+              checksum: fileInfo.data.checksum,
+              checksumType: fileInfo.data.checksumType,
+            };
+          } catch (error) {
+            return {
               ...architecture,
               fileName: null,
               downloadUrl: null,
               fileSize: null,
               checksum: null,
               checksumType: null,
-            }));
-        });
-  
-        Promise.all(architecturesWithInfo).then(setArchitectures);
+            };
+          }
+        }));
+        setArchitectures(architecturesWithInfo);
       })
       .catch(e => {
         console.log(e);
@@ -672,12 +677,14 @@ const Provider = () => {
                   <td>{architecture.checksumType || "N/A"}</td>
                   <td>
                     {architecture.downloadUrl && (
-                      <button 
-                        onClick={() => FileService.download(organization, name, version, providerName, architecture.name)}
+                      <a 
+                        href={architecture.downloadUrl}
                         className="btn btn-outline-primary"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         Download
-                      </button>
+                      </a>
                     )}
                   </td>
                   {isAuthorized && (

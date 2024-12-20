@@ -70,42 +70,49 @@ const Version = () => {
     return validCharsRegex.test(value) ? undefined : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
   };
 
-useEffect(() => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  if (user) {
-    setIsAuthorized(user.organization === organization);
-  }
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user) {
+      setIsAuthorized(user.organization === organization);
+    }
 
-  ProviderService.getProviders(organization, name, version)
-    .then(response => {
-      setProviders(response.data);
-      response.data.forEach(provider => {
-        ArchitectureService.getArchitectures(organization, name, version, provider.name)
-          .then(archResponse => {
-            const architecturesWithInfo = archResponse.data.map(architecture => {
-              return FileService.info(organization, name, version, provider.name, architecture.name)
-                .then(fileInfoResponse => ({
+    ProviderService.getProviders(organization, name, version)
+      .then(async response => {
+        setProviders(response.data);
+        const architecturesByProvider = {};
+        
+        for (const provider of response.data) {
+          try {
+            const archResponse = await ArchitectureService.getArchitectures(organization, name, version, provider.name);
+            const architecturesWithInfo = await Promise.all(archResponse.data.map(async architecture => {
+              try {
+                const [fileInfo, downloadLink] = await Promise.all([
+                  FileService.info(organization, name, version, provider.name, architecture.name),
+                  FileService.getDownloadLink(organization, name, version, provider.name, architecture.name)
+                ]);
+                return {
                   ...architecture,
-                  downloadUrl: fileInfoResponse.data.downloadUrl,
-                }))
-                .catch(() => ({
+                  downloadUrl: downloadLink,
+                };
+              } catch (error) {
+                return {
                   ...architecture,
                   downloadUrl: null,
-                }));
-            });
-
-            Promise.all(architecturesWithInfo).then(archs => {
-              setArchitectures(prev => ({ ...prev, [provider.name]: archs }));
-            });
-          })
-          .catch(e => {
+                };
+              }
+            }));
+            architecturesByProvider[provider.name] = architecturesWithInfo;
+          } catch (e) {
             console.log(e);
-          });
+            architecturesByProvider[provider.name] = [];
+          }
+        }
+        
+        setArchitectures(architecturesByProvider);
+      })
+      .catch(e => {
+        console.log(e);
       });
-    })
-    .catch(e => {
-      console.log(e);
-    });
 
   VersionDataService.getVersion(organization, name, version)
     .then(response => {
@@ -444,12 +451,14 @@ useEffect(() => {
                       {architectures[provider.name] && architectures[provider.name].map((architecture, idx) => (
                         <div key={idx}>
                           {architecture.downloadUrl && (
-                            <button
-                              onClick={() => FileService.download(organization, name, version, provider.name, architecture.name)}
+                            <a
+                              href={architecture.downloadUrl}
                               className="btn btn-outline-primary mt-2"
+                              target="_blank"
+                              rel="noopener noreferrer"
                             >
                               Download {architecture.name}
-                            </button>
+                            </a>
                           )}
                         </div>
                       ))}
