@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ArchitectureService from "../services/architecture.service";
 import ProviderService from "../services/provider.service";
 import FileService from "../services/file.service";
-import authHeader from "../services/auth-header";
 import ConfirmationModal from './confirmation.component';
 import Table from 'react-bootstrap/Table';
 
@@ -268,36 +267,6 @@ const Provider = () => {
         setMessageType("danger");
       }
     }
-  };
-
-  const downloadFile = (downloadUrl, fileName) => {
-    fetch(downloadUrl, {
-      method: 'GET',
-      headers: {
-        'x-access-token': localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).accessToken : '',
-        ...authHeader()
-      }
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.blob();
-      })
-      .then(blob => {
-        const url = window.URL.createObjectURL(new Blob([blob]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        link.parentNode.removeChild(link);
-      })
-      .catch(error => {
-        console.error('There was an error downloading the file:', error);
-        setMessage(error.response.data.message);
-        setMessageType("danger");
-      });
   };
 
   const formatFileSize = (bytes) => {
@@ -703,9 +672,14 @@ const Provider = () => {
                   <td>{architecture.checksumType || "N/A"}</td>
                   <td>
                     {architecture.downloadUrl && (
-                      <button onClick={() => downloadFile(architecture.downloadUrl, architecture.fileName)} className="btn btn-outline-primary">
+                      <a 
+                        href={architecture.downloadUrl}
+                        className="btn btn-outline-primary"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         Download
-                      </button>
+                      </a>
                     )}
                   </td>
                   {isAuthorized && (

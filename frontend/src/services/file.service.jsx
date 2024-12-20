@@ -161,11 +161,6 @@ class FileService {
     throw lastError;
   }
 
-  download(organization, name, version, provider, architecture) {
-    const url = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
-    window.open(url, '_blank');
-  }
-
   info(organization, name, version, provider, architecture) {
     return axios.get(
       `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/info`, 
