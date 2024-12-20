@@ -95,13 +95,14 @@ const App = () => {
 
   useEffect(() => {
     if (currentUser) {
+      // Refresh token at 80% of its lifetime (24 hours * 0.8 = 19.2 hours)
       const intervalId = setInterval(() => {
         AuthService.refreshUserData().then((updatedUser) => {
           if (updatedUser) {
             setCurrentUser(updatedUser);
           }
         });
-      }, 60000);
+      }, 69120000); // 19.2 hours in milliseconds
 
       return () => clearInterval(intervalId);
     }

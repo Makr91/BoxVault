@@ -6,6 +6,7 @@ const yaml = require('js-yaml');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
+const { vagrantHandler } = require("./app/middleware");
 
 global.__basedir = __dirname;
 
@@ -64,19 +65,43 @@ const static_path = __dirname + '/app/views/';
 
 const app = express();
 
+// Add Vagrant request handler before static file serving
+app.use(vagrantHandler);
+
 app.use(express.static(static_path));
 
-var corsOptions = {
-  origin: boxConfig.boxvault.origin.value
+// Enhanced CORS for Cloudflare
+const corsOptions = {
+  origin: boxConfig.boxvault.origin.value,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['x-access-token', 'Origin', 'Content-Type', 'Accept', 'Content-Length'],
+  maxAge: 600, // 10 minutes
+  credentials: true
 };
 
 app.use(cors(corsOptions));
 
-// parse requests of content-type - application/json
-app.use(express.json());
+// Calculate max size from config (converting GB to bytes)
+const maxSize = boxConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
 
-// parse requests of content-type - application/x-www-form-urlencoded
-app.use(express.urlencoded({ extended: true }));
+// Configure body parsers with appropriate limits
+app.use(express.json({ limit: maxSize }));
+app.use(express.urlencoded({ extended: true, limit: maxSize }));
+app.use(express.raw({ limit: maxSize }));
+
+// Add headers for Cloudflare
+app.use((req, res, next) => {
+  // Disable Cloudflare's Auto-Minify
+  res.setHeader('Cache-Control', 'no-transform');
+  // Indicate large file upload support
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Set longer timeout for uploads
+  if (req.url.includes('/file/upload')) {
+    // 24 hours in seconds
+    res.setHeader('CF-Max-Timeout', '86400');
+  }
+  next();
+});
 
 // Function to initialize the application
 function initializeApp() {
@@ -151,6 +176,10 @@ if (isSSLConfigured()) {
 
     const httpsServer = https.createServer(credentials, app);
 
+    // Set timeout to 24 hours for large uploads
+    httpsServer.timeout = 24 * 60 * 60 * 1000; // 24 hours
+    httpsServer.keepAliveTimeout = 24 * 60 * 60 * 1000; // 24 hours
+
     httpsServer.listen(HTTPS_PORT, () => {
       console.log(`HTTPS Server is running on port ${HTTPS_PORT}.`);
     });
@@ -176,6 +205,11 @@ if (isSSLConfigured()) {
 
 function startHTTPServer() {
   const httpServer = http.createServer(app);
+  
+  // Set timeout to 24 hours for large uploads
+  httpServer.timeout = 24 * 60 * 60 * 1000; // 24 hours
+  httpServer.keepAliveTimeout = 24 * 60 * 60 * 1000; // 24 hours
+  
   httpServer.listen(HTTP_PORT, () => {
     console.log(`HTTP Server is running on port ${HTTP_PORT}.`);
   });

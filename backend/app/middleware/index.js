@@ -5,6 +5,7 @@ const verifyProvider = require("./verifyProvider");
 const verifyVersion = require("./verifyVersion");
 const verifyArchitecture = require("./verifyArchitecture");
 const verifyOrganization = require("./verifyOrganization");
+const vagrantHandler = require("./vagrantHandler");
 
 module.exports = {
   authJwt,
@@ -13,5 +14,6 @@ module.exports = {
   verifyProvider,
   verifyVersion,
   verifyArchitecture,
-  verifyOrganization
+  verifyOrganization,
+  vagrantHandler
 };

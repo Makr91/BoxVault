@@ -15,6 +15,8 @@ module.exports = function(app) {
   app.get("/api/discover/:name", box.discoverAll);
   app.get("/api/organization/:organization/box", box.getOrganizationBoxDetails);
   app.get("/api/organization/:organization/box/:name", box.findOne);
+  app.get("/api/organization/:organization/box/:name/metadata", box.findOne);
+  app.get("/:organization/boxes/:name/versions/:version/providers/:provider/:architecture/vagrant.box", box.downloadBox);
 
   // Administrative Actions
   app.post("/api/organization/:organization/box", [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyBoxName.validateBoxName, verifyBoxName.checkBoxDuplicate], box.create );

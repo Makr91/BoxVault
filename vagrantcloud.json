@@ -1,0 +1,87 @@
+{
+    "name": "STARTcloud/alma9-server",
+    "description": "Build",
+    "short_description": "",
+    "versions": [
+        {
+            "version": "0.0.6",
+            "status": "active",
+            "description_html": "<p>Build</p>\n",
+            "description_markdown": "Build",
+            "providers": [
+                {
+                    "name": "zone",
+                    "architecture": "amd64",
+                    "default_architecture": true,
+                    "checksum": "0c7fd2df653b51f70035bf915c22ea27fd6937ef5f41882100e81a382daee633",
+                    "checksum_type": "sha256",
+                    "url": "https://vagrantcloud.com/STARTcloud/boxes/alma9-server/versions/0.0.6/providers/zone/amd64/vagrant.box"
+                },
+                {
+                    "name": "virtualbox",
+                    "architecture": "amd64",
+                    "default_architecture": true,
+                    "checksum": "d3a62a4c0f07a8f17259fc5d589061e5c410bb3b7e24374c3e3f0d620870f37e",
+                    "checksum_type": "sha256",
+                    "url": "https://vagrantcloud.com/STARTcloud/boxes/alma9-server/versions/0.0.6/providers/virtualbox/amd64/vagrant.box"
+                }
+            ]
+        },
+        {
+            "version": "0.0.5",
+            "status": "active",
+            "description_html": "<p>Build</p>\n",
+            "description_markdown": "Build",
+            "providers": [
+                {
+                    "name": "zone",
+                    "architecture": "amd64",
+                    "default_architecture": true,
+                    "checksum": "7df9117cd31c801ed7a9d748ca212a07e15285876b98d8375a2a2bd6cd903693",
+                    "checksum_type": "sha256",
+                    "url": "https://vagrantcloud.com/STARTcloud/boxes/alma9-server/versions/0.0.5/providers/zone/amd64/vagrant.box"
+                }
+            ]
+        },
+        {
+            "version": "0.0.4",
+            "status": "active",
+            "description_html": "<p>Build</p>\n",
+            "description_markdown": "Build",
+            "providers": [
+                {
+                    "name": "zone",
+                    "architecture": "amd64",
+                    "default_architecture": true,
+                    "checksum": "18a12ebb5ca57d5c90ae203df6838d255d395374a30ec7f90ceb5f83a233b94a",
+                    "checksum_type": "sha256",
+                    "url": "https://vagrantcloud.com/STARTcloud/boxes/alma9-server/versions/0.0.4/providers/zone/amd64/vagrant.box"
+                }
+            ]
+        },
+        {
+            "version": "0.0.3",
+            "status": "active",
+            "description_html": "<p>Build</p>\n",
+            "description_markdown": "Build",
+            "providers": [
+                {
+                    "name": "virtualbox",
+                    "architecture": "amd64",
+                    "default_architecture": true,
+                    "checksum": "5aab855b24ef956a144909426e38456d132cd075b366695655727843938b4115",
+                    "checksum_type": "sha256",
+                    "url": "https://vagrantcloud.com/STARTcloud/boxes/alma9-server/versions/0.0.3/providers/virtualbox/amd64/vagrant.box"
+                },
+                {
+                    "name": "zone",
+                    "architecture": "amd64",
+                    "default_architecture": true,
+                    "checksum": "f73addc06733228084cff22f61319f159e5c3dd9ad220d928c15b5db58cf6493",
+                    "checksum_type": "sha256",
+                    "url": "https://vagrantcloud.com/STARTcloud/boxes/alma9-server/versions/0.0.3/providers/zone/amd64/vagrant.box"
+                }
+            ]
+        }
+    ]
+}

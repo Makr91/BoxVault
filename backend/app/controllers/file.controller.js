@@ -4,7 +4,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
-const { uploadFileMiddleware } = require("../middleware/upload");
+const { uploadFile: uploadFileMiddleware } = require("../middleware/upload");
 
 const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
@@ -31,8 +31,19 @@ const upload = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
+  const uploadStartTime = Date.now();
+
+  // Set a longer timeout for the request
+  req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
+  res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
 
   try {
+    // Create directory if it doesn't exist
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
     const architecture = await Architecture.findOne({
       where: { name: architectureName },
       include: [{
@@ -62,56 +73,163 @@ const upload = async (req, res) => {
     });
 
     if (!architecture) {
-      return res.status(404).send({
+      return res.status(404).json({
+        error: 'NOT_FOUND',
         message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
       });
     }
 
-    // Proceed with upload only if the file does not exist
-    if (!fs.existsSync(filePath)) {
-      await uploadFileMiddleware(req, res);
+    // Process the upload using Promise-based middleware
+    await new Promise((resolve, reject) => {
+      uploadFileMiddleware(req, res, (err) => {
+        if (err) {
+          reject(err);
+        } else if (!req.file) {
+          reject(new Error('No file uploaded'));
+        } else {
+          resolve(req.file);
+        }
+      });
+    });
 
+    // If headers are already sent by middleware, return
+    if (res.headersSent) {
+      console.log('Headers already sent by middleware');
+      return;
+    }
+
+    // Log successful file upload
+    console.log('File uploaded successfully:', {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      path: req.file.path
+    });
+
+    try {
+      // Get checksum info
       let checksum = req.body.checksum;
       let checksumType = req.body.checksumType;
-
-      if (!req.files['file']) {
-        return res.status(404).send({ message: "No file uploaded!" });
-      }
 
       if (!checksumType || checksumType.toUpperCase() === 'NULL') {
         checksum = null;
         checksumType = 'NULL';
       }
 
-      // Get the file size
-      const fileSize = req.files['file'][0].size;
+      // Find existing file record or create new one
+      let fileRecord = await File.findOne({
+        where: {
+          fileName: fileName,
+          architectureId: architecture.id
+        }
+      });
 
-      await File.create({
+      if (fileRecord) {
+        // Update existing record
+        await fileRecord.update({
+          checksum: checksum,
+          checksumType: checksumType,
+          fileSize: req.file.size
+        });
+        console.log('File record updated:', {
+          fileName,
+          checksum,
+          checksumType,
+          architectureId: architecture.id,
+          fileSize: req.file.size,
+          path: req.file.path
+        });
+      } else {
+        // Create new record
+        fileRecord = await File.create({
+          fileName: fileName,
+          checksum: checksum,
+          checksumType: checksumType,
+          architectureId: architecture.id,
+          fileSize: req.file.size
+        });
+        console.log('File record created:', {
+          fileName,
+          checksum,
+          checksumType,
+          architectureId: architecture.id,
+          fileSize: req.file.size,
+          path: req.file.path
+        });
+      }
+
+      // Send detailed success response
+      return res.status(200).json({
+        message: fileRecord ? "File updated successfully" : "File uploaded successfully",
         fileName: fileName,
+        originalName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        path: req.file.path,
         checksum: checksum,
         checksumType: checksumType,
-        architectureId: architecture.id,
-        fileSize: fileSize
+        fileRecord: fileRecord
       });
-
-      return res.status(200).send({
-        message: "Uploaded the file successfully: " + req.files['file'][0].originalname,
-      });
-    } else {
-      return res.status(400).send({ message: "File already exists. Please use the update function to replace it." });
+    } catch (dbError) {
+      console.error('Database error during file upload:', dbError);
+      throw dbError;
     }
   } catch (err) {
-    console.log(err);
+    // Log detailed error information
+    console.error('File upload error:', {
+      error: err.message,
+      code: err.code,
+      stack: err.stack,
+      params: {
+        organization,
+        boxId,
+        versionNumber,
+        providerName,
+        architectureName
+      }
+    });
 
-    if (err.code == "LIMIT_FILE_SIZE") {
-      return res.status(500).send({
-        message: "File size cannot be larger than 10GB!",
+    // Handle specific error types
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).send({
+        message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
+        error: "FILE_TOO_LARGE"
       });
     }
 
-    res.status(500).send({
-      message: `Could not upload the file: ${req.files ? req.files['file'][0].originalname : ''}. ${err}`,
-    });
+    if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
+      const uploadDuration = (Date.now() - uploadStartTime) / 1000;
+      return res.status(408).send({
+        message: "Upload timed out - Request took too long to complete",
+        error: "UPLOAD_TIMEOUT",
+        details: {
+          duration: `${uploadDuration} seconds`,
+          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`
+        }
+      });
+    }
+
+    // Handle disk space errors
+    if (err.code === 'ENOSPC') {
+      return res.status(507).send({
+        message: "Not enough storage space available",
+        error: "NO_STORAGE_SPACE"
+      });
+    }
+
+    // Generic error response with more details
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'UPLOAD_ERROR',
+        message: "Could not upload the file",
+        details: {
+          error: err.message,
+          code: err.code || 'UNKNOWN_ERROR',
+          duration: (Date.now() - uploadStartTime) / 1000
+        }
+      });
+    }
   }
 };
 
@@ -119,20 +237,30 @@ const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
-  const token = req.headers["x-access-token"];
-  let userId = null;
-  let isServiceAccount = false;
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      console.warn("Invalid token provided");
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
     }
   }
+
+  console.log('Auth context in download:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
 
   try {
     const organizationData = await db.organization.findOne({
@@ -178,15 +306,37 @@ const download = async (req, res) => {
       });
     }
 
+    // Function to handle file download
+    const sendFile = () => {
+      // For Vagrant requests, we need to handle the response differently
+      if (req.isVagrantRequest) {
+        // Stream the file without setting additional headers
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+        // Handle errors during streaming
+        fileStream.on('error', (err) => {
+          if (!res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file. " + err,
+            });
+          }
+        });
+      } else {
+        // For browser downloads, use express's res.download
+        res.download(filePath, fileName, (err) => {
+          if (err && !res.headersSent) {
+            res.status(500).send({
+              message: "Could not download the file. " + err,
+            });
+          }
+        });
+      }
+    };
+
     // If the box is public or the requester is a service account, allow download
     if (box.isPublic || isServiceAccount) {
-      return res.download(filePath, fileName, (err) => {
-        if (err) {
-          res.status(500).send({
-            message: "Could not download the file. " + err,
-          });
-        }
-      });
+      return sendFile();
     }
 
     // If the box is private, check if the user belongs to the organization
@@ -200,13 +350,7 @@ const download = async (req, res) => {
     }
 
     // If the user belongs to the organization, allow download
-    return res.download(filePath, fileName, (err) => {
-      if (err) {
-        res.status(500).send({
-          message: "Could not download the file. " + err,
-        });
-      }
-    });
+    return sendFile();
 
   } catch (err) {
     res.status(500).send({ message: err.message || "Some error occurred while downloading the file." });
@@ -215,20 +359,31 @@ const download = async (req, res) => {
 
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const token = req.headers["x-access-token"];
-  let userId = null;
-  let isServiceAccount = false;
+  
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      console.warn("Invalid token provided");
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
     }
   }
+
+  console.log('Auth context in info:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
 
   try {
     const organizationData = await db.organization.findOne({
@@ -425,6 +580,11 @@ const update = async (req, res) => {
   const fileName = `vagrant.box`;
   const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
   const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, req.body.newOrganization || organization, req.body.newBoxId || boxId, req.body.newVersionNumber || versionNumber, req.body.newProviderName || providerName, req.body.newArchitectureName || architectureName);
+  const uploadStartTime = Date.now();
+
+  // Set a longer timeout for the request
+  req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
+  res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
 
   try {
     const architecture = await Architecture.findOne({
@@ -474,55 +634,111 @@ const update = async (req, res) => {
       });
     }
 
-    // Create the new directory if it doesn't exist
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
+    // Process the upload using Promise-based middleware
+    await new Promise((resolve, reject) => {
+      uploadFileMiddleware(req, res, (err) => {
+        if (err) {
+          reject(err);
+        } else if (!req.file) {
+          reject(new Error('No file uploaded'));
+        } else {
+          resolve(req.file);
+        }
+      });
+    });
+
+    // If headers are already sent by middleware, return
+    if (res.headersSent) {
+      console.log('Headers already sent by middleware');
+      return;
     }
 
-    // Rename the directory if necessary
-    if (oldFilePath !== newFilePath) {
-      fs.renameSync(oldFilePath, newFilePath);
-
-      // Clean up the old directory if it still exists
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmdirSync(oldFilePath, { recursive: true });
-      }
-    }
-
-    await uploadFileMiddleware(req, res);
+    // Log successful file upload
+    console.log('File updated successfully:', {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      path: req.file.path
+    });
 
     let checksum = req.body.checksum;
     let checksumType = req.body.checksumType;
-
-    if (!req.files['file']) {
-      return res.status(400).send({ message: "Please upload a file!" });
-    }
 
     if (!checksumType || checksumType.toUpperCase() === 'NULL') {
       checksum = null;
       checksumType = null;
     }
 
+    // Update the file record with new information
     await fileRecord.update({
       fileName: fileName,
       checksum: checksum,
-      checksumType: checksumType
+      checksumType: checksumType,
+      fileSize: req.file.size
     });
 
-    res.status(200).send({
-      message: "Updated the file successfully: " + req.files['file'][0].originalname,
+    // Log successful update
+    console.log('File record updated:', {
+      fileName,
+      checksum,
+      checksumType,
+      architectureId: architecture.id,
+      fileSize: req.file.size,
+      path: req.file.path
+    });
+
+    return res.status(200).send({
+      message: "Updated the file successfully",
+      fileName: fileName,
+      fileSize: req.file.size,
+      path: req.file.path
     });
   } catch (err) {
     console.log(err);
 
-    if (err.code == "LIMIT_FILE_SIZE") {
-      return res.status(500).send({
-        message: "File size cannot be larger than 10GB!",
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        error: "FILE_TOO_LARGE",
+        message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
+        details: {
+          maxSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
+          duration: (Date.now() - uploadStartTime) / 1000
+        }
+      });
+    }
+
+    if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
+      const uploadDuration = (Date.now() - uploadStartTime) / 1000;
+      return res.status(408).json({
+        error: "UPLOAD_TIMEOUT",
+        message: "Upload timed out - Request took too long to complete",
+        details: {
+          duration: uploadDuration,
+          maxFileSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024
+        }
+      });
+    }
+
+    // Handle disk space errors
+    if (err.code === 'ENOSPC') {
+      return res.status(507).json({
+        error: "NO_STORAGE_SPACE",
+        message: "Not enough storage space available",
+        details: {
+          path: filePath,
+          duration: (Date.now() - uploadStartTime) / 1000
+        }
       });
     }
 
     res.status(500).send({
-      message: `Could not update the file: ${req.files ? req.files['file'][0].originalname : ''}. ${err}`,
+      message: `Could not update the file: ${req.file ? req.file.originalname : ''}`,
+      error: err.message,
+      code: err.code || 'UNKNOWN_ERROR',
+      details: {
+        duration: (Date.now() - uploadStartTime) / 1000
+      }
     });
   }
 };

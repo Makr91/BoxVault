@@ -328,29 +328,43 @@ const Provider = () => {
 
   const addArchitecture = async (event) => {
     event.preventDefault();
-  
-    // Check if a file is selected
-    if (!selectedFiles || selectedFiles.length === 0) {
-      setMessage("Please select a file before adding an architecture.");
-      setMessageType("danger");
-      return;
-    }
-  
-    const architectureData = {
-      ...newArchitecture,
-      checksum,
-      checksumType,
-    };
+    setMessage("");
+    setProgress(0);
   
     try {
-      await ArchitectureService.createArchitecture(organization, name, version, providerName, architectureData);
-      setMessage("The architecture was added successfully!");
-      setMessageType("success");
+      // Validate inputs
+      if (!selectedFiles || selectedFiles.length === 0) {
+        throw new Error("Please select a file before adding an architecture.");
+      }
+
+      if (!newArchitecture.name) {
+        throw new Error("Please enter an architecture name.");
+      }
+
+      const currentFile = selectedFiles[0];
+      console.log('Starting upload process:', {
+        fileName: currentFile.name,
+        fileSize: currentFile.size,
+        architectureName: newArchitecture.name
+      });
   
-      let currentFile = selectedFiles[0];
-      setProgress(0);
+      // First create the architecture record
+      const architectureData = {
+        ...newArchitecture,
+        checksum,
+        checksumType,
+      };
   
-      await FileService.upload(
+      await ArchitectureService.createArchitecture(
+        organization, 
+        name, 
+        version, 
+        providerName, 
+        architectureData
+      );
+  
+      // Then upload the file
+      const uploadResult = await FileService.upload(
         currentFile,
         organization,
         name,
@@ -359,63 +373,52 @@ const Provider = () => {
         newArchitecture.name,
         checksum,
         checksumType,
-        (event) => {
-          setProgress(Math.round((100 * event.loaded) / event.total));
+        (progressEvent) => {
+          // Use the progress value directly from the event
+          if (progressEvent.progress !== undefined) {
+            setProgress(progressEvent.progress);
+          } else if (progressEvent.total) {
+            // Fallback to calculating progress if not provided
+            const percent = Math.round((100 * progressEvent.loaded) / progressEvent.total);
+            setProgress(percent);
+          }
         }
       );
-  
-      // Fetch the updated list of architectures after the file upload
-      const updatedArchitecturesResponse = await ArchitectureService.getArchitectures(organization, name, version, providerName);
-      const updatedArchitectures = await Promise.all(
-        updatedArchitecturesResponse.data.map(async (architecture) => {
-          try {
-            const fileInfoResponse = await FileService.info(organization, name, version, providerName, architecture.name);
-            return {
-              ...architecture,
-              fileName: fileInfoResponse.data.fileName,
-              downloadUrl: fileInfoResponse.data.downloadUrl,
-              fileSize: fileInfoResponse.data.fileSize,
-              checksum: fileInfoResponse.data.checksum,
-              checksumType: fileInfoResponse.data.checksumType,
-            };
-          } catch (error) {
-            return {
-              ...architecture,
-              fileName: null,
-              downloadUrl: null,
-              fileSize: null,
-              checksum: null,
-              checksumType: null,
-            };
-          }
-        })
+
+      console.log('Upload completed:', uploadResult);
+      
+      // Show success message
+      setMessage("Architecture and file uploaded successfully!");
+      setMessageType("success");
+
+      // Refresh architectures list
+      const updatedArchitectures = await ArchitectureService.getArchitectures(
+        organization, 
+        name, 
+        version, 
+        providerName
       );
+      
+      // Update UI state
+      setArchitectures(updatedArchitectures.data);
   
-      setArchitectures(updatedArchitectures);
-  
+      // Reset form
       setShowAddArchitectureForm(false);
       setNewArchitecture({ name: "", defaultBox: false });
       setChecksum("");
-      setChecksumType("");
+      setChecksumType("NULL");
       setSelectedFiles(undefined);
+      setProgress(0);
     } catch (error) {
-      if (error.response && error.response.status === 404) {
-        setMessage("No file uploaded!");
-        setMessageType("danger");
-      } else if (error.response && error.response.data && error.response.data.message) {
-        setMessage(error.response.data.message);
-        setMessageType("danger");
-      } else {
-        setMessage(`Could not add the architecture: ` + error);
-        setMessageType("danger");
-      }
+      console.error('Upload failed:', error);
+      setMessage(error.response?.data?.message || error.message);
+      setMessageType("danger");
     }
   };
   
   const cancelEdit = () => {
     setEditMode(false);
   };
-
 
   return (
     <div className="list row">
@@ -555,20 +558,66 @@ const Provider = () => {
                     Default Box
                   </label>
                 </div>
-                <label className="btn btn-default">
-                  <input type="file" onChange={selectFile} validations={[requiredFile]} />
-                </label>
+                <div className="mb-3">
+                  <label className="btn btn-outline-primary">
+                    <input 
+                      type="file" 
+                      onChange={selectFile} 
+                      style={{ display: 'none' }}
+                      accept=".box,application/octet-stream"
+                    />
+                    Choose Box File
+                  </label>
+                  {selectedFiles && selectedFiles[0] && (
+                    <div className="mt-2">
+                      <small className="text-muted">
+                        Selected: {selectedFiles[0].name} ({formatFileSize(selectedFiles[0].size)})
+                      </small>
+                    </div>
+                  )}
+                </div>
                 {selectedFiles && (
-                  <div className="d-flex">
-                    <div
-                      className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                      role="progressbar"
-                      aria-valuenow={progress}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      style={{ width: progress + "%" }}
-                    >
-                      {progress}%
+                  <div>
+                    <div className="progress mb-2" style={{ height: '25px' }}>
+                      <div
+                        className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                        role="progressbar"
+                        aria-valuenow={progress}
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        style={{ width: progress + "%" }}
+                      >
+                        <span style={{ fontSize: '0.9em', fontWeight: 'bold' }}>
+                          {progress}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-muted">
+                      {selectedFiles[0] && (
+                        <div className="upload-stats">
+                          <div className="mb-1">
+                            <small>
+                              <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
+                            </small>
+                          </div>
+                          <div className="mb-1">
+                            <small>
+                              <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
+                              {' '} ({progress}%)
+                            </small>
+                          </div>
+                          <div>
+                            <small>
+                              <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
+                            </small>
+                          </div>
+                          {message && (
+                            <div className={`alert alert-${messageType} mt-2 mb-0 py-2 px-3`} role="alert">
+                              <small>{message}</small>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -472,22 +472,84 @@ exports.discoverAll = async (req, res) => {
   }
 };
 
+const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
+  // Format response exactly as Vagrant expects based on box_metadata.rb
+  const response = {
+    // Required fields from BoxMetadata class
+    name: requestedName, // Use the exact name that Vagrant requested
+    description: box.description || "Build",
+    versions: box.versions.map(version => ({
+      // Version must be a valid Gem::Version (no 'v' prefix)
+      version: version.versionNumber.replace(/^v/, ''),
+      status: "active",
+      description_html: "<p>Build</p>\n",
+      description_markdown: "Build",
+      providers: version.providers.flatMap(provider => 
+        provider.architectures.map(arch => {
+          const file = arch.files[0];
+          return {
+            // Required fields from Provider class
+            name: provider.name,
+            url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`,
+            checksum: file?.checksum || "",
+            checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
+            architecture: arch.name,
+            default_architecture: arch.defaultBox || true
+          };
+        })
+      )
+    }))
+  };
+
+  // Log the complete response for debugging
+  console.log('Vagrant Response:', {
+    requestedName,
+    actualName: response.name,
+    url: `${baseUrl}/${organization.name}/boxes/${box.name}`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(response, null, 2)
+  });
+
+  // Verify the name matches exactly what Vagrant requested
+  if (response.name !== requestedName) {
+    console.error('Name mismatch:', {
+      requested: requestedName,
+      actual: response.name
+    });
+  }
+
+  return response;
+};
+
 exports.findOne = async (req, res) => {
   const { organization, name } = req.params;
-  const token = req.headers["x-access-token"];
-  let userId = null;
-  let isServiceAccount = false;
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
     }
   }
+
+  console.log('Auth context in findOne:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
 
   try {
     // Find the organization and include users and boxes
@@ -548,49 +610,57 @@ exports.findOne = async (req, res) => {
       return res.status(404).send({ message: `Box not found with name: ${name}.` });
     }
 
-    // If the box is public, allow access
-    if (box.isPublic) {
-      return res.send({
+    let response;
+    if (req.isVagrantRequest) {
+      // Format response for Vagrant metadata request
+      const baseUrl = appConfig.boxvault.origin.value;
+      // Always use the requested name from vagrantInfo
+      // Use the requested name from vagrantInfo if available, otherwise construct it
+      const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;
+      response = formatVagrantResponse(box, organizationData, baseUrl, requestedName);
+    } else {
+      // Format response for frontend
+      response = {
         ...box.toJSON(),
         organization: {
           id: organizationData.id,
           name: organizationData.name,
-          // Add more organization fields here if needed
+          emailHash: organizationData.emailHash
         }
+      };
+    }
+
+    // Set response headers for Vagrant requests
+    if (req.isVagrantRequest) {
+      res.set({
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Vary': 'Accept'
       });
+    }
+
+    // If the box is public, allow access
+    if (box.isPublic) {
+      return res.json(response);
     }
 
     // If the box is private, check if the user belongs to the organization or is a service account
     if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to private box." });
+      return res.status(403).json({ message: "Unauthorized access to private box." });
     }
 
     if (isServiceAccount) {
       // Service accounts can access all boxes
-      return res.send({
-        ...box.toJSON(),
-        organization: {
-          id: organizationData.id,
-          name: organizationData.name,
-          // Add more organization fields here if needed
-        }
-      });
+      return res.json(response);
     }
 
     const user = organizationData.users.find(user => user.id === userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to private box." });
+      return res.status(403).json({ message: "Unauthorized access to private box." });
     }
 
     // If the user belongs to the organization, allow access
-    return res.send({
-      ...box.toJSON(),
-      organization: {
-        id: organizationData.id,
-        name: organizationData.name,
-        // Add more organization fields here if needed
-      }
-    });
+    return res.json(response);
 
   } catch (err) {
     res.status(500).send({ message: "Error retrieving box with name=" + name });
@@ -774,6 +844,113 @@ exports.deleteAll = async (req, res) => {
   } catch (err) {
     res.status(500).send({
       message: err.message || "Some error occurred while removing all boxes."
+    });
+  }
+};
+
+// Handle Vagrant box downloads
+exports.downloadBox = async (req, res) => {
+  const { organization, name, version, provider, architecture } = req.params;
+  
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
+
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
+    }
+  }
+
+  console.log('Auth context in downloadBox:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
+
+  try {
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+      include: [{
+        model: Users,
+        as: 'users',
+        include: [{
+          model: Box,
+          as: 'box',
+          where: { name },
+          include: [
+            {
+              model: Users,
+              as: 'user',
+              include: [
+                {
+                  model: Organization,
+                  as: 'organization'
+                }
+              ]
+            }
+          ]
+        }]
+      }]
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
+    }
+
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === name);
+
+    if (!box) {
+      return res.status(404).send({ message: `Box not found with name: ${name}.` });
+    }
+
+    // Function to handle the download redirect
+    const handleDownload = () => {
+      const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+      res.redirect(downloadUrl);
+    };
+
+    // If the box is public, allow download
+    if (box.isPublic) {
+      return handleDownload();
+    }
+
+    // For private boxes, check authentication
+    if (req.isVagrantRequest) {
+      // For Vagrant requests, we already have userId and isServiceAccount set by vagrantHandler
+      if (req.isServiceAccount) {
+        return handleDownload();
+      }
+    }
+
+    // Check if we have a user ID (either from vagrantHandler or x-access-token)
+    if (!req.userId) {
+      return res.status(403).send({ message: "Unauthorized access to private box." });
+    }
+
+    // Check if user belongs to the organization
+    const user = organizationData.users.find(user => user.id === req.userId);
+    if (!user) {
+      return res.status(403).send({ message: "Unauthorized access to private box." });
+    }
+
+    // User belongs to organization, allow download
+    return handleDownload();
+
+  } catch (err) {
+    console.error('Error in downloadBox:', err);
+    res.status(500).send({ 
+      message: "Error processing download request",
+      error: err.message 
     });
   }
 };
