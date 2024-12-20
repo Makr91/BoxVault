@@ -1,6 +1,51 @@
+const db = require("../models");
+const ServiceAccount = db.service_accounts;
+const User = db.user;
+
 const isVagrantRequest = (req) => {
   const userAgent = req.headers['user-agent'] || '';
   return userAgent.startsWith('Vagrant/');
+};
+
+const extractBearerToken = (req) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  return null;
+};
+
+const validateVagrantToken = async (token) => {
+  if (!token) return null;
+  
+  try {
+    const serviceAccount = await ServiceAccount.findOne({
+      where: {
+        token: token,
+        expiresAt: {
+          [db.Sequelize.Op.or]: {
+            [db.Sequelize.Op.gt]: new Date(),
+            [db.Sequelize.Op.eq]: null
+          }
+        }
+      },
+      include: [{
+        model: User,
+        as: 'user'
+      }]
+    });
+
+    if (serviceAccount && serviceAccount.user) {
+      return {
+        userId: serviceAccount.user.id,
+        isServiceAccount: true
+      };
+    }
+  } catch (err) {
+    console.error('Error validating vagrant token:', err);
+  }
+  
+  return null;
 };
 
 const parseVagrantUrl = (url) => {
@@ -61,7 +106,7 @@ const parseVagrantUrl = (url) => {
   return null;
 };
 
-const vagrantHandler = (req, res, next) => {
+const vagrantHandler = async (req, res, next) => {
   // Only process GET and HEAD requests
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return next();
@@ -71,6 +116,16 @@ const vagrantHandler = (req, res, next) => {
   req.isVagrantRequest = isVagrantRequest(req);
   if (!req.isVagrantRequest) {
     return next();
+  }
+
+  // For Vagrant requests, validate the Bearer token
+  const bearerToken = extractBearerToken(req);
+  if (bearerToken) {
+    const authInfo = await validateVagrantToken(bearerToken);
+    if (authInfo) {
+      req.userId = authInfo.userId;
+      req.isServiceAccount = authInfo.isServiceAccount;
+    }
   }
 
   // Parse the URL
