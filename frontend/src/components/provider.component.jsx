@@ -672,14 +672,12 @@ const Provider = () => {
                   <td>{architecture.checksumType || "N/A"}</td>
                   <td>
                     {architecture.downloadUrl && (
-                      <a 
-                        href={architecture.downloadUrl}
+                      <button 
+                        onClick={() => FileService.download(organization, name, version, providerName, architecture.name)}
                         className="btn btn-outline-primary"
-                        target="_blank"
-                        rel="noopener noreferrer"
                       >
                         Download
-                      </a>
+                      </button>
                     )}
                   </td>
                   {isAuthorized && (

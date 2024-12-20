@@ -444,14 +444,12 @@ useEffect(() => {
                       {architectures[provider.name] && architectures[provider.name].map((architecture, idx) => (
                         <div key={idx}>
                           {architecture.downloadUrl && (
-                            <a
-                              href={architecture.downloadUrl}
+                            <button
+                              onClick={() => FileService.download(organization, name, version, provider.name, architecture.name)}
                               className="btn btn-outline-primary mt-2"
-                              target="_blank"
-                              rel="noopener noreferrer"
                             >
                               Download {architecture.name}
-                            </a>
+                            </button>
                           )}
                         </div>
                       ))}
