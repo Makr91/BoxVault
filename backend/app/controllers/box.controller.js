@@ -526,20 +526,30 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 
 exports.findOne = async (req, res) => {
   const { organization, name } = req.params;
-  const token = req.headers["x-access-token"];
-  let userId = null;
-  let isServiceAccount = false;
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
     }
   }
+
+  console.log('Auth context in findOne:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
 
   try {
     // Find the organization and include users and boxes
@@ -842,8 +852,32 @@ exports.deleteAll = async (req, res) => {
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
   
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
+
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
+    }
+  }
+
+  console.log('Auth context in downloadBox:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
+
   try {
-    // Find the organization and box
     const organizationData = await Organization.findOne({
       where: { name: organization },
       include: [{

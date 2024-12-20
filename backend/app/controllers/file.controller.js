@@ -237,24 +237,30 @@ const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
-  // Check for token in x-access-token header (browser) or Authorization header (Vagrant)
-  const token = req.headers["x-access-token"] || 
-                (req.headers["authorization"] && req.headers["authorization"].startsWith('Bearer ') 
-                  ? req.headers["authorization"].substring(7) 
-                  : null);
-  let userId = null;
-  let isServiceAccount = false;
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      console.warn("Invalid token provided");
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
     }
   }
+
+  console.log('Auth context in download:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
 
   try {
     const organizationData = await db.organization.findOne({
@@ -353,20 +359,31 @@ const download = async (req, res) => {
 
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const token = req.headers["x-access-token"];
-  let userId = null;
-  let isServiceAccount = false;
+  
+  // Get auth info either from vagrantHandler or x-access-token
+  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
+  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
 
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
-      userId = decoded.id;
-      isServiceAccount = decoded.isServiceAccount || false;
-    } catch (err) {
-      console.warn("Invalid token provided");
+  // If not set by vagrantHandler, try x-access-token
+  if (!userId) {
+    const token = req.headers["x-access-token"];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+      } catch (err) {
+        console.warn("Invalid x-access-token:", err.message);
+      }
     }
   }
+
+  console.log('Auth context in info:', {
+    userId,
+    isServiceAccount,
+    isVagrantRequest: req.isVagrantRequest,
+    headers: req.headers
+  });
 
   try {
     const organizationData = await db.organization.findOne({
