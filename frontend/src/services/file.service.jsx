@@ -162,13 +162,8 @@ class FileService {
   }
 
   download(organization, name, version, provider, architecture) {
-    return axios.get(
-      `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file`, 
-      { 
-        headers: authHeader(),
-        timeout: 30 * 60 * 1000 // 30 minute timeout for downloads
-      }
-    );
+    // Use standard file download route
+    window.location.href = `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
   }
 
   info(organization, name, version, provider, architecture) {
