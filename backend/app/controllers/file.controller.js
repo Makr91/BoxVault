@@ -321,13 +321,29 @@ const download = async (req, res) => {
 
     // Function to handle file download
     const sendFile = () => {
-      // For Vagrant requests, we need to handle the response differently
-      if (req.isVagrantRequest) {
-        // Stream the file without setting additional headers
-        const fileStream = fs.createReadStream(filePath);
+      // Get file stats for content-length
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+
+      // Set common headers
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', fileSize);
+
+      // Handle range requests
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader('Content-Length', chunksize);
+        res.status(206); // Partial Content
+
+        const fileStream = fs.createReadStream(filePath, { start, end });
         fileStream.pipe(res);
-        
-        // Handle errors during streaming
+
         fileStream.on('error', (err) => {
           if (!res.headersSent) {
             res.status(500).send({
@@ -336,14 +352,31 @@ const download = async (req, res) => {
           }
         });
       } else {
-        // For browser downloads, use express's res.download
-        res.download(filePath, fileName, (err) => {
-          if (err && !res.headersSent) {
-            res.status(500).send({
-              message: "Could not download the file. " + err,
-            });
-          }
-        });
+        // For Vagrant requests without range, still use proper headers
+        if (req.isVagrantRequest) {
+          res.setHeader('Content-Type', 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+          
+          const fileStream = fs.createReadStream(filePath);
+          fileStream.pipe(res);
+
+          fileStream.on('error', (err) => {
+            if (!res.headersSent) {
+              res.status(500).send({
+                message: "Could not download the file. " + err,
+              });
+            }
+          });
+        } else {
+          // For browser downloads, use express's res.download
+          res.download(filePath, fileName, (err) => {
+            if (err && !res.headersSent) {
+              res.status(500).send({
+                message: "Could not download the file. " + err,
+              });
+            }
+          });
+        }
       }
     };
 
