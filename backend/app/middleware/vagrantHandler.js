@@ -1,5 +1,5 @@
 const db = require("../models");
-const ServiceAccount = db.service_accounts;
+const ServiceAccount = db.service_account;
 const User = db.user;
 
 const isVagrantRequest = (req) => {
@@ -16,9 +16,13 @@ const extractBearerToken = (req) => {
 };
 
 const validateVagrantToken = async (token) => {
-  if (!token) return null;
+  if (!token) {
+    console.log('No token provided for validation');
+    return null;
+  }
   
   try {
+    console.log('Attempting to validate token:', token.substring(0, 8) + '...');
     const serviceAccount = await ServiceAccount.findOne({
       where: {
         token: token,
@@ -35,14 +39,27 @@ const validateVagrantToken = async (token) => {
       }]
     });
 
-    if (serviceAccount && serviceAccount.user) {
-      return {
-        userId: serviceAccount.user.id,
-        isServiceAccount: true
-      };
+    if (!serviceAccount) {
+      console.log('No service account found for token');
+      return null;
     }
+
+    if (!serviceAccount.user) {
+      console.log('Service account found but no associated user');
+      return null;
+    }
+
+    console.log('Successfully validated token for user:', serviceAccount.user.id);
+    return {
+      userId: serviceAccount.user.id,
+      isServiceAccount: true
+    };
   } catch (err) {
-    console.error('Error validating vagrant token:', err);
+    console.error('Error validating vagrant token:', {
+      error: err.message,
+      stack: err.stack,
+      token: token.substring(0, 8) + '...'
+    });
   }
   
   return null;

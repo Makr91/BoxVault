@@ -842,9 +842,83 @@ exports.deleteAll = async (req, res) => {
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
   
-  // Redirect to our actual file download endpoint
-  const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
-  res.redirect(downloadUrl);
+  try {
+    // Find the organization and box
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+      include: [{
+        model: Users,
+        as: 'users',
+        include: [{
+          model: Box,
+          as: 'box',
+          where: { name },
+          include: [
+            {
+              model: Users,
+              as: 'user',
+              include: [
+                {
+                  model: Organization,
+                  as: 'organization'
+                }
+              ]
+            }
+          ]
+        }]
+      }]
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
+    }
+
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === name);
+
+    if (!box) {
+      return res.status(404).send({ message: `Box not found with name: ${name}.` });
+    }
+
+    // Function to handle the download redirect
+    const handleDownload = () => {
+      const downloadUrl = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+      res.redirect(downloadUrl);
+    };
+
+    // If the box is public, allow download
+    if (box.isPublic) {
+      return handleDownload();
+    }
+
+    // For private boxes, check authentication
+    if (req.isVagrantRequest) {
+      // For Vagrant requests, we already have userId and isServiceAccount set by vagrantHandler
+      if (req.isServiceAccount) {
+        return handleDownload();
+      }
+    }
+
+    // Check if we have a user ID (either from vagrantHandler or x-access-token)
+    if (!req.userId) {
+      return res.status(403).send({ message: "Unauthorized access to private box." });
+    }
+
+    // Check if user belongs to the organization
+    const user = organizationData.users.find(user => user.id === req.userId);
+    if (!user) {
+      return res.status(403).send({ message: "Unauthorized access to private box." });
+    }
+
+    // User belongs to organization, allow download
+    return handleDownload();
+
+  } catch (err) {
+    console.error('Error in downloadBox:', err);
+    res.status(500).send({ 
+      message: "Error processing download request",
+      error: err.message 
+    });
+  }
 };
 
 // Find all published Boxes under an organization
