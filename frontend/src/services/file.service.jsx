@@ -162,7 +162,8 @@ class FileService {
   }
 
   download(organization, name, version, provider, architecture) {
-    window.location.href = `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+    const url = `/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/download`;
+    window.open(url, '_blank');
   }
 
   info(organization, name, version, provider, architecture) {
