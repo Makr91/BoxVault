@@ -77,25 +77,32 @@ const uploadMiddleware = async (req, res) => {
 
     // Set up progress tracking
     let lastLogged = 0;
-    req.on('data', chunk => {
-      uploadedBytes += chunk.length;
-      
-      // Log progress every 1GB or when significant progress is made
-      const currentProgress = Math.floor((uploadedBytes / contentLength) * 100);
-      const lastProgress = Math.floor((lastLogged / contentLength) * 100);
-      
-      if (uploadedBytes - lastLogged >= 1024 * 1024 * 1024 || currentProgress > lastProgress) {
-        console.log('Upload progress:', {
-          uploadedBytes,
-          progress: `${currentProgress}%`,
-          speed: `${Math.round((uploadedBytes - lastLogged) / 1024 / 1024)}MB/s`
-        });
-        lastLogged = uploadedBytes;
-      }
-    });
-
+    let lastTime = Date.now();
+    
     // Use pipe() for efficient streaming with error handling
     await new Promise((resolve, reject) => {
+      // Handle data chunks and track progress
+      req.on('data', chunk => {
+        uploadedBytes += chunk.length;
+        
+        // Log progress every 1GB or every 5 seconds
+        const now = Date.now();
+        const timeDiff = now - lastTime;
+        const currentProgress = Math.floor((uploadedBytes / contentLength) * 100);
+        
+        if (uploadedBytes - lastLogged >= 1024 * 1024 * 1024 || timeDiff >= 5000) {
+          const speed = ((uploadedBytes - lastLogged) / (1024 * 1024)) / (timeDiff / 1000); // MB/s
+          console.log('Upload progress:', {
+            uploadedBytes,
+            totalBytes: contentLength,
+            progress: `${currentProgress}%`,
+            speed: `${Math.round(speed)} MB/s`
+          });
+          lastLogged = uploadedBytes;
+          lastTime = now;
+        }
+      });
+
       // Handle stream completion
       writeStream.on('finish', () => {
         console.log('Write stream finished');
@@ -136,12 +143,19 @@ const uploadMiddleware = async (req, res) => {
         }
       });
 
-      // Handle pipe errors
+      // Handle pipe errors and ensure proper end event
       const stream = req.pipe(writeStream);
       stream.on('error', err => {
         console.error('Pipe error:', err);
         writeStream.end();
         reject(err);
+      });
+
+      // Ensure end event is handled
+      req.on('end', () => {
+        if (uploadedBytes === contentLength) {
+          console.log('Upload completed successfully');
+        }
       });
     });
 

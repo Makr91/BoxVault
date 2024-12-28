@@ -18,7 +18,7 @@ class FileService {
     });
 
     try {
-      // Create headers with auth token and metadata
+      // Set up headers with auth token and metadata
       const headers = {
         ...authHeader(),
         'Content-Type': 'application/octet-stream',
@@ -28,56 +28,45 @@ class FileService {
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
-      // Create a Promise to handle the upload
-      const uploadPromise = new Promise(async (resolve, reject) => {
-        try {
-          let uploadedBytes = 0;
-          const chunks = [];
-          const reader = file.stream().getReader();
-
-          while (true) {
-            const {done, value} = await reader.read();
-            if (done) break;
-            chunks.push(value);
-            uploadedBytes += value.length;
-            
-            if (onUploadProgress) {
-              onUploadProgress({
-                loaded: uploadedBytes,
-                total: file.size,
-                progress: Math.round((uploadedBytes / file.size) * 100)
-              });
-            }
-          }
-
-          // Combine all chunks into a single Uint8Array
-          const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-          const combinedChunks = new Uint8Array(totalLength);
-          let offset = 0;
-          for (const chunk of chunks) {
-            combinedChunks.set(chunk, offset);
-            offset += chunk.length;
-          }
-
-          // Upload the combined chunks
-          const response = await fetch(
-            `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
-            {
-              method: 'POST',
-              headers,
-              body: combinedChunks,
-              duplex: 'half'
-            }
-          );
-
-          resolve(response);
-        } catch (error) {
-          reject(error);
-        }
+      // Set up upload progress tracking
+      let uploadedBytes = 0;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`);
+      
+      // Set headers
+      Object.entries(headers).forEach(([key, value]) => {
+        xhr.setRequestHeader(key, value);
       });
 
-      // Wait for upload to complete
-      const response = await uploadPromise;
+      // Track upload progress
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onUploadProgress) {
+          uploadedBytes = event.loaded;
+          onUploadProgress({
+            loaded: event.loaded,
+            total: event.total,
+            progress: Math.round((event.loaded / event.total) * 100)
+          });
+        }
+      };
+
+      // Handle the upload using a Promise
+      const response = await new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({
+              ok: true,
+              status: xhr.status,
+              statusText: xhr.statusText,
+              json: () => Promise.resolve(JSON.parse(xhr.responseText))
+            });
+          } else {
+            reject(new Error(`Upload failed: ${xhr.statusText}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.send(file);
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
