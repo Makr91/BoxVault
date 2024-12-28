@@ -256,7 +256,7 @@ exports.verifyMail = async (req, res) => {
 
 exports.signin = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, stayLoggedIn } = req.body;
 
     // First, try to find a regular user
     let user = await User.findOne({
@@ -302,13 +302,20 @@ exports.signin = async (req, res) => {
       }
     }
 
+    // Use longer expiry for stayLoggedIn
+    const tokenExpiry = stayLoggedIn ? '24h' : authConfig.jwt.jwt_token_time_valid.value;
+    
     const token = jwt.sign(
-      { id: user.id, isServiceAccount: isServiceAccount },
+      { 
+        id: user.id, 
+        isServiceAccount: isServiceAccount,
+        stayLoggedIn: stayLoggedIn
+      },
       authConfig.jwt.jwt_secret.value,
       {
         algorithm: 'HS256',
         allowInsecureKeySizes: true,
-        expiresIn: authConfig.jwt.jwt_token_time_valid.value,
+        expiresIn: tokenExpiry,
       }
     );
 
@@ -389,6 +396,40 @@ exports.deleteUser = (req, res) => {
   };
 
 // If you have an update user function, ensure it also updates the email hash
+// Refresh token endpoint
+exports.refreshToken = async (req, res) => {
+  try {
+    // Get user from request (set by authJwt middleware)
+    const user = req.user;
+    
+    if (!user.stayLoggedIn) {
+      return res.status(403).send({ message: "Token refresh only allowed for stay-logged-in sessions" });
+    }
+
+    // Generate new token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        isServiceAccount: false,
+        stayLoggedIn: true
+      },
+      authConfig.jwt.jwt_secret.value,
+      {
+        algorithm: 'HS256',
+        allowInsecureKeySizes: true,
+        expiresIn: '24h',
+      }
+    );
+
+    res.status(200).send({
+      accessToken: token
+    });
+  } catch (err) {
+    console.error("Error in refreshToken:", err);
+    res.status(500).send({ message: "Error refreshing token" });
+  }
+};
+
 exports.updateUser = async (req, res) => {
   const { userId } = req.params;
   const { email } = req.body;

@@ -22,12 +22,88 @@ const fetchGravatarConfig = () => {
   });
 };
 
+// Function to refresh token if needed
+const refreshTokenIfNeeded = async () => {
+  const user = getCurrentUser();
+  if (!user || !user.stayLoggedIn) return null;
+
+  // Only refresh if token is older than 4 minutes (80% of 5 minute expiry)
+  const tokenAge = Date.now() - user.tokenRefreshTime;
+  if (tokenAge < 240000) return null;
+
+  try {
+    const response = await axios.get(`${baseURL}/api/auth/refresh-token`, { 
+      headers: authHeader(),
+      skipAuthRefresh: true // Skip interceptor for this request
+    });
+    
+    if (response.data.accessToken) {
+      const userData = {
+        ...user,
+        ...response.data,
+        tokenRefreshTime: Date.now()
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      return userData;
+    }
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return null;
+  }
+};
+
+// Add request interceptor to refresh token before requests
+axios.interceptors.request.use(
+  async config => {
+    // Skip token refresh for auth endpoints and refresh requests
+    if (config.skipAuthRefresh || 
+        config.url.includes('/auth/signin') || 
+        config.url.includes('/auth/refresh-token')) {
+      return config;
+    }
+
+    await refreshTokenIfNeeded();
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle 401s
 axios.interceptors.response.use(
   response => response,
-  error => {
-    if (error.response && error.response.status === 401) {
+  async error => {
+    const originalRequest = error.config;
+
+    // Don't handle retries for auth endpoints
+    if (originalRequest.url.includes('/auth/') || originalRequest.skipAuthRefresh) {
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const user = getCurrentUser();
+      if (user?.stayLoggedIn) {
+        try {
+          // Force token refresh
+          const refreshed = await refreshTokenIfNeeded();
+          if (refreshed) {
+            // Retry original request with new token
+            originalRequest.headers = {
+              ...originalRequest.headers,
+              ...authHeader()
+            };
+            return axios(originalRequest);
+          }
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+        }
+      }
+
       // Don't redirect if this is a file upload request
-      const isFileUpload = error.config.url.includes('/file/upload');
+      const isFileUpload = originalRequest.url.includes('/file/upload');
       if (!isFileUpload) {
         window.location.href = "/login";
       }
@@ -49,15 +125,21 @@ const validateInvitationToken = (token) => {
   return axios.get(`${baseURL}/api/auth/validate-invitation/${token}`);
 };
 
-const login = (username, password) => {
+const login = (username, password, stayLoggedIn = false) => {
   return axios
     .post(`${baseURL}/api/auth/signin`, {
       username,
       password,
+      stayLoggedIn
     })
     .then((response) => {
       if (response.data.accessToken) {
-        localStorage.setItem("user", JSON.stringify(response.data));
+        const userData = {
+          ...response.data,
+          stayLoggedIn,
+          tokenRefreshTime: Date.now()
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
       }
       return response.data;
     });
@@ -67,8 +149,14 @@ const refreshUserData = async () => {
   try {
     const response = await axios.get(`${baseURL}/api/user`, { headers: authHeader() });
     if (response.data) {
-      localStorage.setItem("user", JSON.stringify(response.data));
-      return response.data;
+      const user = getCurrentUser();
+      const userData = {
+        ...response.data,
+        stayLoggedIn: user?.stayLoggedIn,
+        tokenRefreshTime: user?.tokenRefreshTime
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      return userData;
     }
   } catch (error) {
     console.error("Error refreshing user data:", error);
@@ -124,7 +212,8 @@ const AuthService = {
   verifyMail,
   sendInvitation,
   validateInvitationToken,
-  fetchGravatarConfig
+  fetchGravatarConfig,
+  refreshTokenIfNeeded
 };
 
 export default AuthService;

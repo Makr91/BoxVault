@@ -32,6 +32,33 @@ verifyToken = async (req, res, next) => {
 
       req.userId = decoded.id;
       req.isServiceAccount = decoded.isServiceAccount;
+      req.stayLoggedIn = decoded.stayLoggedIn;
+
+      // If this is a refresh token request, attach the full user object
+      if (req.path === '/api/auth/refresh-token') {
+        const user = await User.findByPk(decoded.id, {
+          include: [
+            {
+              model: db.role,
+              as: 'roles',
+              attributes: ['name'],
+              through: { attributes: [] }
+            },
+            {
+              model: db.organization,
+              as: 'organization',
+              attributes: ['name']
+            }
+          ]
+        });
+        
+        if (!user) {
+          return res.status(401).send({ message: "User not found" });
+        }
+
+        req.user = user;
+      }
+
       next();
     } catch (jwtError) {
       console.error('JWT verification error:', {

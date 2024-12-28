@@ -10,6 +10,7 @@ const Login = ({ theme }) => {
   const [formValues, setFormValues] = useState({
     username: "",
     password: "",
+    stayLoggedIn: false
   });
 
   const [validationErrors, setValidationErrors] = useState({});
@@ -17,8 +18,11 @@ const Login = ({ theme }) => {
   const [message, setMessage] = useState("");
 
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormValues({ ...formValues, [name]: value });
+    const { name, value, type, checked } = event.target;
+    setFormValues({ 
+      ...formValues, 
+      [name]: type === 'checkbox' ? checked : value 
+    });
   };
 
   const validateForm = () => {
@@ -43,7 +47,7 @@ const Login = ({ theme }) => {
       setMessage("");
       setLoading(true);
 
-      AuthService.login(formValues.username, formValues.password).then(
+      AuthService.login(formValues.username, formValues.password, formValues.stayLoggedIn).then(
         () => {
           navigate("/profile");
           window.location.reload();
@@ -98,6 +102,22 @@ const Login = ({ theme }) => {
             {validationErrors.password && (
               <div className="alert alert-danger">{validationErrors.password}</div>
             )}
+          </div>
+
+          <div className="form-group mt-3">
+            <div className="form-check">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                name="stayLoggedIn"
+                id="stayLoggedIn"
+                checked={formValues.stayLoggedIn}
+                onChange={handleInputChange}
+              />
+              <label className="form-check-label" htmlFor="stayLoggedIn">
+                Stay logged in (required for long uploads)
+              </label>
+            </div>
           </div>
 
           <div className="d-grid gap-2 col-6 mx-auto mt-3">
