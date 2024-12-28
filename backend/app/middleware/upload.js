@@ -58,9 +58,25 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
       const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-      const { fileId, chunkIndex, totalChunks } = req.body;
+      
+      // Get chunk info from either form data or headers
+      const fileId = req.body.fileId || req.headers['x-file-id'];
+      const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
+      const totalChunks = req.body.totalChunks || req.headers['x-total-chunks'];
       
       if (!fileId || chunkIndex === undefined || !totalChunks) {
+        console.error('Missing chunk information in storage:', {
+          fromBody: {
+            fileId: req.body.fileId,
+            chunkIndex: req.body.chunkIndex,
+            totalChunks: req.body.totalChunks
+          },
+          fromHeaders: {
+            fileId: req.headers['x-file-id'],
+            chunkIndex: req.headers['x-chunk-index'],
+            totalChunks: req.headers['x-total-chunks']
+          }
+        });
         return cb(new Error('Missing chunk information'));
       }
 
@@ -93,7 +109,12 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     try {
-      const { chunkIndex } = req.body;
+      // Get chunk index from either form data or headers
+      const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
+      if (chunkIndex === undefined) {
+        console.error('Missing chunk index in filename handler');
+        return cb(new Error('Missing chunk index'));
+      }
       // Store each chunk with its index
       cb(null, `chunk-${chunkIndex}`);
     } catch (error) {
@@ -112,22 +133,44 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     try {
-      const { fileId, chunkIndex, totalChunks } = req.body;
+      // Get chunk info from either form data or headers
+      const fileId = req.body.fileId || req.headers['x-file-id'];
+      const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
+      const totalChunks = req.body.totalChunks || req.headers['x-total-chunks'];
       
       // Validate chunk information
       if (!fileId || chunkIndex === undefined || !totalChunks) {
-        console.error('Missing chunk information:', { fileId, chunkIndex, totalChunks });
+        console.error('Missing chunk information:', { 
+          fileId, 
+          chunkIndex, 
+          totalChunks,
+          fromBody: { 
+            fileId: req.body.fileId,
+            chunkIndex: req.body.chunkIndex,
+            totalChunks: req.body.totalChunks 
+          },
+          fromHeaders: {
+            fileId: req.headers['x-file-id'],
+            chunkIndex: req.headers['x-chunk-index'],
+            totalChunks: req.headers['x-total-chunks']
+          }
+        });
         return cb(new Error('Missing chunk information'));
       }
+
+      // Store chunk info on request for later use
+      req.chunkInfo = {
+        fileId,
+        chunkIndex: parseInt(chunkIndex),
+        totalChunks: parseInt(totalChunks)
+      };
 
       // Log chunk upload start
       console.log('Starting chunk upload:', {
         originalName: file.originalname,
         mimeType: file.mimetype,
         fieldname: file.fieldname,
-        fileId,
-        chunkIndex,
-        totalChunks,
+        ...req.chunkInfo,
         params: req.params
       });
 
@@ -201,14 +244,14 @@ const uploadMiddleware = (req, res, next) => {
       }
 
       const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-      const { fileId, chunkIndex, totalChunks } = req.body;
+      const { fileId, chunkIndex, totalChunks } = req.chunkInfo;
       const uploadDir = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
       const chunkDir = getChunkDir(uploadDir, fileId);
 
       // Check if this was the last chunk
       const uploadedChunks = fs.readdirSync(chunkDir).length;
       
-      if (uploadedChunks === parseInt(totalChunks)) {
+      if (uploadedChunks === totalChunks) { // totalChunks is already parsed as int in fileFilter
         try {
           // All chunks received, assemble the final file
           const finalPath = getFinalFilePath(uploadDir);
