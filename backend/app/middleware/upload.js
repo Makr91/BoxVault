@@ -61,222 +61,301 @@ const uploadMiddleware = async (req, res) => {
     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     const finalPath = path.join(uploadDir, 'vagrant.box');
 
-    // Create write stream with optimized settings
-    writeStream = fs.createWriteStream(finalPath, {
-      flags: 'w',
-      encoding: 'binary',
-      mode: 0o666,
-      autoClose: true,
-      emitClose: true,
-      highWaterMark: 64 * 1024 * 1024 // 64MB chunks
-    });
+    // Get chunk information from headers
+    const chunkIndex = parseInt(req.headers['x-chunk-index']);
+    const totalChunks = parseInt(req.headers['x-total-chunks']);
+    const isMultipart = !isNaN(chunkIndex) && !isNaN(totalChunks);
+
+    // Create temp directory for chunks if needed
+    const tempDir = path.join(uploadDir, '.temp');
+    if (isMultipart) {
+      fs.mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+    }
 
     // Log upload start
     console.log('Starting file upload:', {
       fileName: req.headers['x-file-name'] || 'vagrant.box',
-      fileSize: isChunked ? 'chunked' : contentLength,
+      fileSize: contentLength,
       checksum: req.headers['x-checksum'] || 'none',
       checksumType: req.headers['x-checksum-type'] || 'NULL',
       path: finalPath,
-      transferEncoding: isChunked ? 'chunked' : 'content-length'
+      isMultipart,
+      chunkIndex: isMultipart ? chunkIndex : 'N/A',
+      totalChunks: isMultipart ? totalChunks : 'N/A'
     });
 
-    // Set up progress tracking
-    let lastLogged = 0;
-    let lastTime = Date.now();
-    let totalBytes = isChunked ? 0 : contentLength;
-    
-    // Use pipe() for efficient streaming with error handling
-    await new Promise((resolve, reject) => {
-      // Handle data chunks and track progress
-      req.on('data', chunk => {
-        uploadedBytes += chunk.length;
-        if (isChunked) {
-          totalBytes = uploadedBytes; // For chunked encoding, total is what we've received
-        }
-        
-        // Log progress every 1GB or every 5 seconds
-        const now = Date.now();
-        const timeDiff = now - lastTime;
-        const currentProgress = isChunked ? 'chunked' : Math.floor((uploadedBytes / totalBytes) * 100);
-        
-        if (uploadedBytes - lastLogged >= 1024 * 1024 * 1024 || timeDiff >= 5000) {
-          const speed = ((uploadedBytes - lastLogged) / (1024 * 1024)) / (timeDiff / 1000); // MB/s
-          console.log('Upload progress:', {
-            uploadedBytes,
-            totalBytes: isChunked ? 'chunked' : totalBytes,
-            progress: isChunked ? `${uploadedBytes} bytes` : `${currentProgress}%`,
-            speed: `${Math.round(speed)} MB/s`
-          });
-          lastLogged = uploadedBytes;
-          lastTime = now;
-        }
-      });
-
-      // Handle stream completion
-      writeStream.on('finish', () => {
-        console.log('Write stream finished');
-        resolve();
-      });
-
-      // Handle write stream errors
-      writeStream.on('error', err => {
-        console.error('Write stream error:', err);
-        writeStream.end();
-        reject(err);
-      });
-
-      // Handle request errors
-      req.on('error', err => {
-        console.error('Request error:', err);
-        writeStream.end();
-        reject(err);
-      });
-
-      // Handle socket errors
-      req.socket.on('error', err => {
-        console.error('Socket error:', err);
-        writeStream.end();
-        reject(err);
-      });
-
-      // Handle premature connection close
-      req.on('close', () => {
-        if (!isChunked && uploadedBytes < contentLength) {
-          const error = new Error('Connection closed prematurely');
-          error.bytesUploaded = uploadedBytes;
-          error.totalBytes = contentLength;
-          error.progress = `${Math.round((uploadedBytes / contentLength) * 100)}%`;
-          console.error('Upload interrupted:', error);
-          writeStream.end();
-          reject(error);
-        }
-      });
-
-      // Handle pipe errors and ensure proper end event
-      const stream = req.pipe(writeStream);
-      stream.on('error', err => {
-        console.error('Pipe error:', err);
-        writeStream.end();
-        reject(err);
-      });
-
-      // Ensure end event is handled
-      req.on('end', () => {
-        if (uploadedBytes === contentLength) {
-          console.log('Upload completed successfully');
-        }
-      });
-    });
-
-    // Verify file size
-    const finalSize = fs.statSync(finalPath).size;
-
-    // For non-chunked uploads, verify against Content-Length
-    if (!isChunked) {
-      const maxDiff = Math.max(1024 * 1024, contentLength * 0.01); // Allow 1MB or 1% difference
-      
-      if (Math.abs(finalSize - contentLength) > maxDiff) {
-        console.error('Size mismatch:', {
-          expectedSize: contentLength,
-          actualSize: finalSize,
-          difference: Math.abs(finalSize - contentLength),
-          maxAllowedDiff: maxDiff
+    if (isMultipart) {
+      try {
+        // Save chunk to temp file
+        const chunkPath = path.join(tempDir, `chunk-${chunkIndex}`);
+        writeStream = fs.createWriteStream(chunkPath, {
+          flags: 'w',
+          encoding: 'binary',
+          mode: 0o666,
+          autoClose: true
         });
-        
-        fs.unlinkSync(finalPath);
-        throw new Error(`File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`);
+
+        // Write chunk
+        await new Promise((resolve, reject) => {
+          req.pipe(writeStream)
+            .on('finish', resolve)
+            .on('error', reject);
+        });
+
+        // Check if all chunks received
+        const chunks = fs.readdirSync(tempDir).filter(f => f.startsWith('chunk-'));
+        console.log('Chunk upload status:', {
+          received: chunks.length,
+          total: totalChunks,
+          current: chunkIndex
+        });
+
+        if (chunks.length === totalChunks) {
+          // Merge chunks
+          writeStream = fs.createWriteStream(finalPath, {
+            flags: 'w',
+            encoding: 'binary',
+            mode: 0o666,
+            autoClose: true
+          });
+
+          // Sort chunks by index to ensure correct order
+          const sortedChunks = chunks
+            .map(f => ({ index: parseInt(f.split('-')[1]), path: path.join(tempDir, f) }))
+            .sort((a, b) => a.index - b.index);
+
+          // Merge chunks sequentially
+          for (const chunk of sortedChunks) {
+            const chunkContent = fs.readFileSync(chunk.path);
+            writeStream.write(chunkContent);
+            fs.unlinkSync(chunk.path); // Delete chunk after merging
+          }
+
+          writeStream.end();
+          fs.rmdirSync(tempDir); // Remove temp directory
+
+          // File is complete, proceed with verification and database updates
+          const finalSize = fs.statSync(finalPath).size;
+
+          // Verify against max file size
+          if (finalSize > maxFileSize) {
+            fs.unlinkSync(finalPath);
+            throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
+          }
+
+          // Update database
+          const version = await db.versions.findOne({
+            where: { versionNumber },
+            include: [{
+              model: db.box,
+              as: 'box',
+              where: { name: boxId }
+            }]
+          });
+
+          if (!version) {
+            throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
+          }
+
+          const provider = await db.providers.findOne({
+            where: { 
+              name: providerName,
+              versionId: version.id
+            }
+          });
+
+          if (!provider) {
+            throw new Error(`Provider ${providerName} not found`);
+          }
+
+          const architecture = await db.architectures.findOne({
+            where: { 
+              name: architectureName,
+              providerId: provider.id
+            }
+          });
+
+          if (!architecture) {
+            throw new Error(`Architecture not found for provider ${providerName}`);
+          }
+
+          const fileData = {
+            fileName: 'vagrant.box',
+            checksum: req.headers['x-checksum'] || null,
+            checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
+            architectureId: architecture.id,
+            fileSize: finalSize
+          };
+
+          const fileRecord = await db.files.findOne({
+            where: {
+              fileName: 'vagrant.box',
+              architectureId: architecture.id
+            }
+          });
+
+          if (fileRecord) {
+            await fileRecord.update(fileData);
+          } else {
+            await db.files.create(fileData);
+          }
+
+          // Calculate stats
+          const duration = Date.now() - startTime;
+          const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+
+          console.log('Upload completed:', {
+            finalSize,
+            duration: `${Math.round(duration / 1000)}s`,
+            speed: `${speed} MB/s`
+          });
+
+          // Return final success response
+          return res.status(200).json({
+            message: 'File upload completed',
+            details: {
+              isComplete: true,
+              status: 'complete',
+              fileSize: finalSize
+            }
+          });
+        }
+
+        // Return chunk success response
+        return res.status(200).json({
+          message: 'Chunk upload completed',
+          details: {
+            isComplete: false,
+            status: 'uploading',
+            chunksReceived: chunks.length,
+            totalChunks: totalChunks,
+            currentChunk: chunkIndex
+          }
+        });
+      } catch (error) {
+        // Clean up temp files on error
+        try {
+          if (fs.existsSync(tempDir)) {
+            const chunks = fs.readdirSync(tempDir);
+            chunks.forEach(chunk => fs.unlinkSync(path.join(tempDir, chunk)));
+            fs.rmdirSync(tempDir);
+          }
+        } catch (cleanupError) {
+          console.error('Error cleaning up temp files:', cleanupError);
+        }
+        throw error;
       }
-    }
-
-    // For all uploads, verify against max file size
-    if (finalSize > maxFileSize) {
-      console.error('File too large:', {
-        fileSize: finalSize,
-        maxSize: maxFileSize
-      });
-      
-      fs.unlinkSync(finalPath);
-      throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
-    }
-
-    // Find or create database records
-    const version = await db.versions.findOne({
-      where: { versionNumber },
-      include: [{
-        model: db.box,
-        as: 'box',
-        where: { name: boxId }
-      }]
-    });
-
-    if (!version) {
-      throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
-    }
-
-    const provider = await db.providers.findOne({
-      where: { 
-        name: providerName,
-        versionId: version.id
-      }
-    });
-
-    if (!provider) {
-      throw new Error(`Provider ${providerName} not found`);
-    }
-
-    const architecture = await db.architectures.findOne({
-      where: { 
-        name: architectureName,
-        providerId: provider.id
-      }
-    });
-
-    if (!architecture) {
-      throw new Error(`Architecture not found for provider ${providerName}`);
-    }
-
-    // Update database
-    const fileData = {
-      fileName: 'vagrant.box',
-      checksum: req.headers['x-checksum'] || null,
-      checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
-      architectureId: architecture.id,
-      fileSize: finalSize
-    };
-
-    const fileRecord = await db.files.findOne({
-      where: {
-        fileName: 'vagrant.box',
-        architectureId: architecture.id
-      }
-    });
-
-    if (fileRecord) {
-      await fileRecord.update(fileData);
     } else {
-      await db.files.create(fileData);
-    }
+      // Single file upload
+      writeStream = fs.createWriteStream(finalPath, {
+        flags: 'w',
+        encoding: 'binary',
+        mode: 0o666,
+        autoClose: true
+      });
 
-    // Calculate stats
-    const duration = Date.now() - startTime;
-    const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+      // Write file
+      await new Promise((resolve, reject) => {
+        req.pipe(writeStream)
+          .on('finish', resolve)
+          .on('error', reject);
+      });
 
-    console.log('Upload completed:', {
-      finalSize,
-      duration: `${Math.round(duration / 1000)}s`,
-      speed: `${speed} MB/s`
-    });
+      // Verify file size
+      const finalSize = fs.statSync(finalPath).size;
 
-    res.status(200).json({
-      message: 'File upload completed',
-      details: {
-        isComplete: true,
-        status: 'complete',
-        fileSize: finalSize
+      // For non-chunked uploads, verify against Content-Length
+      if (!isChunked && !isNaN(contentLength)) {
+        const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
+        if (Math.abs(finalSize - contentLength) > maxDiff) {
+          fs.unlinkSync(finalPath);
+          throw new Error(`File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`);
+        }
       }
-    });
 
+      // Verify against max file size
+      if (finalSize > maxFileSize) {
+        fs.unlinkSync(finalPath);
+        throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
+      }
+
+      // Update database
+      const version = await db.versions.findOne({
+        where: { versionNumber },
+        include: [{
+          model: db.box,
+          as: 'box',
+          where: { name: boxId }
+        }]
+      });
+
+      if (!version) {
+        throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
+      }
+
+      const provider = await db.providers.findOne({
+        where: { 
+          name: providerName,
+          versionId: version.id
+        }
+      });
+
+      if (!provider) {
+        throw new Error(`Provider ${providerName} not found`);
+      }
+
+      const architecture = await db.architectures.findOne({
+        where: { 
+          name: architectureName,
+          providerId: provider.id
+        }
+      });
+
+      if (!architecture) {
+        throw new Error(`Architecture not found for provider ${providerName}`);
+      }
+
+      const fileData = {
+        fileName: 'vagrant.box',
+        checksum: req.headers['x-checksum'] || null,
+        checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
+        architectureId: architecture.id,
+        fileSize: finalSize
+      };
+
+      const fileRecord = await db.files.findOne({
+        where: {
+          fileName: 'vagrant.box',
+          architectureId: architecture.id
+        }
+      });
+
+      if (fileRecord) {
+        await fileRecord.update(fileData);
+      } else {
+        await db.files.create(fileData);
+      }
+
+      // Calculate stats
+      const duration = Date.now() - startTime;
+      const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+
+      console.log('Upload completed:', {
+        finalSize,
+        duration: `${Math.round(duration / 1000)}s`,
+        speed: `${speed} MB/s`
+      });
+
+      // Return success response
+      return res.status(200).json({
+        message: 'File upload completed',
+        details: {
+          isComplete: true,
+          status: 'complete',
+          fileSize: finalSize
+        }
+      });
+    }
   } catch (error) {
     console.error('Upload error:', error);
 

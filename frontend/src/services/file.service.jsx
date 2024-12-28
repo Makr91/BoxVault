@@ -18,104 +18,91 @@ class FileService {
     });
 
     try {
-      // Set up headers with auth token and metadata
-      const headers = {
-        ...authHeader(),
-        'Content-Type': 'application/octet-stream',
-        'Transfer-Encoding': 'chunked',
-        'X-File-Name': file.name,
-        'X-Checksum': checksum || '',
-        'X-Checksum-Type': checksumType || 'NULL'
-      };
-
-      // Set up direct streaming upload
+      // Set up chunked upload
+      const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB chunks
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
       let uploadedBytes = 0;
-      const fileStream = file.stream();
-      const reader = fileStream.getReader();
+      let currentChunk = 0;
 
-      // Create a ReadableStream that directly forwards chunks
-      const uploadStream = new ReadableStream({
-        async start(controller) {
-          try {
-            while (true) {
-              const {done, value} = await reader.read();
-              
-              if (done) {
-                controller.close();
-                break;
-              }
+      // Process chunks sequentially
+      while (currentChunk < totalChunks) {
+        const start = currentChunk * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        
+        // Get chunk data without loading entire file
+        const chunk = file.slice(start, end);
 
-              // Forward chunk directly without buffering
-              controller.enqueue(value);
-              uploadedBytes += value.length;
-              
-              if (onUploadProgress) {
-                onUploadProgress({
-                  loaded: uploadedBytes,
-                  total: file.size,
-                  progress: Math.round((uploadedBytes / file.size) * 100)
-                });
-              }
-            }
-          } catch (error) {
-            controller.error(error);
-          } finally {
-            reader.releaseLock();
+        // Set up headers for this chunk
+        const headers = {
+          ...authHeader(),
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': (end - start).toString(),
+          'X-File-Name': file.name,
+          'X-Checksum': checksum || '',
+          'X-Checksum-Type': checksumType || 'NULL',
+          'X-Chunk-Index': currentChunk.toString(),
+          'X-Total-Chunks': totalChunks.toString()
+        };
+
+        // Upload chunk
+        const response = await fetch(
+          `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
+          {
+            method: 'POST',
+            headers,
+            body: chunk,
+            duplex: 'half'
           }
-        },
-        cancel() {
-          reader.releaseLock();
-        }
-      });
+        );
 
-      // Upload using direct stream
-      const response = await fetch(
-        `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
-        {
-          method: 'POST',
-          headers,
-          body: uploadStream,
-          duplex: 'half'
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Chunk upload failed: ${response.statusText}. ${errorText}`);
         }
-      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.statusText}. ${errorText}`);
+        const result = await response.json();
+        
+        // Update progress
+        uploadedBytes += (end - start);
+        if (onUploadProgress) {
+          onUploadProgress({
+            loaded: uploadedBytes,
+            total: file.size,
+            progress: Math.round((uploadedBytes / file.size) * 100)
+          });
+        }
+
+        // Check if upload is complete
+        if (result.details.isComplete) {
+          // Verify upload success
+          const fileInfo = await this.info(organization, name, version, provider, architecture);
+          const fileSize = fileInfo.data?.fileSize || fileInfo.fileSize;
+          
+          if (typeof fileSize !== 'number') {
+            console.error('Invalid file info response:', fileInfo);
+            throw new Error('Unable to verify upload: File size not found in response');
+          }
+
+          const sizeDiff = Math.abs(file.size - fileSize);
+          const maxDiff = Math.max(1024 * 1024, file.size * 0.01); // Allow 1MB or 1% difference
+          
+          if (sizeDiff > maxDiff) {
+            console.error('Size mismatch:', {
+              originalSize: file.size,
+              uploadedSize: fileSize,
+              difference: sizeDiff,
+              maxAllowedDiff: maxDiff
+            });
+            throw new Error(`Upload size mismatch: Expected ${file.size} bytes but got ${fileSize} bytes`);
+          }
+
+          return result;
+        }
+
+        currentChunk++;
       }
 
-      const result = await response.json();
-
-      // Verify upload success
-      const fileInfo = await this.info(organization, name, version, provider, architecture);
-      const fileSize = fileInfo.data?.fileSize || fileInfo.fileSize;
-      
-      if (typeof fileSize !== 'number') {
-        console.error('Invalid file info response:', fileInfo);
-        throw new Error('Unable to verify upload: File size not found in response');
-      }
-
-      const sizeDiff = Math.abs(file.size - fileSize);
-      const maxDiff = Math.max(1024 * 1024, file.size * 0.01); // Allow 1MB or 1% difference, whichever is larger
-      
-      if (sizeDiff > maxDiff) {
-        console.error('Size mismatch:', {
-          originalSize: file.size,
-          uploadedSize: fileSize,
-          difference: sizeDiff,
-          maxAllowedDiff: maxDiff
-        });
-        throw new Error(`Upload size mismatch: Expected ${file.size} bytes but got ${fileSize} bytes`);
-      }
-
-      return {
-        message: 'File upload completed',
-        details: {
-          isComplete: true,
-          status: 'complete',
-          fileSize: fileSize
-        }
-      };
+      throw new Error('Upload failed: Final chunk response not received');
     } catch (error) {
       console.error('Upload failed:', {
         error,
