@@ -18,29 +18,6 @@ class FileService {
     });
 
     try {
-      // Create ReadableStream from file
-      const stream = file.stream();
-      const reader = stream.getReader();
-
-      // Track upload progress
-      let uploadedBytes = 0;
-      const progressStream = new TransformStream({
-        transform(chunk, controller) {
-          uploadedBytes += chunk.length;
-          const progress = Math.round((uploadedBytes / file.size) * 100);
-          
-          if (onUploadProgress) {
-            onUploadProgress({
-              loaded: uploadedBytes,
-              total: file.size,
-              progress
-            });
-          }
-          
-          controller.enqueue(chunk);
-        }
-      });
-
       // Create headers with auth token and metadata
       const headers = {
         ...authHeader(),
@@ -51,13 +28,41 @@ class FileService {
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
+      // Create a new ReadableStream that tracks progress
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          const reader = file.stream().getReader();
+          let uploadedBytes = 0;
+
+          while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+
+            uploadedBytes += value.length;
+            const progress = Math.round((uploadedBytes / file.size) * 100);
+            
+            if (onUploadProgress) {
+              onUploadProgress({
+                loaded: uploadedBytes,
+                total: file.size,
+                progress
+              });
+            }
+
+            controller.enqueue(value);
+          }
+
+          controller.close();
+        }
+      });
+
       // Stream the file directly to the server
       const response = await fetch(
         `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
         {
           method: 'POST',
           headers,
-          body: stream.pipeThrough(progressStream),
+          body: readableStream,
           duplex: 'half' // Required for streaming request body
         }
       );
@@ -85,8 +90,20 @@ class FileService {
         }
       };
     } catch (error) {
-      console.error('Upload failed:', error);
-      throw error;
+      console.error('Upload failed:', {
+        error,
+        fileName: file.name,
+        fileSize: file.size,
+        type: file.type,
+        lastModified: new Date(file.lastModified).toISOString()
+      });
+      
+      // Add more context to the error
+      if (error.name === 'TypeError' && error.message.includes('locked')) {
+        throw new Error('Upload failed: Stream handling error. Please try again.');
+      } else {
+        throw error;
+      }
     }
   }
 
