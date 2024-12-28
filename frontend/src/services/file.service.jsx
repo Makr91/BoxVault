@@ -28,47 +28,32 @@ class FileService {
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
-      // Create a chunked upload stream
+      // Track upload progress
       let uploadedBytes = 0;
-      const chunkSize = 8 * 1024 * 1024; // 8MB chunks
-      const stream = file.stream();
-      const reader = stream.getReader();
+      const fileStream = file.stream();
 
+      // Create a transform stream to track progress
+      const progressStream = new TransformStream({
+        transform(chunk, controller) {
+          uploadedBytes += chunk.length;
+          if (onUploadProgress) {
+            onUploadProgress({
+              loaded: uploadedBytes,
+              total: file.size,
+              progress: Math.round((uploadedBytes / file.size) * 100)
+            });
+          }
+          controller.enqueue(chunk);
+        }
+      });
+
+      // Stream directly to server with progress tracking
       const response = await fetch(
         `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
         {
           method: 'POST',
           headers,
-          body: new ReadableStream({
-            async pull(controller) {
-              try {
-                const {done, value} = await reader.read();
-                
-                if (done) {
-                  controller.close();
-                  return;
-                }
-
-                uploadedBytes += value.length;
-                if (onUploadProgress) {
-                  onUploadProgress({
-                    loaded: uploadedBytes,
-                    total: file.size,
-                    progress: Math.round((uploadedBytes / file.size) * 100)
-                  });
-                }
-
-                // Send chunk
-                controller.enqueue(value);
-              } catch (error) {
-                controller.error(error);
-                reader.releaseLock();
-              }
-            },
-            cancel() {
-              reader.releaseLock();
-            }
-          }),
+          body: fileStream.pipeThrough(progressStream),
           duplex: 'half'
         }
       );
