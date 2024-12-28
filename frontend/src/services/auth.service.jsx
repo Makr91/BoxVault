@@ -32,8 +32,12 @@ const refreshTokenIfNeeded = async () => {
   if (tokenAge < 240000) return null;
 
   try {
+    // Use authHeader() to get the current token and add Content-Type
     const response = await axios.get(`${baseURL}/api/auth/refresh-token`, { 
-      headers: authHeader(),
+      headers: {
+        ...authHeader(),
+        'Content-Type': 'application/json'
+      },
       skipAuthRefresh: true // Skip interceptor for this request
     });
     
@@ -63,6 +67,12 @@ axios.interceptors.request.use(
     }
 
     await refreshTokenIfNeeded();
+
+    // Ensure Content-Type is set for all requests
+    if (!config.headers['Content-Type'] && !config.url.includes('/file/upload')) {
+      config.headers['Content-Type'] = 'application/json';
+    }
+
     return config;
   },
   error => {
