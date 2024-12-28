@@ -297,7 +297,7 @@ const uploadMiddleware = (req, res, next) => {
       if (uploadedChunks === totalChunks) { // totalChunks is already parsed as int in fileFilter
         try {
           try {
-            // All chunks received, assemble the final file first
+            // Assemble the file first
             const finalPath = getFinalFilePath(uploadDir);
             await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
             
@@ -310,19 +310,6 @@ const uploadMiddleware = (req, res, next) => {
               finalPath,
               finalSize: fs.statSync(finalPath).size,
               duration: Date.now() - startTime
-            });
-
-            // Now send response with the actual final size
-            res.status(200).json({
-              message: 'File assembly completed',
-              details: {
-                chunkIndex,
-                uploadedChunks,
-                totalChunks,
-                isComplete: true,
-                status: 'complete',
-                fileSize: fs.statSync(finalPath).size
-              }
             });
 
             // Create database record directly here instead of using next()
@@ -382,6 +369,20 @@ const uploadMiddleware = (req, res, next) => {
               await File.create(fileData);
               console.log('File record created:', fileData);
             }
+
+            // Send completion response matching frontend expectations
+            res.status(200).json({
+              message: 'Chunk uploaded successfully',
+              details: {
+                chunkIndex,
+                uploadedChunks,
+                totalChunks,
+                isComplete: true,
+                status: 'complete',
+                remainingChunks: 0,
+                fileSize: fileSize
+              }
+            });
 
           } catch (error) {
             console.error('Error during file assembly or database update:', error);
