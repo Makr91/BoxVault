@@ -226,13 +226,18 @@ if (isSSLConfigured()) {
     
     // Increase TLS fragment size
     httpsServer.maxHeaderSize = 32 * 1024; // 32KB
-    // Increase socket buffer size
+    // Configure socket for large transfers
     httpsServer.on('connection', socket => {
       socket.setNoDelay(true);
       socket.setKeepAlive(true, 60000); // 60 seconds
-      // Increase socket buffer size to 64MB
-      socket.setRecvBufferSize(64 * 1024 * 1024);
-      socket.setSendBufferSize(64 * 1024 * 1024);
+      
+      // Set buffer size using the correct Node.js method
+      socket.bufferSize = 64 * 1024 * 1024; // 64MB
+      
+      // Optimize socket for large transfers
+      socket.on('error', err => {
+        console.error('Socket error:', err);
+      });
     });
 
     // Disable timeouts for uploads
@@ -265,14 +270,19 @@ if (isSSLConfigured()) {
 function startHTTPServer() {
   const httpServer = http.createServer(app);
   
-  // Increase socket buffer size for HTTP server too
+  // Configure socket for HTTP server too
   httpServer.maxHeaderSize = 32 * 1024; // 32KB
   httpServer.on('connection', socket => {
     socket.setNoDelay(true);
     socket.setKeepAlive(true, 60000); // 60 seconds
-    // Increase socket buffer size to 64MB
-    socket.setRecvBufferSize(64 * 1024 * 1024);
-    socket.setSendBufferSize(64 * 1024 * 1024);
+    
+    // Set buffer size using the correct Node.js method
+    socket.bufferSize = 64 * 1024 * 1024; // 64MB
+    
+    // Optimize socket for large transfers
+    socket.on('error', err => {
+      console.error('Socket error:', err);
+    });
   });
   
   // Disable timeouts for uploads

@@ -94,7 +94,7 @@ const uploadMiddleware = async (req, res) => {
       }
     });
 
-    // Use pipe() for efficient streaming
+    // Use pipe() for efficient streaming with error handling
     await new Promise((resolve, reject) => {
       // Handle stream completion
       writeStream.on('finish', () => {
@@ -102,32 +102,47 @@ const uploadMiddleware = async (req, res) => {
         resolve();
       });
 
-      // Handle errors
+      // Handle write stream errors
       writeStream.on('error', err => {
         console.error('Write stream error:', err);
+        writeStream.end();
         reject(err);
       });
 
+      // Handle request errors
       req.on('error', err => {
         console.error('Request error:', err);
+        writeStream.end();
+        reject(err);
+      });
+
+      // Handle socket errors
+      req.socket.on('error', err => {
+        console.error('Socket error:', err);
+        writeStream.end();
         reject(err);
       });
 
       // Handle premature connection close
       req.on('close', () => {
         if (uploadedBytes < contentLength) {
-          console.log('Connection closed before completion:', {
-            uploadedBytes,
-            contentLength,
-            progress: `${Math.round((uploadedBytes / contentLength) * 100)}%`
-          });
+          const error = new Error('Connection closed prematurely');
+          error.bytesUploaded = uploadedBytes;
+          error.totalBytes = contentLength;
+          error.progress = `${Math.round((uploadedBytes / contentLength) * 100)}%`;
+          console.error('Upload interrupted:', error);
           writeStream.end();
-          reject(new Error('Connection closed prematurely'));
+          reject(error);
         }
       });
 
-      // Pipe request to file stream
-      req.pipe(writeStream);
+      // Handle pipe errors
+      const stream = req.pipe(writeStream);
+      stream.on('error', err => {
+        console.error('Pipe error:', err);
+        writeStream.end();
+        reject(err);
+      });
     });
 
     // Verify file size
