@@ -20,7 +20,13 @@ export default defineConfig(() => {
           output: {
             entryFileNames: `assets/[name].js`,
             chunkFileNames: `assets/[name].js`,
-            assetFileNames: `assets/[name].[ext]`
+            assetFileNames: (assetInfo) => {
+              // Keep favicon.ico at root level
+              if (assetInfo.name === 'favicon.ico') {
+                return '[name][extname]';
+              }
+              return `assets/[name].[ext]`;
+            }
           }
         }
       },
@@ -39,4 +45,3 @@ export default defineConfig(() => {
       }
     };
   });
-  
