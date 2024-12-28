@@ -60,7 +60,7 @@ const storage = multer.diskStorage({
       const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
       
       // Get chunk info from either form data or headers
-      const fileId = req.body.fileId || req.headers['x-file-id'];
+  U    const fileId = req.body.fileId || req.headers['x-file-id'];
       const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
       const totalChunks = req.body.totalChunks || req.headers['x-total-chunks'];
       
@@ -290,9 +290,12 @@ const uploadMiddleware = (req, res, next) => {
               totalChunks,
               isComplete: true,
               finalPath,
-              duration: Date.now() - startTime
+              duration: Date.now() - startTime,
+              fileSize: fs.statSync(finalPath).size,
+              status: 'complete'
             }
           });
+          return; // Important: stop here and don't continue to next()
         } catch (assemblyError) {
           console.error('File assembly error:', assemblyError);
           if (!res.headersSent) {
@@ -310,7 +313,9 @@ const uploadMiddleware = (req, res, next) => {
             chunkIndex,
             uploadedChunks,
             totalChunks,
-            isComplete: false
+            isComplete: false,
+            status: 'in_progress',
+            remainingChunks: totalChunks - uploadedChunks
           }
         });
       }

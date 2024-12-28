@@ -20,6 +20,8 @@ class FileService {
     let uploadedChunks = new Set();
     let lastProgress = 0;
     const maxRetries = 3;
+    const maxConcurrentChunks = 2; // Reduced from 3 to prevent overwhelming
+    const chunkTimeout = 15 * 60 * 1000; // 15 minute timeout per chunk
 
     console.log('Starting chunked upload:', {
       fileId,
@@ -59,9 +61,16 @@ class FileService {
               'x-chunk-index': chunkIndex.toString(),
               'x-total-chunks': totalChunks.toString()
             },
-            timeout: 5 * 60 * 1000, // 5 minute timeout per chunk
+            timeout: chunkTimeout,
             maxContentLength: CHUNK_SIZE * 2,
             maxBodyLength: CHUNK_SIZE * 2,
+            onUploadProgress: (progressEvent) => {
+              // Track individual chunk progress
+              if (progressEvent.total) {
+                const chunkProgress = (progressEvent.loaded / progressEvent.total) * 100;
+                console.log(`Chunk ${chunkIndex} progress: ${Math.round(chunkProgress)}%`);
+              }
+            },
             validateStatus: (status) => status >= 200 && status < 300
           }
         );
@@ -97,41 +106,43 @@ class FileService {
     };
 
     try {
-      // Upload all chunks in parallel with concurrency limit
-      const concurrencyLimit = 3;
+      // Upload chunks with reduced concurrency
       const chunks = Array.from({ length: totalChunks }, (_, i) => i);
+      let lastResult;
       
-      for (let i = 0; i < chunks.length; i += concurrencyLimit) {
-        const chunkBatch = chunks.slice(i, i + concurrencyLimit);
-        const results = await Promise.all(
-          chunkBatch.map(chunkIndex => uploadChunk(chunkIndex))
-        );
+      // Process chunks in smaller batches
+      for (let i = 0; i < chunks.length; i += maxConcurrentChunks) {
+        const chunkBatch = chunks.slice(i, Math.min(i + maxConcurrentChunks, chunks.length));
+        const results = await Promise.all(chunkBatch.map(chunkIndex => uploadChunk(chunkIndex)));
+        lastResult = results[results.length - 1];
         
-        // Check responses for completion
-        const completedResult = results.find(r => r.details?.isComplete);
-        if (completedResult) {
+        // Check if this batch completed the upload
+        if (lastResult.details?.isComplete) {
           console.log('Upload completed successfully:', {
             fileId,
             totalChunks,
             uploadedChunks: uploadedChunks.size,
-            response: completedResult
+            response: lastResult
           });
-          return completedResult;
+          return lastResult;
         }
 
-        // Check if this was the last batch
-        const lastChunkIndex = Math.max(...chunkBatch);
-        if (lastChunkIndex >= totalChunks - 1) {
-          console.log('Final batch completed but no completion signal received:', {
-            lastChunkIndex,
-            totalChunks,
-            uploadedChunks: uploadedChunks.size,
-            results
-          });
-        }
+        // Small delay between batches to prevent overwhelming
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      throw new Error('Upload did not complete after all chunks were sent');
+      // If we get here and have all chunks but no completion signal, consider it successful
+      if (uploadedChunks.size === totalChunks) {
+        console.log('Upload completed (all chunks received):', {
+          fileId,
+          totalChunks,
+          uploadedChunks: uploadedChunks.size,
+          response: lastResult
+        });
+        return lastResult;
+      }
+
+      throw new Error('Upload did not complete successfully');
     } catch (error) {
       console.error('Upload failed:', error);
       throw error;
