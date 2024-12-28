@@ -586,7 +586,9 @@ exports.findOne = async (req, res) => {
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        console.warn("Invalid x-access-token:", err.message);
+        // Don't warn about invalid tokens - user might be trying to access a public box
+        userId = null;
+        isServiceAccount = false;
       }
     }
   }
@@ -741,12 +743,12 @@ exports.findOne = async (req, res) => {
       });
     }
 
-    // If the box is public, allow access
+    // If box is public, allow access
     if (box.isPublic) {
       return res.json(response);
     }
 
-    // If the box is private, check access permissions
+    // For private boxes, require authentication
     if (!userId) {
       return res.status(403).json({ message: "Unauthorized access to private box." });
     }
@@ -760,22 +762,23 @@ exports.findOne = async (req, res) => {
       }]
     });
 
-    // Check if the requesting user is a service account owner
+    // Check if the requesting user owns any service accounts
     const requestingUserServiceAccounts = await db.service_account.findAll({
       where: { userId: userId }
     });
 
     // Allow access if:
-    // 1. The user is the owner of the service account that created the box
-    // 2. The box was created by a service account owned by the requesting user
-    // 3. The user belongs to the organization
+    // 1. The user belongs to the organization
+    // 2. The user is the owner of the service account that created the box
+    // 3. The box was created by a service account owned by the requesting user
     // 4. The requester is a service account
-    if (
-      (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId) ||
-      (requestingUserServiceAccounts.some(sa => sa.id === box.userId)) ||
+    const hasAccess = 
       organizationData.users.some(user => user.id === userId) ||
-      isServiceAccount
-    ) {
+      (serviceAccount?.user?.id === userId) ||
+      requestingUserServiceAccounts.some(sa => sa.id === box.userId) ||
+      isServiceAccount;
+
+    if (hasAccess) {
       return res.json(response);
     }
 
