@@ -147,8 +147,21 @@ const uploadMiddleware = async (req, res) => {
 
     // Verify file size
     const finalSize = fs.statSync(finalPath).size;
-    if (Math.abs(finalSize - contentLength) > 1024) { // Allow 1KB difference
-      throw new Error('File size mismatch');
+    const maxDiff = Math.max(1024 * 1024, contentLength * 0.01); // Allow 1MB or 1% difference, whichever is larger
+    
+    if (Math.abs(finalSize - contentLength) > maxDiff) {
+      // Log size mismatch details
+      console.error('Size mismatch:', {
+        expectedSize: contentLength,
+        actualSize: finalSize,
+        difference: Math.abs(finalSize - contentLength),
+        maxAllowedDiff: maxDiff
+      });
+      
+      // Clean up the incomplete file
+      fs.unlinkSync(finalPath);
+      
+      throw new Error(`File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`);
     }
 
     // Find or create database records
@@ -231,9 +244,21 @@ const uploadMiddleware = async (req, res) => {
   } catch (error) {
     console.error('Upload error:', error);
 
-    // Clean up write stream and file
+    // Clean up on error
     if (writeStream) {
       writeStream.end();
+    }
+    
+    // Clean up incomplete file if it exists
+    if (error.message.includes('size mismatch') || error.message.includes('closed prematurely')) {
+      try {
+        if (fs.existsSync(finalPath)) {
+          fs.unlinkSync(finalPath);
+          console.log('Cleaned up incomplete file:', finalPath);
+        }
+      } catch (cleanupError) {
+        console.error('Error cleaning up file:', cleanupError);
+      }
     }
 
     // Send error response if headers haven't been sent

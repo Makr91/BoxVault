@@ -28,30 +28,28 @@ class FileService {
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
-      // Create a new ReadableStream that tracks progress
-      const readableStream = new ReadableStream({
+      // Create a ReadableStream to track upload progress
+      let uploadedBytes = 0;
+      const stream = new ReadableStream({
         async start(controller) {
           const reader = file.stream().getReader();
-          let uploadedBytes = 0;
-
+          
           while (true) {
             const {done, value} = await reader.read();
             if (done) break;
-
-            uploadedBytes += value.length;
-            const progress = Math.round((uploadedBytes / file.size) * 100);
             
+            uploadedBytes += value.length;
             if (onUploadProgress) {
               onUploadProgress({
                 loaded: uploadedBytes,
                 total: file.size,
-                progress
+                progress: Math.round((uploadedBytes / file.size) * 100)
               });
             }
-
+            
             controller.enqueue(value);
           }
-
+          
           controller.close();
         }
       });
@@ -62,23 +60,37 @@ class FileService {
         {
           method: 'POST',
           headers,
-          body: readableStream,
-          duplex: 'half' // Required for streaming request body
+          body: stream,
+          duplex: 'half'
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.statusText}. ${errorText}`);
       }
 
       const result = await response.json();
 
       // Verify upload success
       const fileInfo = await this.info(organization, name, version, provider, architecture);
-      const sizeDiff = Math.abs(file.size - fileInfo.data.fileSize) / file.size;
       
-      if (sizeDiff > 0.01) { // Allow 1% difference for filesystem variations
-        throw new Error('Upload size mismatch');
+      if (!fileInfo.data || typeof fileInfo.data.fileSize !== 'number') {
+        console.error('Invalid file info response:', fileInfo);
+        throw new Error('Unable to verify upload: Invalid file info response');
+      }
+
+      const sizeDiff = Math.abs(file.size - fileInfo.data.fileSize);
+      const maxDiff = Math.max(1024 * 1024, file.size * 0.01); // Allow 1MB or 1% difference, whichever is larger
+      
+      if (sizeDiff > maxDiff) {
+        console.error('Size mismatch:', {
+          originalSize: file.size,
+          uploadedSize: fileInfo.data.fileSize,
+          difference: sizeDiff,
+          maxAllowedDiff: maxDiff
+        });
+        throw new Error(`Upload size mismatch: Expected ${file.size} bytes but got ${fileInfo.data.fileSize} bytes`);
       }
 
       return {
