@@ -4,42 +4,6 @@
     <meta charset="utf-8" />
     <link rel="icon" href="/favicon.ico" type="image/x-icon" id="favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script>
-      // Function to update favicon based on theme
-      function updateFavicon() {
-        const favicon = document.getElementById('favicon');
-        const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-        favicon.href = isDarkMode ? '/dark-favicon.ico' : '/favicon.ico';
-      }
-
-      // Initial favicon update
-      updateFavicon();
-
-      // Watch for theme changes
-      let observer;
-      document.addEventListener('DOMContentLoaded', () => {
-        observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'data-bs-theme') {
-              updateFavicon();
-            }
-          });
-        });
-
-        observer.observe(document.documentElement, {
-          attributes: true,
-          attributeFilter: ['data-bs-theme']
-        });
-      });
-
-      // Cleanup observer on page unload
-      window.addEventListener('unload', () => {
-        if (observer) {
-          observer.disconnect();
-          observer = null;
-        }
-      });
-    </script>
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="BoxVault -- BoxVault Web administrator panel" />
     <link rel="apple-touch-icon" href="/logo192.png" />

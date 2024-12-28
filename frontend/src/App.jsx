@@ -44,8 +44,15 @@ const App = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Update theme in DOM and localStorage
     document.documentElement.setAttribute("data-bs-theme", theme);
     localStorage.setItem("theme", theme);
+
+    // Update favicon based on theme
+    const favicon = document.getElementById('favicon');
+    if (favicon) {
+      favicon.href = theme === 'dark' ? '/dark-favicon.ico' : '/favicon.ico';
+    }
   }, [theme]);
 
   useEffect(() => {
