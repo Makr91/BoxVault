@@ -28,32 +28,53 @@ class FileService {
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
-      // Track upload progress
+      // Set up direct streaming upload
       let uploadedBytes = 0;
       const fileStream = file.stream();
+      const reader = fileStream.getReader();
 
-      // Create a transform stream to track progress
-      const progressStream = new TransformStream({
-        transform(chunk, controller) {
-          uploadedBytes += chunk.length;
-          if (onUploadProgress) {
-            onUploadProgress({
-              loaded: uploadedBytes,
-              total: file.size,
-              progress: Math.round((uploadedBytes / file.size) * 100)
-            });
+      // Create a ReadableStream that directly forwards chunks
+      const uploadStream = new ReadableStream({
+        async start(controller) {
+          try {
+            while (true) {
+              const {done, value} = await reader.read();
+              
+              if (done) {
+                controller.close();
+                break;
+              }
+
+              // Forward chunk directly without buffering
+              controller.enqueue(value);
+              uploadedBytes += value.length;
+              
+              if (onUploadProgress) {
+                onUploadProgress({
+                  loaded: uploadedBytes,
+                  total: file.size,
+                  progress: Math.round((uploadedBytes / file.size) * 100)
+                });
+              }
+            }
+          } catch (error) {
+            controller.error(error);
+          } finally {
+            reader.releaseLock();
           }
-          controller.enqueue(chunk);
+        },
+        cancel() {
+          reader.releaseLock();
         }
       });
 
-      // Stream directly to server with progress tracking
+      // Upload using direct stream
       const response = await fetch(
         `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
         {
           method: 'POST',
           headers,
-          body: fileStream.pipeThrough(progressStream),
+          body: uploadStream,
           duplex: 'half'
         }
       );
