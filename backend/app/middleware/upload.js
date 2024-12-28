@@ -61,16 +61,28 @@ const uploadMiddleware = async (req, res) => {
       path: finalPath
     });
 
+    // Set headers for proper streaming
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+
     // Handle stream events
     req.on('data', chunk => {
       uploadedBytes += chunk.length;
       writeStream.write(chunk);
+
+      // Send progress through response headers
+      res.setHeader('X-Progress', Math.round((uploadedBytes / contentLength) * 100));
+      res.setHeader('X-Uploaded-Bytes', uploadedBytes);
+      res.flushHeaders();
     });
 
     await new Promise((resolve, reject) => {
       req.on('end', resolve);
       req.on('error', reject);
-      writeStream.on('error', reject);
+      writeStream.on('error', err => {
+        console.error('Write stream error:', err);
+        reject(err);
+      });
     });
 
     // Close write stream
