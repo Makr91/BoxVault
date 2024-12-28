@@ -60,7 +60,7 @@ const storage = multer.diskStorage({
       const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
       
       // Get chunk info from either form data or headers
-  U    const fileId = req.body.fileId || req.headers['x-file-id'];
+      const fileId = req.body.fileId || req.headers['x-file-id'];
       const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
       const totalChunks = req.body.totalChunks || req.headers['x-total-chunks'];
       
