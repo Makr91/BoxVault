@@ -58,6 +58,9 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then(registration => {
+      // Skip registration if already unregistering
+      if (registration.unregistering) return;
+
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (installingWorker == null) {
@@ -130,12 +133,15 @@ function checkValidServiceWorker(swUrl, config) {
 
 export function unregister() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready
-      .then(registration => {
-        registration.unregister();
+    // Get all registrations and unregister them
+    navigator.serviceWorker.getRegistrations()
+      .then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
       })
       .catch(error => {
-        console.error(error.message);
+        console.error('Error unregistering service workers:', error);
       });
   }
 }
