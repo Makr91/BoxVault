@@ -79,32 +79,79 @@ const Profile = () => {
   }, [checkEmailVerification]);
 
   useEffect(() => {
-    if (currentUser) {
-      const emailHash = currentUser.emailHash;
-      if (emailHash) {
-        AuthService.getGravatarProfile(emailHash).then((profile) => {
-          if (profile) {
-            setGravatarProfile(profile);
+    let mounted = true;
+
+    const loadUserData = async () => {
+      if (currentUser) {
+        const emailHash = currentUser.emailHash;
+        if (emailHash) {
+          try {
+            const profile = await AuthService.getGravatarProfile(emailHash);
+            if (mounted && profile) {
+              setGravatarProfile(profile);
+            }
+          } catch (error) {
+            console.error("Error loading Gravatar profile:", error);
           }
-        });
+        }
+        
+        try {
+          const isOnly = await UserService.isOnlyUserInOrg(currentUser.organization);
+          if (mounted) {
+            setIsOnlyUserInOrg(isOnly);
+          }
+        } catch (error) {
+          console.error("Error checking organization status:", error);
+        }
+      } else {
+        navigate("/login");
       }
-      UserService.isOnlyUserInOrg(currentUser.organization).then(setIsOnlyUserInOrg);
-    } else {
-      navigate("/login");
-    }
+    };
+
+    loadUserData();
+
+    return () => {
+      mounted = false;
+    };
   }, [currentUser, navigate]);
 
   useEffect(() => {
-    if (activeTab === "serviceAccounts") {
-      loadServiceAccounts();
-    }
+    let mounted = true;
+    let controller = new AbortController();
+    
+    const loadData = async () => {
+      if (activeTab === "serviceAccounts") {
+        try {
+          const response = await ServiceAccountService.getServiceAccounts();
+          if (mounted) {
+            setServiceAccounts(response.data);
+          }
+        } catch (error) {
+          if (mounted && !error.message?.includes('aborted')) {
+            console.error("Error loading service accounts:", error);
+          }
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      mounted = false;
+      controller.abort(); // Cancel any in-flight requests
+    };
   }, [activeTab]);
 
 
-  const loadServiceAccounts = () => {
-    ServiceAccountService.getServiceAccounts()
-      .then(response => setServiceAccounts(response.data))
-      .catch(error => console.error("Error loading service accounts:", error));
+  const loadServiceAccounts = async () => {
+    try {
+      const response = await ServiceAccountService.getServiceAccounts();
+      setServiceAccounts(response.data);
+    } catch (error) {
+      if (!error.message?.includes('aborted')) {
+        console.error("Error loading service accounts:", error);
+      }
+    }
   };
 
   const handleCreateServiceAccount = (e) => {
@@ -229,7 +276,17 @@ const Profile = () => {
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "profile" ? "active" : ""}`}
-                  onClick={() => setActiveTab("profile")}
+                  onClick={() => {
+                    // Clear any pending state updates before switching tabs
+                    setMessage("");
+                    setEmailMessage("");
+                    setPasswordErrors({});
+                    setEmailErrors({});
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setNewEmail("");
+                    setActiveTab("profile");
+                  }}
                 >
                   Profile
                 </button>
@@ -237,7 +294,16 @@ const Profile = () => {
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "security" ? "active" : ""}`}
-                  onClick={() => setActiveTab("security")}
+                  onClick={() => {
+                    setMessage("");
+                    setEmailMessage("");
+                    setPasswordErrors({});
+                    setEmailErrors({});
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setNewEmail("");
+                    setActiveTab("security");
+                  }}
                 >
                   Security
                 </button>
@@ -245,7 +311,13 @@ const Profile = () => {
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "serviceAccounts" ? "active" : ""}`}
-                  onClick={() => setActiveTab("serviceAccounts")}
+                  onClick={() => {
+                    setMessage("");
+                    setShowPasswords({});
+                    setNewServiceAccountDescription("");
+                    setNewServiceAccountExpiration(30);
+                    setActiveTab("serviceAccounts");
+                  }}
                 >
                   Service Accounts
                 </button>

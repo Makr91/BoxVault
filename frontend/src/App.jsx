@@ -40,34 +40,59 @@ const App = () => {
   }, [theme]);
 
   useEffect(() => {
-    // Check if setup is complete
-    SetupService.isSetupComplete().then(response => {
-      setSetupComplete(response.data.setupComplete);
-      if (!response.data.setupComplete) {
-        navigate("/setup");
+    let mounted = true;
+
+    const checkSetup = async () => {
+      try {
+        const response = await SetupService.isSetupComplete();
+        if (!mounted) return;
+
+        setSetupComplete(response.data.setupComplete);
+        if (!response.data.setupComplete) {
+          navigate("/setup");
+        }
+      } catch (error) {
+        if (!mounted) return;
+        console.error('Error checking setup status:', error);
       }
-    }).catch(error => {
-      console.error('Error checking setup status:', error);
-    });
+    };
+
+    checkSetup();
+
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   const fetchGravatarUrl = useCallback((emailHash) => {
-    if (!gravatarFetched) {
-      AuthService.fetchGravatarConfig().then(() => {
-        AuthService.getGravatarProfile(emailHash).then((profile) => {
-          if (profile && profile.avatar_url) {
+    let mounted = true;
+
+    const loadGravatar = async () => {
+      if (!gravatarFetched) {
+        try {
+          await AuthService.fetchGravatarConfig();
+          if (!mounted) return;
+
+          const profile = await AuthService.getGravatarProfile(emailHash);
+          if (!mounted) return;
+
+          if (profile?.avatar_url) {
             setGravatarUrl(profile.avatar_url);
           }
           setGravatarFetched(true);
-        }).catch((error) => {
-          console.error("Error fetching Gravatar profile:", error);
+        } catch (error) {
+          if (!mounted) return;
+          console.error("Error fetching Gravatar:", error);
           setGravatarFetched(true);
-        });
-      }).catch((error) => {
-        console.error("Error fetching Gravatar config:", error);
-        setGravatarFetched(true);
-      });
-    }
+        }
+      }
+    };
+
+    loadGravatar();
+
+    return () => {
+      mounted = false;
+    };
   }, [gravatarFetched]);
 
   useEffect(() => {
@@ -83,29 +108,38 @@ const App = () => {
         fetchGravatarUrl(user.emailHash);
       }
 
-      EventBus.on("logout", () => {
+      // Use the new cleanup function returned by EventBus.on
+      const cleanup = EventBus.on("logout", () => {
         logOut();
       });
 
-      return () => {
-        EventBus.remove("logout");
-      };
+      return cleanup;
     }
   }, [fetchGravatarUrl]);
 
   useEffect(() => {
+    let mounted = true;
+    let intervalId;
+
     if (currentUser) {
       // Refresh token at 80% of its lifetime (24 hours * 0.8 = 19.2 hours)
-      const intervalId = setInterval(() => {
-        AuthService.refreshUserData().then((updatedUser) => {
-          if (updatedUser) {
-            setCurrentUser(updatedUser);
-          }
-        });
+      intervalId = setInterval(() => {
+        if (mounted) {
+          AuthService.refreshUserData().then((updatedUser) => {
+            if (mounted && updatedUser) {
+              setCurrentUser(updatedUser);
+            }
+          });
+        }
       }, 69120000); // 19.2 hours in milliseconds
-
-      return () => clearInterval(intervalId);
     }
+
+    return () => {
+      mounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [currentUser]);
 
   const toggleTheme = () => {

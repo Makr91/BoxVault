@@ -18,11 +18,23 @@ root.render(
   </BrowserRouter>
 );
 
-// Properly cleanup service worker before unregistering
+// Properly cleanup service worker and message ports
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for(let registration of registrations) {
-      registration.unregister();
+  navigator.serviceWorker.getRegistrations().then(async function(registrations) {
+    // First terminate any active service workers
+    const activeWorkers = await navigator.serviceWorker.ready;
+    if (activeWorkers.active) {
+      activeWorkers.active.postMessage({ type: 'TERMINATE' });
+    }
+    
+    // Then unregister all service workers
+    await Promise.all(registrations.map(registration => registration.unregister()));
+    
+    // Finally clear any message channels
+    if (window.MessageChannel) {
+      const channel = new MessageChannel();
+      channel.port1.close();
+      channel.port2.close();
     }
   });
 }

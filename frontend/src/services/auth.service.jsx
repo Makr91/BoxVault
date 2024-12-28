@@ -3,23 +3,20 @@ import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
 
-let GRAVATAR_API_URL = "";
-let GRAVATAR_API_KEY = "";
-
-const fetchGravatarConfig = () => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const response = await axios.get(`${baseURL}/api/config/gravatar`);
-      if (response.data && response.data.gravatar) {
-        GRAVATAR_API_URL = response.data.gravatar.base_url.value;
-        GRAVATAR_API_KEY = response.data.gravatar.api_key.value;
-      }
-      resolve();
-    } catch (error) {
-      console.error("Error fetching Gravatar configuration:", error);
-      resolve();
+const getGravatarConfig = async () => {
+  try {
+    const response = await axios.get(`${baseURL}/api/config/gravatar`);
+    if (response.data && response.data.gravatar) {
+      return {
+        apiUrl: response.data.gravatar.base_url.value,
+        apiKey: response.data.gravatar.api_key.value
+      };
     }
-  });
+    return null;
+  } catch (error) {
+    console.error("Error fetching Gravatar configuration:", error);
+    return null;
+  }
 };
 
 // Function to refresh token if needed
@@ -185,11 +182,12 @@ const getCurrentUser = () => {
 
 const getGravatarProfile = async (emailHash) => {
   try {
-    await fetchGravatarConfig();
+    const config = await getGravatarConfig();
+    if (!config) return null;
 
-    const response = await axios.get(`${GRAVATAR_API_URL}${emailHash}`, {
+    const response = await axios.get(`${config.apiUrl}${emailHash}`, {
       headers: {
-        Authorization: `Bearer ${GRAVATAR_API_KEY}`,
+        Authorization: `Bearer ${config.apiKey}`,
       },
     });
     return response.data;
