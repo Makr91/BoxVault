@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const crypto = require('crypto');
+const db = require("../models");
+const { Architecture, File } = db;
 
 // Load app config for max file size
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
@@ -294,27 +296,98 @@ const uploadMiddleware = (req, res, next) => {
       
       if (uploadedChunks === totalChunks) { // totalChunks is already parsed as int in fileFilter
         try {
-          // All chunks received, assemble the final file
-          const finalPath = getFinalFilePath(uploadDir);
-          await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
-          
-          // Clean up chunks
-          fs.rmSync(chunkDir, { recursive: true, force: true });
-          
-          console.log('File assembly completed:', {
-            fileId,
-            totalChunks,
-            finalPath,
-            duration: Date.now() - startTime
-          });
-          
-          // Set assembled file info in request
-          req.file.path = finalPath;
-          req.file.filename = 'vagrant.box';
-          req.file.originalname = 'vagrant.box';
-          
-          // Continue to file controller to create database record
-          next();
+          try {
+            // All chunks received, assemble the final file first
+            const finalPath = getFinalFilePath(uploadDir);
+            await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
+            
+            // Clean up chunks
+            fs.rmSync(chunkDir, { recursive: true, force: true });
+            
+            console.log('File assembly completed:', {
+              fileId,
+              totalChunks,
+              finalPath,
+              finalSize: fs.statSync(finalPath).size,
+              duration: Date.now() - startTime
+            });
+
+            // Now send response with the actual final size
+            res.status(200).json({
+              message: 'File assembly completed',
+              details: {
+                chunkIndex,
+                uploadedChunks,
+                totalChunks,
+                isComplete: true,
+                status: 'complete',
+                fileSize: fs.statSync(finalPath).size
+              }
+            });
+
+            // Create database record directly here instead of using next()
+            const architecture = await Architecture.findOne({
+              where: { name: architectureName },
+              include: [{
+                model: db.providers,
+                as: "provider",
+                where: { name: providerName },
+                include: [{
+                  model: db.versions,
+                  as: "version",
+                  where: { versionNumber },
+                  include: [{
+                    model: db.box,
+                    as: "box",
+                    where: { name: boxId },
+                    include: [{
+                      model: db.user,
+                      as: "user",
+                      include: [{
+                        model: db.organization,
+                        as: "organization",
+                        where: { name: organization }
+                      }]
+                    }]
+                  }]
+                }]
+              }]
+            });
+
+            if (!architecture) {
+              throw new Error(`Architecture not found for provider ${providerName}`);
+            }
+
+            // Create or update file record
+            const fileRecord = await File.findOne({
+              where: {
+                fileName: 'vagrant.box',
+                architectureId: architecture.id
+              }
+            });
+
+            const fileSize = fs.statSync(finalPath).size;
+            const fileData = {
+              fileName: 'vagrant.box',
+              checksum: req.body.checksum || null,
+              checksumType: (req.body.checksumType || 'NULL').toUpperCase(),
+              architectureId: architecture.id,
+              fileSize
+            };
+
+            if (fileRecord) {
+              await fileRecord.update(fileData);
+              console.log('File record updated:', fileData);
+            } else {
+              await File.create(fileData);
+              console.log('File record created:', fileData);
+            }
+
+          } catch (error) {
+            console.error('Error during file assembly or database update:', error);
+            // Can't send error response since we already sent assembly status
+            // Just log it and let the client handle timeout
+          }
         } catch (assemblyError) {
           console.error('File assembly error:', assemblyError);
           if (!res.headersSent) {

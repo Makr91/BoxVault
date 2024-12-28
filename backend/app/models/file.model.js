@@ -20,7 +20,7 @@ module.exports = (sequelize, Sequelize) => {
         defaultValue: 0
       },
       fileSize: {
-        type: Sequelize.STRING,
+        type: Sequelize.BIGINT,
         allowNull: false
       },
     });
