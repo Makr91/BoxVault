@@ -210,9 +210,30 @@ if (isSSLConfigured()) {
 
     const privateKey = fs.readFileSync(keyPath, 'utf8');
     const certificate = fs.readFileSync(certPath, 'utf8');
-    const credentials = { key: privateKey, cert: certificate };
+    const credentials = { 
+      key: privateKey, 
+      cert: certificate,
+      // SSL options for large files
+      maxVersion: 'TLSv1.3',
+      minVersion: 'TLSv1.2',
+      ciphers: 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384',
+      honorCipherOrder: true,
+      // Increase SSL buffer size
+      secureOptions: crypto.constants.SSL_OP_NO_COMPRESSION,
+    };
 
     const httpsServer = https.createServer(credentials, app);
+    
+    // Increase TLS fragment size
+    httpsServer.maxHeaderSize = 32 * 1024; // 32KB
+    // Increase socket buffer size
+    httpsServer.on('connection', socket => {
+      socket.setNoDelay(true);
+      socket.setKeepAlive(true, 60000); // 60 seconds
+      // Increase socket buffer size to 64MB
+      socket.setRecvBufferSize(64 * 1024 * 1024);
+      socket.setSendBufferSize(64 * 1024 * 1024);
+    });
 
     // Disable timeouts for uploads
     httpsServer.timeout = 0;
@@ -243,6 +264,16 @@ if (isSSLConfigured()) {
 
 function startHTTPServer() {
   const httpServer = http.createServer(app);
+  
+  // Increase socket buffer size for HTTP server too
+  httpServer.maxHeaderSize = 32 * 1024; // 32KB
+  httpServer.on('connection', socket => {
+    socket.setNoDelay(true);
+    socket.setKeepAlive(true, 60000); // 60 seconds
+    // Increase socket buffer size to 64MB
+    socket.setRecvBufferSize(64 * 1024 * 1024);
+    socket.setSendBufferSize(64 * 1024 * 1024);
+  });
   
   // Disable timeouts for uploads
   httpServer.timeout = 0;

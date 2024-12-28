@@ -56,9 +56,14 @@ const uploadMiddleware = async (req, res) => {
     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     const finalPath = path.join(uploadDir, 'vagrant.box');
 
-    // Create write stream with high watermark to prevent backpressure
+    // Create write stream with optimized settings
     writeStream = fs.createWriteStream(finalPath, {
-      highWaterMark: 1024 * 1024 * 16 // 16MB buffer
+      flags: 'w',
+      encoding: 'binary',
+      mode: 0o666,
+      autoClose: true,
+      emitClose: true,
+      highWaterMark: 64 * 1024 * 1024 // 64MB chunks
     });
 
     // Log upload start
@@ -70,42 +75,59 @@ const uploadMiddleware = async (req, res) => {
       path: finalPath
     });
 
-    // Handle stream events
+    // Set up progress tracking
+    let lastLogged = 0;
     req.on('data', chunk => {
       uploadedBytes += chunk.length;
       
-      // Write chunk to file
-      if (!writeStream.write(chunk)) {
-        // Handle backpressure - pause reading until drain
-        req.pause();
-        writeStream.once('drain', () => req.resume());
-      }
-
-      // Log progress every 1GB
-      if (uploadedBytes % (1024 * 1024 * 1024) === 0) {
+      // Log progress every 1GB or when significant progress is made
+      const currentProgress = Math.floor((uploadedBytes / contentLength) * 100);
+      const lastProgress = Math.floor((lastLogged / contentLength) * 100);
+      
+      if (uploadedBytes - lastLogged >= 1024 * 1024 * 1024 || currentProgress > lastProgress) {
         console.log('Upload progress:', {
           uploadedBytes,
-          progress: Math.round((uploadedBytes / contentLength) * 100) + '%'
+          progress: `${currentProgress}%`,
+          speed: `${Math.round((uploadedBytes - lastLogged) / 1024 / 1024)}MB/s`
         });
+        lastLogged = uploadedBytes;
       }
     });
 
-    // Wait for upload to complete
+    // Use pipe() for efficient streaming
     await new Promise((resolve, reject) => {
-      req.on('end', resolve);
-      req.on('error', reject);
+      // Handle stream completion
+      writeStream.on('finish', () => {
+        console.log('Write stream finished');
+        resolve();
+      });
+
+      // Handle errors
       writeStream.on('error', err => {
         console.error('Write stream error:', err);
         reject(err);
       });
-    });
 
-    // Close write stream
-    await new Promise((resolve, reject) => {
-      writeStream.end(err => {
-        if (err) reject(err);
-        else resolve();
+      req.on('error', err => {
+        console.error('Request error:', err);
+        reject(err);
       });
+
+      // Handle premature connection close
+      req.on('close', () => {
+        if (uploadedBytes < contentLength) {
+          console.log('Connection closed before completion:', {
+            uploadedBytes,
+            contentLength,
+            progress: `${Math.round((uploadedBytes / contentLength) * 100)}%`
+          });
+          writeStream.end();
+          reject(new Error('Connection closed prematurely'));
+        }
+      });
+
+      // Pipe request to file stream
+      req.pipe(writeStream);
     });
 
     // Verify file size
