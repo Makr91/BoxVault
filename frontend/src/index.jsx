@@ -5,8 +5,12 @@ import version from './version.json';
 
 import App from "./App";
 import reportWebVitals from "./reportwebVitals";
+import * as serviceWorker from "./serviceWorker";
 
 console.log(`${version.name} - Version: ${version.version}`);
+
+// Unregister any existing service workers first
+serviceWorker.unregister();
 
 const container = document.getElementById("root");
 const root = createRoot(container);

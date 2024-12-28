@@ -1,8 +1,7 @@
 // React and routing
 import React, { useState, useEffect, useCallback } from "react";
 
-// Styles and Bootstrap
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+// Styles
 import './scss/styles.scss';
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -30,6 +29,27 @@ import BoxVaultLight from './images/BoxVault.svg';
 import BoxVaultDark from './images/BoxVaultDark.svg';
 
 const App = () => {
+  // Initialize Bootstrap
+  useEffect(() => {
+    let bootstrap;
+    const loadBootstrap = async () => {
+      bootstrap = await import('bootstrap/dist/js/bootstrap.bundle.min.js');
+    };
+    loadBootstrap();
+    return () => {
+      // Clean up Bootstrap
+      if (bootstrap && bootstrap.Modal) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+          const instance = bootstrap.Modal.getInstance(modal);
+          if (instance) {
+            instance.dispose();
+          }
+        });
+      }
+    };
+  }, []);
+
   const [showAdminBoard, setShowAdminBoard] = useState(false);
   const [showModeratorBoard, setShowModeratorBoard] = useState(false);
   const [currentUser, setCurrentUser] = useState(undefined);
@@ -81,22 +101,21 @@ const App = () => {
   }, [navigate]);
 
   const fetchGravatarUrl = useCallback((emailHash) => {
-    let mounted = true;
+    const controller = new AbortController();
 
     const loadGravatar = async () => {
       if (!gravatarFetched) {
         try {
-          const profile = await AuthService.getGravatarProfile(emailHash);
-          if (!mounted) return;
-
+          const profile = await AuthService.getGravatarProfile(emailHash, controller.signal);
           if (profile?.avatar_url) {
             setGravatarUrl(profile.avatar_url);
           }
           setGravatarFetched(true);
         } catch (error) {
-          if (!mounted) return;
-          console.error("Error fetching Gravatar:", error);
-          setGravatarFetched(true);
+          if (error.name !== 'AbortError') {
+            console.error("Error fetching Gravatar:", error);
+            setGravatarFetched(true);
+          }
         }
       }
     };
@@ -104,7 +123,7 @@ const App = () => {
     loadGravatar();
 
     return () => {
-      mounted = false;
+      controller.abort();
     };
   }, [gravatarFetched]);
 

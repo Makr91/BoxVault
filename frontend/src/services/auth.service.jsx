@@ -204,16 +204,23 @@ const getGravatarProfile = async (emailHash, signal) => {
     const config = await getGravatarConfig();
     if (!config) return null;
 
-    const response = await axios.get(`${config.apiUrl}${emailHash}`, {
+    // Use fetch instead of axios to avoid message port issues
+    const response = await fetch(`${config.apiUrl}${emailHash}`, {
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
       },
-      signal // Pass the AbortSignal to axios
+      signal
     });
-    return response.data;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
   } catch (error) {
-    if (error.name === 'CanceledError' || error.name === 'AbortError') {
-      // Request was cancelled, ignore error
+    if (error.name === 'AbortError') {
       return null;
     }
     console.error("Error fetching Gravatar profile:", error);
