@@ -13,14 +13,22 @@
 }
 
 // Fix for focus outline
-:focus:not(:focus-visible) {
-  outline: 0;
-  box-shadow: none;
+*:focus {
+  outline: none !important;
+}
+
+*:focus:not(:focus-visible) {
+  box-shadow: none !important;
 }
 
 // Fix for text size adjust
 html {
-  -webkit-text-size-adjust: 100%;
-  -moz-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+}
+
+// Fix for Firefox focus ring
+::-moz-focus-inner {
+  border: 0;
 }
