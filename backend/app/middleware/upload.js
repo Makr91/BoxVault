@@ -19,6 +19,13 @@ try {
 
 // Main upload middleware that streams directly to disk
 const uploadMiddleware = async (req, res) => {
+  // Disable request timeouts
+  req.setTimeout(0);
+  res.setTimeout(0);
+
+  // Prevent request from being parsed by body-parser
+  req._body = true;
+
   const startTime = Date.now();
   let uploadedBytes = 0;
   let writeStream;
@@ -49,8 +56,10 @@ const uploadMiddleware = async (req, res) => {
     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     const finalPath = path.join(uploadDir, 'vagrant.box');
 
-    // Create write stream
-    writeStream = fs.createWriteStream(finalPath);
+    // Create write stream with high watermark to prevent backpressure
+    writeStream = fs.createWriteStream(finalPath, {
+      highWaterMark: 1024 * 1024 * 16 // 16MB buffer
+    });
 
     // Log upload start
     console.log('Starting file upload:', {
@@ -61,21 +70,27 @@ const uploadMiddleware = async (req, res) => {
       path: finalPath
     });
 
-    // Set headers for proper streaming
-    res.setHeader('Transfer-Encoding', 'chunked');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-
     // Handle stream events
     req.on('data', chunk => {
       uploadedBytes += chunk.length;
-      writeStream.write(chunk);
+      
+      // Write chunk to file
+      if (!writeStream.write(chunk)) {
+        // Handle backpressure - pause reading until drain
+        req.pause();
+        writeStream.once('drain', () => req.resume());
+      }
 
-      // Send progress through response headers
-      res.setHeader('X-Progress', Math.round((uploadedBytes / contentLength) * 100));
-      res.setHeader('X-Uploaded-Bytes', uploadedBytes);
-      res.flushHeaders();
+      // Log progress every 1GB
+      if (uploadedBytes % (1024 * 1024 * 1024) === 0) {
+        console.log('Upload progress:', {
+          uploadedBytes,
+          progress: Math.round((uploadedBytes / contentLength) * 100) + '%'
+        });
+      }
     });
 
+    // Wait for upload to complete
     await new Promise((resolve, reject) => {
       req.on('end', resolve);
       req.on('error', reject);
@@ -179,7 +194,7 @@ const uploadMiddleware = async (req, res) => {
   } catch (error) {
     console.error('Upload error:', error);
 
-    // Clean up write stream
+    // Clean up write stream and file
     if (writeStream) {
       writeStream.end();
     }

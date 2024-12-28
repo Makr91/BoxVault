@@ -745,70 +745,34 @@ curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/
 
 ## File Operations (User/Service Account)
 
-### Upload Box File (Chunked Upload)
+### Upload Box File (Direct Upload)
 
-Files are uploaded in chunks of 100MB. For small files (under 100MB), you can upload in a single chunk:
+Files are uploaded directly to the server using a single request. To show upload progress, use curl's progress bar with response redirection:
 
 ```bash
-# Single chunk upload
-curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload" \
+# Upload with progress bar
+curl --progress-bar -o upload_response.txt \
+  -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload" \
   -H "x-access-token: YOUR_JWT_TOKEN" \
-  -H "Content-Type: multipart/form-data" \
-  -H "x-file-id: upload-1" \
-  -H "x-chunk-index: 0" \
-  -H "x-total-chunks: 1" \
-  -F "file=@box-file.box" \
-  -F "fileId=upload-1" \
-  -F "chunkIndex=0" \
-  -F "totalChunks=1"
+  -H "Content-Type: application/octet-stream" \
+  -H "X-File-Name: vagrant.box" \
+  --upload-file box-file.box
 ```
 
-**Progress Response:**
+The `-o upload_response.txt` option redirects the server response to a file, allowing the progress bar to be displayed during upload. The response will contain:
+
 ```json
 {
-  "message": "Chunk uploaded successfully",
+  "message": "File upload completed",
   "details": {
-    "chunkIndex": 0,
-    "uploadedChunks": 1,
-    "totalChunks": 1,
-    "isComplete": false,
-    "status": "assembling",
-    "remainingChunks": 0
+    "isComplete": true,
+    "status": "complete",
+    "fileSize": 1508591037
   }
 }
 ```
 
-For larger files, use the chunked upload script:
-
-```bash
-# Calculate chunks (100MB per chunk)
-CHUNK_SIZE=104857600
-FILE="debian12.box"
-TOTAL_CHUNKS=$((($(stat -f%z "$FILE") + $CHUNK_SIZE - 1) / $CHUNK_SIZE))
-UPLOAD_ID=$(uuidgen)
-
-# Upload chunks
-for ((i=0; i<$TOTAL_CHUNKS; i++)); do
-  START=$((i * $CHUNK_SIZE))
-  
-  # Get chunk data
-  if [ $i -eq $(($TOTAL_CHUNKS - 1)) ]; then
-    dd if="$FILE" bs=1 skip=$START 2>/dev/null
-  else
-    dd if="$FILE" bs=1 skip=$START count=$CHUNK_SIZE 2>/dev/null
-  fi | \
-  curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload" \
-    -H "x-access-token: YOUR_JWT_TOKEN" \
-    -H "Content-Type: multipart/form-data" \
-    -H "x-file-id: $UPLOAD_ID" \
-    -H "x-chunk-index: $i" \
-    -H "x-total-chunks: $TOTAL_CHUNKS" \
-    -F "file=@-" \
-    -F "fileId=$UPLOAD_ID" \
-    -F "chunkIndex=$i" \
-    -F "totalChunks=$TOTAL_CHUNKS"
-done
-```
+**Note:** The progress bar shows real-time upload progress as a percentage. The server response is saved to the specified output file (`upload_response.txt` in this example).
 
 ### Download Box File (Multiple Methods)
 
