@@ -1,4 +1,3 @@
-const multer = require("multer");
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
@@ -18,227 +17,176 @@ try {
   maxFileSize = 10 * 1024 * 1024 * 1024; // Default to 10GB
 }
 
-// Configure multer storage for direct streaming to final destination
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-      
-      // Load config for each request to ensure we have the latest
-      const configContents = fs.readFileSync(appConfigPath, 'utf8');
-      const config = yaml.load(configContents);
-      const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
-      
-      // Create upload directory
-      fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
-      
-      // Log directory creation
-      console.log('Using upload directory:', {
-        path: uploadDir,
-        mode: '0755',
-        exists: fs.existsSync(uploadDir)
-      });
-      
-      cb(null, uploadDir);
-    } catch (error) {
-      console.error('Error in multer destination handler:', error);
-      cb(error);
-    }
-  },
-  filename: (req, file, cb) => {
-    cb(null, 'vagrant.box');
-  }
-});
-
-// Configure multer upload
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: maxFileSize
-  },
-  fileFilter: (req, file, cb) => {
-    try {
-      const contentLength = parseInt(req.headers['content-length']);
-      
-      if (isNaN(contentLength)) {
-        console.error('Missing or invalid Content-Length header');
-        return cb(new Error('Content-Length header required'));
-      }
-
-      if (contentLength > maxFileSize) {
-        console.error('File too large:', {
-          size: contentLength,
-          maxSize: maxFileSize
-        });
-        return cb(new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`));
-      }
-
-      // Store expected file size for later verification
-      req.expectedSize = contentLength;
-
-      // Log upload start
-      console.log('Starting file upload:', {
-        fileName: req.headers['x-file-name'] || file.originalname,
-        fileSize: contentLength,
-        checksum: req.headers['x-checksum'] || 'none',
-        checksumType: req.headers['x-checksum-type'] || 'NULL'
-      });
-
-      cb(null, true);
-    } catch (error) {
-      console.error('Error in multer fileFilter:', error);
-      cb(error);
-    }
-  }
-}).single('file');
-
-// Main upload middleware
-const uploadMiddleware = (req, res) => {
+// Main upload middleware that streams directly to disk
+const uploadMiddleware = async (req, res) => {
   const startTime = Date.now();
-  
+  let uploadedBytes = 0;
+  let writeStream;
+
   try {
-    upload(req, res, async (err) => {
-      if (err) {
-        console.error('Upload error:', {
-          type: err instanceof multer.MulterError ? 'MulterError' : 'GeneralError',
-          message: err.message,
-          code: err.code
-        });
+    const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+    const contentLength = parseInt(req.headers['content-length']);
 
-        if (!res.headersSent) {
-          if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-            res.status(413).json({
-              error: 'FILE_TOO_LARGE',
-              message: `File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`,
-              details: { maxFileSize }
-            });
-          } else {
-            res.status(500).json({
-              error: 'UPLOAD_ERROR',
-              message: err.message
-            });
-          }
-        }
-        return;
-      }
+    // Validate content length
+    if (isNaN(contentLength)) {
+      return res.status(400).json({
+        error: 'INVALID_REQUEST',
+        message: 'Content-Length header required'
+      });
+    }
 
-      if (!req.file) {
-        if (!res.headersSent) {
-          res.status(400).json({
-            error: 'NO_FILE',
-            message: 'No file was uploaded'
-          });
-        }
-        return;
-      }
+    if (contentLength > maxFileSize) {
+      return res.status(413).json({
+        error: 'FILE_TOO_LARGE',
+        message: `File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`
+      });
+    }
 
-      try {
-        const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-        const finalSize = fs.statSync(req.file.path).size;
+    // Load config and prepare upload directory
+    const configContents = fs.readFileSync(appConfigPath, 'utf8');
+    const config = yaml.load(configContents);
+    const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
+    fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
+    const finalPath = path.join(uploadDir, 'vagrant.box');
 
-        // Verify file size matches expected size
-        if (Math.abs(finalSize - req.expectedSize) > 1024) { // Allow 1KB difference
-          throw new Error('File size mismatch');
-        }
+    // Create write stream
+    writeStream = fs.createWriteStream(finalPath);
 
-        // Find the version
-        const version = await db.versions.findOne({
-          where: { versionNumber },
-          include: [{
-            model: db.box,
-            as: 'box',
-            where: { name: boxId }
-          }]
-        });
+    // Log upload start
+    console.log('Starting file upload:', {
+      fileName: req.headers['x-file-name'] || 'vagrant.box',
+      fileSize: contentLength,
+      checksum: req.headers['x-checksum'] || 'none',
+      checksumType: req.headers['x-checksum-type'] || 'NULL',
+      path: finalPath
+    });
 
-        if (!version) {
-          throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
-        }
+    // Handle stream events
+    req.on('data', chunk => {
+      uploadedBytes += chunk.length;
+      writeStream.write(chunk);
+    });
 
-        // Find the provider
-        const provider = await db.providers.findOne({
-          where: { 
-            name: providerName,
-            versionId: version.id
-          }
-        });
+    await new Promise((resolve, reject) => {
+      req.on('end', resolve);
+      req.on('error', reject);
+      writeStream.on('error', reject);
+    });
 
-        if (!provider) {
-          throw new Error(`Provider ${providerName} not found`);
-        }
+    // Close write stream
+    await new Promise((resolve, reject) => {
+      writeStream.end(err => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
 
-        // Find the architecture
-        const architecture = await db.architectures.findOne({
-          where: { 
-            name: architectureName,
-            providerId: provider.id
-          }
-        });
+    // Verify file size
+    const finalSize = fs.statSync(finalPath).size;
+    if (Math.abs(finalSize - contentLength) > 1024) { // Allow 1KB difference
+      throw new Error('File size mismatch');
+    }
 
-        if (!architecture) {
-          throw new Error(`Architecture not found for provider ${providerName}`);
-        }
+    // Find or create database records
+    const version = await db.versions.findOne({
+      where: { versionNumber },
+      include: [{
+        model: db.box,
+        as: 'box',
+        where: { name: boxId }
+      }]
+    });
 
-        // Create or update file record
-        const fileRecord = await db.files.findOne({
-          where: {
-            fileName: 'vagrant.box',
-            architectureId: architecture.id
-          }
-        });
+    if (!version) {
+      throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
+    }
 
-        const fileData = {
-          fileName: 'vagrant.box',
-          checksum: req.headers['x-checksum'] || null,
-          checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
-          architectureId: architecture.id,
-          fileSize: finalSize
-        };
-
-        if (fileRecord) {
-          await fileRecord.update(fileData);
-          console.log('File record updated:', fileData);
-        } else {
-          await db.files.create(fileData);
-          console.log('File record created:', fileData);
-        }
-
-        const duration = Date.now() - startTime;
-        const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
-
-        console.log('Upload completed:', {
-          finalSize,
-          duration: `${Math.round(duration / 1000)}s`,
-          speed: `${speed} MB/s`
-        });
-
-        res.status(200).json({
-          message: 'File upload completed',
-          details: {
-            isComplete: true,
-            status: 'complete',
-            fileSize: finalSize
-          }
-        });
-      } catch (error) {
-        console.error('Error during database update:', error);
-        if (!res.headersSent) {
-          res.status(500).json({
-            error: 'DATABASE_ERROR',
-            message: error.message
-          });
-        }
+    const provider = await db.providers.findOne({
+      where: { 
+        name: providerName,
+        versionId: version.id
       }
     });
+
+    if (!provider) {
+      throw new Error(`Provider ${providerName} not found`);
+    }
+
+    const architecture = await db.architectures.findOne({
+      where: { 
+        name: architectureName,
+        providerId: provider.id
+      }
+    });
+
+    if (!architecture) {
+      throw new Error(`Architecture not found for provider ${providerName}`);
+    }
+
+    // Update database
+    const fileData = {
+      fileName: 'vagrant.box',
+      checksum: req.headers['x-checksum'] || null,
+      checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
+      architectureId: architecture.id,
+      fileSize: finalSize
+    };
+
+    const fileRecord = await db.files.findOne({
+      where: {
+        fileName: 'vagrant.box',
+        architectureId: architecture.id
+      }
+    });
+
+    if (fileRecord) {
+      await fileRecord.update(fileData);
+    } else {
+      await db.files.create(fileData);
+    }
+
+    // Calculate stats
+    const duration = Date.now() - startTime;
+    const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+
+    console.log('Upload completed:', {
+      finalSize,
+      duration: `${Math.round(duration / 1000)}s`,
+      speed: `${speed} MB/s`
+    });
+
+    res.status(200).json({
+      message: 'File upload completed',
+      details: {
+        isComplete: true,
+        status: 'complete',
+        fileSize: finalSize
+      }
+    });
+
   } catch (error) {
-    console.error('Unexpected error in upload middleware:', error);
+    console.error('Upload error:', error);
+
+    // Clean up write stream
+    if (writeStream) {
+      writeStream.end();
+    }
+
+    // Send error response if headers haven't been sent
     if (!res.headersSent) {
       res.status(500).json({
-        error: 'INTERNAL_SERVER_ERROR',
-        message: 'An unexpected error occurred during upload'
+        error: 'UPLOAD_ERROR',
+        message: error.message
       });
     }
   }
+
+  // Handle connection close/abort
+  req.on('close', () => {
+    if (writeStream) {
+      writeStream.end();
+    }
+  });
 };
 
 // SSL file upload middleware (Promise-based)
