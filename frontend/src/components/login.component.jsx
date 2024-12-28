@@ -19,54 +19,35 @@ const Login = ({ theme }) => {
 
   const handleInputChange = (event) => {
     const { name, value, type, checked } = event.target;
-    setFormValues({ 
-      ...formValues, 
+    setFormValues(prev => ({ 
+      ...prev, 
       [name]: type === 'checkbox' ? checked : value 
-    });
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    if (!formValues.username) {
-      errors.username = "This field is required!";
-    }
-
-    if (!formValues.password) {
-      errors.password = "This field is required!";
-    }
-
-    return errors;
+    }));
   };
 
   const handleLogin = (event) => {
     event.preventDefault();
-    const errors = validateForm();
-    setValidationErrors(errors);
-
-    if (Object.keys(errors).length === 0) {
-      setMessage("");
-      setLoading(true);
-
-      AuthService.login(formValues.username, formValues.password, formValues.stayLoggedIn).then(
-        () => {
-          navigate("/profile");
-          window.location.reload();
-        },
-        (error) => {
-          const resMessage =
-            (error.response &&
-              error.response.data &&
-              error.response.data.message) ||
-            error.message ||
-            error.toString();
-
-          setLoading(false);
-          setMessage(resMessage);
-        }
-      );
-    } else {
-      setLoading(false);
+    if (!formValues.username || !formValues.password) {
+      return;
     }
+
+    setMessage("");
+    setLoading(true);
+
+    AuthService.login(formValues.username, formValues.password, formValues.stayLoggedIn)
+      .then(() => {
+        navigate("/profile");
+        window.location.reload();
+      })
+      .catch(error => {
+        const resMessage =
+          (error.response?.data?.message) ||
+          error.message ||
+          error.toString();
+
+        setLoading(false);
+        setMessage(resMessage);
+      });
   };
 
   return (
@@ -75,7 +56,7 @@ const Login = ({ theme }) => {
         {theme === "light" ? <BoxVaultLight className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" /> : <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />}
         <h2 className="fs-1 text-center mt-4">BoxVault</h2>
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} noValidate>
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
@@ -84,10 +65,9 @@ const Login = ({ theme }) => {
               name="username"
               value={formValues.username}
               onChange={handleInputChange}
+              onFocus={e => e.preventDefault()}
+              onBlur={e => e.preventDefault()}
             />
-            {validationErrors.username && (
-              <div className="alert alert-danger">{validationErrors.username}</div>
-            )}
           </div>
 
           <div className="form-group">
@@ -98,10 +78,9 @@ const Login = ({ theme }) => {
               name="password"
               value={formValues.password}
               onChange={handleInputChange}
+              onFocus={e => e.preventDefault()}
+              onBlur={e => e.preventDefault()}
             />
-            {validationErrors.password && (
-              <div className="alert alert-danger">{validationErrors.password}</div>
-            )}
           </div>
 
           <div className="form-group mt-3">
