@@ -119,20 +119,100 @@ const uploadMiddleware = async (req, res) => {
             autoClose: true
           });
 
-          // Sort chunks by index to ensure correct order
-          const sortedChunks = chunks
-            .map(f => ({ index: parseInt(f.split('-')[1]), path: path.join(tempDir, f) }))
-            .sort((a, b) => a.index - b.index);
+          try {
+            // Sort chunks by index to ensure correct order
+            const sortedChunks = chunks
+              .map(f => ({ index: parseInt(f.split('-')[1]), path: path.join(tempDir, f) }))
+              .sort((a, b) => a.index - b.index);
 
-          // Merge chunks sequentially
-          for (const chunk of sortedChunks) {
-            const chunkContent = fs.readFileSync(chunk.path);
-            writeStream.write(chunkContent);
-            fs.unlinkSync(chunk.path); // Delete chunk after merging
+            // Verify we have all chunks in sequence
+            const missingChunks = [];
+            for (let i = 0; i < totalChunks; i++) {
+              if (!sortedChunks.find(chunk => chunk.index === i)) {
+                missingChunks.push(i);
+              }
+            }
+
+            if (missingChunks.length > 0) {
+              throw new Error(`Missing chunks: ${missingChunks.join(', ')}`);
+            }
+
+            console.log('Starting file assembly:', {
+              totalChunks,
+              receivedChunks: chunks.length,
+              uploadDir,
+              tempDir,
+              finalPath,
+              totalSize: sortedChunks.reduce((size, chunk) => size + fs.statSync(chunk.path).size, 0)
+            });
+
+            // Ensure upload directory exists
+            fs.mkdirSync(path.dirname(finalPath), { recursive: true, mode: 0o755 });
+
+            // Create write stream for final file
+            writeStream = fs.createWriteStream(finalPath, {
+              flags: 'w',
+              encoding: 'binary',
+              mode: 0o666,
+              autoClose: true
+            });
+
+            // Merge chunks sequentially with verification
+            let assembledSize = 0;
+            for (let i = 0; i < sortedChunks.length; i++) {
+              const chunk = sortedChunks[i];
+              const chunkSize = fs.statSync(chunk.path).size;
+              
+              console.log(`Merging chunk ${i + 1}/${sortedChunks.length}:`, {
+                chunkIndex: chunk.index,
+                chunkPath: chunk.path,
+                chunkSize,
+                assembledSize
+              });
+
+              const chunkContent = fs.readFileSync(chunk.path);
+              if (chunkContent.length !== chunkSize) {
+                throw new Error(`Chunk ${i} size mismatch: expected ${chunkSize}, got ${chunkContent.length}`);
+              }
+
+              writeStream.write(chunkContent);
+              assembledSize += chunkContent.length;
+              fs.unlinkSync(chunk.path); // Delete chunk after merging
+            }
+
+            // Finish write stream
+            await new Promise((resolve, reject) => {
+              writeStream.end();
+              writeStream.on('finish', resolve);
+              writeStream.on('error', reject);
+            });
+
+            console.log('Assembly completed:', {
+              finalPath,
+              assembledSize,
+              expectedSize: contentLength || 'unknown'
+            });
+
+            // Clean up temp directory
+            console.log('Cleaning up temp directory:', tempDir);
+            fs.rmdirSync(tempDir);
+          } catch (error) {
+            console.error('Assembly failed:', error);
+            
+            // Clean up failed assembly
+            if (fs.existsSync(finalPath)) {
+              fs.unlinkSync(finalPath);
+            }
+            
+            // Clean up temp directory
+            if (fs.existsSync(tempDir)) {
+              const remainingChunks = fs.readdirSync(tempDir);
+              remainingChunks.forEach(chunk => fs.unlinkSync(path.join(tempDir, chunk)));
+              fs.rmdirSync(tempDir);
+            }
+            
+            throw error;
           }
-
-          writeStream.end();
-          fs.rmdirSync(tempDir); // Remove temp directory
 
           // File is complete, proceed with verification and database updates
           const finalSize = fs.statSync(finalPath).size;
