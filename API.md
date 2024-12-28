@@ -750,14 +750,29 @@ curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/
 Files are uploaded directly to the server using a single request. To show upload progress, use curl's progress bar with response redirection:
 
 ```bash
-# Upload with progress bar
-curl --progress-bar -o upload_response.txt \
+# Upload with progress bar and reliable transfer settings
+curl --progress-bar \
+  --max-time 0 \
+  --connect-timeout 0 \
+  --retry 5 \
+  --retry-delay 10 \
+  --retry-max-time 0 \
+  -o upload_response.txt \
   -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload" \
   -H "x-access-token: YOUR_JWT_TOKEN" \
   -H "Content-Type: application/octet-stream" \
   -H "X-File-Name: vagrant.box" \
   --upload-file box-file.box
 ```
+
+The curl options explained:
+- `--progress-bar`: Show a progress bar during upload
+- `--max-time 0`: Disable maximum time the transfer can take
+- `--connect-timeout 0`: Disable connection timeout
+- `--retry 5`: Retry up to 5 times if the transfer fails
+- `--retry-delay 10`: Wait 10 seconds between retries
+- `--retry-max-time 0`: Disable the maximum time for retries
+- `-o upload_response.txt`: Save server response to file
 
 The `-o upload_response.txt` option redirects the server response to a file, allowing the progress bar to be displayed during upload. The response will contain:
 

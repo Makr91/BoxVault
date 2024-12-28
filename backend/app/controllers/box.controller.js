@@ -178,8 +178,11 @@ exports.findPublicBoxByName = async (req, res) => {
 exports.findAll = async (req, res) => {
   const { organization } = req.params;
   const { name } = req.query;
+  const isServiceAccount = req.isServiceAccount || false;
+  const userId = req.userId;
 
   try {
+    // First get organization data
     const organizationData = await Organization.findOne({
       where: { name: organization },
       include: [{
@@ -188,7 +191,11 @@ exports.findAll = async (req, res) => {
         include: [{
           model: Box,
           as: 'box',
-          where: name ? { name: { [Op.like]: `%${name}%` } } : undefined
+          where: name ? { name: { [Op.like]: `%${name}%` } } : undefined,
+          include: [{
+            model: Users,
+            as: 'user'
+          }]
         }]
       }]
     });
@@ -199,7 +206,25 @@ exports.findAll = async (req, res) => {
       });
     }
 
-    const boxes = organizationData.users.flatMap(user => user.box);
+    // Get all boxes from the organization
+    let boxes = organizationData.users.flatMap(user => user.box);
+
+    // If it's a service account, find the owner's boxes
+    if (isServiceAccount && userId) {
+      const serviceAccount = await db.service_account.findOne({
+        where: { id: userId },
+        include: [{
+          model: Users,
+          as: 'user'
+        }]
+      });
+
+      if (serviceAccount && serviceAccount.user) {
+        // Filter boxes to show only those owned by the service account's owner
+        boxes = boxes.filter(box => box.user && box.user.id === serviceAccount.user.id);
+      }
+    }
+
     res.send(boxes);
   } catch (err) {
     res.status(500).send({
@@ -291,18 +316,40 @@ exports.getOrganizationBoxDetails = async (req, res) => {
       return res.status(404).send({ message: "Organization not found." });
     }
 
-    // Filter boxes based on access rules
-    const boxes = organizationData.users.flatMap(user => user.box).filter(box => {
-      // Allow access to public boxes for any user
-      if (box.isPublic) {
-        return true;
+    // Get all boxes from the organization
+    let boxes = organizationData.users.flatMap(user => user.box);
+
+    // If it's a service account, find the owner's boxes
+    if (isServiceAccount && userId) {
+      const serviceAccount = await db.service_account.findOne({
+        where: { id: userId },
+        include: [{
+          model: Users,
+          as: 'user'
+        }]
+      });
+
+      if (serviceAccount && serviceAccount.user) {
+        // Filter boxes to show only those owned by the service account's owner
+        boxes = boxes.filter(box => box.user && box.user.id === serviceAccount.user.id);
       }
-      // Allow access to private boxes only if the user is part of the organization or is a service account
-      if (userId && (isServiceAccount || userOrganizationId === organizationData.id)) {
-        return true;
-      }
-      return false;
-    }).map(box => ({
+    } else {
+      // For regular users, filter based on access rules
+      boxes = boxes.filter(box => {
+        // Allow access to public boxes for any user
+        if (box.isPublic) {
+          return true;
+        }
+        // Allow access to private boxes only if the user is part of the organization
+        if (userId && userOrganizationId === organizationData.id) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // Map boxes to response format
+    const formattedBoxes = boxes.map(box => ({
       id: box.id,
       name: box.name,
       description: box.description,
@@ -604,7 +651,62 @@ exports.findOne = async (req, res) => {
       return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
     }
 
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === name);
+    // First try to find the box through organization users
+    let box = organizationData.users.flatMap(user => user.box).find(box => box.name === name);
+
+    // If box not found and we have a service account, try to find it through service accounts
+    if (!box && isServiceAccount) {
+      const serviceAccount = await db.service_account.findOne({
+        where: { id: userId },
+        include: [{
+          model: Users,
+          as: 'user',
+          include: [{
+            model: Box,
+            as: 'box',
+            where: { name },
+            include: [
+              {
+                model: Version,
+                as: 'versions',
+                include: [
+                  {
+                    model: Provider,
+                    as: 'providers',
+                    include: [
+                      {
+                        model: Architecture,
+                        as: 'architectures',
+                        include: [
+                          {
+                            model: File,
+                            as: 'files'
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                model: Users,
+                as: 'user',
+                include: [
+                  {
+                    model: Organization,
+                    as: 'organization'
+                  }
+                ]
+              }
+            ]
+          }]
+        }]
+      });
+
+      if (serviceAccount?.user?.box) {
+        box = serviceAccount.user.box.find(b => b.name === name);
+      }
+    }
 
     if (!box) {
       return res.status(404).send({ message: `Box not found with name: ${name}.` });
