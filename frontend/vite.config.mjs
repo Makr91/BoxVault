@@ -23,8 +23,8 @@ export default defineConfig(() => {
             entryFileNames: `assets/[name].js`,
             chunkFileNames: `assets/[name].js`,
             assetFileNames: (assetInfo) => {
-              // Keep favicon.ico at root level
-              if (assetInfo.name === 'favicon.ico') {
+              // Keep favicons at root level
+              if (assetInfo.name === 'favicon.ico' || assetInfo.name === 'dark-favicon.ico') {
                 return '[name][extname]';
               }
               return `assets/[name].[ext]`;

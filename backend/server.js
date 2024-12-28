@@ -88,6 +88,7 @@ app.use(express.static(static_path, {
     });
     if (path.endsWith('.ico')) {
       res.setHeader('Content-Type', 'image/x-icon');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache favicons for 24 hours
     }
   }
 }));
