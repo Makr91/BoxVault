@@ -354,7 +354,7 @@ const Provider = () => {
         checksum,
         checksumType,
         (progressEvent) => {
-          // Handle upload and assembly progress with detailed messages
+          // Only show important status changes in the top message
           if (progressEvent.status === 'assembling') {
             setProgress(100);
             setMessage("Assembling file chunks into final box file, this may take several minutes...");
@@ -364,25 +364,14 @@ const Provider = () => {
           
           if (progressEvent.status === 'complete') {
             setProgress(100);
-            setMessage("File upload and assembly completed successfully! Refreshing architecture list...");
+            setMessage("File upload and assembly completed successfully!");
             setMessageType("success");
             return;
           }
           
+          // Update progress without showing a message for regular progress updates
           if (progressEvent.progress !== undefined) {
             setProgress(progressEvent.progress);
-            const uploadedSize = Math.round((progressEvent.progress / 100) * currentFile.size);
-            const remainingSize = currentFile.size - uploadedSize;
-            
-            if (progressEvent.progress === 100) {
-              setMessage("All chunks uploaded successfully. Preparing for assembly...");
-            } else {
-              setMessage(
-                `Uploading file chunks... ${progressEvent.progress}% complete\n` +
-                `Uploaded: ${formatFileSize(uploadedSize)} / Remaining: ${formatFileSize(remainingSize)}`
-              );
-            }
-            setMessageType("info");
           }
         }
       );
@@ -602,28 +591,17 @@ const Provider = () => {
                     </div>
                     <div className="text-muted">
                       {selectedFiles[0] && (
-                        <div className="upload-stats">
-                          <div className="mb-1">
-                            <small>
-                              <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
-                            </small>
-                          </div>
-                          <div className="mb-1">
-                            <small>
-                              <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
-                              {' '} ({progress}%)
-                            </small>
-                          </div>
-                          <div>
-                            <small>
-                              <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
-                            </small>
-                          </div>
-                          {message && (
-                            <div className={`alert alert-${messageType} mt-2 mb-0 py-2 px-3`} role="alert">
-                              <small>{message}</small>
-                            </div>
-                          )}
+                        <div className="upload-stats d-flex justify-content-between">
+                          <small>
+                            <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
+                          </small>
+                          <small>
+                            <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
+                            {' '} ({progress}%)
+                          </small>
+                          <small>
+                            <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
+                          </small>
                         </div>
                       )}
                     </div>
