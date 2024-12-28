@@ -65,6 +65,11 @@ const static_path = __dirname + '/app/views/';
 
 const app = express();
 
+// Increase server limits
+app.set('timeout', 0);
+app.set('keep-alive-timeout', 0);
+app.set('headers-timeout', 0);
+
 // Debug middleware to log requests
 app.use((req, res, next) => {
   console.log('Request:', {
@@ -222,10 +227,13 @@ if (isSSLConfigured()) {
       secureOptions: crypto.constants.SSL_OP_NO_COMPRESSION,
     };
 
-    const httpsServer = https.createServer(credentials, app);
-    
-    // Increase TLS fragment size
-    httpsServer.maxHeaderSize = 32 * 1024; // 32KB
+    const httpsServer = https.createServer({
+      ...credentials,
+      requestTimeout: 0,
+      headersTimeout: 0,
+      keepAliveTimeout: 0,
+      maxHeaderSize: 32 * 1024 // 32KB
+    }, app);
     // Configure socket for large transfers
     httpsServer.on('connection', socket => {
       socket.setNoDelay(true);
@@ -268,10 +276,12 @@ if (isSSLConfigured()) {
 }
 
 function startHTTPServer() {
-  const httpServer = http.createServer(app);
-  
-  // Configure socket for HTTP server too
-  httpServer.maxHeaderSize = 32 * 1024; // 32KB
+  const httpServer = http.createServer({
+    requestTimeout: 0,
+    headersTimeout: 0,
+    keepAliveTimeout: 0,
+    maxHeaderSize: 32 * 1024 // 32KB
+  }, app);
   httpServer.on('connection', socket => {
     socket.setNoDelay(true);
     socket.setKeepAlive(true, 60000); // 60 seconds
