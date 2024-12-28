@@ -313,21 +313,8 @@ const uploadMiddleware = (req, res, next) => {
           req.file.filename = 'vagrant.box';
           req.file.originalname = 'vagrant.box';
           
-          // Send completion response
-          res.status(200).json({
-            message: 'Upload completed successfully',
-            details: {
-              chunkIndex,
-              uploadedChunks,
-              totalChunks,
-              isComplete: true,
-              finalPath,
-              duration: Date.now() - startTime,
-              fileSize: fs.statSync(finalPath).size,
-              status: 'complete'
-            }
-          });
-          return; // Important: stop here and don't continue to next()
+          // Continue to file controller to create database record
+          next();
         } catch (assemblyError) {
           console.error('File assembly error:', assemblyError);
           if (!res.headersSent) {
