@@ -19,5 +19,5 @@ module.exports = function(app) {
   app.delete("/api/invitations/:invitationId", [authJwt.verifyToken, authJwt.isUser, authJwt.isModeratorOrAdmin], auth.deleteInvitation);
   
   // Token refresh endpoint - protected by verifyToken middleware
-  app.get("/api/auth/refresh-token", [authJwt.verifyToken], auth.refreshToken);
+  app.post("/api/auth/refresh-token", [authJwt.verifyToken], auth.refreshToken);
 };
