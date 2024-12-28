@@ -913,15 +913,14 @@ console.log(bytesToGB(1508591037)); // Outputs: "1.40"
 
 ## Service Account Management (User)
 
-### Create Service Account (User)
+### Create Service Account (Admin)
 ```bash
 curl -X POST https://boxvault.example.com/api/service-accounts \
-  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "x-access-token: YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "ci-account",
     "description": "CI/CD Service Account",
-    "expiresAt": "2025-12-31T23:59:59.999Z"  # Required: ISO 8601 date string
+    "expirationDays": 365  # Number of days until expiration
   }'
 ```
 
@@ -929,13 +928,52 @@ curl -X POST https://boxvault.example.com/api/service-accounts \
 ```json
 {
   "id": 1,
-  "name": "ci-account",
+  "username": "mark-7fb6603d",  # Auto-generated username
+  "token": "319b8554ee85c3df139dbbb98169b64a4b50f338968bdc145fd851eb68eff0f0",  # Use this for authentication
+  "expiresAt": "2025-12-28T10:51:02.000Z",
   "description": "CI/CD Service Account",
-  "token": "service-account-token",
-  "expiresAt": "2025-12-31T23:59:59.999Z",
-  "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z"
+  "createdAt": "2024-12-28T10:51:02.000Z",
+  "updatedAt": "2024-12-28T10:51:02.000Z",
+  "userId": 1
 }
+```
+
+### Authenticate Service Account
+To use a service account, you must first authenticate to get a JWT token:
+
+```bash
+curl -X POST https://boxvault.example.com/api/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "mark-7fb6603d",  # Service account username
+    "password": "319b8554ee85c3df139dbbb98169b64a4b50f338968bdc145fd851eb68eff0f0",  # Service account token
+    "stayLoggedIn": true
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "username": "mark-7fb6603d",
+  "roles": ["ROLE_SERVICE_ACCOUNT"],
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",  # Use this JWT token for API operations
+  "isServiceAccount": true
+}
+```
+
+After authentication, use the returned JWT token in the `x-access-token` header for all API operations:
+
+```bash
+# Example: Creating a box using service account
+curl -X POST https://boxvault.example.com/api/organization/myorg/box \
+  -H "x-access-token: eyJhbGciOiJIUzI1NiIs..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "test-box",
+    "description": "Test Box",
+    "isPrivate": true
+  }'
 ```
 
 ### List Service Accounts
