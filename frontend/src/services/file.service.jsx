@@ -38,12 +38,14 @@ class FileService {
       const chunk = file.slice(start, end);
       
       const formData = new FormData();
-      formData.append('file', chunk, file.name);
+      // Add chunk metadata first
       formData.append('fileId', fileId);
       formData.append('chunkIndex', chunkIndex.toString());
       formData.append('totalChunks', totalChunks.toString());
       formData.append('checksum', checksum || '');
       formData.append('checksumType', checksumType || 'NULL');
+      // Add file chunk last to ensure metadata is read first
+      formData.append('file', chunk, file.name);
 
       try {
         const response = await axios.post(
