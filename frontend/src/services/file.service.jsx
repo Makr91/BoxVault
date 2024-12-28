@@ -15,7 +15,7 @@ class FileService {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+    const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB chunks
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     let uploadedChunks = new Set();
     let lastProgress = 0;
@@ -55,9 +55,9 @@ class FileService {
             headers: {
               ...authHeader(),
               'Content-Range': `bytes ${start}-${end - 1}/${file.size}`,
-              'X-File-Id': fileId,
-              'X-Chunk-Index': chunkIndex.toString(),
-              'X-Total-Chunks': totalChunks.toString()
+              'x-file-id': fileId,
+              'x-chunk-index': chunkIndex.toString(),
+              'x-total-chunks': totalChunks.toString()
             },
             timeout: 5 * 60 * 1000, // 5 minute timeout per chunk
             maxContentLength: CHUNK_SIZE * 2,
@@ -107,15 +107,27 @@ class FileService {
           chunkBatch.map(chunkIndex => uploadChunk(chunkIndex))
         );
         
-        // Check if the last chunk response indicates completion
-        const lastResult = results[results.length - 1];
-        if (lastResult.details?.isComplete) {
+        // Check responses for completion
+        const completedResult = results.find(r => r.details?.isComplete);
+        if (completedResult) {
           console.log('Upload completed successfully:', {
             fileId,
             totalChunks,
-            uploadedChunks: uploadedChunks.size
+            uploadedChunks: uploadedChunks.size,
+            response: completedResult
           });
-          return lastResult;
+          return completedResult;
+        }
+
+        // Check if this was the last batch
+        const lastChunkIndex = Math.max(...chunkBatch);
+        if (lastChunkIndex >= totalChunks - 1) {
+          console.log('Final batch completed but no completion signal received:', {
+            lastChunkIndex,
+            totalChunks,
+            uploadedChunks: uploadedChunks.size,
+            results
+          });
         }
       }
 

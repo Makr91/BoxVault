@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let maxFileSize;
 let appConfig;
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB chunks
 
 try {
   const fileContents = fs.readFileSync(appConfigPath, 'utf8');
@@ -72,9 +72,10 @@ const storage = multer.diskStorage({
             totalChunks: req.body.totalChunks
           },
           fromHeaders: {
-            fileId: req.headers['x-file-id'],
-            chunkIndex: req.headers['x-chunk-index'],
-            totalChunks: req.headers['x-total-chunks']
+      fileId: req.headers['x-file-id'] || '(from form data)',
+      chunkIndex: req.headers['x-chunk-index'] || '(from form data)',
+      totalChunks: req.headers['x-total-chunks'] || '(from form data)',
+      contentRange: req.headers['content-range'] || 'none'
           }
         });
         return cb(new Error('Missing chunk information'));
@@ -192,15 +193,16 @@ const upload = multer({
 const uploadMiddleware = (req, res, next) => {
   const startTime = Date.now();
   
-  // Log chunk upload request
+  // Log chunk upload request with metadata from headers
   console.log('Chunk upload request received:', {
     params: req.params,
     contentLength: req.headers['content-length'],
     contentType: req.headers['content-type'],
     chunkInfo: {
-      fileId: req.body.fileId,
-      chunkIndex: req.body.chunkIndex,
-      totalChunks: req.body.totalChunks
+      fileId: req.headers['x-file-id'] || '(from form data)',
+      chunkIndex: req.headers['x-chunk-index'] || '(from form data)',
+      totalChunks: req.headers['x-total-chunks'] || '(from form data)',
+      contentRange: req.headers['content-range'] || 'none'
     }
   });
 
@@ -249,7 +251,14 @@ const uploadMiddleware = (req, res, next) => {
       const chunkDir = getChunkDir(uploadDir, fileId);
 
       // Check if this was the last chunk
-      const uploadedChunks = fs.readdirSync(chunkDir).length;
+      const uploadedChunks = fs.readdirSync(chunkDir).filter(f => f.startsWith('chunk-')).length;
+      console.log('Checking completion:', {
+        uploadedChunks,
+        totalChunks,
+        isComplete: uploadedChunks === totalChunks,
+        chunkDir,
+        files: fs.readdirSync(chunkDir)
+      });
       
       if (uploadedChunks === totalChunks) { // totalChunks is already parsed as int in fileFilter
         try {
@@ -272,7 +281,18 @@ const uploadMiddleware = (req, res, next) => {
           req.file.filename = 'vagrant.box';
           req.file.originalname = 'vagrant.box';
           
-          next();
+          // Send completion response
+          res.status(200).json({
+            message: 'Upload completed successfully',
+            details: {
+              chunkIndex,
+              uploadedChunks,
+              totalChunks,
+              isComplete: true,
+              finalPath,
+              duration: Date.now() - startTime
+            }
+          });
         } catch (assemblyError) {
           console.error('File assembly error:', assemblyError);
           if (!res.headersSent) {
