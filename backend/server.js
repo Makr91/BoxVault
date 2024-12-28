@@ -92,9 +92,6 @@ app.use(express.static(static_path, {
   }
 }));
 
-// Add Vagrant request handler after static files
-app.use(vagrantHandler);
-
 // Enhanced CORS for Cloudflare
 const corsOptions = {
   origin: boxConfig.boxvault.origin.value,
@@ -130,6 +127,9 @@ app.use((req, res, next) => {
 
 // Function to initialize the application
 function initializeApp() {
+  // Add Vagrant request handler
+  app.use(vagrantHandler);
+
   const db = require("./app/models");
   const Role = db.role;
 
