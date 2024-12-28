@@ -319,8 +319,25 @@ const download = async (req, res) => {
       });
     }
 
-    // Function to handle file download
-    const sendFile = () => {
+    // Function to handle file download and increment counter
+    const sendFile = async () => {
+      // Find and increment download count
+      const fileRecord = await File.findOne({
+        where: {
+          fileName: 'vagrant.box',
+          architectureId: box.versions[0].providers[0].architectures[0].id
+        }
+      });
+
+      if (fileRecord) {
+        await fileRecord.increment('downloadCount');
+        console.log('Download count incremented:', {
+          fileName: fileRecord.fileName,
+          newCount: fileRecord.downloadCount + 1,
+          userAgent: req.headers['user-agent']
+        });
+      }
+
       // Get file stats for content-length
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;

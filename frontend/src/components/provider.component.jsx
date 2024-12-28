@@ -89,6 +89,7 @@ const Provider = () => {
               fileSize: fileInfo.data.fileSize,
               checksum: fileInfo.data.checksum,
               checksumType: fileInfo.data.checksumType,
+              downloadCount: fileInfo.data.downloadCount,
             };
           } catch (error) {
             return {
@@ -98,6 +99,7 @@ const Provider = () => {
               fileSize: null,
               checksum: null,
               checksumType: null,
+              downloadCount: 0,
             };
           }
         }));
@@ -352,18 +354,34 @@ const Provider = () => {
         checksum,
         checksumType,
         (progressEvent) => {
-          // Handle both upload and assembly progress
+          // Handle upload and assembly progress with detailed messages
           if (progressEvent.status === 'assembling') {
             setProgress(100);
-            setMessage("Assembling file chunks, this may take several minutes...");
+            setMessage("Assembling file chunks into final box file, this may take several minutes...");
             setMessageType("info");
-          } else if (progressEvent.status === 'complete') {
+            return;
+          } 
+          
+          if (progressEvent.status === 'complete') {
             setProgress(100);
-            setMessage("File upload and assembly completed successfully!");
+            setMessage("File upload and assembly completed successfully! Refreshing architecture list...");
             setMessageType("success");
-          } else if (progressEvent.progress !== undefined) {
+            return;
+          }
+          
+          if (progressEvent.progress !== undefined) {
             setProgress(progressEvent.progress);
-            setMessage("Uploading file chunks...");
+            const uploadedSize = Math.round((progressEvent.progress / 100) * currentFile.size);
+            const remainingSize = currentFile.size - uploadedSize;
+            
+            if (progressEvent.progress === 100) {
+              setMessage("All chunks uploaded successfully. Preparing for assembly...");
+            } else {
+              setMessage(
+                `Uploading file chunks... ${progressEvent.progress}% complete\n` +
+                `Uploaded: ${formatFileSize(uploadedSize)} / Remaining: ${formatFileSize(remainingSize)}`
+              );
+            }
             setMessageType("info");
           }
         }
@@ -371,6 +389,15 @@ const Provider = () => {
 
       console.log('Upload completed:', uploadResult);
       
+      // Keep detailed assembly message visible
+      if (uploadResult.details?.status === 'assembling') {
+        setMessage(
+          "File chunks uploaded successfully. Now assembling into final box file.\n" +
+          "This process may take several minutes depending on file size.\n" +
+          "Please keep this page open until assembly is complete."
+        );
+        setMessageType("info");
+      }
 
       // Refresh architectures list
       const updatedArchitectures = await ArchitectureService.getArchitectures(
@@ -690,7 +717,7 @@ const Provider = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Download
+                        Download ({architecture.downloadCount || 0})
                       </a>
                     )}
                   </td>
