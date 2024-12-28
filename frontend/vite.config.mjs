@@ -36,14 +36,6 @@ export default defineConfig(() => {
         react(),
         svgr()
       ],
-      css: {
-        preprocessorOptions: {
-          scss: {
-            includePaths: [path.resolve(__dirname, 'node_modules')],
-            additionalData: `@use "sass:math"; @use "sass:color";`
-          }
-        }
-      },
       server: {    
         open: false,
         port: 3000,
