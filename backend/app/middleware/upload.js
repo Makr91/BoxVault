@@ -283,17 +283,27 @@ const uploadMiddleware = (req, res, next) => {
       const uploadDir = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
       const chunkDir = getChunkDir(uploadDir, fileId);
 
-      // Check if this was the last chunk
-      const uploadedChunks = fs.readdirSync(chunkDir).filter(f => f.startsWith('chunk-')).length;
+      // Get list of uploaded chunks
+      const chunkFiles = fs.readdirSync(chunkDir).filter(f => f.startsWith('chunk-'));
+      const uploadedChunks = chunkFiles.length;
+      
+      // Extract chunk numbers and verify sequence
+      const chunkNumbers = chunkFiles.map(f => parseInt(f.split('-')[1])).sort((a, b) => a - b);
+      const hasAllChunks = chunkNumbers.length === totalChunks && 
+                          chunkNumbers.every((num, idx) => num === idx);
+      
       console.log('Checking completion:', {
         uploadedChunks,
         totalChunks,
-        isComplete: uploadedChunks === totalChunks,
+        isComplete: hasAllChunks,
         chunkDir,
-        files: fs.readdirSync(chunkDir)
+        files: chunkFiles,
+        missingChunks: hasAllChunks ? [] : 
+          Array.from({length: totalChunks}, (_, i) => i)
+            .filter(i => !chunkNumbers.includes(i))
       });
       
-      if (uploadedChunks === totalChunks) { // totalChunks is already parsed as int in fileFilter
+      if (hasAllChunks) { // Only proceed if we have all chunks in sequence
         try {
           // Send initial response that assembly is starting
           res.status(200).json({

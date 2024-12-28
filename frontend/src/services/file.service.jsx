@@ -110,13 +110,30 @@ class FileService {
       const chunks = Array.from({ length: totalChunks }, (_, i) => i);
       let lastResult;
       
-      // Process chunks in batches, but handle last chunks sequentially
-      for (let i = 0; i < chunks.length; i += maxConcurrentChunks) {
-        // For the last few chunks, process them one at a time
-        if (i >= chunks.length - maxConcurrentChunks) {
-          // Process remaining chunks sequentially
-          for (let j = i; j < chunks.length; j++) {
-            lastResult = await uploadChunk(j);
+      // Upload all chunks with retries for missing ones
+      let attempt = 0;
+      const maxAttempts = 3;
+      
+      while (attempt < maxAttempts) {
+        // Process chunks sequentially
+        for (let i = 0; i < chunks.length; i++) {
+          // Skip already uploaded chunks
+          if (uploadedChunks.has(i)) {
+            continue;
+          }
+
+          try {
+            lastResult = await uploadChunk(i);
+            
+            // Log progress after each chunk
+            console.log('Chunk upload progress:', {
+              chunk: i,
+              totalChunks: chunks.length,
+              uploadedChunks: uploadedChunks.size,
+              remaining: chunks.length - uploadedChunks.size,
+              attempt: attempt + 1
+            });
+
             if (lastResult.details?.isComplete) {
               console.log('Upload completed successfully:', {
                 fileId,
@@ -126,16 +143,34 @@ class FileService {
               });
               return lastResult;
             }
+          } catch (error) {
+            console.error(`Failed to upload chunk ${i} (attempt ${attempt + 1}/${maxAttempts}):`, error);
           }
-        } else {
-          // Process non-final chunks in parallel
-          const chunkBatch = chunks.slice(i, Math.min(i + maxConcurrentChunks, chunks.length - maxConcurrentChunks));
-          const results = await Promise.all(chunkBatch.map(chunkIndex => uploadChunk(chunkIndex)));
-          lastResult = results[results.length - 1];
+
+          // Small delay between chunks
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        // Small delay between batches to prevent overwhelming
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Check if we have all chunks
+        if (uploadedChunks.size === chunks.length) {
+          break;
+        }
+
+        // If we're missing chunks, wait longer before retrying
+        console.log('Missing chunks, retrying...', {
+          attempt: attempt + 1,
+          maxAttempts,
+          missingChunks: chunks.filter(i => !uploadedChunks.has(i))
+        });
+        
+        attempt++;
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retry
+        }
+      }
+
+      if (uploadedChunks.size !== chunks.length) {
+        throw new Error(`Failed to upload all chunks after ${maxAttempts} attempts`);
       }
 
       // If we get here and have all chunks, check if assembly is in progress
