@@ -31,12 +31,26 @@ const resumeUser = (userId) => {
   return axios.put(`${baseURL}/api/users/${userId}/resume`, {}, { headers: authHeader() });
 };
 
-const changePassword = (userId, newPassword) => {
-  return axios.put(`${baseURL}/api/users/${userId}/change-password`, { newPassword }, { headers: authHeader() });
+const changePassword = (userId, newPassword, signal) => {
+  return axios.put(
+    `${baseURL}/api/users/${userId}/change-password`, 
+    { newPassword }, 
+    { 
+      headers: authHeader(),
+      signal
+    }
+  );
 };
 
-const changeEmail = (userId, newEmail) => {
-  return axios.put(`${baseURL}/api/users/${userId}/change-email`, { newEmail }, { headers: authHeader() });
+const changeEmail = (userId, newEmail, signal) => {
+  return axios.put(
+    `${baseURL}/api/users/${userId}/change-email`, 
+    { newEmail }, 
+    { 
+      headers: authHeader(),
+      signal
+    }
+  );
 };
 
 const promoteToModerator = (userId) => {

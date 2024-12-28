@@ -180,7 +180,7 @@ const getCurrentUser = () => {
   return JSON.parse(localStorage.getItem("user"));
 };
 
-const getGravatarProfile = async (emailHash) => {
+const getGravatarProfile = async (emailHash, signal) => {
   try {
     const config = await getGravatarConfig();
     if (!config) return null;
@@ -189,16 +189,24 @@ const getGravatarProfile = async (emailHash) => {
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
       },
+      signal // Pass the AbortSignal to axios
     });
     return response.data;
   } catch (error) {
+    if (error.name === 'CanceledError' || error.name === 'AbortError') {
+      // Request was cancelled, ignore error
+      return null;
+    }
     console.error("Error fetching Gravatar profile:", error);
     return null;
   }
 };
 
-const resendVerificationMail = () => {
-  return axios.post(`${baseURL}/api/auth/resend-verification`, {}, { headers: authHeader() });
+const resendVerificationMail = (signal) => {
+  return axios.post(`${baseURL}/api/auth/resend-verification`, {}, { 
+    headers: authHeader(),
+    signal
+  });
 };
 
 const verifyMail = (token) => {

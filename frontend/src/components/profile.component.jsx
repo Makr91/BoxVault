@@ -80,18 +80,21 @@ const Profile = () => {
 
   useEffect(() => {
     let mounted = true;
+    let controller = new AbortController();
 
     const loadUserData = async () => {
       if (currentUser) {
         const emailHash = currentUser.emailHash;
         if (emailHash) {
           try {
-            const profile = await AuthService.getGravatarProfile(emailHash);
+            const profile = await AuthService.getGravatarProfile(emailHash, controller.signal);
             if (mounted && profile) {
               setGravatarProfile(profile);
             }
           } catch (error) {
-            console.error("Error loading Gravatar profile:", error);
+            if (!error.name?.includes('Cancel')) {
+              console.error("Error loading Gravatar profile:", error);
+            }
           }
         }
         
@@ -101,7 +104,9 @@ const Profile = () => {
             setIsOnlyUserInOrg(isOnly);
           }
         } catch (error) {
-          console.error("Error checking organization status:", error);
+          if (!error.name?.includes('Cancel')) {
+            console.error("Error checking organization status:", error);
+          }
         }
       } else {
         navigate("/login");
@@ -112,6 +117,7 @@ const Profile = () => {
 
     return () => {
       mounted = false;
+      controller.abort();
     };
   }, [currentUser, navigate]);
 
@@ -122,19 +128,21 @@ const Profile = () => {
     const loadData = async () => {
       if (activeTab === "serviceAccounts") {
         try {
-          const response = await ServiceAccountService.getServiceAccounts();
+          const response = await ServiceAccountService.getServiceAccounts(controller.signal);
           if (mounted) {
             setServiceAccounts(response.data);
           }
         } catch (error) {
-          if (mounted && !error.message?.includes('aborted')) {
+          if (mounted && !error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
             console.error("Error loading service accounts:", error);
           }
         }
       }
     };
 
-    loadData();
+    if (activeTab === "serviceAccounts") {
+      loadData();
+    }
 
     return () => {
       mounted = false;
@@ -142,71 +150,98 @@ const Profile = () => {
     };
   }, [activeTab]);
 
-
-  const loadServiceAccounts = async () => {
+  const loadServiceAccounts = async (signal) => {
     try {
-      const response = await ServiceAccountService.getServiceAccounts();
+      const response = await ServiceAccountService.getServiceAccounts(signal);
       setServiceAccounts(response.data);
     } catch (error) {
-      if (!error.message?.includes('aborted')) {
+      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
         console.error("Error loading service accounts:", error);
       }
     }
   };
 
-  const handleCreateServiceAccount = (e) => {
+  const handleCreateServiceAccount = async (e) => {
     e.preventDefault();
-    ServiceAccountService.createServiceAccount(newServiceAccountDescription, newServiceAccountExpiration)
-      .then(() => {
-        loadServiceAccounts();
-        setNewServiceAccountDescription("");
-        setNewServiceAccountExpiration(30);
-      })
-      .catch(error => console.error("Error creating service account:", error));
+    const controller = new AbortController();
+    try {
+      await ServiceAccountService.createServiceAccount(newServiceAccountDescription, newServiceAccountExpiration);
+      await loadServiceAccounts(controller.signal);
+      setNewServiceAccountDescription("");
+      setNewServiceAccountExpiration(30);
+    } catch (error) {
+      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+        console.error("Error creating service account:", error);
+      }
+    }
+    return () => controller.abort();
   };
 
-  const handleDeleteServiceAccount = (id) => {
-    ServiceAccountService.deleteServiceAccount(id)
-      .then(() => loadServiceAccounts())
-      .catch(error => console.error("Error deleting service account:", error));
+  const handleDeleteServiceAccount = async (id) => {
+    const controller = new AbortController();
+    try {
+      await ServiceAccountService.deleteServiceAccount(id);
+      await loadServiceAccounts(controller.signal);
+    } catch (error) {
+      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+        console.error("Error deleting service account:", error);
+      }
+    }
+    return () => controller.abort();
   };
 
-
-  const handleResendVerificationMail = () => {
+  const handleResendVerificationMail = async () => {
+    const controller = new AbortController();
     setVerificationMessage("");
-    AuthService.resendVerificationMail()
-      .then((response) => {
-        setVerificationMessage(response.data.message);
-        refreshUserData();
-      })
-      .catch((error) => setVerificationMessage("Error sending verification email: " + error.message));
+    try {
+      const response = await AuthService.resendVerificationMail(controller.signal);
+      setVerificationMessage(response.data.message);
+      await refreshUserData();
+    } catch (error) {
+      if (!error.name?.includes('Cancel')) {
+        setVerificationMessage("Error sending verification email: " + error.message);
+      }
+    }
+    return () => controller.abort();
   };
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
+    const controller = new AbortController();
     setMessage("");
     const errors = validatePasswordForm();
     setPasswordErrors(errors);
     if (Object.keys(errors).length === 0) {
-      UserService.changePassword(currentUser.id, newPassword)
-        .then(() => setMessage("Password changed successfully!"))
-        .catch((error) => setMessage("Error changing password: " + error.message));
+      try {
+        await UserService.changePassword(currentUser.id, newPassword, controller.signal);
+        setMessage("Password changed successfully!");
+      } catch (error) {
+        if (!error.name?.includes('Cancel')) {
+          setMessage("Error changing password: " + error.message);
+        }
+      }
     }
+    return () => controller.abort();
   };
 
-  const handleEmailChange = (e) => {
+  const handleEmailChange = async (e) => {
     e.preventDefault();
+    const controller = new AbortController();
     setEmailMessage("");
     const errors = validateEmailForm();
     setEmailErrors(errors);
     if (Object.keys(errors).length === 0) {
-      UserService.changeEmail(currentUser.id, newEmail)
-        .then(() => {
-          setEmailMessage("Email changed successfully!");
-          refreshUserData();
-        })
-        .catch((error) => setEmailMessage("Error changing email: " + error.message));
+      try {
+        await UserService.changeEmail(currentUser.id, newEmail, controller.signal);
+        setEmailMessage("Email changed successfully!");
+        await refreshUserData();
+      } catch (error) {
+        if (!error.name?.includes('Cancel')) {
+          setEmailMessage("Error changing email: " + error.message);
+        }
+      }
     }
+    return () => controller.abort();
   };
 
   const handlePromoteToModerator = () => {
@@ -480,6 +515,5 @@ const Profile = () => {
     </div>
   );
 };
-
 
 export default Profile;
