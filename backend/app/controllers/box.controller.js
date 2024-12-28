@@ -319,34 +319,34 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     // Get all boxes from the organization
     let boxes = organizationData.users.flatMap(user => user.box);
 
-    // If it's a service account, find the owner's boxes
-    if (isServiceAccount && userId) {
-      const serviceAccount = await db.service_account.findOne({
-        where: { id: userId },
-        include: [{
-          model: Users,
-          as: 'user'
-        }]
-      });
+    // For each box, check if it was created by a service account
+    const serviceAccountBoxes = await Promise.all(
+      boxes.map(async box => {
+        const serviceAccount = await db.service_account.findOne({
+          where: { id: box.userId },
+          include: [{
+            model: Users,
+            as: 'user'
+          }]
+        });
+        return { box, serviceAccount };
+      })
+    );
 
-      if (serviceAccount && serviceAccount.user) {
-        // Filter boxes to show only those owned by the service account's owner
-        boxes = boxes.filter(box => box.user && box.user.id === serviceAccount.user.id);
-      }
-    } else {
-      // For regular users, filter based on access rules
-      boxes = boxes.filter(box => {
-        // Allow access to public boxes for any user
-        if (box.isPublic) {
-          return true;
-        }
-        // Allow access to private boxes only if the user is part of the organization
-        if (userId && userOrganizationId === organizationData.id) {
-          return true;
-        }
-        return false;
-      });
-    }
+    // Filter boxes based on access rules
+    boxes = boxes.filter((box, index) => {
+      const { serviceAccount } = serviceAccountBoxes[index];
+
+      // Allow access if:
+      // 1. Box is public
+      // 2. User belongs to organization
+      // 3. User is the owner of the service account that created the box
+      return (
+        box.isPublic ||
+        (userId && userOrganizationId === organizationData.id) ||
+        (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId)
+      );
+    });
 
     // Map boxes to response format
     const formattedBoxes = boxes.map(box => ({
@@ -746,23 +746,33 @@ exports.findOne = async (req, res) => {
       return res.json(response);
     }
 
-    // If the box is private, check if the user belongs to the organization or is a service account
+    // If the box is private, check access permissions
     if (!userId) {
       return res.status(403).json({ message: "Unauthorized access to private box." });
     }
 
-    if (isServiceAccount) {
-      // Service accounts can access all boxes
+    // Check if this box was created by a service account
+    const serviceAccount = await db.service_account.findOne({
+      where: { id: box.userId },
+      include: [{
+        model: Users,
+        as: 'user'
+      }]
+    });
+
+    // Allow access if:
+    // 1. The user is the owner of the service account that created the box
+    // 2. The user belongs to the organization
+    // 3. The requester is a service account
+    if (
+      (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId) ||
+      organizationData.users.some(user => user.id === userId) ||
+      isServiceAccount
+    ) {
       return res.json(response);
     }
 
-    const user = organizationData.users.find(user => user.id === userId);
-    if (!user) {
-      return res.status(403).json({ message: "Unauthorized access to private box." });
-    }
-
-    // If the user belongs to the organization, allow access
-    return res.json(response);
+    return res.status(403).json({ message: "Unauthorized access to private box." });
 
   } catch (err) {
     res.status(500).send({ message: "Error retrieving box with name=" + name });
