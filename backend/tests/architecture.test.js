@@ -26,8 +26,8 @@ describe('Architecture API', () => {
     const authResponse = await request(app)
       .post('/api/auth/signin')
       .send({
-        username: 'Mark',
-        password: 'Ready42024@!'
+        username: 'SomeUser',
+        password: 'SoomePass'
       });
 
     authToken = authResponse.body.accessToken;

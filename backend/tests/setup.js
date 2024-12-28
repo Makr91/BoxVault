@@ -51,9 +51,9 @@ beforeAll(async () => {
 
     // Create test user
     const testUser = await db.user.create({
-      username: "Mark",
+      username: "SomeUser",
       email: "mark.gilbert@prominic.net",
-      password: "$2a$08$nQ.fOBddyV/V184UnrIt9.Fj9q8iLEnYjnBB8kxaAbRFq.GQ9iEre", // Ready42024@!
+      password: "$2a$08$nQ.fOBddyV/V184UnrIt9.Fj9q8iLEnYjnBB8kxaAbRFq.GQ9iEre", // SoomePass
       verified: true,
       organizationId: 1
     });

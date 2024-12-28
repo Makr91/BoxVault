@@ -18,20 +18,20 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/signin')
         .send({
-          username: 'Mark',
-          password: 'Ready42024@!'
+          username: 'SomeUser',
+          password: 'SoomePass'
         });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessToken');
-      expect(res.body).toHaveProperty('username', 'Mark');
+      expect(res.body).toHaveProperty('username', 'SomeUser');
     });
 
     it('should fail with invalid credentials', async () => {
       const res = await request(app)
         .post('/api/auth/signin')
         .send({
-          username: 'Mark',
+          username: 'SomeUser',
           password: 'wrongpassword'
         });
 
