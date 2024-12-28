@@ -760,12 +760,19 @@ exports.findOne = async (req, res) => {
       }]
     });
 
+    // Check if the requesting user is a service account owner
+    const requestingUserServiceAccounts = await db.service_account.findAll({
+      where: { userId: userId }
+    });
+
     // Allow access if:
     // 1. The user is the owner of the service account that created the box
-    // 2. The user belongs to the organization
-    // 3. The requester is a service account
+    // 2. The box was created by a service account owned by the requesting user
+    // 3. The user belongs to the organization
+    // 4. The requester is a service account
     if (
       (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId) ||
+      (requestingUserServiceAccounts.some(sa => sa.id === box.userId)) ||
       organizationData.users.some(user => user.id === userId) ||
       isServiceAccount
     ) {
