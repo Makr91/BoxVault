@@ -31,24 +31,56 @@ const getFinalFilePath = (uploadDir) => {
 
 // Helper function to assemble chunks
 const assembleChunks = async (chunkDir, finalPath, totalChunks) => {
+  console.log('Starting file assembly:', {
+    chunkDir,
+    finalPath,
+    totalChunks,
+    startTime: new Date().toISOString(),
+    totalSize: fs.readdirSync(chunkDir)
+      .filter(f => f.startsWith('chunk-'))
+      .reduce((acc, f) => acc + fs.statSync(path.join(chunkDir, f)).size, 0)
+  });
+
   const writeStream = fs.createWriteStream(finalPath);
+  const startTime = Date.now();
+  let processedSize = 0;
   
   for (let i = 0; i < totalChunks; i++) {
     const chunkPath = path.join(chunkDir, `chunk-${i}`);
     if (!fs.existsSync(chunkPath)) {
       throw new Error(`Missing chunk ${i}`);
     }
+    const chunkSize = fs.statSync(chunkPath).size;
     await new Promise((resolve, reject) => {
       const readStream = fs.createReadStream(chunkPath);
       readStream.pipe(writeStream, { end: false });
-      readStream.on('end', resolve);
+      readStream.on('end', () => {
+        processedSize += chunkSize;
+        console.log('Chunk assembled:', {
+          chunkIndex: i,
+          chunkSize,
+          processedSize,
+          remainingChunks: totalChunks - (i + 1),
+          elapsedTime: Math.round((Date.now() - startTime) / 1000) + 's'
+        });
+        resolve();
+      });
       readStream.on('error', reject);
     });
   }
   
   writeStream.end();
   return new Promise((resolve, reject) => {
-    writeStream.on('finish', resolve);
+    writeStream.on('finish', () => {
+      const finalSize = fs.statSync(finalPath).size;
+      console.log('File assembly completed:', {
+        finalPath,
+        finalSize,
+        elapsedTime: Math.round((Date.now() - startTime) / 1000) + 's',
+        averageSpeed: Math.round(finalSize / (Date.now() - startTime) * 1000 / (1024 * 1024)) + ' MB/s'
+      });
+      resolve();
+    });
     writeStream.on('error', reject);
   });
 };

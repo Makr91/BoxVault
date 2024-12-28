@@ -321,6 +321,10 @@ const Provider = () => {
         fileSize: currentFile.size,
         architectureName: newArchitecture.name
       });
+
+      // Set initial upload message
+      setMessage("Starting file upload...");
+      setMessageType("info");
   
       // First create the architecture record
       const architectureData = {
@@ -361,8 +365,15 @@ const Provider = () => {
 
       console.log('Upload completed:', uploadResult);
       
+      // Show assembly message
+      setMessage("Upload complete. Assembling file chunks, this may take several minutes...");
+      setMessageType("info");
+
+      // Wait for response (assembly completion)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       // Show success message
-      setMessage("Architecture and file uploaded successfully!");
+      setMessage("Architecture added and file assembled successfully!");
       setMessageType("success");
 
       // Refresh architectures list

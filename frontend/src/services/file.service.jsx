@@ -110,21 +110,28 @@ class FileService {
       const chunks = Array.from({ length: totalChunks }, (_, i) => i);
       let lastResult;
       
-      // Process chunks in smaller batches
+      // Process chunks in batches, but handle last chunks sequentially
       for (let i = 0; i < chunks.length; i += maxConcurrentChunks) {
-        const chunkBatch = chunks.slice(i, Math.min(i + maxConcurrentChunks, chunks.length));
-        const results = await Promise.all(chunkBatch.map(chunkIndex => uploadChunk(chunkIndex)));
-        lastResult = results[results.length - 1];
-        
-        // Check if this batch completed the upload
-        if (lastResult.details?.isComplete) {
-          console.log('Upload completed successfully:', {
-            fileId,
-            totalChunks,
-            uploadedChunks: uploadedChunks.size,
-            response: lastResult
-          });
-          return lastResult;
+        // For the last few chunks, process them one at a time
+        if (i >= chunks.length - maxConcurrentChunks) {
+          // Process remaining chunks sequentially
+          for (let j = i; j < chunks.length; j++) {
+            lastResult = await uploadChunk(j);
+            if (lastResult.details?.isComplete) {
+              console.log('Upload completed successfully:', {
+                fileId,
+                totalChunks,
+                uploadedChunks: uploadedChunks.size,
+                response: lastResult
+              });
+              return lastResult;
+            }
+          }
+        } else {
+          // Process non-final chunks in parallel
+          const chunkBatch = chunks.slice(i, Math.min(i + maxConcurrentChunks, chunks.length - maxConcurrentChunks));
+          const results = await Promise.all(chunkBatch.map(chunkIndex => uploadChunk(chunkIndex)));
+          lastResult = results[results.length - 1];
         }
 
         // Small delay between batches to prevent overwhelming
