@@ -16,6 +16,7 @@ export default defineConfig(() => {
       build: {
         outDir: '../../backend/app/views/',
         emptyOutDir: true,
+        copyPublicDir: true,
         rollupOptions: {
           output: {
             entryFileNames: `assets/[name].js`,
