@@ -11,10 +11,24 @@ console.log(`${version.name} - Version: ${version.version}`);
 const container = document.getElementById("root");
 const root = createRoot(container);
 
+// Initialize web vitals reporting
+const webVitalsCallback = (metric) => {
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(metric);
+  }
+};
+
 root.render(
   <BrowserRouter>
     <App />
   </BrowserRouter>
 );
 
-reportWebVitals();
+// Start web vitals with our callback
+reportWebVitals(webVitalsCallback);
+
+// Clean up web vitals on page unload
+window.addEventListener('unload', () => {
+  reportWebVitals(null); // This will trigger cleanup
+});

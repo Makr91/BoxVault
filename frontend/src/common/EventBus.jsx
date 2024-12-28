@@ -1,13 +1,14 @@
-// Map of event names to sets of callbacks
-const eventMap = new Map();
+class EventBusService {
+  constructor() {
+    this.eventMap = new Map();
+  }
 
-const eventBus = {
   on(event, callback) {
     // Get or create set of callbacks for this event
-    if (!eventMap.has(event)) {
-      eventMap.set(event, new Set());
+    if (!this.eventMap.has(event)) {
+      this.eventMap.set(event, new Set());
     }
-    const callbacks = eventMap.get(event);
+    const callbacks = this.eventMap.get(event);
 
     // Create wrapper that handles detail extraction
     const wrappedCallback = (e) => {
@@ -34,24 +35,24 @@ const eventBus = {
         if (callbacks.has(wrappedCallback)) {
           callbacks.delete(wrappedCallback);
           if (callbacks.size === 0) {
-            eventMap.delete(event);
+            this.eventMap.delete(event);
           }
         }
       } catch (error) {
         console.error('Error cleaning up event listener:', error);
       }
     };
-  },
+  }
 
   dispatch(event, data) {
     // Only dispatch if there are listeners
-    if (eventMap.has(event)) {
+    if (this.eventMap.has(event)) {
       document.dispatchEvent(new CustomEvent(event, { detail: data }));
     }
-  },
+  }
 
   remove(event, callback) {
-    const callbacks = eventMap.get(event);
+    const callbacks = this.eventMap.get(event);
     if (callbacks) {
       // Find and remove the wrapped version of the callback
       for (const wrappedCallback of callbacks) {
@@ -59,10 +60,23 @@ const eventBus = {
         callbacks.delete(wrappedCallback);
       }
       if (callbacks.size === 0) {
-        eventMap.delete(event);
+        this.eventMap.delete(event);
       }
     }
   }
-};
+
+  cleanup() {
+    // Clean up all event listeners
+    for (const [event, callbacks] of this.eventMap.entries()) {
+      for (const callback of callbacks) {
+        document.removeEventListener(event, callback);
+      }
+      callbacks.clear();
+    }
+    this.eventMap.clear();
+  }
+}
+
+const eventBus = new EventBusService();
 
 export default eventBus;

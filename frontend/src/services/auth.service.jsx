@@ -56,21 +56,33 @@ const refreshTokenIfNeeded = async () => {
 // Add request interceptor to refresh token before requests
 axios.interceptors.request.use(
   async config => {
-    // Skip token refresh for auth endpoints and refresh requests
-    if (config.skipAuthRefresh || 
-        config.url.includes('/auth/signin') || 
-        config.url.includes('/auth/refresh-token')) {
+    try {
+      // Skip token refresh for auth endpoints and refresh requests
+      if (config.skipAuthRefresh || 
+          config.url.includes('/auth/signin') || 
+          config.url.includes('/auth/refresh-token')) {
+        return config;
+      }
+
+      // Only refresh if we have a signal and it's not aborted
+      if (!config.signal || !config.signal.aborted) {
+        await refreshTokenIfNeeded();
+      }
+
+      // Ensure Content-Type is set for all requests
+      if (!config.headers['Content-Type'] && !config.url.includes('/file/upload')) {
+        config.headers['Content-Type'] = 'application/json';
+      }
+
       return config;
+    } catch (error) {
+      // If request was cancelled or aborted, reject without additional processing
+      if (error.name === 'CanceledError' || error.name === 'AbortError' || 
+          (config.signal && config.signal.aborted)) {
+        return Promise.reject(error);
+      }
+      throw error;
     }
-
-    await refreshTokenIfNeeded();
-
-    // Ensure Content-Type is set for all requests
-    if (!config.headers['Content-Type'] && !config.url.includes('/file/upload')) {
-      config.headers['Content-Type'] = 'application/json';
-    }
-
-    return config;
   },
   error => {
     return Promise.reject(error);
@@ -81,6 +93,11 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   response => response,
   async error => {
+    // If request was cancelled, just reject without any additional processing
+    if (error.name === 'CanceledError' || error.name === 'AbortError') {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
 
     // Don't handle retries for auth endpoints
@@ -105,7 +122,9 @@ axios.interceptors.response.use(
             return axios(originalRequest);
           }
         } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
+          if (!refreshError.name?.includes('Cancel')) {
+            console.error('Token refresh failed:', refreshError);
+          }
         }
       }
 
