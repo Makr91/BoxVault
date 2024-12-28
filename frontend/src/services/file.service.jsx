@@ -6,159 +6,119 @@ const baseURL = window.location.origin;
 
 class FileService {
   async upload(file, organization, name, version, provider, architecture, checksum, checksumType, onUploadProgress) {
-    // Validate file
     if (!file) {
       throw new Error('No file provided');
     }
 
-    // Log initial upload details
-    console.log('Starting upload process:', {
+    // Generate a unique file ID for this upload
+    const fileId = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let uploadedChunks = new Set();
+    let lastProgress = 0;
+    const maxRetries = 3;
+
+    console.log('Starting chunked upload:', {
+      fileId,
       fileName: file.name,
       fileSize: file.size,
+      totalChunks,
+      chunkSize: CHUNK_SIZE,
       checksum: checksum || 'none',
-      checksumType: checksumType || 'NULL',
-      organization,
-      provider,
-      architecture
+      checksumType: checksumType || 'NULL'
     });
 
-    const maxRetries = 3;
-    const formData = new FormData();
-    let retryCount = 0;
-    let lastError = null;
+    // Function to upload a single chunk
+    const uploadChunk = async (chunkIndex, retryCount = 0) => {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+      
+      const formData = new FormData();
+      formData.append('file', chunk, file.name);
+      formData.append('fileId', fileId);
+      formData.append('chunkIndex', chunkIndex.toString());
+      formData.append('totalChunks', totalChunks.toString());
+      formData.append('checksum', checksum || '');
+      formData.append('checksumType', checksumType || 'NULL');
 
-    while (retryCount < maxRetries) {
       try {
-        // Clear any existing data
-        formData.delete('file');
-        formData.delete('checksum');
-        formData.delete('checksumType');
-
-        // Add file with original name
-        formData.append('file', file);
-        
-        // Add metadata
-        formData.append('checksum', checksum || '');
-        formData.append('checksumType', checksumType || 'NULL');
-
-        // Verify form data
-        for (let [key, value] of formData.entries()) {
-          console.log('Form data entry:', {
-            field: key,
-            value: key === 'file' ? `File: ${value.name}` : value
-          });
-        }
-
-        // Log form data contents
-        console.log('Form data prepared:', {
-          fileName: file.name,
-          fileSize: file.size,
-          fields: Array.from(formData.entries()).map(([key]) => key)
-        });
-
-        // Log retry attempt
-        console.log(`Upload attempt ${retryCount + 1}/${maxRetries}`, {
-          fileName: file.name,
-          fileSize: file.size,
-          attempt: retryCount + 1,
-          totalAttempts: maxRetries
-        });
-
         const response = await axios.post(
-          `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`, 
+          `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
           formData,
           {
-            // Configure axios for upload
-            headers: authHeader(),
-            onUploadProgress: (progressEvent) => {
-              // Track total bytes including previous chunks
-              const loaded = progressEvent.loaded || 0;
-              const total = progressEvent.total || file.size;
-              
-              // Calculate actual progress
-              const percent = Math.round((loaded * 100) / total);
-              
-              // Log detailed progress
-              console.log('Upload progress:', {
-                loaded,
-                total,
-                percent: `${percent}%`,
-                rate: progressEvent.rate ? `${Math.round(progressEvent.rate / 1024 / 1024 * 100) / 100} MB/s` : 'calculating...'
-              });
-              
-              // Call the progress callback with the calculated values
-              if (onUploadProgress) {
-                onUploadProgress({
-                  loaded,
-                  total,
-                  progress: percent
-                });
-              }
+            headers: {
+              ...authHeader(),
+              'Content-Range': `bytes ${start}-${end - 1}/${file.size}`
             },
-            timeout: 24 * 60 * 60 * 1000, // 24 hour timeout
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-            // Ensure proper chunking for large files
-            maxChunkSize: 5 * 1024 * 1024, // 5MB chunks
+            timeout: 5 * 60 * 1000, // 5 minute timeout per chunk
+            maxContentLength: CHUNK_SIZE * 2,
+            maxBodyLength: CHUNK_SIZE * 2,
             validateStatus: (status) => status >= 200 && status < 300
           }
         );
 
-        // Log response
-        console.log('Upload response:', {
-          status: response.status,
-          data: response.data,
-          headers: response.headers
-        });
-
-        // Log successful upload
-        console.log('Upload completed successfully:', {
-          fileName: file.name,
-          fileSize: file.size,
-          attempts: retryCount + 1,
-          response: response.data
-        });
+        uploadedChunks.add(chunkIndex);
+        
+        // Calculate overall progress
+        const totalProgress = Math.round((uploadedChunks.size / totalChunks) * 100);
+        if (totalProgress > lastProgress) {
+          lastProgress = totalProgress;
+          if (onUploadProgress) {
+            onUploadProgress({
+              loaded: uploadedChunks.size * CHUNK_SIZE,
+              total: file.size,
+              progress: totalProgress
+            });
+          }
+        }
 
         return response.data;
       } catch (error) {
-        lastError = error;
-        console.error(`Upload attempt ${retryCount + 1} failed:`, {
-          error: error.message,
-          status: error.response?.status,
-          data: error.response?.data
-        });
-
-        if (error.response?.status === 401 && retryCount < maxRetries - 1) {
-          // Try to refresh the token
-          console.log('Attempting to refresh auth token...');
-          const newUserData = await AuthService.refreshUserData();
-          if (!newUserData) {
-            throw new Error('Failed to refresh authentication');
-          }
-          console.log('Auth token refreshed successfully');
-        } else if (error.code === 'ECONNABORTED' && retryCount < maxRetries - 1) {
-          // Handle timeout specifically
-          console.log('Upload timed out, will retry...');
-        } else if (retryCount === maxRetries - 1) {
-          // Last attempt failed
-          console.error('All upload attempts failed:', {
-            attempts: maxRetries,
-            finalError: error.message
-          });
-          throw error;
-        }
-
-        // Wait before retrying (exponential backoff)
-        const delay = Math.pow(2, retryCount) * 1000;
-        console.log(`Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.error(`Chunk ${chunkIndex} upload failed:`, error);
         
-        retryCount++;
+        if (retryCount < maxRetries) {
+          // Exponential backoff
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return uploadChunk(chunkIndex, retryCount + 1);
+        }
+        
+        throw error;
       }
-    }
+    };
 
-    // If we get here, all retries failed
-    throw lastError;
+    try {
+      // Upload all chunks in parallel with concurrency limit
+      const concurrencyLimit = 3;
+      const chunks = Array.from({ length: totalChunks }, (_, i) => i);
+      
+      for (let i = 0; i < chunks.length; i += concurrencyLimit) {
+        const chunkBatch = chunks.slice(i, i + concurrencyLimit);
+        const results = await Promise.all(
+          chunkBatch.map(chunkIndex => uploadChunk(chunkIndex))
+        );
+        
+        // Check if the last chunk response indicates completion
+        const lastResult = results[results.length - 1];
+        if (lastResult.details?.isComplete) {
+          console.log('Upload completed successfully:', {
+            fileId,
+            totalChunks,
+            uploadedChunks: uploadedChunks.size
+          });
+          return lastResult;
+        }
+      }
+
+      throw new Error('Upload did not complete after all chunks were sent');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      throw error;
+    }
   }
 
   async getDownloadLink(organization, name, version, provider, architecture) {

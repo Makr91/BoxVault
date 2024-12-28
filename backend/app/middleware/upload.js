@@ -2,11 +2,13 @@ const multer = require("multer");
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const crypto = require('crypto');
 
 // Load app config for max file size
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let maxFileSize;
 let appConfig;
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
 try {
   const fileContents = fs.readFileSync(appConfigPath, 'utf8');
@@ -17,28 +19,73 @@ try {
   maxFileSize = 10 * 1024 * 1024 * 1024; // Default to 10GB
 }
 
-// Configure multer storage with overwrite support
+// Helper function to get chunk directory path
+const getChunkDir = (uploadDir, fileId) => {
+  return path.join(uploadDir, `.chunks-${fileId}`);
+};
+
+// Helper function to get final file path
+const getFinalFilePath = (uploadDir) => {
+  return path.join(uploadDir, 'vagrant.box');
+};
+
+// Helper function to assemble chunks
+const assembleChunks = async (chunkDir, finalPath, totalChunks) => {
+  const writeStream = fs.createWriteStream(finalPath);
+  
+  for (let i = 0; i < totalChunks; i++) {
+    const chunkPath = path.join(chunkDir, `chunk-${i}`);
+    if (!fs.existsSync(chunkPath)) {
+      throw new Error(`Missing chunk ${i}`);
+    }
+    await new Promise((resolve, reject) => {
+      const readStream = fs.createReadStream(chunkPath);
+      readStream.pipe(writeStream, { end: false });
+      readStream.on('end', resolve);
+      readStream.on('error', reject);
+    });
+  }
+  
+  writeStream.end();
+  return new Promise((resolve, reject) => {
+    writeStream.on('finish', resolve);
+    writeStream.on('error', reject);
+  });
+};
+
+// Configure multer storage for chunked uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
       const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+      const { fileId, chunkIndex, totalChunks } = req.body;
       
+      if (!fileId || chunkIndex === undefined || !totalChunks) {
+        return cb(new Error('Missing chunk information'));
+      }
+
       // Load config for each request to ensure we have the latest
       const configContents = fs.readFileSync(appConfigPath, 'utf8');
       const config = yaml.load(configContents);
       const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
       
-      // Create directory if it doesn't exist
+      // Create main upload directory
       fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
       
+      // Create chunks directory
+      const chunkDir = getChunkDir(uploadDir, fileId);
+      fs.mkdirSync(chunkDir, { recursive: true, mode: 0o755 });
+      
       // Log directory creation/access
-      console.log('Using upload directory:', {
-        path: uploadDir,
+      console.log('Using chunk directory:', {
+        path: chunkDir,
         mode: '0755',
-        exists: fs.existsSync(uploadDir)
+        exists: fs.existsSync(chunkDir),
+        chunk: chunkIndex,
+        totalChunks
       });
       
-      cb(null, uploadDir);
+      cb(null, chunkDir);
     } catch (error) {
       console.error('Error in multer destination handler:', error);
       cb(error);
@@ -46,26 +93,9 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     try {
-      const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-      const config = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
-      const filePath = path.join(
-        config.boxvault.box_storage_directory.value,
-        organization,
-        boxId,
-        versionNumber,
-        providerName,
-        architectureName,
-        'vagrant.box'
-      );
-
-      // If file exists, delete it first to ensure clean overwrite
-      if (fs.existsSync(filePath)) {
-        console.log('Existing file found, will overwrite:', filePath);
-        fs.unlinkSync(filePath);
-      }
-
-      // Always use vagrant.box as filename
-      cb(null, 'vagrant.box');
+      const { chunkIndex } = req.body;
+      // Store each chunk with its index
+      cb(null, `chunk-${chunkIndex}`);
     } catch (error) {
       console.error('Error in multer filename handler:', error);
       cb(error);
@@ -73,24 +103,32 @@ const storage = multer.diskStorage({
   }
 });
 
-// Configure multer upload with detailed logging
+// Configure multer upload with chunk handling
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: maxFileSize,
-    fieldSize: maxFileSize // Also set fieldSize limit
+    fileSize: CHUNK_SIZE + 1024, // Chunk size plus some overhead
+    fieldSize: maxFileSize // Keep original field size limit
   },
   fileFilter: (req, file, cb) => {
     try {
-      // Log upload start with full details
-      console.log('Starting file upload:', {
+      const { fileId, chunkIndex, totalChunks } = req.body;
+      
+      // Validate chunk information
+      if (!fileId || chunkIndex === undefined || !totalChunks) {
+        console.error('Missing chunk information:', { fileId, chunkIndex, totalChunks });
+        return cb(new Error('Missing chunk information'));
+      }
+
+      // Log chunk upload start
+      console.log('Starting chunk upload:', {
         originalName: file.originalname,
         mimeType: file.mimetype,
-        size: file.size,
         fieldname: file.fieldname,
-        maxSize: maxFileSize,
-        params: req.params,
-        headers: req.headers
+        fileId,
+        chunkIndex,
+        totalChunks,
+        params: req.params
       });
 
       // Verify file field name
@@ -98,9 +136,6 @@ const upload = multer({
         console.error('Invalid field name:', file.fieldname);
         return cb(new Error('Invalid field name for file upload'));
       }
-
-      // Always rename to vagrant.box regardless of original name
-      file.originalname = 'vagrant.box';
 
       cb(null, true);
     } catch (error) {
@@ -110,15 +145,20 @@ const upload = multer({
   }
 }).single('file');
 
-// Main upload middleware
+// Main upload middleware with chunk handling
 const uploadMiddleware = (req, res, next) => {
   const startTime = Date.now();
   
-  // Log upload request
-  console.log('Upload request received:', {
+  // Log chunk upload request
+  console.log('Chunk upload request received:', {
     params: req.params,
     contentLength: req.headers['content-length'],
-    contentType: req.headers['content-type']
+    contentType: req.headers['content-type'],
+    chunkInfo: {
+      fileId: req.body.fileId,
+      chunkIndex: req.body.chunkIndex,
+      totalChunks: req.body.totalChunks
+    }
   });
 
   try {
@@ -126,85 +166,91 @@ const uploadMiddleware = (req, res, next) => {
       const duration = Date.now() - startTime;
       
       if (err) {
-        // Log error details
-        console.error('Upload error:', {
+        console.error('Chunk upload error:', {
           type: err instanceof multer.MulterError ? 'MulterError' : 'GeneralError',
           message: err.message,
           code: err.code,
-          field: err.field,
-          stack: err.stack,
           duration: duration
         });
 
-        // Don't try to send response if headers are already sent
         if (!res.headersSent) {
           if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
             res.status(413).json({
-              error: 'FILE_TOO_LARGE',
-              message: `File size cannot be larger than ${maxFileSize / (1024 * 1024 * 1024)}GB`,
-              details: {
-                maxSize: maxFileSize,
-                duration: duration
-              }
+              error: 'CHUNK_TOO_LARGE',
+              message: `Chunk size cannot be larger than ${CHUNK_SIZE / (1024 * 1024)}MB`,
+              details: { maxChunkSize: CHUNK_SIZE }
             });
           } else {
             res.status(500).json({
-              error: err instanceof multer.MulterError ? err.code : 'UPLOAD_ERROR',
-              message: err.message,
-              details: { duration }
+              error: 'CHUNK_UPLOAD_ERROR',
+              message: err.message
             });
           }
         }
         return;
       }
 
-      // Process upload result
       if (!req.file) {
-        console.error('No file in request:', {
-          headers: req.headers,
-          body: req.body,
-          files: req.files
-        });
         if (!res.headersSent) {
           res.status(400).json({
-            error: 'NO_FILE',
-            message: 'No file was uploaded',
-            details: {
-              contentType: req.headers['content-type'],
-              contentLength: req.headers['content-length']
-            }
+            error: 'NO_CHUNK',
+            message: 'No chunk was uploaded'
           });
         }
         return;
       }
 
-      // Validate file size
-      if (req.file.size === 0) {
-        console.error('Empty file uploaded');
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Error deleting empty file:', err);
-        });
-        if (!res.headersSent) {
-          res.status(400).json({
-            error: 'EMPTY_FILE',
-            message: 'Uploaded file is empty'
+      const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+      const { fileId, chunkIndex, totalChunks } = req.body;
+      const uploadDir = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
+      const chunkDir = getChunkDir(uploadDir, fileId);
+
+      // Check if this was the last chunk
+      const uploadedChunks = fs.readdirSync(chunkDir).length;
+      
+      if (uploadedChunks === parseInt(totalChunks)) {
+        try {
+          // All chunks received, assemble the final file
+          const finalPath = getFinalFilePath(uploadDir);
+          await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
+          
+          // Clean up chunks
+          fs.rmSync(chunkDir, { recursive: true, force: true });
+          
+          console.log('File assembly completed:', {
+            fileId,
+            totalChunks,
+            finalPath,
+            duration: Date.now() - startTime
           });
+          
+          // Set assembled file info in request
+          req.file.path = finalPath;
+          req.file.filename = 'vagrant.box';
+          req.file.originalname = 'vagrant.box';
+          
+          next();
+        } catch (assemblyError) {
+          console.error('File assembly error:', assemblyError);
+          if (!res.headersSent) {
+            res.status(500).json({
+              error: 'ASSEMBLY_ERROR',
+              message: 'Failed to assemble chunks into final file'
+            });
+          }
         }
-        return;
+      } else {
+        // Not all chunks received yet, send success for this chunk
+        res.status(200).json({
+          message: 'Chunk uploaded successfully',
+          details: {
+            chunkIndex,
+            uploadedChunks,
+            totalChunks,
+            isComplete: false
+          }
+        });
       }
-
-      // Log successful upload
-      console.log('Upload completed:', {
-        filename: req.file.filename,
-        originalname: req.file.originalname,
-        path: req.file.path,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-        duration: duration
-      });
-
-      // Continue to next middleware
-      next();
     });
   } catch (error) {
     console.error('Unexpected error in upload middleware:', error);
