@@ -65,9 +65,6 @@ const static_path = __dirname + '/app/views/';
 
 const app = express();
 
-// Add Vagrant request handler first
-app.use(vagrantHandler);
-
 // Debug middleware to log requests
 app.use((req, res, next) => {
   console.log('Request:', {
@@ -82,7 +79,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure static file serving with proper content types
+// Configure static file serving with proper content types first
 app.use(express.static(static_path, {
   setHeaders: (res, path, stat) => {
     console.log('Serving static file:', {
@@ -94,6 +91,9 @@ app.use(express.static(static_path, {
     }
   }
 }));
+
+// Add Vagrant request handler after static files
+app.use(vagrantHandler);
 
 // Enhanced CORS for Cloudflare
 const corsOptions = {

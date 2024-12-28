@@ -129,6 +129,11 @@ const vagrantHandler = async (req, res, next) => {
     return next();
   }
 
+  // Skip static files
+  if (req.url.match(/\.(ico|png|jpg|jpeg|gif|css|js|json|svg|woff|woff2|ttf|eot)$/)) {
+    return next();
+  }
+
   // Check if this is a Vagrant request
   req.isVagrantRequest = isVagrantRequest(req);
   if (!req.isVagrantRequest) {
