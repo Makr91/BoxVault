@@ -138,15 +138,37 @@ class FileService {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // If we get here and have all chunks but no completion signal, consider it successful
-      if (uploadedChunks.size === totalChunks) {
-        console.log('Upload completed (all chunks received):', {
-          fileId,
-          totalChunks,
-          uploadedChunks: uploadedChunks.size,
-          response: lastResult
-        });
-        return lastResult;
+      // If we get here and have all chunks, check if assembly is in progress
+      if (uploadedChunks.size === totalChunks && lastResult?.details?.status === 'assembling') {
+        console.log('Assembly in progress, polling for completion...');
+        
+        // Poll the file info endpoint until we get a response
+        let attempts = 0;
+        const maxAttempts = 60; // 5 minutes with 5 second intervals
+        
+        while (attempts < maxAttempts) {
+          try {
+            const fileInfo = await this.info(organization, name, version, provider, architecture);
+            if (fileInfo.data.fileSize) {
+              console.log('Assembly completed:', fileInfo.data);
+              return {
+                message: 'File upload completed',
+                details: {
+                  isComplete: true,
+                  status: 'complete',
+                  fileSize: fileInfo.data.fileSize
+                }
+              };
+            }
+          } catch (error) {
+            console.warn('Error polling file info:', error);
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between attempts
+          attempts++;
+        }
+        
+        throw new Error('Assembly timed out after 5 minutes');
       }
 
       throw new Error('Upload did not complete successfully');

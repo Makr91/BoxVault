@@ -4,7 +4,6 @@ const path = require('path');
 const yaml = require('js-yaml');
 const crypto = require('crypto');
 const db = require("../models");
-const { Architecture, File } = db;
 
 // Load app config for max file size
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
@@ -81,7 +80,7 @@ const assembleChunks = async (chunkDir, finalPath, totalChunks) => {
         elapsedTime: Math.round((Date.now() - startTime) / 1000) + 's',
         averageSpeed: Math.round(finalSize / (Date.now() - startTime) * 1000 / (1024 * 1024)) + ' MB/s'
       });
-      resolve();
+      resolve(finalSize);
     });
     writeStream.on('error', reject);
   });
@@ -106,10 +105,10 @@ const storage = multer.diskStorage({
             totalChunks: req.body.totalChunks
           },
           fromHeaders: {
-      fileId: req.headers['x-file-id'] || '(from form data)',
-      chunkIndex: req.headers['x-chunk-index'] || '(from form data)',
-      totalChunks: req.headers['x-total-chunks'] || '(from form data)',
-      contentRange: req.headers['content-range'] || 'none'
+            fileId: req.headers['x-file-id'] || '(from form data)',
+            chunkIndex: req.headers['x-chunk-index'] || '(from form data)',
+            totalChunks: req.headers['x-total-chunks'] || '(from form data)',
+            contentRange: req.headers['content-range'] || 'none'
           }
         });
         return cb(new Error('Missing chunk information'));
@@ -296,107 +295,103 @@ const uploadMiddleware = (req, res, next) => {
       
       if (uploadedChunks === totalChunks) { // totalChunks is already parsed as int in fileFilter
         try {
-          try {
-            // Assemble the file first
-            const finalPath = getFinalFilePath(uploadDir);
-            await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
-            
-            // Clean up chunks
-            fs.rmSync(chunkDir, { recursive: true, force: true });
-            
-            console.log('File assembly completed:', {
-              fileId,
+          // Send initial response that assembly is starting
+          res.status(200).json({
+            message: 'Chunk uploaded successfully',
+            details: {
+              chunkIndex,
+              uploadedChunks,
               totalChunks,
-              finalPath,
-              finalSize: fs.statSync(finalPath).size,
-              duration: Date.now() - startTime
-            });
-
-            // Create database record directly here instead of using next()
-            const architecture = await Architecture.findOne({
-              where: { name: architectureName },
-              include: [{
-                model: db.providers,
-                as: "provider",
-                where: { name: providerName },
-                include: [{
-                  model: db.versions,
-                  as: "version",
-                  where: { versionNumber },
-                  include: [{
-                    model: db.box,
-                    as: "box",
-                    where: { name: boxId },
-                    include: [{
-                      model: db.user,
-                      as: "user",
-                      include: [{
-                        model: db.organization,
-                        as: "organization",
-                        where: { name: organization }
-                      }]
-                    }]
-                  }]
-                }]
-              }]
-            });
-
-            if (!architecture) {
-              throw new Error(`Architecture not found for provider ${providerName}`);
+              isComplete: false,
+              status: 'assembling',
+              remainingChunks: 0
             }
+          });
 
-            // Create or update file record
-            const fileRecord = await File.findOne({
-              where: {
-                fileName: 'vagrant.box',
-                architectureId: architecture.id
-              }
-            });
+          // Now assemble the file in the background
+          const finalPath = getFinalFilePath(uploadDir);
+          const finalSize = await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
+          
+          // Clean up chunks
+          fs.rmSync(chunkDir, { recursive: true, force: true });
+          
+          console.log('File assembly completed:', {
+            fileId,
+            totalChunks,
+            finalPath,
+            finalSize,
+            duration: Date.now() - startTime
+          });
 
-            const fileSize = fs.statSync(finalPath).size;
-            const fileData = {
+          // Find the version
+          const version = await db.versions.findOne({
+            where: { versionNumber },
+            include: [{
+              model: db.box,
+              as: 'box',
+              where: { name: boxId }
+            }]
+          });
+
+          if (!version) {
+            throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
+          }
+
+          // Find the provider
+          const provider = await db.providers.findOne({
+            where: { 
+              name: providerName,
+              versionId: version.id
+            }
+          });
+
+          if (!provider) {
+            throw new Error(`Provider ${providerName} not found`);
+          }
+
+          // Find the architecture
+          const architecture = await db.architectures.findOne({
+            where: { 
+              name: architectureName,
+              providerId: provider.id
+            }
+          });
+
+          if (!architecture) {
+            throw new Error(`Architecture not found for provider ${providerName}`);
+          }
+
+          // Create or update file record with the final size
+          const fileRecord = await db.files.findOne({
+            where: {
               fileName: 'vagrant.box',
-              checksum: req.body.checksum || null,
-              checksumType: (req.body.checksumType || 'NULL').toUpperCase(),
-              architectureId: architecture.id,
-              fileSize
-            };
-
-            if (fileRecord) {
-              await fileRecord.update(fileData);
-              console.log('File record updated:', fileData);
-            } else {
-              await File.create(fileData);
-              console.log('File record created:', fileData);
+              architectureId: architecture.id
             }
+          });
 
-            // Send completion response matching frontend expectations
-            res.status(200).json({
-              message: 'Chunk uploaded successfully',
-              details: {
-                chunkIndex,
-                uploadedChunks,
-                totalChunks,
-                isComplete: true,
-                status: 'complete',
-                remainingChunks: 0,
-                fileSize: fileSize
-              }
-            });
+          const fileData = {
+            fileName: 'vagrant.box',
+            checksum: req.body.checksum || null,
+            checksumType: (req.body.checksumType || 'NULL').toUpperCase(),
+            architectureId: architecture.id,
+            fileSize: finalSize
+          };
 
-          } catch (error) {
-            console.error('Error during file assembly or database update:', error);
-            // Can't send error response since we already sent assembly status
-            // Just log it and let the client handle timeout
+          if (fileRecord) {
+            await fileRecord.update(fileData);
+            console.log('File record updated:', fileData);
+          } else {
+            await db.files.create(fileData);
+            console.log('File record created:', fileData);
           }
-        } catch (assemblyError) {
-          console.error('File assembly error:', assemblyError);
-          if (!res.headersSent) {
-            res.status(500).json({
-              error: 'ASSEMBLY_ERROR',
-              message: 'Failed to assemble chunks into final file'
-            });
-          }
+
+          // Let the frontend poll the file info endpoint to get the final status
+          // The file info endpoint will return the correct file size once assembly and DB update are complete
+
+        } catch (error) {
+          console.error('Error during file assembly or database update:', error);
+          // Can't send error response since we already sent assembly status
+          // Just log it and let the client handle timeout
         }
       } else {
         // Not all chunks received yet, send success for this chunk
