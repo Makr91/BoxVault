@@ -11,9 +11,14 @@ const updateConfig = (configName, configData) => {
   return axios.put(`${baseURL}/api/config/${configName}`, configData, { headers: authHeader() });
 };
 
+const restartServer = () => {
+  return axios.post(`${baseURL}/api/config/restart`, {}, { headers: authHeader() });
+};
+
 const ConfigService = {
   getConfig,
-  updateConfig
+  updateConfig,
+  restartServer
 };
 
 export default ConfigService;

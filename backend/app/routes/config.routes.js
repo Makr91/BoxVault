@@ -14,4 +14,5 @@
      app.get("/api/config/gravatar", configController.getGravatarConfig);
      app.get("/api/config/:configName", [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], configController.getConfig);
      app.put("/api/config/:configName", [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], configController.updateConfig);
+     app.post("/api/config/restart", [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], configController.restartServer);
    };

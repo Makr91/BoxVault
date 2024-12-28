@@ -590,6 +590,25 @@ const Admin = () => {
                   Update Configuration
                 </button>
               </li>
+              <li className="nav-item">
+                <button
+                  type="button"
+                  className="nav-link"
+                  onClick={() => {
+                    ConfigService.restartServer()
+                      .then(() => {
+                        setMessage("Server restart initiated");
+                        setMessageType("success");
+                      })
+                      .catch(error => {
+                        setMessage("Failed to restart server");
+                        setMessageType("danger");
+                      });
+                  }}
+                >
+                  Restart Server
+                </button>
+              </li>
             </ul>
             {submitError && (
               <div className="alert alert-warning mt-3" role="alert">

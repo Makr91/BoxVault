@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { spawn } = require('child_process');
 const configFiles = {
   app: path.join(__dirname, '../config/app.config.yaml'),
   auth: path.join(__dirname, '../config/auth.config.yaml'),
@@ -75,4 +76,17 @@ exports.getGravatarConfig = async (req, res) => {
   } catch (err) {
     res.status(500).send({ message: err.message });
   }
+};
+
+exports.restartServer = (req, res) => {
+  console.log('Restarting BoxVault server...');
+  
+  // Fire and forget - don't wait for response
+  spawn('service', ['boxvault', 'restart'], {
+    detached: true,
+    stdio: 'ignore'
+  });
+
+  // Send response immediately since server will be killed
+  res.status(200).json({ message: 'Server restart initiated' });
 };
