@@ -30,19 +30,23 @@ const refreshTokenIfNeeded = async () => {
 
   try {
     // Use authHeader() to get the current token and add Content-Type
-    const response = await axios.get(`${baseURL}/api/auth/refresh-token`, { 
-      headers: {
-        ...authHeader(),
-        'Content-Type': 'application/json'
-      },
-      skipAuthRefresh: true // Skip interceptor for this request
-    });
+    const response = await axios.post(`${baseURL}/api/auth/refresh-token`, 
+      { stayLoggedIn: user.stayLoggedIn },
+      { 
+        headers: {
+          ...authHeader(),
+          'Content-Type': 'application/json'
+        },
+        skipAuthRefresh: true // Skip interceptor for this request
+      }
+    );
     
     if (response.data.accessToken) {
       const userData = {
         ...user,
         ...response.data,
-        tokenRefreshTime: Date.now()
+        tokenRefreshTime: Date.now(),
+        stayLoggedIn: response.data.stayLoggedIn // Use the stayLoggedIn from response
       };
       localStorage.setItem("user", JSON.stringify(userData));
       return userData;

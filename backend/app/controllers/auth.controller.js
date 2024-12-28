@@ -401,17 +401,19 @@ exports.refreshToken = async (req, res) => {
   try {
     // Get user from request (set by authJwt middleware)
     const user = req.user;
+    const { stayLoggedIn } = req.body;
     
-    if (!user.stayLoggedIn) {
+    // Check if either the current token or the request wants stayLoggedIn
+    if (!user.stayLoggedIn && !stayLoggedIn) {
       return res.status(403).send({ message: "Token refresh only allowed for stay-logged-in sessions" });
     }
 
-    // Generate new token
+    // Generate new token with the requested stayLoggedIn state
     const token = jwt.sign(
       { 
         id: user.id, 
         isServiceAccount: false,
-        stayLoggedIn: true
+        stayLoggedIn: stayLoggedIn || user.stayLoggedIn // Keep existing state if not provided
       },
       authConfig.jwt.jwt_secret.value,
       {
@@ -422,7 +424,8 @@ exports.refreshToken = async (req, res) => {
     );
 
     res.status(200).send({
-      accessToken: token
+      accessToken: token,
+      stayLoggedIn: stayLoggedIn || user.stayLoggedIn
     });
   } catch (err) {
     console.error("Error in refreshToken:", err);
