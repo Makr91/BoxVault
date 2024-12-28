@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 
 // Styles and Bootstrap
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import './scss/styles.scss';
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
