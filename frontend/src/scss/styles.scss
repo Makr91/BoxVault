@@ -1,3 +1,9 @@
+// Prevent FOUC
+html {
+  visibility: visible;
+  opacity: 1;
+}
+
 // Import all of Bootstrap's CSS
 @import "~bootstrap/scss/bootstrap";
 
@@ -12,23 +18,23 @@
   margin: auto;
 }
 
-// Fix for focus outline
-*:focus {
-  outline: none !important;
+// Focus handling
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible) {
+  outline: 0;
+  box-shadow: none;
 }
 
-*:focus:not(:focus-visible) {
-  box-shadow: none !important;
+// Mobile text size handling
+html,
+body {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-// Fix for text size adjust
-html {
-  text-size-adjust: none;
-  -webkit-text-size-adjust: none;
-  -ms-text-size-adjust: none;
-}
-
-// Fix for Firefox focus ring
-::-moz-focus-inner {
+// Firefox button focus fix
+button::-moz-focus-inner {
   border: 0;
+  padding: 0;
 }
