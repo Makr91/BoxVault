@@ -1338,6 +1338,21 @@ curl -X PUT https://boxvault.example.com/api/config/app \
   }'
 ```
 
+### Restart Server
+```bash
+curl -X POST https://boxvault.example.com/api/config/restart \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Server restart initiated"
+}
+```
+
+Note: This endpoint initiates a server restart by executing `service boxvault restart`. The response is sent immediately as the server will be killed during the restart process.
+
 ### Test SMTP
 ```bash
 curl -X POST https://boxvault.example.com/api/mail/test-smtp \

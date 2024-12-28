@@ -82,7 +82,7 @@ exports.restartServer = (req, res) => {
   console.log('Restarting BoxVault server...');
   
   // Fire and forget - don't wait for response
-  spawn('service', ['boxvault', 'restart'], {
+  spawn('sudo', ['service', 'boxvault', 'restart'], {
     detached: true,
     stdio: 'ignore'
   });
