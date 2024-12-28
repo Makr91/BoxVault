@@ -142,33 +142,59 @@ class FileService {
       if (uploadedChunks.size === totalChunks && lastResult?.details?.status === 'assembling') {
         console.log('Assembly in progress, polling for completion...');
         
-        // Poll the file info endpoint until we get a response
-        let attempts = 0;
-        const maxAttempts = 60; // 5 minutes with 5 second intervals
-        
-        while (attempts < maxAttempts) {
+        // Keep polling the file info endpoint until assembly is complete
+        while (true) {
           try {
             const fileInfo = await this.info(organization, name, version, provider, architecture);
-            if (fileInfo.data.fileSize) {
-              console.log('Assembly completed:', fileInfo.data);
-              return {
-                message: 'File upload completed',
-                details: {
-                  isComplete: true,
-                  status: 'complete',
-                  fileSize: fileInfo.data.fileSize
-                }
-              };
+            
+            // Update progress to show assembly status
+            if (onUploadProgress) {
+              onUploadProgress({
+                loaded: file.size,
+                total: file.size,
+                progress: 100,
+                status: 'assembling'
+              });
             }
+
+            // Only consider assembly complete if we have a file size
+            // and it matches what we uploaded (within 1% to account for any filesystem differences)
+            if (fileInfo.data.fileSize) {
+              const sizeDiff = Math.abs(file.size - fileInfo.data.fileSize) / file.size;
+              if (sizeDiff <= 0.01) {
+                console.log('Assembly completed successfully:', {
+                  expectedSize: file.size,
+                  actualSize: fileInfo.data.fileSize,
+                  difference: `${(sizeDiff * 100).toFixed(2)}%`
+                });
+
+                // Update progress to show completion
+                if (onUploadProgress) {
+                  onUploadProgress({
+                    loaded: file.size,
+                    total: file.size,
+                    progress: 100,
+                    status: 'complete'
+                  });
+                }
+                return {
+                  message: 'File upload completed',
+                  details: {
+                    isComplete: true,
+                    status: 'complete',
+                    fileSize: fileInfo.data.fileSize
+                  }
+                };
+              }
+            }
+            // Wait 10 seconds before next poll since assembly can take a while
+            await new Promise(resolve => setTimeout(resolve, 10000));
           } catch (error) {
             console.warn('Error polling file info:', error);
+            // Wait 10 seconds before retry after error to match polling interval
+            await new Promise(resolve => setTimeout(resolve, 10000));
           }
-          
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between attempts
-          attempts++;
         }
-        
-        throw new Error('Assembly timed out after 5 minutes');
       }
 
       throw new Error('Upload did not complete successfully');

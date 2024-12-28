@@ -352,29 +352,25 @@ const Provider = () => {
         checksum,
         checksumType,
         (progressEvent) => {
-          // Use the progress value directly from the event
-          if (progressEvent.progress !== undefined) {
+          // Handle both upload and assembly progress
+          if (progressEvent.status === 'assembling') {
+            setProgress(100);
+            setMessage("Assembling file chunks, this may take several minutes...");
+            setMessageType("info");
+          } else if (progressEvent.status === 'complete') {
+            setProgress(100);
+            setMessage("File upload and assembly completed successfully!");
+            setMessageType("success");
+          } else if (progressEvent.progress !== undefined) {
             setProgress(progressEvent.progress);
-          } else if (progressEvent.total) {
-            // Fallback to calculating progress if not provided
-            const percent = Math.round((100 * progressEvent.loaded) / progressEvent.total);
-            setProgress(percent);
+            setMessage("Uploading file chunks...");
+            setMessageType("info");
           }
         }
       );
 
       console.log('Upload completed:', uploadResult);
       
-      // Show assembly message
-      setMessage("Upload complete. Assembling file chunks, this may take several minutes...");
-      setMessageType("info");
-
-      // Wait for response (assembly completion)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Show success message
-      setMessage("Architecture added and file assembled successfully!");
-      setMessageType("success");
 
       // Refresh architectures list
       const updatedArchitectures = await ArchitectureService.getArchitectures(
