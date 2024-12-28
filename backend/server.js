@@ -65,10 +65,35 @@ const static_path = __dirname + '/app/views/';
 
 const app = express();
 
-// Add Vagrant request handler before static file serving
+// Add Vagrant request handler first
 app.use(vagrantHandler);
 
-app.use(express.static(static_path));
+// Debug middleware to log requests
+app.use((req, res, next) => {
+  console.log('Request:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'accept': req.headers['accept']
+    }
+  });
+  next();
+});
+
+// Configure static file serving with proper content types
+app.use(express.static(static_path, {
+  setHeaders: (res, path, stat) => {
+    console.log('Serving static file:', {
+      path: path,
+      type: path.endsWith('.ico') ? 'image/x-icon' : null
+    });
+    if (path.endsWith('.ico')) {
+      res.setHeader('Content-Type', 'image/x-icon');
+    }
+  }
+}));
 
 // Enhanced CORS for Cloudflare
 const corsOptions = {
@@ -128,7 +153,8 @@ function initializeApp() {
   require('./app/routes/architecture.routes')(app);
   require('./app/routes/service_account.routes')(app);
   require('./app/routes/setup.routes')(app);
-  
+
+  // SPA catch-all route
   app.get('*', (req, res) => {
     res.sendFile(path.join(static_path, 'index.html'));
   });
