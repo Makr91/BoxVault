@@ -16,17 +16,28 @@
       updateFavicon();
 
       // Watch for theme changes
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.attributeName === 'data-bs-theme') {
-            updateFavicon();
-          }
+      let observer;
+      document.addEventListener('DOMContentLoaded', () => {
+        observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'data-bs-theme') {
+              updateFavicon();
+            }
+          });
+        });
+
+        observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-bs-theme']
         });
       });
 
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['data-bs-theme']
+      // Cleanup observer on page unload
+      window.addEventListener('unload', () => {
+        if (observer) {
+          observer.disconnect();
+          observer = null;
+        }
       });
     </script>
     <meta name="theme-color" content="#000000" />

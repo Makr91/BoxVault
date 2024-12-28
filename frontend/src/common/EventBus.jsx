@@ -11,9 +11,13 @@ const eventBus = {
 
     // Create wrapper that handles detail extraction
     const wrappedCallback = (e) => {
-      // Only call if callback is still registered
-      if (callbacks.has(wrappedCallback)) {
-        callback(e.detail);
+      try {
+        // Only call if callback is still registered and event is valid
+        if (callbacks.has(wrappedCallback) && e && e.detail !== undefined) {
+          callback(e.detail);
+        }
+      } catch (error) {
+        console.error('Error in event callback:', error);
       }
     };
     
@@ -25,10 +29,16 @@ const eventBus = {
 
     // Return cleanup function
     return () => {
-      document.removeEventListener(event, wrappedCallback);
-      callbacks.delete(wrappedCallback);
-      if (callbacks.size === 0) {
-        eventMap.delete(event);
+      try {
+        document.removeEventListener(event, wrappedCallback);
+        if (callbacks.has(wrappedCallback)) {
+          callbacks.delete(wrappedCallback);
+          if (callbacks.size === 0) {
+            eventMap.delete(event);
+          }
+        }
+      } catch (error) {
+        console.error('Error cleaning up event listener:', error);
       }
     };
   },

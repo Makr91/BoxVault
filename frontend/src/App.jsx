@@ -1,9 +1,8 @@
-// Import styles first
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import './scss/styles.scss';
-
-// Then React and routing
+// React and routing
 import React, { useState, useEffect, useCallback } from "react";
+
+// Styles and Bootstrap
+import './scss/styles.scss';
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 // Services

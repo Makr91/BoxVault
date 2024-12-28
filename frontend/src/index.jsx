@@ -5,7 +5,6 @@ import version from './version.json';
 
 import App from "./App";
 import reportWebVitals from "./reportwebVitals";
-import * as serviceWorker from "./serviceWorker";
 
 console.log(`${version.name} - Version: ${version.version}`);
 
@@ -17,8 +16,5 @@ root.render(
     <App />
   </BrowserRouter>
 );
-
-// Just call unregister directly
-serviceWorker.unregister();
 
 reportWebVitals();
