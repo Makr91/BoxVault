@@ -22,51 +22,56 @@ class FileService {
       const headers = {
         ...authHeader(),
         'Content-Type': 'application/octet-stream',
-        'Content-Length': file.size.toString(),
+        'Transfer-Encoding': 'chunked',
         'X-File-Name': file.name,
         'X-Checksum': checksum || '',
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
-      // Set up upload progress tracking
+      // Create a chunked upload stream
       let uploadedBytes = 0;
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`);
-      
-      // Set headers
-      Object.entries(headers).forEach(([key, value]) => {
-        xhr.setRequestHeader(key, value);
-      });
+      const chunkSize = 8 * 1024 * 1024; // 8MB chunks
+      const stream = file.stream();
+      const reader = stream.getReader();
 
-      // Track upload progress
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable && onUploadProgress) {
-          uploadedBytes = event.loaded;
-          onUploadProgress({
-            loaded: event.loaded,
-            total: event.total,
-            progress: Math.round((event.loaded / event.total) * 100)
-          });
+      const response = await fetch(
+        `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
+        {
+          method: 'POST',
+          headers,
+          body: new ReadableStream({
+            async pull(controller) {
+              try {
+                const {done, value} = await reader.read();
+                
+                if (done) {
+                  controller.close();
+                  return;
+                }
+
+                uploadedBytes += value.length;
+                if (onUploadProgress) {
+                  onUploadProgress({
+                    loaded: uploadedBytes,
+                    total: file.size,
+                    progress: Math.round((uploadedBytes / file.size) * 100)
+                  });
+                }
+
+                // Send chunk
+                controller.enqueue(value);
+              } catch (error) {
+                controller.error(error);
+                reader.releaseLock();
+              }
+            },
+            cancel() {
+              reader.releaseLock();
+            }
+          }),
+          duplex: 'half'
         }
-      };
-
-      // Handle the upload using a Promise
-      const response = await new Promise((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve({
-              ok: true,
-              status: xhr.status,
-              statusText: xhr.statusText,
-              json: () => Promise.resolve(JSON.parse(xhr.responseText))
-            });
-          } else {
-            reject(new Error(`Upload failed: ${xhr.statusText}`));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error during upload'));
-        xhr.send(file);
-      });
+      );
 
       if (!response.ok) {
         const errorText = await response.text();

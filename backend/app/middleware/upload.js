@@ -32,21 +32,26 @@ const uploadMiddleware = async (req, res) => {
 
   try {
     const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+    
+    // Check if using chunked encoding
+    const isChunked = req.headers['transfer-encoding'] === 'chunked';
     const contentLength = parseInt(req.headers['content-length']);
 
-    // Validate content length
-    if (isNaN(contentLength)) {
-      return res.status(400).json({
-        error: 'INVALID_REQUEST',
-        message: 'Content-Length header required'
-      });
-    }
+    // Only validate content-length if not using chunked encoding
+    if (!isChunked) {
+      if (isNaN(contentLength)) {
+        return res.status(400).json({
+          error: 'INVALID_REQUEST',
+          message: 'Content-Length header required when not using chunked encoding'
+        });
+      }
 
-    if (contentLength > maxFileSize) {
-      return res.status(413).json({
-        error: 'FILE_TOO_LARGE',
-        message: `File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`
-      });
+      if (contentLength > maxFileSize) {
+        return res.status(413).json({
+          error: 'FILE_TOO_LARGE',
+          message: `File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`
+        });
+      }
     }
 
     // Load config and prepare upload directory
@@ -69,33 +74,38 @@ const uploadMiddleware = async (req, res) => {
     // Log upload start
     console.log('Starting file upload:', {
       fileName: req.headers['x-file-name'] || 'vagrant.box',
-      fileSize: contentLength,
+      fileSize: isChunked ? 'chunked' : contentLength,
       checksum: req.headers['x-checksum'] || 'none',
       checksumType: req.headers['x-checksum-type'] || 'NULL',
-      path: finalPath
+      path: finalPath,
+      transferEncoding: isChunked ? 'chunked' : 'content-length'
     });
 
     // Set up progress tracking
     let lastLogged = 0;
     let lastTime = Date.now();
+    let totalBytes = isChunked ? 0 : contentLength;
     
     // Use pipe() for efficient streaming with error handling
     await new Promise((resolve, reject) => {
       // Handle data chunks and track progress
       req.on('data', chunk => {
         uploadedBytes += chunk.length;
+        if (isChunked) {
+          totalBytes = uploadedBytes; // For chunked encoding, total is what we've received
+        }
         
         // Log progress every 1GB or every 5 seconds
         const now = Date.now();
         const timeDiff = now - lastTime;
-        const currentProgress = Math.floor((uploadedBytes / contentLength) * 100);
+        const currentProgress = isChunked ? 'chunked' : Math.floor((uploadedBytes / totalBytes) * 100);
         
         if (uploadedBytes - lastLogged >= 1024 * 1024 * 1024 || timeDiff >= 5000) {
           const speed = ((uploadedBytes - lastLogged) / (1024 * 1024)) / (timeDiff / 1000); // MB/s
           console.log('Upload progress:', {
             uploadedBytes,
-            totalBytes: contentLength,
-            progress: `${currentProgress}%`,
+            totalBytes: isChunked ? 'chunked' : totalBytes,
+            progress: isChunked ? `${uploadedBytes} bytes` : `${currentProgress}%`,
             speed: `${Math.round(speed)} MB/s`
           });
           lastLogged = uploadedBytes;
@@ -132,7 +142,7 @@ const uploadMiddleware = async (req, res) => {
 
       // Handle premature connection close
       req.on('close', () => {
-        if (uploadedBytes < contentLength) {
+        if (!isChunked && uploadedBytes < contentLength) {
           const error = new Error('Connection closed prematurely');
           error.bytesUploaded = uploadedBytes;
           error.totalBytes = contentLength;
@@ -161,21 +171,33 @@ const uploadMiddleware = async (req, res) => {
 
     // Verify file size
     const finalSize = fs.statSync(finalPath).size;
-    const maxDiff = Math.max(1024 * 1024, contentLength * 0.01); // Allow 1MB or 1% difference, whichever is larger
-    
-    if (Math.abs(finalSize - contentLength) > maxDiff) {
-      // Log size mismatch details
-      console.error('Size mismatch:', {
-        expectedSize: contentLength,
-        actualSize: finalSize,
-        difference: Math.abs(finalSize - contentLength),
-        maxAllowedDiff: maxDiff
+
+    // For non-chunked uploads, verify against Content-Length
+    if (!isChunked) {
+      const maxDiff = Math.max(1024 * 1024, contentLength * 0.01); // Allow 1MB or 1% difference
+      
+      if (Math.abs(finalSize - contentLength) > maxDiff) {
+        console.error('Size mismatch:', {
+          expectedSize: contentLength,
+          actualSize: finalSize,
+          difference: Math.abs(finalSize - contentLength),
+          maxAllowedDiff: maxDiff
+        });
+        
+        fs.unlinkSync(finalPath);
+        throw new Error(`File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`);
+      }
+    }
+
+    // For all uploads, verify against max file size
+    if (finalSize > maxFileSize) {
+      console.error('File too large:', {
+        fileSize: finalSize,
+        maxSize: maxFileSize
       });
       
-      // Clean up the incomplete file
       fs.unlinkSync(finalPath);
-      
-      throw new Error(`File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`);
+      throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
     }
 
     // Find or create database records
