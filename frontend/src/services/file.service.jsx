@@ -54,7 +54,10 @@ class FileService {
           {
             headers: {
               ...authHeader(),
-              'Content-Range': `bytes ${start}-${end - 1}/${file.size}`
+              'Content-Range': `bytes ${start}-${end - 1}/${file.size}`,
+              'X-File-Id': fileId,
+              'X-Chunk-Index': chunkIndex.toString(),
+              'X-Total-Chunks': totalChunks.toString()
             },
             timeout: 5 * 60 * 1000, // 5 minute timeout per chunk
             maxContentLength: CHUNK_SIZE * 2,
