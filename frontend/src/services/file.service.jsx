@@ -28,17 +28,19 @@ class FileService {
         'X-Checksum-Type': checksumType || 'NULL'
       };
 
-      // Create a ReadableStream to track upload progress
-      let uploadedBytes = 0;
-      const stream = new ReadableStream({
-        async start(controller) {
+      // Create a Promise to handle the upload
+      const uploadPromise = new Promise(async (resolve, reject) => {
+        try {
+          let uploadedBytes = 0;
+          const chunks = [];
           const reader = file.stream().getReader();
-          
+
           while (true) {
             const {done, value} = await reader.read();
             if (done) break;
-            
+            chunks.push(value);
             uploadedBytes += value.length;
+            
             if (onUploadProgress) {
               onUploadProgress({
                 loaded: uploadedBytes,
@@ -46,24 +48,36 @@ class FileService {
                 progress: Math.round((uploadedBytes / file.size) * 100)
               });
             }
-            
-            controller.enqueue(value);
           }
-          
-          controller.close();
+
+          // Combine all chunks into a single Uint8Array
+          const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+          const combinedChunks = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of chunks) {
+            combinedChunks.set(chunk, offset);
+            offset += chunk.length;
+          }
+
+          // Upload the combined chunks
+          const response = await fetch(
+            `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
+            {
+              method: 'POST',
+              headers,
+              body: combinedChunks,
+              duplex: 'half'
+            }
+          );
+
+          resolve(response);
+        } catch (error) {
+          reject(error);
         }
       });
 
-      // Stream the file directly to the server
-      const response = await fetch(
-        `${baseURL}/api/organization/${organization}/box/${name}/version/${version}/provider/${provider}/architecture/${architecture}/file/upload`,
-        {
-          method: 'POST',
-          headers,
-          body: stream,
-          duplex: 'half'
-        }
-      );
+      // Wait for upload to complete
+      const response = await uploadPromise;
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -74,23 +88,24 @@ class FileService {
 
       // Verify upload success
       const fileInfo = await this.info(organization, name, version, provider, architecture);
+      const fileSize = fileInfo.data?.fileSize || fileInfo.fileSize;
       
-      if (!fileInfo.data || typeof fileInfo.data.fileSize !== 'number') {
+      if (typeof fileSize !== 'number') {
         console.error('Invalid file info response:', fileInfo);
-        throw new Error('Unable to verify upload: Invalid file info response');
+        throw new Error('Unable to verify upload: File size not found in response');
       }
 
-      const sizeDiff = Math.abs(file.size - fileInfo.data.fileSize);
+      const sizeDiff = Math.abs(file.size - fileSize);
       const maxDiff = Math.max(1024 * 1024, file.size * 0.01); // Allow 1MB or 1% difference, whichever is larger
       
       if (sizeDiff > maxDiff) {
         console.error('Size mismatch:', {
           originalSize: file.size,
-          uploadedSize: fileInfo.data.fileSize,
+          uploadedSize: fileSize,
           difference: sizeDiff,
           maxAllowedDiff: maxDiff
         });
-        throw new Error(`Upload size mismatch: Expected ${file.size} bytes but got ${fileInfo.data.fileSize} bytes`);
+        throw new Error(`Upload size mismatch: Expected ${file.size} bytes but got ${fileSize} bytes`);
       }
 
       return {
@@ -98,7 +113,7 @@ class FileService {
         details: {
           isComplete: true,
           status: 'complete',
-          fileSize: fileInfo.data.fileSize
+          fileSize: fileSize
         }
       };
     } catch (error) {
