@@ -220,7 +220,7 @@ const AuthService = {
   verifyMail,
   sendInvitation,
   validateInvitationToken,
-  fetchGravatarConfig,
+  getGravatarConfig, // Changed from fetchGravatarConfig to match the function name
   refreshTokenIfNeeded
 };
 

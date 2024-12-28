@@ -1,7 +1,17 @@
+// Import styles first
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import './scss/styles.scss';
+
+// Then React and routing
 import React, { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+
+// Services
 import AuthService from "./services/auth.service";
 import SetupService from './services/setup.service';
+import EventBus from "./common/EventBus";
+
+// Components
 import Setup from "./components/setup.component";
 import Login from "./components/login.component";
 import Register from "./components/register.component";
@@ -13,12 +23,11 @@ import Box from "./components/box.component";
 import Organization from "./components/organization.component";
 import Version from "./components/version.component";
 import Provider from "./components/provider.component";
-import Navbar from "./components/navbar.component"; 
-import EventBus from "./common/EventBus";
+import Navbar from "./components/navbar.component";
+
+// Assets
 import BoxVaultLight from './images/BoxVault.svg';
 import BoxVaultDark from './images/BoxVaultDark.svg';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import './scss/styles.scss';
 
 const App = () => {
   const [showAdminBoard, setShowAdminBoard] = useState(false);
@@ -70,9 +79,6 @@ const App = () => {
     const loadGravatar = async () => {
       if (!gravatarFetched) {
         try {
-          await AuthService.fetchGravatarConfig();
-          if (!mounted) return;
-
           const profile = await AuthService.getGravatarProfile(emailHash);
           if (!mounted) return;
 
