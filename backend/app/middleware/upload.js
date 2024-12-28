@@ -2,14 +2,12 @@ const multer = require("multer");
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const crypto = require('crypto');
 const db = require("../models");
 
 // Load app config for max file size
 const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let maxFileSize;
 let appConfig;
-const CHUNK_SIZE = 100 * 1024 * 1024; // 100MB chunks
 
 try {
   const fileContents = fs.readFileSync(appConfigPath, 'utf8');
@@ -20,199 +18,71 @@ try {
   maxFileSize = 10 * 1024 * 1024 * 1024; // Default to 10GB
 }
 
-// Helper function to get chunk directory path
-const getChunkDir = (uploadDir, fileId) => {
-  return path.join(uploadDir, `.chunks-${fileId}`);
-};
-
-// Helper function to get final file path
-const getFinalFilePath = (uploadDir) => {
-  return path.join(uploadDir, 'vagrant.box');
-};
-
-// Helper function to assemble chunks
-const assembleChunks = async (chunkDir, finalPath, totalChunks) => {
-  console.log('Starting file assembly:', {
-    chunkDir,
-    finalPath,
-    totalChunks,
-    startTime: new Date().toISOString(),
-    totalSize: fs.readdirSync(chunkDir)
-      .filter(f => f.startsWith('chunk-'))
-      .reduce((acc, f) => acc + fs.statSync(path.join(chunkDir, f)).size, 0)
-  });
-
-  const writeStream = fs.createWriteStream(finalPath);
-  const startTime = Date.now();
-  let processedSize = 0;
-  
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkPath = path.join(chunkDir, `chunk-${i}`);
-    if (!fs.existsSync(chunkPath)) {
-      throw new Error(`Missing chunk ${i}`);
-    }
-    const chunkSize = fs.statSync(chunkPath).size;
-    await new Promise((resolve, reject) => {
-      const readStream = fs.createReadStream(chunkPath);
-      readStream.pipe(writeStream, { end: false });
-      readStream.on('end', () => {
-        processedSize += chunkSize;
-        console.log('Chunk assembled:', {
-          chunkIndex: i,
-          chunkSize,
-          processedSize,
-          remainingChunks: totalChunks - (i + 1),
-          elapsedTime: Math.round((Date.now() - startTime) / 1000) + 's'
-        });
-        resolve();
-      });
-      readStream.on('error', reject);
-    });
-  }
-  
-  writeStream.end();
-  return new Promise((resolve, reject) => {
-    writeStream.on('finish', () => {
-      const finalSize = fs.statSync(finalPath).size;
-      console.log('File assembly completed:', {
-        finalPath,
-        finalSize,
-        elapsedTime: Math.round((Date.now() - startTime) / 1000) + 's',
-        averageSpeed: Math.round(finalSize / (Date.now() - startTime) * 1000 / (1024 * 1024)) + ' MB/s'
-      });
-      resolve(finalSize);
-    });
-    writeStream.on('error', reject);
-  });
-};
-
-// Configure multer storage for chunked uploads
+// Configure multer storage for direct streaming to final destination
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
       const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
       
-      // Get chunk info from either form data or headers
-      const fileId = req.body.fileId || req.headers['x-file-id'];
-      const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
-      const totalChunks = req.body.totalChunks || req.headers['x-total-chunks'];
-      
-      if (!fileId || chunkIndex === undefined || !totalChunks) {
-        console.error('Missing chunk information in storage:', {
-          fromBody: {
-            fileId: req.body.fileId,
-            chunkIndex: req.body.chunkIndex,
-            totalChunks: req.body.totalChunks
-          },
-          fromHeaders: {
-            fileId: req.headers['x-file-id'] || '(from form data)',
-            chunkIndex: req.headers['x-chunk-index'] || '(from form data)',
-            totalChunks: req.headers['x-total-chunks'] || '(from form data)',
-            contentRange: req.headers['content-range'] || 'none'
-          }
-        });
-        return cb(new Error('Missing chunk information'));
-      }
-
       // Load config for each request to ensure we have the latest
       const configContents = fs.readFileSync(appConfigPath, 'utf8');
       const config = yaml.load(configContents);
       const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
       
-      // Create main upload directory
+      // Create upload directory
       fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
       
-      // Create chunks directory
-      const chunkDir = getChunkDir(uploadDir, fileId);
-      fs.mkdirSync(chunkDir, { recursive: true, mode: 0o755 });
-      
-      // Log directory creation/access
-      console.log('Using chunk directory:', {
-        path: chunkDir,
+      // Log directory creation
+      console.log('Using upload directory:', {
+        path: uploadDir,
         mode: '0755',
-        exists: fs.existsSync(chunkDir),
-        chunk: chunkIndex,
-        totalChunks
+        exists: fs.existsSync(uploadDir)
       });
       
-      cb(null, chunkDir);
+      cb(null, uploadDir);
     } catch (error) {
       console.error('Error in multer destination handler:', error);
       cb(error);
     }
   },
   filename: (req, file, cb) => {
-    try {
-      // Get chunk index from either form data or headers
-      const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
-      if (chunkIndex === undefined) {
-        console.error('Missing chunk index in filename handler');
-        return cb(new Error('Missing chunk index'));
-      }
-      // Store each chunk with its index
-      cb(null, `chunk-${chunkIndex}`);
-    } catch (error) {
-      console.error('Error in multer filename handler:', error);
-      cb(error);
-    }
+    cb(null, 'vagrant.box');
   }
 });
 
-// Configure multer upload with chunk handling
+// Configure multer upload
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: CHUNK_SIZE + 1024, // Chunk size plus some overhead
-    fieldSize: maxFileSize // Keep original field size limit
+    fileSize: maxFileSize
   },
   fileFilter: (req, file, cb) => {
     try {
-      // Get chunk info from either form data or headers
-      const fileId = req.body.fileId || req.headers['x-file-id'];
-      const chunkIndex = req.body.chunkIndex || req.headers['x-chunk-index'];
-      const totalChunks = req.body.totalChunks || req.headers['x-total-chunks'];
+      const contentLength = parseInt(req.headers['content-length']);
       
-      // Validate chunk information
-      if (!fileId || chunkIndex === undefined || !totalChunks) {
-        console.error('Missing chunk information:', { 
-          fileId, 
-          chunkIndex, 
-          totalChunks,
-          fromBody: { 
-            fileId: req.body.fileId,
-            chunkIndex: req.body.chunkIndex,
-            totalChunks: req.body.totalChunks 
-          },
-          fromHeaders: {
-            fileId: req.headers['x-file-id'],
-            chunkIndex: req.headers['x-chunk-index'],
-            totalChunks: req.headers['x-total-chunks']
-          }
+      if (isNaN(contentLength)) {
+        console.error('Missing or invalid Content-Length header');
+        return cb(new Error('Content-Length header required'));
+      }
+
+      if (contentLength > maxFileSize) {
+        console.error('File too large:', {
+          size: contentLength,
+          maxSize: maxFileSize
         });
-        return cb(new Error('Missing chunk information'));
+        return cb(new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`));
       }
 
-      // Store chunk info on request for later use
-      req.chunkInfo = {
-        fileId,
-        chunkIndex: parseInt(chunkIndex),
-        totalChunks: parseInt(totalChunks)
-      };
+      // Store expected file size for later verification
+      req.expectedSize = contentLength;
 
-      // Log chunk upload start
-      console.log('Starting chunk upload:', {
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        fieldname: file.fieldname,
-        ...req.chunkInfo,
-        params: req.params
+      // Log upload start
+      console.log('Starting file upload:', {
+        fileName: req.headers['x-file-name'] || file.originalname,
+        fileSize: contentLength,
+        checksum: req.headers['x-checksum'] || 'none',
+        checksumType: req.headers['x-checksum-type'] || 'NULL'
       });
-
-      // Verify file field name
-      if (file.fieldname !== 'file') {
-        console.error('Invalid field name:', file.fieldname);
-        return cb(new Error('Invalid field name for file upload'));
-      }
 
       cb(null, true);
     } catch (error) {
@@ -222,45 +92,29 @@ const upload = multer({
   }
 }).single('file');
 
-// Main upload middleware with chunk handling
-const uploadMiddleware = (req, res, next) => {
+// Main upload middleware
+const uploadMiddleware = (req, res) => {
   const startTime = Date.now();
   
-  // Log chunk upload request with metadata from headers
-  console.log('Chunk upload request received:', {
-    params: req.params,
-    contentLength: req.headers['content-length'],
-    contentType: req.headers['content-type'],
-    chunkInfo: {
-      fileId: req.headers['x-file-id'] || '(from form data)',
-      chunkIndex: req.headers['x-chunk-index'] || '(from form data)',
-      totalChunks: req.headers['x-total-chunks'] || '(from form data)',
-      contentRange: req.headers['content-range'] || 'none'
-    }
-  });
-
   try {
     upload(req, res, async (err) => {
-      const duration = Date.now() - startTime;
-      
       if (err) {
-        console.error('Chunk upload error:', {
+        console.error('Upload error:', {
           type: err instanceof multer.MulterError ? 'MulterError' : 'GeneralError',
           message: err.message,
-          code: err.code,
-          duration: duration
+          code: err.code
         });
 
         if (!res.headersSent) {
           if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
             res.status(413).json({
-              error: 'CHUNK_TOO_LARGE',
-              message: `Chunk size cannot be larger than ${CHUNK_SIZE / (1024 * 1024)}MB`,
-              details: { maxChunkSize: CHUNK_SIZE }
+              error: 'FILE_TOO_LARGE',
+              message: `File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`,
+              details: { maxFileSize }
             });
           } else {
             res.status(500).json({
-              error: 'CHUNK_UPLOAD_ERROR',
+              error: 'UPLOAD_ERROR',
               message: err.message
             });
           }
@@ -271,151 +125,109 @@ const uploadMiddleware = (req, res, next) => {
       if (!req.file) {
         if (!res.headersSent) {
           res.status(400).json({
-            error: 'NO_CHUNK',
-            message: 'No chunk was uploaded'
+            error: 'NO_FILE',
+            message: 'No file was uploaded'
           });
         }
         return;
       }
 
-      const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-      const { fileId, chunkIndex, totalChunks } = req.chunkInfo;
-      const uploadDir = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
-      const chunkDir = getChunkDir(uploadDir, fileId);
+      try {
+        const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+        const finalSize = fs.statSync(req.file.path).size;
 
-      // Get list of uploaded chunks
-      const chunkFiles = fs.readdirSync(chunkDir).filter(f => f.startsWith('chunk-'));
-      const uploadedChunks = chunkFiles.length;
-      
-      // Extract chunk numbers and verify sequence
-      const chunkNumbers = chunkFiles.map(f => parseInt(f.split('-')[1])).sort((a, b) => a - b);
-      const hasAllChunks = chunkNumbers.length === totalChunks && 
-                          chunkNumbers.every((num, idx) => num === idx);
-      
-      console.log('Checking completion:', {
-        uploadedChunks,
-        totalChunks,
-        isComplete: hasAllChunks,
-        chunkDir,
-        files: chunkFiles,
-        missingChunks: hasAllChunks ? [] : 
-          Array.from({length: totalChunks}, (_, i) => i)
-            .filter(i => !chunkNumbers.includes(i))
-      });
-      
-      if (hasAllChunks) { // Only proceed if we have all chunks in sequence
-        try {
-          // Send initial response that assembly is starting
-          res.status(200).json({
-            message: 'Chunk uploaded successfully',
-            details: {
-              chunkIndex,
-              uploadedChunks,
-              totalChunks,
-              isComplete: false,
-              status: 'assembling',
-              remainingChunks: 0
-            }
-          });
-
-          // Now assemble the file in the background
-          const finalPath = getFinalFilePath(uploadDir);
-          const finalSize = await assembleChunks(chunkDir, finalPath, parseInt(totalChunks));
-          
-          // Clean up chunks
-          fs.rmSync(chunkDir, { recursive: true, force: true });
-          
-          console.log('File assembly completed:', {
-            fileId,
-            totalChunks,
-            finalPath,
-            finalSize,
-            duration: Date.now() - startTime
-          });
-
-          // Find the version
-          const version = await db.versions.findOne({
-            where: { versionNumber },
-            include: [{
-              model: db.box,
-              as: 'box',
-              where: { name: boxId }
-            }]
-          });
-
-          if (!version) {
-            throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
-          }
-
-          // Find the provider
-          const provider = await db.providers.findOne({
-            where: { 
-              name: providerName,
-              versionId: version.id
-            }
-          });
-
-          if (!provider) {
-            throw new Error(`Provider ${providerName} not found`);
-          }
-
-          // Find the architecture
-          const architecture = await db.architectures.findOne({
-            where: { 
-              name: architectureName,
-              providerId: provider.id
-            }
-          });
-
-          if (!architecture) {
-            throw new Error(`Architecture not found for provider ${providerName}`);
-          }
-
-          // Create or update file record with the final size
-          const fileRecord = await db.files.findOne({
-            where: {
-              fileName: 'vagrant.box',
-              architectureId: architecture.id
-            }
-          });
-
-          const fileData = {
-            fileName: 'vagrant.box',
-            checksum: req.body.checksum || null,
-            checksumType: (req.body.checksumType || 'NULL').toUpperCase(),
-            architectureId: architecture.id,
-            fileSize: finalSize
-          };
-
-          if (fileRecord) {
-            await fileRecord.update(fileData);
-            console.log('File record updated:', fileData);
-          } else {
-            await db.files.create(fileData);
-            console.log('File record created:', fileData);
-          }
-
-          // Let the frontend poll the file info endpoint to get the final status
-          // The file info endpoint will return the correct file size once assembly and DB update are complete
-
-        } catch (error) {
-          console.error('Error during file assembly or database update:', error);
-          // Can't send error response since we already sent assembly status
-          // Just log it and let the client handle timeout
+        // Verify file size matches expected size
+        if (Math.abs(finalSize - req.expectedSize) > 1024) { // Allow 1KB difference
+          throw new Error('File size mismatch');
         }
-      } else {
-        // Not all chunks received yet, send success for this chunk
-        res.status(200).json({
-          message: 'Chunk uploaded successfully',
-          details: {
-            chunkIndex,
-            uploadedChunks,
-            totalChunks,
-            isComplete: false,
-            status: 'in_progress',
-            remainingChunks: totalChunks - uploadedChunks
+
+        // Find the version
+        const version = await db.versions.findOne({
+          where: { versionNumber },
+          include: [{
+            model: db.box,
+            as: 'box',
+            where: { name: boxId }
+          }]
+        });
+
+        if (!version) {
+          throw new Error(`Version ${versionNumber} not found for box ${boxId}`);
+        }
+
+        // Find the provider
+        const provider = await db.providers.findOne({
+          where: { 
+            name: providerName,
+            versionId: version.id
           }
         });
+
+        if (!provider) {
+          throw new Error(`Provider ${providerName} not found`);
+        }
+
+        // Find the architecture
+        const architecture = await db.architectures.findOne({
+          where: { 
+            name: architectureName,
+            providerId: provider.id
+          }
+        });
+
+        if (!architecture) {
+          throw new Error(`Architecture not found for provider ${providerName}`);
+        }
+
+        // Create or update file record
+        const fileRecord = await db.files.findOne({
+          where: {
+            fileName: 'vagrant.box',
+            architectureId: architecture.id
+          }
+        });
+
+        const fileData = {
+          fileName: 'vagrant.box',
+          checksum: req.headers['x-checksum'] || null,
+          checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
+          architectureId: architecture.id,
+          fileSize: finalSize
+        };
+
+        if (fileRecord) {
+          await fileRecord.update(fileData);
+          console.log('File record updated:', fileData);
+        } else {
+          await db.files.create(fileData);
+          console.log('File record created:', fileData);
+        }
+
+        const duration = Date.now() - startTime;
+        const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+
+        console.log('Upload completed:', {
+          finalSize,
+          duration: `${Math.round(duration / 1000)}s`,
+          speed: `${speed} MB/s`
+        });
+
+        res.status(200).json({
+          message: 'File upload completed',
+          details: {
+            isComplete: true,
+            status: 'complete',
+            fileSize: finalSize
+          }
+        });
+      } catch (error) {
+        console.error('Error during database update:', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            error: 'DATABASE_ERROR',
+            message: error.message
+          });
+        }
       }
     });
   } catch (error) {
