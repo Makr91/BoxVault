@@ -2,667 +2,1349 @@
 
 BoxVault provides a comprehensive REST API for managing boxes, versions, providers, architectures, users, organizations, and more. This document outlines all available endpoints and their usage.
 
+## Table of Contents
+
+- [Authentication](#authentication)
+  - [Sign In](#sign-in)
+  - [Sign Up](#sign-up)
+  - [Refresh Token](#refresh-token)
+  - [Verify Email](#verify-email)
+  - [Resend Verification Email](#resend-verification-email)
+- [Organizations](#organizations)
+  - [List Organizations](#list-organizations)
+  - [Create Organization](#create-organization)
+  - [Get Organization](#get-organization)
+  - [Update Organization](#update-organization)
+  - [Delete Organization](#delete-organization)
+  - [Get Organization Users](#get-organization-users)
+  - [Send Invitation](#send-invitation)
+  - [List Active Invitations](#list-active-invitations)
+  - [Validate Invitation Token](#validate-invitation-token)
+  - [Delete Invitation](#delete-invitation)
+- [Box Discovery](#box-discovery)
+  - [List Public Boxes](#list-public-boxes)
+  - [Search Public Boxes](#search-public-boxes)
+  - [Get Box Metadata](#get-box-metadata)
+  - [Download Box File](#download-box-file)
+- [Box Management](#box-management-user-access)
+  - [List Organization Boxes](#list-organization-boxes-user)
+  - [Create Box](#create-box-user)
+  - [Create Box Version](#create-box-version-user)
+  - [Update Box](#update-box)
+  - [Delete Box](#delete-box)
+  - [Delete All Boxes](#delete-all-boxes)
+  - [Update Version](#update-version)
+  - [List Box Versions](#list-box-versions)
+  - [Delete Version](#delete-version)
+  - [Delete All Versions](#delete-all-versions)
+  - [Create Provider](#create-provider-user)
+  - [Update Provider](#update-provider)
+  - [List Version Providers](#list-version-providers)
+  - [Get Provider](#get-provider)
+  - [Delete Provider](#delete-provider)
+  - [Delete All Providers](#delete-all-providers)
+  - [Create Architecture](#create-architecture-user)
+  - [Update Architecture](#update-architecture)
+  - [List Provider Architectures](#list-provider-architectures)
+  - [Get Architecture](#get-architecture)
+  - [Delete Architecture](#delete-architecture)
+  - [Delete All Architectures](#delete-all-architectures)
+- [File Operations](#file-operations-userservice-account)
+  - [Upload Box File](#upload-box-file-chunked-upload)
+  - [Download Box File](#download-box-file-multiple-methods)
+  - [Get Box Metadata](#get-box-metadata-1)
+  - [Get File Info](#get-file-info)
+  - [Delete File](#delete-file)
+- [Service Account Management](#service-account-management-user)
+  - [Create Service Account](#create-service-account-user)
+  - [List Service Accounts](#list-service-accounts)
+  - [Delete Service Account](#delete-service-account)
+- [User & Role Management](#user--role-management-admin)
+  - [List All Users](#list-all-users-admin)
+  - [Get Role-Specific Boards](#get-role-specific-boards)
+  - [Get User Profile](#get-user-profile)
+  - [Get User Roles](#get-user-roles)
+  - [Get User Organizations](#get-user-organizations)
+  - [Check If Only User In Organization](#check-if-only-user-in-organization)
+  - [Get Organization User](#get-organization-user)
+  - [Update Organization User](#update-organization-user)
+  - [Delete User](#delete-user)
+  - [Delete Organization User](#delete-organization-user)
+  - [Change Password](#change-password)
+  - [Change Email](#change-email)
+  - [Promote User to Moderator](#promote-user-to-moderator)
+  - [Demote Moderator to User](#demote-moderator-to-user)
+  - [Suspend User](#suspend-user)
+  - [Resume User](#resume-user)
+- [Organization Management](#organization-management-admin)
+  - [Suspend Organization](#suspend-organization-admin)
+  - [Resume Organization](#resume-organization)
+- [System Configuration](#system-configuration-admin)
+  - [Check Setup Status](#check-setup-status-public)
+  - [Verify Setup Token](#verify-setup-token)
+  - [Get Setup Configuration](#get-setup-configuration)
+  - [Update Setup Configuration](#update-setup-configuration)
+  - [Upload SSL Certificate](#upload-ssl-certificate)
+  - [Get Gravatar Configuration](#get-gravatar-configuration)
+  - [Get Configuration](#get-configuration)
+  - [Update Configuration](#update-configuration)
+  - [Test SMTP](#test-smtp)
+- [Error Responses](#error-responses)
+  - [Role-Based Access Errors](#role-based-access-errors)
+  - [Authentication Errors](#authentication-errors)
+  - [Upload Errors](#upload-errors)
+  - [Validation Errors](#validation-errors)
+  - [Resource Errors](#resource-errors)
+- [HTTP Status Codes](#http-status-codes)
+
 ## Authentication
 
 All authenticated endpoints require a JWT token in the `x-access-token` header:
 
+```bash
+curl -H "x-access-token: YOUR_JWT_TOKEN" https://boxvault.example.com/api/user
 ```
-x-access-token: your-jwt-token
-```
-
-## Vagrant Box Download
-
-### Download Box
-```http
-GET /:organization/boxes/:name/versions/:version/providers/:provider/:architecture/vagrant.box
-```
-Direct download endpoint for Vagrant boxes. This endpoint is compatible with the Vagrant CLI.
-
-**Example:**
-```
-GET /STARTcloud/boxes/debian12-server/versions/0.0.9/providers/virtualbox/amd64/vagrant.box
-```
-
-### Box Metadata
-```http
-GET /api/organization/:organization/box/:name/metadata
-```
-Get Vagrant-compatible metadata for a box. This endpoint is used by the Vagrant CLI to discover box versions and providers.
-
-**Example Response:**
-```json
-{
-  "name": "debian12-server",
-  "description": "Debian 12 Server",
-  "versions": [{
-    "version": "0.0.9",
-    "providers": [{
-      "name": "virtualbox",
-      "url": "https://boxvault.example.com/STARTcloud/boxes/debian12-server/versions/0.0.9/providers/virtualbox/amd64/vagrant.box",
-      "checksum_type": "sha256",
-      "checksum": "a1b2c3..."
-    }]
-  }]
-}
-```
-
-## Authentication & User Management
-
-### Sign Up
-```http
-POST /api/auth/signup
-```
-Register a new user.
-
-**Parameters:**
-- `username` (string, required) - Username
-- `email` (string, required) - Email address
-- `password` (string, required) - Password
-- `organization` (string, required) - Organization name
 
 ### Sign In
-```http
-POST /api/auth/signin
+```bash
+curl -X POST https://boxvault.example.com/api/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "YOUR_USERNAME",
+    "password": "YOUR_PASSWORD",
+    "stayLoggedIn": true
+  }'
 ```
-Authenticate and receive JWT token.
-
-**Parameters:**
-- `username` (string, required)
-- `password` (string, required)
 
 **Response:**
 ```json
 {
   "id": "user_id",
   "username": "username",
-  "email": "email",
-  "accessToken": "jwt_token",
-  "roles": ["user", "admin"]
+  "email": "email@example.com",
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "roles": ["user", "admin"],
+  "organization": "myorg"
 }
 ```
 
+### Sign Up
+```bash
+curl -X POST https://boxvault.example.com/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "password123",
+    "invitationToken": "optional-invitation-token"
+  }'
+```
+
+### Refresh Token
+```bash
+# Only available if stayLoggedIn=true during signin
+curl -X GET https://boxvault.example.com/api/auth/refresh-token \
+  -H "x-access-token: YOUR_CURRENT_TOKEN"
+```
+
 ### Verify Email
-```http
-GET /api/auth/verify-mail/:token
+```bash
+curl -X GET https://boxvault.example.com/api/auth/verify-mail/VERIFICATION_TOKEN
 ```
-Verify user's email address.
 
-### Invitation Management
-```http
-POST /api/auth/invite
+### Resend Verification Email
+```bash
+curl -X POST https://boxvault.example.com/api/auth/resend-verification \
+  -H "x-access-token: YOUR_JWT_TOKEN"
 ```
-Send an invitation to join organization.
 
-**Required Role:** Moderator or Admin
+## Organizations
 
-```http
-GET /api/auth/validate-invitation/:token
+### List Organizations
+```bash
+curl -X GET https://boxvault.example.com/api/organization \
+  -H "x-access-token: YOUR_JWT_TOKEN"
 ```
-Validate an invitation token.
 
-```http
-GET /api/invitations/active/:organizationName
+### Create Organization
+```bash
+curl -X POST https://boxvault.example.com/api/organization \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "myorg",
+    "description": "My Organization",
+    "email": "org@example.com"
+  }'
 ```
-Get active invitations for an organization.
 
-**Required Role:** Moderator
-
-```http
-DELETE /api/invitations/:invitationId
+### Get Organization
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg \
+  -H "x-access-token: YOUR_JWT_TOKEN"
 ```
-Delete an invitation.
 
-**Required Role:** Moderator or Admin
-
-## Configuration
-
-### Get Gravatar Config
-```http
-GET /api/config/gravatar
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "myorg",
+  "description": "My Organization",
+  "email": "org@example.com",
+  "suspended": false,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
 ```
-Get Gravatar configuration settings.
+
+### Update Organization
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "myorg",
+    "description": "Updated Organization Description",
+    "email": "org@example.com"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "myorg",
+  "description": "Updated Organization Description",
+  "email": "org@example.com",
+  "suspended": false,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### Delete Organization
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Organization deleted successfully!"
+}
+```
+
+### Get Organization Users
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/users \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Send Invitation
+```bash
+curl -X POST https://boxvault.example.com/api/auth/invite \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newuser@example.com",
+    "organizationName": "myorg"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "Invitation sent successfully!",
+  "invitationToken": "761ae0028a11ee75a02f16f702b9aa63312acfe0",
+  "invitationTokenExpires": 1735467934627,
+  "organizationId": 1,
+  "invitationLink": "https://boxvault.example.com/register?token=761ae0028a11ee75a02f16f702b9aa63312acfe0&organization=myorg"
+}
+```
+
+### List Active Invitations
+```bash
+curl -X GET https://boxvault.example.com/api/invitations/active/myorg \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 13,
+    "email": "test@example.com",
+    "token": "761ae0028a11ee75a02f16f702b9aa63312acfe0",
+    "expires": "2024-12-29T10:25:34.000Z",
+    "accepted": false,
+    "expired": false,
+    "createdAt": "2024-12-28T10:25:34.000Z"
+  }
+]
+```
+
+### Validate Invitation Token
+```bash
+curl -X GET https://boxvault.example.com/api/auth/validate-invitation/INVITATION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "organizationName": "myorg",
+  "email": "newuser@example.com"
+}
+```
+
+### Delete Invitation
+```bash
+curl -X DELETE https://boxvault.example.com/api/invitations/INVITATION_ID \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Invitation deleted successfully"
+}
+```
+
+## Box Discovery
+
+### List Public Boxes
+```bash
+# No authentication required
+curl https://boxvault.example.com/api/discover
+```
+
+### Search Public Boxes
+```bash
+# No authentication required
+curl https://boxvault.example.com/api/discover/debian
+```
+
+### Get Box Metadata
+```bash
+# No authentication required
+curl https://boxvault.example.com/api/organization/myorg/box/debian12/metadata
+```
+
+### Download Box File
+```bash
+# No authentication required for public boxes
+curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box"
+
+# Or using Vagrant CLI
+vagrant box add "boxvault.example.com/myorg/debian12"
+
+# For private boxes, get download URL first
+curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+
+## Box Management (User Access)
+
+### List Organization Boxes (User)
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/box \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Create Box (User)
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/box \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "debian12",
+    "description": "Debian 12 Server",
+    "isPrivate": false
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 7,
+  "name": "debian12",
+  "description": "Debian 12 Server",
+  "published": false,
+  "isPublic": false,
+  "userId": 1,
+  "createdAt": "2024-12-28T10:21:13.924Z",
+  "updatedAt": "2024-12-28T10:21:13.924Z"
+}
+```
+
+### Create Box Version (User)
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/version \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "versionNumber": "1.0.0",
+    "description": "Initial release"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "versionNumber": "1.0.0",
+  "description": "Initial release",
+  "boxId": 1,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### Update Box
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/box/debian12 \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "debian12",
+    "description": "Updated description",
+    "isPrivate": false
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 7,
+  "name": "debian12",
+  "description": "Updated description",
+  "published": false,
+  "isPublic": false,
+  "userId": 1,
+  "createdAt": "2024-12-28T10:21:13.000Z",
+  "updatedAt": "2024-12-28T10:22:08.301Z"
+}
+```
+
+### Delete Box
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12 \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Box deleted successfully!"
+}
+```
+
+### Delete All Boxes
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "All boxes deleted successfully!"
+}
+```
+
+### Update Version
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0 \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "versionNumber": "1.0.0",
+    "description": "Updated release notes"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "versionNumber": "1.0.0",
+  "description": "Updated release notes",
+  "boxId": 1,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### List Box Versions
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/box/debian12/version \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "versionNumber": "1.0.0",
+    "description": "Initial release",
+    "boxId": 1,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+### Delete Version
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0 \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Version deleted successfully!"
+}
+```
+
+### Delete All Versions
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/version \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "All versions deleted successfully!"
+}
+```
+
+### Create Provider (User)
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "virtualbox",
+    "description": "VirtualBox provider"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 25,
+  "name": "virtualbox",
+  "description": "VirtualBox provider",
+  "versionId": 8,
+  "createdAt": "2024-12-28T10:21:34.233Z",
+  "updatedAt": "2024-12-28T10:21:34.233Z"
+}
+```
+
+### Update Provider
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "virtualbox",
+    "description": "Updated VirtualBox provider description"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 25,
+  "name": "virtualbox",
+  "description": "Updated VirtualBox provider description",
+  "versionId": 8,
+  "createdAt": "2024-12-28T10:21:34.000Z",
+  "updatedAt": "2024-12-28T10:22:32.000Z"
+}
+```
+
+### List Version Providers
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 25,
+    "name": "virtualbox",
+    "description": "VirtualBox provider",
+    "versionId": 8,
+    "createdAt": "2024-12-28T10:21:34.233Z",
+    "updatedAt": "2024-12-28T10:21:34.233Z"
+  }
+]
+```
+
+### Get Provider
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "id": 25,
+  "name": "virtualbox",
+  "description": "VirtualBox provider",
+  "versionId": 8,
+  "createdAt": "2024-12-28T10:21:34.233Z",
+  "updatedAt": "2024-12-28T10:21:34.233Z"
+}
+```
+
+### Delete Provider
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Provider deleted successfully!"
+}
+```
+
+### Delete All Providers
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "All providers deleted successfully!"
+}
+```
+
+### Create Architecture (User)
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "amd64",
+    "defaultBox": true
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 48,
+  "name": "amd64",
+  "defaultBox": true,
+  "providerId": 25,
+  "createdAt": "2024-12-28T10:21:43.344Z",
+  "updatedAt": "2024-12-28T10:21:43.344Z"
+}
+```
+
+### Update Architecture
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64 \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "amd64",
+    "defaultBox": false
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 48,
+  "name": "amd64",
+  "defaultBox": false,
+  "providerId": 25,
+  "createdAt": "2024-12-28T10:21:43.000Z",
+  "updatedAt": "2024-12-28T10:22:40.000Z"
+}
+```
+
+### List Provider Architectures
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 48,
+    "name": "amd64",
+    "defaultBox": true,
+    "providerId": 25,
+    "createdAt": "2024-12-28T10:21:43.344Z",
+    "updatedAt": "2024-12-28T10:21:43.344Z"
+  }
+]
+```
+
+### Get Architecture
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64 \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "id": 48,
+  "name": "amd64",
+  "defaultBox": true,
+  "providerId": 25,
+  "createdAt": "2024-12-28T10:21:43.344Z",
+  "updatedAt": "2024-12-28T10:21:43.344Z"
+}
+```
+
+### Delete Architecture
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64 \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Architecture deleted successfully!"
+}
+```
+
+### Delete All Architectures
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "All architectures deleted successfully!"
+}
+```
+
+## File Operations (User/Service Account)
+
+### Upload Box File (Chunked Upload)
+
+Files are uploaded in chunks of 100MB. For small files (under 100MB), you can upload in a single chunk:
+
+```bash
+# Single chunk upload
+curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload" \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: multipart/form-data" \
+  -H "x-file-id: upload-1" \
+  -H "x-chunk-index: 0" \
+  -H "x-total-chunks: 1" \
+  -F "file=@box-file.box" \
+  -F "fileId=upload-1" \
+  -F "chunkIndex=0" \
+  -F "totalChunks=1"
+```
+
+**Progress Response:**
+```json
+{
+  "message": "Chunk uploaded successfully",
+  "details": {
+    "chunkIndex": 0,
+    "uploadedChunks": 1,
+    "totalChunks": 1,
+    "isComplete": false,
+    "status": "assembling",
+    "remainingChunks": 0
+  }
+}
+```
+
+For larger files, use the chunked upload script:
+
+```bash
+# Calculate chunks (100MB per chunk)
+CHUNK_SIZE=104857600
+FILE="debian12.box"
+TOTAL_CHUNKS=$((($(stat -f%z "$FILE") + $CHUNK_SIZE - 1) / $CHUNK_SIZE))
+UPLOAD_ID=$(uuidgen)
+
+# Upload chunks
+for ((i=0; i<$TOTAL_CHUNKS; i++)); do
+  START=$((i * $CHUNK_SIZE))
+  
+  # Get chunk data
+  if [ $i -eq $(($TOTAL_CHUNKS - 1)) ]; then
+    dd if="$FILE" bs=1 skip=$START 2>/dev/null
+  else
+    dd if="$FILE" bs=1 skip=$START count=$CHUNK_SIZE 2>/dev/null
+  fi | \
+  curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload" \
+    -H "x-access-token: YOUR_JWT_TOKEN" \
+    -H "Content-Type: multipart/form-data" \
+    -H "x-file-id: $UPLOAD_ID" \
+    -H "x-chunk-index: $i" \
+    -H "x-total-chunks: $TOTAL_CHUNKS" \
+    -F "file=@-" \
+    -F "fileId=$UPLOAD_ID" \
+    -F "chunkIndex=$i" \
+    -F "totalChunks=$TOTAL_CHUNKS"
+done
+```
+
+### Download Box File (Multiple Methods)
+
+BoxVault provides three ways to download box files:
+
+1. Direct browser download:
+```bash
+curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box"
+```
+
+2. Using Vagrant CLI:
+```bash
+vagrant box add "boxvault.example.com/myorg/debian12"
+```
+
+3. Using download link:
+```bash
+# Get download link
+curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+
+# Download using returned URL
+curl -O "DOWNLOAD_URL"
+```
+
+### Get Box Metadata
+```bash
+curl "https://boxvault.example.com/api/organization/myorg/box/debian12/metadata"
+```
+
+**Response:**
+```json
+{
+  "name": "debian12",
+  "description": "Debian 12 Server",
+  "versions": [{
+    "version": "1.0.0",
+    "providers": [{
+      "name": "virtualbox",
+      "url": "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box",
+      "checksum_type": "sha256",
+      "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fileSize": "1508591037"  // Size in bytes, convert to GB using fileSize/(1024^3)
+    }]
+  }]
+}
+```
+
+### Get File Info
+```bash
+curl -X GET "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/info" \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "fileName": "vagrant.box",
+  "downloadUrl": "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/download?token=...",
+  "downloadCount": 5,
+  "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "checksumType": "SHA256",
+  "fileSize": "1508591037"  // Size in bytes, convert to GB using fileSize/(1024^3)
+}
+```
+
+### Delete File
+```bash
+curl -X DELETE "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/delete" \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "File deleted successfully!"
+}
+```
+
+```json
+{
+  "name": "debian12",
+  "description": "Debian 12 Server",
+  "versions": [{
+    "version": "1.0.0",
+    "providers": [{
+      "name": "virtualbox",
+      "url": "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box",
+      "checksum_type": "sha256",
+      "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fileSize": "1508591037"  // Size in bytes, convert to GB using fileSize/(1024^3)
+    }]
+  }]
+}
+```
+
+**Note:** File sizes are returned in bytes. To convert to GB, divide by 1024^3 (1073741824 bytes = 1 GB). For example:
+```javascript
+const bytesToGB = (bytes) => (bytes / 1024 / 1024 / 1024).toFixed(2);
+console.log(bytesToGB(1508591037)); // Outputs: "1.40"
+```
+
+## Service Account Management (User)
+
+### Create Service Account (User)
+```bash
+curl -X POST https://boxvault.example.com/api/service-accounts \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ci-account",
+    "description": "CI/CD Service Account",
+    "expiresAt": "2025-12-31T23:59:59.999Z"  # Required: ISO 8601 date string
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "ci-account",
+  "description": "CI/CD Service Account",
+  "token": "service-account-token",
+  "expiresAt": "2025-12-31T23:59:59.999Z",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### List Service Accounts
+```bash
+curl -X GET https://boxvault.example.com/api/service-accounts \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Delete Service Account
+```bash
+curl -X DELETE https://boxvault.example.com/api/service-accounts/ACCOUNT_ID \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Service account deleted successfully!"
+}
+```
+
+## User & Role Management (Admin)
+
+### List All Users (Admin)
+```bash
+curl -X GET https://boxvault.example.com/api/organizations-with-users \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Get Role-Specific Boards
+```bash
+# Public board
+curl -X GET https://boxvault.example.com/api/users/all
+
+# User board
+curl -X GET https://boxvault.example.com/api/users/user \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+
+# Admin board
+curl -X GET https://boxvault.example.com/api/users/admin \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Get User Profile
+```bash
+curl -X GET https://boxvault.example.com/api/user \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Get User Roles
+```bash
+curl -X GET https://boxvault.example.com/api/users/roles \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "roles": ["user", "admin", "moderator"]
+}
+```
+
+### Get User Organizations
+```bash
+curl -X GET https://boxvault.example.com/api/organizations \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Check If Only User In Organization
+```bash
+curl -X GET https://boxvault.example.com/api/organizations/myorg/only-user \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "isOnlyUser": true
+}
+```
+
+### Get Organization User
+```bash
+curl -X GET https://boxvault.example.com/api/organization/myorg/users/username \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Update Organization User
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/users/username \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newemail@example.com",
+    "roles": ["user", "moderator"]
+  }'
+```
+
+### Delete User
+```bash
+curl -X DELETE https://boxvault.example.com/api/users/USER_ID \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "User deleted successfully!"
+}
+```
+
+### Delete Organization User
+```bash
+curl -X DELETE https://boxvault.example.com/api/organization/myorg/users/username \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "User removed from organization successfully!"
+}
+```
+
+### Change Password
+```bash
+curl -X PUT https://boxvault.example.com/api/users/USER_ID/change-password \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "old-password",
+    "newPassword": "new-password"
+  }'
+```
+
+### Change Email
+```bash
+curl -X PUT https://boxvault.example.com/api/users/USER_ID/change-email \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newemail@example.com"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "Email changed successfully!"
+}
+```
+
+### Promote User to Moderator
+```bash
+curl -X PUT https://boxvault.example.com/api/users/USER_ID/promote \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Promoted to moderator successfully!"
+}
+```
+
+### Demote Moderator to User
+```bash
+curl -X PUT https://boxvault.example.com/api/users/USER_ID/demote \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Demoted to user successfully!"
+}
+```
+
+### Suspend User
+```bash
+curl -X PUT https://boxvault.example.com/api/users/USER_ID/suspend \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "User suspended successfully."
+}
+```
+
+### Resume User
+```bash
+curl -X PUT https://boxvault.example.com/api/users/USER_ID/resume \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "User resumed successfully!"
+}
+```
+
+## Organization Management (Admin)
+
+### Suspend Organization (Admin)
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/suspend \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Organization suspended successfully!"
+}
+```
+
+### Resume Organization
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/resume \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Organization resumed successfully!"
+}
+```
+
+## System Configuration (Admin)
+
+### Check Setup Status (Public)
+```bash
+curl -X GET https://boxvault.example.com/api/setup/status
+```
+
+**Response:**
+```json
+{
+  "setupComplete": true
+}
+```
+
+### Verify Setup Token
+```bash
+curl -X POST https://boxvault.example.com/api/setup/verify-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "setup-token"
+  }'
+```
+
+### Get Setup Configuration
+```bash
+curl -X GET https://boxvault.example.com/api/setup
+```
+
+### Update Setup Configuration
+```bash
+curl -X PUT https://boxvault.example.com/api/setup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "boxvault": {
+      "origin": {
+        "value": "https://boxvault.example.com"
+      }
+    }
+  }'
+```
+
+### Upload SSL Certificate
+```bash
+curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
+  -H "Content-Type: multipart/form-data" \
+  -F "cert=@/path/to/cert.pem" \
+  -F "key=@/path/to/key.pem"
+```
+
+**Response:**
+```json
+{
+  "message": "SSL certificates uploaded successfully"
+}
+```
+
+### Get Gravatar Configuration
+```bash
+curl -X GET https://boxvault.example.com/api/config/gravatar
+```
 
 **Response:**
 ```json
 {
   "enabled": true,
   "default": "mp",
-  "size": 200
+  "rating": "g"
 }
 ```
 
-### Get System Config
-```http
-GET /api/config/:configName
+### Get Configuration
+```bash
+curl -X GET https://boxvault.example.com/api/config/app \
+  -H "x-access-token: YOUR_JWT_TOKEN"
 ```
-Get specific system configuration.
 
-**Required Role:** Admin
-
-**Valid Config Names:**
-- `app` - Application settings
-- `sql` - Database settings
-- `mail` - Mail server settings
-- `ssl` - SSL certificate settings
-
-**Example Response:**
+**Response:**
 ```json
 {
   "boxvault": {
+    "origin": {
+      "type": "url",
+      "value": "https://boxvault.example.com",
+      "description": "The origin URL for BoxVault",
+      "required": true
+    },
+    "api_url": {
+      "type": "url",
+      "value": "https://boxvault.example.com/api",
+      "description": "The API URL for BoxVault",
+      "required": true
+    },
+    "api_listen_port_unencrypted": {
+      "type": "integer",
+      "value": 5000,
+      "description": "The Port that BoxVault API listens on for HTTP (may not be the proxied port)",
+      "required": true
+    },
+    "api_listen_port_encrypted": {
+      "type": "integer",
+      "value": 443,
+      "description": "The Port that BoxVault API listens on for HTTPS (may not be the proxied port)",
+      "required": true
+    },
     "box_storage_directory": {
-      "value": "/local/boxvault/data"
+      "type": "string",
+      "value": "/local/boxvault/data/",
+      "description": "The Directory on the OS in which the boxes are stored.",
+      "required": true
     },
     "box_max_file_size": {
-      "value": 100
+      "type": "integer",
+      "value": "100",
+      "description": "The file size in GBs as to how large a upload box can be.",
+      "required": true
+    }
+  },
+  "ssl": {
+    "cert_path": {
+      "type": "string",
+      "value": "boxvault.example.com.pem",
+      "description": "Path to the SSL certificate file",
+      "required": false,
+      "upload": true
+    },
+    "key_path": {
+      "type": "string",
+      "value": "boxvault.example.com.key",
+      "description": "Path to the SSL private key file",
+      "required": false,
+      "upload": true
     }
   }
 }
 ```
 
-### Update System Config
-```http
-PUT /api/config/:configName
-```
-Update system configuration.
-
-**Required Role:** Admin
-
-**Parameters:**
-- Configuration object specific to the config type
-
-## Organizations
-
-### List Organizations
-```http
-GET /api/organization
-```
-List all organizations accessible to the authenticated user.
-
-**Required Role:** User
-
-### Get Organization Details
-```http
-GET /api/organization/:organizationName
-```
-Get details of a specific organization.
-
-**Required Role:** User
-
-### Create Organization
-```http
-POST /api/organization
-```
-Create a new organization.
-
-**Required Role:** User
-
-**Parameters:**
-- `name` (string, required) - Organization name
-- `description` (string) - Organization description
-- `email` (string, required) - Organization email
-
-### Update Organization
-```http
-PUT /api/organization/:organizationName
-```
-Update organization details.
-
-**Required Role:** Moderator or Admin
-
-**Parameters:**
-- `description` (string) - New description
-- `email` (string) - New email
-
-### Organization Management
-```http
-PUT /api/organization/:organizationName/suspend
-```
-Suspend an organization.
-
-**Required Role:** Admin
-
-```http
-PUT /api/organization/:organizationName/resume
-```
-Resume a suspended organization.
-
-**Required Role:** Admin
-
-```http
-DELETE /api/organization/:organizationName
-```
-Delete an organization.
-
-**Required Role:** Admin
-
-### Organization Users
-```http
-GET /api/organization/:organizationName/users
-```
-List users in an organization.
-
-**Required Role:** User
-
-## Boxes
-
-### List Boxes
-```http
-GET /api/organization/:organization/box
-```
-List all boxes in an organization.
-
-### Discover Boxes
-```http
-GET /api/discover
-GET /api/discover/:name
-```
-List public boxes, optionally filtered by name.
-
-### Get Box Details
-```http
-GET /api/organization/:organization/box/:name
-GET /api/organization/:organization/box/:name/metadata
-```
-Get box details and metadata.
-
-### Create Box
-```http
-POST /api/organization/:organization/box
-```
-Create a new box.
-
-**Required Role:** User or Service Account
-
-**Parameters:**
-- `name` (string, required) - Box name
-- `description` (string) - Box description
-- `isPrivate` (boolean) - Privacy setting
-
-### Update Box
-```http
-PUT /api/organization/:organization/box/:name
-```
-Update box details.
-
-**Required Role:** User or Service Account
-
-### Delete Box
-```http
-DELETE /api/organization/:organization/box/:name
-```
-Delete a box and all associated versions.
-
-**Required Role:** User or Service Account
-
-## Versions
-
-### List Versions
-```http
-GET /api/organization/:organization/box/:boxId/version
-```
-List all versions of a box.
-
-### Get Version
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber
-```
-Get version details.
-
-### Create Version
-```http
-POST /api/organization/:organization/box/:boxId/version
-```
-Create a new version.
-
-**Required Role:** User or Service Account
-
-**Parameters:**
-- `version` (string, required) - Version number
-- `description` (string) - Version description
-
-### Update Version
-```http
-PUT /api/organization/:organization/box/:boxId/version/:versionNumber
-```
-Update version details.
-
-**Required Role:** User or Service Account
-
-### Delete Version
-```http
-DELETE /api/organization/:organization/box/:boxId/version/:versionNumber
-```
-Delete a version.
-
-**Required Role:** User or Service Account
-
-## Providers
-
-### List Providers
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber/provider
-```
-List all providers for a version.
-
-### Get Provider
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName
-```
-Get provider details.
-
-### Create Provider
-```http
-POST /api/organization/:organization/box/:boxId/version/:versionNumber/provider
-```
-Create a new provider.
-
-**Required Role:** User or Service Account
-
-**Parameters:**
-- `name` (string, required) - Provider name
-- `description` (string) - Provider description
-
-### Update Provider
-```http
-PUT /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName
-```
-Update provider details.
-
-**Required Role:** User or Service Account
-
-### Delete Provider
-```http
-DELETE /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName
-```
-Delete a provider.
-
-**Required Role:** User or Service Account
-
-## Architectures
-
-### List Architectures
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture
-```
-List all architectures for a provider.
-
-### Get Architecture
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName
-```
-Get architecture details.
-
-### Create Architecture
-```http
-POST /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture
-```
-Create a new architecture.
-
-**Required Role:** User or Service Account
-
-**Parameters:**
-- `name` (string, required) - Architecture name
-- `description` (string) - Architecture description
-- `defaultBox` (boolean) - Whether this is the default architecture
-
-### Update Architecture
-```http
-PUT /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName
-```
-Update architecture details.
-
-**Required Role:** User or Service Account
-
-### Delete Architecture
-```http
-DELETE /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName
-```
-Delete an architecture.
-
-**Required Role:** User or Service Account
-
-## File Operations
-
-### Upload File
-```http
-POST /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload
-```
-Upload a box file (supports chunked upload).
-
-**Required Role:** User or Service Account
-
-**Headers:**
-- `Content-Range` - Byte range being uploaded
-- `x-file-id` - Unique ID for the upload session
-- `x-chunk-index` - Current chunk index
-- `x-total-chunks` - Total number of chunks
-
-**Form Data:**
-- `file` (file, required) - The chunk data
-- `fileId` (string, required) - Upload session ID
-- `chunkIndex` (number, required) - Current chunk index
-- `totalChunks` (number, required) - Total number of chunks
-- `checksum` (string) - File checksum
-- `checksumType` (string) - Type of checksum
-
-### Update File
-```http
-PUT /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload
-```
-Update an existing box file.
-
-**Required Role:** User or Service Account
-
-### Get File Info
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info
-```
-Get information about a box file.
-
-### Download File
-```http
-GET /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download
-```
-Download a box file.
-
-### Get Download Link
-```http
-POST /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link
-```
-Get a download URL for a box file.
-
-### Delete File
-```http
-DELETE /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete
-```
-Delete a box file.
-
-**Required Role:** User or Service Account
-
-## Service Accounts
-
-### Create Service Account
-```http
-POST /api/service-accounts
-```
-Create a new service account.
-
-**Required Role:** User
-
-### List Service Accounts
-```http
-GET /api/service-accounts
-```
-List all service accounts.
-
-**Required Role:** User
-
-### Delete Service Account
-```http
-DELETE /api/service-accounts/:id
-```
-Delete a service account.
-
-**Required Role:** User
-
-## User Management
-
-### Get User Profile
-```http
-GET /api/user
-```
-Get current user's profile.
-
-**Required Role:** User
-
-### Change Password
-```http
-PUT /api/users/:userId/change-password
-```
-Change user's password.
-
-**Required Role:** User
-
-### Change Email
-```http
-PUT /api/users/:userId/change-email
-```
-Change user's email address.
-
-**Required Role:** User
-
-### Role Management
-```http
-PUT /api/users/:userId/promote
-```
-Promote user to moderator.
-
-**Required Role:** User
-
-```http
-PUT /api/users/:userId/demote
-```
-Demote moderator to user.
-
-**Required Role:** Moderator or Admin
-
-### User Status Management
-```http
-PUT /api/users/:userId/suspend
-```
-Suspend a user.
-
-**Required Role:** Admin
-
-```http
-PUT /api/users/:userId/resume
-```
-Resume a suspended user.
-
-**Required Role:** Admin
-
-## Setup & Configuration
-
-### Setup Status
-```http
-GET /api/setup/status
-```
-Check if system setup is complete.
-
-### Verify Setup Token
-```http
-POST /api/setup/verify-token
-```
-Verify setup token.
-
-### Get Configuration
-```http
-GET /api/setup
-```
-Get system configuration.
-
 ### Update Configuration
-```http
-PUT /api/setup
+```bash
+curl -X PUT https://boxvault.example.com/api/config/app \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "boxvault": {
+      "box_storage_directory": {
+        "value": "/local/boxvault/data"
+      },
+      "box_max_file_size": {
+        "value": 100
+      }
+    }
+  }'
 ```
-Update system configuration.
-
-### Upload SSL Certificate
-```http
-POST /api/setup/upload-ssl
-```
-Upload SSL certificate files.
-
-## Mail Configuration
 
 ### Test SMTP
-```http
-POST /api/mail/test-smtp
+```bash
+curl -X POST https://boxvault.example.com/api/mail/test-smtp \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": true,
+    "auth": {
+      "user": "smtp-user",
+      "pass": "smtp-password"
+    },
+    "to": "recipient@example.com",
+    "from": "sender@example.com"
+  }'
 ```
-Test SMTP configuration.
 
-**Required Role:** Admin
-
-### Resend Verification
-```http
-POST /api/auth/resend-verification
-```
-Resend verification email.
-
-**Required Role:** User
-
-## Response Examples
-
-### Success Response
+**Error Response:**
 ```json
 {
-  "message": "Operation completed successfully",
-  "data": {
-    // Operation-specific data
-  }
-}
-```
-
-### Validation Error
-```json
-{
-  "error": "VALIDATION_ERROR",
-  "message": "Validation failed",
-  "details": {
-    "field": "name",
-    "error": "Name must be alphanumeric"
-  }
-}
-```
-
-### Upload Progress Response
-```json
-{
-  "message": "Chunk uploaded successfully",
-  "details": {
-    "chunkIndex": 1,
-    "uploadedChunks": 2,
-    "totalChunks": 10,
-    "isComplete": false,
-    "status": "in_progress",
-    "remainingChunks": 8
-  }
-}
-```
-
-### Upload Completion Response
-```json
-{
-  "message": "Upload completed successfully",
-  "details": {
-    "chunkIndex": 10,
-    "uploadedChunks": 10,
-    "totalChunks": 10,
-    "isComplete": true,
-    "status": "complete",
-    "fileSize": 1073741824,
-    "duration": 1200
-  }
+  "message": "Error sending test email",
+  "error": "No recipients defined",
+  "stack": "Error: No recipients defined..."
 }
 ```
 
@@ -670,6 +1352,104 @@ Resend verification email.
 
 All endpoints may return the following error responses:
 
+### Role-Based Access Errors
+```json
+{
+  "error": "INSUFFICIENT_PERMISSIONS",
+  "message": "Require Admin Role",
+  "details": {
+    "requiredRole": "admin",
+    "currentRoles": ["user"]
+  }
+}
+```
+
+```json
+{
+  "error": "ORGANIZATION_ACCESS_DENIED",
+  "message": "User does not belong to organization",
+  "details": {
+    "organization": "myorg",
+    "userOrganization": "otherorg"
+  }
+}
+```
+
+### Authentication Errors
+```json
+{
+  "error": "TOKEN_EXPIRED",
+  "message": "JWT token has expired",
+  "details": {
+    "expiredAt": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+### Upload Errors
+```json
+{
+  "error": "CHUNK_TOO_LARGE",
+  "message": "Upload chunk exceeds size limit",
+  "details": {
+    "maxSize": 104857600,
+    "receivedSize": 157286400
+  }
+}
+```
+
+```json
+{
+  "error": "UPLOAD_SEQUENCE_ERROR",
+  "message": "Invalid chunk sequence",
+  "details": {
+    "expectedChunk": 5,
+    "receivedChunk": 7,
+    "totalChunks": 10
+  }
+}
+```
+
+```json
+{
+  "error": "ASSEMBLY_FAILED",
+  "message": "Failed to assemble file chunks",
+  "details": {
+    "missingChunks": [3, 7],
+    "corruptedChunks": [5],
+    "totalChunks": 10
+  }
+}
+```
+
+### Validation Errors
+```json
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Invalid input parameters",
+  "details": {
+    "name": "Only alphanumeric characters, hyphens and underscores allowed",
+    "version": "Must follow semantic versioning (x.y.z)"
+  }
+}
+```
+
+### Resource Errors
+```json
+{
+  "error": "RESOURCE_NOT_FOUND",
+  "message": "Box not found",
+  "details": {
+    "organization": "myorg",
+    "box": "debian12"
+  }
+}
+```
+
+## HTTP Status Codes
+
+- `200 OK` - Request succeeded
+- `201 Created` - Resource created successfully
 - `400 Bad Request` - Invalid parameters
 - `401 Unauthorized` - Missing or invalid authentication
 - `403 Forbidden` - Insufficient permissions
@@ -679,44 +1459,3 @@ All endpoints may return the following error responses:
 - `413 Payload Too Large` - Upload chunk too large
 - `500 Internal Server Error` - Server error
 - `507 Insufficient Storage` - Not enough storage space
-
-### Common Error Codes
-
-#### Authentication Errors
-- `TOKEN_EXPIRED` - JWT token has expired
-- `INVALID_TOKEN` - Invalid JWT token
-- `MISSING_TOKEN` - No JWT token provided
-- `UNAUTHORIZED` - User not authorized for this operation
-
-#### Resource Errors
-- `RESOURCE_NOT_FOUND` - Requested resource does not exist
-- `RESOURCE_EXISTS` - Resource already exists
-- `RESOURCE_LOCKED` - Resource is locked or in use
-
-#### Upload Errors
-- `CHUNK_TOO_LARGE` - Upload chunk exceeds size limit
-- `INVALID_CHUNK` - Invalid chunk data or metadata
-- `UPLOAD_INCOMPLETE` - Upload did not complete successfully
-- `CHECKSUM_MISMATCH` - File checksum verification failed
-- `STORAGE_FULL` - Insufficient storage space
-
-#### Validation Errors
-- `INVALID_NAME` - Invalid resource name
-- `INVALID_VERSION` - Invalid version format
-- `INVALID_PROVIDER` - Invalid provider name
-- `INVALID_ARCHITECTURE` - Invalid architecture name
-
-Error responses include detailed information:
-```json
-{
-  "error": "ERROR_CODE",
-  "message": "Human readable error message",
-  "details": {
-    "code": "specific_error_code",
-    "field": "field_name",
-    "constraint": "constraint_violated",
-    "provided": "provided_value",
-    "expected": "expected_format",
-    "timestamp": "2024-01-01T00:00:00Z"
-  }
-}
