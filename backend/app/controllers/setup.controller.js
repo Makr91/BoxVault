@@ -250,17 +250,8 @@ exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
             newConfig.sql.dialect.value = dbType;
           }
           
-          // For SQLite, ensure storage path directory exists
-          if (dbType === 'sqlite' && newConfig.sql && newConfig.sql.storage) {
-            const storagePath = newConfig.sql.storage.value;
-            const storageDir = path.dirname(storagePath);
-            
-            // Create directory if it doesn't exist
-            if (!fs.existsSync(storageDir)) {
-              fs.mkdirSync(storageDir, { recursive: true, mode: 0o755 });
-              console.log(`Created SQLite database directory: ${storageDir}`);
-            }
-          }
+          // Note: SQLite directory creation is now handled in models/index.js
+          // when Sequelize is initialized, ensuring proper timing
         }
         
         await writeConfig(configPaths[configName], newConfig);

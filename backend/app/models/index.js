@@ -11,22 +11,42 @@ try {
 }
 
 const Sequelize = require("sequelize");
-const sequelize = new Sequelize(
-  dbConfig.sql.database.value,
-  dbConfig.sql.user.value,
-  dbConfig.sql.password.value,
-  {
-    logging: dbConfig.sql.logging.value,
-    host: dbConfig.sql.host.value,
-    port: dbConfig.sql.port.value,
-    dialect: dbConfig.sql.dialect.value,
-    pool: {
-      max: dbConfig.mysql_pool.max.value,
-      min: dbConfig.mysql_pool.min.value,
-      acquire: dbConfig.mysql_pool.acquire.value,
-      idle: dbConfig.mysql_pool.idle.value
-    }
+
+// Configure Sequelize based on database type
+let sequelizeConfig = {
+  logging: dbConfig.sql.logging.value,
+  dialect: dbConfig.sql.dialect.value,
+};
+
+if (dbConfig.sql.dialect.value === 'sqlite') {
+  // SQLite configuration
+  sequelizeConfig.storage = dbConfig.sql.storage.value;
+  
+  // Ensure the directory exists for SQLite database file
+  const path = require('path');
+  const fs = require('fs');
+  const storageDir = path.dirname(dbConfig.sql.storage.value);
+  if (!fs.existsSync(storageDir)) {
+    fs.mkdirSync(storageDir, { recursive: true, mode: 0o755 });
+    console.log(`Created SQLite database directory: ${storageDir}`);
   }
+} else {
+  // MySQL/other database configuration
+  sequelizeConfig.host = dbConfig.sql.host.value;
+  sequelizeConfig.port = dbConfig.sql.port.value;
+  sequelizeConfig.pool = {
+    max: dbConfig.mysql_pool.max.value,
+    min: dbConfig.mysql_pool.min.value,
+    acquire: dbConfig.mysql_pool.acquire.value,
+    idle: dbConfig.mysql_pool.idle.value
+  };
+}
+
+const sequelize = new Sequelize(
+  dbConfig.sql.dialect.value === 'sqlite' ? null : dbConfig.sql.database.value,
+  dbConfig.sql.dialect.value === 'sqlite' ? null : dbConfig.sql.user.value,
+  dbConfig.sql.dialect.value === 'sqlite' ? null : dbConfig.sql.password.value,
+  sequelizeConfig
 );
 
 const db = {};
