@@ -41,6 +41,11 @@ gravatar:
     description: API key for Gravatar
     required: false
 ssl:
+  generate_ssl:
+    type: boolean
+    value: true
+    description: Automatically generate SSL certificates if they don't exist
+    required: true
   cert_path:
     type: string
     value: /etc/boxvault/ssl/public.crt

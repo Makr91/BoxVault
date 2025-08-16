@@ -291,9 +291,9 @@ if (isConfigured) {
 const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted.value || 5000;
 const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
 
-// SSL/HTTPS Configuration with auto-generation
+// SSL/HTTPS Configuration with auto-generation - MOVED TO HAPPEN BEFORE SETUP
 (async () => {
-  // Try to generate SSL certificates if needed
+  // Generate SSL certificates BEFORE setup wizard, like ZoneWeaver does
   await generateSSLCertificatesIfNeeded();
   
   if (isSSLConfigured()) {
