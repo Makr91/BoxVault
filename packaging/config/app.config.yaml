@@ -11,7 +11,7 @@ boxvault:
     required: true
   api_listen_port_unencrypted:
     type: integer
-    value: 5000
+    value: 80
     description: The Port that BoxVault API listens on for HTTP(may not be the proxied port)
     required: true
   api_listen_port_encrypted:

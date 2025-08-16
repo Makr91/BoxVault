@@ -21,6 +21,8 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=/var/lib/boxvault /var/log/boxvault /etc/boxvault/ssl
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
 # Logging
 StandardOutput=journal
