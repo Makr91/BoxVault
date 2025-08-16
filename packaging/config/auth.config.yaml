@@ -1,7 +1,7 @@
 jwt:
   jwt_secret:
     type: password
-    value: boxvault-secret-key
+    value: CHANGE_THIS_SECRET_KEY_IN_PRODUCTION
     description: Secret key for JWT
   jwt_token_time_valid:
     type: integer

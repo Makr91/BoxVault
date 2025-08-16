@@ -1,16 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const db = require("../models");
 
 // Load app config for max file size
-const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let maxFileSize;
 let appConfig;
 
 try {
-  const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  appConfig = yaml.load(fileContents);
+  appConfig = loadConfig('app');
   maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024; // Convert GB to bytes
 } catch (e) {
   console.error(`Failed to load app configuration: ${e.message}`);
@@ -55,8 +53,7 @@ const uploadMiddleware = async (req, res) => {
     }
 
     // Load config and prepare upload directory
-    const configContents = fs.readFileSync(appConfigPath, 'utf8');
-    const config = yaml.load(configContents);
+    const config = loadConfig('app');
     const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     const finalPath = path.join(uploadDir, 'vagrant.box');

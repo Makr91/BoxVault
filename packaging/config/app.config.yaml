@@ -1,12 +1,12 @@
 boxvault:
   origin:
     type: url
-    value: https://boxvault.home.m4kr.net
+    value: https://your-domain.com
     description: The origin URL for BoxVault
     required: true
   api_url:
     type: url
-    value: https://boxvault.home.m4kr.net/api
+    value: https://your-domain.com/api
     description: The API URL for BoxVault
     required: true
   api_listen_port_unencrypted:
@@ -21,7 +21,7 @@ boxvault:
     required: true
   box_storage_directory:
     type: string
-    value: /Array-0/boxvault/data/
+    value: /var/lib/boxvault/storage
     description: The Directory on the OS in which the boxes are stored.
     required: true
   box_max_file_size:
@@ -37,19 +37,19 @@ gravatar:
     required: false
   api_key:
     type: password
-    value: 1238:gk-hGrxeLZtnocRXp-rQIB_R2Rm-z6Oe6_0j2dzxzOzs0J8qtdk5mARF5AQZ6I6s
+    value: ""
     description: API key for Gravatar
     required: false
 ssl:
   cert_path:
     type: string
-    value: public.crt
+    value: /etc/boxvault/ssl/public.crt
     description: Path to the SSL certificate file
     required: false
     upload: true
   key_path:
     type: string
-    value: private.key
+    value: /etc/boxvault/ssl/private.key
     description: Path to the SSL private key file
     required: false
     upload: true

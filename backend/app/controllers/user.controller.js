@@ -9,15 +9,53 @@ const User = db.user;
 const Role = db.role;
 const Organization = db.organization;
 
-const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
+const { loadConfig } = require('../utils/config-loader');
 let authConfig;
 try {
-  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
-  authConfig = yaml.load(fileContents);
+  authConfig = loadConfig('auth');
 } catch (e) {
   console.error(`Failed to load auth configuration: ${e.message}`);
 }
 
+/**
+ * @swagger
+ * /api/users/all:
+ *   get:
+ *     summary: Get project information
+ *     description: Retrieve general information about the BoxVault project (public access)
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: Project information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "BoxVault Project Synopsis"
+ *                 description:
+ *                   type: string
+ *                   example: "BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates."
+ *                 components:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       title:
+ *                         type: string
+ *                       details:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                 features:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 goal:
+ *                   type: string
+ */
 exports.allAccess = (req, res) => {
   const projectData = {
     title: "BoxVault Project Synopsis",
@@ -53,6 +91,46 @@ exports.allAccess = (req, res) => {
   res.status(200).json(projectData);
 };
 
+/**
+ * @swagger
+ * /api/organizations/{organizationName}/only-user:
+ *   get:
+ *     summary: Check if user is the only user in organization
+ *     description: Determine if the current user is the only user in the specified organization
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: Check completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isOnlyUser:
+ *                   type: boolean
+ *                   description: Whether the user is the only user in the organization
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.isOnlyUserInOrg = async (req, res) => {
   const { organizationName } = req.params;
 
@@ -81,18 +159,110 @@ exports.isOnlyUserInOrg = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/user:
+ *   get:
+ *     summary: Get user board content
+ *     description: Retrieve content for authenticated users
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User content retrieved successfully
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "User Content."
+ */
 exports.userBoard = (req, res) => {
   res.status(200).send("User Content.");
 };
 
+/**
+ * @swagger
+ * /api/users/admin:
+ *   get:
+ *     summary: Get admin board content
+ *     description: Retrieve content for admin users only
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin content retrieved successfully
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Admin Content."
+ */
 exports.adminBoard = (req, res) => {
   res.status(200).send("Admin Content.");
 };
 
+/**
+ * @swagger
+ * /api/organizations:
+ *   get:
+ *     summary: Get organization content
+ *     description: Retrieve organization-related content for authenticated users
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Organization content retrieved successfully
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Moderator Content."
+ */
 exports.organization = (req, res) => {
   res.status(200).send("Moderator Content.");
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/users:
+ *   get:
+ *     summary: Get all users in an organization
+ *     description: Retrieve all users belonging to a specific organization
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: List of users in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.findAll = async (req, res) => {
   try {
     const { organizationName } = req.params;
@@ -115,6 +285,66 @@ exports.findAll = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/user:
+ *   get:
+ *     summary: Get current user profile
+ *     description: Retrieve the profile information of the currently authenticated user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   description: User ID
+ *                 username:
+ *                   type: string
+ *                   description: Username
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                   description: User email
+ *                 verified:
+ *                   type: boolean
+ *                   description: Email verification status
+ *                 emailHash:
+ *                   type: string
+ *                   description: Hashed email for Gravatar
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: User roles
+ *                 organization:
+ *                   type: string
+ *                   description: Organization name
+ *                 accessToken:
+ *                   type: string
+ *                   description: JWT access token
+ *                 gravatarUrl:
+ *                   type: string
+ *                   description: Gravatar URL
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
@@ -160,6 +390,48 @@ exports.getUserProfile = async (req, res) => {
     }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/users/{userName}:
+ *   get:
+ *     summary: Get a specific user in an organization
+ *     description: Retrieve information about a specific user within an organization (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: userName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Username
+ *     responses:
+ *       200:
+ *         description: User information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.findOne = async (req, res) => {
   const { organizationName, userName } = req.params;
 
@@ -195,6 +467,74 @@ exports.findOne = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/users/{userName}:
+ *   put:
+ *     summary: Update a user in an organization
+ *     description: Update user information within an organization (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: userName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Username
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: New username
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: New email address
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: New password
+ *               roles:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: User roles
+ *               organization:
+ *                 type: string
+ *                 description: New organization name
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.update = async (req, res) => {
   const { organizationName, userName } = req.params;
   const { username, email, password, roles, organization } = req.body;
@@ -249,6 +589,52 @@ exports.update = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/users/{username}:
+ *   delete:
+ *     summary: Delete a user from an organization
+ *     description: Remove a user from a specific organization (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Username to delete
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User john deleted successfully."
+ *       404:
+ *         description: User or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.delete = async (req, res) => {
   const { organizationName, userName } = req.params;
 
@@ -285,6 +671,59 @@ exports.delete = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}/change-password:
+ *   put:
+ *     summary: Change user password
+ *     description: Change the password for a specific user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPassword
+ *             properties:
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 description: New password
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Password changed successfully!"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.changePassword = async (req, res) => {
   const { userId } = req.params;
   const { newPassword } = req.body;
@@ -304,6 +743,59 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}/change-email:
+ *   put:
+ *     summary: Change user email
+ *     description: Change the email address for a specific user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newEmail
+ *             properties:
+ *               newEmail:
+ *                 type: string
+ *                 format: email
+ *                 description: New email address
+ *     responses:
+ *       200:
+ *         description: Email changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Email changed successfully!"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.changeEmail = async (req, res) => {
   const { userId } = req.params;
   const { newEmail } = req.body;
@@ -323,6 +815,46 @@ exports.changeEmail = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}/promote:
+ *   put:
+ *     summary: Promote user to moderator
+ *     description: Promote a user to moderator role
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User promoted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Promoted to moderator successfully!"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.promoteToModerator = async (req, res) => {
   const { userId } = req.params;
 
@@ -347,6 +879,46 @@ exports.promoteToModerator = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}/demote:
+ *   put:
+ *     summary: Demote moderator to user
+ *     description: Demote a moderator back to regular user role
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User demoted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Demoted to user successfully!"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.demoteToUser = async (req, res) => {
   const { userId } = req.params;
 
@@ -372,6 +944,38 @@ exports.demoteToUser = async (req, res) => {
 };
 
 
+/**
+ * @swagger
+ * /api/users/roles:
+ *   get:
+ *     summary: Get current user roles
+ *     description: Retrieve the roles of the currently authenticated user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               example: ["user", "moderator"]
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.getUserRoles = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
@@ -396,7 +1000,8 @@ exports.getUserRoles = async (req, res) => {
   }
 };
 
-exports.getUserRoles = async (req, res) => {
+// Duplicate function removed - keeping only one getUserRoles function
+exports.getUserRolesDuplicate = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
       include: [

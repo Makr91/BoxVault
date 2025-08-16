@@ -2,12 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const { spawn } = require('child_process');
-const configFiles = {
-  app: path.join(__dirname, '../config/app.config.yaml'),
-  auth: path.join(__dirname, '../config/auth.config.yaml'),
-  db: path.join(__dirname, '../config/db.config.yaml'),
-  mail: path.join(__dirname, '../config/mail.config.yaml'),
-};
+const { loadConfig, getConfigPath } = require('../utils/config-loader');
 
 const readConfig = (filePath) => {
   return new Promise((resolve, reject) => {
@@ -39,12 +34,8 @@ const writeConfig = (filePath, data) => {
 
 exports.getConfig = async (req, res) => {
   const { configName } = req.params;
-  const filePath = configFiles[configName];
-  if (!filePath) {
-    return res.status(404).send({ message: "Configuration not found." });
-  }
   try {
-    const data = await readConfig(filePath);
+    const data = loadConfig(configName);
     res.send(data);
   } catch (err) {
     res.status(500).send({ message: err.message });
@@ -53,11 +44,9 @@ exports.getConfig = async (req, res) => {
 
 exports.updateConfig = async (req, res) => {
   const { configName } = req.params;
-  const filePath = configFiles[configName];
-  if (!filePath) {
-    return res.status(404).send({ message: "Configuration not found." });
-  }
   try {
+    // For updates, we still need to write to the actual file path
+    const filePath = getConfigPath(configName);
     await writeConfig(filePath, req.body);
     res.send({ message: "Configuration updated successfully." });
   } catch (err) {
@@ -67,7 +56,7 @@ exports.updateConfig = async (req, res) => {
 
 exports.getGravatarConfig = async (req, res) => {
   try {
-    const data = await readConfig(configFiles.app);
+    const data = loadConfig('app');
     if (data && data.gravatar) {
       res.send({ gravatar: data.gravatar });
     } else {

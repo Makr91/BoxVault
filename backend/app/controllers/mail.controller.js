@@ -1,28 +1,20 @@
 const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const db = require("../models");
 const User = db.user;
 const Organization = db.organization; 
 const crypto = require('crypto');
 
-const smtpConfigPath = path.join(__dirname, '../config/mail.config.yaml');
 let smtpConfig;
-
 try {
-  const fileContents = fs.readFileSync(smtpConfigPath, 'utf8');
-  smtpConfig = yaml.load(fileContents);
+  smtpConfig = loadConfig('mail');
 } catch (e) {
   console.error(`Failed to load SMTP configuration: ${e.message}`);
 }
 
-const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let appConfig;
-
 try {
-  const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  appConfig = yaml.load(fileContents);
+  appConfig = loadConfig('app');
 } catch (e) {
   console.error(`Failed to load app configuration: ${e.message}`);
 }

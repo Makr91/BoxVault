@@ -1,0 +1,309 @@
+.Dd $Mdocdate$
+.Dt BOXVAULT.YAML 5
+.Os
+.Sh NAME
+.Nm boxvault.yaml
+.Nd configuration files for BoxVault Vagrant box repository management system
+.Sh DESCRIPTION
+The
+.Nm
+files are the main configuration files for the BoxVault Vagrant box repository
+management system. They are written in YAML format and control all aspects of
+the service operation including network settings, user authentication, organization
+management, email configuration, and database settings.
+.Pp
+The configuration files are typically located in:
+.Pa /etc/boxvault/
+.Sh CONFIGURATION SECTIONS
+The configuration files are organized into logical sections that control
+different aspects of the service operation.
+.Ss app.config.yaml
+Basic application identification and settings.
+.Bl -tag -width "frontend_url"
+.It Cm name
+String specifying the application name (default: "BoxVault")
+.It Cm version
+String specifying the application version (e.g., "1.0.0")
+.It Cm frontend_url
+Base URL where the frontend is accessible (e.g., "https://localhost:3000")
+.El
+.Ss server
+HTTP and HTTPS server configuration.
+.Bl -tag -width "hostname"
+.It Cm hostname
+Hostname or IP address to bind the server to (default: "localhost")
+.It Cm port
+TCP port number for the web server (default: 3000)
+.El
+.Ss ssl
+SSL/TLS certificate and encryption settings.
+.Bl -tag -width "generate_ssl"
+.It Cm enabled
+Boolean enabling HTTPS server (default: true)
+.It Cm generate_ssl
+Boolean enabling automatic self-signed certificate generation (default: true)
+.It Cm key
+Filesystem path to SSL private key file
+.It Cm cert
+Filesystem path to SSL certificate file
+.El
+.Pp
+When
+.Cm generate_ssl
+is enabled, the service will automatically create self-signed certificates
+if they do not exist at the specified paths.
+.Ss mail.config.yaml
+Email configuration for user invitations and notifications.
+.Bl -tag -width "smtp_connect"
+.It Cm smtp_connect
+SMTP server connection settings:
+.Bl -tag -width "secure" -offset indent
+.It Cm host
+SMTP server hostname (e.g., "smtp.example.com")
+.It Cm port
+SMTP server port (default: 587 for STARTTLS)
+.It Cm secure
+Boolean for direct SSL connection (false for STARTTLS)
+.El
+.It Cm smtp_auth
+SMTP authentication credentials:
+.Bl -tag -width "password" -offset indent
+.It Cm user
+SMTP username or email address
+.It Cm password
+SMTP password or application-specific password
+.El
+.It Cm smtp_settings
+Email message settings:
+.Bl -tag -width "from" -offset indent
+.It Cm from
+From address for outgoing emails (e.g., "BoxVault <noreply@example.com>")
+.El
+.El
+.Ss auth.config.yaml
+User authentication and security configuration.
+.Bl -tag -width "allow_new_organizations"
+.It Cm jwt_secret
+Secret key for JWT token signing (must be kept secure)
+.It Cm jwt_token_time_valid
+JWT token expiration time (default: "5m")
+.It Cm bcrypt_rounds
+Password hashing strength for bcrypt (default: 10)
+.It Cm allow_new_organizations
+Boolean enabling new organization creation (default: true, disable after setup)
+.El
+.Ss db.config.yaml
+Database configuration and storage settings.
+.Bl -tag -width "dialect"
+.It Cm host
+Database server hostname (default: "localhost")
+.It Cm port
+Database server port (default: 3306 for MySQL)
+.It Cm database
+Database name (default: "boxvault")
+.It Cm username
+Database username (default: "boxvault")
+.It Cm password
+Database password
+.It Cm dialect
+Database type ("mysql", "postgres", "sqlite", "mariadb")
+.It Cm storage
+SQLite database file path (when using SQLite)
+.El
+.Ss frontend
+Frontend-specific display and behavior settings.
+.Bl -tag -width "enableNotifications"
+.It Cm port
+Frontend serving port (usually same as server.port)
+.It Cm autoRefreshInterval
+Dashboard auto-refresh interval in seconds (default: 5)
+.It Cm enableNotifications
+Boolean enabling browser notifications (default: true)
+.It Cm enableDarkMode
+Boolean enabling dark mode support (default: true)
+.El
+.Ss cors
+Cross-Origin Resource Sharing (CORS) configuration for web security.
+.Bl -tag -width "whitelist"
+.It Cm whitelist
+Array of allowed origin URLs for CORS requests. Only origins listed here
+can access the API from web browsers.
+.It Cm options
+CORS behavior options:
+.Bl -tag -width "preflightContinue" -offset indent
+.It Cm origin
+Boolean or specific origin validation (default: true)
+.It Cm preflightContinue
+Boolean to pass preflight response to next handler (default: true)
+.It Cm credentials
+Boolean to enable credential sharing (default: true)
+.El
+.El
+.Ss environment
+Environment and proxy settings.
+.Bl -tag -width "trust_proxy"
+.It Cm trust_proxy
+Number of proxy levels to trust for client IP detection (default: 1)
+.El
+.Ss logging
+Logging configuration and verbosity control.
+.Bl -tag -width "enabled"
+.It Cm level
+Logging level ("error", "warn", "info", "debug") (default: "info")
+.It Cm enabled
+Boolean enabling application logging (default: true)
+.El
+.Ss limits
+System resource limits and constraints.
+.Bl -tag -width "maxBoxesPerUser"
+.It Cm maxBoxesPerUser
+Maximum number of Vagrant boxes per user or organization (default: 100)
+.It Cm maxFileSize
+Maximum file size for box uploads in bytes (default: 5GB)
+.El
+.Ss gravatar
+Gravatar service integration for user avatars.
+.Bl -tag -width "apiKey"
+.It Cm apiKey
+Gravatar API key for enhanced avatar features (optional)
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /var/lib/boxvault/"
+.It Pa /etc/boxvault/app.config.yaml
+Main application configuration file
+.It Pa /etc/boxvault/auth.config.yaml
+Authentication configuration file
+.It Pa /etc/boxvault/db.config.yaml
+Database configuration file
+.It Pa /etc/boxvault/mail.config.yaml
+Mail configuration file
+.It Pa /etc/boxvault/ssl/
+SSL certificate directory
+.It Pa /var/lib/boxvault/database/
+Database storage directory
+.It Pa /var/log/boxvault/
+Log file directory
+.El
+.Sh EXAMPLES
+Minimal app.config.yaml for testing:
+.Bd -literal -offset indent
+app:
+  name: BoxVault
+  version: 1.0.0
+.\" x-release-please-version
+  frontend_url: https://localhost:3000
+
+server:
+  hostname: localhost
+  port: 3000
+
+ssl:
+  enabled: true
+  generate_ssl: true
+.Ed
+.Pp
+Basic auth.config.yaml:
+.Bd -literal -offset indent
+jwt:
+  jwt_secret: "change-this-to-a-secure-random-string"
+  jwt_token_time_valid: "5m"
+
+bcrypt:
+  rounds: 10
+
+registration:
+  allow_new_organizations: true
+.Ed
+.Pp
+Production db.config.yaml with MySQL:
+.Bd -literal -offset indent
+database:
+  host: localhost
+  port: 3306
+  database: boxvault
+  username: boxvault
+  password: "secure-database-password"
+  dialect: mysql
+.Ed
+.Pp
+Production mail.config.yaml:
+.Bd -literal -offset indent
+mail:
+  smtp_connect:
+    host: smtp.example.com
+    port: 587
+    secure: false
+  smtp_auth:
+    user: "noreply@example.com"
+    password: "smtp-app-password"
+  smtp_settings:
+    from: "BoxVault <noreply@example.com>"
+.Ed
+.Sh DIAGNOSTICS
+Configuration file syntax errors will prevent the service from starting.
+Check the SMF service logs for detailed error information:
+.Pp
+.Dl # svcs -L boxvault
+.Pp
+Common configuration issues:
+.Bl -bullet -offset indent
+.It
+Invalid YAML syntax (indentation, special characters)
+.It
+Non-existent file paths for SSL certificates or database storage
+.It
+Port conflicts with other services
+.It
+Insufficient filesystem permissions for specified directories
+.It
+Invalid CORS origin URLs
+.It
+Weak or missing JWT secret configuration
+.It
+SMTP configuration errors preventing email invitations
+.El
+.Sh SEE ALSO
+.Xr boxvault 8 ,
+.Xr yaml 7 ,
+.Xr svcadm 8 ,
+.Xr svcs 1
+.Sh STANDARDS
+The configuration file uses YAML 1.2 format as defined by the YAML specification.
+SSL/TLS settings follow standard OpenSSL certificate formats.
+Email configuration follows standard SMTP protocols.
+.Sh SECURITY CONSIDERATIONS
+The configuration file contains sensitive information:
+.Bl -bullet -offset indent
+.It
+JWT secret key for token signing
+.It
+SMTP credentials for email services
+.It
+SSL certificate and key file paths
+.It
+Database storage locations
+.It
+CORS origin whitelist defining trusted frontend URLs
+.El
+.Pp
+Recommended security practices:
+.Bl -bullet -offset indent
+.It
+Set restrictive filesystem permissions (mode 0600) on configuration files
+.It
+Use strong, randomly generated JWT secrets (32+ characters)
+.It
+Use strong SSL certificates from a trusted Certificate Authority in production
+.It
+Configure CORS whitelist to include only necessary origins
+.It
+Disable new organization creation after initial setup
+.It
+Use appropriate bcrypt rounds (10 or higher) for password hashing
+.It
+Configure SMTP with application-specific passwords where possible
+.It
+Regularly rotate JWT secrets and update user sessions
+.It
+Monitor user access patterns and failed authentication attempts
+.El

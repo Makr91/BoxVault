@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const Organization = db.organization;
@@ -11,24 +11,79 @@ const Version = db.versions;
 const Provider = db.providers;
 const File = db.files;
 const Op = db.Sequelize.Op;
-const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
 try {
-  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
-  authConfig = yaml.load(fileContents);
+  authConfig = loadConfig('auth');
 } catch (e) {
   console.error(`Failed to load auth configuration: ${e.message}`);
 }
 
-const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let appConfig;
 try {
-  const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  appConfig = yaml.load(fileContents);
+  appConfig = loadConfig('app');
 } catch (e) {
   console.error(`Failed to load App configuration: ${e.message}`);
 }
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box:
+ *   post:
+ *     summary: Create a new box
+ *     description: Create a new Vagrant box within an organization
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Box name
+ *               description:
+ *                 type: string
+ *                 description: Box description
+ *               published:
+ *                 type: boolean
+ *                 description: Whether the box is published
+ *                 default: false
+ *               isPublic:
+ *                 type: boolean
+ *                 description: Whether the box is publicly accessible
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Box created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Box'
+ *       400:
+ *         description: Bad request - name cannot be empty
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.create = async (req, res) => {
   const { organization } = req.params;
   const { name, description, published, isPublic } = req.body;
@@ -66,6 +121,29 @@ exports.create = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/boxes/public:
+ *   get:
+ *     summary: Get all public boxes
+ *     description: Retrieve all publicly accessible boxes with their versions, providers, and architectures
+ *     tags: [Boxes]
+ *     responses:
+ *       200:
+ *         description: List of public boxes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BoxWithDetails'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Retrieve all public boxes
 exports.findAllPublic = async (req, res) => {
   try {
@@ -116,6 +194,40 @@ exports.findAllPublic = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/boxes/public/{name}:
+ *   get:
+ *     summary: Get a public box by name
+ *     description: Retrieve a specific public box by its name
+ *     tags: [Boxes]
+ *     parameters:
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *     responses:
+ *       200:
+ *         description: Public box details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BoxWithDetails'
+ *       404:
+ *         description: Public box not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Method to retrieve a public box by name
 exports.findPublicBoxByName = async (req, res) => {
   const { name } = req.params;
@@ -174,6 +286,49 @@ exports.findPublicBoxByName = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/boxes:
+ *   get:
+ *     summary: Get all boxes in an organization
+ *     description: Retrieve all boxes belonging to a specific organization
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filter boxes by name (partial match)
+ *     responses:
+ *       200:
+ *         description: List of boxes in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Box'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Retrieve all Boxes from the database under an organization.
 exports.findAll = async (req, res) => {
   const { organization } = req.params;
@@ -233,6 +388,47 @@ exports.findAll = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box:
+ *   get:
+ *     summary: Get organization box details
+ *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility.
+ *     tags: [Boxes]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token for accessing private boxes
+ *     responses:
+ *       200:
+ *         description: Detailed list of boxes in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BoxWithFullDetails'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
   const token = req.headers["x-access-token"];
@@ -417,6 +613,31 @@ exports.getOrganizationBoxDetails = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/discover:
+ *   get:
+ *     summary: Discover all boxes
+ *     description: Retrieve all boxes available to the user. If authenticated, returns all boxes; if not authenticated, returns only public boxes.
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of discoverable boxes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BoxWithDetails'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.discoverAll = async (req, res) => {
   try {
     let boxes;
@@ -571,6 +792,64 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
   return response;
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{name}:
+ *   get:
+ *     summary: Get a specific box
+ *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests.
+ *     tags: [Boxes]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token for accessing private boxes
+ *       - in: header
+ *         name: User-Agent
+ *         schema:
+ *           type: string
+ *         description: User agent (Vagrant requests are detected automatically)
+ *     responses:
+ *       200:
+ *         description: Box details (format depends on request type)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/BoxWithFullDetails'
+ *                 - $ref: '#/components/schemas/VagrantMetadata'
+ *       403:
+ *         description: Unauthorized access to private box
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Box or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.findOne = async (req, res) => {
   const { organization, name } = req.params;
   // Get auth info either from vagrantHandler or x-access-token
@@ -789,6 +1068,67 @@ exports.findOne = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{name}:
+ *   put:
+ *     summary: Update a box
+ *     description: Update box information including name, description, and visibility settings
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Current box name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: New box name
+ *               description:
+ *                 type: string
+ *                 description: Box description
+ *               published:
+ *                 type: boolean
+ *                 description: Whether the box is published
+ *               isPublic:
+ *                 type: boolean
+ *                 description: Whether the box is publicly accessible
+ *     responses:
+ *       200:
+ *         description: Box updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Box'
+ *       404:
+ *         description: Box or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.update = async (req, res) => {
   const { organization, name } = req.params;
   const { name: updatedName, description, published, isPublic } = req.body;
@@ -856,6 +1196,52 @@ exports.update = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{name}:
+ *   delete:
+ *     summary: Delete a box
+ *     description: Delete a specific box and its associated files from the organization
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name to delete
+ *     responses:
+ *       200:
+ *         description: Box deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Box deleted successfully!"
+ *       404:
+ *         description: Box or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.delete = async (req, res) => {
   const { organization, name } = req.params;
 
@@ -911,6 +1297,46 @@ exports.delete = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box:
+ *   delete:
+ *     summary: Delete all boxes in an organization
+ *     description: Delete all boxes belonging to a specific organization and their associated files
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: All boxes deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "5 Boxes were deleted successfully under organization=myorg!"
+ *       404:
+ *         description: Organization not found or no boxes to delete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Delete all Boxes under an organization
 exports.deleteAll = async (req, res) => {
   const { organization } = req.params;
@@ -970,6 +1396,81 @@ exports.deleteAll = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /{organization}/boxes/{name}/versions/{version}/providers/{provider}/{architecture}/vagrant.box:
+ *   get:
+ *     summary: Download Vagrant box file
+ *     description: Download the actual Vagrant box file. This endpoint is used by Vagrant CLI and handles authentication for private boxes.
+ *     tags: [Boxes]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: version
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box version
+ *       - in: path
+ *         name: provider
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name (e.g., virtualbox, vmware)
+ *       - in: path
+ *         name: architecture
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name (e.g., amd64, arm64)
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token for accessing private boxes
+ *       - in: header
+ *         name: Authorization
+ *         schema:
+ *           type: string
+ *         description: Optional Bearer token for Vagrant authentication
+ *     responses:
+ *       302:
+ *         description: Redirect to actual download endpoint
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *             description: URL to the actual file download endpoint
+ *       403:
+ *         description: Unauthorized access to private box
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Box, organization, or file not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Handle Vagrant box downloads
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
@@ -1077,6 +1578,44 @@ exports.downloadBox = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/boxes/published:
+ *   get:
+ *     summary: Get all published boxes in an organization
+ *     description: Retrieve all published boxes belonging to a specific organization
+ *     tags: [Boxes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: List of published boxes in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Box'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Find all published Boxes under an organization
 exports.findAllPublished = async (req, res) => {
   const { organization } = req.params;

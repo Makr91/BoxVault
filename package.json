@@ -7,7 +7,7 @@
   "scripts": {
     "start": "cd backend && npm run start",
     "preproduction": "concurrently \"npm run start\" \"npm run watch:frontend\"",
-    "build": "npm run build:frontend && npm run build:backend",
+    "build": "npm run sync-versions && npm run build:frontend && npm run build:backend",
     "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
     "watch:backend": "cd backend && npm run watch-build",
@@ -17,7 +17,9 @@
     "dev:backend": "cd backend && npm run watch-build",
     "install": "npm run install-frontend && npm run install-backend",
     "install-frontend": "cd frontend && npm install",
-    "install-backend": "cd backend && npm install"
+    "install-backend": "cd backend && npm install",
+    "sync-versions": "node scripts/sync-versions.js",
+    "generate-docs": "node scripts/generate-docs.js"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",

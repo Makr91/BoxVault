@@ -1,8 +1,6 @@
 // auth.controller.js
 const db = require("../models");
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require('crypto');
@@ -13,11 +11,9 @@ const Organization = db.organization;
 const Invitation = db.invitation;
 const ServiceAccount = db.service_account;
 const Op = db.Sequelize.Op;
-const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
 try {
-  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
-  authConfig = yaml.load(fileContents);
+  authConfig = loadConfig('auth');
 } catch (e) {
   console.error(`Failed to load auth configuration: ${e.message}`);
 }
@@ -26,6 +22,66 @@ const generateEmailHash = (email) => {
   return crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
 };
 
+/**
+ * @swagger
+ * /api/auth/signup:
+ *   post:
+ *     summary: Register a new user
+ *     description: Create a new user account, optionally with an invitation token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: Unique username for the user
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: User's password
+ *               invitationToken:
+ *                 type: string
+ *                 description: Optional invitation token for joining an organization
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User registered successfully! If configured, a verification email will be sent to your email address."
+ *       400:
+ *         description: Bad request - invalid data or duplicate user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Username or email already in use."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.signup = async (req, res) => {
   const { username, email, password, invitationToken } = req.body;
 
@@ -118,6 +174,68 @@ exports.signup = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/auth/invite:
+ *   post:
+ *     summary: Send an invitation to join an organization
+ *     description: Send an email invitation for a user to join a specific organization
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - organizationName
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address to send invitation to
+ *               organizationName:
+ *                 type: string
+ *                 description: Name of the organization to invite user to
+ *     responses:
+ *       200:
+ *         description: Invitation sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invitation sent successfully!"
+ *                 invitationToken:
+ *                   type: string
+ *                   description: The invitation token
+ *                 invitationTokenExpires:
+ *                   type: number
+ *                   description: Expiration timestamp
+ *                 organizationId:
+ *                   type: integer
+ *                   description: ID of the organization
+ *                 invitationLink:
+ *                   type: string
+ *                   description: Direct link to accept invitation
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.sendInvitation = async (req, res) => {
   const { email, organizationName } = req.body;
 
@@ -154,6 +272,69 @@ exports.sendInvitation = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/invitations/active/{organizationName}:
+ *   get:
+ *     summary: Get active invitations for an organization
+ *     description: Retrieve all invitations (active, expired, accepted) for a specific organization
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Name of the organization
+ *     responses:
+ *       200:
+ *         description: List of invitations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     description: Invitation ID
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     description: Invited email address
+ *                   token:
+ *                     type: string
+ *                     description: Invitation token
+ *                   expires:
+ *                     type: string
+ *                     format: date-time
+ *                     description: Expiration date
+ *                   accepted:
+ *                     type: boolean
+ *                     description: Whether invitation was accepted
+ *                   expired:
+ *                     type: boolean
+ *                     description: Whether invitation has expired
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                     description: Creation date
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.getActiveInvitations = async (req, res) => {
   const { organizationName } = req.params;
 
@@ -184,6 +365,46 @@ exports.getActiveInvitations = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/invitations/{invitationId}:
+ *   delete:
+ *     summary: Delete an invitation
+ *     description: Remove an invitation from the system
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: invitationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the invitation to delete
+ *     responses:
+ *       200:
+ *         description: Invitation deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invitation deleted successfully."
+ *       404:
+ *         description: Invitation not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.deleteInvitation = async (req, res) => {
   const { invitationId } = req.params;
 
@@ -205,6 +426,44 @@ exports.deleteInvitation = async (req, res) => {
 };
 
 
+/**
+ * @swagger
+ * /api/auth/validate-invitation/{token}:
+ *   get:
+ *     summary: Validate an invitation token
+ *     description: Check if an invitation token is valid and get organization information
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Invitation token to validate
+ *     responses:
+ *       200:
+ *         description: Valid invitation token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 organizationName:
+ *                   type: string
+ *                   description: Name of the organization
+ *       400:
+ *         description: Invalid or expired invitation token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.validateInvitationToken = async (req, res) => {
   const { token } = req.params;
 
@@ -224,6 +483,54 @@ exports.validateInvitationToken = async (req, res) => {
 };
 
 
+/**
+ * @swagger
+ * /api/auth/verify-mail/{token}:
+ *   get:
+ *     summary: Verify email address
+ *     description: Verify a user's email address using a verification token
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Email verification token
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Email verified successfully."
+ *                 expirationTime:
+ *                   type: number
+ *                   description: Token expiration timestamp
+ *       400:
+ *         description: Invalid or expired verification token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Verification token has expired."
+ *                 expirationTime:
+ *                   type: number
+ *                   description: Token expiration timestamp
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.verifyMail = async (req, res) => {
   try {
     const { token } = req.params;
@@ -254,6 +561,101 @@ exports.verifyMail = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/auth/signin:
+ *   post:
+ *     summary: Sign in user
+ *     description: Authenticate a user or service account and return JWT token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: Username or service account name
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Password or service account token
+ *               stayLoggedIn:
+ *                 type: boolean
+ *                 description: Whether to extend token expiration time
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Successful authentication
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   description: User ID
+ *                 username:
+ *                   type: string
+ *                   description: Username
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                   description: User email (null for service accounts)
+ *                 verified:
+ *                   type: boolean
+ *                   description: Email verification status (null for service accounts)
+ *                 emailHash:
+ *                   type: string
+ *                   description: Hashed email for Gravatar (null for service accounts)
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: User roles
+ *                 organization:
+ *                   type: string
+ *                   description: Organization name (null for service accounts)
+ *                 accessToken:
+ *                   type: string
+ *                   description: JWT access token
+ *                 isServiceAccount:
+ *                   type: boolean
+ *                   description: Whether this is a service account
+ *                 gravatarUrl:
+ *                   type: string
+ *                   description: Gravatar URL (null for service accounts)
+ *       401:
+ *         description: Invalid credentials or expired service account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   nullable: true
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid Password!"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.signin = async (req, res) => {
   try {
     const { username, password, stayLoggedIn } = req.body;
@@ -341,6 +743,44 @@ exports.signin = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}:
+ *   delete:
+ *     summary: Delete a user
+ *     description: Remove a user from the system
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the user to delete
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User was deleted successfully!"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Could not delete User with id=1"
+ */
 exports.deleteUser = (req, res) => {
   const userId = req.params.userId;
 
@@ -361,6 +801,46 @@ exports.deleteUser = (req, res) => {
     });
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}/suspend:
+ *   put:
+ *     summary: Suspend a user
+ *     description: Suspend a user account
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the user to suspend
+ *     responses:
+ *       200:
+ *         description: User suspended successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User suspended successfully."
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
    // Method to suspend a user
    exports.suspendUser = async (req, res) => {
      const { userId } = req.params;
@@ -377,6 +857,46 @@ exports.deleteUser = (req, res) => {
      }
    };
 
+/**
+ * @swagger
+ * /api/users/{userId}/resume:
+ *   put:
+ *     summary: Resume a suspended user
+ *     description: Reactivate a suspended user account
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the user to resume
+ *     responses:
+ *       200:
+ *         description: User resumed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User resumed successfully!"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
    exports.resumeUser = async (req, res) => {
     const { userId } = req.params;
 
@@ -396,6 +916,52 @@ exports.deleteUser = (req, res) => {
   };
 
 // If you have an update user function, ensure it also updates the email hash
+/**
+ * @swagger
+ * /api/auth/refresh-token:
+ *   post:
+ *     summary: Refresh JWT token
+ *     description: Generate a new JWT token for stay-logged-in sessions
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               stayLoggedIn:
+ *                 type: boolean
+ *                 description: Whether to enable stay-logged-in for the new token
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   description: New JWT access token
+ *                 stayLoggedIn:
+ *                   type: boolean
+ *                   description: Stay-logged-in status
+ *       403:
+ *         description: Token refresh not allowed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Refresh token endpoint
 exports.refreshToken = async (req, res) => {
   try {
@@ -433,6 +999,53 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/users/{userId}:
+ *   put:
+ *     summary: Update user information
+ *     description: Update a user's email address and email hash
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the user to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: New email address
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User updated successfully!"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.updateUser = async (req, res) => {
   const { userId } = req.params;
   const { email } = req.body;

@@ -1,0 +1,231 @@
+.Dd $Mdocdate$
+.Dt BOXVAULT 8
+.Os
+.Sh NAME
+.Nm boxvault
+.Nd vagrant box repository management system
+.Sh SYNOPSIS
+.Nm
+.Op Fl -help
+.Op Fl -version
+.Sh DESCRIPTION
+The
+.Nm
+utility provides a comprehensive Vagrant box repository management system
+that offers a web interface for managing, organizing, and distributing Vagrant
+boxes across teams and organizations. It serves as a centralized platform
+for Vagrant box lifecycle management.
+.Pp
+.Nm
+is a Node.js Express application serving a React-based web interface that 
+provides comprehensive Vagrant box repository management capabilities including:
+.Bl -bullet -offset indent
+.It
+User authentication and session management with JWT tokens
+.It
+Multi-organization support with role-based access control
+.It
+Vagrant box upload, versioning, and distribution management
+.It
+Web-based dashboard for box and version management
+.It
+User invitation and registration system with email notifications
+.It
+Role-based access control (Admin, Moderator, User)
+.It
+SSL/TLS encryption with automatic certificate generation
+.It
+RESTful API for automation and integration
+.El
+.Pp
+The service uses JWT token authentication for web sessions and provides
+a complete Vagrant box repository solution similar to Vagrant Cloud.
+.Sh CONFIGURATION
+.Nm
+reads its configuration from multiple YAML files in
+.Pa /etc/boxvault/
+by default. The configuration files use YAML format and control all aspects
+of the service including network ports, SSL settings, database configuration,
+user authentication, mail settings, and organization management parameters.
+.Pp
+See
+.Xr boxvault.yaml 5
+for detailed configuration file format documentation.
+.Sh SERVICE MANAGEMENT
+The
+.Nm
+service is managed through the Service Management Facility (SMF). Use the
+following commands to control the service:
+.Pp
+.Dl # svcadm enable boxvault
+.Dl # svcadm disable boxvault
+.Dl # svcadm restart boxvault
+.Pp
+Check service status:
+.Pp
+.Dl # svcs boxvault
+.Sh WEB INTERFACE
+The service provides a modern React-based web interface accessible through
+a standard web browser. The default access URL is:
+.Pp
+.Dl https://localhost:3000
+.Pp
+Key web interface features include:
+.Bl -bullet -offset indent
+.It
+User login and registration with organization management
+.It
+Dashboard with Vagrant box overview and management
+.It
+Box upload, versioning, and provider management
+.It
+User and organization administration
+.It
+Settings and configuration management
+.It
+Box download and distribution management
+.El
+.Sh API ENDPOINTS
+The service provides REST API endpoints for box and organization management.
+Interactive API documentation is available at:
+.Pp
+.Dl https://localhost:3000/api-docs
+.Pp
+Key API endpoint categories include:
+.Bl -tag -width ".Pa /api/organizations"
+.It Pa /api/auth
+User authentication and session management
+.It Pa /api/users
+User profile and account management
+.It Pa /api/organizations
+Organization creation and management
+.It Pa /api/boxes
+Vagrant box management and operations
+.It Pa /api/versions
+Box version management
+.It Pa /api/providers
+Provider and architecture management
+.It Pa /api/files
+File upload and download operations
+.It Pa /api/invitations
+User invitation and registration codes
+.El
+.Sh AUTHENTICATION
+Web access uses JWT token-based authentication. Users must register and login
+through the web interface. Initial organization setup (if enabled in config):
+.Pp
+.Dl Navigate to https://localhost:3000/register
+.Pp
+For existing organizations, users need an invitation code from an administrator.
+The first user in a new organization automatically becomes the admin.
+.Sh FILES
+.Bl -tag -width ".Pa /var/lib/boxvault/database/"
+.It Pa /etc/boxvault/app.config.yaml
+Main application configuration file
+.It Pa /etc/boxvault/auth.config.yaml
+Authentication configuration file
+.It Pa /etc/boxvault/db.config.yaml
+Database configuration file
+.It Pa /etc/boxvault/mail.config.yaml
+Mail configuration file
+.It Pa /etc/boxvault/ssl/
+SSL certificate directory (auto-generated if enabled)
+.It Pa /var/lib/boxvault/database/
+SQLite database directory for user and organization data
+.It Pa /var/log/boxvault/
+Service log directory
+.It Pa /opt/boxvault/
+Installation directory
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Start the service manually for testing:
+.Bd -literal -offset indent
+# cd /opt/boxvault
+# node server.js
+.Ed
+.Pp
+Check web interface connectivity:
+.Bd -literal -offset indent
+# curl -k https://localhost:3000/
+.Ed
+.Pp
+Test API endpoint:
+.Bd -literal -offset indent
+# curl -k https://localhost:3000/api/health
+.Ed
+.Sh DIAGNOSTICS
+The service logs operational information to standard output when run manually,
+or to SMF service logs when running under SMF management.
+.Pp
+Common diagnostic steps:
+.Bl -enum -offset indent
+.It
+Check SMF service status: 
+.Cm svcs -xv boxvault
+.It
+Review service logs: 
+.Cm svcs -L boxvault
+.It
+Verify configuration syntax: 
+.Cm node -c /opt/boxvault/server.js
+.It
+Test network connectivity to port 3000
+.It
+Verify database permissions and disk space
+.It
+Check box upload and download functionality from web interface
+.El
+.Sh SEE ALSO
+.Xr boxvault.yaml 5 ,
+.Xr svcadm 8 ,
+.Xr svcs 1
+.Sh STANDARDS
+The frontend API follows REST architectural principles and returns JSON-formatted
+responses. Authentication uses industry-standard JWT token mechanisms with
+bcrypt hashing for secure password storage.
+.Sh HISTORY
+.Nm
+first appeared in BoxVault 1.0.0 as a comprehensive Vagrant box repository
+.\" x-release-please-version
+management system.
+.Sh AUTHORS
+.An BoxVault Project
+.Sh SECURITY
+.Nm
+implements several security measures:
+.Bl -bullet -offset indent
+.It
+JWT token authentication with configurable expiration timeouts
+.It
+Bcrypt password hashing for secure user credential storage
+.It
+SSL/TLS encryption with automatic certificate generation
+.It
+Multi-tenant organization isolation and access control
+.It
+Role-based permissions (Super Admin, Admin, User)
+.It
+CORS validation for web browser security
+.It
+Session management with automatic timeout and cleanup
+.El
+.Pp
+For production deployments, ensure:
+.Bl -bullet -offset indent
+.It
+Strong JWT secret is configured and kept secure
+.It
+SSL certificates are properly configured or auto-generation is enabled
+.It
+Organization creation is disabled after initial setup
+.It
+User invitation system is properly configured with email validation
+.It
+Network access is appropriately restricted via firewall rules
+.It
+Database files have proper filesystem permissions
+.It
+Regular security updates and monitoring of user access patterns
+.El

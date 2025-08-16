@@ -1,0 +1,71 @@
+// Custom color scheme for wider layout with dark theme
+// Based on Just the Docs official method for wider content
+
+// Import dark theme first (official path from Just the Docs docs)
+@import "./color_schemes/dark";
+
+// Then override the width
+$content-width: 60rem;  // Much wider than default 50rem for Swagger UI
+
+// Fix double toggle icons with highest specificity to override all Swagger UI styles
+.swagger-ui .model-toggle::after,
+.swagger-ui span.model-toggle::after,
+.swagger-ui .model-box-control .model-toggle::after {
+  background: none !important;
+  background-image: none !important;
+  background-color: transparent !important;
+  background-size: 0 !important;
+  content: "" !important;
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.model-toggle {
+  background-image: none !important;
+}
+
+// Use ::before instead of ::after to avoid conflicts
+.swagger-ui .model-toggle.collapsed::before,
+.swagger-ui span.model-toggle.collapsed::before,
+.swagger-ui .model-box-control .model-toggle.collapsed::before {
+  content: "►" !important;
+  color: #8b949e !important;
+  display: inline !important;
+  font-size: 12px !important;
+  margin-right: 6px !important;
+}
+
+.swagger-ui .model-toggle:not(.collapsed)::before,
+.swagger-ui span.model-toggle:not(.collapsed)::before,
+.swagger-ui .model-box-control .model-toggle:not(.collapsed)::before {
+  content: "▼" !important;
+  color: #8b949e !important;
+  display: inline !important;
+  font-size: 12px !important;
+  margin-right: 6px !important;
+}
+
+// Style Swagger UI tab headers with dark background
+.swagger-ui .opblock-section-header {
+  background: hsla(0, 0%, 0%, 0.8) !important;  // Semi-transparent dark background
+}
+
+// Style scheme container for better layout
+.swagger-ui .scheme-container {
+  max-width: 1460px !important;
+  padding: 0 20px !important;
+  width: 100% !important;
+}
+
+// Fix white borders on outline buttons
+.btn.btn-outline {
+  border: none !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #7253ed !important;
+}
+
+.btn.btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #7253ed !important;
+}

@@ -1,0 +1,161 @@
+# Jekyll configuration for BoxVault documentation
+title: BoxVault
+description: Vagrant Box Repository Management System
+url: "https://makr91.github.io"
+baseurl: "/BoxVault"
+
+# Theme
+theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs
+
+# Color scheme
+color_scheme: wider
+
+# Logo and favicon
+logo: "/web/public/images/BoxVault.svg"
+favicon_ico: "/web/public/favicon.ico"
+
+# Search
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
+  rel_url: true
+  button: false
+
+# Navigation
+nav_sort: case_insensitive
+nav_external_links:
+  - title: GitHub Repository
+    url: https://github.com/Makr91/BoxVault
+    hide_icon: false
+  - title: API Documentation
+    url: /api-docs
+    hide_icon: false
+
+# Footer
+footer_content: "Copyright &copy; 2024 BoxVault Project. Distributed under the <a href=\"https://github.com/Makr91/BoxVault/blob/main/LICENSE.md\">GPL-3.0 License</a>."
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
+
+# Last edit timestamp
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p"
+
+# GitHub metadata
+repository: Makr91/BoxVault
+github:
+  repository_url: https://github.com/Makr91/BoxVault
+
+# Plugins
+plugins:
+  - jekyll-github-metadata
+  - jekyll-include-cache
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# Sass
+sass:
+  style: compressed
+
+# Collections
+collections:
+  guides:
+    permalink: "/:collection/:name/"
+    output: true
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: "docs"
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+      type: "guides"
+    values:
+      layout: "default"
+      parent: "Guides"
+
+# Exclude from processing
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - backend/
+  - frontend/
+  - packaging/
+  - scripts/
+  - "*.log"
+  - .git/
+  - .github/
+  - README.md
+
+# Include files
+include:
+  - _pages
+  - docs/
+  - head_custom.html
+
+# SEO
+lang: en-US
+author:
+  name: BoxVault Project
+  url: https://github.com/Makr91/BoxVault
+
+# Social
+social:
+  name: BoxVault
+  links:
+    - https://github.com/Makr91/BoxVault
+
+# Analytics (if needed)
+# google_analytics: UA-NNNNNNNN-N
+
+# Mermaid diagrams support
+mermaid:
+  version: "9.4.3"
+
+# Callouts
+callouts_level: quiet
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red

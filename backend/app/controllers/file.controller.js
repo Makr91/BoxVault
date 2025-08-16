@@ -1,25 +1,21 @@
 // file.controller.js
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const { uploadFile: uploadFileMiddleware } = require("../middleware/upload");
 
-const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
 try {
-  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
-  authConfig = yaml.load(fileContents);
+  authConfig = loadConfig('auth');
 } catch (e) {
   console.error(`Failed to load auth configuration: ${e.message}`);
 }
 
-const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let appConfig;
 try {
-  const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  appConfig = yaml.load(fileContents);
+  appConfig = loadConfig('app');
 } catch (e) {
   console.error(`Failed to load App configuration: ${e.message}`);
 }
@@ -27,6 +23,184 @@ try {
 const Architecture = db.architectures;
 const File = db.files;
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/upload:
+ *   post:
+ *     summary: Upload a Vagrant box file
+ *     description: Upload a new Vagrant box file for a specific architecture and provider
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name (e.g., virtualbox, vmware)
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name (e.g., amd64, arm64)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Vagrant box file to upload
+ *               checksum:
+ *                 type: string
+ *                 description: File checksum for verification
+ *               checksumType:
+ *                 type: string
+ *                 description: Checksum algorithm (e.g., sha256, md5)
+ *                 enum: [sha256, md5, sha1, NULL]
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "File uploaded successfully"
+ *                 fileName:
+ *                   type: string
+ *                   example: "vagrant.box"
+ *                 originalName:
+ *                   type: string
+ *                   description: Original filename
+ *                 fileSize:
+ *                   type: integer
+ *                   description: File size in bytes
+ *                 mimeType:
+ *                   type: string
+ *                   description: MIME type of the uploaded file
+ *                 path:
+ *                   type: string
+ *                   description: File path on server
+ *                 checksum:
+ *                   type: string
+ *                   description: File checksum
+ *                 checksumType:
+ *                   type: string
+ *                   description: Checksum algorithm used
+ *                 fileRecord:
+ *                   $ref: '#/components/schemas/File'
+ *       404:
+ *         description: Architecture not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Architecture not found for provider virtualbox in version 1.0.0 of box mybox."
+ *       408:
+ *         description: Upload timeout
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Upload timed out - Request took too long to complete"
+ *                 error:
+ *                   type: string
+ *                   example: "UPLOAD_TIMEOUT"
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     duration:
+ *                       type: string
+ *                       example: "3600 seconds"
+ *                     maxFileSize:
+ *                       type: string
+ *                       example: "10GB"
+ *       413:
+ *         description: File too large
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "File size cannot be larger than 10GB!"
+ *                 error:
+ *                   type: string
+ *                   example: "FILE_TOO_LARGE"
+ *       507:
+ *         description: Insufficient storage space
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Not enough storage space available"
+ *                 error:
+ *                   type: string
+ *                   example: "NO_STORAGE_SPACE"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "UPLOAD_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Could not upload the file"
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     error:
+ *                       type: string
+ *                     code:
+ *                       type: string
+ *                     duration:
+ *                       type: number
+ */
 const upload = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
@@ -233,6 +407,116 @@ const upload = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/download:
+ *   get:
+ *     summary: Download a Vagrant box file
+ *     description: Download the Vagrant box file with support for range requests and authentication
+ *     tags: [Files]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name
+ *       - in: query
+ *         name: token
+ *         schema:
+ *           type: string
+ *         description: Download token for authentication
+ *       - in: header
+ *         name: Range
+ *         schema:
+ *           type: string
+ *         description: Range header for partial content requests
+ *         example: "bytes=0-1023"
+ *     responses:
+ *       200:
+ *         description: File download (full content)
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *         headers:
+ *           Content-Length:
+ *             schema:
+ *               type: integer
+ *             description: File size in bytes
+ *           Accept-Ranges:
+ *             schema:
+ *               type: string
+ *               example: "bytes"
+ *             description: Indicates server supports range requests
+ *       206:
+ *         description: Partial content (range request)
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *         headers:
+ *           Content-Range:
+ *             schema:
+ *               type: string
+ *               example: "bytes 0-1023/2048"
+ *             description: Range of bytes being returned
+ *           Content-Length:
+ *             schema:
+ *               type: integer
+ *             description: Size of the partial content
+ *       403:
+ *         description: Unauthorized access
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: File or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       416:
+ *         description: Range not satisfiable
+ *         headers:
+ *           Content-Range:
+ *             schema:
+ *               type: string
+ *               example: "bytes *2048"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
@@ -456,6 +740,100 @@ const download = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/info:
+ *   get:
+ *     summary: Get file information
+ *     description: Retrieve information about a Vagrant box file including download URL and metadata
+ *     tags: [Files]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token for accessing private files
+ *     responses:
+ *       200:
+ *         description: File information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 fileName:
+ *                   type: string
+ *                   example: "vagrant.box"
+ *                   description: Name of the file
+ *                 downloadUrl:
+ *                   type: string
+ *                   example: "https://api.example.com/organization/myorg/box/mybox/version/1.0.0/provider/virtualbox/architecture/amd64/file/download?token=..."
+ *                   description: Secure download URL with token
+ *                 downloadCount:
+ *                   type: integer
+ *                   example: 42
+ *                   description: Number of times the file has been downloaded
+ *                 checksum:
+ *                   type: string
+ *                   example: "a1b2c3d4e5f6..."
+ *                   description: File checksum
+ *                 checksumType:
+ *                   type: string
+ *                   example: "sha256"
+ *                   description: Checksum algorithm used
+ *                 fileSize:
+ *                   type: integer
+ *                   example: 1073741824
+ *                   description: File size in bytes
+ *       403:
+ *         description: Unauthorized access to file information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: File, box, or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   
@@ -623,6 +1001,70 @@ const info = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/delete:
+ *   delete:
+ *     summary: Delete a Vagrant box file
+ *     description: Delete a Vagrant box file from both disk and database
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name
+ *     responses:
+ *       200:
+ *         description: File deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "File and database record are deleted, or file was not found but cleanup attempted."
+ *       404:
+ *         description: Architecture not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 const remove = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
@@ -710,6 +1152,186 @@ const remove = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/upload:
+ *   put:
+ *     summary: Update a Vagrant box file
+ *     description: Update an existing Vagrant box file with a new version
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Updated Vagrant box file
+ *               checksum:
+ *                 type: string
+ *                 description: File checksum for verification
+ *               checksumType:
+ *                 type: string
+ *                 description: Checksum algorithm
+ *                 enum: [sha256, md5, sha1, NULL]
+ *               newOrganization:
+ *                 type: string
+ *                 description: New organization name (optional)
+ *               newBoxId:
+ *                 type: string
+ *                 description: New box name (optional)
+ *               newVersionNumber:
+ *                 type: string
+ *                 description: New version number (optional)
+ *               newProviderName:
+ *                 type: string
+ *                 description: New provider name (optional)
+ *               newArchitectureName:
+ *                 type: string
+ *                 description: New architecture name (optional)
+ *     responses:
+ *       200:
+ *         description: File updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Updated the file successfully"
+ *                 fileName:
+ *                   type: string
+ *                   example: "vagrant.box"
+ *                 fileSize:
+ *                   type: integer
+ *                   description: File size in bytes
+ *                 path:
+ *                   type: string
+ *                   description: File path on server
+ *       404:
+ *         description: Architecture or file not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       408:
+ *         description: Upload timeout
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "UPLOAD_TIMEOUT"
+ *                 message:
+ *                   type: string
+ *                   example: "Upload timed out - Request took too long to complete"
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     duration:
+ *                       type: number
+ *                     maxFileSize:
+ *                       type: number
+ *       413:
+ *         description: File too large
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "FILE_TOO_LARGE"
+ *                 message:
+ *                   type: string
+ *                   example: "File size cannot be larger than 10GB!"
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     maxSize:
+ *                       type: number
+ *                     duration:
+ *                       type: number
+ *       507:
+ *         description: Insufficient storage space
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "NO_STORAGE_SPACE"
+ *                 message:
+ *                   type: string
+ *                   example: "Not enough storage space available"
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     path:
+ *                       type: string
+ *                     duration:
+ *                       type: number
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 error:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     duration:
+ *                       type: number
+ */
 const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
@@ -878,6 +1500,82 @@ const update = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/get-download-link:
+ *   post:
+ *     summary: Generate a secure download link
+ *     description: Generate a time-limited secure download link for a Vagrant box file
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name
+ *     responses:
+ *       200:
+ *         description: Download link generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 downloadUrl:
+ *                   type: string
+ *                   example: "https://api.example.com/organization/myorg/box/mybox/version/1.0.0/provider/virtualbox/architecture/amd64/file/download?token=..."
+ *                   description: Secure download URL with embedded token (expires in 1 hour)
+ *       403:
+ *         description: Unauthorized access to file
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: File, box, or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 error:
+ *                   type: object
+ */
 const getDownloadLink = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   

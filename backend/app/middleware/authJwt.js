@@ -1,15 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const User = db.user;
 
-const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
 try {
-  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
-  authConfig = yaml.load(fileContents);
+  authConfig = loadConfig('auth');
 } catch (e) {
   console.error(`Failed to load auth configuration: ${e.message}`);
 }

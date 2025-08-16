@@ -1,0 +1,62 @@
+#!/bin/bash
+set -e
+
+# Create system user and group
+if ! getent passwd boxvault > /dev/null 2>&1; then
+    adduser --system --group --home /opt/boxvault \
+            --no-create-home --shell /usr/sbin/nologin \
+            --gecos "BoxVault system user" boxvault
+fi
+
+# Set ownership and permissions
+chown -R boxvault:boxvault /opt/boxvault
+chown -R boxvault:boxvault /var/lib/boxvault
+chown -R boxvault:boxvault /var/log/boxvault
+chown -R boxvault:boxvault /etc/boxvault
+
+
+# Generate JWT secret if it doesn't exist and update auth config (only on fresh install)
+case "$1" in
+    configure)
+        if [ -z "$2" ]; then
+            # Fresh install (no previous version)
+            if [ -f /etc/boxvault/auth.config.yaml ]; then
+                if grep -q "CHANGE_THIS_SECRET_KEY_IN_PRODUCTION" /etc/boxvault/auth.config.yaml; then
+                    JWT_SECRET=$(openssl rand -hex 32)
+                    sed -i "s/CHANGE_THIS_SECRET_KEY_IN_PRODUCTION/${JWT_SECRET}/g" /etc/boxvault/auth.config.yaml
+                    echo "Generated and updated JWT secret in auth.config.yaml"
+                fi
+            fi
+        else
+            # Upgrade (previous version exists) - don't modify existing configs
+            echo "Upgrade detected - preserving existing configuration files"
+        fi
+        ;;
+esac
+
+# Initialize directories for BoxVault
+mkdir -p /var/lib/boxvault/uploads
+mkdir -p /var/log/boxvault
+chown boxvault:boxvault /var/lib/boxvault/uploads
+chown boxvault:boxvault /var/log/boxvault
+
+# Reload systemd daemon
+systemctl daemon-reload
+
+echo ""
+echo "======================================================================"
+echo "BoxVault has been installed successfully!"
+echo ""
+echo "Next steps:"
+echo "1. Review configuration files in: /etc/boxvault/"
+echo "2. Configure database connection: /etc/boxvault/db.config.yaml"
+echo "3. Configure mail settings: /etc/boxvault/mail.config.yaml"
+echo "4. Start the service: systemctl enable --now boxvault"
+echo "5. Check status: systemctl status boxvault"
+echo "6. View logs: journalctl -u boxvault -f"
+echo ""
+echo "Default access: http://localhost:3000"
+echo "======================================================================"
+echo ""
+
+#DEBHELPER#

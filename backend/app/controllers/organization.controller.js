@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const crypto = require('crypto');
@@ -9,20 +9,16 @@ const Role = db.role;
 const Box = db.box;
 const Organization = db.organization; 
 const Op = db.Sequelize.Op;
-const authConfigPath = path.join(__dirname, '../config/auth.config.yaml');
 let authConfig;
 try {
-  const fileContents = fs.readFileSync(authConfigPath, 'utf8');
-  authConfig = yaml.load(fileContents);
+  authConfig = loadConfig('auth');
 } catch (e) {
   console.error(`Failed to load auth configuration: ${e.message}`);
 }
 
-const appConfigPath = path.join(__dirname, '../config/app.config.yaml');
 let appConfig;
 try {
-  const fileContents = fs.readFileSync(appConfigPath, 'utf8');
-  appConfig = yaml.load(fileContents);
+  appConfig = loadConfig('app');
 } catch (e) {
   console.error(`Failed to load App configuration: ${e.message}`);
 }
@@ -31,6 +27,31 @@ const generateEmailHash = (email) => {
   return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 };
 
+/**
+ * @swagger
+ * /api/organizations-with-users:
+ *   get:
+ *     summary: Get all organizations with their users (Admin only)
+ *     description: Retrieve all organizations including their users and user roles. Admin access required.
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of organizations with users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/OrganizationWithUsers'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.getOrganizationsWithUsers = async (req, res) => {
   try {
     const organizations = await Organization.findAll({
@@ -54,6 +75,50 @@ exports.getOrganizationsWithUsers = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization:
+ *   post:
+ *     summary: Create a new organization
+ *     description: Create a new organization with the specified name and description
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - organization
+ *             properties:
+ *               organization:
+ *                 type: string
+ *                 description: Organization name
+ *               description:
+ *                 type: string
+ *                 description: Organization description
+ *     responses:
+ *       200:
+ *         description: Organization created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Organization'
+ *       400:
+ *         description: Bad request - organization name cannot be empty
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Create and Save a new Organization
 exports.create = async (req, res) => {
     // Validate request
@@ -84,6 +149,53 @@ exports.create = async (req, res) => {
       });
     };
 
+/**
+ * @swagger
+ * /api/organizations-with-users:
+ *   get:
+ *     summary: Get all organizations with users and box counts
+ *     description: Retrieve all organizations with their users, roles, and box counts. Box counts are filtered based on user access.
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of organizations with detailed user information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Organization'
+ *                   - type: object
+ *                     properties:
+ *                       users:
+ *                         type: array
+ *                         items:
+ *                           allOf:
+ *                             - $ref: '#/components/schemas/User'
+ *                             - type: object
+ *                               properties:
+ *                                 totalBoxes:
+ *                                   type: integer
+ *                                   description: Number of boxes accessible to the requesting user
+ *                       totalBoxes:
+ *                         type: integer
+ *                         description: Total number of boxes in the organization accessible to the requesting user
+ *       401:
+ *         description: Unauthorized - invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.findAllWithUsers = async (req, res) => {
   const token = req.headers["x-access-token"];
   let userId = null;
@@ -139,6 +251,69 @@ exports.findAllWithUsers = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/users:
+ *   get:
+ *     summary: Get users in a specific organization
+ *     description: Retrieve all users belonging to a specific organization with their roles and box counts
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: List of users in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     description: User ID
+ *                   username:
+ *                     type: string
+ *                     description: Username
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     description: User email
+ *                   verified:
+ *                     type: boolean
+ *                     description: Email verification status
+ *                   suspended:
+ *                     type: boolean
+ *                     description: User suspension status
+ *                   roles:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: User roles
+ *                   totalBoxes:
+ *                     type: integer
+ *                     description: Number of boxes accessible to the requesting user
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.findOneWithUsers = async (req, res) => {
   const { organizationName } = req.params;
   const userId = req.userId;
@@ -188,6 +363,49 @@ exports.findOneWithUsers = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization:
+ *   get:
+ *     summary: Get all organizations
+ *     description: Retrieve all organizations with optional name filtering and box counts
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: organization
+ *         schema:
+ *           type: string
+ *         description: Filter organizations by name (partial match)
+ *     responses:
+ *       200:
+ *         description: List of organizations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Organization'
+ *                   - type: object
+ *                     properties:
+ *                       totalBoxes:
+ *                         type: integer
+ *                         description: Total number of boxes accessible to the requesting user
+ *       401:
+ *         description: Unauthorized - invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Retrieve all Organizations from the database.
 exports.findAll = async (req, res) => {
   const organization = req.query.organization;
@@ -221,6 +439,54 @@ exports.findAll = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}:
+ *   get:
+ *     summary: Get a specific organization
+ *     description: Retrieve detailed information about a specific organization including box counts
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: Organization details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/Organization'
+ *                 - type: object
+ *                   properties:
+ *                     totalBoxes:
+ *                       type: integer
+ *                       description: Total number of boxes accessible to the requesting user
+ *       401:
+ *         description: Unauthorized - invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.findOne = async (req, res) => {
   const { organizationName } = req.params;
   const token = req.headers["x-access-token"];
@@ -280,6 +546,69 @@ exports.findOne = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}:
+ *   put:
+ *     summary: Update an organization
+ *     description: Update organization information including name, description, email, and website
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Current organization name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               organization:
+ *                 type: string
+ *                 description: New organization name
+ *               description:
+ *                 type: string
+ *                 description: Organization description
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Organization email
+ *               website:
+ *                 type: string
+ *                 format: uri
+ *                 description: Organization website URL
+ *     responses:
+ *       200:
+ *         description: Organization updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Organization updated successfully."
+ *                 organization:
+ *                   $ref: '#/components/schemas/Organization'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Update the 'update' function
 exports.update = async (req, res) => {
   const { organizationName } = req.params;
@@ -343,6 +672,46 @@ exports.update = async (req, res) => {
   }
 };
   
+/**
+ * @swagger
+ * /api/organization/{organizationName}:
+ *   delete:
+ *     summary: Delete an organization
+ *     description: Delete an organization and all its associated files and directories (Admin only)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name to delete
+ *     responses:
+ *       200:
+ *         description: Organization deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Organization and its files deleted successfully."
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Delete a Organization with the specified id in the request
 exports.delete = async (req, res) => {
   const { organizationName } = req.params;
@@ -380,6 +749,46 @@ exports.delete = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/suspend:
+ *   put:
+ *     summary: Suspend an organization
+ *     description: Suspend an organization (Admin only)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name to suspend
+ *     responses:
+ *       200:
+ *         description: Organization suspended successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Organization suspended successfully!"
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.suspendOrganization = async (req, res) => {
   const { organizationName } = req.params;
 
@@ -401,6 +810,46 @@ exports.suspendOrganization = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organizationName}/resume:
+ *   put:
+ *     summary: Resume a suspended organization
+ *     description: Reactivate a suspended organization (Admin only)
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name to resume
+ *     responses:
+ *       200:
+ *         description: Organization resumed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Organization resumed successfully!"
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 exports.resumeOrganization = async (req, res) => {
   const { organizationName } = req.params;
 

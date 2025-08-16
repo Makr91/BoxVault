@@ -1,0 +1,37 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    remove)
+        # Keep user, data, and config for potential reinstall
+        echo "BoxVault removed but user and data preserved"
+        ;;
+    purge)
+        # Remove everything including user and data
+        echo "Purging BoxVault completely..."
+        
+        # Remove system user
+        if getent passwd boxvault > /dev/null 2>&1; then
+            deluser boxvault || true
+        fi
+        
+        # Remove data directories (user confirmation should happen via apt/dpkg)
+        rm -rf /var/lib/boxvault
+        rm -rf /var/log/boxvault
+        rm -rf /etc/boxvault
+        
+        echo "BoxVault completely removed"
+        ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        # Do nothing for these cases
+        ;;
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+# Reload systemd daemon
+systemctl daemon-reload || true
+
+#DEBHELPER#

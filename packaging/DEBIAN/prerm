@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+# Stop and disable service before removal
+if systemctl is-active --quiet boxvault; then
+    echo "Stopping BoxVault service..."
+    systemctl stop boxvault
+fi
+
+if systemctl is-enabled --quiet boxvault; then
+    echo "Disabling BoxVault service..."
+    systemctl disable boxvault
+fi
+
+#DEBHELPER#

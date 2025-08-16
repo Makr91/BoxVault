@@ -1,0 +1,38 @@
+{
+  "bump-minor-pre-major": false,
+  "bump-patch-for-minor-pre-major": false,
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "boxvault",
+      "include-component-in-tag": false,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "frontend/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "backend/package.json",
+          "jsonpath": "$.version"
+        },
+        "frontend/src/version.json",
+        "packaging/config/app.config.yaml",
+        "packaging/config/auth.config.yaml",
+        "packaging/config/db.config.yaml",
+        "packaging/config/mail.config.yaml"
+      ],
+      "changelog-sections": [
+        {"type": "feat", "section": "Features", "hidden": false},
+        {"type": "fix", "section": "Bug Fixes", "hidden": false},
+        {"type": "chore", "section": "Miscellaneous", "hidden": true},
+        {"type": "docs", "section": "Documentation", "hidden": false},
+        {"type": "style", "section": "Miscellaneous", "hidden": true},
+        {"type": "refactor", "section": "Miscellaneous", "hidden": true},
+        {"type": "perf", "section": "Performance", "hidden": false},
+        {"type": "test", "section": "Miscellaneous", "hidden": true}
+      ]
+    }
+  }
+}

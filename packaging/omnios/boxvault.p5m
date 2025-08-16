@@ -1,0 +1,120 @@
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+set name=pkg.fmri value=system/virtualization/boxvault@@VERSION@
+set name=pkg.summary value="BoxVault Vagrant Box Repository Management System"
+set name=pkg.description value="Comprehensive Vagrant box repository management system that provides a web interface for managing, organizing, and distributing Vagrant boxes across teams and organizations with multi-organization support, role-based access control, and RESTful API for automation."
+set name=info.classification value=org.opensolaris.category.2008:System/Virtualization
+set name=info.upstream value="BoxVault Project"
+set name=info.upstream-url value="https://github.com/Makr91/BoxVault"
+
+# Dependencies
+depend fmri=ooce/runtime/node-22 type=require
+depend fmri=database/sqlite-3 type=require
+
+# Create boxvault user and group
+user username=boxvault uid=303 group=boxvault gcos-field="BoxVault Service User" \
+    home-dir=/var/lib/boxvault login-shell=/usr/bin/pfksh
+group groupname=boxvault gid=303
+
+# License
+license opt/boxvault/LICENSE.md license="MIT" must-accept=false
+
+# Drop system directories that already exist (avoid conflicts with system packages)
+<transform dir path=^opt$ -> drop>
+<transform dir path=^etc$ -> drop>
+<transform dir path=^var$ -> drop>
+<transform dir path=^lib$ -> drop>
+<transform dir path=lib/svc$ -> drop>
+<transform dir path=lib/svc/manifest$ -> drop>
+<transform dir path=lib/svc/manifest/system$ -> drop>
+<transform dir path=var/lib$ -> drop>
+<transform dir path=var/log$ -> drop>
+
+# Transform rules to set ownership and permissions for auto-generated files
+
+<transform dir path=opt/boxvault$ -> set owner boxvault>
+<transform dir path=opt/boxvault$ -> set group boxvault>
+<transform dir path=opt/boxvault$ -> set mode 0755>
+
+<transform dir path=opt/boxvault/.* -> set owner boxvault>
+<transform dir path=opt/boxvault/.* -> set group boxvault>
+<transform dir path=opt/boxvault/.* -> set mode 0755>
+
+<transform file path=opt/boxvault/.* -> set owner boxvault>
+<transform file path=opt/boxvault/.* -> set group boxvault>
+<transform file path=opt/boxvault/.* -> set mode 0644>
+
+# SMF method scripts need to be executable by root
+<transform file path=opt/boxvault/startup.sh -> set owner root>
+<transform file path=opt/boxvault/startup.sh -> set group sys>
+<transform file path=opt/boxvault/startup.sh -> set mode 0755>
+
+<transform file path=opt/boxvault/shutdown.sh -> set owner root>
+<transform file path=opt/boxvault/shutdown.sh -> set group sys>
+<transform file path=opt/boxvault/shutdown.sh -> set mode 0755>
+
+<transform file path=opt/boxvault/post-install.sh -> set owner root>
+<transform file path=opt/boxvault/post-install.sh -> set group sys>
+<transform file path=opt/boxvault/post-install.sh -> set mode 0755>
+
+# Make scripts and node binaries executable
+<transform file path=opt/boxvault/scripts/.* -> set mode 0755>
+<transform file path=opt/boxvault/node_modules/.*/bin/.* -> set mode 0755>
+
+# Configuration directory and files (config files preserved via preserve=true)
+<transform dir path=etc/boxvault$ -> set owner boxvault>
+<transform dir path=etc/boxvault$ -> set group boxvault>
+<transform dir path=etc/boxvault$ -> set mode 0755>
+
+<transform file path=etc/boxvault/app.config.yaml -> set owner boxvault>
+<transform file path=etc/boxvault/app.config.yaml -> set group boxvault>
+<transform file path=etc/boxvault/app.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/app.config.yaml -> set preserve true>
+
+<transform file path=etc/boxvault/auth.config.yaml -> set owner boxvault>
+<transform file path=etc/boxvault/auth.config.yaml -> set group boxvault>
+<transform file path=etc/boxvault/auth.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/auth.config.yaml -> set preserve true>
+
+<transform file path=etc/boxvault/db.config.yaml -> set owner boxvault>
+<transform file path=etc/boxvault/db.config.yaml -> set group boxvault>
+<transform file path=etc/boxvault/db.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/db.config.yaml -> set preserve true>
+
+<transform file path=etc/boxvault/mail.config.yaml -> set owner boxvault>
+<transform file path=etc/boxvault/mail.config.yaml -> set group boxvault>
+<transform file path=etc/boxvault/mail.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/mail.config.yaml -> set preserve true>
+
+# SSL and database directories (empty) - keeps persistent data in place on uninstall
+<transform dir path=etc/boxvault/ssl -> set owner boxvault>
+<transform dir path=etc/boxvault/ssl -> set group boxvault>
+<transform dir path=etc/boxvault/ssl -> set mode 0700>
+
+<transform dir path=var/lib/boxvault$ -> set owner boxvault>
+<transform dir path=var/lib/boxvault$ -> set group boxvault>
+<transform dir path=var/lib/boxvault$ -> set mode 0755>
+
+<transform dir path=var/lib/boxvault/database -> set owner boxvault>
+<transform dir path=var/lib/boxvault/database -> set group boxvault>
+<transform dir path=var/lib/boxvault/database -> set mode 0755>
+
+# Log directory (packaged content to avoid permission issues)
+<transform dir path=var/log/boxvault -> set owner boxvault>
+<transform dir path=var/log/boxvault -> set group boxvault>
+<transform dir path=var/log/boxvault -> set mode 0755>
+
+# SMF manifest
+<transform file path=lib/svc/manifest/system/boxvault.xml -> set owner root>
+<transform file path=lib/svc/manifest/system/boxvault.xml -> set group sys>
+<transform file path=lib/svc/manifest/system/boxvault.xml -> set mode 0644>
+<transform file path=lib/svc/manifest/system/boxvault.xml -> set restart_fmri svc:/system/manifest-import:default>

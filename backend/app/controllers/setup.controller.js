@@ -2,12 +2,13 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const path = require('path');
 const { uploadSSLFileMiddleware } = require("../middleware/upload");
+const { loadConfig, getConfigPath } = require('../utils/config-loader');
 
 const configPaths = {
-  app: path.join(__dirname, '../config/app.config.yaml'),
-  auth: path.join(__dirname, '../config/auth.config.yaml'),
-  db: path.join(__dirname, '../config/db.config.yaml'),
-  mail: path.join(__dirname, '../config/mail.config.yaml'),
+  app: getConfigPath('app'),
+  auth: getConfigPath('auth'),
+  db: getConfigPath('db'),
+  mail: getConfigPath('mail'),
 };
 
 const setupTokenPath = path.join(__dirname, '../setup.token');

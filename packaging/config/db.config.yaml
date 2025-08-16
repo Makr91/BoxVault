@@ -1,7 +1,7 @@
 sql:
   host:
     type: host
-    value: 10.11.0.247
+    value: localhost
     description: Database host
     required: true
   port:
@@ -16,12 +16,12 @@ sql:
     required: true
   user:
     type: string
-    value: hv02
+    value: boxvault
     description: Database user
     required: true
   password:
     type: password
-    value: WH2022@!
+    value: CHANGE_THIS_PASSWORD
     description: Database password
     required: true
   database:

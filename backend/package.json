@@ -1,7 +1,7 @@
 {
   "name": "boxvault-backend",
-  "version": "0.1.0",
-  "description": "Bhyve Web Manage Console for OmniOS",
+  "version": "0.7.2",
+  "description": "BoxVault Backend - Vagrant box repository management system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,12 +12,15 @@
     "build": "pkg server.js --out-path=dist"
   },
   "keywords": [
-    "bhyve",
+    "vagrant",
+    "boxes",
+    "repository",
     "node.js",
     "express",
     "jwt",
     "authentication",
-    "mysql"
+    "mysql",
+    "boxvault"
   ],
   "author": "makr91",
   "license": "GPL-3.0",
@@ -31,7 +34,9 @@
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.3",
     "nodemailer": "^6.9.15",
-    "sequelize": "^6.37.3"
+    "sequelize": "^6.37.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.7",

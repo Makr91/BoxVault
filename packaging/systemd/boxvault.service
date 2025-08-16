@@ -1,0 +1,35 @@
+[Unit]
+Description=BoxVault Vagrant Box Repository Management System
+After=network.target mysql.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=boxvault
+Group=boxvault
+WorkingDirectory=/opt/boxvault
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=CONFIG_DIR=/etc/boxvault
+
+# Security settings
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/boxvault /var/log/boxvault
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=boxvault
+
+# Resource limits
+MemoryMax=1G
+TasksMax=200
+
+[Install]
+WantedBy=multi-user.target

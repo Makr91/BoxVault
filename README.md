@@ -34,19 +34,23 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 
 ## Installation
 
-1. **Clone the repository**:
-```git clone <repository-url> cd BoxVault```
+### Development Installation
 
+1. **Clone the repository**:
+```bash
+git clone https://github.com/Makr91/BoxVault.git
+cd BoxVault
+```
 
 2. **Install dependencies**:
-```
-bash
+```bash
+# For backend
+cd backend
+npm install
 
-For backend
-cd backend npm install
-
-For frontend
-cd ../frontend npm install
+# For frontend
+cd ../frontend
+npm install
 ```
 
 3. **Configure the application**:
@@ -54,13 +58,60 @@ cd ../frontend npm install
    - Update the authentication configuration in `backend/app/config/auth.config.yaml`.
 
 4. **Run the application**:
-bash
+```bash
+# Start the backend server
+cd backend
+npm start
 
-Start the backend server
-cd backend npm start
+# Start the frontend development server
+cd ../frontend
+npm start
+```
 
-Start the frontend development server
-cd ../frontend npm start
+### Production Installation (Debian Package)
+
+BoxVault provides pre-built Debian packages for easy production deployment:
+
+1. **Download the latest release**:
+```bash
+# Download from GitHub releases
+wget https://github.com/Makr91/BoxVault/releases/latest/download/boxvault_VERSION_amd64.deb
+```
+
+2. **Install prerequisites**:
+```bash
+# Install MySQL/MariaDB
+sudo apt install mysql-server
+# OR
+sudo apt install mariadb-server
+
+# Create database and user
+sudo mysql -e "CREATE DATABASE boxvault;"
+sudo mysql -e "CREATE USER 'boxvault'@'localhost' IDENTIFIED BY 'your_password';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON boxvault.* TO 'boxvault'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+```
+
+3. **Install BoxVault**:
+```bash
+# Install the package
+sudo gdebi -n boxvault_VERSION_amd64.deb
+
+# Configure database connection
+sudo nano /etc/boxvault/db.config.yaml
+
+# Start the service
+sudo systemctl enable --now boxvault
+
+# Check status
+sudo systemctl status boxvault
+```
+
+4. **Access BoxVault**:
+   - Open your browser to `http://localhost:3000`
+   - Complete the initial setup
+
+For detailed packaging and build instructions, see [packaging/README.md](packaging/README.md).
 
 ## Usage
 
@@ -112,6 +163,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 2. Audit output for Passwords and sensitive data
 3. Audit API functionality against packer scripts and vagrant api
 
-4. Production Packaging
+4. ✅ ~~Production Packaging~~ - **COMPLETED**: Debian packages available via GitHub releases
 
-5. CI/CD
+5. ✅ ~~CI/CD~~ - **COMPLETED**: Automated builds via GitHub Actions with Release Please integration

@@ -3,6 +3,7 @@ const cors = require("cors");
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { loadConfig, getConfigPath } = require('./app/utils/config-loader');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
@@ -10,20 +11,18 @@ const { vagrantHandler } = require("./app/middleware");
 
 global.__basedir = __dirname;
 
-const boxConfigPath = path.join(__dirname, 'app/config/app.config.yaml');
 let boxConfig;
 try {
-  const fileContents = fs.readFileSync(boxConfigPath, 'utf8');
-  boxConfig = yaml.load(fileContents);
+  boxConfig = loadConfig('app');
 } catch (e) {
   console.error(`Failed to load box configuration: ${e.message}`);
 }
 
-const dbConfigPath = path.join(__dirname, 'app/config/db.config.yaml');
+const dbConfigPath = getConfigPath('db');
 
 function isDialectConfigured() {
   try {
-    const dbConfig = yaml.load(fs.readFileSync(dbConfigPath, 'utf8'));
+    const dbConfig = loadConfig('db');
     const dialect = dbConfig.sql.dialect.value;
     return dialect !== undefined && dialect !== null && dialect.trim() !== '';
   } catch (error) {
@@ -51,6 +50,56 @@ function isSSLConfigured() {
   const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
   const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
   return fs.existsSync(certPath) && fs.existsSync(keyPath);
+}
+
+/**
+ * Generate SSL certificates if they don't exist and generate_ssl is enabled
+ */
+async function generateSSLCertificatesIfNeeded() {
+  if (!boxConfig.ssl || !boxConfig.ssl.generate_ssl || !boxConfig.ssl.generate_ssl.value) {
+    return false; // SSL generation disabled
+  }
+
+  const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
+  const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
+
+  // Check if certificates already exist
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    console.log('SSL certificates already exist, skipping generation');
+    return false; // Certificates exist, no need to generate
+  }
+
+  try {
+    console.log('Generating SSL certificates...');
+    
+    // Import child_process for running openssl
+    const { execSync } = require('child_process');
+    
+    // Ensure SSL directory exists
+    const sslDir = path.dirname(keyPath);
+    if (!fs.existsSync(sslDir)) {
+      fs.mkdirSync(sslDir, { recursive: true, mode: 0o700 });
+    }
+
+    // Generate SSL certificate using OpenSSL
+    const opensslCmd = `openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -subj "/C=US/ST=State/L=City/O=BoxVault/CN=localhost"`;
+    
+    execSync(opensslCmd, { stdio: 'pipe' });
+    
+    // Set proper permissions (readable by current user only)
+    fs.chmodSync(keyPath, 0o600);
+    fs.chmodSync(certPath, 0o600);
+    
+    console.log('SSL certificates generated successfully');
+    console.log(`Key: ${keyPath}`);
+    console.log(`Certificate: ${certPath}`);
+    
+    return true; // Certificates generated successfully
+  } catch (error) {
+    console.error('Failed to generate SSL certificates:', error.message);
+    console.error('Continuing with HTTP fallback...');
+    return false; // Generation failed
+  }
 }
 
 const setupTokenPath = path.join(__dirname, 'app/setup.token');
@@ -171,6 +220,19 @@ function initializeApp() {
   require('./app/routes/service_account.routes')(app);
   require('./app/routes/setup.routes')(app);
 
+  // Swagger API documentation
+  try {
+    const { specs, swaggerUi } = require('./app/config/swagger');
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'BoxVault API Documentation'
+    }));
+    console.log('Swagger UI available at /api-docs');
+  } catch (error) {
+    console.warn('Swagger configuration not available:', error.message);
+  }
+
   // SPA catch-all route
   app.get('*', (req, res) => {
     res.sendFile(path.join(static_path, 'index.html'));
@@ -208,7 +270,12 @@ if (isConfigured) {
 const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted.value || 5000;
 const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
 
-if (isSSLConfigured()) {
+// SSL/HTTPS Configuration with auto-generation
+(async () => {
+  // Try to generate SSL certificates if needed
+  await generateSSLCertificatesIfNeeded();
+  
+  if (isSSLConfigured()) {
   try {
     const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
     const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
@@ -271,9 +338,10 @@ if (isSSLConfigured()) {
     console.log('Falling back to HTTP server...');
     startHTTPServer();
   }
-} else {
-  startHTTPServer();
-}
+  } else {
+    startHTTPServer();
+  }
+})();
 
 function startHTTPServer() {
   const httpServer = http.createServer({

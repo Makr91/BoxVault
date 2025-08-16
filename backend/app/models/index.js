@@ -1,14 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { loadConfig } = require('../utils/config-loader');
 
-const dbConfigPath = path.join(__dirname, '../config/db.config.yaml');
 let dbConfig;
 try {
-  const fileContents = fs.readFileSync(dbConfigPath, 'utf8');
-  dbConfig = yaml.load(fileContents);
+  dbConfig = loadConfig('db');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  console.error(`Failed to load database configuration: ${e.message}`);
 }
 
 const Sequelize = require("sequelize");
