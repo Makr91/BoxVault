@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/Makr91/BoxVault/compare/v0.18.0...v0.19.0) (2025-08-16)
+
+
+### Features
+
+* selectable sql dialect/backend ([47a955f](https://github.com/Makr91/BoxVault/commit/47a955f445239ac2ec40fb90aa8e2db22551f1cd))
+
 ## [0.18.0](https://github.com/Makr91/BoxVault/compare/v0.17.10...v0.18.0) (2025-08-16)
 
 
