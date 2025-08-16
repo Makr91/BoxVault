@@ -123,6 +123,9 @@ include:
   - docs/
   - head_custom.html
 
+# Includes directory (allows Jekyll to find include files in root directory)
+includes_dir: "."
+
 # SEO
 lang: en-US
 author:
