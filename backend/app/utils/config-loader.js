@@ -13,8 +13,8 @@ const getConfigPath = (configName) => {
     const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
     return `${configDir}/${configName}.config.yaml`;
   } else {
-    // Development: use relative path from this file
-    return path.join(__dirname, `../config/${configName}.config.yaml`);
+    // Development: use packaging/config directory from project root
+    return path.join(__dirname, `../../../packaging/config/${configName}.config.yaml`);
   }
 };
 

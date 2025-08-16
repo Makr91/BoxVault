@@ -28,6 +28,15 @@ const SetupComponent = () => {
       setAuthorizedSetupToken(response.data.authorizedSetupToken);
       SetupService.getConfigs(response.data.authorizedSetupToken).then(response => {
         const newConfigs = response.data.configs;
+        
+        // Auto-populate dialect on initial load if database_type is set but dialect is empty
+        if (newConfigs.db && newConfigs.db.database_type && newConfigs.db.sql && newConfigs.db.sql.dialect) {
+          const dbType = newConfigs.db.database_type.value;
+          if (dbType && (!newConfigs.db.sql.dialect.value || newConfigs.db.sql.dialect.value.trim() === '')) {
+            newConfigs.db.sql.dialect.value = dbType;
+          }
+        }
+        
         setConfigs(newConfigs);
         
         // Perform initial validation
