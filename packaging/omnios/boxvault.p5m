@@ -12,7 +12,7 @@
 set name=pkg.fmri value=application/management/boxvault@@VERSION@
 set name=pkg.summary value="BoxVault Vagrant Box Repository Management System"
 set name=pkg.description value="Comprehensive Vagrant box repository management system that provides a web interface for managing, organizing, and distributing Vagrant boxes across teams and organizations with multi-organization support, role-based access control, and RESTful API for automation."
-set name=info.classification value=org.opensolaris.category.2008:System/Administration and Configuration
+set name=info.classification value=org.opensolaris.category.2008:System/Administration
 set name=info.upstream value="BoxVault Project"
 set name=info.upstream-url value="https://github.com/Makr91/BoxVault"
 
