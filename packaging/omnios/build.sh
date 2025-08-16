@@ -145,8 +145,8 @@ install_app() {
 
     # Install SMF manifest
     logmsg "Installing SMF manifest"
-    logcmd mkdir -p lib/svc/manifest/system
-    logcmd cp $SRCDIR/packaging/omnios/boxvault-smf.xml lib/svc/manifest/system/boxvault.xml
+    logcmd mkdir -p lib/svc/manifest/application
+    logcmd cp $SRCDIR/packaging/omnios/boxvault-smf.xml lib/svc/manifest/application/boxvault.xml
 
     popd >/dev/null # $DESTDIR
 }
