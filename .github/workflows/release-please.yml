@@ -64,7 +64,7 @@ jobs:
         run: |
           cp -r backend/app backend/server.js backend/package.json "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
           cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
-          cp -r frontend/dist "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/frontend/dist"
+          # Frontend files are built into backend/app/views, so they're already included with backend/app
         
       - name: Copy configuration files to Debian package
         run: |

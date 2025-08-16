@@ -95,8 +95,8 @@ jobs:
           cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
           
           if [ "${{ matrix.package-type }}" = "production" ]; then
-            # Production: pre-built frontend
-            cp -r frontend/dist "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/frontend/"
+            # Production: pre-built frontend (built into backend/app/views)
+            # Frontend files are already in backend/app/views, so they're copied with the backend
           else
             # Development: source files  
             cp -r frontend/src frontend/public frontend/package.json frontend/vite.config.mjs "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/frontend/"
