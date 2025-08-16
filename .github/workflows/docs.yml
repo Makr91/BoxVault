@@ -32,7 +32,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Node.js dependencies
-        run: npm ci
+        run: |
+          npm ci
+          cd backend && npm ci
 
       - name: Generate OpenAPI documentation
         run: |
