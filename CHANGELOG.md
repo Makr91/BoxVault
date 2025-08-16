@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.9](https://github.com/Makr91/BoxVault/compare/v0.19.8...v0.19.9) (2025-08-16)
+
+
+### Bug Fixes
+
+* selectable sql dialect/backend v11 ([3bf336b](https://github.com/Makr91/BoxVault/commit/3bf336b6628679d3cee4e14bd641108dad9dccdd))
+
 ## [0.19.8](https://github.com/Makr91/BoxVault/compare/v0.19.7...v0.19.8) (2025-08-16)
 
 
