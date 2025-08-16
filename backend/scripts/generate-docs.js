@@ -68,8 +68,8 @@ function generateSwaggerUI() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BoxVault API Reference</title>
     <link rel="icon" type="image/x-icon" href="/BoxVault/frontend/public/favicon.ico">
-    <link rel="apple-touch-icon" sizes="192x192" href="/BoxVault/frontend/src/images/logo192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/BoxVault/frontend/src/images/logo512.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/BoxVault/frontend/public/logo192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/BoxVault/frontend/public/logo512.png">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui.css" />
     <style>
         html {
@@ -259,6 +259,33 @@ function generateSwaggerUI() {
         .swagger-ui .model-toggle:not(.collapsed):after {
             content: '▼' !important;
             color: #8b949e !important;
+        }
+        
+        /* Fix all toggle arrows - make them consistent */
+        .swagger-ui .model-toggle:before {
+            display: none !important;
+        }
+        
+        .swagger-ui .model-toggle {
+            color: #8b949e !important;
+        }
+        
+        /* Override any default Swagger UI toggle styling */
+        .swagger-ui span.model-toggle {
+            color: #8b949e !important;
+        }
+        
+        .swagger-ui span.model-toggle:before {
+            display: none !important;
+        }
+        
+        .swagger-ui span.model-toggle:after {
+            color: #8b949e !important;
+        }
+        
+        .swagger-ui .model-box {
+            width: 100% !important;
+            max-width: 100% !important;
         }
         
         .swagger-ui .opblock {
