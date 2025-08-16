@@ -19,7 +19,7 @@
     "install-frontend": "cd frontend && npm install",
     "install-backend": "cd backend && npm install",
     "sync-versions": "node scripts/sync-versions.js",
-    "generate-docs": "node scripts/generate-docs.js"
+    "generate-docs": "cd backend && npm run generate-docs"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",

@@ -8,21 +8,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Determine project root directory (parent of scripts directory if run from scripts, or current if run from root)
-const scriptDir = __dirname;
-const projectRoot = path.basename(scriptDir) === 'scripts' ? path.dirname(scriptDir) : scriptDir;
-
-// Load swagger configuration and update paths to be absolute
-const swaggerConfigPath = path.join(projectRoot, 'backend', 'app', 'config', 'swagger.js');
-
-// Save original working directory and temporarily change to backend so swagger-jsdoc can find the files
-const originalCwd = process.cwd();
-process.chdir(path.join(projectRoot, 'backend'));
-
-const { specs } = require(swaggerConfigPath);
-
-// Change back to original directory
-process.chdir(originalCwd);
+// Load swagger configuration - now works correctly since we're in backend context
+const { specs } = require('../app/config/swagger.js');
 
 /**
  * Generate static API documentation files
@@ -30,8 +17,8 @@ process.chdir(originalCwd);
 async function generateDocs() {
   console.log('🔧 Generating API documentation...');
 
-  // Ensure docs/api directory exists
-  const docsDir = path.join(projectRoot, 'docs', 'api');
+  // Ensure docs/api directory exists (relative to project root)
+  const docsDir = path.join(__dirname, '../../docs/api');
   if (!fs.existsSync(docsDir)) {
     fs.mkdirSync(docsDir, { recursive: true });
   }
