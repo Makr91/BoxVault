@@ -39,7 +39,8 @@ const SetupComponent = () => {
               const currentPath = [...path, key];
               if (typeof value === 'object' && value !== null) {
                 if ('type' in value && 'value' in value) {
-                  errors[configName][currentPath.join(".")] = getValidationError(value.type, value.value);
+                  const isReadonly = value.readonly || false;
+                  errors[configName][currentPath.join(".")] = getValidationError(value.type, value.value, isReadonly);
                 } else {
                   validateFields(value, currentPath);
                 }
@@ -74,15 +75,29 @@ const SetupComponent = () => {
       } else {
         current[path[path.length - 1]].value = value;
       }
+
+      // Auto-populate dialect when database_type changes
+      if (configName === 'db' && path.join('.') === 'database_type') {
+        if (newConfigs.db.sql && newConfigs.db.sql.dialect) {
+          newConfigs.db.sql.dialect.value = value;
+        }
+      }
+
       return newConfigs;
     });
   
     validateField(configName, path, value);
+
+    // Also validate dialect field when database type changes
+    if (configName === 'db' && path.join('.') === 'database_type') {
+      validateField(configName, ['sql', 'dialect'], value);
+    }
   };
 
   const validateField = (configName, path, value) => {
     const field = path.reduce((acc, key) => acc && acc[key], configs[configName]);
-    const error = field && field.type ? getValidationError(field.type, value) : "Invalid field structure";
+    const isReadonly = field && field.readonly;
+    const error = field && field.type ? getValidationError(field.type, value, isReadonly) : "Invalid field structure";
   
     setValidationErrors(prevErrors => {
       const newErrors = { 
@@ -97,9 +112,14 @@ const SetupComponent = () => {
     });
   };
 
-  const getValidationError = (type, value) => {
-    if (value === null) {
-      return "Value cannot be null.";
+  const getValidationError = (type, value, isReadonly = false) => {
+    // Skip validation for readonly fields
+    if (isReadonly) {
+      return null;
+    }
+    
+    if (value === null || value === undefined || value === '') {
+      return "Value cannot be empty.";
     }
   
     switch (type) {
