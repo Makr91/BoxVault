@@ -166,7 +166,7 @@ jobs:
 
       - name: Release packages
         if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: "*.deb"
           generate_release_notes: true
