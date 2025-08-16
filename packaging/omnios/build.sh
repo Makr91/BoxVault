@@ -79,7 +79,9 @@ build_app() {
     
     # Install frontend dependencies
     pushd frontend >/dev/null
-    MAKE=gmake logcmd npm ci
+    # Remove package-lock.json to ensure clean dependency resolution
+    rm -f package-lock.json
+    MAKE=gmake logcmd npm install
     popd >/dev/null
     
     # Build frontend

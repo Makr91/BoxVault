@@ -1,13 +1,13 @@
-# Building Zoneweaver OmniOS IPS Packages
+# Building BoxVault OmniOS IPS Packages
 
-Production-ready OmniOS IPS package build process for Zoneweaver.
+Production-ready OmniOS IPS package build process for BoxVault.
 
 ## Build Methods
 
-There are two approaches for building Zoneweaver OmniOS packages:
+There are two approaches for building BoxVault OmniOS packages:
 
 ### Method 1: OmniOS Build Framework (Recommended)
-If you're using the OmniOS build framework (omniosorg/omnios-build), place the Zoneweaver source in the build tree and use the provided `build.sh` script.
+If you're using the OmniOS build framework (omniosorg/omnios-build), place the BoxVault source in the build tree and use the provided `build.sh` script.
 
 ### Method 2: Manual Build Process
 Traditional manual building using direct IPS commands.
@@ -22,12 +22,12 @@ pfexec pkg install ooce/runtime/node-22 database/sqlite-3
 
 ## Package Information
 
-- **Package Name:** `system/virtualization/zoneweaver`
+- **Package Name:** `system/virtualization/boxvault`
 - **Publisher:** `Makr91`
-- **Service FMRI:** `svc:/system/virtualization/zoneweaver:default`
-- **Install Path:** `/opt/zoneweaver/`
-- **Config Path:** `/etc/zoneweaver/config.yaml`
-- **User/Group:** `zoneweaver`
+- **Service FMRI:** `svc:/system/virtualization/boxvault:default`
+- **Install Path:** `/opt/boxvault/`
+- **Config Path:** `/etc/boxvault/config.yaml`
+- **User/Group:** `boxvault`
 
 ## Method 1: OmniOS Build Framework
 
@@ -35,25 +35,25 @@ If you're using the OmniOS build framework, follow these steps:
 
 ### Setup in Build Tree
 ```bash
-# Place Zoneweaver in your build tree (example path)
+# Place BoxVault in your build tree (example path)
 cd /path/to/omnios-build/build
-mkdir zoneweaver
-cd zoneweaver
+mkdir boxvault
+cd boxvault
 
-# Copy Zoneweaver source
-cp -r /path/to/zoneweaver-source/* .
+# Copy BoxVault source
+cp -r /path/to/boxvault-source/* .
 
 # The build.sh script expects these files:
 # - build.sh (provided)
 # - local.mog (provided)  
-# - zoneweaver-smf.xml (SMF manifest)
+# - boxvault-smf.xml (SMF manifest)
 # - startup.sh, shutdown.sh (method scripts)
 # - All source files (controllers, models, etc.)
 ```
 
 ### Build with Framework
 ```bash
-# From the zoneweaver directory in build tree
+# From the boxvault directory in build tree
 ./build.sh
 
 # This will:
@@ -68,23 +68,23 @@ cp -r /path/to/zoneweaver-source/* .
 - Version is automatically extracted from `package.json`
 - Dependencies are handled via `BUILD_DEPENDS_IPS` and `RUN_DEPENDS_IPS`
 - SMF manifest and method scripts are automatically installed
-- Package name: `system/virtualization/zoneweaver`
+- Package name: `system/virtualization/boxvault`
 
 ## Method 2: Manual Build Commands
 
 ### 1. Build Application (On OmniOS)
 ```bash
-cd /Array-0/zoneweaver/frontend
+cd /local/builds/boxvault
 
 # Build the frontend first  
 export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:$PATH"
 npm run sync-versions
 MAKE=gmake npm ci
-cd web && MAKE=gmake npm ci && cd ..
+cd frontend && MAKE=gmake npm install && cd ..
 npm run build
 
 # Install production Node.js dependencies (this removes dev dependencies)
-MAKE=gmake npm ci --omit=dev
+cd backend && MAKE=gmake npm ci --omit=dev && cd ..
 
 export VERSION=$(node -p "require('./package.json').version")
 ```
@@ -92,13 +92,13 @@ export VERSION=$(node -p "require('./package.json').version")
 ### 2. Build IPS Package
 ```bash
 # Set version in manifest
-sed -i "s/@VERSION@/${VERSION}/g" packaging/omnios/zoneweaver.p5m
+sed -i "s/@VERSION@/${VERSION}/g" packaging/omnios/boxvault.p5m
 
 # Generate package manifest from current directory
-pkgsend generate . | pkgfmt > zoneweaver.p5m.generated
+pkgsend generate . | pkgfmt > boxvault.p5m.generated
 
 # Apply transforms and create final manifest
-pkgmogrify -DVERSION=${VERSION} packaging/omnios/zoneweaver.p5m zoneweaver.p5m.generated > zoneweaver.p5m.final
+pkgmogrify -DVERSION=${VERSION} packaging/omnios/boxvault.p5m boxvault.p5m.generated > boxvault.p5m.final
 
 # Create a local repository for testing (if needed)
 mkdir -p /tmp/local-repo
@@ -106,7 +106,7 @@ pkgrepo create /tmp/local-repo
 pkgrepo set -s /tmp/local-repo publisher/prefix=Makr91
 
 # Publish to local repository
-pkgsend publish -d . -s /tmp/local-repo zoneweaver.p5m.final
+pkgsend publish -d . -s /tmp/local-repo boxvault.p5m.final
 ```
 
 ### 3. Install & Test Package
@@ -115,21 +115,21 @@ pkgsend publish -d . -s /tmp/local-repo zoneweaver.p5m.final
 pfexec pkg set-publisher -g file:///tmp/local-repo Makr91
 
 # Install the package
-pfexec pkg install system/virtualization/zoneweaver
+pfexec pkg install system/virtualization/boxvault
 
 # Start the service
-pfexec svcadm disable system/virtualization/zoneweaver
+pfexec svcadm disable system/virtualization/boxvault
 
-pfexec svcadm enable system/virtualization/zoneweaver
+pfexec svcadm enable system/virtualization/boxvault
 
 # Check status
-svcs -l system/virtualization/zoneweaver
+svcs -l system/virtualization/boxvault
 
 # Check logs
-tail -f /var/svc/log/system-virtualization-zoneweaver:default.log
+tail -f /var/svc/log/system-virtualization-boxvault:default.log
 
 # Test web interface
-curl https://localhost:3443
+curl https://localhost:3000
 ```
 
 ## Package Structure
@@ -137,31 +137,34 @@ curl https://localhost:3443
 The IPS package will create:
 
 ```
-/opt/zoneweaver/                    # Application files
-├── index.js                        # Main Node.js application  
+/opt/boxvault/                      # Application files
+├── server.js                       # Main Node.js application  
 ├── package.json                    # Package metadata
-├── controllers/                    # API controllers
-├── models/                         # Data models
-├── routes/                         # Route definitions
-├── middleware/                     # Express middleware
-├── config/                         # Configuration files
-├── utils/                          # Utility functions
-├── scripts/                        # Build/maintenance scripts
-├── web/dist/                       # Built frontend files
+├── app/                            # Backend application
+│   ├── controllers/                # API controllers
+│   ├── models/                     # Data models
+│   ├── routes/                     # Route definitions
+│   ├── middleware/                 # Express middleware
+│   ├── config/                     # Configuration files
+│   ├── utils/                      # Utility functions
+│   └── views/                      # Built frontend files
 ├── node_modules/                   # Production dependencies
 ├── startup.sh                      # SMF start method
 └── shutdown.sh                     # SMF stop method
 
-/etc/zoneweaver/                    # Configuration
-└── config.yaml                     # Production configuration
+/etc/boxvault/                      # Configuration
+├── app.config.yaml                 # Application configuration
+├── auth.config.yaml                # Authentication configuration
+├── db.config.yaml                  # Database configuration
+└── mail.config.yaml                # Mail configuration
 
-/var/lib/zoneweaver/                # Data directory
-└── database.sqlite                 # SQLite database
+/var/lib/boxvault/                  # Data directory
+└── database/                       # SQLite database directory
 
-/var/log/zoneweaver/                # Log directory
+/var/log/boxvault/                  # Log directory
 
 /lib/svc/manifest/system/           # SMF manifest
-└── zoneweaver.xml
+└── boxvault.xml
 ```
 
 ## Dependencies
@@ -174,7 +177,7 @@ The package depends on:
 ## User & Service Management
 
 The package automatically:
-- Creates `zoneweaver` user and group
+- Creates `boxvault` user and group
 - Installs SMF service manifest
 - Sets up proper file permissions
 - Configures service dependencies
@@ -194,85 +197,91 @@ The package automatically:
    npm install -g npm@latest
    ```
 
-3. **Package validation errors:**
+3. **Rollup platform error (SunOS x64 not supported):**
+   ```bash
+   # This is resolved by using npm install instead of npm ci for frontend
+   # The build.sh script handles this automatically
+   ```
+
+4. **Package validation errors:**
    ```bash
    # Check manifest syntax
-   pkglint zoneweaver.p5m.final
+   pkglint boxvault.p5m.final
    ```
 
 ### Service Issues
 
 ```bash
 # Check service status
-svcs -xv system/virtualization/zoneweaver
+svcs -xv system/virtualization/boxvault
 
 # View detailed logs
-tail -f /var/svc/log/system-virtualization-zoneweaver:default.log
+tail -f /var/svc/log/system-virtualization-boxvault:default.log
 
 # Debug startup issues
-/opt/zoneweaver/startup.sh
+/opt/boxvault/startup.sh
 
 # Test Node.js directly
-su - zoneweaver -c "cd /opt/zoneweaver && NODE_ENV=production CONFIG_PATH=/etc/zoneweaver/config.yaml node index.js"
+su - boxvault -c "cd /opt/boxvault && NODE_ENV=production node server.js"
 ```
 
 ### Network Issues
 
 ```bash
-# Check if port 3443 is available
-netstat -an | grep 3443
+# Check if port 3000 is available
+netstat -an | grep 3000
 
 # Test with different port
-# Edit /etc/zoneweaver/config.yaml
+# Edit /etc/boxvault/app.config.yaml
 
 # Restart service
-svcadm restart system/virtualization/zoneweaver
+svcadm restart system/virtualization/boxvault
 ```
 
 ### Permission Issues
 
 ```bash
 # Fix ownership
-chown -R zoneweaver:zoneweaver /opt/zoneweaver
-chown -R zoneweaver:zoneweaver /var/lib/zoneweaver
-chown -R zoneweaver:zoneweaver /var/log/zoneweaver
+chown -R boxvault:boxvault /opt/boxvault
+chown -R boxvault:boxvault /var/lib/boxvault
+chown -R boxvault:boxvault /var/log/boxvault
 
 # Fix permissions
-chmod 755 /opt/zoneweaver/startup.sh
-chmod 755 /opt/zoneweaver/shutdown.sh
+chmod 755 /opt/boxvault/startup.sh
+chmod 755 /opt/boxvault/shutdown.sh
 ```
 
 ## Service Management
 
 ```bash
 # Start service
-svcadm enable system/virtualization/zoneweaver
+svcadm enable system/virtualization/boxvault
 
 # Stop service  
-svcadm disable system/virtualization/zoneweaver
+svcadm disable system/virtualization/boxvault
 
 # Restart service
-svcadm restart system/virtualization/zoneweaver
+svcadm restart system/virtualization/boxvault
 
 # View service status
-svcs -l system/virtualization/zoneweaver
+svcs -l system/virtualization/boxvault
 
 # Clear maintenance state
-svcadm clear system/virtualization/zoneweaver
+svcadm clear system/virtualization/boxvault
 ```
 
 ## Uninstall
 
 ```bash
 # Stop and disable service
-svcadm disable system/virtualization/zoneweaver
+svcadm disable system/virtualization/boxvault
 
 # Remove package
-pkg uninstall system/virtualization/zoneweaver
+pkg uninstall system/virtualization/boxvault
 
 # Clean up any remaining files (optional)
-rm -rf /var/lib/zoneweaver
-rm -rf /var/log/zoneweaver
+rm -rf /var/lib/boxvault
+rm -rf /var/log/boxvault
 ```
 
 ## Version Management
@@ -281,8 +290,8 @@ The package version is automatically synchronized with the main `package.json` v
 
 ## Default Access
 
-After installation, Zoneweaver will be available at:
-- **HTTPS:** `https://localhost:3443` (default)
-- **Configuration:** `/etc/zoneweaver/config.yaml`
+After installation, BoxVault will be available at:
+- **HTTP:** `http://localhost:3000` (default)
+- **Configuration:** `/etc/boxvault/app.config.yaml`
 
 The default configuration can be customized before starting the service.
