@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Calculate variables
@@ -39,12 +39,12 @@ jobs:
           if [ "${{ matrix.package-type }}" = "production" ]; then
             echo "PACKAGE_NAME=boxvault" >> $GITHUB_ENV
             echo "DESCRIPTION=BoxVault - Vagrant Box Repository Management System" >> $GITHUB_ENV
-            echo "DEPENDS=nodejs (>= 18.0.0), sqlite3, openssl" >> $GITHUB_ENV
+            echo "DEPENDS=nodejs (>= 20.0.0), sqlite3, openssl" >> $GITHUB_ENV
             echo "CONFLICTS=" >> $GITHUB_ENV
           else
             echo "PACKAGE_NAME=boxvault-dev" >> $GITHUB_ENV
             echo "DESCRIPTION=BoxVault - Vagrant Box Repository Management System (Development)" >> $GITHUB_ENV
-            echo "DEPENDS=nodejs (>= 18.0.0), sqlite3, openssl, npm" >> $GITHUB_ENV
+            echo "DEPENDS=nodejs (>= 20.0.0), sqlite3, openssl, npm" >> $GITHUB_ENV
             echo "CONFLICTS=boxvault" >> $GITHUB_ENV
           fi
 

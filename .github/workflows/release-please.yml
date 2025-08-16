@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           
       - name: Install backend dependencies
@@ -84,7 +84,7 @@ jobs:
           Priority: optional
           Architecture: ${ARCH}
           Maintainer: Makr91 <makr91@users.noreply.github.com>
-          Depends: nodejs (>= 18.0.0), sqlite3, openssl
+          Depends: nodejs (>= 20.0.0), sqlite3, openssl
           Description: BoxVault - Vagrant Box Repository Management System
            Comprehensive Vagrant box repository management system that provides
            a web interface for managing, organizing, and distributing Vagrant
