@@ -18,6 +18,7 @@
           "jsonpath": "$.version"
         },
         "frontend/src/version.json",
+        "backend/app/config/swagger.js",
         "packaging/config/app.config.yaml",
         "packaging/config/auth.config.yaml",
         "packaging/config/db.config.yaml",

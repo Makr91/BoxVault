@@ -67,9 +67,9 @@ function generateSwaggerUI() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BoxVault API Reference</title>
-    <link rel="icon" type="image/x-icon" href="/BoxVault/frontend/public/favicon.ico">
-    <link rel="apple-touch-icon" sizes="192x192" href="/BoxVault/frontend/public/logo192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/BoxVault/frontend/public/logo512.png">
+    <link rel="icon" type="image/x-icon" href="/frontend/public/favicon.ico">
+    <link rel="apple-touch-icon" sizes="192x192" href="/frontend/public/logo192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/frontend/public/logo512.png">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui.css" />
     <style>
         html {
