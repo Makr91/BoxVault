@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.15](https://github.com/Makr91/BoxVault/compare/v0.19.14...v0.19.15) (2025-08-16)
+
+
+### Bug Fixes
+
+* selectable sql dialect/backend v18 - preventing conf overwrites ([e4bb261](https://github.com/Makr91/BoxVault/commit/e4bb261ac515ff4591fee1e4e3592ed9d951d46c))
+
 ## [0.19.14](https://github.com/Makr91/BoxVault/compare/v0.19.13...v0.19.14) (2025-08-16)
 
 
