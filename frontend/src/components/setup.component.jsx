@@ -111,12 +111,16 @@ const SetupComponent = () => {
           return "Invalid URL format.";
         }
       case 'host':
+        // Allow localhost, IP addresses, and FQDNs
+        if (value === 'localhost' || value === '127.0.0.1') {
+          return null;
+        }
         const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
         const fqdnRegex = /^(?!:\/\/)(?=.{1,255}$)((.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
         if (ipRegex.test(value) || fqdnRegex.test(value)) {
           return null;
         }
-        return "Invalid host. Must be a valid IP address or FQDN.";
+        return "Invalid host. Must be a valid IP address, FQDN, or 'localhost'.";
       case 'integer':
         return Number.isInteger(Number(value)) ? null : "Value must be an integer.";
       case 'boolean':
@@ -171,27 +175,35 @@ const SetupComponent = () => {
         const error = validationErrors[configName] && validationErrors[configName][errorKey];
 
         // Handle database type conditional visibility
-        if (configName === 'db' && key === 'sql') {
+        if (configName === 'db') {
           const databaseType = configs.db.database_type?.value || 'mysql';
-          if (databaseType === 'sqlite') {
-            // For SQLite, only show storage field
-            const storageEntry = entry.storage;
-            if (storageEntry) {
-              const storageError = validationErrors[configName] && validationErrors[configName]['sql.storage'];
-              return (
-                <div className="form-group" key="sql.storage">
-                  <label>SQLite Database File Path</label>
-                  <input
-                    type="text"
-                    className={`form-control ${storageError ? 'is-invalid' : ''}`}
-                    value={storageEntry.value || ''}
-                    onChange={e => handleConfigChange(configName, ['sql', 'storage'], e.target.value)}
-                  />
-                  <small className="form-text text-muted">{storageEntry.description}</small>
-                  {storageError && <div className="invalid-feedback">{storageError}</div>}
-                </div>
-              );
+          
+          if (key === 'sql') {
+            if (databaseType === 'sqlite') {
+              // For SQLite, only show storage field
+              const storageEntry = entry.storage;
+              if (storageEntry) {
+                const storageError = validationErrors[configName] && validationErrors[configName]['sql.storage'];
+                return (
+                  <div className="form-group" key="sql.storage">
+                    <label>SQLite Database File Path</label>
+                    <input
+                      type="text"
+                      className={`form-control ${storageError ? 'is-invalid' : ''}`}
+                      value={storageEntry.value || ''}
+                      onChange={e => handleConfigChange(configName, ['sql', 'storage'], e.target.value)}
+                    />
+                    <small className="form-text text-muted">{storageEntry.description}</small>
+                    {storageError && <div className="invalid-feedback">{storageError}</div>}
+                  </div>
+                );
+              }
+              return null;
             }
+          }
+          
+          // Hide mysql_pool section when SQLite is selected
+          if (key === 'mysql_pool' && databaseType === 'sqlite') {
             return null;
           }
         }
@@ -242,6 +254,14 @@ const SetupComponent = () => {
                     {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
+              ) : entry.readonly ? (
+                <input
+                  type="text"
+                  className={`form-control ${error ? 'is-invalid' : ''}`}
+                  value={inputValue}
+                  readOnly
+                  style={{ backgroundColor: '#f8f9fa' }}
+                />
               ) : (
                 <input
                   type="text"

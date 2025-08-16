@@ -1,8 +1,7 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
 const path = require('path');
-const { uploadSSLFileMiddleware } = require("../middleware/upload");
-const { loadConfig, getConfigPath } = require('../utils/config-loader');
+const { loadConfig, getConfigPath, getSetupTokenPath } = require('../utils/config-loader');
 
 const configPaths = {
   app: getConfigPath('app'),
@@ -11,7 +10,6 @@ const configPaths = {
   mail: getConfigPath('mail'),
 };
 
-const setupTokenPath = path.join(__dirname, '../setup.token');
 let authorizedSetupToken = null; // Store the authorized token in memory
 
 const readConfig = (filePath) => {
@@ -78,12 +76,13 @@ const writeConfig = (filePath, data) => {
  */
 exports.verifySetupToken = (req, res) => {
   const { token } = req.body;
+  const setupTokenPath = getSetupTokenPath();
 
   if (!fs.existsSync(setupTokenPath)) {
     return res.status(403).send('Setup is not allowed');
   }
 
-  const storedToken = fs.readFileSync(setupTokenPath, 'utf8');
+  const storedToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
   if (token !== storedToken) {
     return res.status(403).send('Invalid setup token');
   }
@@ -171,6 +170,8 @@ const verifyAuthorizedToken = (req, res, next) => {
  */
 exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
   try {
+    // Import upload middleware only when needed
+    const { uploadSSLFileMiddleware } = require("../middleware/upload");
     await uploadSSLFileMiddleware(req, res);
     const { file } = req;
     if (!file) {
@@ -192,7 +193,6 @@ exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
     res.status(500).send({ message: "Failed to upload SSL certificate." });
   }
 }];
-
 
 /**
  * @swagger
@@ -268,6 +268,7 @@ exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
     }
 
     // Remove the setup token file to prevent further setup
+    const setupTokenPath = getSetupTokenPath();
     fs.unlinkSync(setupTokenPath);
 
     res.send('Configuration updated successfully');

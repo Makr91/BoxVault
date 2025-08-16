@@ -51,8 +51,24 @@ const loadConfigs = (configNames) => {
   return configs;
 };
 
+/**
+ * Get the setup token file path based on environment
+ * @returns {string} Full path to setup token file
+ */
+const getSetupTokenPath = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // Production: use CONFIG_DIR environment variable or default to /etc/boxvault/
+    const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
+    return `${configDir}/setup.token`;
+  } else {
+    // Development: use relative path from project root
+    return path.join(__dirname, '../../setup.token');
+  }
+};
+
 module.exports = {
   getConfigPath,
   loadConfig,
-  loadConfigs
+  loadConfigs,
+  getSetupTokenPath
 };

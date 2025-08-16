@@ -3,11 +3,10 @@ const cors = require("cors");
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const { loadConfig, getConfigPath } = require('./app/utils/config-loader');
+const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/config-loader');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
-const { vagrantHandler } = require("./app/middleware");
 
 global.__basedir = __dirname;
 
@@ -102,9 +101,9 @@ async function generateSSLCertificatesIfNeeded() {
   }
 }
 
-const setupTokenPath = path.join(__dirname, 'setup.token');
-
 function getOrGenerateSetupToken() {
+  const setupTokenPath = getSetupTokenPath();
+  
   // Check if setup token already exists (from package installation)
   if (fs.existsSync(setupTokenPath)) {
     try {
@@ -120,6 +119,13 @@ function getOrGenerateSetupToken() {
   
   // Generate new token if none exists or existing one is invalid
   const token = crypto.randomBytes(32).toString('hex');
+  
+  // Ensure the directory exists before writing the token
+  const tokenDir = path.dirname(setupTokenPath);
+  if (!fs.existsSync(tokenDir)) {
+    fs.mkdirSync(tokenDir, { recursive: true, mode: 0o755 });
+  }
+  
   fs.writeFileSync(setupTokenPath, token);
   return token;
 }
@@ -208,6 +214,7 @@ app.use((req, res, next) => {
 // Function to initialize the application
 function initializeApp() {
   // Add Vagrant request handler
+  const { vagrantHandler } = require("./app/middleware");
   app.use(vagrantHandler);
 
   const db = require("./app/models");

@@ -42,9 +42,9 @@ chown boxvault:boxvault /var/log/boxvault
 
 # Generate setup token during installation
 SETUP_TOKEN=$(openssl rand -hex 32)
-echo "$SETUP_TOKEN" > /opt/boxvault/setup.token
-chown boxvault:boxvault /opt/boxvault/setup.token
-chmod 600 /opt/boxvault/setup.token
+echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
+chown boxvault:boxvault /etc/boxvault/setup.token
+chmod 600 /etc/boxvault/setup.token
 
 # Reload systemd daemon
 systemctl daemon-reload

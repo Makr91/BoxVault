@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
-const db = require("../models");
 
 // Load app config for max file size
 let maxFileSize;
@@ -220,7 +219,8 @@ const uploadMiddleware = async (req, res) => {
             throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
           }
 
-          // Update database
+          // Update database (only load models when needed)
+          const db = require("../models");
           const version = await db.versions.findOne({
             where: { versionNumber },
             include: [{
@@ -356,7 +356,8 @@ const uploadMiddleware = async (req, res) => {
         throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
       }
 
-      // Update database
+      // Update database (only load models when needed)
+      const db = require("../models");
       const version = await db.versions.findOne({
         where: { versionNumber },
         include: [{

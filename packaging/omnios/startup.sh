@@ -31,13 +31,19 @@ chown -R boxvault:boxvault /var/log/boxvault
 chmod 700 /etc/boxvault/ssl
 
 # Generate setup token if it doesn't exist (first run)
-SETUP_TOKEN_FILE="/opt/boxvault/setup.token"
+SETUP_TOKEN_FILE="/etc/boxvault/setup.token"
 if [ ! -f "$SETUP_TOKEN_FILE" ]; then
     echo "First run detected - generating setup token..."
     SETUP_TOKEN=$(openssl rand -hex 32)
     echo "$SETUP_TOKEN" > "$SETUP_TOKEN_FILE"
     chown boxvault:boxvault "$SETUP_TOKEN_FILE"
     chmod 600 "$SETUP_TOKEN_FILE"
+    
+    # Get the port from config
+    HTTP_PORT=$(grep -A 1 "api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | grep "value:" | sed 's/.*value: *//' | tr -d ' ')
+    if [ -z "$HTTP_PORT" ]; then
+        HTTP_PORT=5000
+    fi
     
     # Broadcast setup token to all logged-in users
     TEMP_MSG=$(mktemp)
@@ -48,7 +54,7 @@ BoxVault has been started for the first time!
 SETUP TOKEN (save this for initial configuration):
   $SETUP_TOKEN
 
-Access BoxVault at: http://localhost:3000
+Access BoxVault at: http://localhost:$HTTP_PORT
 Use the setup token above for initial configuration.
 
 Configuration files: /etc/boxvault/
@@ -131,8 +137,14 @@ if ! kill -0 $NODE_PID 2>/dev/null; then
     exit 1
 fi
 
+# Get the port from config for final message
+HTTP_PORT=$(grep -A 1 "api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | grep "value:" | sed 's/.*value: *//' | tr -d ' ')
+if [ -z "$HTTP_PORT" ]; then
+    HTTP_PORT=5000
+fi
+
 echo "BoxVault started successfully with PID $NODE_PID"
 echo "Log output will be available via SMF logging"
-echo "Access the web interface at https://localhost:3000"
+echo "Access the web interface at http://localhost:$HTTP_PORT"
 
 exit 0

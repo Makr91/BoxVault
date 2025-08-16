@@ -54,7 +54,7 @@ sql:
     show_when: sqlite
   dialect:
     type: string
-    value: mysql
+    value: ""
     description: Database dialect (auto-set based on database type)
     required: true
     readonly: true
