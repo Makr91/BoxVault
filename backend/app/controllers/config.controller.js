@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const { spawn } = require('child_process');
 const { loadConfig, getConfigPath } = require('../utils/config-loader');
 
 const readConfig = (filePath) => {
@@ -206,13 +205,15 @@ exports.getGravatarConfig = async (req, res) => {
  *     description: |
  *       **⚠️ DANGEROUS OPERATION ⚠️**
  *       
- *       Initiates a server restart using system service management. This will:
+ *       Initiates a server restart using SystemD service management. This will:
  *       - Terminate all active connections
  *       - Stop the current server process
- *       - Restart the BoxVault service
+ *       - Restart the BoxVault service via SystemD
  *       - Cause temporary service unavailability
  *       
  *       **Use with extreme caution!** Only use this endpoint when necessary for applying critical configuration changes that require a server restart.
+ *       
+ *       The restart is performed by exiting the process with a failure code, which triggers SystemD's automatic restart mechanism configured with `Restart=on-failure`.
  *     tags: [Configuration]
  *     security:
  *       - JwtAuth: []
@@ -247,14 +248,17 @@ exports.getGravatarConfig = async (req, res) => {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 exports.restartServer = (req, res) => {
-  console.log('Restarting BoxVault server...');
+  console.log('Initiating server restart via process exit...');
   
-  // Fire and forget - don't wait for response
-  spawn('sudo', ['service', 'boxvault', 'restart'], {
-    detached: true,
-    stdio: 'ignore'
-  });
-
-  // Send response immediately since server will be killed
+  // Send response immediately before process exits
   res.status(200).json({ message: 'Server restart initiated' });
+  
+  // Close the response to ensure it's sent
+  res.end();
+  
+  // Give a brief moment for the response to be sent
+  setTimeout(() => {
+    console.log('Exiting process to trigger SystemD restart...');
+    process.exit(1); // EXIT_FAILURE - triggers SystemD Restart=on-failure
+  }, 100);
 };
