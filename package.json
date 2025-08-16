@@ -1,6 +1,6 @@
 {
   "name": "boxvault",
-  "version": "0.19.4",
+  "version": "0.19.5",
   "description": "BoxVault is a cloud-based storage solution for VM images and templates.",
   "private": true,
   "main": "backend/server.js",
