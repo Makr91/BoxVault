@@ -109,7 +109,10 @@ exclude:
   - vendor/gems/
   - vendor/ruby/
   - backend/
-  - frontend/
+  - frontend/src/
+  - frontend/package.json
+  - frontend/package-lock.json
+  - frontend/vite.config.mjs
   - packaging/
   - scripts/
   - "*.log"
