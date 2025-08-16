@@ -304,13 +304,61 @@ const Admin = () => {
       const currentPath = [...path, key];
       const entry = obj[key];
       const errorKey = currentPath.join(".");
+
+      // Handle database type conditional visibility for DB config
+      if (selectedConfig === 'db') {
+        const databaseType = config.database_type?.value || 'mysql';
+        
+        if (key === 'sql') {
+          if (databaseType === 'sqlite') {
+            // For SQLite, only show storage field
+            const storageEntry = entry.storage;
+            if (storageEntry) {
+              const storageError = validationErrors['sql.storage'];
+              return (
+                <div className="form-group" key="sql.storage">
+                  <label htmlFor="sql.storage">SQLite Database File Path:</label>
+                  <input
+                    type="text"
+                    className={`form-control ${storageError ? 'is-invalid' : ''}`}
+                    id="sql.storage"
+                    value={storageEntry.value || ''}
+                    onChange={(e) => handleConfigChange(['sql', 'storage'], e.target.value)}
+                  />
+                  <small className="form-text text-muted">{storageEntry.description}</small>
+                  {storageError && <div className="text-danger">{storageError}</div>}
+                </div>
+              );
+            }
+            return null;
+          }
+        }
+        
+        // Hide mysql_pool section when SQLite is selected
+        if (key === 'mysql_pool' && databaseType === 'sqlite') {
+          return null;
+        }
+      }
   
       if (typeof entry === 'object' && entry !== null && 'type' in entry && 'value' in entry) {
-        const { type, value, description } = entry;
+        const { type, value, description, options } = entry;
         const error = validationErrors[errorKey];
   
         const renderInput = () => {
           switch (type) {
+            case 'select':
+              return (
+                <select
+                  className={`form-control ${error ? 'is-invalid' : ''}`}
+                  id={errorKey}
+                  value={value}
+                  onChange={(e) => handleConfigChange(currentPath, e.target.value)}
+                >
+                  {options && options.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              );
             case 'boolean':
               return (
                 <div className="form-check">
