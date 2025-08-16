@@ -37,7 +37,7 @@ SRCDIR="$(pwd)"
 DESTDIR="${SRCDIR}/proto"
 PROG=boxvault
 VER=$(node -p "require('./package.json').version" 2>/dev/null || echo "1.0.0")
-PKG=system/virtualization/boxvault
+PKG=application/management/boxvault
 
 # Clean and create staging directory
 rm -rf "$DESTDIR"
