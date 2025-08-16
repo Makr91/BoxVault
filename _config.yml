@@ -1,6 +1,6 @@
 # Jekyll configuration for BoxVault documentation
-title: BoxVault
-description: Vagrant Box Repository Management System
+title: BoxVault Documentation
+description: Documentation for BoxVault - Vagrant Box Repository Management System
 url: "https://makr91.github.io"
 baseurl: "/BoxVault"
 
@@ -12,8 +12,8 @@ remote_theme: just-the-docs/just-the-docs
 color_scheme: wider
 
 # Logo and favicon
-logo: "/web/public/images/BoxVault.svg"
-favicon_ico: "/web/public/favicon.ico"
+# logo: "/BoxVault/frontend/src/images/BoxVault.svg"
+favicon_ico: "/BoxVault/frontend/public/favicon.ico"
 
 # Search
 search_enabled: true
@@ -122,6 +122,8 @@ include:
   - _pages
   - docs/
   - head_custom.html
+  - "docs/api/*.html"
+  - "docs/api/*.json"
 
 # Includes directory (allows Jekyll to find include files in root directory)
 includes_dir: "."

@@ -1,7 +1,7 @@
 ---
-title: Security
+title: Security Policy
 layout: default
-nav_order: 12
+nav_order: 8
 permalink: /docs/security/
 ---
 

@@ -2,14 +2,14 @@
 title: API Reference
 layout: default
 nav_order: 2
-has_children: true
+has_children: false
 permalink: /docs/api/
 ---
 
 # API Reference
 {: .no_toc }
 
-Complete API documentation for BoxVault's RESTful API endpoints.
+The BoxVault API provides comprehensive RESTful endpoints for user management, organization control, and box repository management. This API handles authentication, authorization, and box management for the BoxVault web interface.
 
 ## Table of contents
 {: .no_toc .text-delta }
@@ -19,100 +19,107 @@ Complete API documentation for BoxVault's RESTful API endpoints.
 
 ---
 
-## Overview
+## Authentication
 
-BoxVault provides a comprehensive RESTful API for managing Vagrant box repositories. The API supports user authentication, organization management, box versioning, and file operations.
+All API endpoints require authentication using JWT tokens in the x-access-token header format:
 
-### Base URL
-
-```
-https://your-boxvault-instance.com/api
+```http
+x-access-token: <jwt_token>
 ```
 
-### Authentication
+See the [Authentication Guide](../guides/authentication/) for detailed setup instructions.
 
-BoxVault uses JWT (JSON Web Tokens) for API authentication. Include the token in the `x-access-token` header:
+## Base URL
 
-```bash
-curl -H "x-access-token: YOUR_JWT_TOKEN" \
-     https://your-boxvault-instance.com/api/user/profile
-```
+The API is served from your BoxVault server:
 
-### Response Format
+- **HTTPS (Recommended)**: `https://your-server:5001`
+- **HTTP**: `http://your-server:5000`
 
-All API responses are in JSON format. Successful responses include the requested data, while error responses include an error message:
+## OpenAPI Specification
+
+The BoxVault API is fully documented using OpenAPI 3.0 specification.
+
+### Interactive Documentation
+
+- **[Live API Reference](swagger-ui.html)** - Complete interactive API documentation with examples and testing capabilities
+- **[Download OpenAPI Spec](openapi.json)** - Raw OpenAPI specification for tools and integrations
+
+### API Categories
+
+The BoxVault API is organized into the following categories:
+
+#### Authentication & Authorization
+- User registration and login
+- JWT token management
+- Session management
+- Password reset and recovery
+
+#### User Management
+- User profile management
+- User preferences and settings
+- Account administration
+- Role-based access control
+
+#### Organization Management  
+- Organization creation and configuration
+- Multi-tenant organization support
+- User-organization relationships
+- Invitation management
+
+#### Box Management
+- Vagrant box creation and management
+- Box versioning and provider support
+- Architecture-specific builds
+- Box metadata and descriptions
+
+#### File Operations
+- Secure file upload and download
+- Range request support for large files
+- File integrity verification
+- Storage management
+
+---
+
+## Rate Limiting
+
+The API currently does not implement rate limiting, but this may be added in future versions for production deployments.
+
+## Error Handling
+
+The API uses standard HTTP status codes and returns JSON error responses:
 
 ```json
 {
+  "success": false,
   "message": "Error description"
 }
 ```
 
-## API Endpoints
+Common status codes:
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request
+- `401` - Unauthorized (Invalid or expired JWT token)
+- `403` - Forbidden (Insufficient permissions)
+- `404` - Not Found
+- `500` - Internal Server Error
 
-### Authentication
-- [Authentication API](authentication/) - User login, registration, and token management
+## Response Format
 
-### Users
-- [User Management API](users/) - User profile and account management
+Successful responses follow this format:
 
-### Organizations
-- [Organization API](organizations/) - Organization management and user assignments
-
-### Boxes
-- [Box Management API](boxes/) - Vagrant box creation and management
-
-### Versions
-- [Version API](versions/) - Box version management
-
-### Providers
-- [Provider API](providers/) - Provider management (VirtualBox, VMware, etc.)
-
-### Architectures
-- [Architecture API](architectures/) - Architecture support (x86_64, arm64, etc.)
-
-### Files
-- [File Management API](files/) - File upload, download, and management
-
-## Interactive API Documentation
-
-BoxVault includes interactive Swagger/OpenAPI documentation available at:
-
-```
-https://your-boxvault-instance.com/api-docs
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": {
+    // Response data here
+  }
+}
 ```
 
-This provides a complete, interactive interface for testing all API endpoints with proper authentication and parameter validation.
+## Related APIs
 
-## Rate Limiting
-
-API requests are subject to rate limiting to ensure fair usage:
-
-- **Authenticated requests**: 1000 requests per hour
-- **Unauthenticated requests**: 100 requests per hour
-- **File uploads**: 10 uploads per hour per user
-
-Rate limit headers are included in all responses:
-
-```
-X-RateLimit-Limit: 1000
-X-RateLimit-Remaining: 999
-X-RateLimit-Reset: 1640995200
-```
-
-## Error Codes
-
-BoxVault uses standard HTTP status codes:
-
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Not Found |
-| 409 | Conflict |
-| 422 | Unprocessable Entity |
-| 429 | Too Many Requests |
-| 500 | Internal Server Error |
+- **[BoxVault Backend](https://your-boxvault-instance.com/)** - Box repository management and file storage
+- **[BoxVault API Reference](https://your-boxvault-instance.com/api-docs/)** - Backend API documentation
