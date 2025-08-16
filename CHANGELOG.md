@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.17.4](https://github.com/Makr91/BoxVault/compare/v0.17.3...v0.17.4) (2025-08-16)
+
+
+### Bug Fixes
+
+* documentation, packaging v15 ([26acb9b](https://github.com/Makr91/BoxVault/commit/26acb9b0b222485b7f2fc668fc66c2f2214ac18a))
+* documentation, packaging v15 ([4528137](https://github.com/Makr91/BoxVault/commit/4528137087990447dd2b66b713206742554e96a9))
+* documentation, packaging v16 ([98349ad](https://github.com/Makr91/BoxVault/commit/98349ad8400c10ae26b49e183fb0af518798e256))
+* documentation, packaging v17 ([b52b1e9](https://github.com/Makr91/BoxVault/commit/b52b1e9acbffcd01f170c698b8e88dd8180d8a8f))
+* documentation, packaging v18 ([6149c04](https://github.com/Makr91/BoxVault/commit/6149c04254e1ade60f91935e212950cb399777c7))
+* documentation, packaging v19 ([5685e5d](https://github.com/Makr91/BoxVault/commit/5685e5dc1e20ba1526089260d24c42b73ecda20e))
+* documentation, packaging v19 ([f792e4a](https://github.com/Makr91/BoxVault/commit/f792e4a5f8db4053f6dab0be8895b49d88ad57b3))
+* documentation, packaging v20 ([931174c](https://github.com/Makr91/BoxVault/commit/931174c5c0f0cb0648be6a9741f5ec798bd6dd20))
+* documentation, packaging v21 ([008d1ba](https://github.com/Makr91/BoxVault/commit/008d1baacba3973bd6fc05048b5695a990a31b17))
+* documentation, packaging v22 ([0ad946d](https://github.com/Makr91/BoxVault/commit/0ad946d4b3e00dac7e4d1652bcf820e87985c995))
+* documentation, packaging v23 ([12176ae](https://github.com/Makr91/BoxVault/commit/12176ae8440a60225708f473fd2b26e86617ef38))
+* documentation, packaging v24 ([f949aee](https://github.com/Makr91/BoxVault/commit/f949aee26b5ebd2cb0cba9489cbf9cf185d0be1a))
+* documentation, packaging v25 ([974fa5d](https://github.com/Makr91/BoxVault/commit/974fa5ddb19324537842b65df131db9c188f62c7))
+* documentation, packaging v26 ([0ad029b](https://github.com/Makr91/BoxVault/commit/0ad029ba9137f7ad99624cff16f8dd7253d2aa64))
+* documentation, packaging v27 ([c2a9188](https://github.com/Makr91/BoxVault/commit/c2a9188a1637b7c1565ff001133fcef4c758e940))
+* documentation, packaging v28 ([c9ec092](https://github.com/Makr91/BoxVault/commit/c9ec092f280f2c51b92eb0d45c42a145d0d9b5dc))
+* documentation, packaging v29 ([3e95229](https://github.com/Makr91/BoxVault/commit/3e9522910370700cd71c7b70b8d26ae80d4d692c))
+
 ## [0.17.3](https://github.com/Makr91/BoxVault/compare/v0.17.2...v0.17.3) (2025-08-16)
 
 
