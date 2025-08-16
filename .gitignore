@@ -1,5 +1,4 @@
 node_modules/
-package-lock.json
 **/resources/static/assets/uploads/
 backend/app/config/app.config.yaml
 backend/app/config/auth.config.yaml
