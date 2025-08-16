@@ -185,39 +185,59 @@ jobs:
       - name: Add package to repository pool
         run: |
           ssh startcloud@172.17.204.177 "
-            mkdir -p /local/startcloud/public/debian/pool/main/b/boxvault
-            cp /tmp/boxvault_*.deb /local/startcloud/public/debian/pool/main/b/boxvault/
+            mkdir -p /local/public/debian/pool/main/b/boxvault
+            cp /tmp/boxvault_*.deb /local/public/debian/pool/main/b/boxvault/
           "
 
-      - name: Update repository Packages file
+      - name: Create multi-suite repository structure
         run: |
           ssh startcloud@172.17.204.177 "
-            cd /local/startcloud/public/debian
-            dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+            cd /local/public/debian
+            mkdir -p dists/bookworm/main/binary-amd64
+            mkdir -p dists/trixie/main/binary-amd64
           "
 
-      - name: Compress Packages file
+      - name: Update repository Packages files for all suites
         run: |
           ssh startcloud@172.17.204.177 "
-            cd /local/startcloud/public/debian
-            gzip -c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+            cd /local/public/debian
+            for suite in bookworm trixie; do
+              dpkg-scanpackages --arch amd64 pool/ > dists/\$suite/main/binary-amd64/Packages
+              gzip -c dists/\$suite/main/binary-amd64/Packages > dists/\$suite/main/binary-amd64/Packages.gz
+            done
           "
 
-      - name: Generate Release file
+      - name: Generate Release files for all suites
         run: |
           ssh startcloud@172.17.204.177 "
-            cd /local/startcloud/public/debian/dists/stable
-            /local/generate-release.sh > Release
+            cd /local/public/debian
+            for suite in bookworm trixie; do
+              cd dists/\$suite
+              /local/generate-release.sh \$suite > Release
+              cd ../..
+            done
           "
 
-      - name: Sign repository
+      - name: Create stable symlink pointing to current stable (trixie)
         run: |
           ssh startcloud@172.17.204.177 "
-            cd /local/startcloud/public/debian/dists/stable
-            export GNUPGHOME=\$(mktemp -d /local/pgp/pgpkeys-XXXXXX)
-            cat /local/pgp/pgp-key.private | gpg --import
-            cat Release | gpg --default-key startcloud -abs > Release.gpg
-            cat Release | gpg --default-key startcloud -abs --clearsign > InRelease
+            cd /local/public/debian/dists
+            rm -rf stable
+            ln -sf trixie stable
+          "
+
+      - name: Sign repository for all suites
+        run: |
+          ssh startcloud@172.17.204.177 "
+            cd /local/public/debian
+            for suite in bookworm trixie; do
+              cd dists/\$suite
+              export GNUPGHOME=\$(mktemp -d /local/pgp/pgpkeys-XXXXXX)
+              cat /local/pgp/pgp-key.private | gpg --import
+              cat Release | gpg --default-key startcloud -abs > Release.gpg
+              cat Release | gpg --default-key startcloud -abs --clearsign > InRelease
+              cd ../..
+            done
           "
 
       - name: Cleanup temporary files
