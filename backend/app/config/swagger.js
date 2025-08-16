@@ -367,6 +367,155 @@ const options = {
             },
           },
         },
+        Error: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Error message',
+              example: 'Authentication required',
+            },
+          },
+        },
+        File: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              description: 'Unique file identifier',
+              example: 1,
+            },
+            filename: {
+              type: 'string',
+              description: 'Original filename',
+              example: 'ubuntu-server.box',
+            },
+            size: {
+              type: 'integer',
+              description: 'File size in bytes',
+              example: 1073741824,
+            },
+            checksum: {
+              type: 'string',
+              description: 'File checksum',
+              example: 'sha256:abc123...',
+            },
+            uploadedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Upload timestamp',
+              example: '2025-01-04T17:18:00.324Z',
+            },
+          },
+        },
+        BoxWithDetails: {
+          type: 'object',
+          allOf: [
+            { $ref: '#/components/schemas/Box' },
+            {
+              type: 'object',
+              properties: {
+                versions: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Version' },
+                  description: 'Box versions',
+                },
+                organization: {
+                  $ref: '#/components/schemas/Organization',
+                  description: 'Organization details',
+                },
+              },
+            },
+          ],
+        },
+        BoxWithFullDetails: {
+          type: 'object',
+          allOf: [
+            { $ref: '#/components/schemas/BoxWithDetails' },
+            {
+              type: 'object',
+              properties: {
+                providers: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Provider' },
+                  description: 'Available providers',
+                },
+                architectures: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Architecture' },
+                  description: 'Available architectures',
+                },
+              },
+            },
+          ],
+        },
+        VagrantMetadata: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Box name',
+              example: 'ubuntu-server',
+            },
+            description: {
+              type: 'string',
+              description: 'Box description',
+              example: 'Ubuntu Server 22.04 LTS',
+            },
+            versions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  version: {
+                    type: 'string',
+                    example: '1.0.0',
+                  },
+                  providers: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: {
+                          type: 'string',
+                          example: 'virtualbox',
+                        },
+                        url: {
+                          type: 'string',
+                          example: 'https://example.com/box.box',
+                        },
+                        checksum_type: {
+                          type: 'string',
+                          example: 'sha256',
+                        },
+                        checksum: {
+                          type: 'string',
+                          example: 'abc123...',
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        OrganizationWithUsers: {
+          type: 'object',
+          allOf: [
+            { $ref: '#/components/schemas/Organization' },
+            {
+              type: 'object',
+              properties: {
+                users: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/User' },
+                  description: 'Organization users',
+                },
+              },
+            },
+          ],
+        },
       },
     },
     security: [
