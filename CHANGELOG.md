@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.16](https://github.com/Makr91/BoxVault/compare/v0.19.15...v0.19.16) (2025-08-16)
+
+
+### Bug Fixes
+
+* remove react table ([9b19517](https://github.com/Makr91/BoxVault/commit/9b1951757be8600c8b7e1b868f75e36ebb10a4f7))
+
 ## [0.19.15](https://github.com/Makr91/BoxVault/compare/v0.19.14...v0.19.15) (2025-08-16)
 
 
