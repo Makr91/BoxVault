@@ -1,0 +1,13 @@
+# Changelog
+
+## [0.8.0](https://github.com/Makr91/BoxVault/compare/v0.7.2...v0.8.0) (2025-08-16)
+
+
+### Features
+
+* documentation, packaging ([35762c5](https://github.com/Makr91/BoxVault/commit/35762c5b285b40d2cee9934fbab028924e0cd098))
+
+
+### Bug Fixes
+
+* Authentication ([0a2c538](https://github.com/Makr91/BoxVault/commit/0a2c5388025590fdf0f202260f6fea4b99e5bf78))
