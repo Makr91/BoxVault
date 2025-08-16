@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.10](https://github.com/Makr91/BoxVault/compare/v0.17.9...v0.17.10) (2025-08-16)
+
+
+### Bug Fixes
+
+* documentation, packaging v38 ([e286477](https://github.com/Makr91/BoxVault/commit/e286477f8b2dd48867cf310e3c26fdd87f251527))
+
 ## [0.17.9](https://github.com/Makr91/BoxVault/compare/v0.17.8...v0.17.9) (2025-08-16)
 
 
