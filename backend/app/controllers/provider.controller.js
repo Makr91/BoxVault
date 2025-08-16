@@ -849,9 +849,20 @@ exports.delete = async (req, res) => {
       });
     }
 
+    // Find the provider to delete
+    const provider = await Provider.findOne({
+      where: { name: providerName, versionId: version.id }
+    });
+
+    if (!provider) {
+      return res.status(404).send({
+        message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId} in organization ${organization}.`
+      });
+    }
+
     // Find all architectures associated with the provider
     const architectures = await Architecture.findAll({
-      where: { providerId: version.id }
+      where: { providerId: provider.id }
     });
 
     // Delete all files and directories associated with each architecture
@@ -869,26 +880,18 @@ exports.delete = async (req, res) => {
       await architecture.destroy();
     }
 
-    // Delete the provider from the database
-    const deleted = await Provider.destroy({
-      where: { name: providerName, versionId: version.id }
+    // Delete the provider from the database using the provider object
+    await provider.destroy();
+
+    // Delete the provider's directory
+    const providerPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName);
+    fs.rm(providerPath, { recursive: true, force: true }, (err) => {
+      if (err) {
+        console.log(`Could not delete the provider directory: ${err}`);
+      }
     });
 
-    if (deleted) {
-      // Delete the provider's directory
-      const providerPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName);
-      fs.rm(providerPath, { recursive: true, force: true }, (err) => {
-        if (err) {
-          console.log(`Could not delete the provider directory: ${err}`);
-        }
-      });
-
-      return res.send({ message: "Provider and associated architectures deleted successfully!" });
-    }
-
-    res.status(404).send({
-      message: "Provider not found."
-    });
+    return res.send({ message: "Provider and associated architectures deleted successfully!" });
   } catch (err) {
     res.status(500).send({
       message: err.message || "Some error occurred while deleting the Provider."

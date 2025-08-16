@@ -999,28 +999,3 @@ exports.getUserRoles = async (req, res) => {
     res.status(500).send({ message: err.message || "Some error occurred while retrieving user roles." });
   }
 };
-
-// Duplicate function removed - keeping only one getUserRoles function
-exports.getUserRolesDuplicate = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.userId, {
-      include: [
-        {
-          model: Role,
-          as: 'roles',
-          attributes: ['name'],
-          through: { attributes: [] },
-        },
-      ],
-    });
-
-    if (!user) {
-      return res.status(404).send({ message: "User not found." });
-    }
-
-    const roles = user.roles.map((role) => role.name);
-    res.status(200).send(roles);
-  } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while retrieving user roles." });
-  }
-};
