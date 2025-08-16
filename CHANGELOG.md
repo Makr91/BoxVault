@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.6](https://github.com/Makr91/BoxVault/compare/v0.17.5...v0.17.6) (2025-08-16)
+
+
+### Bug Fixes
+
+* documentation, packaging v34 - omnios ([739bece](https://github.com/Makr91/BoxVault/commit/739bece14e6986dcd2cea49b81e2191fad3ded6d))
+
 ## [0.17.5](https://github.com/Makr91/BoxVault/compare/v0.17.4...v0.17.5) (2025-08-16)
 
 
