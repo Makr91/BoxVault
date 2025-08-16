@@ -8,7 +8,7 @@ permalink: /docs/security/
 # Security
 {: .no_toc }
 
-BoxVault security information and vulnerability reporting.
+Security policies and vulnerability reporting for BoxVault.
 
 ## Table of contents
 {: .no_toc .text-delta }
@@ -17,5 +17,9 @@ BoxVault security information and vulnerability reporting.
 {:toc}
 
 ---
+
+<div id="supported-versions-content">
+  <p><em>Loading supported versions...</em></p>
+</div>
 
 {% include SECURITY.md %}
