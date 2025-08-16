@@ -37,8 +37,11 @@ esac
 # Initialize directories for BoxVault
 mkdir -p /var/lib/boxvault/uploads
 mkdir -p /var/log/boxvault
+mkdir -p /etc/boxvault/ssl
 chown boxvault:boxvault /var/lib/boxvault/uploads
 chown boxvault:boxvault /var/log/boxvault
+chown boxvault:boxvault /etc/boxvault/ssl
+chmod 700 /etc/boxvault/ssl
 
 # Generate setup token during installation
 SETUP_TOKEN=$(openssl rand -hex 32)
