@@ -279,6 +279,11 @@ if (isConfigured) {
   // Watch for changes in the db.config.yaml file
   fs.watch(dbConfigPath, (eventType, filename) => {
     if (eventType === 'change') {
+      // Ignore temporary files created during atomic writes
+      if (filename && filename.endsWith('.tmp')) {
+        return;
+      }
+      
       isConfigured = isDialectConfigured();
       if (isConfigured) {
         console.log('Configuration updated. Initializing application...');

@@ -2,6 +2,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const path = require('path');
 const { loadConfig, getConfigPath, getSetupTokenPath } = require('../utils/config-loader');
+const { atomicWriteFile } = require('../utils/atomic-file-writer');
 
 const configPaths = {
   app: getConfigPath('app'),
@@ -28,16 +29,9 @@ const readConfig = (filePath) => {
   });
 };
 
-const writeConfig = (filePath, data) => {
-  return new Promise((resolve, reject) => {
-    const yamlData = yaml.dump(data);
-    fs.writeFile(filePath, yamlData, 'utf8', (err) => {
-      if (err) {
-        return reject(err);
-      }
-      resolve();
-    });
-  });
+const writeConfig = async (filePath, data) => {
+  const yamlData = yaml.dump(data);
+  return atomicWriteFile(filePath, yamlData, 'utf8');
 };
 
 /**
