@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.12](https://github.com/Makr91/BoxVault/compare/v0.19.11...v0.19.12) (2025-08-16)
+
+
+### Bug Fixes
+
+* selectable sql dialect/backend v13 - cerbothook ([1b21cd2](https://github.com/Makr91/BoxVault/commit/1b21cd2203876d711550b96c812e0ca60f69a8b1))
+
 ## [0.19.11](https://github.com/Makr91/BoxVault/compare/v0.19.10...v0.19.11) (2025-08-16)
 
 
