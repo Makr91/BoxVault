@@ -3,12 +3,8 @@
   "version": "0.12.0",
   "private": true,
   "type": "module",
-  "overrides": {
-    "rollup": "@rollup/wasm-node"
-  },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
-    "@rollup/wasm-node": "^4.24.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
@@ -28,6 +24,10 @@
     "vite": "^7.1.2",
     "vite-plugin-svgr": "^4.2.0",
     "web-vitals": "^4.2.3"
+  },
+  "devDependencies": {
+    "@rollup/wasm-node": "^4.24.0",
+    "rollup": "npm:@rollup/wasm-node@^4.24.0"
   },
   "scripts": {
     "start": "vite",
