@@ -116,7 +116,7 @@ jobs:
 
       - name: Sync source code to OmniOS
         run: |
-          rsync -av \
+          rsync -av --delete \
             --exclude='.git' \
             --exclude='backend/node_modules' \
             --exclude='frontend/node_modules' \
