@@ -516,6 +516,180 @@ const options = {
             },
           ],
         },
+        ServiceAccount: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              description: 'Unique service account identifier',
+              example: 1,
+            },
+            username: {
+              type: 'string',
+              description: 'Service account username',
+              example: 'john_admin-a1b2c3d4',
+            },
+            token: {
+              type: 'string',
+              description: 'Service account authentication token (write-only)',
+              writeOnly: true,
+              example: 'abc123def456...',
+            },
+            description: {
+              type: 'string',
+              description: 'Service account description',
+              example: 'CI/CD automation account',
+            },
+            expiresAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Token expiration timestamp',
+              example: '2025-02-04T17:18:00.324Z',
+            },
+            userId: {
+              type: 'integer',
+              description: 'ID of the user who created this service account',
+              example: 1,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Service account creation timestamp',
+              example: '2025-01-04T17:18:00.324Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-01-04T17:19:19.921Z',
+            },
+          },
+        },
+        ServiceAccountCreateRequest: {
+          type: 'object',
+          required: ['description', 'expirationDays'],
+          properties: {
+            description: {
+              type: 'string',
+              description: 'Description of the service account purpose',
+              example: 'CI/CD automation account',
+            },
+            expirationDays: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 365,
+              description: 'Number of days until token expires',
+              example: 30,
+            },
+          },
+        },
+        SetupTokenRequest: {
+          type: 'object',
+          required: ['token'],
+          properties: {
+            token: {
+              type: 'string',
+              description: 'Setup authorization token',
+              example: 'setup-token-abc123',
+            },
+          },
+        },
+        SetupTokenResponse: {
+          type: 'object',
+          properties: {
+            authorizedSetupToken: {
+              type: 'string',
+              description: 'Authorized setup token for subsequent requests',
+              example: 'setup-token-abc123',
+            },
+          },
+        },
+        ConfigUpdateRequest: {
+          type: 'object',
+          properties: {
+            configs: {
+              type: 'object',
+              description: 'Configuration updates organized by config type',
+              additionalProperties: {
+                type: 'object',
+                description: 'Configuration values for a specific config type',
+              },
+              example: {
+                app: {
+                  boxvault: {
+                    api_url: { value: 'https://api.example.com' }
+                  }
+                },
+                db: {
+                  sql: {
+                    dialect: { value: 'postgres' }
+                  }
+                }
+              },
+            },
+          },
+        },
+        ConfigResponse: {
+          type: 'object',
+          properties: {
+            configs: {
+              type: 'object',
+              description: 'Current configuration values',
+              additionalProperties: {
+                type: 'object',
+                description: 'Configuration section',
+              },
+            },
+          },
+        },
+        GravatarConfigResponse: {
+          type: 'object',
+          properties: {
+            gravatar: {
+              type: 'object',
+              description: 'Gravatar configuration settings',
+              properties: {
+                enabled: {
+                  type: 'boolean',
+                  description: 'Whether Gravatar is enabled',
+                  example: true,
+                },
+                default: {
+                  type: 'string',
+                  description: 'Default Gravatar image type',
+                  example: 'identicon',
+                },
+              },
+            },
+          },
+        },
+        MailTestRequest: {
+          type: 'object',
+          required: ['testEmail'],
+          properties: {
+            testEmail: {
+              type: 'string',
+              format: 'email',
+              description: 'Email address to send test message to',
+              example: 'test@example.com',
+            },
+          },
+        },
+        MailTestResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Success message',
+              example: 'Test email sent successfully',
+            },
+            messageId: {
+              type: 'string',
+              description: 'SMTP message ID',
+              example: '<abc123@example.com>',
+            },
+          },
+        },
       },
     },
     security: [

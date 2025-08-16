@@ -75,6 +75,59 @@ exports.sendVerificationMail = async (user, verificationToken, expirationTime) =
   }
 };
 
+/**
+ * @swagger
+ * /api/mail/resend-verification:
+ *   post:
+ *     summary: Resend email verification
+ *     description: Generate a new verification token and resend the verification email to the authenticated user
+ *     tags: [Mail]
+ *     security:
+ *       - JwtAuth: []
+ *     responses:
+ *       200:
+ *         description: Verification email resent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: User is already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User is already verified."
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User or organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User not found."
+ *       500:
+ *         description: Email sending failed or server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "SMTP connection failed"
+ */
 exports.resendVerificationMail = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
@@ -141,6 +194,51 @@ exports.sendInvitationMail = async (email, token, organizationName, expirationTi
   }
 };
 
+/**
+ * @swagger
+ * /api/mail/test-smtp:
+ *   post:
+ *     summary: Test SMTP configuration
+ *     description: Send a test email to verify SMTP server configuration and connectivity
+ *     tags: [Mail]
+ *     security:
+ *       - JwtAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MailTestRequest'
+ *     responses:
+ *       200:
+ *         description: Test email sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MailTestResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: SMTP configuration error or email sending failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Error sending test email"
+ *                 error:
+ *                   type: string
+ *                   example: "SMTP connection failed"
+ *                 stack:
+ *                   type: string
+ *                   description: "Error stack trace (for debugging)"
+ */
 exports.testSmtp = async (req, res) => {
   console.log('Testing SMTP connection...');
   try {

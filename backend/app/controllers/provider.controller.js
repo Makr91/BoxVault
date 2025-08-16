@@ -378,6 +378,95 @@ exports.findAllByVersion = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers/{providerName}:
+ *   get:
+ *     summary: Get a specific provider by name
+ *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication.
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name/ID
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: JWT access token (required for private boxes)
+ *     responses:
+ *       200:
+ *         description: Provider retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Provider'
+ *       401:
+ *         description: Unauthorized - invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized!"
+ *       403:
+ *         description: Forbidden - unauthorized access to private box
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized access to provider."
+ *       404:
+ *         description: Organization, box, version, or provider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Provider virtualbox not found for version 1.0.0 in box ubuntu-server in organization myorg."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Some error occurred while retrieving the Provider."
+ */
 exports.findOne = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
   const token = req.headers["x-access-token"];
@@ -470,6 +559,88 @@ exports.findOne = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers/{providerName}:
+ *   put:
+ *     summary: Update a provider by name
+ *     description: Update a provider's properties including name and description. Also handles file system directory renaming when provider name changes.
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name/ID
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Current provider name to update
+ *         example: virtualbox
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateProviderRequest'
+ *     responses:
+ *       200:
+ *         description: Provider updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Provider'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized!"
+ *       404:
+ *         description: Organization, box, version, or provider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Provider virtualbox not found for version 1.0.0 in box ubuntu-server in organization myorg."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Some error occurred while updating the Provider."
+ */
 exports.update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
   const { name, description } = req.body;
@@ -552,6 +723,86 @@ exports.update = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers/{providerName}:
+ *   delete:
+ *     summary: Delete a specific provider
+ *     description: Delete a specific provider and all its associated architectures and files from the system
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name/ID
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name to delete
+ *         example: virtualbox
+ *     responses:
+ *       200:
+ *         description: Provider and associated architectures deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Provider and associated architectures deleted successfully!"
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized!"
+ *       404:
+ *         description: Organization, box, version, or provider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Provider not found."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Some error occurred while deleting the Provider."
+ */
 exports.delete = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
 
@@ -645,6 +896,79 @@ exports.delete = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers:
+ *   delete:
+ *     summary: Delete all providers for a version
+ *     description: Delete all providers associated with a specific box version
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name/ID
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *     responses:
+ *       200:
+ *         description: All providers deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "All providers deleted successfully!"
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized!"
+ *       404:
+ *         description: Organization, box, version not found, or no providers found to delete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "No providers found to delete."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Some error occurred while deleting the providers."
+ */
 exports.deleteAllByVersion = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
 

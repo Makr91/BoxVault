@@ -20,6 +20,87 @@ try {
   console.error(`Failed to load App configuration: ${e.message}`);
 }
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
+ *   post:
+ *     summary: Create a new architecture for a provider
+ *     description: Create a new architecture (e.g., amd64, arm64) for a specific provider within a box version
+ *     tags: [Architectures]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Architecture name
+ *                 example: amd64
+ *               defaultBox:
+ *                 type: boolean
+ *                 description: Whether this should be the default architecture for the provider
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Architecture created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Architecture'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization, box, version, or provider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.create = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
   const { name, defaultBox } = req.body;
@@ -99,6 +180,75 @@ exports.create = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
+ *   get:
+ *     summary: Get all architectures for a provider
+ *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication.
+ *     tags: [Architectures]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token for accessing private boxes
+ *     responses:
+ *       200:
+ *         description: Architectures retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Architecture'
+ *       403:
+ *         description: Access denied - private box requires authentication
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Box, version, or provider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.findAllByProvider = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
   const token = req.headers["x-access-token"];
@@ -174,6 +324,77 @@ exports.findAllByProvider = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
+ *   delete:
+ *     summary: Delete a specific architecture
+ *     description: Delete a specific architecture and its associated files from the system
+ *     tags: [Architectures]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name to delete
+ *         example: amd64
+ *     responses:
+ *       200:
+ *         description: Architecture deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization, box, version, provider, or architecture not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.delete = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
@@ -248,6 +469,70 @@ exports.delete = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
+ *   delete:
+ *     summary: Delete all architectures for a provider
+ *     description: Delete all architectures associated with a specific provider within a box version
+ *     tags: [Architectures]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *     responses:
+ *       200:
+ *         description: All architectures deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization, box, version, provider not found, or no architectures found to delete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.deleteAllByProvider = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
 
@@ -322,6 +607,89 @@ exports.deleteAllByProvider = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
+ *   get:
+ *     summary: Get a specific architecture
+ *     description: Retrieve details of a specific architecture. Requires authentication and appropriate access permissions.
+ *     tags: [Architectures]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Architecture name
+ *         example: amd64
+ *       - in: header
+ *         name: x-access-token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: JWT authentication token
+ *     responses:
+ *       200:
+ *         description: Architecture retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Architecture'
+ *       401:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: No token provided or unauthorized access
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Box, version, provider, or architecture not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.findOne = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const token = req.headers["x-access-token"];
@@ -407,6 +775,92 @@ exports.findOne = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
+ *   put:
+ *     summary: Update an architecture by name
+ *     description: Update an architecture's properties including name and default status. Also handles file system directory renaming when architecture name changes.
+ *     tags: [Architectures]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: myorg
+ *       - in: path
+ *         name: boxId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *         example: ubuntu-server
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Version number
+ *         example: "1.0.0"
+ *       - in: path
+ *         name: providerName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider name
+ *         example: virtualbox
+ *       - in: path
+ *         name: architectureName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Current architecture name to update
+ *         example: amd64
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: New architecture name
+ *                 example: arm64
+ *               defaultBox:
+ *                 type: boolean
+ *                 description: Whether this should be the default architecture for the provider
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Architecture updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Architecture'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization, box, version, provider, or architecture not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const { name, defaultBox } = req.body;

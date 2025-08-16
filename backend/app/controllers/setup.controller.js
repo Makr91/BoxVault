@@ -42,6 +42,40 @@ const writeConfig = (filePath, data) => {
   });
 };
 
+/**
+ * @swagger
+ * /api/setup/verify-token:
+ *   post:
+ *     summary: Verify setup token and get authorization
+ *     description: Verify the initial setup token and receive an authorized token for subsequent setup operations
+ *     tags: [Setup]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SetupTokenRequest'
+ *     responses:
+ *       200:
+ *         description: Setup token verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SetupTokenResponse'
+ *       403:
+ *         description: Setup not allowed or invalid token
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Invalid setup token"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 exports.verifySetupToken = (req, res) => {
   const { token } = req.body;
 
@@ -69,6 +103,72 @@ const verifyAuthorizedToken = (req, res, next) => {
   next();
 };
 
+/**
+ * @swagger
+ * /api/setup/upload-ssl:
+ *   post:
+ *     summary: Upload SSL certificate files
+ *     description: Upload SSL certificate (.crt) or private key (.key) files for HTTPS configuration
+ *     tags: [Setup]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: SSL certificate file (.crt) or private key file (.key)
+ *     responses:
+ *       200:
+ *         description: SSL file uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 certPath:
+ *                   type: string
+ *                   description: Path to uploaded certificate file
+ *                   example: "/config/ssl/server.crt"
+ *                 keyPath:
+ *                   type: string
+ *                   description: Path to uploaded private key file
+ *                   example: "/config/ssl/server.key"
+ *       400:
+ *         description: No file uploaded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "No file uploaded!"
+ *       403:
+ *         description: Invalid authorization token
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Invalid authorization token"
+ *       500:
+ *         description: Failed to upload SSL certificate
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to upload SSL certificate."
+ */
 exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
   try {
     await uploadSSLFileMiddleware(req, res);
@@ -94,6 +194,44 @@ exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
 }];
 
 
+/**
+ * @swagger
+ * /api/setup/update-configs:
+ *   post:
+ *     summary: Update system configurations
+ *     description: Update BoxVault system configurations (database, app, mail, auth). This endpoint removes the setup token after successful update, preventing further setup operations.
+ *     tags: [Setup]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ConfigUpdateRequest'
+ *     responses:
+ *       200:
+ *         description: Configuration updated successfully
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Configuration updated successfully"
+ *       403:
+ *         description: Invalid authorization token
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Invalid authorization token"
+ *       500:
+ *         description: Failed to update configuration
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Failed to update configuration"
+ */
 exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
   const { configs } = req.body;
 
@@ -116,6 +254,37 @@ exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
   }
 }];
 
+/**
+ * @swagger
+ * /api/setup/get-configs:
+ *   get:
+ *     summary: Get current system configurations
+ *     description: Retrieve current BoxVault system configurations for all config types (database, app, mail, auth)
+ *     tags: [Setup]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configurations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ConfigResponse'
+ *       403:
+ *         description: Invalid authorization token
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Invalid authorization token"
+ *       500:
+ *         description: Failed to read configurations
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Failed to read configurations"
+ */
 exports.getConfigs = [verifyAuthorizedToken, async (req, res) => {
   try {
     const dbConfig = await readConfig(configPaths.db);
@@ -136,6 +305,33 @@ exports.getConfigs = [verifyAuthorizedToken, async (req, res) => {
   }
 }];
 
+/**
+ * @swagger
+ * /api/setup/is-setup-complete:
+ *   get:
+ *     summary: Check if initial setup is complete
+ *     description: Check whether BoxVault has been properly configured by verifying database configuration
+ *     tags: [Setup]
+ *     responses:
+ *       200:
+ *         description: Setup status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 setupComplete:
+ *                   type: boolean
+ *                   description: Whether the initial setup has been completed
+ *                   example: true
+ *       500:
+ *         description: Failed to check setup status
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Failed to check setup status"
+ */
 exports.isSetupComplete = async (req, res) => {
   try {
     const dbConfig = await readConfig(configPaths.db);
