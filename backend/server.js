@@ -130,6 +130,32 @@ function getOrGenerateSetupToken() {
   return token;
 }
 
+/**
+ * Check for Certbot integration and provide guidance if needed
+ */
+function checkCertbotIntegration() {
+  const hookDir = '/etc/letsencrypt/renewal-hooks/deploy';
+  const hookPath = `${hookDir}/boxvault-cert-deploy.sh`;
+  const sourceHook = '/opt/boxvault/scripts/certbot-deploy-hook.sh';
+  
+  // Check if Certbot is installed but hook is missing
+  if (fs.existsSync(hookDir) && !fs.existsSync(hookPath) && fs.existsSync(sourceHook)) {
+    console.log('');
+    console.log('='.repeat(60));
+    console.log('BoxVault Certbot Integration Available');
+    console.log('='.repeat(60));
+    console.log('Certbot detected but BoxVault hook not installed.');
+    console.log('To enable automatic certificate renewal, run:');
+    console.log('');
+    console.log(`  sudo cp ${sourceHook} ${hookPath}`);
+    console.log('');
+    console.log('This will automatically copy renewed certificates to BoxVault');
+    console.log('and restart the service when certificates are renewed.');
+    console.log('='.repeat(60));
+    console.log('');
+  }
+}
+
 const static_path = __dirname + '/app/views/';
 
 const app = express();
@@ -300,6 +326,9 @@ const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
 (async () => {
   // Generate SSL certificates BEFORE setup wizard, like ZoneWeaver does
   await generateSSLCertificatesIfNeeded();
+  
+  // Check for Certbot integration after SSL setup
+  checkCertbotIntegration();
   
   if (isSSLConfigured()) {
   try {

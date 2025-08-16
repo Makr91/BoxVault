@@ -43,6 +43,25 @@ chown boxvault:boxvault /var/log/boxvault
 chown boxvault:boxvault /etc/boxvault/ssl
 chmod 700 /etc/boxvault/ssl
 
+# Install Certbot hook if Certbot is already present
+if [ -d "/etc/letsencrypt/renewal-hooks/deploy" ]; then
+    echo "Certbot detected - installing BoxVault certificate renewal hook"
+    
+    # Copy hook script to Certbot renewal hooks directory
+    if [ -f "/opt/boxvault/scripts/certbot-deploy-hook.sh" ]; then
+        cp /opt/boxvault/scripts/certbot-deploy-hook.sh \
+           /etc/letsencrypt/renewal-hooks/deploy/boxvault-cert-deploy.sh
+        chmod 755 /etc/letsencrypt/renewal-hooks/deploy/boxvault-cert-deploy.sh
+        echo "BoxVault Certbot integration installed successfully"
+        echo "Certificates will be automatically updated when renewed via Certbot"
+    else
+        echo "Warning: BoxVault Certbot hook script not found"
+    fi
+else
+    echo "Certbot not detected - manual certificate management will be required"
+    echo "If you install Certbot later, BoxVault will provide integration instructions"
+fi
+
 # Generate setup token during installation
 SETUP_TOKEN=$(openssl rand -hex 32)
 echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
