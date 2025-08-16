@@ -9,10 +9,10 @@
 # http://www.illumos.org/license/CDDL.
 #
 
-set name=pkg.fmri value=system/virtualization/boxvault@@VERSION@
+set name=pkg.fmri value=application/management/boxvault@@VERSION@
 set name=pkg.summary value="BoxVault Vagrant Box Repository Management System"
 set name=pkg.description value="Comprehensive Vagrant box repository management system that provides a web interface for managing, organizing, and distributing Vagrant boxes across teams and organizations with multi-organization support, role-based access control, and RESTful API for automation."
-set name=info.classification value=org.opensolaris.category.2008:System/Virtualization
+set name=info.classification value=org.opensolaris.category.2008:System/Administration and Configuration
 set name=info.upstream value="BoxVault Project"
 set name=info.upstream-url value="https://github.com/Makr91/BoxVault"
 
@@ -36,6 +36,7 @@ license opt/boxvault/LICENSE.md license="MIT" must-accept=false
 <transform dir path=lib/svc$ -> drop>
 <transform dir path=lib/svc/manifest$ -> drop>
 <transform dir path=lib/svc/manifest/system$ -> drop>
+<transform dir path=lib/svc/manifest/application$ -> drop>
 <transform dir path=var/lib$ -> drop>
 <transform dir path=var/log$ -> drop>
 
@@ -114,7 +115,7 @@ license opt/boxvault/LICENSE.md license="MIT" must-accept=false
 <transform dir path=var/log/boxvault -> set mode 0755>
 
 # SMF manifest
-<transform file path=lib/svc/manifest/system/boxvault.xml -> set owner root>
-<transform file path=lib/svc/manifest/system/boxvault.xml -> set group sys>
-<transform file path=lib/svc/manifest/system/boxvault.xml -> set mode 0644>
-<transform file path=lib/svc/manifest/system/boxvault.xml -> set restart_fmri svc:/system/manifest-import:default>
+<transform file path=lib/svc/manifest/application/boxvault.xml -> set owner root>
+<transform file path=lib/svc/manifest/application/boxvault.xml -> set group sys>
+<transform file path=lib/svc/manifest/application/boxvault.xml -> set mode 0644>
+<transform file path=lib/svc/manifest/application/boxvault.xml -> set restart_fmri svc:/system/manifest-import:default>

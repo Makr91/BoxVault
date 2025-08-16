@@ -4,7 +4,7 @@
     SMF manifest for BoxVault Vagrant Box Repository Management System
 -->
 <service_bundle type='manifest' name='boxvault'>
-  <service name='system/virtualization/boxvault' type='service' version='1'>
+  <service name='application/management/boxvault' type='service' version='1'>
     <create_default_instance enabled='false'/>
     <single_instance/>
     
@@ -25,7 +25,7 @@
         <method_environment>
           <envvar name='PATH' value='/opt/ooce/bin:/opt/ooce/node-22/bin:/usr/gnu/bin:/usr/bin:/usr/sbin:/sbin'/>
           <envvar name='NODE_ENV' value='production'/>
-          <envvar name='CONFIG_PATH' value='/etc/boxvault'/>
+          <envvar name='CONFIG_DIR' value='/etc/boxvault'/>
           <envvar name='HOME' value='/var/lib/boxvault'/>
         </method_environment>
       </method_context>

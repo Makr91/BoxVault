@@ -8,7 +8,8 @@ set -e
 # Environment is set by SMF, but ensure we have the basics
 export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:/usr/gnu/bin:/usr/bin:/usr/sbin:/sbin"
 export NODE_ENV="${NODE_ENV:-production}"
-export CONFIG_PATH="${CONFIG_PATH:-/etc/boxvault}"
+export CONFIG_DIR="${CONFIG_DIR:-/etc/boxvault}"
+export CONFIG_PATH="${CONFIG_DIR}"
 export HOME="${HOME:-/var/lib/boxvault}"
 
 cd /opt/boxvault
@@ -46,9 +47,25 @@ if [ ! -f "/opt/boxvault/server.js" ]; then
     exit 1
 fi
 
-# Check if configuration file exists
-if [ ! -f "$CONFIG_PATH" ]; then
-    echo "Error: Configuration file not found at $CONFIG_PATH" >&2
+# Check if configuration directory exists
+if [ ! -d "$CONFIG_PATH" ]; then
+    echo "Error: Configuration directory not found at $CONFIG_PATH" >&2
+    exit 1
+fi
+
+# Check if essential configuration files exist
+if [ ! -f "$CONFIG_PATH/db.config.yaml" ]; then
+    echo "Error: Database configuration not found at $CONFIG_PATH/db.config.yaml" >&2
+    exit 1
+fi
+
+if [ ! -f "$CONFIG_PATH/app.config.yaml" ]; then
+    echo "Error: Application configuration not found at $CONFIG_PATH/app.config.yaml" >&2
+    exit 1
+fi
+
+if [ ! -f "$CONFIG_PATH/auth.config.yaml" ]; then
+    echo "Error: Authentication configuration not found at $CONFIG_PATH/auth.config.yaml" >&2
     exit 1
 fi
 
