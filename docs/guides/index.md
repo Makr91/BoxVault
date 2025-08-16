@@ -35,6 +35,9 @@ Learn about user authentication, JWT tokens, and API access.
 ### [Backend Integration Guide](backend-integration/)
 Integrate BoxVault with your existing infrastructure and CI/CD pipelines.
 
+### [API Examples](api-examples/)
+Comprehensive examples for using the BoxVault REST API with curl commands and detailed responses.
+
 ## Quick Links
 
 - **[Configuration](../configuration/)** - Configure BoxVault settings
