@@ -361,7 +361,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box \
   -d '{
     "name": "debian12",
     "description": "Debian 12 Server",
-    "isPrivate": false
+    "isPublic": false
   }'
 ```
 
@@ -410,7 +410,7 @@ curl -X PUT https://boxvault.example.com/api/organization/myorg/box/debian12 \
   -d '{
     "name": "debian12",
     "description": "Updated description",
-    "isPrivate": false
+    "isPublic": false
   }'
 ```
 
@@ -951,7 +951,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box \
   -d '{
     "name": "test-box",
     "description": "Test Box",
-    "isPrivate": true
+    "isPublic": true
   }'
 ```
 

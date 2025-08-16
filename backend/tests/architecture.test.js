@@ -7,7 +7,7 @@ describe('Architecture API', () => {
   const testBox = {
     name: 'test-arch-box',
     description: 'Test box for architecture API testing',
-    isPrivate: true
+    isPublic: true
   };
   const testVersion = {
     version: '1.0.0',

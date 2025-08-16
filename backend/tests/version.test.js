@@ -7,7 +7,7 @@ describe('Version API', () => {
   const testBox = {
     name: 'test-version-box',
     description: 'Test box for version API testing',
-    isPrivate: true
+    isPublic: true
   };
 
   beforeAll(async () => {

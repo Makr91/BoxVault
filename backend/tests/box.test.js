@@ -76,7 +76,7 @@ describe('Box API', () => {
     const newBox = {
       name: 'test-box',
       description: 'Test box for API testing',
-      isPrivate: true
+      isPublic: true
     };
 
     afterEach(async () => {
@@ -123,7 +123,7 @@ describe('Box API', () => {
     const initialBox = {
       name: boxName,
       description: 'Initial description',
-      isPrivate: true
+      isPublic: true
     };
 
     beforeEach(async () => {
@@ -148,7 +148,7 @@ describe('Box API', () => {
     it('should update box details', async () => {
       const updateData = {
         description: 'Updated description',
-        isPrivate: false
+        isPublic: false
       };
 
       const res = await request(app)
@@ -158,7 +158,7 @@ describe('Box API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('description', updateData.description);
-      expect(res.body).toHaveProperty('isPrivate', updateData.isPrivate);
+      expect(res.body).toHaveProperty('isPublic', updateData.isPublic);
     });
   });
 
@@ -167,7 +167,7 @@ describe('Box API', () => {
     const testBox = {
       name: boxName,
       description: 'Box to delete',
-      isPrivate: true
+      isPublic: true
     };
 
     beforeEach(async () => {

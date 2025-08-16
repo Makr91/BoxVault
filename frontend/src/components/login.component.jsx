@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AuthService from "../services/auth.service";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 
 const Login = ({ theme }) => {
   let navigate = useNavigate();
+  const location = useLocation();
 
   const [formValues, setFormValues] = useState({
     username: "",
@@ -36,8 +37,18 @@ const Login = ({ theme }) => {
 
     AuthService.login(formValues.username, formValues.password, formValues.stayLoggedIn)
       .then(() => {
-        navigate("/profile");
-        window.location.reload();
+        // Check if there's a return path
+        const urlParams = new URLSearchParams(location.search);
+        const returnTo = urlParams.get('returnTo');
+        
+        if (returnTo) {
+          // Decode and navigate to the return path
+          window.location.href = decodeURIComponent(returnTo);
+        } else {
+          // Default behavior - go to profile
+          navigate("/profile");
+          window.location.reload();
+        }
       })
       .catch(error => {
         const resMessage =

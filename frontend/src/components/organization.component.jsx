@@ -7,6 +7,7 @@ import ConfirmationModal from './confirmation.component';
 import Table from 'react-bootstrap/Table';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
+import EventBus from "../common/EventBus";
 
 
 const BoxesList = ({ showOnlyPublic, theme }) => {
@@ -55,9 +56,15 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           }
         })
         .catch(e => {
-          console.log(e);
-          setMessage("Error retrieving public boxes.");
-          setMessageType("danger");
+          if (e.response?.status === 401) {
+            // Token expired - clear cached data and update UI
+            EventBus.dispatch("logout", null);
+            setBoxes([]); // Clear any cached private boxes
+          } else {
+            console.log(e);
+            setMessage("Error retrieving public boxes.");
+            setMessageType("danger");
+          }
         });
     } else if (organization) {
       BoxDataService.getAll(organization)
@@ -68,9 +75,15 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           }
         })
         .catch(e => {
-          console.log(e);
-          setMessage("Error retrieving organization boxes.");
-          setMessageType("danger");
+          if (e.response?.status === 401) {
+            // Token expired - clear cached data and update UI
+            EventBus.dispatch("logout", null);
+            setBoxes([]); // Clear any cached private boxes
+          } else {
+            console.log(e);
+            setMessage("Error retrieving organization boxes.");
+            setMessageType("danger");
+          }
         });
     }
   }, [showOnlyPublic, organization]);

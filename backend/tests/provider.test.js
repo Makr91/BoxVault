@@ -7,7 +7,7 @@ describe('Provider API', () => {
   const testBox = {
     name: 'test-provider-box',
     description: 'Test box for provider API testing',
-    isPrivate: true
+    isPublic: true
   };
   const testVersion = {
     version: '1.0.0',

@@ -1,5 +1,6 @@
 import axios from "axios";
 import authHeader from "./auth-header";
+import EventBus from "../common/EventBus";
 
 const baseURL = window.location.origin;
 
@@ -132,10 +133,22 @@ axios.interceptors.response.use(
         }
       }
 
-      // Don't redirect if this is a file upload request
-      const isFileUpload = originalRequest.url.includes('/file/upload');
-      if (!isFileUpload) {
-        window.location.href = "/login";
+      // Clear localStorage immediately
+      localStorage.removeItem("user");
+      
+      // Determine if this was an "action" vs "browsing"
+      const isActionRequest = 
+        originalRequest.method !== 'GET' || // POST/PUT/DELETE are actions
+        originalRequest.url.includes('/download') || // Downloads are actions
+        originalRequest.url.includes('/upload'); // Uploads are actions
+      
+      if (isActionRequest) {
+        // For actions, redirect to login with return path
+        const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?returnTo=${returnTo}`;
+      } else {
+        // For browsing (GET requests), just update UI state
+        EventBus.dispatch("logout", null);
       }
     }
     return Promise.reject(error);

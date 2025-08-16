@@ -350,24 +350,60 @@ const download = async (req, res) => {
       const range = req.headers.range;
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        let start = parseInt(parts[0], 10);
+        let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        
+        // Validate range values
+        if (isNaN(start)) {
+          start = 0;
+        }
+        
+        if (isNaN(end) || end >= fileSize) {
+          end = fileSize - 1;
+        }
+        
+        // Ensure start is not greater than end
+        if (start > end) {
+          console.warn(`Invalid range request: start (${start}) > end (${end}), adjusting start to 0`);
+          start = 0;
+        }
+        
+        // Ensure start is not greater than file size
+        if (start >= fileSize) {
+          console.warn(`Range start (${start}) >= file size (${fileSize}), returning 416 Range Not Satisfiable`);
+          res.setHeader('Content-Range', `bytes */${fileSize}`);
+          return res.status(416).send(); // Range Not Satisfiable
+        }
+        
         const chunksize = (end - start) + 1;
-
+        
         res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
         res.setHeader('Content-Length', chunksize);
         res.status(206); // Partial Content
 
-        const fileStream = fs.createReadStream(filePath, { start, end });
-        fileStream.pipe(res);
+        try {
+          const fileStream = fs.createReadStream(filePath, { start, end });
+          fileStream.pipe(res);
 
-        fileStream.on('error', (err) => {
+          fileStream.on('error', (err) => {
+            if (!res.headersSent) {
+              res.status(500).send({
+                message: "Could not download the file. " + err,
+              });
+            }
+          });
+        } catch (streamErr) {
+          console.error('Error creating read stream:', {
+            error: streamErr.message,
+            range: `${start}-${end}`,
+            fileSize
+          });
           if (!res.headersSent) {
             res.status(500).send({
-              message: "Could not download the file. " + err,
+              message: "Could not create file stream: " + streamErr.message,
             });
           }
-        });
+        }
       } else {
         // For Vagrant requests without range, still use proper headers
         if (req.isVagrantRequest) {
