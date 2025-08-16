@@ -61,11 +61,8 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+          # Force npm install to resolve npm aliases properly (needed for rollup WASM on OmniOS)
+          npm install
           cd ..
 
       - name: Build frontend (production only)
