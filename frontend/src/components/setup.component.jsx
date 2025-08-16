@@ -169,6 +169,32 @@ const SetupComponent = () => {
         const entry = obj[key];
         const errorKey = currentPath.join(".");
         const error = validationErrors[configName] && validationErrors[configName][errorKey];
+
+        // Handle database type conditional visibility
+        if (configName === 'db' && key === 'sql') {
+          const databaseType = configs.db.database_type?.value || 'mysql';
+          if (databaseType === 'sqlite') {
+            // For SQLite, only show storage field
+            const storageEntry = entry.storage;
+            if (storageEntry) {
+              const storageError = validationErrors[configName] && validationErrors[configName]['sql.storage'];
+              return (
+                <div className="form-group" key="sql.storage">
+                  <label>SQLite Database File Path</label>
+                  <input
+                    type="text"
+                    className={`form-control ${storageError ? 'is-invalid' : ''}`}
+                    value={storageEntry.value || ''}
+                    onChange={e => handleConfigChange(configName, ['sql', 'storage'], e.target.value)}
+                  />
+                  <small className="form-text text-muted">{storageEntry.description}</small>
+                  {storageError && <div className="invalid-feedback">{storageError}</div>}
+                </div>
+              );
+            }
+            return null;
+          }
+        }
   
         if (typeof entry === 'object' && entry !== null && !('type' in entry && 'value' in entry)) {
           return (
@@ -184,13 +210,23 @@ const SetupComponent = () => {
             </div>
           );
         } else {
-          const { type, value, description } = entry;
+          const { type, value, description, options } = entry;
           const inputValue = value === null || value === undefined ? '' : value; // Handle null and undefined
   
           return (
             <div className="form-group" key={errorKey}>
               <label>{key}</label>
-              {type === 'password' ? (
+              {type === 'select' ? (
+                <select
+                  className={`form-control ${error ? 'is-invalid' : ''}`}
+                  value={inputValue}
+                  onChange={e => handleConfigChange(configName, currentPath, e.target.value)}
+                >
+                  {options && options.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              ) : type === 'password' ? (
                 <div className="input-group">
                   <input
                     type={showPasswords[errorKey] ? "text" : "password"}

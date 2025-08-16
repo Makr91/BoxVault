@@ -40,6 +40,12 @@ mkdir -p /var/log/boxvault
 chown boxvault:boxvault /var/lib/boxvault/uploads
 chown boxvault:boxvault /var/log/boxvault
 
+# Generate setup token during installation
+SETUP_TOKEN=$(openssl rand -hex 32)
+echo "$SETUP_TOKEN" > /opt/boxvault/setup.token
+chown boxvault:boxvault /opt/boxvault/setup.token
+chmod 600 /opt/boxvault/setup.token
+
 # Reload systemd daemon
 systemctl daemon-reload
 
@@ -47,15 +53,17 @@ echo ""
 echo "======================================================================"
 echo "BoxVault has been installed successfully!"
 echo ""
-echo "Next steps:"
-echo "1. Review configuration files in: /etc/boxvault/"
-echo "2. Configure database connection: /etc/boxvault/db.config.yaml"
-echo "3. Configure mail settings: /etc/boxvault/mail.config.yaml"
-echo "4. Start the service: systemctl enable --now boxvault"
-echo "5. Check status: systemctl status boxvault"
-echo "6. View logs: journalctl -u boxvault -f"
+echo "SETUP TOKEN (save this for initial configuration):"
+echo "  $SETUP_TOKEN"
 echo ""
-echo "Default access: http://localhost:3000"
+echo "Next steps:"
+echo "1. Start the service: systemctl enable --now boxvault"
+echo "2. Access BoxVault at: http://localhost:3000"
+echo "3. Use the setup token above for initial configuration"
+echo "4. Check status: systemctl status boxvault"
+echo "5. View logs: journalctl -u boxvault -f"
+echo ""
+echo "Configuration files location: /etc/boxvault/"
 echo "======================================================================"
 echo ""
 

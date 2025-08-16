@@ -63,9 +63,6 @@ license opt/boxvault/LICENSE.md license="MIT" must-accept=false
 <transform file path=opt/boxvault/shutdown.sh -> set group sys>
 <transform file path=opt/boxvault/shutdown.sh -> set mode 0755>
 
-<transform file path=opt/boxvault/post-install.sh -> set owner root>
-<transform file path=opt/boxvault/post-install.sh -> set group sys>
-<transform file path=opt/boxvault/post-install.sh -> set mode 0755>
 
 # Make scripts and node binaries executable
 <transform file path=opt/boxvault/scripts/.* -> set mode 0755>

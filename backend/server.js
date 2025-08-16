@@ -102,9 +102,23 @@ async function generateSSLCertificatesIfNeeded() {
   }
 }
 
-const setupTokenPath = path.join(__dirname, 'app/setup.token');
+const setupTokenPath = path.join(__dirname, 'setup.token');
 
-function generateSetupToken() {
+function getOrGenerateSetupToken() {
+  // Check if setup token already exists (from package installation)
+  if (fs.existsSync(setupTokenPath)) {
+    try {
+      const existingToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
+      if (existingToken && existingToken.length === 64) { // Valid hex token
+        console.log('Using existing setup token from installation');
+        return existingToken;
+      }
+    } catch (error) {
+      console.warn('Error reading existing setup token, generating new one:', error.message);
+    }
+  }
+  
+  // Generate new token if none exists or existing one is invalid
   const token = crypto.randomBytes(32).toString('hex');
   fs.writeFileSync(setupTokenPath, token);
   return token;
@@ -245,7 +259,7 @@ let isConfigured = isDialectConfigured();
 if (isConfigured) {
   initializeApp();
 } else {
-  const setupToken = generateSetupToken();
+  const setupToken = getOrGenerateSetupToken();
   console.log(`Setup token: ${setupToken}`);
 
   // Load only the setup route

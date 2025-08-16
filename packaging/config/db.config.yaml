@@ -1,14 +1,24 @@
+database_type:
+  type: select
+  value: mysql
+  options: ["mysql", "sqlite"]
+  description: Database type - MySQL for production, SQLite for simple deployments
+  required: true
 sql:
   host:
     type: host
     value: localhost
-    description: Database host
-    required: true
+    description: Database host (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   port:
     type: integer
     value: 3306
-    description: Database port
-    required: true
+    description: Database port (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   logging:
     type: boolean
     value: false
@@ -17,45 +27,67 @@ sql:
   user:
     type: string
     value: boxvault
-    description: Database user
-    required: true
+    description: Database user (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   password:
     type: password
     value: CHANGE_THIS_PASSWORD
-    description: Database password
-    required: true
+    description: Database password (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   database:
     type: string
     value: boxvault
-    description: Database name
-    required: true
+    description: Database name (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
+  storage:
+    type: string
+    value: /var/lib/boxvault/database/boxvault.db
+    description: SQLite database file path (SQLite only)
+    required: false
+    depends_on: database_type
+    show_when: sqlite
   dialect:
     type: string
     value: mysql
-    description: Database dialect
+    description: Database dialect (auto-set based on database type)
     required: true
+    readonly: true
 mysql_pool:
   max:
     type: integer
     value: 5
-    description: Maximum number of connections in pool
-    required: true
+    description: Maximum number of connections in pool (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   min:
     type: integer
     value: 0
-    description: Minimum number of connections in pool
-    required: true
+    description: Minimum number of connections in pool (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   acquire:
     type: integer
     value: 30000
     description: >-
       Maximum time, in milliseconds, that pool will try to get connection before
-      throwing error
-    required: true
+      throwing error (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql
   idle:
     type: integer
     value: 10000
     description: >-
       Maximum time, in milliseconds, that a connection can be idle before being
-      released
-    required: true
+      released (MySQL only)
+    required: false
+    depends_on: database_type
+    show_when: mysql

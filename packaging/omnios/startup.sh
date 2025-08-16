@@ -30,6 +30,36 @@ chown -R boxvault:boxvault /var/log/boxvault
 # Set proper permissions for SSL directory (more restrictive)
 chmod 700 /etc/boxvault/ssl
 
+# Generate setup token if it doesn't exist (first run)
+SETUP_TOKEN_FILE="/opt/boxvault/setup.token"
+if [ ! -f "$SETUP_TOKEN_FILE" ]; then
+    echo "First run detected - generating setup token..."
+    SETUP_TOKEN=$(openssl rand -hex 32)
+    echo "$SETUP_TOKEN" > "$SETUP_TOKEN_FILE"
+    chown boxvault:boxvault "$SETUP_TOKEN_FILE"
+    chmod 600 "$SETUP_TOKEN_FILE"
+    
+    # Broadcast setup token to all logged-in users
+    TEMP_MSG=$(mktemp)
+    cat > "$TEMP_MSG" << EOF
+
+BoxVault has been started for the first time!
+
+SETUP TOKEN (save this for initial configuration):
+  $SETUP_TOKEN
+
+Access BoxVault at: http://localhost:3000
+Use the setup token above for initial configuration.
+
+Configuration files: /etc/boxvault/
+
+EOF
+    wall "$TEMP_MSG"
+    rm -f "$TEMP_MSG"
+    
+    echo "Setup token generated and broadcast to all users: $SETUP_TOKEN"
+fi
+
 # Check if JWT secret exists (SSL certificates will be handled by Node.js if needed)
 if [ ! -f "/etc/boxvault/.jwt-secret" ]; then
     echo "Warning: JWT secret not found. Node.js may generate default secrets." >&2

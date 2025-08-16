@@ -239,7 +239,30 @@ exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
     for (const [configName, configData] of Object.entries(configs)) {
       if (configPaths[configName]) {
         const currentConfig = await readConfig(configPaths[configName]);
-        const newConfig = { ...currentConfig, ...configData };
+        let newConfig = { ...currentConfig, ...configData };
+        
+        // Handle database type selection for db config
+        if (configName === 'db' && newConfig.database_type) {
+          const dbType = newConfig.database_type.value;
+          
+          // Auto-set dialect based on database type
+          if (newConfig.sql && newConfig.sql.dialect) {
+            newConfig.sql.dialect.value = dbType;
+          }
+          
+          // For SQLite, ensure storage path directory exists
+          if (dbType === 'sqlite' && newConfig.sql && newConfig.sql.storage) {
+            const storagePath = newConfig.sql.storage.value;
+            const storageDir = path.dirname(storagePath);
+            
+            // Create directory if it doesn't exist
+            if (!fs.existsSync(storageDir)) {
+              fs.mkdirSync(storageDir, { recursive: true, mode: 0o755 });
+              console.log(`Created SQLite database directory: ${storageDir}`);
+            }
+          }
+        }
+        
         await writeConfig(configPaths[configName], newConfig);
       }
     }
