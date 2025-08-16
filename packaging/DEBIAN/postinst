@@ -15,11 +15,14 @@ chown -R boxvault:boxvault /var/log/boxvault
 chown -R boxvault:boxvault /etc/boxvault
 
 
-# Generate JWT secret if it doesn't exist and update auth config (only on fresh install)
+# Handle configuration files properly for fresh installs vs upgrades
 case "$1" in
     configure)
         if [ -z "$2" ]; then
             # Fresh install (no previous version)
+            echo "Fresh installation detected"
+            
+            # Only generate JWT secret if config file has the default placeholder
             if [ -f /etc/boxvault/auth.config.yaml ]; then
                 if grep -q "CHANGE_THIS_SECRET_KEY_IN_PRODUCTION" /etc/boxvault/auth.config.yaml; then
                     JWT_SECRET=$(openssl rand -hex 32)
@@ -28,8 +31,10 @@ case "$1" in
                 fi
             fi
         else
-            # Upgrade (previous version exists) - don't modify existing configs
-            echo "Upgrade detected - preserving existing configuration files"
+            # Upgrade (previous version exists) - NEVER modify existing configs
+            echo "Upgrade from version $2 detected - preserving all existing configuration files"
+            echo "Configuration files in /etc/boxvault/ will NOT be modified"
+            echo "Database files in /var/lib/boxvault/ will NOT be modified"
         fi
         ;;
 esac
@@ -62,11 +67,33 @@ else
     echo "If you install Certbot later, BoxVault will provide integration instructions"
 fi
 
-# Generate setup token during installation
-SETUP_TOKEN=$(openssl rand -hex 32)
-echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
-chown boxvault:boxvault /etc/boxvault/setup.token
-chmod 600 /etc/boxvault/setup.token
+# Generate setup token only on fresh installation
+case "$1" in
+    configure)
+        if [ -z "$2" ]; then
+            # Fresh install only - generate setup token
+            SETUP_TOKEN=$(openssl rand -hex 32)
+            echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
+            chown boxvault:boxvault /etc/boxvault/setup.token
+            chmod 600 /etc/boxvault/setup.token
+            SHOW_SETUP_TOKEN=true
+        else
+            # Upgrade - preserve existing setup token
+            if [ -f /etc/boxvault/setup.token ]; then
+                echo "Preserving existing setup token"
+                SETUP_TOKEN=$(cat /etc/boxvault/setup.token)
+                SHOW_SETUP_TOKEN=false
+            else
+                # Upgrade but no setup token exists - generate one
+                SETUP_TOKEN=$(openssl rand -hex 32)
+                echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
+                chown boxvault:boxvault /etc/boxvault/setup.token
+                chmod 600 /etc/boxvault/setup.token
+                SHOW_SETUP_TOKEN=true
+            fi
+        fi
+        ;;
+esac
 
 # Function to extract port from config file
 get_port_from_config() {
@@ -107,19 +134,38 @@ systemctl daemon-reload
 
 echo ""
 echo "======================================================================"
-echo "BoxVault has been installed successfully!"
-echo ""
-echo "SETUP TOKEN (save this for initial configuration):"
-echo "  $SETUP_TOKEN"
-echo ""
-echo "Next steps:"
-echo "1. Start the service: systemctl enable --now boxvault"
-echo "2. Access BoxVault at: $HTTP_URL or $HTTPS_URL"
-echo "3. Use the setup token above for initial configuration"
-echo "4. Check status: systemctl status boxvault"
-echo "5. View logs: journalctl -u boxvault -f"
+if [ -z "$2" ]; then
+    echo "BoxVault has been installed successfully!"
+    echo ""
+    if [ "$SHOW_SETUP_TOKEN" = "true" ]; then
+        echo "SETUP TOKEN (save this for initial configuration):"
+        echo "  $SETUP_TOKEN"
+        echo ""
+    fi
+    echo "Next steps:"
+    echo "1. Start the service: systemctl enable --now boxvault"
+    echo "2. Access BoxVault at: $HTTP_URL or $HTTPS_URL"
+    if [ "$SHOW_SETUP_TOKEN" = "true" ]; then
+        echo "3. Use the setup token above for initial configuration"
+    else
+        echo "3. Use your existing setup token for configuration"
+    fi
+    echo "4. Check status: systemctl status boxvault"
+    echo "5. View logs: journalctl -u boxvault -f"
+else
+    echo "BoxVault has been upgraded successfully!"
+    echo ""
+    echo "Upgrade completed from version $2"
+    echo "All existing configuration files and databases have been preserved"
+    echo ""
+    echo "Next steps:"
+    echo "1. Restart the service: systemctl restart boxvault"
+    echo "2. Check status: systemctl status boxvault"
+    echo "3. View logs: journalctl -u boxvault -f"
+fi
 echo ""
 echo "Configuration files location: /etc/boxvault/"
+echo "Database location: /var/lib/boxvault/"
 echo "======================================================================"
 echo ""
 
