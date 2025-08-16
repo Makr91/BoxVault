@@ -7,11 +7,16 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Save original working directory
+const originalCwd = process.cwd();
+
 // Change working directory to backend for swagger to find the files
-process.chdir('./backend');
+process.chdir(path.join(originalCwd, 'backend'));
 const { specs } = require('./app/config/swagger.js');
+
 // Change back to root directory
-process.chdir('..');
+process.chdir(originalCwd);
 
 /**
  * Generate static API documentation files
