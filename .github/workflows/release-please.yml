@@ -218,26 +218,25 @@ jobs:
             done
           "
 
-      - name: Create stable distribution with proper Release file
+      - name: Create stable symlink pointing to trixie
         run: |
           ssh startcloud@172.17.204.177 "
             cd /local/public/debian/dists
-            rm -rf stable
-            cp -r trixie stable
-            cd stable
-            /local/generate-release.sh stable > Release
+            rm -rf stable 2>/dev/null || true
+            ln -sf trixie stable
           "
 
-      - name: Sign repository for all suites including stable
+      - name: Sign repository for all suites
         run: |
           ssh startcloud@172.17.204.177 "
             cd /local/public/debian
-            for suite in bookworm trixie stable; do
+            for suite in bookworm trixie; do
               cd dists/\$suite
               export GNUPGHOME=\$(mktemp -d /local/pgp/pgpkeys-XXXXXX)
               cat /local/pgp/pgp-key.private | gpg --import
               cat Release | gpg --default-key startcloud -abs > Release.gpg
               cat Release | gpg --default-key startcloud -abs --clearsign > InRelease
+              rm -rf \$GNUPGHOME
               cd ../..
             done
           "
