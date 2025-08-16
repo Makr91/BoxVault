@@ -8,6 +8,9 @@ if ! getent passwd boxvault > /dev/null 2>&1; then
             --gecos "BoxVault system user" boxvault
 fi
 
+# Create /etc/boxvault directory if it doesn't exist
+mkdir -p /etc/boxvault
+
 # Set ownership and permissions
 chown -R boxvault:boxvault /opt/boxvault
 chown -R boxvault:boxvault /var/lib/boxvault
@@ -22,6 +25,17 @@ case "$1" in
             # Fresh install (no previous version)
             echo "Fresh installation detected"
             
+            # Install default config files from templates only if they don't exist
+            for config_file in app.config.yaml auth.config.yaml db.config.yaml mail.config.yaml; do
+                if [ ! -f "/etc/boxvault/$config_file" ]; then
+                    if [ -f "/opt/boxvault/config-templates/$config_file" ]; then
+                        cp "/opt/boxvault/config-templates/$config_file" "/etc/boxvault/$config_file"
+                        chown boxvault:boxvault "/etc/boxvault/$config_file"
+                        echo "Installed default $config_file from template"
+                    fi
+                fi
+            done
+            
             # Only generate JWT secret if config file has the default placeholder
             if [ -f /etc/boxvault/auth.config.yaml ]; then
                 if grep -q "CHANGE_THIS_SECRET_KEY_IN_PRODUCTION" /etc/boxvault/auth.config.yaml; then
@@ -31,10 +45,11 @@ case "$1" in
                 fi
             fi
         else
-            # Upgrade (previous version exists) - NEVER modify existing configs
+            # Upgrade (previous version exists) - existing configs are automatically preserved
             echo "Upgrade from version $2 detected - preserving all existing configuration files"
             echo "Configuration files in /etc/boxvault/ will NOT be modified"
             echo "Database files in /var/lib/boxvault/ will NOT be modified"
+            echo "Configuration templates are available in /opt/boxvault/config-templates/ for reference"
         fi
         ;;
 esac
@@ -152,6 +167,9 @@ if [ -z "$2" ]; then
     fi
     echo "4. Check status: systemctl status boxvault"
     echo "5. View logs: journalctl -u boxvault -f"
+    echo ""
+    echo "Configuration files location: /etc/boxvault/"
+    echo "Database location: /var/lib/boxvault/"
 else
     echo "BoxVault has been upgraded successfully!"
     echo ""
@@ -162,10 +180,10 @@ else
     echo "1. Restart the service: systemctl restart boxvault"
     echo "2. Check status: systemctl status boxvault"
     echo "3. View logs: journalctl -u boxvault -f"
+    echo ""
+    echo "Configuration files location: /etc/boxvault/"
+    echo "Database location: /var/lib/boxvault/"
 fi
-echo ""
-echo "Configuration files location: /etc/boxvault/"
-echo "Database location: /var/lib/boxvault/"
 echo "======================================================================"
 echo ""
 

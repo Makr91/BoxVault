@@ -58,7 +58,7 @@ jobs:
         
       - name: Create Debian package structure
         run: |
-          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/frontend,etc/boxvault,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
+          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/frontend,opt/boxvault/config-templates,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
         
       - name: Copy application files to Debian package
         run: |
@@ -66,12 +66,12 @@ jobs:
           cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
           # Frontend files are built into backend/app/views, so they're already included with backend/app
         
-      - name: Copy configuration files to Debian package
+      - name: Copy configuration templates and system files to Debian package
         run: |
-          cp packaging/config/app.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
-          cp packaging/config/auth.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
-          cp packaging/config/db.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
-          cp packaging/config/mail.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
+          cp packaging/config/app.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
+          cp packaging/config/auth.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
+          cp packaging/config/db.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
+          cp packaging/config/mail.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
           cp packaging/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
           cp packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"
         

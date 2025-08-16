@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+# This script runs BEFORE package installation/upgrade
+# With template-based configuration, no backup is needed since
+# config files are no longer part of the package
+
+case "$1" in
+    install)
+        echo "Fresh installation - configuration will be created from templates"
+        ;;
+    upgrade)
+        if [ -n "$2" ]; then
+            echo "Upgrade from version $2 detected - existing configuration files will be preserved"
+            echo "Configuration files are no longer part of the package and will not be overwritten"
+        fi
+        ;;
+esac
+
+exit 0
