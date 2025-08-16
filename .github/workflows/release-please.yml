@@ -58,7 +58,7 @@ jobs:
         
       - name: Create Debian package structure
         run: |
-          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/frontend,opt/boxvault/config-templates,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
+          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/frontend,opt/boxvault/config-templates,opt/boxvault/scripts,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
         
       - name: Copy application files to Debian package
         run: |
@@ -72,8 +72,9 @@ jobs:
           cp packaging/config/auth.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
           cp packaging/config/db.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
           cp packaging/config/mail.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
+          cp packaging/scripts/certbot-deploy-hook.sh "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/scripts/"
           cp packaging/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
-          cp packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"
+          cp packaging/DEBIAN/preinst packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"
         
       - name: Create Debian control file
         run: |
@@ -97,7 +98,8 @@ jobs:
         run: |
           find "${PACKAGE_NAME}_${VERSION}_${ARCH}" -type d -exec chmod 755 {} \;
           find "${PACKAGE_NAME}_${VERSION}_${ARCH}" -type f -exec chmod 644 {} \;
-          chmod 755 "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN"/{postinst,prerm,postrm}
+          chmod 755 "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN"/{preinst,postinst,prerm,postrm}
+          chmod 755 "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/scripts"/*
         
       - name: Build Debian package
         run: |
