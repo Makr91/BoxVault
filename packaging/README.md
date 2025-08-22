@@ -59,7 +59,7 @@ cp packaging/config/db.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxva
 cp packaging/config/mail.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
 
 # Systemd service
-cp packaging/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
+cp packaging/DEBIAN/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
 
 # DEBIAN control files
 cp packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"

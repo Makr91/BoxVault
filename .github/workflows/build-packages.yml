@@ -117,7 +117,7 @@ jobs:
           cp packaging/config/mail.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
           
           # Systemd service
-          cp packaging/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
+          cp packaging/DEBIAN/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
           
           # DEBIAN control files
           cp packaging/DEBIAN/{postinst,prerm,postrm} "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"
