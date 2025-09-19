@@ -237,20 +237,30 @@ const SetupComponent = () => {
           }
         }
   
-        if (typeof entry === 'object' && entry !== null && !('type' in entry && 'value' in entry)) {
-          return (
-            <div key={errorKey} className="col-md-6 mb-3">
-              <div className="card">
-                <div className="card-header">
-                  <h5>{key}</h5>
-                </div>
-                <div className="card-body">
-                  {renderFields(entry, currentPath)}
-                </div>
+      if (typeof entry === 'object' && entry !== null && !('type' in entry && 'value' in entry)) {
+        return (
+          <div key={errorKey} className="col-md-6 mb-3">
+            <div className="card">
+              <div className="card-header">
+                <h5>{key}</h5>
+              </div>
+              <div className="card-body">
+                {renderFields(entry, currentPath)}
               </div>
             </div>
-          );
-        } else {
+          </div>
+        );
+      } else if (key === 'oidc_providers' && entry.type === 'object') {
+        // Skip OIDC providers in setup wizard - managed in admin interface
+        return (
+          <div key={errorKey} className="col-md-12 mb-3">
+            <div className="alert alert-info">
+              <h6><i className="fas fa-info-circle me-2"></i>OIDC Providers</h6>
+              <p className="mb-0">OIDC provider configuration is managed through the Admin interface after setup is complete. Go to Admin → Configuration Management → Auth Config to add OIDC providers.</p>
+            </div>
+          </div>
+        );
+      } else {
           const { type, value, description, options } = entry;
           const inputValue = value === null || value === undefined ? '' : value; // Handle null and undefined
   

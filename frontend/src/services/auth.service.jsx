@@ -260,6 +260,13 @@ const sendInvitation = (email, organizationName) => {
   return axios.post(`${baseURL}/api/auth/invite`, { email, organizationName }, { headers: authHeader() });
 };
 
+const getAuthMethods = () => {
+  return axios.get(`${baseURL}/api/auth/methods`)
+    .then((response) => {
+      return response.data;
+    });
+};
+
 const AuthService = {
   register,
   login,
@@ -271,8 +278,9 @@ const AuthService = {
   verifyMail,
   sendInvitation,
   validateInvitationToken,
-  getGravatarConfig, // Changed from fetchGravatarConfig to match the function name
-  refreshTokenIfNeeded
+  getGravatarConfig,
+  refreshTokenIfNeeded,
+  getAuthMethods
 };
 
 export default AuthService;

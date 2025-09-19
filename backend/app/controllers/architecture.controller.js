@@ -699,7 +699,7 @@ exports.findOne = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
     req.userId = decoded.id;
     req.isServiceAccount = decoded.isServiceAccount;
   } catch (err) {

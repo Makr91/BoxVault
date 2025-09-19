@@ -528,7 +528,7 @@ const download = async (req, res) => {
   const downloadToken = req.query.token;
   if (downloadToken) {
     try {
-      const decoded = jwt.verify(downloadToken, authConfig.jwt.jwt_secret.value);
+      const decoded = jwt.verify(downloadToken, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.userId;
       isServiceAccount = decoded.isServiceAccount;
       
@@ -846,7 +846,7 @@ const info = async (req, res) => {
     const token = req.headers["x-access-token"];
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
@@ -927,7 +927,7 @@ const info = async (req, res) => {
             providerName,
             architectureName
           },
-          authConfig.jwt.jwt_secret.value,
+          authConfig.auth.jwt.jwt_secret.value,
           { expiresIn: '1h' }
         );
 
@@ -977,7 +977,7 @@ const info = async (req, res) => {
           providerName,
           architectureName
         },
-        authConfig.jwt.jwt_secret.value,
+        authConfig.auth.jwt.jwt_secret.value,
         { expiresIn: '1h' }
       );
 
@@ -1588,7 +1588,7 @@ const getDownloadLink = async (req, res) => {
     const token = req.headers["x-access-token"];
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
@@ -1664,7 +1664,7 @@ const getDownloadLink = async (req, res) => {
         providerName,
         architectureName
       },
-      authConfig.jwt.jwt_secret.value,
+      authConfig.auth.jwt.jwt_secret.value,
       { expiresIn: '1h' }
     );
 

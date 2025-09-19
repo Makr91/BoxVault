@@ -367,8 +367,8 @@ exports.getUserProfile = async (req, res) => {
       return res.status(404).send({ message: "User Not found." });
     }
 
-    const token = jwt.sign({ id: user.id }, authConfig.jwt.jwt_secret.value, {
-      expiresIn: authConfig.jwt.jwt_token_time_valid.value,
+    const token = jwt.sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
+      expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
     });
 
     const authorities = user.roles.map(role => "ROLE_" + role.name.toUpperCase());

@@ -365,7 +365,7 @@ const Profile = () => {
                   <p><strong>Location:</strong> {gravatarProfile.location || "No Location"}</p>
                   <p><strong>Email:</strong> {currentUser.email}</p>
                   <p><strong>Organization:</strong> {currentUser.organization}</p>
-                  <p><strong>Roles:</strong> {currentUser.roles.join(", ")}</p>
+                  <p><strong>Roles:</strong> {currentUser.roles ? currentUser.roles.join(", ") : "No roles assigned"}</p>
                   <p><strong>Profile URL:</strong> <a href={gravatarProfile.profile_url} target="_blank" rel="noopener noreferrer">{gravatarProfile.profile_url}</a></p>
                   <p><strong>Verified Accounts:</strong> {gravatarProfile.number_verified_accounts}</p>
                   <p><strong>Registration Date:</strong> {new Date(gravatarProfile.registration_date).toLocaleDateString()}</p>

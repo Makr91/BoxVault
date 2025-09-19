@@ -176,7 +176,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     // If a token is provided, verify it and extract the user ID
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
 
@@ -597,7 +597,7 @@ exports.findOne = async (req, res) => {
     const token = req.headers["x-access-token"];
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
@@ -1220,7 +1220,7 @@ exports.downloadBox = async (req, res) => {
     const token = req.headers["x-access-token"];
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {

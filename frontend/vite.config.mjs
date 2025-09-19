@@ -17,6 +17,7 @@ export default defineConfig(() => {
         outDir: '../../backend/app/views/',
         emptyOutDir: true,
         copyPublicDir: true,
+        minify: false,
         rollupOptions: {
           external: ["rollup"],
           output: {

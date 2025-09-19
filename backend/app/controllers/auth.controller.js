@@ -705,7 +705,7 @@ exports.signin = async (req, res) => {
     }
 
     // Use longer expiry for stayLoggedIn
-    const tokenExpiry = stayLoggedIn ? '24h' : authConfig.jwt.jwt_token_time_valid.value;
+    const tokenExpiry = stayLoggedIn ? '24h' : authConfig.auth.jwt.jwt_expiration.value || '24h';
     
     const token = jwt.sign(
       { 
@@ -713,7 +713,7 @@ exports.signin = async (req, res) => {
         isServiceAccount: isServiceAccount,
         stayLoggedIn: stayLoggedIn
       },
-      authConfig.jwt.jwt_secret.value,
+      authConfig.auth.jwt.jwt_secret.value,
       {
         algorithm: 'HS256',
         allowInsecureKeySizes: true,
@@ -981,7 +981,7 @@ exports.refreshToken = async (req, res) => {
         isServiceAccount: false,
         stayLoggedIn: stayLoggedIn || user.stayLoggedIn // Keep existing state if not provided
       },
-      authConfig.jwt.jwt_secret.value,
+      authConfig.auth.jwt.jwt_secret.value,
       {
         algorithm: 'HS256',
         allowInsecureKeySizes: true,

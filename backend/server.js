@@ -7,6 +7,8 @@ const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/co
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
+const session = require('express-session');
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
 
 global.__basedir = __dirname;
 
@@ -246,15 +248,69 @@ function initializeApp() {
   const db = require("./app/models");
   const Role = db.role;
 
-  db.sequelize.sync().then(() => {
+  // Configure session middleware for OIDC
+  const sessionStore = new SequelizeStore({
+    db: db.sequelize,
+    tableName: 'Sessions',
+    checkExpirationInterval: 15 * 60 * 1000,
+    expiration: 30 * 60 * 1000,
+  });
+
+  let authConfig;
+  try {
+    authConfig = loadConfig('auth');
+  } catch (e) {
+    console.error(`Failed to load auth configuration: ${e.message}`);
+  }
+
+  app.use(
+    session({
+      secret: authConfig?.jwt?.jwt_secret?.value || 'boxvault-session-secret',
+      store: sessionStore,
+      name: 'boxvault.sid',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: isSSLConfigured(),
+        httpOnly: true,
+        maxAge: 30 * 60 * 1000,
+        sameSite: 'lax',
+      },
+    })
+  );
+
+  // Initialize Passport after database sync
+  db.sequelize.sync().then(async () => {
     console.log('Database synced');
+    
+    // Sync session store
+    try {
+      await sessionStore.sync();
+      console.log('Session store synchronized');
+    } catch (err) {
+      console.error('Session store sync failed:', err.message);
+    }
+
+    // Initialize Passport strategies
+    try {
+      const { passport, initializeStrategies } = require('./app/auth/passport');
+      app.use(passport.initialize());
+      app.use(passport.session());
+      
+      await initializeStrategies();
+      console.log('Passport.js initialized');
+    } catch (error) {
+      console.error('Failed to initialize Passport:', error.message);
+    }
+
     initial();
   }).catch(err => {
     console.error("Error syncing database:", err);
   });
 
-  // Load all other routes
+  // Load all routes
   require('./app/routes/auth.routes')(app);
+  require('./app/routes/oidc.routes')(app);
   require('./app/routes/mail.routes')(app);
   require('./app/routes/config.routes')(app);
   require('./app/routes/user.routes')(app);

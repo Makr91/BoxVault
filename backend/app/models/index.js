@@ -65,6 +65,7 @@ db.architectures = require("../models/architecture.model.js")(sequelize, Sequeli
 db.files = require("../models/file.model.js")(sequelize, Sequelize);
 db.invitation = require("../models/invitation.model.js")(sequelize, Sequelize);
 db.service_account = require("../models/service_account.model.js")(sequelize, Sequelize);
+db.credential = require("../models/credential.model.js")(sequelize, Sequelize);
 
 // Define associations
 db.role.belongsToMany(db.user, {

@@ -23,6 +23,7 @@ import Organization from "./components/organization.component";
 import Version from "./components/version.component";
 import Provider from "./components/provider.component";
 import Navbar from "./components/navbar.component";
+import AuthCallback from "./components/AuthCallback";
 
 // Assets
 import BoxVaultLight from './images/BoxVault.svg';
@@ -132,21 +133,37 @@ const App = () => {
 
     if (user) {
       setCurrentUser(user);
-      setShowAdminBoard(user.roles.includes("ROLE_ADMIN"));
-      setShowModeratorBoard(user.roles.includes("ROLE_MODERATOR"));
+      setShowAdminBoard(user.roles && user.roles.includes("ROLE_ADMIN"));
+      setShowModeratorBoard(user.roles && user.roles.includes("ROLE_MODERATOR"));
       setUserOrganization(user.organization);
 
       if (user.emailHash) {
         fetchGravatarUrl(user.emailHash);
       }
-
-      // Use the new cleanup function returned by EventBus.on
-      const cleanup = EventBus.on("logout", () => {
-        logOut();
-      });
-
-      return cleanup;
     }
+  }, [fetchGravatarUrl]);
+
+  useEffect(() => {
+    // Set up EventBus listeners independently of user state
+    const logoutCleanup = EventBus.on("logout", () => {
+      logOut();
+    });
+
+    const loginCleanup = EventBus.on("login", (userData) => {
+      setCurrentUser(userData);
+      setShowAdminBoard(userData.roles && userData.roles.includes("ROLE_ADMIN"));
+      setShowModeratorBoard(userData.roles && userData.roles.includes("ROLE_MODERATOR"));
+      setUserOrganization(userData.organization);
+      
+      if (userData.emailHash) {
+        fetchGravatarUrl(userData.emailHash);
+      }
+    });
+
+    return () => {
+      logoutCleanup();
+      loginCleanup();
+    };
   }, [fetchGravatarUrl]);
 
   useEffect(() => {
@@ -219,6 +236,7 @@ const App = () => {
               <Route path="/" element={<Organization showOnlyPublic={true} theme={theme} />} />
               <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login theme={theme} />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/register" element={<Register theme={theme} />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<Admin />} />

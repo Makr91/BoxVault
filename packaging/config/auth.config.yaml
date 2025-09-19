@@ -1,9 +1,262 @@
-jwt:
-  jwt_secret:
-    type: password
-    value: CHANGE_THIS_SECRET_KEY_IN_PRODUCTION
-    description: Secret key for JWT
-  jwt_token_time_valid:
-    type: integer
-    value: 86400
-    description: JWT token validity time in seconds (24 hours)
+auth:
+  enabled_strategies:
+    type: array
+    value:
+      - local
+      - jwt
+      - oidc
+    description: List of enabled authentication strategies
+    section: Authentication
+    subsection: General
+    required: true
+    order: 1
+  default_strategy:
+    type: select
+    value: local
+    options:
+      - local
+      - jwt
+      - oidc
+    description: Default authentication strategy
+    section: Authentication
+    subsection: General
+    required: true
+    order: 2
+  jwt:
+    jwt_secret:
+      type: password
+      value: ${JWT_SECRET}
+      description: JWT signing secret (use strong random string)
+      section: Authentication
+      subsection: JWT Settings
+      required: true
+      order: 1
+    jwt_expiration:
+      type: string
+      value: 24h
+      description: JWT token expiration time (e.g., '24h', '7d', '1h')
+      section: Authentication
+      subsection: JWT Settings
+      required: true
+      order: 2
+    jwt_issuer:
+      type: string
+      value: zoneweaver
+      description: JWT token issuer identifier
+      section: Authentication
+      subsection: JWT Settings
+      required: true
+      order: 3
+    jwt_audience:
+      type: string
+      value: zoneweaver-api
+      description: JWT token audience identifier
+      section: Authentication
+      subsection: JWT Settings
+      required: true
+      order: 4
+    local_enabled:
+      type: boolean
+      value: true
+      description: Enable username/password authentication
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 1
+  local:
+    local_require_email_verification:
+      type: boolean
+      value: true
+      description: Require email verification for new local accounts
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 2
+    local_password_min_length:
+      type: integer
+      value: 8
+      min: 4
+      max: 128
+      description: Minimum password length for local accounts
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 3
+    local_password_require_uppercase:
+      type: boolean
+      value: false
+      description: Require uppercase letters in passwords
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 4
+    local_password_require_lowercase:
+      type: boolean
+      value: false
+      description: Require lowercase letters in passwords
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 5
+    local_password_require_numbers:
+      type: boolean
+      value: false
+      description: Require numbers in passwords
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 6
+    local_password_require_symbols:
+      type: boolean
+      value: false
+      description: Require special symbols in passwords
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 7
+    local_bcrypt_rounds:
+      type: integer
+      value: 10
+      min: 8
+      max: 15
+      description: Bcrypt hashing rounds (higher = more secure but slower)
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 8
+    local_session_timeout:
+      type: integer
+      value: 24
+      min: 1
+      max: 168
+      description: Session timeout in hours
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 9
+    local_allow_new_organizations:
+      type: boolean
+      value: false
+      description: Allow users to create new organizations during registration
+      section: Authentication
+      subsection: Local Authentication
+      required: true
+      order: 10
+  oidc:
+    type: object
+    description: Configure OpenID Connect authentication providers
+    section: Authentication
+    subsection: OIDC Providers
+    required: false
+    order: 50
+    providers:
+  external:
+    domain_mapping_enabled:
+      type: boolean
+      value: true
+      description: Enable automatic organization assignment based on email domain
+      section: Authentication
+      subsection: External Providers
+      required: true
+      order: 1
+    domain_mappings:
+      type: textarea
+      value: |
+        {
+          "A55D94": ["m4kr.net", "philotic.cloud"]
+        }
+      description: >-
+        JSON mapping of organization codes to email domains. Format:
+        {"ORG_CODE": ["domain1.com", "domain2.com"]}. Users with matching email
+        domains will be auto-assigned to the specified organization.
+      section: Authentication
+      subsection: External Providers
+      required: false
+      conditional:
+        field: authentication.external_domain_mapping_enabled
+        value: true
+      order: 2
+    provisioning_enabled:
+      type: boolean
+      value: true
+      description: Enable automatic user provisioning for external authentication
+      section: Authentication
+      subsection: External Providers
+      required: true
+      order: 2
+    provisioning_policy:
+      type: select
+      value: invite_only
+      options:
+        - invite_only
+        - auto_provision
+        - manual_approval
+        - disabled
+      description: Policy for handling new external users
+      section: Authentication
+      subsection: External Providers
+      required: false
+      depends_on: provisioning_enabled
+      show_when:
+        - true
+      order: 3
+    provisioning_default_role:
+      type: select
+      value: user
+      options:
+        - user
+        - admin
+        - super-admin
+      description: Default role for auto-provisioned users
+      section: Authentication
+      subsection: External Providers
+      required: false
+      depends_on: provisioning_enabled
+      show_when:
+        - true
+      order: 4
+    provisioning_fallback_action:
+      type: select
+      value: create_org
+      options:
+        - require_invite
+        - create_org
+        - deny_access
+      description: Action when no organization mapping found
+      section: Authentication
+      subsection: External Providers
+      required: false
+      depends_on: provisioning_enabled
+      show_when:
+        - true
+      order: 5
+    profile_sync_enabled:
+      type: boolean
+      value: true
+      description: Sync user profile from external providers
+      section: Authentication
+      subsection: External Providers
+      required: true
+      order: 6
+    profile_update_on_login:
+      type: boolean
+      value: true
+      description: Update profile information on each login
+      section: Authentication
+      subsection: External Providers
+      required: false
+      depends_on: profile_sync_enabled
+      show_when:
+        - true
+      order: 7
+    profile_sync_fields:
+      type: string
+      value: displayName,email,groups
+      description: Comma-separated list of profile fields to sync
+      section: Authentication
+      subsection: External Providers
+      required: false
+      depends_on: profile_sync_enabled
+      show_when:
+        - true
+      order: 8

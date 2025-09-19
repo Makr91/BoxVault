@@ -20,7 +20,7 @@ verifyToken = async (req, res, next) => {
 
     try {
       const decoded = await new Promise((resolve, reject) => {
-        jwt.verify(token, authConfig.jwt.jwt_secret.value, (err, decoded) => {
+        jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decoded) => {
           if (err) reject(err);
           else resolve(decoded);
         });

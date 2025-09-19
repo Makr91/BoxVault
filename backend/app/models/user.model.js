@@ -25,6 +25,22 @@ module.exports = (sequelize, Sequelize) => {
     suspended: {
       type: Sequelize.BOOLEAN,
       defaultValue: false
+    },
+    authProvider: {
+      type: Sequelize.STRING(50),
+      allowNull: true,
+      defaultValue: 'local',
+      field: 'auth_provider'
+    },
+    externalId: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      field: 'external_id'
+    },
+    linkedAt: {
+      type: Sequelize.DATE,
+      allowNull: true,
+      field: 'linked_at'
     }
   });
 
@@ -36,6 +52,10 @@ module.exports = (sequelize, Sequelize) => {
     User.hasMany(models.box, {
       foreignKey: "userId",
       as: "box"
+    });
+    User.hasMany(models.credential, {
+      foreignKey: "user_id",
+      as: "credentials"
     });
   };
 

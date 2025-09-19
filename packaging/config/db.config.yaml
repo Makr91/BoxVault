@@ -1,93 +1,134 @@
 database_type:
   type: select
-  value: mysql
-  options: ["mysql", "sqlite"]
+  value: sqlite
+  options:
+    - mysql
+    - sqlite
   description: Database type - MySQL for production, SQLite for simple deployments
+  section: Database
+  subsection: General
   required: true
+  order: 1
 sql:
   host:
     type: host
     value: localhost
     description: Database host (MySQL only)
+    section: Database
+    subsection: Database Connection
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 1
   port:
     type: integer
     value: 3306
     description: Database port (MySQL only)
+    section: Database
+    subsection: Database Connection
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 2
   logging:
     type: boolean
     value: false
     description: Log SQL Queries to Backend Console
+    section: Database
+    subsection: Database Connection
     required: true
+    order: 3
   user:
     type: string
     value: boxvault
     description: Database user (MySQL only)
+    section: Database
+    subsection: Database Connection
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 4
   password:
     type: password
     value: CHANGE_THIS_PASSWORD
     description: Database password (MySQL only)
+    section: Database
+    subsection: Database Connection
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 5
   database:
     type: string
     value: boxvault
     description: Database name (MySQL only)
+    section: Database
+    subsection: Database Connection
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 6
   storage:
     type: string
     value: /var/lib/boxvault/database/boxvault.db
     description: SQLite database file path (SQLite only)
+    section: Database
+    subsection: Database Connection
     required: false
     depends_on: database_type
     show_when: sqlite
+    order: 7
   dialect:
     type: string
     value: ""
     description: Database dialect (auto-set based on database type)
+    section: Database
+    subsection: Database Connection
     required: true
     readonly: true
+    order: 8
 mysql_pool:
   max:
     type: integer
     value: 5
     description: Maximum number of connections in pool (MySQL only)
+    section: Database
+    subsection: Connection Pool
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 1
   min:
     type: integer
     value: 0
     description: Minimum number of connections in pool (MySQL only)
+    section: Database
+    subsection: Connection Pool
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 2
   acquire:
     type: integer
     value: 30000
     description: >-
       Maximum time, in milliseconds, that pool will try to get connection before
       throwing error (MySQL only)
+    section: Database
+    subsection: Connection Pool
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 3
   idle:
     type: integer
     value: 10000
     description: >-
       Maximum time, in milliseconds, that a connection can be idle before being
       released (MySQL only)
+    section: Database
+    subsection: Connection Pool
     required: false
     depends_on: database_type
     show_when: mysql
+    order: 4

@@ -202,7 +202,7 @@ exports.findAllWithUsers = async (req, res) => {
   if (token) {
     try {
       // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
       console.log("Decoded user ID:", userId);
     } catch (err) {
@@ -415,7 +415,7 @@ exports.findAll = async (req, res) => {
   if (token) {
     try {
       // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch (err) {
       return res.status(401).send({ message: "Unauthorized!" });
@@ -495,7 +495,7 @@ exports.findOne = async (req, res) => {
   if (token) {
     try {
       // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.jwt.jwt_secret.value);
+      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch (err) {
       return res.status(401).send({ message: "Unauthorized!" });
