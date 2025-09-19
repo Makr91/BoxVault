@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.20.0](https://github.com/Makr91/BoxVault/compare/v0.19.16...v0.20.0) (2025-09-19)
+
+
+### Features
+
+* oidc ([f6e6621](https://github.com/Makr91/BoxVault/commit/f6e66216ff4b6f3b0e9a9ce346bac601a0231774))
+
+
+### Bug Fixes
+
+* consolidate DEBIAN packaging ([4c8562f](https://github.com/Makr91/BoxVault/commit/4c8562fb3cd0b18f85e07084c3497a341ea103c7))
+* remove react table ([22fdec7](https://github.com/Makr91/BoxVault/commit/22fdec77afd00858900aa06e20dd294b757b70b9))
+
 ## [0.19.16](https://github.com/Makr91/BoxVault/compare/v0.19.15...v0.19.16) (2025-08-16)
 
 
