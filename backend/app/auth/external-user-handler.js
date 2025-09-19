@@ -175,7 +175,7 @@ async function determineUserOrganization(email, profile, db, authConfig) {
         if (Array.isArray(domains) && domains.includes(domain)) {
           mappedOrgCode = orgCode;
           // Use just the domain name for BoxVault (not ZoneWeaver prefix format)
-          const orgName = domain.toUpperCase();
+          const orgName = domain;
           
           const org = await Organization.findOne({ where: { name: orgName } });
           if (org) {
@@ -198,7 +198,7 @@ async function determineUserOrganization(email, profile, db, authConfig) {
 
     case 'create_org': {
       // Use just the domain name for BoxVault (not ZoneWeaver prefix format)
-      const orgName = domain.toUpperCase();
+      const orgName = domain;
 
       const newOrg = await Organization.create({
         name: orgName,
