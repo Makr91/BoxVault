@@ -174,7 +174,8 @@ async function determineUserOrganization(email, profile, db, authConfig) {
       for (const [orgCode, domains] of Object.entries(mappings)) {
         if (Array.isArray(domains) && domains.includes(domain)) {
           mappedOrgCode = orgCode;
-          const orgName = `${orgCode} - ${domain.toUpperCase()}`;
+          // Use just the domain name for BoxVault (not ZoneWeaver prefix format)
+          const orgName = domain.toUpperCase();
           
           const org = await Organization.findOne({ where: { name: orgName } });
           if (org) {
@@ -196,8 +197,8 @@ async function determineUserOrganization(email, profile, db, authConfig) {
       throw new Error(`Access denied: Invitation required for domain ${domain}`);
 
     case 'create_org': {
-      const orgCode = mappedOrgCode || generateOrgCode();
-      const orgName = `${orgCode} - ${domain.toUpperCase()}`;
+      // Use just the domain name for BoxVault (not ZoneWeaver prefix format)
+      const orgName = domain.toUpperCase();
 
       const newOrg = await Organization.create({
         name: orgName,
