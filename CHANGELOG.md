@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/Makr91/BoxVault/compare/v0.22.0...v0.23.0) (2025-09-20)
+
+
+### Features
+
+* oidc ([f8886d8](https://github.com/Makr91/BoxVault/commit/f8886d801281e526cc0c87becc891844386360f1))
+
 ## [0.22.0](https://github.com/Makr91/BoxVault/compare/v0.21.0...v0.22.0) (2025-09-19)
 
 
