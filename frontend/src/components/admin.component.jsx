@@ -218,7 +218,21 @@ const Admin = () => {
     }
 
     try {
-      await OrganizationService.updateOrganization(oldName, newOrgName);
+      await OrganizationService.updateOrganization(oldName, { organization: newOrgName });
+      
+      // Update the user's organization in localStorage if they renamed their own org
+      const currentUser = AuthService.getCurrentUser();
+      if (currentUser && currentUser.organization === oldName) {
+        currentUser.organization = newOrgName;
+        localStorage.setItem("user", JSON.stringify(currentUser));
+        
+        // Trigger an EventBus event to update App.jsx state
+        EventBus.dispatch("organizationUpdated", { 
+          oldName: oldName, 
+          newName: newOrgName 
+        });
+      }
+      
       setOrganizations((prevOrgs) =>
         prevOrgs.map((org) => (org.name === oldName ? { ...org, name: newOrgName } : org))
       );

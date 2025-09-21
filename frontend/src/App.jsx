@@ -160,9 +160,21 @@ const App = () => {
       }
     });
 
+    const organizationUpdateCleanup = EventBus.on("organizationUpdated", (data) => {
+      setUserOrganization(data.newName);
+      // Update currentUser state with new organization name
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          organization: data.newName
+        });
+      }
+    });
+
     return () => {
       logoutCleanup();
       loginCleanup();
+      organizationUpdateCleanup();
     };
   }, [fetchGravatarUrl]);
 

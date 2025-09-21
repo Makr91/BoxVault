@@ -97,6 +97,22 @@ const Moderator = ({ currentOrganization }) => {
         email: orgEmail,
         description: orgDescription
       });
+      
+      // Update the user's organization in localStorage if name changed
+      if (newOrgName !== currentOrganization) {
+        const currentUser = AuthService.getCurrentUser();
+        if (currentUser) {
+          currentUser.organization = newOrgName;
+          localStorage.setItem("user", JSON.stringify(currentUser));
+        }
+        
+        // Trigger an EventBus event to update App.jsx state
+        EventBus.dispatch("organizationUpdated", { 
+          oldName: currentOrganization, 
+          newName: newOrgName 
+        });
+      }
+      
       setUpdateMessage('Organization updated successfully!');
     } catch (error) {
       console.error('Error updating organization:', error);
