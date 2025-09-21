@@ -627,24 +627,26 @@ exports.update = async (req, res) => {
       });
     }
 
-    // Create the new directory if it doesn't exist
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
-    }
-
-    // Create the new directory if it doesn't exist
-    if (!fs.existsSync(oldFilePath)) {
-      fs.mkdirSync(oldFilePath, { recursive: true });
-    }
-
-    // Rename the directory if necessary
-    if (oldFilePath !== newFilePath) {
-      fs.renameSync(oldFilePath, newFilePath);
-
-      // Clean up the old directory if it still exists
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmdirSync(oldFilePath, { recursive: true });
+    // Handle directory operations only if directories actually exist and names are different
+    try {
+      if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {
+        // Create new directory structure if needed
+        if (!fs.existsSync(newFilePath)) {
+          fs.mkdirSync(newFilePath, { recursive: true });
+        }
+        
+        // Move contents from old to new directory
+        fs.renameSync(oldFilePath, newFilePath);
+        
+        // Clean up the old directory if it still exists
+        if (fs.existsSync(oldFilePath)) {
+          fs.rmdirSync(oldFilePath, { recursive: true });
+        }
       }
+      // If no directories exist, that's fine - they'll be created when boxes are uploaded
+    } catch (fileErr) {
+      console.error('Directory operation failed:', fileErr);
+      // Continue with database update even if file operations fail
     }
 
     // Generate email hash if email is provided
