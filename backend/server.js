@@ -337,7 +337,7 @@ function initializeApp() {
   }
 
   // SPA catch-all route
-  app.get('*', (req, res) => {
+  app.get('*splat', (req, res) => {
     res.sendFile(path.join(static_path, 'index.html'));
   });
 }
