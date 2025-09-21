@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/Makr91/BoxVault/compare/v0.23.0...v0.23.1) (2025-09-21)
+
+
+### Bug Fixes
+
+* organization rename ([6d84f58](https://github.com/Makr91/BoxVault/commit/6d84f58ea2c4b5d87dfb019d9341cc151145cd74))
+
 ## [0.23.0](https://github.com/Makr91/BoxVault/compare/v0.22.0...v0.23.0) (2025-09-20)
 
 
