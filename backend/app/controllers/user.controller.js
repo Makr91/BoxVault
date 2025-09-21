@@ -14,7 +14,7 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 /**
@@ -385,7 +385,7 @@ exports.getUserProfile = async (req, res) => {
       gravatarUrl: user.gravatarUrl
     });
   } catch (error) {
-      console.error("Error retrieving user profile:", error); // Ensure this is logging the error
+      log.error.error("Error retrieving user profile:", error); // Ensure this is logging the error
       res.status(500).send({ message: "Error retrieving user profile" });
     }
 };

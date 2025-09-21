@@ -7,7 +7,7 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 verifyToken = async (req, res, next) => {
@@ -57,7 +57,7 @@ verifyToken = async (req, res, next) => {
 
       next();
     } catch (jwtError) {
-      console.error('JWT verification error:', {
+      log.error.error('JWT verification error:', {
         error: jwtError.message,
         token: token ? '(token present)' : '(no token)'
       });
@@ -67,7 +67,7 @@ verifyToken = async (req, res, next) => {
       });
     }
   } catch (err) {
-    console.error('Token verification error:', {
+    log.error.error('Token verification error:', {
       error: err.message,
       stack: err.stack
     });
@@ -116,7 +116,7 @@ isUser = async (req, res, next) => {
       message: "Require User, Moderator or Admin Role!"
     });
   } catch (err) {
-    console.error('Auth middleware error:', {
+    log.error.error('Auth middleware error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId
@@ -148,7 +148,7 @@ isSelfOrAdmin = async (req, res, next) => {
       message: "Require Admin role or account ownership!"
     });
   } catch (err) {
-    console.error('Auth middleware error:', {
+    log.error.error('Auth middleware error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId
@@ -187,7 +187,7 @@ isUserOrServiceAccount = async (req, res, next) => {
       message: "Require User, Moderator or Admin Role!"
     });
   } catch (err) {
-    console.error('Auth middleware error:', {
+    log.error.error('Auth middleware error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId
@@ -219,7 +219,7 @@ isAdmin = async (req, res, next) => {
       message: "Require Admin Role!"
     });
   } catch (err) {
-    console.error('Auth middleware error:', {
+    log.error.error('Auth middleware error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId
@@ -251,7 +251,7 @@ isModerator = async (req, res, next) => {
       message: "Require Moderator Role!"
     });
   } catch (err) {
-    console.error('Auth middleware error:', {
+    log.error.error('Auth middleware error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId
@@ -285,7 +285,7 @@ isModeratorOrAdmin = async (req, res, next) => {
       message: "Require Moderator or Admin Role!"
     });
   } catch (err) {
-    console.error('Auth middleware error:', {
+    log.error.error('Auth middleware error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId

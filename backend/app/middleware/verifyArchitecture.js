@@ -4,7 +4,7 @@ const Architecture = db.architectures;
 
 function validateArchitecture(req, res, next) {
   const { name } = req.body;
-  console.log("Validating architecture name:", name);
+  log.app.info("Validating architecture name:", name);
 
   // This regex allows only alphanumeric characters, hyphens, underscores, and periods
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;

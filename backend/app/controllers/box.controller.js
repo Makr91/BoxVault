@@ -15,14 +15,14 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
 /**
@@ -195,7 +195,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
           }
         }
       } catch (err) {
-        console.warn(`Unauthorized User.`);
+        log.app.warn(`Unauthorized User.`);
       }
     }
 
@@ -509,7 +509,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
   };
 
   // Log the complete response for debugging
-  console.log('Vagrant Response:', {
+  log.app.info('Vagrant Response:', {
     requestedName,
     actualName: response.name,
     url: `${baseUrl}/${organization.name}/boxes/${box.name}`,
@@ -522,7 +522,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 
   // Verify the name matches exactly what Vagrant requested
   if (response.name !== requestedName) {
-    console.error('Name mismatch:', {
+    log.error.error('Name mismatch:', {
       requested: requestedName,
       actual: response.name
     });
@@ -611,7 +611,7 @@ exports.findOne = async (req, res) => {
     }
   }
 
-  console.log('Auth context in findOne:', {
+  log.app.info('Auth context in findOne:', {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
@@ -1024,7 +1024,7 @@ exports.delete = async (req, res) => {
       const boxPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name);
       fs.rm(boxPath, { recursive: true, force: true }, (err) => {
         if (err) {
-          console.log(`Could not delete the box directory: ${err}`);
+          log.app.info(`Could not delete the box directory: ${err}`);
         }
       });
 
@@ -1122,7 +1122,7 @@ exports.deleteAll = async (req, res) => {
         const boxPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, box.name);
         fs.rm(boxPath, { recursive: true, force: true }, (err) => {
           if (err) {
-            console.log(`Could not delete the box directory for ${box.name}: ${err}`);
+            log.app.info(`Could not delete the box directory for ${box.name}: ${err}`);
           }
         });
       });
@@ -1230,12 +1230,12 @@ exports.downloadBox = async (req, res) => {
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        console.warn("Invalid x-access-token:", err.message);
+        log.app.warn("Invalid x-access-token:", err.message);
       }
     }
   }
 
-  console.log('Auth context in downloadBox:', {
+  log.app.info('Auth context in downloadBox:', {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
@@ -1312,7 +1312,7 @@ exports.downloadBox = async (req, res) => {
     return handleDownload();
 
   } catch (err) {
-    console.error('Error in downloadBox:', err);
+    log.error.error('Error in downloadBox:', err);
     res.status(500).send({ 
       message: "Error processing download request",
       error: err.message 

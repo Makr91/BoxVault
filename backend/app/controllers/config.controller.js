@@ -248,7 +248,7 @@ exports.getGravatarConfig = async (req, res) => {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 exports.restartServer = (req, res) => {
-  console.log('Initiating server restart via process exit...');
+  log.app.info('Initiating server restart via process exit...');
   
   // Send response immediately before process exits
   res.status(200).json({ message: 'Server restart initiated' });
@@ -258,7 +258,7 @@ exports.restartServer = (req, res) => {
   
   // Give a brief moment for the response to be sent
   setTimeout(() => {
-    console.log('Exiting process to trigger SystemD restart...');
+    log.app.info('Exiting process to trigger SystemD restart...');
     process.exit(1); // EXIT_FAILURE - triggers SystemD Restart=on-failure
   }, 100);
 };

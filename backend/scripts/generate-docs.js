@@ -15,7 +15,7 @@ const { specs } = require('../app/config/swagger.js');
  * Generate static API documentation files
  */
 async function generateDocs() {
-  console.log('🔧 Generating API documentation...');
+  log.app.info('🔧 Generating API documentation...');
 
   // Ensure docs/api directory exists (relative to project root)
   const docsDir = path.join(__dirname, '../../docs/api');
@@ -25,33 +25,33 @@ async function generateDocs() {
 
   try {
     // Generate OpenAPI JSON spec
-    console.log('📝 Writing OpenAPI specification...');
+    log.app.info('📝 Writing OpenAPI specification...');
     const openApiJson = JSON.stringify(specs, null, 2);
     fs.writeFileSync(path.join(docsDir, 'openapi.json'), openApiJson);
-    console.log('✅ Generated docs/api/openapi.json');
+    log.app.info('✅ Generated docs/api/openapi.json');
 
     // Generate static Swagger UI HTML (pure HTML, no Jekyll processing)
-    console.log('📝 Generating Swagger UI HTML...');
+    log.app.info('📝 Generating Swagger UI HTML...');
     const swaggerHtml = generateSwaggerUI();
     fs.writeFileSync(path.join(docsDir, 'swagger-ui.html'), swaggerHtml);
-    console.log('✅ Generated docs/api/swagger-ui.html');
+    log.app.info('✅ Generated docs/api/swagger-ui.html');
 
     // Generate Jekyll redirect page
-    console.log('📝 Generating Jekyll redirect page...');
+    log.app.info('📝 Generating Jekyll redirect page...');
     const redirectPage = generateRedirectPage();
     fs.writeFileSync(path.join(docsDir, 'reference.md'), redirectPage);
-    console.log('✅ Generated docs/api/reference.md');
+    log.app.info('✅ Generated docs/api/reference.md');
 
-    console.log('🎉 Documentation generation completed successfully!');
-    console.log('');
-    console.log('Generated files:');
-    console.log('  - docs/api/openapi.json - Raw OpenAPI specification');
-    console.log('  - docs/api/swagger-ui.html - Pure HTML Swagger UI (no Jekyll processing)');
-    console.log('  - docs/api/reference.md - Jekyll page with embedded Swagger UI');
-    console.log('');
+    log.app.info('🎉 Documentation generation completed successfully!');
+    log.app.info('');
+    log.app.info('Generated files:');
+    log.app.info('  - docs/api/openapi.json - Raw OpenAPI specification');
+    log.app.info('  - docs/api/swagger-ui.html - Pure HTML Swagger UI (no Jekyll processing)');
+    log.app.info('  - docs/api/reference.md - Jekyll page with embedded Swagger UI');
+    log.app.info('');
 
   } catch (error) {
-    console.error('❌ Error generating documentation:', error.message);
+    log.error.error('❌ Error generating documentation:', error.message);
     process.exit(1);
   }
 }
@@ -367,7 +367,7 @@ function generateSwaggerUI() {
                 requestInterceptor: function(request) {
                     // Add note about CORS for try-it-out functionality
                     if (request.url.startsWith('http')) {
-                        console.log('Note: Try-it-out functionality requires CORS configuration on the API server');
+                        log.app.info('Note: Try-it-out functionality requires CORS configuration on the API server');
                     }
                     return request;
                 }

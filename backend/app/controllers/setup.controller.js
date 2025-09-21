@@ -183,7 +183,7 @@ exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
 
     res.status(200).send({ certPath, keyPath });
   } catch (error) {
-    console.error('Error uploading SSL certificate:', error);
+    log.error.error('Error uploading SSL certificate:', error);
     res.status(500).send({ message: "Failed to upload SSL certificate." });
   }
 }];
@@ -258,7 +258,7 @@ exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
 
     res.send('Configuration updated successfully');
   } catch (error) {
-    console.error('Error updating configuration:', error);
+    log.error.error('Error updating configuration:', error);
     res.status(500).send('Failed to update configuration');
   }
 }];
@@ -309,7 +309,7 @@ exports.getConfigs = [verifyAuthorizedToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error reading configurations:', error);
+    log.error.error('Error reading configurations:', error);
     res.status(500).send('Failed to read configurations');
   }
 }];
@@ -347,7 +347,7 @@ exports.isSetupComplete = async (req, res) => {
     const isConfigured = dbConfig.sql.dialect.value !== undefined && dbConfig.sql.dialect.value !== null && dbConfig.sql.dialect.value.trim() !== '';
     res.send({ setupComplete: isConfigured });
   } catch (error) {
-    console.error('Error checking setup status:', error);
+    log.error.error('Error checking setup status:', error);
     res.status(500).send('Failed to check setup status');
   }
 };

@@ -38,7 +38,7 @@ module.exports = function(app) {
    *         description: Internal server error
    */
   app.get("/api/auth/oidc/callback", (req, res, next) => {
-    console.log('OIDC Callback - Session data:', {
+    log.app.info('OIDC Callback - Session data:', {
       sessionExists: !!req.session,
       sessionId: req.session?.id,
       oidcProvider: req.session?.oidcProvider,
@@ -52,25 +52,25 @@ module.exports = function(app) {
     }
 
     if (!provider) {
-      console.error('OIDC Callback - No provider in session, redirecting with error');
+      log.error.error('OIDC Callback - No provider in session, redirecting with error');
       return res.redirect('/?error=no_provider');
     }
 
     const strategyName = `oidc-${provider}`;
-    console.log('OIDC Callback - Using strategy:', strategyName);
+    log.app.info('OIDC Callback - Using strategy:', strategyName);
     
     passport.authenticate(strategyName, {
       session: false,
       failureRedirect: `/?error=oidc_failed&provider=${provider}`,
     })(req, res, (err) => {
       if (err) {
-        console.error('OIDC callback error:', err.message);
+        log.error.error('OIDC callback error:', err.message);
         return res.redirect(`/?error=oidc_failed&provider=${provider}`);
       }
 
       const user = req.user;
       if (!user) {
-        console.error('OIDC callback: No user object found');
+        log.error.error('OIDC callback: No user object found');
         return res.redirect(`/?error=oidc_failed&provider=${provider}`);
       }
 
@@ -81,7 +81,7 @@ module.exports = function(app) {
       try {
         authConfig = loadConfig('auth');
       } catch (e) {
-        console.error(`Failed to load auth configuration: ${e.message}`);
+        log.error.error(`Failed to load auth configuration: ${e.message}`);
         return res.redirect(`/?error=config_error`);
       }
 
@@ -103,7 +103,7 @@ module.exports = function(app) {
         req.session.username = user.username;
       }
 
-      console.log(`OIDC login successful for provider: ${provider}`);
+      log.app.info(`OIDC login successful for provider: ${provider}`);
       res.redirect(`/auth/callback?token=${encodeURIComponent(token)}`);
     });
   });
@@ -134,8 +134,8 @@ module.exports = function(app) {
   app.get("/api/auth/oidc/:provider", (req, res, next) => {
     const { provider } = req.params;
     
-    console.log('OIDC Auth Request - Provider:', provider);
-    console.log('OIDC Auth Request - Session before:', {
+    log.app.info('OIDC Auth Request - Provider:', provider);
+    log.app.info('OIDC Auth Request - Session before:', {
       sessionExists: !!req.session,
       sessionId: req.session?.id
     });
@@ -148,13 +148,13 @@ module.exports = function(app) {
 
     if (req.session) {
       req.session.oidcProvider = provider;
-      console.log('OIDC Auth Request - Set provider in session:', provider);
+      log.app.info('OIDC Auth Request - Set provider in session:', provider);
     } else {
-      console.error('OIDC Auth Request - No session available!');
+      log.error.error('OIDC Auth Request - No session available!');
     }
 
     const strategyName = `oidc-${provider}`;
-    console.log('OIDC Auth Request - Using strategy:', strategyName);
+    log.app.info('OIDC Auth Request - Using strategy:', strategyName);
     passport.authenticate(strategyName)(req, res, next);
   });
 
@@ -201,7 +201,7 @@ module.exports = function(app) {
       try {
         authConfig = loadConfig('auth');
       } catch (e) {
-        console.error(`Failed to load auth configuration: ${e.message}`);
+        log.error.error(`Failed to load auth configuration: ${e.message}`);
         return res.status(500).json({ message: 'Configuration error' });
       }
 
@@ -229,7 +229,7 @@ module.exports = function(app) {
 
       res.json({ methods });
     } catch (error) {
-      console.error('Get auth methods error:', error.message);
+      log.error.error('Get auth methods error:', error.message);
       res.status(500).json({ message: 'Internal server error' });
     }
   });

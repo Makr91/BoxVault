@@ -79,14 +79,14 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
 /**
@@ -872,7 +872,7 @@ exports.delete = async (req, res) => {
       // Delete files from the file system
       fs.rm(filePath, { recursive: true, force: true }, (err) => {
         if (err) {
-          console.log(`Could not delete the architecture directory: ${err}`);
+          log.app.info(`Could not delete the architecture directory: ${err}`);
         }
       });
 
@@ -887,7 +887,7 @@ exports.delete = async (req, res) => {
     const providerPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName);
     fs.rm(providerPath, { recursive: true, force: true }, (err) => {
       if (err) {
-        console.log(`Could not delete the provider directory: ${err}`);
+        log.app.info(`Could not delete the provider directory: ${err}`);
       }
     });
 

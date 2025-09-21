@@ -4,25 +4,25 @@ const Version = db.versions;
 
 
 function validateVersion(req, res, next) {
-  console.log("Full request body:", req.body);
+  log.app.info("Full request body:", req.body);
   
   // Check in multiple places for the version number
   const versionNumber = req.body.versionNumber || req.body.version || req.query.versionNumber || req.params.versionNumber;
   
-  console.log("Validating version number:", versionNumber);
+  log.app.info("Validating version number:", versionNumber);
   
   // This regex allows only alphanumeric characters, hyphens, underscores, and periods
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
   if (!versionNumber) {
-    console.log("Version number is missing");
+    log.app.info("Version number is missing");
     return res.status(400).send({
       message: "Version number is required."
     });
   }
 
   if (!validCharsRegex.test(versionNumber)) {
-    console.log("Invalid characters found in version number");
+    log.app.info("Invalid characters found in version number");
     return res.status(400).send({
       message: "Invalid version identifier. It should contain only alphanumeric characters, hyphens, underscores, and periods."
     });
@@ -30,7 +30,7 @@ function validateVersion(req, res, next) {
 
   // Check if the version starts with a hyphen or period
   if (versionNumber.startsWith('-') || versionNumber.startsWith('.')) {
-    console.log("Version number starts with a hyphen or period");
+    log.app.info("Version number starts with a hyphen or period");
     return res.status(400).send({
       message: "Version identifier should not start with a hyphen or period."
     });

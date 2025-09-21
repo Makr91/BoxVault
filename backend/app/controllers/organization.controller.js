@@ -13,14 +13,14 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
 const generateEmailHash = (email) => {
@@ -204,9 +204,9 @@ exports.findAllWithUsers = async (req, res) => {
       // Verify the token and extract the user ID
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
-      console.log("Decoded user ID:", userId);
+      log.app.info("Decoded user ID:", userId);
     } catch (err) {
-      console.error("JWT verification error:", err.message);
+      log.error.error("JWT verification error:", err.message);
       return res.status(401).send({ message: "Unauthorized!!!!" });
     }
   }
@@ -356,7 +356,7 @@ exports.findOneWithUsers = async (req, res) => {
 
     res.status(200).send(users);
   } catch (err) {
-    console.error("Error in findOneWithUsers:", err);
+    log.error.error("Error in findOneWithUsers:", err);
     res.status(500).send({
       message: err.message || "Some error occurred while retrieving users."
     });
@@ -515,7 +515,7 @@ exports.findOne = async (req, res) => {
       }]
     });
 
-    console.log("Organization found:", JSON.stringify(organization, null, 2));
+    log.app.info("Organization found:", JSON.stringify(organization, null, 2));
 
     if (!organization) {
       return res.status(404).send({
@@ -523,7 +523,7 @@ exports.findOne = async (req, res) => {
       });
     }
 
-    console.log("Org Detected!");
+    log.app.info("Org Detected!");
 
     let totalBoxes = 0;
     if (organization.users && Array.isArray(organization.users)) {
@@ -535,11 +535,11 @@ exports.findOne = async (req, res) => {
       }, 0);
     }
 
-    console.log("Total Boxes calculated:", totalBoxes);
+    log.app.info("Total Boxes calculated:", totalBoxes);
 
     res.send({ ...organization.toJSON(), totalBoxes });
   } catch (err) {
-    console.error("Error in findOne:", err);
+    log.error.error("Error in findOne:", err);
     res.status(500).send({
       message: "Error retrieving Organization with name=" + organizationName
     });
@@ -645,7 +645,7 @@ exports.update = async (req, res) => {
       }
       // If no directories exist, that's fine - they'll be created when boxes are uploaded
     } catch (fileErr) {
-      console.error('Directory operation failed:', fileErr);
+      log.error.error('Directory operation failed:', fileErr);
       // Continue with database update even if file operations fail
     }
 

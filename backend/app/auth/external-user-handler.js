@@ -91,7 +91,7 @@ async function handleExternalUser(provider, profile, db, authConfig) {
         
         if (defaultRole) {
           await user.setRoles([defaultRole]);
-          console.log(`Assigned role '${defaultRoleName}' to existing external user: ${user.email}`);
+          log.app.info(`Assigned role '${defaultRoleName}' to existing external user: ${user.email}`);
         }
       }
 
@@ -121,16 +121,16 @@ async function handleExternalUser(provider, profile, db, authConfig) {
     
     if (defaultRole) {
       await user.setRoles([defaultRole]);
-      console.log(`Assigned role '${defaultRoleName}' to new external user: ${user.email}`);
+      log.app.info(`Assigned role '${defaultRoleName}' to new external user: ${user.email}`);
     } else {
-      console.warn(`Default role '${defaultRoleName}' not found, user created without roles`);
+      log.app.warn(`Default role '${defaultRoleName}' not found, user created without roles`);
     }
 
     await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
 
     return user;
   } catch (error) {
-    console.error('External user handling failed:', error.message);
+    log.error.error('External user handling failed:', error.message);
     throw error;
   }
 }
@@ -185,7 +185,7 @@ async function determineUserOrganization(email, profile, db, authConfig) {
         }
       }
     } catch (error) {
-      console.error('Failed to parse domain mappings JSON:', error.message);
+      log.error.error('Failed to parse domain mappings JSON:', error.message);
     }
   }
 

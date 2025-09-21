@@ -9,22 +9,22 @@ let smtpConfig;
 try {
   smtpConfig = loadConfig('mail');
 } catch (e) {
-  console.error(`Failed to load SMTP configuration: ${e.message}`);
+  log.error.error(`Failed to load SMTP configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load app configuration: ${e.message}`);
+  log.error.error(`Failed to load app configuration: ${e.message}`);
 }
 
 exports.sendVerificationMail = async (user, verificationToken, expirationTime) => {
-  console.log('Attempting to send verification email...');
-  console.log('SMTP Configuration:', JSON.stringify(smtpConfig, null, 2));
+  log.app.info('Attempting to send verification email...');
+  log.app.info('SMTP Configuration:', JSON.stringify(smtpConfig, null, 2));
 
   try {
-    console.log('Creating transporter...');
+    log.app.info('Creating transporter...');
     const transporter = nodemailer.createTransport({
       host: smtpConfig.smtp_connect.host.value,
       port: smtpConfig.smtp_connect.port.value,
@@ -37,14 +37,14 @@ exports.sendVerificationMail = async (user, verificationToken, expirationTime) =
       logger: true // Log to console
     });
 
-    console.log('Transporter created successfully');
+    log.app.info('Transporter created successfully');
 
     const frontendUrl = appConfig.boxvault.origin.value;
     // Change this line to point to the profile page
     const verificationLink = `${frontendUrl}/profile?token=${verificationToken}`;
     const expirationDate = new Date(expirationTime).toLocaleString();
 
-    console.log('Preparing email...');
+    log.app.info('Preparing email...');
     const mailOptions = {
       from: smtpConfig.smtp_settings.from.value,
       to: user.email,
@@ -56,20 +56,20 @@ exports.sendVerificationMail = async (user, verificationToken, expirationTime) =
         <p>This verification link will expire on: ${expirationDate}</p>
       `
     };
-    console.log('Mail options:', JSON.stringify(mailOptions, null, 2));
+    log.app.info('Mail options:', JSON.stringify(mailOptions, null, 2));
 
-    console.log('Sending email...');
+    log.app.info('Sending email...');
     const info = await transporter.sendMail(mailOptions);
 
-    console.log('Verification email sent: %s', info.messageId);
-    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    log.app.info('Verification email sent: %s', info.messageId);
+    log.app.info('Preview URL: %s', nodemailer.getTestMessageUrl(info));
 
     return info;
   } catch (error) {
-    console.error('Error sending verification email:', error);
-    console.error('Error stack:', error.stack);
+    log.error.error('Error sending verification email:', error);
+    log.error.error('Error stack:', error.stack);
     if (error.response) {
-      console.error('SMTP Response:', error.response);
+      log.error.error('SMTP Response:', error.response);
     }
     throw error; // Re-throw the error so it can be handled by the caller
   }
@@ -153,7 +153,7 @@ exports.resendVerificationMail = async (req, res) => {
     await exports.sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires);
     res.send({ message: "Verification email resent successfully." });
   } catch (err) {
-    console.error('Error in resendVerificationMail:', err);
+    log.error.error('Error in resendVerificationMail:', err);
     res.status(500).send({ message: err.message });
   }
 };
@@ -189,7 +189,7 @@ exports.sendInvitationMail = async (email, token, organizationName, expirationTi
     await transporter.sendMail(mailOptions);
     return invitationLink;
   } catch (error) {
-    console.error('Error sending invitation email:', error);
+    log.error.error('Error sending invitation email:', error);
     throw error;
   }
 };
@@ -240,7 +240,7 @@ exports.sendInvitationMail = async (email, token, organizationName, expirationTi
  *                   description: "Error stack trace (for debugging)"
  */
 exports.testSmtp = async (req, res) => {
-  console.log('Testing SMTP connection...');
+  log.app.info('Testing SMTP connection...');
   try {
     const transporter = nodemailer.createTransport({
       host: smtpConfig.smtp_connect.host.value,
@@ -254,11 +254,11 @@ exports.testSmtp = async (req, res) => {
       logger: true // Log to console
     });
 
-    console.log('Transporter created, verifying connection...');
+    log.app.info('Transporter created, verifying connection...');
     await transporter.verify();
-    console.log('SMTP connection verified successfully');
+    log.app.info('SMTP connection verified successfully');
 
-    console.log('Sending test email...');
+    log.app.info('Sending test email...');
     const info = await transporter.sendMail({
       from: smtpConfig.smtp_settings.from.value,
       to: req.body.testEmail,
@@ -266,13 +266,13 @@ exports.testSmtp = async (req, res) => {
       text: 'This is a test email to verify SMTP configuration.'
     });
 
-    console.log('Test email sent successfully:', info.messageId);
+    log.app.info('Test email sent successfully:', info.messageId);
     res.status(200).send({ message: 'Test email sent successfully', messageId: info.messageId });
   } catch (error) {
-    console.error('Error in SMTP test:', error);
-    console.error('Error stack:', error.stack);
+    log.error.error('Error in SMTP test:', error);
+    log.error.error('Error stack:', error.stack);
     if (error.response) {
-      console.error('SMTP Response:', error.response);
+      log.error.error('SMTP Response:', error.response);
     }
     res.status(500).send({ message: 'Error sending test email', error: error.message, stack: error.stack });
   }

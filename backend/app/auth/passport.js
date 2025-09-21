@@ -12,7 +12,7 @@ try {
   authConfig = loadConfig('auth');
   boxConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load configuration: ${e.message}`);
+  log.error.error(`Failed to load configuration: ${e.message}`);
 }
 
 /**
@@ -41,7 +41,7 @@ passport.use(
           isServiceAccount: payload.isServiceAccount || false,
         });
       } catch (error) {
-        console.error('JWT Strategy error:', error.message);
+        log.error.error('JWT Strategy error:', error.message);
         return done(error, false);
       }
     }
@@ -151,18 +151,18 @@ async function setupOidcProviders() {
   try {
     await db.user.findOne({ limit: 1 });
   } catch {
-    console.log('Database not ready yet, waiting for migrations to complete');
+    log.app.info('Database not ready yet, waiting for migrations to complete');
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
 
   if (!oidcProvidersConfig || Object.keys(oidcProvidersConfig).length === 0) {
-    console.log('No OIDC providers configured');
+    log.app.info('No OIDC providers configured');
     return;
   }
 
-  console.log('Setting up OIDC authentication providers');
+  log.app.info('Setting up OIDC authentication providers');
 
   const providerPromises = Object.entries(oidcProvidersConfig).map(async ([providerName, providerConfig]) => {
     try {
@@ -174,12 +174,12 @@ async function setupOidcProviders() {
       const scope = providerConfig.scope?.value || 'openid profile email';
 
       if (!enabled) {
-        console.log(`Skipping disabled OIDC provider: ${providerName}`);
+        log.app.info(`Skipping disabled OIDC provider: ${providerName}`);
         return;
       }
 
       if (!issuer || !clientId || !clientSecret) {
-        console.error(`Invalid OIDC provider configuration: ${providerName}`);
+        log.error.error(`Invalid OIDC provider configuration: ${providerName}`);
         return;
       }
 
@@ -201,21 +201,21 @@ async function setupOidcProviders() {
               const result = await handleExternalUser(`oidc-${providerName}`, userinfo, db, authConfig);
               return verified(null, result);
             } catch (error) {
-              console.error(`OIDC Strategy error for ${providerName}:`, error.message);
+              log.error.error(`OIDC Strategy error for ${providerName}:`, error.message);
               return verified(error, false);
             }
           }
         )
       );
 
-      console.log(`OIDC provider configured: ${providerName}`);
+      log.app.info(`OIDC provider configured: ${providerName}`);
     } catch (error) {
-      console.error(`Failed to setup OIDC provider ${providerName}:`, error.message);
+      log.error.error(`Failed to setup OIDC provider ${providerName}:`, error.message);
     }
   });
 
   await Promise.all(providerPromises);
-  console.log('OIDC provider setup completed');
+  log.app.info('OIDC provider setup completed');
 }
 
 /**

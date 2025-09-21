@@ -95,3 +95,107 @@ ssl:
     required: false
     upload: true
     order: 3
+logging:
+  level:
+    type: select
+    value: info
+    options:
+      - error
+      - warn
+      - info
+      - debug
+    description: Default logging level for all categories
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 1
+  console_enabled:
+    type: boolean
+    value: true
+    description: Enable console output for development (disabled in production)
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 2
+  log_directory:
+    type: string
+    value: /var/log/boxvault
+    description: Directory where log files will be stored
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 3
+  performance_threshold_ms:
+    type: integer
+    value: 1000
+    description: Threshold in milliseconds for logging slow operations
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 4
+  categories:
+    app:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for application events
+      section: Application
+      subsection: Logging Categories
+      required: false
+      order: 1
+    api:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for API requests and responses
+      section: Application
+      subsection: Logging Categories
+      required: false
+      order: 2
+    database:
+      type: select
+      value: warn
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for database operations
+      section: Application
+      subsection: Logging Categories
+      required: false
+      order: 3
+    auth:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for authentication events
+      section: Application
+      subsection: Logging Categories
+      required: false
+      order: 4
+    file:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for file operations
+      section: Application
+      subsection: Logging Categories
+      required: false
+      order: 5

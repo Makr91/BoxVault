@@ -7,7 +7,7 @@ let dbConfig;
 try {
   dbConfig = loadConfig('db');
 } catch (e) {
-  console.error(`Failed to load database configuration: ${e.message}`);
+  log.error.error(`Failed to load database configuration: ${e.message}`);
 }
 
 const Sequelize = require("sequelize");
@@ -28,7 +28,7 @@ if (dbConfig.sql.dialect.value === 'sqlite') {
   const storageDir = path.dirname(dbConfig.sql.storage.value);
   if (!fs.existsSync(storageDir)) {
     fs.mkdirSync(storageDir, { recursive: true, mode: 0o755 });
-    console.log(`Created SQLite database directory: ${storageDir}`);
+    log.app.info(`Created SQLite database directory: ${storageDir}`);
   }
 } else {
   // MySQL/other database configuration

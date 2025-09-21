@@ -10,14 +10,14 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
 /**

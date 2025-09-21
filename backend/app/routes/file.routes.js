@@ -3,7 +3,7 @@ const file = require("../controllers/file.controller");
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
-  console.error('File operation error:', {
+  log.error.error('File operation error:', {
     error: err.message,
     stack: err.stack,
     path: req.path,

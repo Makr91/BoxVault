@@ -31,7 +31,7 @@ const loadConfig = (configName) => {
     const fileContents = fs.readFileSync(configPath, 'utf8');
     return yaml.load(fileContents);
   } catch (error) {
-    console.error(`Failed to load ${configName} configuration from ${configPath}:`, error.message);
+    log.error.error(`Failed to load ${configName} configuration from ${configPath}:`, error.message);
     throw error;
   }
 };

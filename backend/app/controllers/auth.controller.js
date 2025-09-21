@@ -15,7 +15,7 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 const generateEmailHash = (email) => {
@@ -159,15 +159,15 @@ exports.signup = async (req, res) => {
     // Send verification email asynchronously
     mailController.sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires)
       .then(() => {
-        console.log(`Verification email sent successfully to ${user.email}`);
+        log.app.info(`Verification email sent successfully to ${user.email}`);
       })
       .catch((error) => {
-        console.error(`Failed to send verification email to ${user.email}:`, error);
+        log.error.error(`Failed to send verification email to ${user.email}:`, error);
       });
 
     res.status(201).send({ message: "User registered successfully! If configured, a verification email will be sent to your email address." });
   } catch (err) {
-    console.error("Error during signup:", err);
+    log.error.error("Error during signup:", err);
     res.status(500).send({
       message: err.message || "Some error occurred while signing up the user."
     });
@@ -358,7 +358,7 @@ exports.getActiveInvitations = async (req, res) => {
 
     res.status(200).send(activeInvitations);
   } catch (err) {
-    console.error("Error in getActiveInvitations:", err);
+    log.error.error("Error in getActiveInvitations:", err);
     res.status(500).send({
       message: err.message || "Some error occurred while retrieving active invitations."
     });
@@ -418,7 +418,7 @@ exports.deleteInvitation = async (req, res) => {
     await invitation.destroy();
     res.status(200).send({ message: "Invitation deleted successfully." });
   } catch (err) {
-    console.error("Error in deleteInvitation:", err);
+    log.error.error("Error in deleteInvitation:", err);
     res.status(500).send({
       message: err.message || "Some error occurred while deleting the invitation."
     });
@@ -738,7 +738,7 @@ exports.signin = async (req, res) => {
       gravatarUrl: isServiceAccount ? null : user.gravatarUrl
     });
   } catch (err) {
-    console.error("Error in signin:", err);
+    log.error.error("Error in signin:", err);
     res.status(500).send({ message: "Error during signin process" });
   }
 };
@@ -994,7 +994,7 @@ exports.refreshToken = async (req, res) => {
       stayLoggedIn: stayLoggedIn || user.stayLoggedIn
     });
   } catch (err) {
-    console.error("Error in refreshToken:", err);
+    log.error.error("Error in refreshToken:", err);
     res.status(500).send({ message: "Error refreshing token" });
   }
 };

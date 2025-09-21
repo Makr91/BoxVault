@@ -10,7 +10,7 @@ try {
   appConfig = loadConfig('app');
   maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024; // Convert GB to bytes
 } catch (e) {
-  console.error(`Failed to load app configuration: ${e.message}`);
+  log.error.error(`Failed to load app configuration: ${e.message}`);
   maxFileSize = 10 * 1024 * 1024 * 1024; // Default to 10GB
 }
 
@@ -69,7 +69,7 @@ const uploadMiddleware = async (req, res) => {
     }
 
     // Log upload start
-    console.log('Starting file upload:', {
+    log.app.info('Starting file upload:', {
       fileName: req.headers['x-file-name'] || 'vagrant.box',
       fileSize: contentLength,
       checksum: req.headers['x-checksum'] || 'none',
@@ -100,7 +100,7 @@ const uploadMiddleware = async (req, res) => {
 
         // Check if all chunks received
         const chunks = fs.readdirSync(tempDir).filter(f => f.startsWith('chunk-'));
-        console.log('Chunk upload status:', {
+        log.app.info('Chunk upload status:', {
           received: chunks.length,
           total: totalChunks,
           current: chunkIndex
@@ -133,7 +133,7 @@ const uploadMiddleware = async (req, res) => {
               throw new Error(`Missing chunks: ${missingChunks.join(', ')}`);
             }
 
-            console.log('Starting file assembly:', {
+            log.app.info('Starting file assembly:', {
               totalChunks,
               receivedChunks: chunks.length,
               uploadDir,
@@ -159,7 +159,7 @@ const uploadMiddleware = async (req, res) => {
               const chunk = sortedChunks[i];
               const chunkSize = fs.statSync(chunk.path).size;
               
-              console.log(`Merging chunk ${i + 1}/${sortedChunks.length}:`, {
+              log.app.info(`Merging chunk ${i + 1}/${sortedChunks.length}:`, {
                 chunkIndex: chunk.index,
                 chunkPath: chunk.path,
                 chunkSize,
@@ -183,17 +183,17 @@ const uploadMiddleware = async (req, res) => {
               writeStream.on('error', reject);
             });
 
-            console.log('Assembly completed:', {
+            log.app.info('Assembly completed:', {
               finalPath,
               assembledSize,
               expectedSize: contentLength || 'unknown'
             });
 
             // Clean up temp directory
-            console.log('Cleaning up temp directory:', tempDir);
+            log.app.info('Cleaning up temp directory:', tempDir);
             fs.rmdirSync(tempDir);
           } catch (error) {
-            console.error('Assembly failed:', error);
+            log.error.error('Assembly failed:', error);
             
             // Clean up failed assembly
             if (fs.existsSync(finalPath)) {
@@ -281,7 +281,7 @@ const uploadMiddleware = async (req, res) => {
           const duration = Date.now() - startTime;
           const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
 
-          console.log('Upload completed:', {
+          log.app.info('Upload completed:', {
             finalSize,
             duration: `${Math.round(duration / 1000)}s`,
             speed: `${speed} MB/s`
@@ -318,7 +318,7 @@ const uploadMiddleware = async (req, res) => {
             fs.rmdirSync(tempDir);
           }
         } catch (cleanupError) {
-          console.error('Error cleaning up temp files:', cleanupError);
+          log.error.error('Error cleaning up temp files:', cleanupError);
         }
         throw error;
       }
@@ -418,7 +418,7 @@ const uploadMiddleware = async (req, res) => {
       const duration = Date.now() - startTime;
       const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
 
-      console.log('Upload completed:', {
+      log.app.info('Upload completed:', {
         finalSize,
         duration: `${Math.round(duration / 1000)}s`,
         speed: `${speed} MB/s`
@@ -435,7 +435,7 @@ const uploadMiddleware = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Upload error:', error);
+    log.error.error('Upload error:', error);
 
     // Clean up on error
     if (writeStream) {
@@ -447,10 +447,10 @@ const uploadMiddleware = async (req, res) => {
       try {
         if (fs.existsSync(finalPath)) {
           fs.unlinkSync(finalPath);
-          console.log('Cleaned up incomplete file:', finalPath);
+          log.app.info('Cleaned up incomplete file:', finalPath);
         }
       } catch (cleanupError) {
-        console.error('Error cleaning up file:', cleanupError);
+        log.error.error('Error cleaning up file:', cleanupError);
       }
     }
 
@@ -476,7 +476,7 @@ const uploadSSLMiddleware = (req, res) => {
   return new Promise((resolve, reject) => {
     upload(req, res, (err) => {
       if (err) {
-        console.error('SSL upload error:', {
+        log.error.error('SSL upload error:', {
           message: err.message,
           code: err.code,
           stack: err.stack
@@ -487,7 +487,7 @@ const uploadSSLMiddleware = (req, res) => {
 
       if (!req.file) {
         const error = new Error('No file uploaded');
-        console.error('SSL upload error:', {
+        log.error.error('SSL upload error:', {
           message: error.message,
           headers: req.headers,
           body: req.body
@@ -498,18 +498,18 @@ const uploadSSLMiddleware = (req, res) => {
 
       if (req.file.size === 0) {
         const error = new Error('Empty file uploaded');
-        console.error('SSL upload error:', {
+        log.error.error('SSL upload error:', {
           message: error.message,
           file: req.file
         });
         fs.unlink(req.file.path, (unlinkErr) => {
-          if (unlinkErr) console.error('Error deleting empty file:', unlinkErr);
+          if (unlinkErr) log.error.error('Error deleting empty file:', unlinkErr);
         });
         reject(error);
         return;
       }
 
-      console.log('SSL upload completed:', {
+      log.app.info('SSL upload completed:', {
         filename: req.file.filename,
         originalname: req.file.originalname,
         path: req.file.path,

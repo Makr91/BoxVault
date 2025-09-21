@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/config-loader');
+const { log } = require('./app/utils/Logger');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
@@ -16,7 +17,7 @@ let boxConfig;
 try {
   boxConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load box configuration: ${e.message}`);
+  log.app.error('Failed to load box configuration', { error: e.message });
 }
 
 const dbConfigPath = getConfigPath('db');
@@ -27,7 +28,7 @@ function isDialectConfigured() {
     const dialect = dbConfig.sql.dialect.value;
     return dialect !== undefined && dialect !== null && dialect.trim() !== '';
   } catch (error) {
-    console.error('Error reading db.config.yaml:', error);
+    log.database.error('Error reading db.config.yaml', { error: error.message });
     return false;
   }
 }
@@ -66,12 +67,12 @@ async function generateSSLCertificatesIfNeeded() {
 
   // Check if certificates already exist
   if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-    console.log('SSL certificates already exist, skipping generation');
+    log.app.info('SSL certificates already exist, skipping generation', { keyPath, certPath });
     return false; // Certificates exist, no need to generate
   }
 
   try {
-    console.log('Generating SSL certificates...');
+    log.app.info('Generating SSL certificates...', { keyPath, certPath });
     
     // Import child_process for running openssl
     const { execSync } = require('child_process');
@@ -91,14 +92,12 @@ async function generateSSLCertificatesIfNeeded() {
     fs.chmodSync(keyPath, 0o600);
     fs.chmodSync(certPath, 0o600);
     
-    console.log('SSL certificates generated successfully');
-    console.log(`Key: ${keyPath}`);
-    console.log(`Certificate: ${certPath}`);
+    log.app.info('SSL certificates generated successfully', { keyPath, certPath });
     
     return true; // Certificates generated successfully
   } catch (error) {
-    console.error('Failed to generate SSL certificates:', error.message);
-    console.error('Continuing with HTTP fallback...');
+    log.app.error('Failed to generate SSL certificates', { error: error.message, keyPath, certPath });
+    log.app.warn('Continuing with HTTP fallback...');
     return false; // Generation failed
   }
 }
@@ -111,11 +110,11 @@ function getOrGenerateSetupToken() {
     try {
       const existingToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
       if (existingToken && existingToken.length === 64) { // Valid hex token
-        console.log('Using existing setup token from installation');
+        log.app.info('Using existing setup token from installation');
         return existingToken;
       }
     } catch (error) {
-      console.warn('Error reading existing setup token, generating new one:', error.message);
+      log.app.warn('Error reading existing setup token, generating new one:', error.message);
     }
   }
   
@@ -142,19 +141,19 @@ function checkCertbotIntegration() {
   
   // Check if Certbot is installed but hook is missing
   if (fs.existsSync(hookDir) && !fs.existsSync(hookPath) && fs.existsSync(sourceHook)) {
-    console.log('');
-    console.log('='.repeat(60));
-    console.log('BoxVault Certbot Integration Available');
-    console.log('='.repeat(60));
-    console.log('Certbot detected but BoxVault hook not installed.');
-    console.log('To enable automatic certificate renewal, run:');
-    console.log('');
-    console.log(`  sudo cp ${sourceHook} ${hookPath}`);
-    console.log('');
-    console.log('This will automatically copy renewed certificates to BoxVault');
-    console.log('and restart the service when certificates are renewed.');
-    console.log('='.repeat(60));
-    console.log('');
+    log.app.info('');
+    log.app.info('='.repeat(60));
+    log.app.info('BoxVault Certbot Integration Available');
+    log.app.info('='.repeat(60));
+    log.app.info('Certbot detected but BoxVault hook not installed.');
+    log.app.info('To enable automatic certificate renewal, run:');
+    log.app.info('');
+    log.app.info(`  sudo cp ${sourceHook} ${hookPath}`);
+    log.app.info('');
+    log.app.info('This will automatically copy renewed certificates to BoxVault');
+    log.app.info('and restart the service when certificates are renewed.');
+    log.app.info('='.repeat(60));
+    log.app.info('');
   }
 }
 
@@ -169,7 +168,7 @@ app.set('headers-timeout', 0);
 
 // Debug middleware to log requests
 app.use((req, res, next) => {
-  console.log('Request:', {
+  log.app.info('Request:', {
     method: req.method,
     url: req.url,
     path: req.path,
@@ -184,7 +183,7 @@ app.use((req, res, next) => {
 // Configure static file serving with proper content types first
 app.use(express.static(static_path, {
   setHeaders: (res, path, stat) => {
-    console.log('Serving static file:', {
+    log.app.info('Serving static file:', {
       path: path,
       type: path.endsWith('.ico') ? 'image/x-icon' : null
     });
@@ -225,7 +224,7 @@ app.use((req, res, next) => {
     // Apply body parsing for non-upload routes
     express.json({ limit: maxSize })(req, res, (err) => {
       if (err) {
-        console.error('JSON parsing error:', err);
+        log.error.error('JSON parsing error:', err);
         return res.status(413).json({ error: 'Request too large' });
       }
       express.urlencoded({ extended: true, limit: maxSize })(req, res, next);
@@ -260,7 +259,7 @@ function initializeApp() {
   try {
     authConfig = loadConfig('auth');
   } catch (e) {
-    console.error(`Failed to load auth configuration: ${e.message}`);
+    log.error.error(`Failed to load auth configuration: ${e.message}`);
   }
 
   app.use(
@@ -281,14 +280,14 @@ function initializeApp() {
 
   // Initialize Passport after database sync
   db.sequelize.sync().then(async () => {
-    console.log('Database synced');
+    log.app.info('Database synced');
     
     // Sync session store
     try {
       await sessionStore.sync();
-      console.log('Session store synchronized');
+      log.app.info('Session store synchronized');
     } catch (err) {
-      console.error('Session store sync failed:', err.message);
+      log.error.error('Session store sync failed:', err.message);
     }
 
     // Initialize Passport strategies
@@ -298,14 +297,14 @@ function initializeApp() {
       app.use(passport.session());
       
       await initializeStrategies();
-      console.log('Passport.js initialized');
+      log.app.info('Passport.js initialized');
     } catch (error) {
-      console.error('Failed to initialize Passport:', error.message);
+      log.error.error('Failed to initialize Passport:', error.message);
     }
 
     initial();
   }).catch(err => {
-    console.error("Error syncing database:", err);
+    log.error.error("Error syncing database:", err);
   });
 
   // Load all routes
@@ -331,9 +330,9 @@ function initializeApp() {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: 'BoxVault API Documentation'
     }));
-    console.log('Swagger UI available at /api-docs');
+    log.app.info('Swagger UI available at /api-docs');
   } catch (error) {
-    console.warn('Swagger configuration not available:', error.message);
+    log.app.warn('Swagger configuration not available:', error.message);
   }
 
   // SPA catch-all route
@@ -349,7 +348,7 @@ if (isConfigured) {
   initializeApp();
 } else {
   const setupToken = getOrGenerateSetupToken();
-  console.log(`Setup token: ${setupToken}`);
+  log.app.info(`Setup token: ${setupToken}`);
 
   // Load only the setup route
   require('./app/routes/setup.routes')(app);
@@ -368,7 +367,7 @@ if (isConfigured) {
       
       isConfigured = isDialectConfigured();
       if (isConfigured) {
-        console.log('Configuration updated. Initializing application...');
+        log.app.info('Configuration updated. Initializing application...');
         initializeApp();
       }
     }
@@ -422,7 +421,7 @@ const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
       
       // Optimize socket for large transfers
       socket.on('error', err => {
-        console.error('Socket error:', err);
+        log.error.error('Socket error:', err);
       });
     });
 
@@ -431,7 +430,7 @@ const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
     httpsServer.keepAliveTimeout = 0;
 
     httpsServer.listen(HTTPS_PORT, () => {
-      console.log(`HTTPS Server is running on port ${HTTPS_PORT}.`);
+      log.app.info(`HTTPS Server is running on port ${HTTPS_PORT}.`);
     });
 
     // Create HTTP server to redirect to HTTPS
@@ -441,12 +440,12 @@ const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
     });
 
     httpServer.listen(HTTP_PORT, () => {
-      console.log(`HTTP Server is running on port ${HTTP_PORT} (redirecting to HTTPS).`);
+      log.app.info(`HTTP Server is running on port ${HTTP_PORT} (redirecting to HTTPS).`);
     });
 
   } catch (error) {
-    console.error('Failed to start HTTPS server:', error);
-    console.log('Falling back to HTTP server...');
+    log.error.error('Failed to start HTTPS server:', error);
+    log.app.info('Falling back to HTTP server...');
     startHTTPServer();
   }
   } else {
@@ -470,7 +469,7 @@ function startHTTPServer() {
     
     // Optimize socket for large transfers
     socket.on('error', err => {
-      console.error('Socket error:', err);
+      log.error.error('Socket error:', err);
     });
   });
   
@@ -479,7 +478,7 @@ function startHTTPServer() {
   httpServer.keepAliveTimeout = 0;
   
   httpServer.listen(HTTP_PORT, () => {
-    console.log(`HTTP Server is running on port ${HTTP_PORT}.`);
+    log.app.info(`HTTP Server is running on port ${HTTP_PORT}.`);
   });
 }
 
@@ -500,6 +499,6 @@ async function initial() {
       });
     }
   } catch (error) {
-    console.error("Error initializing roles:", error);
+    log.error.error("Error initializing roles:", error);
   }
 }

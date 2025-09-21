@@ -17,12 +17,12 @@ const extractBearerToken = (req) => {
 
 const validateVagrantToken = async (token) => {
   if (!token) {
-    console.log('No token provided for validation');
+    log.app.info('No token provided for validation');
     return null;
   }
   
   try {
-    console.log('Attempting to validate token:', token.substring(0, 8) + '...');
+    log.app.info('Attempting to validate token:', token.substring(0, 8) + '...');
     const serviceAccount = await ServiceAccount.findOne({
       where: {
         token: token,
@@ -40,22 +40,22 @@ const validateVagrantToken = async (token) => {
     });
 
     if (!serviceAccount) {
-      console.log('No service account found for token');
+      log.app.info('No service account found for token');
       return null;
     }
 
     if (!serviceAccount.user) {
-      console.log('Service account found but no associated user');
+      log.app.info('Service account found but no associated user');
       return null;
     }
 
-    console.log('Successfully validated token for user:', serviceAccount.user.id);
+    log.app.info('Successfully validated token for user:', serviceAccount.user.id);
     return {
       userId: serviceAccount.user.id,
       isServiceAccount: true
     };
   } catch (err) {
-    console.error('Error validating vagrant token:', {
+    log.error.error('Error validating vagrant token:', {
       error: err.message,
       stack: err.stack,
       token: token.substring(0, 8) + '...'
@@ -207,7 +207,7 @@ const vagrantHandler = async (req, res, next) => {
   };
 
   // Log request details for debugging
-  console.log('Vagrant Request:', {
+  log.app.info('Vagrant Request:', {
     ...req.vagrantInfo,
     userAgent: req.headers['user-agent'],
     headers: res.getHeaders()

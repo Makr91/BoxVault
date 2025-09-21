@@ -10,14 +10,14 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
 const Architecture = db.architectures;
@@ -268,12 +268,12 @@ const upload = async (req, res) => {
 
     // If headers are already sent by middleware, return
     if (res.headersSent) {
-      console.log('Headers already sent by middleware');
+      log.app.info('Headers already sent by middleware');
       return;
     }
 
     // Log successful file upload
-    console.log('File uploaded successfully:', {
+    log.app.info('File uploaded successfully:', {
       filename: req.file.filename,
       originalname: req.file.originalname,
       size: req.file.size,
@@ -306,7 +306,7 @@ const upload = async (req, res) => {
           checksumType: checksumType,
           fileSize: req.file.size
         });
-        console.log('File record updated:', {
+        log.app.info('File record updated:', {
           fileName,
           checksum,
           checksumType,
@@ -323,7 +323,7 @@ const upload = async (req, res) => {
           architectureId: architecture.id,
           fileSize: req.file.size
         });
-        console.log('File record created:', {
+        log.app.info('File record created:', {
           fileName,
           checksum,
           checksumType,
@@ -346,12 +346,12 @@ const upload = async (req, res) => {
         fileRecord: fileRecord
       });
     } catch (dbError) {
-      console.error('Database error during file upload:', dbError);
+      log.error.error('Database error during file upload:', dbError);
       throw dbError;
     }
   } catch (err) {
     // Log detailed error information
-    console.error('File upload error:', {
+    log.error.error('File upload error:', {
       error: err.message,
       code: err.code,
       stack: err.stack,
@@ -541,7 +541,7 @@ const download = async (req, res) => {
         return res.status(403).send({ message: "Invalid download token." });
       }
     } catch (err) {
-      console.warn("Invalid download token:", err.message);
+      log.app.warn("Invalid download token:", err.message);
       return res.status(403).send({ message: "Invalid or expired download token." });
     }
   } else if (req.isVagrantRequest) {
@@ -552,7 +552,7 @@ const download = async (req, res) => {
     return res.status(403).send({ message: "No download token provided." });
   }
 
-  console.log('Auth context in download:', {
+  log.app.info('Auth context in download:', {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
@@ -615,7 +615,7 @@ const download = async (req, res) => {
 
       if (fileRecord) {
         await fileRecord.increment('downloadCount');
-        console.log('Download count incremented:', {
+        log.app.info('Download count incremented:', {
           fileName: fileRecord.fileName,
           newCount: fileRecord.downloadCount + 1,
           userAgent: req.headers['user-agent']
@@ -648,13 +648,13 @@ const download = async (req, res) => {
         
         // Ensure start is not greater than end
         if (start > end) {
-          console.warn(`Invalid range request: start (${start}) > end (${end}), adjusting start to 0`);
+          log.app.warn(`Invalid range request: start (${start}) > end (${end}), adjusting start to 0`);
           start = 0;
         }
         
         // Ensure start is not greater than file size
         if (start >= fileSize) {
-          console.warn(`Range start (${start}) >= file size (${fileSize}), returning 416 Range Not Satisfiable`);
+          log.app.warn(`Range start (${start}) >= file size (${fileSize}), returning 416 Range Not Satisfiable`);
           res.setHeader('Content-Range', `bytes */${fileSize}`);
           return res.status(416).send(); // Range Not Satisfiable
         }
@@ -677,7 +677,7 @@ const download = async (req, res) => {
             }
           });
         } catch (streamErr) {
-          console.error('Error creating read stream:', {
+          log.error.error('Error creating read stream:', {
             error: streamErr.message,
             range: `${start}-${end}`,
             fileSize
@@ -850,12 +850,12 @@ const info = async (req, res) => {
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        console.warn("Invalid x-access-token:", err.message);
+        log.app.warn("Invalid x-access-token:", err.message);
       }
     }
   }
 
-  console.log('Auth context in info:', {
+  log.app.info('Auth context in info:', {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
@@ -1116,7 +1116,7 @@ const remove = async (req, res) => {
     // Attempt to delete the file from the disk
     fs.unlink(filePath, (err) => {
       if (err) {
-        console.log(`Could not delete the file from disk: ${err}`);
+        log.app.info(`Could not delete the file from disk: ${err}`);
       }
     });
 
@@ -1124,15 +1124,15 @@ const remove = async (req, res) => {
     try {
       if (fileRecord) {
         await fileRecord.destroy();
-        console.log("Database record deleted successfully.");
+        log.app.info("Database record deleted successfully.");
       } else {
-        console.log("File record not found, but continuing with directory cleanup.");
+        log.app.info("File record not found, but continuing with directory cleanup.");
       }
 
       // Attempt to delete the architecture directory
       fs.rm(basefilePath, { recursive: true, force: true }, (err) => {
         if (err) {
-          console.log(`Could not delete the architecture directory: ${err}`);
+          log.app.info(`Could not delete the architecture directory: ${err}`);
         }
       });
 
@@ -1140,7 +1140,7 @@ const remove = async (req, res) => {
         message: "File and database record are deleted, or file was not found but cleanup attempted."
       });
     } catch (dbErr) {
-      console.log(`Could not delete the database record: ${dbErr}`);
+      log.app.info(`Could not delete the database record: ${dbErr}`);
       res.status(200).send({
         message: "File deletion attempted, but encountered issues with database or directory cleanup."
       });
@@ -1406,12 +1406,12 @@ const update = async (req, res) => {
 
     // If headers are already sent by middleware, return
     if (res.headersSent) {
-      console.log('Headers already sent by middleware');
+      log.app.info('Headers already sent by middleware');
       return;
     }
 
     // Log successful file upload
-    console.log('File updated successfully:', {
+    log.app.info('File updated successfully:', {
       filename: req.file.filename,
       originalname: req.file.originalname,
       size: req.file.size,
@@ -1436,7 +1436,7 @@ const update = async (req, res) => {
     });
 
     // Log successful update
-    console.log('File record updated:', {
+    log.app.info('File record updated:', {
       fileName,
       checksum,
       checksumType,
@@ -1452,7 +1452,7 @@ const update = async (req, res) => {
       path: req.file.path
     });
   } catch (err) {
-    console.log(err);
+    log.app.info(err);
 
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
@@ -1592,7 +1592,7 @@ const getDownloadLink = async (req, res) => {
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        console.warn("Invalid x-access-token:", err.message);
+        log.app.warn("Invalid x-access-token:", err.message);
       }
     }
   }

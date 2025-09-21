@@ -113,14 +113,14 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  console.error(`Failed to load auth configuration: ${e.message}`);
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
 let appConfig;
 try {
   appConfig = loadConfig('app');
 } catch (e) {
-  console.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
 /**
@@ -758,7 +758,7 @@ exports.delete = async (req, res) => {
       const versionPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber);
       fs.rm(versionPath, { recursive: true, force: true }, (err) => {
         if (err) {
-          console.log(`Could not delete the version directory: ${err}`);
+          log.app.info(`Could not delete the version directory: ${err}`);
         }
       });
 
@@ -868,7 +868,7 @@ exports.deleteAllByBox = async (req, res) => {
       const boxPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId);
       fs.rm(boxPath, { recursive: true, force: true }, (err) => {
         if (err) {
-          console.log(`Could not delete the box directory: ${err}`);
+          log.app.info(`Could not delete the box directory: ${err}`);
         }
       });
 

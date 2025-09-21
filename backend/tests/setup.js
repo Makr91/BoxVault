@@ -70,7 +70,7 @@ beforeAll(async () => {
     await testUser.setRoles([2, 3]); // Moderator and Admin roles
 
   } catch (error) {
-    console.error('Test database initialization failed:', error);
+    log.error.error('Test database initialization failed:', error);
     throw error;
   }
 });

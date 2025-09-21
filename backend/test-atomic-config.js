@@ -36,44 +36,44 @@ const testConfig = {
 };
 
 async function testAtomicWrite() {
-  console.log('Testing atomic file operations...');
+  log.app.info('Testing atomic file operations...');
   
   // Get the config path using the same logic as the application
   const configPath = getConfigPath('db');
-  console.log(`Config path: ${configPath}`);
-  console.log(`CONFIG_DIR environment variable: ${process.env.CONFIG_DIR || 'not set'}`);
-  console.log(`NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+  log.app.info(`Config path: ${configPath}`);
+  log.app.info(`CONFIG_DIR environment variable: ${process.env.CONFIG_DIR || 'not set'}`);
+  log.app.info(`NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
   
   try {
     // Test atomic write
     const yamlContent = yaml.dump(testConfig);
-    console.log('\nWriting test configuration atomically...');
+    log.app.info('\nWriting test configuration atomically...');
     
     await atomicWriteFile(configPath, yamlContent, 'utf8');
-    console.log('✅ Atomic write completed successfully');
+    log.app.info('✅ Atomic write completed successfully');
     
     // Verify the file was written correctly
     const writtenContent = fs.readFileSync(configPath, 'utf8');
     const parsedConfig = yaml.load(writtenContent);
     
     if (parsedConfig.sql.dialect.value === 'sqlite') {
-      console.log('✅ Configuration file content verified');
+      log.app.info('✅ Configuration file content verified');
     } else {
-      console.log('❌ Configuration file content mismatch');
+      log.app.info('❌ Configuration file content mismatch');
     }
     
     // Check that no temporary files remain
     const tempPath = `${configPath}.tmp`;
     if (!fs.existsSync(tempPath)) {
-      console.log('✅ No temporary files left behind');
+      log.app.info('✅ No temporary files left behind');
     } else {
-      console.log('❌ Temporary file still exists');
+      log.app.info('❌ Temporary file still exists');
     }
     
-    console.log('\n🎉 All tests passed! Atomic file operations are working correctly.');
+    log.app.info('\n🎉 All tests passed! Atomic file operations are working correctly.');
     
   } catch (error) {
-    console.error('❌ Test failed:', error.message);
+    log.error.error('❌ Test failed:', error.message);
     process.exit(1);
   }
 }
