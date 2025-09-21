@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.24.0](https://github.com/Makr91/BoxVault/compare/v0.23.1...v0.24.0) (2025-09-21)
+
+
+### Features
+
+* github ci/cd ([2845044](https://github.com/Makr91/BoxVault/commit/2845044e78372bae2ac9e899cd28479e43ac28f3))
+* update express ([0751b83](https://github.com/Makr91/BoxVault/commit/0751b837c14604a64a7b57e5937cbd96b28fa9a7))
+
+
+### Bug Fixes
+
+* org change frontend ([becbe70](https://github.com/Makr91/BoxVault/commit/becbe70eefcf2b3cd7e2f9dd40f74e26fa0c9a97))
+
 ## [0.23.1](https://github.com/Makr91/BoxVault/compare/v0.23.0...v0.23.1) (2025-09-21)
 
 
