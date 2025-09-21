@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { loadConfig } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 const db = require("../models");
 const User = db.user;
 const Organization = db.organization; 

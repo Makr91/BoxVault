@@ -1,4 +1,5 @@
 const { authJwt } = require("../middleware");
+const { log } = require('../utils/Logger');
 const file = require("../controllers/file.controller");
 
 // Error handling middleware for file operations

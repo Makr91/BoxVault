@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { log } = require('./Logger');
 
 /**
  * Get the appropriate config file path based on environment

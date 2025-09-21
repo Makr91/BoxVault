@@ -1,4 +1,5 @@
 const { passport } = require("../auth/passport");
+const { log } = require('../utils/Logger');
 
 module.exports = function(app) {
   app.use(function(req, res, next) {

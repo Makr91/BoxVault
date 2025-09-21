@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const { loadConfig, getConfigPath } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 
 const readConfig = (filePath) => {
   return new Promise((resolve, reject) => {

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 
 // Load app config for max file size
 let maxFileSize;

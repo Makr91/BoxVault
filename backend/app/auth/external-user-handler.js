@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { log } = require('../utils/Logger');
 
 /**
  * Handle external user authentication and provisioning

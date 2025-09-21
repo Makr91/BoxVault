@@ -1,5 +1,6 @@
 // verifyArchitecture.js
 const db = require("../models");
+const { log } = require('../utils/Logger');
 const Architecture = db.architectures;
 
 function validateArchitecture(req, res, next) {

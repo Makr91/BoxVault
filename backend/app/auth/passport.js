@@ -3,6 +3,7 @@ const { Strategy: JwtStrategy, ExtractJwt } = require('passport-jwt');
 const client = require('openid-client');
 const { Strategy: OidcStrategy } = require('openid-client/passport');
 const { loadConfig } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 const db = require('../models');
 const { handleExternalUser } = require('./external-user-handler');
 

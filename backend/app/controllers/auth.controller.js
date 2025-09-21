@@ -1,6 +1,7 @@
 // auth.controller.js
 const db = require("../models");
 const { loadConfig } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require('crypto');

@@ -1,4 +1,5 @@
 const { loadConfig } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const User = db.user;

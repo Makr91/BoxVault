@@ -1,4 +1,5 @@
 const db = require("../models");
+const { log } = require('../utils/Logger');
 const ServiceAccount = db.service_account;
 const User = db.user;
 

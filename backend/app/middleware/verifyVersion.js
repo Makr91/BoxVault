@@ -1,5 +1,6 @@
 // verifyVersion.js
 const db = require("../models");
+const { log } = require('../utils/Logger');
 const Version = db.versions;
 
 

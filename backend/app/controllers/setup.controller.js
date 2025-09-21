@@ -2,6 +2,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const path = require('path');
 const { loadConfig, getConfigPath, getSetupTokenPath } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 const { atomicWriteFile } = require('../utils/atomic-file-writer');
 
 const configPaths = {

@@ -10,6 +10,7 @@ const Role = db.role;
 const Organization = db.organization;
 
 const { loadConfig } = require('../utils/config-loader');
+const { log } = require('../utils/Logger');
 let authConfig;
 try {
   authConfig = loadConfig('auth');
