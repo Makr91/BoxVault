@@ -25,7 +25,10 @@ const Box = ({ theme }) => {
     published: false,
     isPublic: false,
     userId: null,
-    organization: null
+    organization: null,
+    githubRepo: "",
+    workflowFile: "",
+    cicdUrl: ""
   };
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -498,6 +501,61 @@ const Box = ({ theme }) => {
                       placeholder="The short description is used to describe the box."
                     />
                   </div>
+
+                  <div className="form-group mt-3">
+                    <h5><strong>CI/CD Integration</strong> (Optional)</h5>
+                    <small className="form-text text-muted mb-3">
+                      Connect your box to GitHub Actions for automated build status badges.
+                    </small>
+                    
+                    <div className="form-group mt-2">
+                      <label className="mb-1" htmlFor="githubRepo"><strong>GitHub Repository:</strong> (Optional)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="githubRepo"
+                        name="githubRepo"
+                        value={currentBox.githubRepo || ""}
+                        onChange={handleInputChange}
+                        placeholder="owner/repository-name"
+                      />
+                      <small className="form-text text-muted">
+                        Format: owner/repository-name (e.g., myorg/my-vagrant-box)
+                      </small>
+                    </div>
+
+                    <div className="form-group mt-2">
+                      <label className="mb-1" htmlFor="workflowFile"><strong>Workflow File:</strong> (Optional)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="workflowFile"
+                        name="workflowFile"
+                        value={currentBox.workflowFile || ""}
+                        onChange={handleInputChange}
+                        placeholder="build.yml"
+                      />
+                      <small className="form-text text-muted">
+                        GitHub Actions workflow file name (e.g., build.yml, ci.yaml)
+                      </small>
+                    </div>
+
+                    <div className="form-group mt-2">
+                      <label className="mb-1" htmlFor="cicdUrl"><strong>CI/CD URL:</strong> (Optional)</label>
+                      <input
+                        type="url"
+                        className="form-control"
+                        id="cicdUrl"
+                        name="cicdUrl"
+                        value={currentBox.cicdUrl || ""}
+                        onChange={handleInputChange}
+                        placeholder="https://github.com/owner/repo/actions"
+                      />
+                      <small className="form-text text-muted">
+                        Direct link to your CI/CD pipeline or GitHub Actions page
+                      </small>
+                    </div>
+                  </div>
                 </form>
               </div>
             ) : (
@@ -506,6 +564,60 @@ const Box = ({ theme }) => {
                 <p><strong>Status:</strong> {currentBox.published ? "Published" : "Pending"}</p>
                 <p><strong>Visibility:</strong> {currentBox.isPublic ? "Public" : "Private"}</p>
                 <p><strong>Description:</strong> {currentBox.description}</p>
+                
+                {/* CI/CD Integration Display */}
+                {(currentBox.githubRepo || currentBox.workflowFile || currentBox.cicdUrl) && (
+                  <div className="mt-3">
+                    <h5><strong>CI/CD Integration</strong></h5>
+                    
+                    {currentBox.githubRepo && currentBox.workflowFile && (
+                      <div className="mb-2">
+                        <p><strong>Build Status:</strong></p>
+                        <a 
+                          href={currentBox.cicdUrl || `https://github.com/${currentBox.githubRepo}/actions`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <img 
+                            src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
+                            alt="Build Status"
+                            style={{ maxHeight: '20px' }}
+                          />
+                        </a>
+                      </div>
+                    )}
+                    
+                    {currentBox.githubRepo && (
+                      <p><strong>Repository:</strong> 
+                        <a 
+                          href={`https://github.com/${currentBox.githubRepo}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ms-2"
+                        >
+                          {currentBox.githubRepo}
+                        </a>
+                      </p>
+                    )}
+                    
+                    {currentBox.workflowFile && (
+                      <p><strong>Workflow:</strong> {currentBox.workflowFile}</p>
+                    )}
+                    
+                    {currentBox.cicdUrl && (
+                      <p><strong>CI/CD Pipeline:</strong> 
+                        <a 
+                          href={currentBox.cicdUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ms-2"
+                        >
+                          View Pipeline
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

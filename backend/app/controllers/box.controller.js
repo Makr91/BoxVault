@@ -86,7 +86,7 @@ try {
  */
 exports.create = async (req, res) => {
   const { organization } = req.params;
-  const { name, description, published, isPublic } = req.body;
+  const { name, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
   const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name || name);
 
   if (!req.body.name) {
@@ -107,7 +107,10 @@ exports.create = async (req, res) => {
     description: description,
     published: published ? published : false,
     isPublic: isPublic ? isPublic : false,
-    userId: req.userId
+    userId: req.userId,
+    githubRepo: githubRepo || null,
+    workflowFile: workflowFile || null,
+    cicdUrl: cicdUrl || null
   };
 
   // Save Box in the database
@@ -867,7 +870,7 @@ exports.findOne = async (req, res) => {
  */
 exports.update = async (req, res) => {
   const { organization, name } = req.params;
-  const { name: updatedName, description, published, isPublic } = req.body;
+  const { name: updatedName, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
   const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name);
   const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, updatedName || name);
 
@@ -921,6 +924,9 @@ exports.update = async (req, res) => {
       description: description !== undefined ? description : box.description,
       published: published !== undefined ? published : box.published,
       isPublic: isPublic !== undefined ? isPublic : box.isPublic,
+      githubRepo: githubRepo !== undefined ? githubRepo : box.githubRepo,
+      workflowFile: workflowFile !== undefined ? workflowFile : box.workflowFile,
+      cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl,
       userId: req.userId
     });
 

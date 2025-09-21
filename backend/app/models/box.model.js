@@ -19,6 +19,27 @@ module.exports = (sequelize, Sequelize) => {
         model: 'users',
         key: 'id',
       }
+    },
+    githubRepo: {
+      type: Sequelize.STRING,
+      allowNull: true,
+      validate: {
+        is: /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/i
+      }
+    },
+    workflowFile: {
+      type: Sequelize.STRING,
+      allowNull: true,
+      validate: {
+        is: /^[a-zA-Z0-9._-]+\.(yml|yaml)$/i
+      }
+    },
+    cicdUrl: {
+      type: Sequelize.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: true
+      }
     }
   });
   
