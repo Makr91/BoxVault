@@ -8,33 +8,25 @@
 const winston = require('winston');
 const fs = require('fs');
 const path = require('path');
-const { loadConfig } = require('./config-loader');
 
-// Get logging configuration with defaults
+// Get logging configuration (config should be loaded before Logger)
+// This avoids circular dependency by having config loaded in main app before Logger import
 let loggingConfig;
 try {
+  const { loadConfig } = require('./config-loader');
   const appConfig = loadConfig('app');
   loggingConfig = appConfig.logging || {};
 } catch (e) {
-  // Use defaults if config loading fails
+  // If config loading fails, use defaults
   loggingConfig = {};
 }
 
-// Default logging configuration
-const defaultConfig = {
-  level: 'info',
-  console_enabled: true,
-  log_directory: './logs',
-  performance_threshold_ms: 1000,
-  categories: {}
-};
-
 // Extract values from config objects and merge with defaults
 const extractedConfig = {
-  level: loggingConfig.level?.value || defaultConfig.level,
+  level: loggingConfig.level?.value || 'info',
   console_enabled: loggingConfig.console_enabled?.value !== false,
-  log_directory: loggingConfig.log_directory?.value || defaultConfig.log_directory,
-  performance_threshold_ms: loggingConfig.performance_threshold_ms?.value || defaultConfig.performance_threshold_ms,
+  log_directory: loggingConfig.log_directory?.value || '/var/log/boxvault',
+  performance_threshold_ms: loggingConfig.performance_threshold_ms?.value || 1000,
   categories: {}
 };
 
@@ -45,10 +37,8 @@ if (loggingConfig.categories) {
   }
 }
 
-loggingConfig = extractedConfig;
-
 // Ensure log directory exists
-const logDir = loggingConfig.log_directory;
+const logDir = extractedConfig.log_directory;
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true, mode: 0o755 });
 }
@@ -86,7 +76,7 @@ const consoleFormat = winston.format.combine(
  * @returns {winston.Logger} Configured winston logger
  */
 const createCategoryLogger = (category, filename) => {
-  const categoryLevel = loggingConfig.categories[category] || loggingConfig.level;
+  const categoryLevel = extractedConfig.categories[category] || extractedConfig.level;
   const transports = [];
 
   // File transport for this category
@@ -102,7 +92,7 @@ const createCategoryLogger = (category, filename) => {
   );
 
   // Console transport for development
-  if (loggingConfig.console_enabled && process.env.NODE_ENV !== 'production') {
+  if (extractedConfig.console_enabled && process.env.NODE_ENV !== 'production') {
     transports.push(
       new winston.transports.Console({
         level: categoryLevel,
@@ -117,7 +107,7 @@ const createCategoryLogger = (category, filename) => {
     defaultMeta: { category, service: 'boxvault' },
     transports,
     exitOnError: false,
-    silent: loggingConfig.level === 'silent',
+    silent: extractedConfig.level === 'silent',
   });
 };
 
@@ -211,7 +201,7 @@ const createTimer = (operation) => {
       const duration = Number(end - start) / 1000000; // Convert nanoseconds to milliseconds
 
       // Log slow operations
-      const thresholdMs = loggingConfig.performance_threshold_ms || 1000;
+      const thresholdMs = extractedConfig.performance_threshold_ms || 1000;
       if (duration >= thresholdMs) {
         log.app.warn(`Slow operation detected: ${operation}`, {
           operation,

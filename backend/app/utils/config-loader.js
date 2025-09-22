@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const { log } = require('./Logger');
 
 /**
  * Get the appropriate config file path based on environment
@@ -32,7 +31,7 @@ const loadConfig = (configName) => {
     const fileContents = fs.readFileSync(configPath, 'utf8');
     return yaml.load(fileContents);
   } catch (error) {
-    log.error.error(`Failed to load ${configName} configuration from ${configPath}:`, error.message);
+    console.error(`Failed to load ${configName} configuration from ${configPath}:`, error.message);
     throw error;
   }
 };
