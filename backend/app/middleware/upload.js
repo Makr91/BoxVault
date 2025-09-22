@@ -17,6 +17,19 @@ try {
 
 // Main upload middleware that streams directly to disk
 const uploadMiddleware = async (req, res) => {
+  log.app.info('=== UPLOAD MIDDLEWARE ENTRY ===', {
+    method: req.method,
+    url: req.url,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'content-length': req.headers['content-length'],
+      'transfer-encoding': req.headers['transfer-encoding'],
+      'x-checksum': req.headers['x-checksum'],
+      'x-checksum-type': req.headers['x-checksum-type'],
+      'x-file-name': req.headers['x-file-name']
+    }
+  });
+
   // Disable request timeouts
   req.setTimeout(0);
   res.setTimeout(0);
@@ -31,30 +44,67 @@ const uploadMiddleware = async (req, res) => {
   try {
     const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
     
+    log.app.info('Upload middleware processing request for:', {
+      organization,
+      boxId,
+      versionNumber,
+      providerName,
+      architectureName
+    });
+    
     // Check if using chunked encoding
     const isChunked = req.headers['transfer-encoding'] === 'chunked';
     const contentLength = parseInt(req.headers['content-length']);
 
+    log.app.info('Upload encoding analysis:', {
+      isChunked,
+      contentLength,
+      contentLengthRaw: req.headers['content-length']
+    });
+
     // Only validate content-length if not using chunked encoding
     if (!isChunked) {
       if (isNaN(contentLength)) {
-        return res.status(400).json({
+        log.app.error('Missing or invalid Content-Length header');
+        res.status(400).json({
           error: 'INVALID_REQUEST',
           message: 'Content-Length header required when not using chunked encoding'
         });
+        return;
       }
 
       if (contentLength > maxFileSize) {
-        return res.status(413).json({
-          error: 'FILE_TOO_LARGE',
-          message: `File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`
+        log.app.error('File too large:', { 
+          contentLength, 
+          maxFileSize,
+          contentLengthGB: Math.round(contentLength / (1024 * 1024 * 1024) * 100) / 100,
+          maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024)
         });
+        
+        // Ensure proper response headers for SSL
+        res.setHeader('Connection', 'close');
+        res.setHeader('Content-Type', 'application/json');
+        
+        res.status(413).json({
+          error: 'FILE_TOO_LARGE',
+          message: `File size ${Math.round(contentLength / (1024 * 1024 * 1024) * 100) / 100}GB exceeds maximum allowed size of ${maxFileSize / (1024 * 1024 * 1024)}GB`,
+          details: {
+            fileSize: contentLength,
+            maxFileSize: maxFileSize,
+            fileSizeGB: Math.round(contentLength / (1024 * 1024 * 1024) * 100) / 100,
+            maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024)
+          }
+        });
+        return;
       }
     }
 
     // Load config and prepare upload directory
+    log.app.info('Loading config and preparing upload directory...');
     const config = loadConfig('app');
     const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
+    
+    log.app.info('Creating upload directory:', { uploadDir });
     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     const finalPath = path.join(uploadDir, 'vagrant.box');
 
@@ -63,14 +113,21 @@ const uploadMiddleware = async (req, res) => {
     const totalChunks = parseInt(req.headers['x-total-chunks']);
     const isMultipart = !isNaN(chunkIndex) && !isNaN(totalChunks);
 
+    log.app.info('Chunk analysis:', {
+      chunkIndex,
+      totalChunks,
+      isMultipart
+    });
+
     // Create temp directory for chunks if needed
     const tempDir = path.join(uploadDir, '.temp');
     if (isMultipart) {
+      log.app.info('Creating temp directory for chunks:', { tempDir });
       fs.mkdirSync(tempDir, { recursive: true, mode: 0o755 });
     }
 
     // Log upload start
-    log.app.info('Starting file upload:', {
+    log.app.info('=== STARTING FILE UPLOAD PROCESS ===', {
       fileName: req.headers['x-file-name'] || 'vagrant.box',
       fileSize: contentLength,
       checksum: req.headers['x-checksum'] || 'none',
@@ -473,54 +530,19 @@ const uploadMiddleware = async (req, res) => {
 };
 
 // SSL file upload middleware (Promise-based)
-const uploadSSLMiddleware = (req, res) => {
-  return new Promise((resolve, reject) => {
-    upload(req, res, (err) => {
-      if (err) {
-        log.error.error('SSL upload error:', {
-          message: err.message,
-          code: err.code,
-          stack: err.stack
-        });
-        reject(err);
-        return;
-      }
-
-      if (!req.file) {
-        const error = new Error('No file uploaded');
-        log.error.error('SSL upload error:', {
-          message: error.message,
-          headers: req.headers,
-          body: req.body
-        });
-        reject(error);
-        return;
-      }
-
-      if (req.file.size === 0) {
-        const error = new Error('Empty file uploaded');
-        log.error.error('SSL upload error:', {
-          message: error.message,
-          file: req.file
-        });
-        fs.unlink(req.file.path, (unlinkErr) => {
-          if (unlinkErr) log.error.error('Error deleting empty file:', unlinkErr);
-        });
-        reject(error);
-        return;
-      }
-
-      log.app.info('SSL upload completed:', {
-        filename: req.file.filename,
-        originalname: req.file.originalname,
-        path: req.file.path,
-        size: req.file.size,
-        mimetype: req.file.mimetype
+const uploadSSLMiddleware = async (req, res) => {
+  try {
+    await uploadMiddleware(req, res);
+    // The middleware handles the response directly
+  } catch (error) {
+    console.error('SSL upload error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'UPLOAD_ERROR',
+        message: error.message
       });
-
-      resolve(req.file);
-    });
-  });
+    }
+  }
 };
 
 module.exports = {

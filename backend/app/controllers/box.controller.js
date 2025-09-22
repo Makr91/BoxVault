@@ -927,8 +927,7 @@ exports.update = async (req, res) => {
       isPublic: isPublic !== undefined ? isPublic : box.isPublic,
       githubRepo: githubRepo !== undefined ? githubRepo : box.githubRepo,
       workflowFile: workflowFile !== undefined ? workflowFile : box.workflowFile,
-      cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl,
-      userId: req.userId
+      cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl
     });
 
     res.send(updatedBox);

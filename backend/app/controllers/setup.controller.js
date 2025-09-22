@@ -166,8 +166,8 @@ const verifyAuthorizedToken = (req, res, next) => {
 exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
   try {
     // Import upload middleware only when needed
-    const { uploadSSLFileMiddleware } = require("../middleware/upload");
-    await uploadSSLFileMiddleware(req, res);
+    const { uploadSSLFile } = require("../middleware/upload");
+    await uploadSSLFile(req, res);
     const { file } = req;
     if (!file) {
       return res.status(400).send({ message: "No file uploaded!" });

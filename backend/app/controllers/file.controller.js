@@ -208,17 +208,44 @@ const upload = async (req, res) => {
   const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
   const uploadStartTime = Date.now();
 
+  log.app.info('=== FILE UPLOAD STARTED ===', {
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName,
+    fileName,
+    filePath,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'content-length': req.headers['content-length'],
+      'x-access-token': req.headers['x-access-token'] ? 'present' : 'missing',
+      'x-checksum': req.headers['x-checksum'] || 'missing',
+      'x-checksum-type': req.headers['x-checksum-type'] || 'missing',
+      'x-file-name': req.headers['x-file-name'] || 'missing'
+    },
+    method: req.method,
+    url: req.url
+  });
+
   // Set a longer timeout for the request
   req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
   res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
 
   try {
+    log.app.info('Creating upload directory if needed:', { filePath });
+    
     // Create directory if it doesn't exist
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
+      log.app.info('Created upload directory:', { dir });
+    } else {
+      log.app.info('Upload directory already exists:', { dir });
     }
 
+    log.app.info('Looking up architecture in database...');
+    
     const architecture = await Architecture.findOne({
       where: { name: architectureName },
       include: [{
@@ -248,108 +275,28 @@ const upload = async (req, res) => {
     });
 
     if (!architecture) {
+      log.app.error('Architecture not found in database', {
+        architectureName,
+        providerName,
+        versionNumber,
+        boxId,
+        organization
+      });
       return res.status(404).json({
         error: 'NOT_FOUND',
         message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
       });
     }
 
-    // Process the upload using Promise-based middleware
-    await new Promise((resolve, reject) => {
-      uploadFileMiddleware(req, res, (err) => {
-        if (err) {
-          reject(err);
-        } else if (!req.file) {
-          reject(new Error('No file uploaded'));
-        } else {
-          resolve(req.file);
-        }
-      });
+    log.app.info('Architecture found, calling upload middleware...', {
+      architectureId: architecture.id,
+      architectureName: architecture.name
     });
 
-    // If headers are already sent by middleware, return
-    if (res.headersSent) {
-      log.app.info('Headers already sent by middleware');
-      return;
-    }
-
-    // Log successful file upload
-    log.app.info('File uploaded successfully:', {
-      filename: req.file.filename,
-      originalname: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype,
-      path: req.file.path
-    });
-
-    try {
-      // Get checksum info
-      let checksum = req.body.checksum;
-      let checksumType = req.body.checksumType;
-
-      if (!checksumType || checksumType.toUpperCase() === 'NULL') {
-        checksum = null;
-        checksumType = 'NULL';
-      }
-
-      // Find existing file record or create new one
-      let fileRecord = await File.findOne({
-        where: {
-          fileName: fileName,
-          architectureId: architecture.id
-        }
-      });
-
-      if (fileRecord) {
-        // Update existing record
-        await fileRecord.update({
-          checksum: checksum,
-          checksumType: checksumType,
-          fileSize: req.file.size
-        });
-        log.app.info('File record updated:', {
-          fileName,
-          checksum,
-          checksumType,
-          architectureId: architecture.id,
-          fileSize: req.file.size,
-          path: req.file.path
-        });
-      } else {
-        // Create new record
-        fileRecord = await File.create({
-          fileName: fileName,
-          checksum: checksum,
-          checksumType: checksumType,
-          architectureId: architecture.id,
-          fileSize: req.file.size
-        });
-        log.app.info('File record created:', {
-          fileName,
-          checksum,
-          checksumType,
-          architectureId: architecture.id,
-          fileSize: req.file.size,
-          path: req.file.path
-        });
-      }
-
-      // Send detailed success response
-      return res.status(200).json({
-        message: fileRecord ? "File updated successfully" : "File uploaded successfully",
-        fileName: fileName,
-        originalName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        path: req.file.path,
-        checksum: checksum,
-        checksumType: checksumType,
-        fileRecord: fileRecord
-      });
-    } catch (dbError) {
-      log.error.error('Database error during file upload:', dbError);
-      throw dbError;
-    }
+    // Call the upload middleware directly (it handles the response)
+    await uploadFileMiddleware(req, res);
+    
+    log.app.info('Upload middleware completed successfully');
   } catch (err) {
     // Log detailed error information
     log.error.error('File upload error:', {
