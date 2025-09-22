@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/Makr91/BoxVault/compare/v0.25.0...v0.26.0) (2025-09-22)
+
+
+### Features
+
+* convert to winston logging ([6e46d13](https://github.com/Makr91/BoxVault/commit/6e46d1348e3c46f84116da57b06a0c1f6f872033))
+
 ## [0.25.0](https://github.com/Makr91/BoxVault/compare/v0.24.0...v0.25.0) (2025-09-21)
 
 
