@@ -30,7 +30,7 @@
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "fs": "^0.0.1-security",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "mysql2": "^3.11.3",
