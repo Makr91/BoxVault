@@ -173,7 +173,7 @@ jobs:
 
       - name: Upload artifacts (for non-tag builds)
         if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: "debian-packages-${{ matrix.package-type }}"
           path: "*.deb"
