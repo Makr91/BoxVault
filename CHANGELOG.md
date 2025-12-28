@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.26.1](https://github.com/Makr91/BoxVault/compare/v0.26.0...v0.26.1) (2025-12-28)
+
+
+### Bug Fixes
+
+* default providers to {} ([93b43d1](https://github.com/Makr91/BoxVault/commit/93b43d1851471c741d2d431f54e7b42c95594d18))
+* dev environments use dev config files ([74efbf2](https://github.com/Makr91/BoxVault/commit/74efbf235c929bfb345fa8e2674bb69527825e67))
+* early linting and updating OIDC ([6d1140b](https://github.com/Makr91/BoxVault/commit/6d1140b2643b898a107c83358768abaa37883e37))
+* uploads ([5f8ab06](https://github.com/Makr91/BoxVault/commit/5f8ab063f3321e563e8c472e353cf19317716267))
+
 ## [0.26.0](https://github.com/Makr91/BoxVault/compare/v0.25.0...v0.26.0) (2025-09-22)
 
 
