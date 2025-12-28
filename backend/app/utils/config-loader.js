@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
 
 /**
  * Get the appropriate config file path based on environment
@@ -9,12 +10,9 @@ const yaml = require('js-yaml');
  */
 const getConfigPath = (configName) => {
   if (process.env.NODE_ENV === 'production') {
-    // Production: use CONFIG_DIR environment variable or default to /etc/boxvault/
-    const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
     return `${configDir}/${configName}.config.yaml`;
   } else {
-    // Development: use packaging/config directory from project root
-    return path.join(__dirname, `../../../packaging/config/${configName}.config.yaml`);
+    return path.join(__dirname, `../config/${configName}.dev.config.yaml`);
   }
 };
 

@@ -15,3 +15,9 @@ boxvault_repo/
 
 backend/app/config/ssl/private.key
 backend/app/config/ssl/public.crt
+ROADMAP.md
+mail.dev.config.yaml
+db.dev.config.yaml
+auth.dev.config.yaml
+app.dev.config.yaml
+setup.token
