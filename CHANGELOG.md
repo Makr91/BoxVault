@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.2](https://github.com/Makr91/BoxVault/compare/v0.26.1...v0.26.2) (2025-12-28)
+
+
+### Bug Fixes
+
+* actions ([5ae327b](https://github.com/Makr91/BoxVault/commit/5ae327b49fe164cca3ba14dbd6eba351cab1db77))
+
 ## [0.26.1](https://github.com/Makr91/BoxVault/compare/v0.26.0...v0.26.1) (2025-12-28)
 
 
