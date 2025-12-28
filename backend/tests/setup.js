@@ -7,23 +7,23 @@ const path = require('path');
 const testConfig = {
   sql: {
     dialect: {
-      value: process.env.TEST_DB_DIALECT || 'sqlite'
+      value: process.env.TEST_DB_DIALECT || 'sqlite',
     },
     storage: {
-      value: ':memory:' // Use in-memory SQLite for tests
-    }
+      value: ':memory:', // Use in-memory SQLite for tests
+    },
   },
   boxvault: {
     box_storage_directory: {
-      value: path.join(__dirname, '__test_storage__')
+      value: path.join(__dirname, '__test_storage__'),
     },
     box_max_file_size: {
-      value: 1 // 1GB for tests
+      value: 1, // 1GB for tests
     },
     api_listen_port_unencrypted: {
-      value: process.env.TEST_PORT || 5001
-    }
-  }
+      value: process.env.TEST_PORT || 5001,
+    },
+  },
 };
 
 // Write test config to file
@@ -41,34 +41,33 @@ beforeAll(async () => {
   // Initialize test database
   try {
     await db.sequelize.sync({ force: true }); // Clear and recreate tables
-    
+
     // Create test roles
     await db.role.bulkCreate([
-      { id: 1, name: "user" },
-      { id: 2, name: "moderator" },
-      { id: 3, name: "admin" }
+      { id: 1, name: 'user' },
+      { id: 2, name: 'moderator' },
+      { id: 3, name: 'admin' },
     ]);
 
     // Create test user
     const testUser = await db.user.create({
-      username: "SomeUser",
-      email: "mark.gilbert@prominic.net",
-      password: "$2a$08$nQ.fOBddyV/V184UnrIt9.Fj9q8iLEnYjnBB8kxaAbRFq.GQ9iEre", // SoomePass
+      username: 'SomeUser',
+      email: 'mark.gilbert@prominic.net',
+      password: '$2a$08$nQ.fOBddyV/V184UnrIt9.Fj9q8iLEnYjnBB8kxaAbRFq.GQ9iEre', // SoomePass
       verified: true,
-      organizationId: 1
+      organizationId: 1,
     });
 
     // Create test organization
     const testOrg = await db.organization.create({
-      name: "STARTcloud",
-      email: "vagrantup-startcloud@prominic.net",
-      emailHash: "d47b0c84e924f69e8601b3772785607615934159defdafca51013afecc2a7f11",
-      suspended: false
+      name: 'STARTcloud',
+      email: 'vagrantup-startcloud@prominic.net',
+      emailHash: 'd47b0c84e924f69e8601b3772785607615934159defdafca51013afecc2a7f11',
+      suspended: false,
     });
 
     // Assign roles to test user
     await testUser.setRoles([2, 3]); // Moderator and Admin roles
-
   } catch (error) {
     log.error.error('Test database initialization failed:', error);
     throw error;
@@ -102,7 +101,10 @@ global.testHelpers = {
       if (providerData) {
         const provider = await db.provider.create({ ...providerData, versionId: version.id });
         if (architectureData) {
-          const architecture = await db.architecture.create({ ...architectureData, providerId: provider.id });
+          const architecture = await db.architecture.create({
+            ...architectureData,
+            providerId: provider.id,
+          });
           return { box, version, provider, architecture };
         }
         return { box, version, provider };
@@ -117,5 +119,5 @@ global.testHelpers = {
     if (box) {
       await db.box.destroy({ where: { id: box.id }, cascade: true });
     }
-  }
+  },
 };

@@ -8,12 +8,11 @@ const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
  * @param {string} configName - Name of config file (without .config.yaml extension)
  * @returns {string} Full path to config file
  */
-const getConfigPath = (configName) => {
+const getConfigPath = configName => {
   if (process.env.NODE_ENV === 'production') {
     return `${configDir}/${configName}.config.yaml`;
-  } else {
-    return path.join(__dirname, `../config/${configName}.dev.config.yaml`);
   }
+  return path.join(__dirname, `../config/${configName}.dev.config.yaml`);
 };
 
 /**
@@ -22,9 +21,9 @@ const getConfigPath = (configName) => {
  * @returns {Object} Parsed config object
  * @throws {Error} If config file cannot be read or parsed
  */
-const loadConfig = (configName) => {
+const loadConfig = configName => {
   const configPath = getConfigPath(configName);
-  
+
   try {
     const fileContents = fs.readFileSync(configPath, 'utf8');
     return yaml.load(fileContents);
@@ -39,13 +38,13 @@ const loadConfig = (configName) => {
  * @param {string[]} configNames - Array of config names
  * @returns {Object} Object with config names as keys and parsed configs as values
  */
-const loadConfigs = (configNames) => {
+const loadConfigs = configNames => {
   const configs = {};
-  
+
   for (const configName of configNames) {
     configs[configName] = loadConfig(configName);
   }
-  
+
   return configs;
 };
 
@@ -58,15 +57,14 @@ const getSetupTokenPath = () => {
     // Production: use CONFIG_DIR environment variable or default to /etc/boxvault/
     const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
     return `${configDir}/setup.token`;
-  } else {
-    // Development: use relative path from project root
-    return path.join(__dirname, '../../setup.token');
   }
+  // Development: use relative path from project root
+  return path.join(__dirname, '../../setup.token');
 };
 
 module.exports = {
   getConfigPath,
   loadConfig,
   loadConfigs,
-  getSetupTokenPath
+  getSetupTokenPath,
 };

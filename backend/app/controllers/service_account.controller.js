@@ -1,4 +1,4 @@
-const db = require("../models");
+const db = require('../models');
 const ServiceAccount = db.service_account;
 const User = db.user;
 const crypto = require('crypto');
@@ -47,7 +47,7 @@ const crypto = require('crypto');
 exports.create = async (req, res) => {
   try {
     const { description, expirationDays } = req.body;
-    const userId = req.userId;
+    const { userId } = req;
 
     const user = await User.findByPk(userId);
     const username = `${user.username}-${crypto.randomBytes(4).toString('hex')}`;
@@ -59,7 +59,7 @@ exports.create = async (req, res) => {
       token,
       expiresAt,
       description,
-      userId
+      userId,
     });
 
     res.status(201).send(serviceAccount);
@@ -101,7 +101,7 @@ exports.create = async (req, res) => {
  */
 exports.findAll = async (req, res) => {
   try {
-    const userId = req.userId;
+    const { userId } = req;
     const serviceAccounts = await ServiceAccount.findAll({ where: { userId } });
     res.send(serviceAccounts);
   } catch (err) {
@@ -155,14 +155,14 @@ exports.findAll = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.userId;
+    const { userId } = req;
 
     const deleted = await ServiceAccount.destroy({ where: { id, userId } });
 
     if (deleted) {
-      res.send({ message: "Service account deleted successfully." });
+      res.send({ message: 'Service account deleted successfully.' });
     } else {
-      res.status(404).send({ message: "Service account not found." });
+      res.status(404).send({ message: 'Service account not found.' });
     }
   } catch (err) {
     res.status(500).send({ message: err.message });

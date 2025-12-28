@@ -35,7 +35,7 @@
  *         boxId: 1
  *         createdAt: "2023-01-01T00:00:00.000Z"
  *         updatedAt: "2023-01-01T00:00:00.000Z"
- *     
+ *
  *     VersionWithProviders:
  *       allOf:
  *         - $ref: '#/components/schemas/Version'
@@ -70,7 +70,7 @@
  *                                 type: string
  *                               size:
  *                                 type: integer
- *     
+ *
  *     CreateVersionRequest:
  *       type: object
  *       required:
@@ -85,7 +85,7 @@
  *       example:
  *         versionNumber: "1.0.0"
  *         description: "Initial release"
- *     
+ *
  *     UpdateVersionRequest:
  *       type: object
  *       properties:
@@ -105,8 +105,8 @@ const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const jwt = require("jsonwebtoken");
-const db = require("../models");
+const jwt = require('jsonwebtoken');
+const db = require('../models');
 const Version = db.versions;
 const Box = db.box;
 
@@ -186,19 +186,25 @@ exports.create = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name: boxId }
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name: boxId },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
+      return res
+        .status(404)
+        .send({ message: `Organization not found with name: ${organization}.` });
     }
 
     // Extract the box from the organization data
@@ -212,13 +218,13 @@ exports.create = async (req, res) => {
     const version = await Version.create({
       versionNumber,
       description,
-      boxId: box.id
+      boxId: box.id,
     });
 
     res.send(version);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while creating the Version."
+      message: err.message || 'Some error occurred while creating the Version.',
     });
   }
 };
@@ -299,7 +305,7 @@ exports.create = async (req, res) => {
  */
 exports.findAllByBox = async (req, res) => {
   const { organization, boxId } = req.params;
-  const token = req.headers["x-access-token"];
+  const token = req.headers['x-access-token'];
   let userId = null;
 
   if (token) {
@@ -308,26 +314,32 @@ exports.findAllByBox = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
+      return res.status(401).send({ message: 'Unauthorized!' });
     }
   }
 
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name: boxId }
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name: boxId },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
+      return res
+        .status(404)
+        .send({ message: `Organization not found with name: ${organization}.` });
     }
 
     const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
@@ -344,25 +356,23 @@ exports.findAllByBox = async (req, res) => {
 
     // If the box is private, check if the user belongs to the organization
     if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to versions." });
+      return res.status(403).send({ message: 'Unauthorized access to versions.' });
     }
 
     const user = organizationData.users.find(user => user.id === userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to versions." });
+      return res.status(403).send({ message: 'Unauthorized access to versions.' });
     }
 
     // If the user belongs to the organization, allow access
     const versions = await Version.findAll({ where: { boxId: box.id } });
     return res.send(versions);
-
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving versions."
+      message: err.message || 'Some error occurred while retrieving versions.',
     });
   }
 };
-
 
 /**
  * @swagger
@@ -444,7 +454,7 @@ exports.findAllByBox = async (req, res) => {
  */
 exports.findOne = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
-  const token = req.headers["x-access-token"];
+  const token = req.headers['x-access-token'];
   let userId = null;
 
   if (token) {
@@ -453,27 +463,31 @@ exports.findOne = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
+      return res.status(401).send({ message: 'Unauthorized!' });
     }
   }
 
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name: boxId }
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name: boxId },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -481,14 +495,16 @@ exports.findOne = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box not found in organization ${organization}.`
+        message: `Box not found in organization ${organization}.`,
       });
     }
 
-    const version = await Version.findOne({ where: { versionNumber: versionNumber, boxId: box.id } });
+    const version = await Version.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
     if (!version) {
       return res.status(404).send({
-        message: `Version not found for box ${boxId} in organization ${organization}.`
+        message: `Version not found for box ${boxId} in organization ${organization}.`,
       });
     }
 
@@ -499,20 +515,19 @@ exports.findOne = async (req, res) => {
 
     // If the box is private, check if the user belongs to the organization
     if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to version." });
+      return res.status(403).send({ message: 'Unauthorized access to version.' });
     }
 
     const user = organizationData.users.find(user => user.id === userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to version." });
+      return res.status(403).send({ message: 'Unauthorized access to version.' });
     }
 
     // If the user belongs to the organization, allow access
     return res.send(version);
-
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving the Version."
+      message: err.message || 'Some error occurred while retrieving the Version.',
     });
   }
 };
@@ -581,26 +596,40 @@ exports.findOne = async (req, res) => {
 exports.update = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
   const { versionNumber: version, description } = req.body;
-  const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber);
-  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, version);
+  const oldFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    boxId,
+    versionNumber
+  );
+  const newFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    boxId,
+    version
+  );
 
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name: boxId }
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name: boxId },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -609,13 +638,13 @@ exports.update = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${boxId} not found in organization ${organization}.`,
       });
     }
 
     const [updated] = await Version.update(
-      { versionNumber: version, description: description },
-      { where: { versionNumber: versionNumber, boxId: box.id } }
+      { versionNumber: version, description },
+      { where: { versionNumber, boxId: box.id } }
     );
 
     if (updated) {
@@ -634,14 +663,16 @@ exports.update = async (req, res) => {
         }
       }
 
-      const updatedVersion = await Version.findOne({ where: { versionNumber: version, boxId: box.id } });
+      const updatedVersion = await Version.findOne({
+        where: { versionNumber: version, boxId: box.id },
+      });
       return res.send(updatedVersion);
     }
 
     throw new Error(`Version ${versionNumber} not found`);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while updating the Version."
+      message: err.message || 'Some error occurred while updating the Version.',
     });
   }
 };
@@ -711,35 +742,40 @@ exports.delete = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: db.box,
-          as: 'box',
-          where: { name: boxId },
-          include: [{
-            model: db.versions,
-            as: 'versions',
-            where: { versionNumber: versionNumber }
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: db.box,
+              as: 'box',
+              where: { name: boxId },
+              include: [
+                {
+                  model: db.versions,
+                  as: 'versions',
+                  where: { versionNumber },
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
     // Extract the box and version from the organization data
-    const box = organizationData.users.flatMap(user => user.box)
-      .find(box => box.name === boxId);
+    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${boxId} not found in organization ${organization}.`,
       });
     }
 
@@ -747,31 +783,36 @@ exports.delete = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`
+        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
       });
     }
 
     const deleted = await Version.destroy({
-      where: { id: version.id }
+      where: { id: version.id },
     });
 
     if (deleted) {
-      const versionPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber);
-      fs.rm(versionPath, { recursive: true, force: true }, (err) => {
+      const versionPath = path.join(
+        appConfig.boxvault.box_storage_directory.value,
+        organization,
+        boxId,
+        versionNumber
+      );
+      fs.rm(versionPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the version directory: ${err}`);
         }
       });
 
-      return res.send({ message: "Version deleted successfully!" });
+      return res.send({ message: 'Version deleted successfully!' });
     }
 
     res.status(404).send({
-      message: "Version not found."
+      message: 'Version not found.',
     });
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the Version."
+      message: err.message || 'Some error occurred while deleting the Version.',
     });
   }
 };
@@ -835,20 +876,24 @@ exports.deleteAllByBox = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name: boxId }
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name: boxId },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -857,31 +902,35 @@ exports.deleteAllByBox = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box not found in organization ${organization}.`
+        message: `Box not found in organization ${organization}.`,
       });
     }
 
     const deleted = await Version.destroy({
-      where: { boxId: box.id }
+      where: { boxId: box.id },
     });
 
     if (deleted) {
-      const boxPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId);
-      fs.rm(boxPath, { recursive: true, force: true }, (err) => {
+      const boxPath = path.join(
+        appConfig.boxvault.box_storage_directory.value,
+        organization,
+        boxId
+      );
+      fs.rm(boxPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the box directory: ${err}`);
         }
       });
 
-      return res.send({ message: "All versions deleted successfully!" });
+      return res.send({ message: 'All versions deleted successfully!' });
     }
 
     res.status(404).send({
-      message: "No versions found to delete."
+      message: 'No versions found to delete.',
     });
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the versions."
+      message: err.message || 'Some error occurred while deleting the versions.',
     });
   }
 };

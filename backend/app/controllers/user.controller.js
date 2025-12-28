@@ -1,9 +1,9 @@
-const db = require("../models");
+const db = require('../models');
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = db.user;
 const Role = db.role;
@@ -59,34 +59,35 @@ try {
  */
 exports.allAccess = (req, res) => {
   const projectData = {
-    title: "BoxVault Project Synopsis",
-    description: "BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates.",
+    title: 'BoxVault Project Synopsis',
+    description:
+      'BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates.',
     components: [
       {
-        title: "Backend API",
+        title: 'Backend API',
         details: [
-          "Built using Node.js and Express.js",
-          "Handles user authentication and authorization",
-          "Provides endpoints for uploading, storing, and retrieving Vagrant boxes",
-          "Uses MariaDB for database operations"
-        ]
+          'Built using Node.js and Express.js',
+          'Handles user authentication and authorization',
+          'Provides endpoints for uploading, storing, and retrieving Vagrant boxes',
+          'Uses MariaDB for database operations',
+        ],
       },
       {
-        title: "Frontend Interface",
+        title: 'Frontend Interface',
         details: [
-          "Created with React and React Hooks",
-          "Offers a user-friendly interface for interacting with the backend API",
-          "Allows users to register, login, upload boxes, view box listings, and manage their accounts"
-        ]
-      }
+          'Created with React and React Hooks',
+          'Offers a user-friendly interface for interacting with the backend API',
+          'Allows users to register, login, upload boxes, view box listings, and manage their accounts',
+        ],
+      },
     ],
     features: [
-      "User authentication and role-based access control",
-      "File upload and storage management for Vagrant boxes",
-      "Box listing and filtering capabilities",
-      "User profile management"
+      'User authentication and role-based access control',
+      'File upload and storage management for Vagrant boxes',
+      'Box listing and filtering capabilities',
+      'User profile management',
     ],
-    goal: "The project aims to provide a secure, scalable, and easy-to-use platform for developers to store and share their Virtual Machine templates within their own infrastructure."
+    goal: 'The project aims to provide a secure, scalable, and easy-to-use platform for developers to store and share their Virtual Machine templates within their own infrastructure.',
   };
 
   res.status(200).json(projectData);
@@ -137,7 +138,7 @@ exports.isOnlyUserInOrg = async (req, res) => {
 
   try {
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
@@ -145,17 +146,16 @@ exports.isOnlyUserInOrg = async (req, res) => {
     }
 
     const users = await User.findAll({
-      where: { organizationId: organization.id }
+      where: { organizationId: organization.id },
     });
 
     if (users.length === 1) {
       return res.status(200).send({ isOnlyUser: true });
-    } else {
-      return res.status(200).send({ isOnlyUser: false });
     }
+    return res.status(200).send({ isOnlyUser: false });
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while checking the organization users."
+      message: err.message || 'Some error occurred while checking the organization users.',
     });
   }
 };
@@ -179,7 +179,7 @@ exports.isOnlyUserInOrg = async (req, res) => {
  *               example: "User Content."
  */
 exports.userBoard = (req, res) => {
-  res.status(200).send("User Content.");
+  res.status(200).send('User Content.');
 };
 
 /**
@@ -201,7 +201,7 @@ exports.userBoard = (req, res) => {
  *               example: "Admin Content."
  */
 exports.adminBoard = (req, res) => {
-  res.status(200).send("Admin Content.");
+  res.status(200).send('Admin Content.');
 };
 
 /**
@@ -223,7 +223,7 @@ exports.adminBoard = (req, res) => {
  *               example: "Moderator Content."
  */
 exports.organization = (req, res) => {
-  res.status(200).send("Moderator Content.");
+  res.status(200).send('Moderator Content.');
 };
 
 /**
@@ -269,19 +269,19 @@ exports.findAll = async (req, res) => {
     const { organizationName } = req.params;
     const organization = await Organization.findOne({
       where: { name: organizationName },
-      include: ["users"]
+      include: ['users'],
     });
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${organizationName} not found.`
+        message: `Organization ${organizationName} not found.`,
       });
     }
 
     res.send(organization.users);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving users."
+      message: err.message || 'Some error occurred while retrieving users.',
     });
   }
 };
@@ -354,25 +354,25 @@ exports.getUserProfile = async (req, res) => {
           model: Role,
           as: 'roles',
           attributes: ['name'],
-          through: { attributes: [] }
+          through: { attributes: [] },
         },
         {
           model: Organization,
           as: 'organization',
-          attributes: ['name']
-        }
-      ]
+          attributes: ['name'],
+        },
+      ],
     });
 
     if (!user) {
-      return res.status(404).send({ message: "User Not found." });
+      return res.status(404).send({ message: 'User Not found.' });
     }
 
     const token = jwt.sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
       expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
     });
 
-    const authorities = user.roles.map(role => "ROLE_" + role.name.toUpperCase());
+    const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
 
     res.status(200).send({
       id: user.id,
@@ -383,12 +383,12 @@ exports.getUserProfile = async (req, res) => {
       roles: authorities,
       organization: user.organization ? user.organization.name : null,
       accessToken: token,
-      gravatarUrl: user.gravatarUrl
+      gravatarUrl: user.gravatarUrl,
     });
   } catch (error) {
-      log.error.error("Error retrieving user profile:", error); // Ensure this is logging the error
-      res.status(500).send({ message: "Error retrieving user profile" });
-    }
+    log.error.error('Error retrieving user profile:', error); // Ensure this is logging the error
+    res.status(500).send({ message: 'Error retrieving user profile' });
+  }
 };
 
 /**
@@ -438,32 +438,32 @@ exports.findOne = async (req, res) => {
 
   try {
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${organizationName} not found.`
+        message: `Organization ${organizationName} not found.`,
       });
     }
-    
+
     const user = await User.findOne({
       where: {
         username: userName,
-        organizationId: organization.id
-      }
+        organizationId: organization.id,
+      },
     });
 
     if (!user) {
       return res.status(404).send({
-        message: `User ${userName} not found.`
+        message: `User ${userName} not found.`,
       });
     }
 
     res.status(200).send(user);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving the user."
+      message: err.message || 'Some error occurred while retrieving the user.',
     });
   }
 };
@@ -542,35 +542,35 @@ exports.update = async (req, res) => {
 
   try {
     const old_organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     const new_organization = await Organization.findOne({
-      where: { name: organization }
+      where: { name: organization },
     });
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${old_organization} not found.`
+        message: `Organization ${old_organization} not found.`,
       });
     }
 
     if (!new_organization) {
       return res.status(404).send({
-        message: `New Organization ${new_organization} not found.`
+        message: `New Organization ${new_organization} not found.`,
       });
     }
 
     const user = await User.findOne({
       where: {
         username: userName,
-        organizationId: new_organization.id || old_organization.id
-      }
+        organizationId: new_organization.id || old_organization.id,
+      },
     });
 
     if (!user) {
       return res.status(404).send({
-        message: `User ${userName} not found.`
+        message: `User ${userName} not found.`,
       });
     }
 
@@ -579,13 +579,13 @@ exports.update = async (req, res) => {
       email: email || user.email,
       password: password || user.password,
       roles: roles || user.roles,
-      organizationId: new_organization || organization.id
+      organizationId: new_organization || organization.id,
     });
 
     res.status(200).send(user);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while updating the user."
+      message: err.message || 'Some error occurred while updating the user.',
     });
   }
 };
@@ -641,25 +641,25 @@ exports.delete = async (req, res) => {
 
   try {
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${organizationName} not found.`
+        message: `Organization ${organizationName} not found.`,
       });
     }
 
     const user = await User.findOne({
       where: {
         username: userName,
-        organizationId: organization.id
-      }
+        organizationId: organization.id,
+      },
     });
 
     if (!user) {
       return res.status(404).send({
-        message: `User ${userName} not found.`
+        message: `User ${userName} not found.`,
       });
     }
 
@@ -667,7 +667,7 @@ exports.delete = async (req, res) => {
     res.status(200).send({ message: `User ${userName} deleted successfully.` });
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the user."
+      message: err.message || 'Some error occurred while deleting the user.',
     });
   }
 };
@@ -732,15 +732,17 @@ exports.changePassword = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      return res.status(404).send({ message: 'User not found.' });
     }
 
     user.password = bcrypt.hashSync(newPassword, 8);
     await user.save();
 
-    res.status(200).send({ message: "Password changed successfully!" });
+    res.status(200).send({ message: 'Password changed successfully!' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while changing the password." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while changing the password.' });
   }
 };
 
@@ -804,15 +806,17 @@ exports.changeEmail = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      return res.status(404).send({ message: 'User not found.' });
     }
 
     user.email = newEmail;
     await user.save();
 
-    res.status(200).send({ message: "Email changed successfully!" });
+    res.status(200).send({ message: 'Email changed successfully!' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while changing the email." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while changing the email.' });
   }
 };
 
@@ -862,11 +866,11 @@ exports.promoteToModerator = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      return res.status(404).send({ message: 'User not found.' });
     }
 
-    const userRole = await Role.findOne({ where: { name: "user" } });
-    const moderatorRole = await Role.findOne({ where: { name: "moderator" } });
+    const userRole = await Role.findOne({ where: { name: 'user' } });
+    const moderatorRole = await Role.findOne({ where: { name: 'moderator' } });
 
     // Remove the user role if it exists
     await user.removeRole(userRole);
@@ -874,9 +878,11 @@ exports.promoteToModerator = async (req, res) => {
     // Add the moderator role
     await user.addRole(moderatorRole);
 
-    res.status(200).send({ message: "Promoted to moderator successfully!" });
+    res.status(200).send({ message: 'Promoted to moderator successfully!' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while promoting the user." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while promoting the user.' });
   }
 };
 
@@ -926,11 +932,11 @@ exports.demoteToUser = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      return res.status(404).send({ message: 'User not found.' });
     }
 
-    const userRole = await Role.findOne({ where: { name: "user" } });
-    const moderatorRole = await Role.findOne({ where: { name: "moderator" } });
+    const userRole = await Role.findOne({ where: { name: 'user' } });
+    const moderatorRole = await Role.findOne({ where: { name: 'moderator' } });
 
     // Remove the moderator role if it exists
     await user.removeRole(moderatorRole);
@@ -938,12 +944,13 @@ exports.demoteToUser = async (req, res) => {
     // Add the user role
     await user.addRole(userRole);
 
-    res.status(200).send({ message: "Demoted to user successfully!" });
+    res.status(200).send({ message: 'Demoted to user successfully!' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while demoting the user." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while demoting the user.' });
   }
 };
-
 
 /**
  * @swagger
@@ -991,12 +998,14 @@ exports.getUserRoles = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      return res.status(404).send({ message: 'User not found.' });
     }
 
-    const roles = user.roles.map((role) => role.name);
+    const roles = user.roles.map(role => role.name);
     res.status(200).send(roles);
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while retrieving user roles." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while retrieving user roles.' });
   }
 };

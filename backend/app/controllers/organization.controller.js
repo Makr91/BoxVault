@@ -2,14 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const jwt = require("jsonwebtoken");
-const db = require("../models");
+const jwt = require('jsonwebtoken');
+const db = require('../models');
 const crypto = require('crypto');
 const User = db.user;
 const Role = db.role;
 const Box = db.box;
-const Organization = db.organization; 
-const Op = db.Sequelize.Op;
+const Organization = db.organization;
+const { Op } = db.Sequelize;
 let authConfig;
 try {
   authConfig = loadConfig('auth');
@@ -24,9 +24,8 @@ try {
   log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
-const generateEmailHash = (email) => {
-  return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
-};
+const generateEmailHash = email =>
+  crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 
 /**
  * @swagger
@@ -64,7 +63,7 @@ exports.getOrganizationsWithUsers = async (req, res) => {
             {
               model: Role,
               as: 'roles',
-              attributes: ['name'], 
+              attributes: ['name'],
             },
           ],
         },
@@ -122,33 +121,32 @@ exports.getOrganizationsWithUsers = async (req, res) => {
  */
 // Create and Save a new Organization
 exports.create = async (req, res) => {
-    // Validate request
-    if (!req.body.organization) {
-      res.status(400).send({
-        message: "Organization cannot be empty!"
+  // Validate request
+  if (!req.body.organization) {
+    res.status(400).send({
+      message: 'Organization cannot be empty!',
+    });
+    return;
+  }
+
+  // Create a Organization
+  const organization = {
+    name: req.body.organization,
+    description: req.body.description,
+    details: '',
+  };
+
+  // Save Organization in the database
+  Organization.create(organization)
+    .then(data => {
+      res.send(data);
+    })
+    .catch(err => {
+      res.status(500).send({
+        message: err.message || 'Some error occurred while creating the Organization.',
       });
-      return;
-    }
-  
-    // Create a Organization
-    const organization = {
-      name: req.body.organization,
-      description: req.body.description,
-      details: ""
-    };
-  
-    // Save Organization in the database
-    Organization.create(organization)
-      .then(data => {
-        res.send(data);
-      })
-      .catch(err => {
-        res.status(500).send({
-          message:
-            err.message || "Some error occurred while creating the Organization."
-        });
-      });
-    };
+    });
+};
 
 /**
  * @swagger
@@ -198,17 +196,17 @@ exports.create = async (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 exports.findAllWithUsers = async (req, res) => {
-  const token = req.headers["x-access-token"];
+  const token = req.headers['x-access-token'];
   let userId = null;
   if (token) {
     try {
       // Verify the token and extract the user ID
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
-      log.app.info("Decoded user ID:", userId);
+      log.app.info('Decoded user ID:', userId);
     } catch (err) {
-      log.error.error("JWT verification error:", err.message);
-      return res.status(401).send({ message: "Unauthorized!!!!" });
+      log.error.error('JWT verification error:', err.message);
+      return res.status(401).send({ message: 'Unauthorized!!!!' });
     }
   }
 
@@ -223,31 +221,35 @@ exports.findAllWithUsers = async (req, res) => {
               model: Role,
               as: 'roles',
               attributes: ['name'],
-              through: { attributes: [] }
+              through: { attributes: [] },
             },
             {
               model: Box,
               as: 'box',
-              attributes: ['id']
-            }
-          ]
-        }
-      ]
+              attributes: ['id'],
+            },
+          ],
+        },
+      ],
     });
 
     const result = organizations.map(org => ({
       ...org.toJSON(),
       users: org.users.map(user => ({
         ...user.toJSON(),
-        totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length
+        totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
       })),
-      totalBoxes: org.users.reduce((acc, user) => acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length, 0)
+      totalBoxes: org.users.reduce(
+        (acc, user) =>
+          acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
+        0
+      ),
     }));
 
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving organizations."
+      message: err.message || 'Some error occurred while retrieving organizations.',
     });
   }
 };
@@ -317,7 +319,7 @@ exports.findAllWithUsers = async (req, res) => {
  */
 exports.findOneWithUsers = async (req, res) => {
   const { organizationName } = req.params;
-  const userId = req.userId;
+  const { userId } = req;
 
   try {
     const organization = await Organization.findOne({
@@ -342,7 +344,7 @@ exports.findOneWithUsers = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({ message: "Organization not found." });
+      return res.status(404).send({ message: 'Organization not found.' });
     }
 
     const users = organization.users.map(user => ({
@@ -352,14 +354,14 @@ exports.findOneWithUsers = async (req, res) => {
       verified: user.verified,
       suspended: user.suspended,
       roles: user.roles.map(role => role.name),
-      totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length
+      totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
     }));
 
     res.status(200).send(users);
   } catch (err) {
-    log.error.error("Error in findOneWithUsers:", err);
+    log.error.error('Error in findOneWithUsers:', err);
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving users."
+      message: err.message || 'Some error occurred while retrieving users.',
     });
   }
 };
@@ -409,8 +411,8 @@ exports.findOneWithUsers = async (req, res) => {
  */
 // Retrieve all Organizations from the database.
 exports.findAll = async (req, res) => {
-  const organization = req.query.organization;
-  const token = req.headers["x-access-token"];
+  const { organization } = req.query;
+  const token = req.headers['x-access-token'];
   let userId = null;
 
   if (token) {
@@ -419,7 +421,7 @@ exports.findAll = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
+      return res.status(401).send({ message: 'Unauthorized!' });
     }
   }
 
@@ -429,13 +431,17 @@ exports.findAll = async (req, res) => {
 
     const result = organizations.map(org => ({
       ...org.toJSON(),
-      totalBoxes: org.users.reduce((acc, user) => acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length, 0)
+      totalBoxes: org.users.reduce(
+        (acc, user) =>
+          acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
+        0
+      ),
     }));
 
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving organizations."
+      message: err.message || 'Some error occurred while retrieving organizations.',
     });
   }
 };
@@ -490,7 +496,7 @@ exports.findAll = async (req, res) => {
  */
 exports.findOne = async (req, res) => {
   const { organizationName } = req.params;
-  const token = req.headers["x-access-token"];
+  const token = req.headers['x-access-token'];
   let userId = null;
 
   if (token) {
@@ -499,50 +505,56 @@ exports.findOne = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch (err) {
-      return res.status(401).send({ message: "Unauthorized!" });
+      return res.status(401).send({ message: 'Unauthorized!' });
     }
   }
 
   try {
     const organization = await Organization.findOne({
       where: { name: organizationName },
-      include: [{
-        model: User,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box'
-        }]
-      }]
+      include: [
+        {
+          model: User,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+            },
+          ],
+        },
+      ],
     });
 
-    log.app.info("Organization found:", JSON.stringify(organization, null, 2));
+    log.app.info('Organization found:', JSON.stringify(organization, null, 2));
 
     if (!organization) {
       return res.status(404).send({
-        message: `Cannot find Organization with name=${organizationName}.`
+        message: `Cannot find Organization with name=${organizationName}.`,
       });
     }
 
-    log.app.info("Org Detected!");
+    log.app.info('Org Detected!');
 
     let totalBoxes = 0;
     if (organization.users && Array.isArray(organization.users)) {
       totalBoxes = organization.users.reduce((acc, user) => {
         if (user.box && Array.isArray(user.box)) {
-          return acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length;
+          return (
+            acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length
+          );
         }
         return acc;
       }, 0);
     }
 
-    log.app.info("Total Boxes calculated:", totalBoxes);
+    log.app.info('Total Boxes calculated:', totalBoxes);
 
     res.send({ ...organization.toJSON(), totalBoxes });
   } catch (err) {
-    log.error.error("Error in findOne:", err);
+    log.error.error('Error in findOne:', err);
     res.status(500).send({
-      message: "Error retrieving Organization with name=" + organizationName
+      message: `Error retrieving Organization with name=${organizationName}`,
     });
   }
 };
@@ -615,16 +627,19 @@ exports.update = async (req, res) => {
   const { organizationName } = req.params;
   const { organization, description, email, website } = req.body;
   const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organizationName);
-  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization || organizationName);
+  const newFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization || organizationName
+  );
 
   try {
     const org = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!org) {
       return res.status(404).send({
-        message: "Organization not found."
+        message: 'Organization not found.',
       });
     }
 
@@ -635,10 +650,10 @@ exports.update = async (req, res) => {
         if (!fs.existsSync(newFilePath)) {
           fs.mkdirSync(newFilePath, { recursive: true });
         }
-        
+
         // Move contents from old to new directory
         fs.renameSync(oldFilePath, newFilePath);
-        
+
         // Clean up the old directory if it still exists
         if (fs.existsSync(oldFilePath)) {
           fs.rmdirSync(oldFilePath, { recursive: true });
@@ -661,20 +676,20 @@ exports.update = async (req, res) => {
       description: description || org.description,
       email: email || org.email,
       emailHash: emailHash || org.emailHash,
-      website: website || org.website
+      website: website || org.website,
     });
 
     res.status(200).send({
-      message: "Organization updated successfully.",
-      organization: org
+      message: 'Organization updated successfully.',
+      organization: org,
     });
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while updating the organization."
+      message: err.message || 'Some error occurred while updating the organization.',
     });
   }
 };
-  
+
 /**
  * @swagger
  * /api/organization/{organizationName}:
@@ -722,12 +737,12 @@ exports.delete = async (req, res) => {
   try {
     // Find the organization by name
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
       return res.status(404).send({
-        message: "Organization not found."
+        message: 'Organization not found.',
       });
     }
 
@@ -743,11 +758,11 @@ exports.delete = async (req, res) => {
     }
 
     res.status(200).send({
-      message: "Organization and its files deleted successfully."
+      message: 'Organization and its files deleted successfully.',
     });
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the organization."
+      message: err.message || 'Some error occurred while deleting the organization.',
     });
   }
 };
@@ -797,19 +812,21 @@ exports.suspendOrganization = async (req, res) => {
 
   try {
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
-      return res.status(404).send({ message: "Organization not found." });
+      return res.status(404).send({ message: 'Organization not found.' });
     }
 
     organization.suspended = true;
     await organization.save();
 
-    res.status(200).send({ message: "Organization suspended successfully!" });
+    res.status(200).send({ message: 'Organization suspended successfully!' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while suspending the organization." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while suspending the organization.' });
   }
 };
 
@@ -858,18 +875,20 @@ exports.resumeOrganization = async (req, res) => {
 
   try {
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
-      return res.status(404).send({ message: "Organization not found." });
+      return res.status(404).send({ message: 'Organization not found.' });
     }
 
     organization.suspended = false;
     await organization.save();
 
-    res.status(200).send({ message: "Organization resumed successfully!" });
+    res.status(200).send({ message: 'Organization resumed successfully!' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while resuming the organization." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while resuming the organization.' });
   }
 };

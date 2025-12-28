@@ -3,9 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const jwt = require("jsonwebtoken");
-const db = require("../models");
-const { uploadFile: uploadFileMiddleware } = require("../middleware/upload");
+const jwt = require('jsonwebtoken');
+const db = require('../models');
+const { uploadFile: uploadFileMiddleware } = require('../middleware/upload');
 
 let authConfig;
 try {
@@ -205,7 +205,15 @@ const File = db.files;
 const upload = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
+  const filePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName,
+    fileName
+  );
   const uploadStartTime = Date.now();
 
   log.app.info('=== FILE UPLOAD STARTED ===', {
@@ -222,10 +230,10 @@ const upload = async (req, res) => {
       'x-access-token': req.headers['x-access-token'] ? 'present' : 'missing',
       'x-checksum': req.headers['x-checksum'] || 'missing',
       'x-checksum-type': req.headers['x-checksum-type'] || 'missing',
-      'x-file-name': req.headers['x-file-name'] || 'missing'
+      'x-file-name': req.headers['x-file-name'] || 'missing',
     },
     method: req.method,
-    url: req.url
+    url: req.url,
   });
 
   // Set a longer timeout for the request
@@ -234,7 +242,7 @@ const upload = async (req, res) => {
 
   try {
     log.app.info('Creating upload directory if needed:', { filePath });
-    
+
     // Create directory if it doesn't exist
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
@@ -245,33 +253,43 @@ const upload = async (req, res) => {
     }
 
     log.app.info('Looking up architecture in database...');
-    
+
     const architecture = await Architecture.findOne({
       where: { name: architectureName },
-      include: [{
-        model: db.providers,
-        as: "provider",
-        where: { name: providerName },
-        include: [{
-          model: db.versions,
-          as: "version",
-          where: { versionNumber },
-          include: [{
-            model: db.box,
-            as: "box",
-            where: { name: boxId },
-            include: [{
-              model: db.user,
-              as: "user",
-              include: [{
-                model: db.organization,
-                as: "organization",
-                where: { name: organization }
-              }]
-            }]
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.providers,
+          as: 'provider',
+          where: { name: providerName },
+          include: [
+            {
+              model: db.versions,
+              as: 'version',
+              where: { versionNumber },
+              include: [
+                {
+                  model: db.box,
+                  as: 'box',
+                  where: { name: boxId },
+                  include: [
+                    {
+                      model: db.user,
+                      as: 'user',
+                      include: [
+                        {
+                          model: db.organization,
+                          as: 'organization',
+                          where: { name: organization },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!architecture) {
@@ -280,22 +298,22 @@ const upload = async (req, res) => {
         providerName,
         versionNumber,
         boxId,
-        organization
+        organization,
       });
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
+        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`,
       });
     }
 
     log.app.info('Architecture found, calling upload middleware...', {
       architectureId: architecture.id,
-      architectureName: architecture.name
+      architectureName: architecture.name,
     });
 
     // Call the upload middleware directly (it handles the response)
     await uploadFileMiddleware(req, res);
-    
+
     log.app.info('Upload middleware completed successfully');
   } catch (err) {
     // Log detailed error information
@@ -308,35 +326,35 @@ const upload = async (req, res) => {
         boxId,
         versionNumber,
         providerName,
-        architectureName
-      }
+        architectureName,
+      },
     });
 
     // Handle specific error types
-    if (err.code === "LIMIT_FILE_SIZE") {
+    if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).send({
         message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
-        error: "FILE_TOO_LARGE"
+        error: 'FILE_TOO_LARGE',
       });
     }
 
     if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
       const uploadDuration = (Date.now() - uploadStartTime) / 1000;
       return res.status(408).send({
-        message: "Upload timed out - Request took too long to complete",
-        error: "UPLOAD_TIMEOUT",
+        message: 'Upload timed out - Request took too long to complete',
+        error: 'UPLOAD_TIMEOUT',
         details: {
           duration: `${uploadDuration} seconds`,
-          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`
-        }
+          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`,
+        },
       });
     }
 
     // Handle disk space errors
     if (err.code === 'ENOSPC') {
       return res.status(507).send({
-        message: "Not enough storage space available",
-        error: "NO_STORAGE_SPACE"
+        message: 'Not enough storage space available',
+        error: 'NO_STORAGE_SPACE',
       });
     }
 
@@ -344,12 +362,12 @@ const upload = async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({
         error: 'UPLOAD_ERROR',
-        message: "Could not upload the file",
+        message: 'Could not upload the file',
         details: {
           error: err.message,
           code: err.code || 'UNKNOWN_ERROR',
-          duration: (Date.now() - uploadStartTime) / 1000
-        }
+          duration: (Date.now() - uploadStartTime) / 1000,
+        },
       });
     }
   }
@@ -468,78 +486,98 @@ const upload = async (req, res) => {
 const download = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const filePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName, fileName);
+  const filePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName,
+    fileName
+  );
   // Get auth info from download token
   let userId;
   let isServiceAccount;
-  
+
   const downloadToken = req.query.token;
   if (downloadToken) {
     try {
       const decoded = jwt.verify(downloadToken, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.userId;
       isServiceAccount = decoded.isServiceAccount;
-      
+
       // Verify the token matches the requested download
-      if (decoded.organization !== organization ||
-          decoded.boxId !== boxId ||
-          decoded.versionNumber !== versionNumber ||
-          decoded.providerName !== providerName ||
-          decoded.architectureName !== architectureName) {
-        return res.status(403).send({ message: "Invalid download token." });
+      if (
+        decoded.organization !== organization ||
+        decoded.boxId !== boxId ||
+        decoded.versionNumber !== versionNumber ||
+        decoded.providerName !== providerName ||
+        decoded.architectureName !== architectureName
+      ) {
+        return res.status(403).send({ message: 'Invalid download token.' });
       }
     } catch (err) {
-      log.app.warn("Invalid download token:", err.message);
-      return res.status(403).send({ message: "Invalid or expired download token." });
+      log.app.warn('Invalid download token:', err.message);
+      return res.status(403).send({ message: 'Invalid or expired download token.' });
     }
   } else if (req.isVagrantRequest) {
     // For Vagrant requests, use the auth info set by vagrantHandler
     userId = req.userId;
     isServiceAccount = req.isServiceAccount;
   } else {
-    return res.status(403).send({ message: "No download token provided." });
+    return res.status(403).send({ message: 'No download token provided.' });
   }
 
   log.app.info('Auth context in download:', {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers
+    headers: req.headers,
   });
 
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: db.box,
-          as: 'box',
-          where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
-          include: [{
-            model: db.versions,
-            as: 'versions',
-            where: { versionNumber: versionNumber },
-            include: [{
-              model: db.providers,
-              as: 'providers',
-              where: { name: providerName },
-              include: [{
-                model: db.architectures,
-                as: 'architectures',
-                where: { name: architectureName }
-              }]
-            }]
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: db.box,
+              as: 'box',
+              where: { name: boxId },
+              attributes: ['id', 'name', 'isPublic'],
+              include: [
+                {
+                  model: db.versions,
+                  as: 'versions',
+                  where: { versionNumber },
+                  include: [
+                    {
+                      model: db.providers,
+                      as: 'providers',
+                      where: { name: providerName },
+                      include: [
+                        {
+                          model: db.architectures,
+                          as: 'architectures',
+                          where: { name: architectureName },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -547,7 +585,7 @@ const download = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${boxId} not found in organization ${organization}.`,
       });
     }
 
@@ -557,8 +595,8 @@ const download = async (req, res) => {
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
-          architectureId: box.versions[0].providers[0].architectures[0].id
-        }
+          architectureId: box.versions[0].providers[0].architectures[0].id,
+        },
       });
 
       if (fileRecord) {
@@ -566,7 +604,7 @@ const download = async (req, res) => {
         log.app.info('Download count incremented:', {
           fileName: fileRecord.fileName,
           newCount: fileRecord.downloadCount + 1,
-          userAgent: req.headers['user-agent']
+          userAgent: req.headers['user-agent'],
         });
       }
 
@@ -579,36 +617,40 @@ const download = async (req, res) => {
       res.setHeader('Content-Length', fileSize);
 
       // Handle range requests
-      const range = req.headers.range;
+      const { range } = req.headers;
       if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
+        const parts = range.replace(/bytes=/, '').split('-');
         let start = parseInt(parts[0], 10);
         let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        
+
         // Validate range values
         if (isNaN(start)) {
           start = 0;
         }
-        
+
         if (isNaN(end) || end >= fileSize) {
           end = fileSize - 1;
         }
-        
+
         // Ensure start is not greater than end
         if (start > end) {
-          log.app.warn(`Invalid range request: start (${start}) > end (${end}), adjusting start to 0`);
+          log.app.warn(
+            `Invalid range request: start (${start}) > end (${end}), adjusting start to 0`
+          );
           start = 0;
         }
-        
+
         // Ensure start is not greater than file size
         if (start >= fileSize) {
-          log.app.warn(`Range start (${start}) >= file size (${fileSize}), returning 416 Range Not Satisfiable`);
+          log.app.warn(
+            `Range start (${start}) >= file size (${fileSize}), returning 416 Range Not Satisfiable`
+          );
           res.setHeader('Content-Range', `bytes */${fileSize}`);
           return res.status(416).send(); // Range Not Satisfiable
         }
-        
-        const chunksize = (end - start) + 1;
-        
+
+        const chunksize = end - start + 1;
+
         res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
         res.setHeader('Content-Length', chunksize);
         res.status(206); // Partial Content
@@ -617,10 +659,10 @@ const download = async (req, res) => {
           const fileStream = fs.createReadStream(filePath, { start, end });
           fileStream.pipe(res);
 
-          fileStream.on('error', (err) => {
+          fileStream.on('error', err => {
             if (!res.headersSent) {
               res.status(500).send({
-                message: "Could not download the file. " + err,
+                message: `Could not download the file. ${err}`,
               });
             }
           });
@@ -628,11 +670,11 @@ const download = async (req, res) => {
           log.error.error('Error creating read stream:', {
             error: streamErr.message,
             range: `${start}-${end}`,
-            fileSize
+            fileSize,
           });
           if (!res.headersSent) {
             res.status(500).send({
-              message: "Could not create file stream: " + streamErr.message,
+              message: `Could not create file stream: ${streamErr.message}`,
             });
           }
         }
@@ -641,23 +683,23 @@ const download = async (req, res) => {
         if (req.isVagrantRequest) {
           res.setHeader('Content-Type', 'application/octet-stream');
           res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-          
+
           const fileStream = fs.createReadStream(filePath);
           fileStream.pipe(res);
 
-          fileStream.on('error', (err) => {
+          fileStream.on('error', err => {
             if (!res.headersSent) {
               res.status(500).send({
-                message: "Could not download the file. " + err,
+                message: `Could not download the file. ${err}`,
               });
             }
           });
         } else {
           // For browser downloads, use express's res.download
-          res.download(filePath, fileName, (err) => {
+          res.download(filePath, fileName, err => {
             if (err && !res.headersSent) {
               res.status(500).send({
-                message: "Could not download the file. " + err,
+                message: `Could not download the file. ${err}`,
               });
             }
           });
@@ -672,19 +714,20 @@ const download = async (req, res) => {
 
     // If the box is private, check if the user belongs to the organization
     if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to file download." });
+      return res.status(403).send({ message: 'Unauthorized access to file download.' });
     }
 
     const user = organizationData.users.find(user => user.id === userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to file download." });
+      return res.status(403).send({ message: 'Unauthorized access to file download.' });
     }
 
     // If the user belongs to the organization, allow download
     return sendFile();
-
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while downloading the file." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while downloading the file.' });
   }
 };
 
@@ -784,21 +827,21 @@ const download = async (req, res) => {
  */
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  
+
   // Get auth info either from vagrantHandler or x-access-token
-  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
-  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
+  let { userId } = req; // Set by vagrantHandler for Vagrant requests
+  let { isServiceAccount } = req; // Set by vagrantHandler for Vagrant requests
 
   // If not set by vagrantHandler, try x-access-token
   if (!userId) {
-    const token = req.headers["x-access-token"];
+    const token = req.headers['x-access-token'];
     if (token) {
       try {
         const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        log.app.warn("Invalid x-access-token:", err.message);
+        log.app.warn('Invalid x-access-token:', err.message);
       }
     }
   }
@@ -807,42 +850,52 @@ const info = async (req, res) => {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers
+    headers: req.headers,
   });
 
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: db.box,
-          as: 'box',
-          where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
-          include: [{
-            model: db.versions,
-            as: 'versions',
-            where: { versionNumber: versionNumber },
-            include: [{
-              model: db.providers,
-              as: 'providers',
-              where: { name: providerName },
-              include: [{
-                model: db.architectures,
-                as: 'architectures',
-                where: { name: architectureName }
-              }]
-            }]
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: db.box,
+              as: 'box',
+              where: { name: boxId },
+              attributes: ['id', 'name', 'isPublic'],
+              include: [
+                {
+                  model: db.versions,
+                  as: 'versions',
+                  where: { versionNumber },
+                  include: [
+                    {
+                      model: db.providers,
+                      as: 'providers',
+                      where: { name: providerName },
+                      include: [
+                        {
+                          model: db.architectures,
+                          as: 'architectures',
+                          where: { name: architectureName },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -850,7 +903,7 @@ const info = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${boxId} not found in organization ${organization}.`,
       });
     }
 
@@ -859,21 +912,21 @@ const info = async (req, res) => {
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
-          architectureId: box.versions[0].providers[0].architectures[0].id
-        }
+          architectureId: box.versions[0].providers[0].architectures[0].id,
+        },
       });
 
       if (fileRecord) {
         // Generate a secure download token
         const downloadToken = jwt.sign(
-          { 
+          {
             userId,
             isServiceAccount,
             organization,
             boxId,
             versionNumber,
             providerName,
-            architectureName
+            architectureName,
           },
           authConfig.auth.jwt.jwt_secret.value,
           { expiresIn: '1h' }
@@ -888,42 +941,41 @@ const info = async (req, res) => {
           downloadCount: fileRecord.downloadCount,
           checksum: fileRecord.checksum,
           checksumType: fileRecord.checksumType,
-          fileSize: fileRecord.fileSize
+          fileSize: fileRecord.fileSize,
         });
-      } else {
-        return res.status(404).send({ message: "File not found." });
       }
+      return res.status(404).send({ message: 'File not found.' });
     }
 
     // If the box is private, check if the user belongs to the organization
     if (!userId) {
-      return res.status(403).send({ message: "Unauthorized access to file information." });
+      return res.status(403).send({ message: 'Unauthorized access to file information.' });
     }
 
     const user = organizationData.users.find(user => user.id === userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to file information." });
+      return res.status(403).send({ message: 'Unauthorized access to file information.' });
     }
 
     // If the user belongs to the organization, allow access
     const fileRecord = await File.findOne({
       where: {
         fileName: 'vagrant.box',
-        architectureId: box.versions[0].providers[0].architectures[0].id
-      }
+        architectureId: box.versions[0].providers[0].architectures[0].id,
+      },
     });
 
     if (fileRecord) {
       // Generate a secure download token
       const downloadToken = jwt.sign(
-        { 
+        {
           userId,
           isServiceAccount,
           organization,
           boxId,
           versionNumber,
           providerName,
-          architectureName
+          architectureName,
         },
         authConfig.auth.jwt.jwt_secret.value,
         { expiresIn: '1h' }
@@ -938,14 +990,14 @@ const info = async (req, res) => {
         downloadCount: fileRecord.downloadCount,
         checksum: fileRecord.checksum,
         checksumType: fileRecord.checksumType,
-        fileSize: fileRecord.fileSize
+        fileSize: fileRecord.fileSize,
       });
-    } else {
-      return res.status(404).send({ message: "File not found." });
     }
-
+    return res.status(404).send({ message: 'File not found.' });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while retrieving the file information." });
+    res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving the file information.',
+    });
   }
 };
 
@@ -1016,53 +1068,70 @@ const info = async (req, res) => {
 const remove = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const basefilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
+  const basefilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName
+  );
   const filePath = path.join(basefilePath, fileName);
 
   try {
     const architecture = await Architecture.findOne({
       where: { name: architectureName },
-      include: [{
-        model: db.providers,
-        as: "provider",
-        where: { name: providerName },
-        include: [{
-          model: db.versions,
-          as: "version",
-          where: { versionNumber },
-          include: [{
-            model: db.box,
-            as: "box",
-            where: { name: boxId },
-            include: [{
-              model: db.user,
-              as: "user",
-              include: [{
-                model: db.organization,
-                as: "organization",
-                where: { name: organization }
-              }]
-            }]
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.providers,
+          as: 'provider',
+          where: { name: providerName },
+          include: [
+            {
+              model: db.versions,
+              as: 'version',
+              where: { versionNumber },
+              include: [
+                {
+                  model: db.box,
+                  as: 'box',
+                  where: { name: boxId },
+                  include: [
+                    {
+                      model: db.user,
+                      as: 'user',
+                      include: [
+                        {
+                          model: db.organization,
+                          as: 'organization',
+                          where: { name: organization },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!architecture) {
       return res.status(404).send({
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
+        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`,
       });
     }
 
     const fileRecord = await File.findOne({
       where: {
-        fileName: fileName,
-        architectureId: architecture.id
-      }
+        fileName,
+        architectureId: architecture.id,
+      },
     });
 
     // Attempt to delete the file from the disk
-    fs.unlink(filePath, (err) => {
+    fs.unlink(filePath, err => {
       if (err) {
         log.app.info(`Could not delete the file from disk: ${err}`);
       }
@@ -1072,30 +1141,32 @@ const remove = async (req, res) => {
     try {
       if (fileRecord) {
         await fileRecord.destroy();
-        log.app.info("Database record deleted successfully.");
+        log.app.info('Database record deleted successfully.');
       } else {
-        log.app.info("File record not found, but continuing with directory cleanup.");
+        log.app.info('File record not found, but continuing with directory cleanup.');
       }
 
       // Attempt to delete the architecture directory
-      fs.rm(basefilePath, { recursive: true, force: true }, (err) => {
+      fs.rm(basefilePath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the architecture directory: ${err}`);
         }
       });
 
       res.status(200).send({
-        message: "File and database record are deleted, or file was not found but cleanup attempted."
+        message:
+          'File and database record are deleted, or file was not found but cleanup attempted.',
       });
     } catch (dbErr) {
       log.app.info(`Could not delete the database record: ${dbErr}`);
       res.status(200).send({
-        message: "File deletion attempted, but encountered issues with database or directory cleanup."
+        message:
+          'File deletion attempted, but encountered issues with database or directory cleanup.',
       });
     }
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the file."
+      message: err.message || 'Some error occurred while deleting the file.',
     });
   }
 };
@@ -1283,8 +1354,22 @@ const remove = async (req, res) => {
 const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
-  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, req.body.newOrganization || organization, req.body.newBoxId || boxId, req.body.newVersionNumber || versionNumber, req.body.newProviderName || providerName, req.body.newArchitectureName || architectureName);
+  const oldFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    architectureName
+  );
+  const newFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    req.body.newOrganization || organization,
+    req.body.newBoxId || boxId,
+    req.body.newVersionNumber || versionNumber,
+    req.body.newProviderName || providerName,
+    req.body.newArchitectureName || architectureName
+  );
   const uploadStartTime = Date.now();
 
   // Set a longer timeout for the request
@@ -1294,54 +1379,64 @@ const update = async (req, res) => {
   try {
     const architecture = await Architecture.findOne({
       where: { name: architectureName },
-      include: [{
-        model: db.providers,
-        as: "provider",
-        where: { name: providerName },
-        include: [{
-          model: db.versions,
-          as: "version",
-          where: { versionNumber },
-          include: [{
-            model: db.box,
-            as: "box",
-            where: { name: boxId },
-            include: [{
-              model: db.user,
-              as: "user",
-              include: [{
-                model: db.organization,
-                as: "organization",
-                where: { name: organization }
-              }]
-            }]
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.providers,
+          as: 'provider',
+          where: { name: providerName },
+          include: [
+            {
+              model: db.versions,
+              as: 'version',
+              where: { versionNumber },
+              include: [
+                {
+                  model: db.box,
+                  as: 'box',
+                  where: { name: boxId },
+                  include: [
+                    {
+                      model: db.user,
+                      as: 'user',
+                      include: [
+                        {
+                          model: db.organization,
+                          as: 'organization',
+                          where: { name: organization },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!architecture) {
       return res.status(404).send({
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`
+        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`,
       });
     }
 
     const fileRecord = await File.findOne({
       where: {
-        fileName: fileName,
-        architectureId: architecture.id
-      }
+        fileName,
+        architectureId: architecture.id,
+      },
     });
 
     if (!fileRecord) {
       return res.status(404).send({
-        message: "File not found. Please upload the file first."
+        message: 'File not found. Please upload the file first.',
       });
     }
 
     // Process the upload using Promise-based middleware
     await new Promise((resolve, reject) => {
-      uploadFileMiddleware(req, res, (err) => {
+      uploadFileMiddleware(req, res, err => {
         if (err) {
           reject(err);
         } else if (!req.file) {
@@ -1364,11 +1459,11 @@ const update = async (req, res) => {
       originalname: req.file.originalname,
       size: req.file.size,
       mimetype: req.file.mimetype,
-      path: req.file.path
+      path: req.file.path,
     });
 
-    let checksum = req.body.checksum;
-    let checksumType = req.body.checksumType;
+    let { checksum } = req.body;
+    let { checksumType } = req.body;
 
     if (!checksumType || checksumType.toUpperCase() === 'NULL') {
       checksum = null;
@@ -1377,10 +1472,10 @@ const update = async (req, res) => {
 
     // Update the file record with new information
     await fileRecord.update({
-      fileName: fileName,
-      checksum: checksum,
-      checksumType: checksumType,
-      fileSize: req.file.size
+      fileName,
+      checksum,
+      checksumType,
+      fileSize: req.file.size,
     });
 
     // Log successful update
@@ -1390,50 +1485,50 @@ const update = async (req, res) => {
       checksumType,
       architectureId: architecture.id,
       fileSize: req.file.size,
-      path: req.file.path
+      path: req.file.path,
     });
 
     return res.status(200).send({
-      message: "Updated the file successfully",
-      fileName: fileName,
+      message: 'Updated the file successfully',
+      fileName,
       fileSize: req.file.size,
-      path: req.file.path
+      path: req.file.path,
     });
   } catch (err) {
     log.app.info(err);
 
-    if (err.code === "LIMIT_FILE_SIZE") {
+    if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({
-        error: "FILE_TOO_LARGE",
+        error: 'FILE_TOO_LARGE',
         message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
         details: {
           maxSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
-          duration: (Date.now() - uploadStartTime) / 1000
-        }
+          duration: (Date.now() - uploadStartTime) / 1000,
+        },
       });
     }
 
     if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
       const uploadDuration = (Date.now() - uploadStartTime) / 1000;
       return res.status(408).json({
-        error: "UPLOAD_TIMEOUT",
-        message: "Upload timed out - Request took too long to complete",
+        error: 'UPLOAD_TIMEOUT',
+        message: 'Upload timed out - Request took too long to complete',
         details: {
           duration: uploadDuration,
-          maxFileSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024
-        }
+          maxFileSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
+        },
       });
     }
 
     // Handle disk space errors
     if (err.code === 'ENOSPC') {
       return res.status(507).json({
-        error: "NO_STORAGE_SPACE",
-        message: "Not enough storage space available",
+        error: 'NO_STORAGE_SPACE',
+        message: 'Not enough storage space available',
         details: {
           path: filePath,
-          duration: (Date.now() - uploadStartTime) / 1000
-        }
+          duration: (Date.now() - uploadStartTime) / 1000,
+        },
       });
     }
 
@@ -1442,8 +1537,8 @@ const update = async (req, res) => {
       error: err.message,
       code: err.code || 'UNKNOWN_ERROR',
       details: {
-        duration: (Date.now() - uploadStartTime) / 1000
-      }
+        duration: (Date.now() - uploadStartTime) / 1000,
+      },
     });
   }
 };
@@ -1526,21 +1621,21 @@ const update = async (req, res) => {
  */
 const getDownloadLink = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  
+
   // Get auth info from x-access-token
-  let userId = req.userId;
-  let isServiceAccount = req.isServiceAccount;
+  let { userId } = req;
+  let { isServiceAccount } = req;
 
   // If not set, try x-access-token
   if (!userId) {
-    const token = req.headers["x-access-token"];
+    const token = req.headers['x-access-token'];
     if (token) {
       try {
         const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        log.app.warn("Invalid x-access-token:", err.message);
+        log.app.warn('Invalid x-access-token:', err.message);
       }
     }
   }
@@ -1548,36 +1643,46 @@ const getDownloadLink = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [{
-        model: db.user,
-        as: 'users',
-        include: [{
-          model: db.box,
-          as: 'box',
-          where: { name: boxId },
-          attributes: ['id', 'name', 'isPublic'],
-          include: [{
-            model: db.versions,
-            as: 'versions',
-            where: { versionNumber: versionNumber },
-            include: [{
-              model: db.providers,
-              as: 'providers',
-              where: { name: providerName },
-              include: [{
-                model: db.architectures,
-                as: 'architectures',
-                where: { name: architectureName }
-              }]
-            }]
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'users',
+          include: [
+            {
+              model: db.box,
+              as: 'box',
+              where: { name: boxId },
+              attributes: ['id', 'name', 'isPublic'],
+              include: [
+                {
+                  model: db.versions,
+                  as: 'versions',
+                  where: { versionNumber },
+                  include: [
+                    {
+                      model: db.providers,
+                      as: 'providers',
+                      where: { name: providerName },
+                      include: [
+                        {
+                          model: db.architectures,
+                          as: 'architectures',
+                          where: { name: architectureName },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -1585,32 +1690,32 @@ const getDownloadLink = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`
+        message: `Box ${boxId} not found in organization ${organization}.`,
       });
     }
 
     // Check authorization
     if (!box.isPublic && !isServiceAccount) {
       if (!userId) {
-        return res.status(403).send({ message: "Unauthorized access to file." });
+        return res.status(403).send({ message: 'Unauthorized access to file.' });
       }
 
       const user = organizationData.users.find(user => user.id === userId);
       if (!user) {
-        return res.status(403).send({ message: "Unauthorized access to file." });
+        return res.status(403).send({ message: 'Unauthorized access to file.' });
       }
     }
 
     // Generate a secure download token
     const downloadToken = jwt.sign(
-      { 
+      {
         userId,
         isServiceAccount,
         organization,
         boxId,
         versionNumber,
         providerName,
-        architectureName
+        architectureName,
       },
       authConfig.auth.jwt.jwt_secret.value,
       { expiresIn: '1h' }
@@ -1620,11 +1725,10 @@ const getDownloadLink = async (req, res) => {
     const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
     return res.status(200).json({ downloadUrl });
-
   } catch (err) {
-    res.status(500).send({ 
-      message: err.message || "Some error occurred while generating the download link.",
-      error: err
+    res.status(500).send({
+      message: err.message || 'Some error occurred while generating the download link.',
+      error: err,
     });
   }
 };
@@ -1635,5 +1739,5 @@ module.exports = {
   remove,
   update,
   info,
-  getDownloadLink
+  getDownloadLink,
 };

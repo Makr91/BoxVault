@@ -25,14 +25,14 @@ const options = {
           protocol: {
             enum: ['http', 'https'],
             default: 'http',
-            description: 'The protocol used to access the server'
+            description: 'The protocol used to access the server',
           },
           host: {
             default: 'localhost:3000',
-            description: 'The hostname and port of the server'
-          }
-        }
-      }
+            description: 'The hostname and port of the server',
+          },
+        },
+      },
     ],
     components: {
       securitySchemes: {
@@ -40,7 +40,8 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'JWT token authentication. First login at [/api/auth/signin](./api/auth/signin) to get your JWT token, then use format: Bearer <jwt_token>',
+          description:
+            'JWT token authentication. First login at [/api/auth/signin](./api/auth/signin) to get your JWT token, then use format: Bearer <jwt_token>',
         },
       },
       schemas: {
@@ -617,14 +618,14 @@ const options = {
               example: {
                 app: {
                   boxvault: {
-                    api_url: { value: 'https://api.example.com' }
-                  }
+                    api_url: { value: 'https://api.example.com' },
+                  },
                 },
                 db: {
                   sql: {
-                    dialect: { value: 'postgres' }
-                  }
-                }
+                    dialect: { value: 'postgres' },
+                  },
+                },
               },
             },
           },

@@ -1,17 +1,17 @@
 // auth.controller.js
-const db = require("../models");
+const db = require('../models');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const mailController = require("./mail.controller");
+const mailController = require('./mail.controller');
 const User = db.user;
 const Role = db.role;
 const Organization = db.organization;
 const Invitation = db.invitation;
 const ServiceAccount = db.service_account;
-const Op = db.Sequelize.Op;
+const { Op } = db.Sequelize;
 let authConfig;
 try {
   authConfig = loadConfig('auth');
@@ -19,9 +19,8 @@ try {
   log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
-const generateEmailHash = (email) => {
-  return crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
-};
+const generateEmailHash = email =>
+  crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
 
 /**
  * @swagger
@@ -95,36 +94,36 @@ exports.signup = async (req, res) => {
       invitation = await Invitation.findOne({ where: { token: invitationToken } });
 
       if (!invitation) {
-        return res.status(400).send({ message: "Invalid invitation token." });
+        return res.status(400).send({ message: 'Invalid invitation token.' });
       }
 
       if (invitation.expires < Date.now()) {
         // Set the expired flag to true
         await invitation.update({ expired: true });
-        return res.status(400).send({ message: "Invitation token has expired." });
+        return res.status(400).send({ message: 'Invitation token has expired.' });
       }
 
       organization = await Organization.findByPk(invitation.organizationId);
     } else {
       // Handle signup without invitation token
       organization = await Organization.create({
-        name: username
+        name: username,
       });
     }
 
     if (!organization) {
-      return res.status(400).send({ message: "Organization not found." });
+      return res.status(400).send({ message: 'Organization not found.' });
     }
 
     // Check for duplicate username or email
     const duplicateUser = await User.findOne({
       where: {
-        [Op.or]: [{ username }, { email }]
-      }
+        [Op.or]: [{ username }, { email }],
+      },
     });
 
     if (duplicateUser) {
-      return res.status(400).send({ message: "Username or email already in use." });
+      return res.status(400).send({ message: 'Username or email already in use.' });
     }
 
     const emailHash = generateEmailHash(email);
@@ -136,19 +135,19 @@ exports.signup = async (req, res) => {
       emailHash,
       organizationId: organization.id,
       verificationToken: crypto.randomBytes(20).toString('hex'),
-      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     });
 
     const userCount = await User.count();
 
     if (userCount === 1) {
       // Assign "admin" role to the first user
-      const adminRole = await Role.findOne({ where: { name: "admin" } });
-      const moderatorRole = await Role.findOne({ where: { name: "moderator" } });
+      const adminRole = await Role.findOne({ where: { name: 'admin' } });
+      const moderatorRole = await Role.findOne({ where: { name: 'moderator' } });
       await user.setRoles([adminRole, moderatorRole]);
     } else {
       // Assign "user" role to all subsequent users
-      const userRole = await Role.findOne({ where: { name: "user" } });
+      const userRole = await Role.findOne({ where: { name: 'user' } });
       await user.setRoles([userRole]);
     }
 
@@ -158,19 +157,23 @@ exports.signup = async (req, res) => {
     }
 
     // Send verification email asynchronously
-    mailController.sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires)
+    mailController
+      .sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires)
       .then(() => {
         log.app.info(`Verification email sent successfully to ${user.email}`);
       })
-      .catch((error) => {
+      .catch(error => {
         log.error.error(`Failed to send verification email to ${user.email}:`, error);
       });
 
-    res.status(201).send({ message: "User registered successfully! If configured, a verification email will be sent to your email address." });
+    res.status(201).send({
+      message:
+        'User registered successfully! If configured, a verification email will be sent to your email address.',
+    });
   } catch (err) {
-    log.error.error("Error during signup:", err);
+    log.error.error('Error during signup:', err);
     res.status(500).send({
-      message: err.message || "Some error occurred while signing up the user."
+      message: err.message || 'Some error occurred while signing up the user.',
     });
   }
 };
@@ -244,7 +247,7 @@ exports.sendInvitation = async (req, res) => {
     const organization = await Organization.findOne({ where: { name: organizationName } });
 
     if (!organization) {
-      return res.status(404).send({ message: "Organization not found." });
+      return res.status(404).send({ message: 'Organization not found.' });
     }
 
     const invitationToken = crypto.randomBytes(20).toString('hex');
@@ -259,17 +262,24 @@ exports.sendInvitation = async (req, res) => {
     });
 
     // Send the invitation email and get the invitation link
-    const invitationLink = await mailController.sendInvitationMail(email, invitationToken, organizationName, invitationTokenExpires);
+    const invitationLink = await mailController.sendInvitationMail(
+      email,
+      invitationToken,
+      organizationName,
+      invitationTokenExpires
+    );
 
-    res.status(200).send({ 
-      message: "Invitation sent successfully!",
-      invitationToken: invitationToken,
-      invitationTokenExpires: invitationTokenExpires,
+    res.status(200).send({
+      message: 'Invitation sent successfully!',
+      invitationToken,
+      invitationTokenExpires,
       organizationId: organization.id,
-      invitationLink: invitationLink
+      invitationLink,
     });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while sending the invitation." });
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while sending the invitation.' });
   }
 };
 
@@ -342,11 +352,11 @@ exports.getActiveInvitations = async (req, res) => {
   try {
     // First, find the organization by name
     const organization = await Organization.findOne({
-      where: { name: organizationName }
+      where: { name: organizationName },
     });
 
     if (!organization) {
-      return res.status(404).send({ message: "Organization not found." });
+      return res.status(404).send({ message: 'Organization not found.' });
     }
 
     const activeInvitations = await Invitation.findAll({
@@ -354,14 +364,14 @@ exports.getActiveInvitations = async (req, res) => {
         organizationId: organization.id,
         // Remove the 'accepted: false' and 'expired: false' conditions to get all invitations
       },
-      attributes: ['id', 'email', 'token', 'expires', 'accepted', 'expired', 'createdAt']
+      attributes: ['id', 'email', 'token', 'expires', 'accepted', 'expired', 'createdAt'],
     });
 
     res.status(200).send(activeInvitations);
   } catch (err) {
-    log.error.error("Error in getActiveInvitations:", err);
+    log.error.error('Error in getActiveInvitations:', err);
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving active invitations."
+      message: err.message || 'Some error occurred while retrieving active invitations.',
     });
   }
 };
@@ -413,19 +423,18 @@ exports.deleteInvitation = async (req, res) => {
     const invitation = await Invitation.findByPk(invitationId);
 
     if (!invitation) {
-      return res.status(404).send({ message: "Invitation not found." });
+      return res.status(404).send({ message: 'Invitation not found.' });
     }
 
     await invitation.destroy();
-    res.status(200).send({ message: "Invitation deleted successfully." });
+    res.status(200).send({ message: 'Invitation deleted successfully.' });
   } catch (err) {
-    log.error.error("Error in deleteInvitation:", err);
+    log.error.error('Error in deleteInvitation:', err);
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the invitation."
+      message: err.message || 'Some error occurred while deleting the invitation.',
     });
   }
 };
-
 
 /**
  * @swagger
@@ -472,17 +481,18 @@ exports.validateInvitationToken = async (req, res) => {
     const invitation = await Invitation.findOne({ where: { token } });
 
     if (!invitation || invitation.expires < Date.now()) {
-      return res.status(400).send({ message: "Invalid or expired invitation token." });
+      return res.status(400).send({ message: 'Invalid or expired invitation token.' });
     }
 
     const organization = await Organization.findByPk(invitation.organizationId);
 
     res.status(200).send({ organizationName: organization.name });
   } catch (err) {
-    res.status(500).send({ message: err.message || "Some error occurred while validating the invitation token." });
+    res.status(500).send({
+      message: err.message || 'Some error occurred while validating the invitation token.',
+    });
   }
 };
-
 
 /**
  * @swagger
@@ -538,13 +548,13 @@ exports.verifyMail = async (req, res) => {
     const user = await User.findOne({ where: { verificationToken: token } });
 
     if (!user) {
-      return res.status(400).send({ message: "Invalid or expired verification token." });
+      return res.status(400).send({ message: 'Invalid or expired verification token.' });
     }
 
     if (user.verificationTokenExpires < Date.now()) {
-      return res.status(400).send({ 
-        message: "Verification token has expired.",
-        expirationTime: user.verificationTokenExpires
+      return res.status(400).send({
+        message: 'Verification token has expired.',
+        expirationTime: user.verificationTokenExpires,
       });
     }
 
@@ -553,9 +563,9 @@ exports.verifyMail = async (req, res) => {
     user.verificationTokenExpires = null;
     await user.save();
 
-    res.send({ 
-      message: "Email verified successfully.",
-      expirationTime: user.verificationTokenExpires
+    res.send({
+      message: 'Email verified successfully.',
+      expirationTime: user.verificationTokenExpires,
     });
   } catch (err) {
     res.status(500).send({ message: err.message });
@@ -663,20 +673,20 @@ exports.signin = async (req, res) => {
 
     // First, try to find a regular user
     let user = await User.findOne({
-      where: { username: username },
+      where: { username },
       include: [
         {
           model: Role,
           as: 'roles',
           attributes: ['name'],
-          through: { attributes: [] }
+          through: { attributes: [] },
         },
         {
           model: Organization,
           as: 'organization',
-          attributes: ['name']
-        }
-      ]
+          attributes: ['name'],
+        },
+      ],
     });
 
     let isServiceAccount = false;
@@ -684,35 +694,36 @@ exports.signin = async (req, res) => {
     // If no user found, check for a service account
     if (!user) {
       const serviceAccount = await ServiceAccount.findOne({
-        where: { username: username, token: password }
+        where: { username, token: password },
       });
 
       if (serviceAccount) {
         if (new Date() > serviceAccount.expiresAt) {
-          return res.status(401).send({ message: "Service account has expired." });
+          return res.status(401).send({ message: 'Service account has expired.' });
         }
         user = serviceAccount;
         isServiceAccount = true;
       } else {
-        return res.status(404).send({ message: "User Not found." });
+        return res.status(404).send({ message: 'User Not found.' });
       }
     }
 
     if (!isServiceAccount) {
       const passwordIsValid = bcrypt.compareSync(password, user.password);
       if (!passwordIsValid) {
-        return res.status(401).send({ accessToken: null, message: "Invalid Password!" });
+        return res.status(401).send({ accessToken: null, message: 'Invalid Password!' });
       }
     }
 
     // Use longer expiry for stayLoggedIn
     const tokenExpiry = stayLoggedIn ? '24h' : authConfig.auth.jwt.jwt_expiration.value || '24h';
-    
+
     const token = jwt.sign(
-      { 
-        id: user.id, 
-        isServiceAccount: isServiceAccount,
-        stayLoggedIn: stayLoggedIn
+      {
+        id: user.id,
+        isServiceAccount,
+        stayLoggedIn,
+        provider: isServiceAccount ? 'service_account' : user.authProvider || 'local',
       },
       authConfig.auth.jwt.jwt_secret.value,
       {
@@ -722,9 +733,9 @@ exports.signin = async (req, res) => {
       }
     );
 
-    const authorities = isServiceAccount 
-      ? ["ROLE_SERVICE_ACCOUNT"]
-      : user.roles.map(role => "ROLE_" + role.name.toUpperCase());
+    const authorities = isServiceAccount
+      ? ['ROLE_SERVICE_ACCOUNT']
+      : user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
 
     res.status(200).send({
       id: user.id,
@@ -733,14 +744,15 @@ exports.signin = async (req, res) => {
       verified: isServiceAccount ? null : user.verified,
       emailHash: isServiceAccount ? null : user.emailHash,
       roles: authorities,
-      organization: isServiceAccount ? null : (user.organization ? user.organization.name : null),
+      organization: isServiceAccount ? null : user.organization ? user.organization.name : null,
       accessToken: token,
-      isServiceAccount: isServiceAccount,
-      gravatarUrl: isServiceAccount ? null : user.gravatarUrl
+      isServiceAccount,
+      provider: isServiceAccount ? 'service_account' : user.authProvider || 'local',
+      gravatarUrl: isServiceAccount ? null : user.gravatarUrl,
     });
   } catch (err) {
-    log.error.error("Error in signin:", err);
-    res.status(500).send({ message: "Error during signin process" });
+    log.error.error('Error in signin:', err);
+    res.status(500).send({ message: 'Error during signin process' });
   }
 };
 
@@ -783,21 +795,21 @@ exports.signin = async (req, res) => {
  *                   example: "Could not delete User with id=1"
  */
 exports.deleteUser = (req, res) => {
-  const userId = req.params.userId;
+  const { userId } = req.params;
 
   User.destroy({
-    where: { id: userId }
+    where: { id: userId },
   })
     .then(num => {
       if (num == 1) {
-        res.send({ message: "User was deleted successfully!" });
+        res.send({ message: 'User was deleted successfully!' });
       } else {
         res.send({ message: `Cannot delete User with id=${userId}. Maybe User was not found!` });
       }
     })
     .catch(err => {
       res.status(500).send({
-        message: "Could not delete User with id=" + userId
+        message: `Could not delete User with id=${userId}`,
       });
     });
 };
@@ -842,21 +854,23 @@ exports.deleteUser = (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-   // Method to suspend a user
-   exports.suspendUser = async (req, res) => {
-     const { userId } = req.params;
-     try {
-       const user = await User.findByPk(userId);
-       if (!user) {
-         return res.status(404).send({ message: "User not found." });
-       }
-       // Assuming there's a 'suspended' field in the User model
-       await user.update({ suspended: true });
-       res.status(200).send({ message: "User suspended successfully." });
-     } catch (err) {
-       res.status(500).send({ message: err.message || "Some error occurred while suspending the user." });
-     }
-   };
+// Method to suspend a user
+exports.suspendUser = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).send({ message: 'User not found.' });
+    }
+    // Assuming there's a 'suspended' field in the User model
+    await user.update({ suspended: true });
+    res.status(200).send({ message: 'User suspended successfully.' });
+  } catch (err) {
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while suspending the user.' });
+  }
+};
 
 /**
  * @swagger
@@ -898,23 +912,25 @@ exports.deleteUser = (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-   exports.resumeUser = async (req, res) => {
-    const { userId } = req.params;
+exports.resumeUser = async (req, res) => {
+  const { userId } = req.params;
 
-    try {
-      const user = await User.findByPk(userId);
-      if (!user) {
-        return res.status(404).send({ message: "User not found." });
-      }
-
-      user.suspended = false;
-      await user.save();
-
-      res.status(200).send({ message: "User resumed successfully!" });
-    } catch (err) {
-      res.status(500).send({ message: err.message || "Some error occurred while resuming the user." });
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).send({ message: 'User not found.' });
     }
-  };
+
+    user.suspended = false;
+    await user.save();
+
+    res.status(200).send({ message: 'User resumed successfully!' });
+  } catch (err) {
+    res
+      .status(500)
+      .send({ message: err.message || 'Some error occurred while resuming the user.' });
+  }
+};
 
 // If you have an update user function, ensure it also updates the email hash
 /**
@@ -967,20 +983,22 @@ exports.deleteUser = (req, res) => {
 exports.refreshToken = async (req, res) => {
   try {
     // Get user from request (set by authJwt middleware)
-    const user = req.user;
+    const { user } = req;
     const { stayLoggedIn } = req.body;
-    
+
     // Check if either the current token or the request wants stayLoggedIn
     if (!user.stayLoggedIn && !stayLoggedIn) {
-      return res.status(403).send({ message: "Token refresh only allowed for stay-logged-in sessions" });
+      return res
+        .status(403)
+        .send({ message: 'Token refresh only allowed for stay-logged-in sessions' });
     }
 
     // Generate new token with the requested stayLoggedIn state
     const token = jwt.sign(
-      { 
-        id: user.id, 
+      {
+        id: user.id,
         isServiceAccount: false,
-        stayLoggedIn: stayLoggedIn || user.stayLoggedIn // Keep existing state if not provided
+        stayLoggedIn: stayLoggedIn || user.stayLoggedIn, // Keep existing state if not provided
       },
       authConfig.auth.jwt.jwt_secret.value,
       {
@@ -992,11 +1010,11 @@ exports.refreshToken = async (req, res) => {
 
     res.status(200).send({
       accessToken: token,
-      stayLoggedIn: stayLoggedIn || user.stayLoggedIn
+      stayLoggedIn: stayLoggedIn || user.stayLoggedIn,
     });
   } catch (err) {
-    log.error.error("Error in refreshToken:", err);
-    res.status(500).send({ message: "Error refreshing token" });
+    log.error.error('Error in refreshToken:', err);
+    res.status(500).send({ message: 'Error refreshing token' });
   }
 };
 
@@ -1054,12 +1072,9 @@ exports.updateUser = async (req, res) => {
   try {
     const emailHash = generateEmailHash(email);
 
-    await User.update(
-      { email, emailHash },
-      { where: { id: userId } }
-    );
+    await User.update({ email, emailHash }, { where: { id: userId } });
 
-    res.send({ message: "User updated successfully!" });
+    res.send({ message: 'User updated successfully!' });
   } catch (err) {
     res.status(500).send({ message: err.message });
   }

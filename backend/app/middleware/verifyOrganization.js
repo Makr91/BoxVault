@@ -1,5 +1,5 @@
 // verifyOrganization.js
-const db = require("../models");
+const db = require('../models');
 const Organization = db.organization;
 
 // Function to check the format of the organization name
@@ -9,7 +9,8 @@ function validateOrganization(req, res, next) {
 
   if (!organization || !organizationRegex.test(organization)) {
     return res.status(400).send({
-      message: "Invalid organization name. It should contain only uppercase, lowercase, digits, dash, and period."
+      message:
+        'Invalid organization name. It should contain only uppercase, lowercase, digits, dash, and period.',
     });
   }
 
@@ -22,26 +23,26 @@ async function checkOrganizationDuplicate(req, res, next) {
 
   try {
     const existingOrganization = await Organization.findOne({
-      where: { name: organization }
+      where: { name: organization },
     });
 
     if (existingOrganization) {
       return res.status(400).send({
-        message: `An organization with the name ${organization} already exists.`
+        message: `An organization with the name ${organization} already exists.`,
       });
     }
 
     next();
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while checking the organization."
+      message: err.message || 'Some error occurred while checking the organization.',
     });
   }
 }
 
 const verifyOrganization = {
-  validateOrganization: validateOrganization,
-  checkOrganizationDuplicate: checkOrganizationDuplicate
+  validateOrganization,
+  checkOrganizationDuplicate,
 };
 
 module.exports = verifyOrganization;

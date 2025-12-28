@@ -7,15 +7,15 @@ describe('Architecture API', () => {
   const testBox = {
     name: 'test-arch-box',
     description: 'Test box for architecture API testing',
-    isPublic: true
+    isPublic: true,
   };
   const testVersion = {
     version: '1.0.0',
-    description: 'Test version for architecture API testing'
+    description: 'Test version for architecture API testing',
   };
   const testProvider = {
     name: 'test-provider',
-    description: 'Test provider for architecture API testing'
+    description: 'Test provider for architecture API testing',
   };
 
   beforeAll(async () => {
@@ -23,12 +23,10 @@ describe('Architecture API', () => {
     await db.sequelize.sync();
 
     // Get auth token
-    const authResponse = await request(app)
-      .post('/api/auth/signin')
-      .send({
-        username: 'SomeUser',
-        password: 'SoomePass'
-      });
+    const authResponse = await request(app).post('/api/auth/signin').send({
+      username: 'SomeUser',
+      password: 'SoomePass',
+    });
 
     authToken = authResponse.body.accessToken;
 
@@ -46,7 +44,9 @@ describe('Architecture API', () => {
 
     // Create test provider
     await request(app)
-      .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+      .post(
+        `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+      )
       .set('x-access-token', authToken)
       .send(testProvider);
   });
@@ -64,7 +64,9 @@ describe('Architecture API', () => {
   describe('GET /api/organization/:organization/box/:boxId/version/:version/provider/:provider/architecture', () => {
     it('should return list of architectures', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
@@ -73,7 +75,9 @@ describe('Architecture API', () => {
 
     it('should fail with invalid provider', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/invalid-provider/architecture`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/invalid-provider/architecture`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
@@ -84,14 +88,16 @@ describe('Architecture API', () => {
     const newArchitecture = {
       name: 'amd64',
       description: 'Test architecture',
-      defaultBox: true
+      defaultBox: true,
     };
 
     afterEach(async () => {
       // Clean up - delete test architecture if it exists
       try {
         await request(app)
-          .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${newArchitecture.name}`)
+          .delete(
+            `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${newArchitecture.name}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         // Ignore errors during cleanup
@@ -100,7 +106,9 @@ describe('Architecture API', () => {
 
     it('should create new architecture', async () => {
       const res = await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(newArchitecture);
 
@@ -113,13 +121,17 @@ describe('Architecture API', () => {
     it('should fail creating duplicate architecture', async () => {
       // First create the architecture
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(newArchitecture);
 
       // Try to create same architecture again
       const res = await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(newArchitecture);
 
@@ -130,11 +142,13 @@ describe('Architecture API', () => {
       const invalidArch = {
         name: 'invalid-arch',
         description: 'Invalid architecture name',
-        defaultBox: true
+        defaultBox: true,
       };
 
       const res = await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(invalidArch);
 
@@ -146,13 +160,15 @@ describe('Architecture API', () => {
     const architecture = {
       name: 'amd64',
       description: 'Test architecture',
-      defaultBox: true
+      defaultBox: true,
     };
 
     beforeEach(async () => {
       // Create test architecture
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(architecture);
     });
@@ -161,7 +177,9 @@ describe('Architecture API', () => {
       // Clean up
       try {
         await request(app)
-          .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`)
+          .delete(
+            `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         // Ignore errors during cleanup
@@ -170,7 +188,9 @@ describe('Architecture API', () => {
 
     it('should return architecture details', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
@@ -181,7 +201,9 @@ describe('Architecture API', () => {
 
     it('should fail with invalid architecture name', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/invalid-arch`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/invalid-arch`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
@@ -192,13 +214,15 @@ describe('Architecture API', () => {
     const architecture = {
       name: 'amd64',
       description: 'Initial description',
-      defaultBox: true
+      defaultBox: true,
     };
 
     beforeEach(async () => {
       // Create test architecture
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(architecture);
     });
@@ -207,7 +231,9 @@ describe('Architecture API', () => {
       // Clean up
       try {
         await request(app)
-          .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`)
+          .delete(
+            `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         // Ignore errors during cleanup
@@ -217,11 +243,13 @@ describe('Architecture API', () => {
     it('should update architecture details', async () => {
       const updateData = {
         description: 'Updated description',
-        defaultBox: false
+        defaultBox: false,
       };
 
       const res = await request(app)
-        .put(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`)
+        .put(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+        )
         .set('x-access-token', authToken)
         .send(updateData);
 
@@ -235,27 +263,33 @@ describe('Architecture API', () => {
     const architecture = {
       name: 'amd64',
       description: 'Architecture to delete',
-      defaultBox: true
+      defaultBox: true,
     };
 
     beforeEach(async () => {
       // Create test architecture
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        )
         .set('x-access-token', authToken)
         .send(architecture);
     });
 
     it('should delete architecture', async () => {
       const res = await request(app)
-        .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`)
+        .delete(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
 
       // Verify architecture is deleted
       const checkRes = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+        )
         .set('x-access-token', authToken);
 
       expect(checkRes.statusCode).toBe(404);

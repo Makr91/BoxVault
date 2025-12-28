@@ -1,14 +1,14 @@
-const db = require("../models");
+const db = require('../models');
 const { log } = require('../utils/Logger');
 const ServiceAccount = db.service_account;
 const User = db.user;
 
-const isVagrantRequest = (req) => {
+const isVagrantRequest = req => {
   const userAgent = req.headers['user-agent'] || '';
   return userAgent.startsWith('Vagrant/');
 };
 
-const extractBearerToken = (req) => {
+const extractBearerToken = req => {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
@@ -16,28 +16,30 @@ const extractBearerToken = (req) => {
   return null;
 };
 
-const validateVagrantToken = async (token) => {
+const validateVagrantToken = async token => {
   if (!token) {
     log.app.info('No token provided for validation');
     return null;
   }
-  
+
   try {
-    log.app.info('Attempting to validate token:', token.substring(0, 8) + '...');
+    log.app.info('Attempting to validate token:', `${token.substring(0, 8)}...`);
     const serviceAccount = await ServiceAccount.findOne({
       where: {
-        token: token,
+        token,
         expiresAt: {
           [db.Sequelize.Op.or]: {
             [db.Sequelize.Op.gt]: new Date(),
-            [db.Sequelize.Op.eq]: null
-          }
-        }
+            [db.Sequelize.Op.eq]: null,
+          },
+        },
       },
-      include: [{
-        model: User,
-        as: 'user'
-      }]
+      include: [
+        {
+          model: User,
+          as: 'user',
+        },
+      ],
     });
 
     if (!serviceAccount) {
@@ -53,20 +55,20 @@ const validateVagrantToken = async (token) => {
     log.app.info('Successfully validated token for user:', serviceAccount.user.id);
     return {
       userId: serviceAccount.user.id,
-      isServiceAccount: true
+      isServiceAccount: true,
     };
   } catch (err) {
     log.error.error('Error validating vagrant token:', {
       error: err.message,
       stack: err.stack,
-      token: token.substring(0, 8) + '...'
+      token: `${token.substring(0, 8)}...`,
     });
   }
-  
+
   return null;
 };
 
-const parseVagrantUrl = (url) => {
+const parseVagrantUrl = url => {
   // Remove any query parameters
   const urlPath = url.split('?')[0];
   const parts = urlPath.split('/').filter(Boolean);
@@ -83,16 +85,20 @@ const parseVagrantUrl = (url) => {
     const boxesIndex = parts.indexOf('boxes');
     const versionsIndex = parts.indexOf('versions');
     const providersIndex = parts.indexOf('providers');
-    
-    if (boxesIndex !== -1 && versionsIndex !== -1 && providersIndex !== -1 && 
-        parts.length >= providersIndex + 2) {
+
+    if (
+      boxesIndex !== -1 &&
+      versionsIndex !== -1 &&
+      providersIndex !== -1 &&
+      parts.length >= providersIndex + 2
+    ) {
       return {
         organization: parts[0],
         boxName: parts[boxesIndex + 1],
         isDownload: true,
         version: parts[versionsIndex + 1],
         provider: parts[providersIndex + 1],
-        architecture: parts[providersIndex + 2]
+        architecture: parts[providersIndex + 2],
       };
     }
     return null;
@@ -104,21 +110,26 @@ const parseVagrantUrl = (url) => {
     return {
       organization: parts[0],
       boxName: parts[1],
-      isDownload: false
+      isDownload: false,
     };
   } else if (parts.length === 3 && parts[1] === 'boxes') {
     // Expanded format: /:organization/boxes/:boxName
     return {
       organization: parts[0],
       boxName: parts[2],
-      isDownload: false
+      isDownload: false,
     };
-  } else if (parts.length === 5 && parts[0] === 'api' && parts[1] === 'v2' && parts[2] === 'vagrant') {
+  } else if (
+    parts.length === 5 &&
+    parts[0] === 'api' &&
+    parts[1] === 'v2' &&
+    parts[2] === 'vagrant'
+  ) {
     // API format: /api/v2/vagrant/:organization/:boxName
     return {
       organization: parts[3],
       boxName: parts[4],
-      isDownload: false
+      isDownload: false,
     };
   }
   return null;
@@ -169,7 +180,7 @@ const vagrantHandler = async (req, res, next) => {
   if (parsedUrl.isDownload) {
     // For box downloads, rewrite Vagrant's URL format to our API endpoint
     req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/version/${parsedUrl.version}/provider/${parsedUrl.provider}/architecture/${parsedUrl.architecture}/file/download`;
-    
+
     // Don't set Content-Type for downloads
     // Let the download endpoint handle streaming the file
     next();
@@ -182,7 +193,7 @@ const vagrantHandler = async (req, res, next) => {
     res.set({
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',
-      'Vary': 'Accept'
+      Vary: 'Accept',
     });
 
     // Ensure Accept header is set for Vagrant
@@ -193,7 +204,7 @@ const vagrantHandler = async (req, res, next) => {
 
   // Rewrite the URL to our API format
   req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
-  
+
   // Store parsed URL info for the controller
   req.vagrantInfo = {
     originalUrl: req.originalUrl,
@@ -204,14 +215,14 @@ const vagrantHandler = async (req, res, next) => {
     isDownload: parsedUrl.isDownload,
     version: parsedUrl.version,
     provider: parsedUrl.provider,
-    architecture: parsedUrl.architecture
+    architecture: parsedUrl.architecture,
   };
 
   // Log request details for debugging
   log.app.info('Vagrant Request:', {
     ...req.vagrantInfo,
     userAgent: req.headers['user-agent'],
-    headers: res.getHeaders()
+    headers: res.getHeaders(),
   });
 
   next();

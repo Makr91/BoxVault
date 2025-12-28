@@ -19,7 +19,16 @@
     "install-frontend": "cd frontend && npm install",
     "install-backend": "cd backend && npm install",
     "sync-versions": "node scripts/sync-versions.js",
-    "generate-docs": "cd backend && npm run generate-docs"
+    "generate-docs": "cd backend && npm run generate-docs",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:backend:fix": "cd backend && npm run lint:fix",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:frontend:fix": "cd frontend && npm run lint:fix",
+    "lint:all": "npm run lint:backend && npm run lint:frontend",
+    "lint": "npm run lint:all",
+    "lint:fix:all": "npm run lint:backend:fix && npm run lint:frontend:fix",
+    "format:check": "prettier --check .",
+    "format:fix": "prettier --write ."
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
@@ -47,8 +56,14 @@
     "web-vitals": "^5.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "concurrently": "^9.2.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^16.5.0",
     "nodemon": "^3.1.11",
+    "prettier": "^3.7.4",
     "sass": "1.93.2"
   },
   "author": "makr91",

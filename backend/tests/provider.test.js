@@ -7,11 +7,11 @@ describe('Provider API', () => {
   const testBox = {
     name: 'test-provider-box',
     description: 'Test box for provider API testing',
-    isPublic: true
+    isPublic: true,
   };
   const testVersion = {
     version: '1.0.0',
-    description: 'Test version for provider API testing'
+    description: 'Test version for provider API testing',
   };
 
   beforeAll(async () => {
@@ -19,12 +19,10 @@ describe('Provider API', () => {
     await db.sequelize.sync();
 
     // Get auth token
-    const authResponse = await request(app)
-      .post('/api/auth/signin')
-      .send({
-        username: 'SomeUser',
-        password: 'SoomePass'
-      });
+    const authResponse = await request(app).post('/api/auth/signin').send({
+      username: 'SomeUser',
+      password: 'SoomePass',
+    });
 
     authToken = authResponse.body.accessToken;
 
@@ -54,7 +52,9 @@ describe('Provider API', () => {
   describe('GET /api/organization/:organization/box/:boxId/version/:version/provider', () => {
     it('should return list of providers', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
@@ -73,14 +73,16 @@ describe('Provider API', () => {
   describe('POST /api/organization/:organization/box/:boxId/version/:version/provider', () => {
     const newProvider = {
       name: 'test-provider',
-      description: 'Test provider'
+      description: 'Test provider',
     };
 
     afterEach(async () => {
       // Clean up - delete test provider if it exists
       try {
         await request(app)
-          .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${newProvider.name}`)
+          .delete(
+            `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${newProvider.name}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         // Ignore errors during cleanup
@@ -89,7 +91,9 @@ describe('Provider API', () => {
 
     it('should create new provider', async () => {
       const res = await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken)
         .send(newProvider);
 
@@ -101,13 +105,17 @@ describe('Provider API', () => {
     it('should fail creating duplicate provider', async () => {
       // First create the provider
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken)
         .send(newProvider);
 
       // Try to create same provider again
       const res = await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken)
         .send(newProvider);
 
@@ -118,13 +126,15 @@ describe('Provider API', () => {
   describe('GET /api/organization/:organization/box/:boxId/version/:version/provider/:provider', () => {
     const provider = {
       name: 'test-provider',
-      description: 'Test provider'
+      description: 'Test provider',
     };
 
     beforeEach(async () => {
       // Create test provider
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken)
         .send(provider);
     });
@@ -133,7 +143,9 @@ describe('Provider API', () => {
       // Clean up
       try {
         await request(app)
-          .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`)
+          .delete(
+            `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         // Ignore errors during cleanup
@@ -142,7 +154,9 @@ describe('Provider API', () => {
 
     it('should return provider details', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
@@ -152,7 +166,9 @@ describe('Provider API', () => {
 
     it('should fail with invalid provider name', async () => {
       const res = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/invalid-provider`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/invalid-provider`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
@@ -162,13 +178,15 @@ describe('Provider API', () => {
   describe('PUT /api/organization/:organization/box/:boxId/version/:version/provider/:provider', () => {
     const provider = {
       name: 'test-provider',
-      description: 'Initial description'
+      description: 'Initial description',
     };
 
     beforeEach(async () => {
       // Create test provider
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken)
         .send(provider);
     });
@@ -177,7 +195,9 @@ describe('Provider API', () => {
       // Clean up
       try {
         await request(app)
-          .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`)
+          .delete(
+            `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         // Ignore errors during cleanup
@@ -186,11 +206,13 @@ describe('Provider API', () => {
 
     it('should update provider details', async () => {
       const updateData = {
-        description: 'Updated description'
+        description: 'Updated description',
       };
 
       const res = await request(app)
-        .put(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`)
+        .put(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+        )
         .set('x-access-token', authToken)
         .send(updateData);
 
@@ -202,27 +224,33 @@ describe('Provider API', () => {
   describe('DELETE /api/organization/:organization/box/:boxId/version/:version/provider/:provider', () => {
     const provider = {
       name: 'test-provider',
-      description: 'Provider to delete'
+      description: 'Provider to delete',
     };
 
     beforeEach(async () => {
       // Create test provider
       await request(app)
-        .post(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`)
+        .post(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider`
+        )
         .set('x-access-token', authToken)
         .send(provider);
     });
 
     it('should delete provider', async () => {
       const res = await request(app)
-        .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`)
+        .delete(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
 
       // Verify provider is deleted
       const checkRes = await request(app)
-        .get(`/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`)
+        .get(
+          `/api/organization/STARTcloud/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+        )
         .set('x-access-token', authToken);
 
       expect(checkRes.statusCode).toBe(404);

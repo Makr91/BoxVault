@@ -202,4 +202,4 @@ module.exports = (sequelize, Sequelize) => {
   };
 
   return Credential;
-}
+};

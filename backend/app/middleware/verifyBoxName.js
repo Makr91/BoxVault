@@ -1,5 +1,5 @@
 // verifyBoxName.js
-const db = require("../models");
+const db = require('../models');
 const Box = db.box;
 
 // Function to check the format of the box name
@@ -9,7 +9,8 @@ function validateBoxName(req, res, next) {
 
   if (!name || !boxNameRegex.test(name)) {
     return res.status(400).send({
-      message: "Invalid box name. It should contain only uppercase, lowercase, digits, dash, and period."
+      message:
+        'Invalid box name. It should contain only uppercase, lowercase, digits, dash, and period.',
     });
   }
 
@@ -21,8 +22,8 @@ async function checkBoxDuplicate(req, res, next) {
   // This Function should allow an existing box to be updated, so long as it is the only box in the organization with its name.
   // New Boxes are submitted via POST request, the POST request's body contains the name of the box.
   // Existing Boxes are submitted via a PUT request, the PUT request's URL (req.params) contains the CURRENT name of the Box, the PUT request's body contains the NEW NAME of the box.
-  const { organization, name: currentName } = req.params; 
-  const { name: newName } = req.body; 
+  const { organization, name: currentName } = req.params;
+  const { name: newName } = req.body;
 
   // When a User updates the box but keeps the name the same (i.e., they just want to update the description of a box), we want to make sure that we allow this change.
   if (currentName && currentName === newName) {
@@ -38,36 +39,40 @@ async function checkBoxDuplicate(req, res, next) {
     const existingBox = await Box.findOne({
       where: {
         name: newName,
-        '$user.organization.name$': organization
+        '$user.organization.name$': organization,
       },
-      include: [{
-        model: db.user,
-        as: "user",
-        include: [{
-          model: db.organization,
-          as: "organization"
-        }]
-      }]
+      include: [
+        {
+          model: db.user,
+          as: 'user',
+          include: [
+            {
+              model: db.organization,
+              as: 'organization',
+            },
+          ],
+        },
+      ],
     });
 
     // If the box exists and it's not the same box being updated, then we return a 400 error
     if (existingBox && existingBox.name !== currentName) {
       return res.status(400).send({
-        message: `A box with the name ${newName} already exists in organization ${organization}.`
+        message: `A box with the name ${newName} already exists in organization ${organization}.`,
       });
     }
 
     next();
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while checking the box."
+      message: err.message || 'Some error occurred while checking the box.',
     });
   }
 }
 
 const verifyBoxName = {
-  validateBoxName: validateBoxName,
-  checkBoxDuplicate: checkBoxDuplicate
+  validateBoxName,
+  checkBoxDuplicate,
 };
 
 module.exports = verifyBoxName;

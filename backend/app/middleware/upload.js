@@ -26,8 +26,8 @@ const uploadMiddleware = async (req, res) => {
       'transfer-encoding': req.headers['transfer-encoding'],
       'x-checksum': req.headers['x-checksum'],
       'x-checksum-type': req.headers['x-checksum-type'],
-      'x-file-name': req.headers['x-file-name']
-    }
+      'x-file-name': req.headers['x-file-name'],
+    },
   });
 
   // Disable request timeouts
@@ -38,20 +38,20 @@ const uploadMiddleware = async (req, res) => {
   req._body = true;
 
   const startTime = Date.now();
-  let uploadedBytes = 0;
+  const uploadedBytes = 0;
   let writeStream;
 
   try {
     const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-    
+
     log.app.info('Upload middleware processing request for:', {
       organization,
       boxId,
       versionNumber,
       providerName,
-      architectureName
+      architectureName,
     });
-    
+
     // Check if using chunked encoding
     const isChunked = req.headers['transfer-encoding'] === 'chunked';
     const contentLength = parseInt(req.headers['content-length']);
@@ -59,7 +59,7 @@ const uploadMiddleware = async (req, res) => {
     log.app.info('Upload encoding analysis:', {
       isChunked,
       contentLength,
-      contentLengthRaw: req.headers['content-length']
+      contentLengthRaw: req.headers['content-length'],
     });
 
     // Only validate content-length if not using chunked encoding
@@ -68,32 +68,32 @@ const uploadMiddleware = async (req, res) => {
         log.app.error('Missing or invalid Content-Length header');
         res.status(400).json({
           error: 'INVALID_REQUEST',
-          message: 'Content-Length header required when not using chunked encoding'
+          message: 'Content-Length header required when not using chunked encoding',
         });
         return;
       }
 
       if (contentLength > maxFileSize) {
-        log.app.error('File too large:', { 
-          contentLength, 
+        log.app.error('File too large:', {
+          contentLength,
           maxFileSize,
-          contentLengthGB: Math.round(contentLength / (1024 * 1024 * 1024) * 100) / 100,
-          maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024)
+          contentLengthGB: Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100,
+          maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024),
         });
-        
+
         // Ensure proper response headers for SSL
         res.setHeader('Connection', 'close');
         res.setHeader('Content-Type', 'application/json');
-        
+
         res.status(413).json({
           error: 'FILE_TOO_LARGE',
-          message: `File size ${Math.round(contentLength / (1024 * 1024 * 1024) * 100) / 100}GB exceeds maximum allowed size of ${maxFileSize / (1024 * 1024 * 1024)}GB`,
+          message: `File size ${Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100}GB exceeds maximum allowed size of ${maxFileSize / (1024 * 1024 * 1024)}GB`,
           details: {
             fileSize: contentLength,
-            maxFileSize: maxFileSize,
-            fileSizeGB: Math.round(contentLength / (1024 * 1024 * 1024) * 100) / 100,
-            maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024)
-          }
+            maxFileSize,
+            fileSizeGB: Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100,
+            maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024),
+          },
         });
         return;
       }
@@ -102,8 +102,15 @@ const uploadMiddleware = async (req, res) => {
     // Load config and prepare upload directory
     log.app.info('Loading config and preparing upload directory...');
     const config = loadConfig('app');
-    const uploadDir = path.join(config.boxvault.box_storage_directory.value, organization, boxId, versionNumber, providerName, architectureName);
-    
+    const uploadDir = path.join(
+      config.boxvault.box_storage_directory.value,
+      organization,
+      boxId,
+      versionNumber,
+      providerName,
+      architectureName
+    );
+
     log.app.info('Creating upload directory:', { uploadDir });
     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     const finalPath = path.join(uploadDir, 'vagrant.box');
@@ -116,7 +123,7 @@ const uploadMiddleware = async (req, res) => {
     log.app.info('Chunk analysis:', {
       chunkIndex,
       totalChunks,
-      isMultipart
+      isMultipart,
     });
 
     // Create temp directory for chunks if needed
@@ -135,7 +142,7 @@ const uploadMiddleware = async (req, res) => {
       path: finalPath,
       isMultipart,
       chunkIndex: isMultipart ? chunkIndex : 'N/A',
-      totalChunks: isMultipart ? totalChunks : 'N/A'
+      totalChunks: isMultipart ? totalChunks : 'N/A',
     });
 
     if (isMultipart) {
@@ -146,14 +153,12 @@ const uploadMiddleware = async (req, res) => {
           flags: 'w',
           encoding: 'binary',
           mode: 0o666,
-          autoClose: true
+          autoClose: true,
         });
 
         // Write chunk
         await new Promise((resolve, reject) => {
-          req.pipe(writeStream)
-            .on('finish', resolve)
-            .on('error', reject);
+          req.pipe(writeStream).on('finish', resolve).on('error', reject);
         });
 
         // Check if all chunks received
@@ -161,7 +166,7 @@ const uploadMiddleware = async (req, res) => {
         log.app.info('Chunk upload status:', {
           received: chunks.length,
           total: totalChunks,
-          current: chunkIndex
+          current: chunkIndex,
         });
 
         if (chunks.length === totalChunks) {
@@ -170,7 +175,7 @@ const uploadMiddleware = async (req, res) => {
             flags: 'w',
             encoding: 'binary',
             mode: 0o666,
-            autoClose: true
+            autoClose: true,
           });
 
           try {
@@ -197,7 +202,10 @@ const uploadMiddleware = async (req, res) => {
               uploadDir,
               tempDir,
               finalPath,
-              totalSize: sortedChunks.reduce((size, chunk) => size + fs.statSync(chunk.path).size, 0)
+              totalSize: sortedChunks.reduce(
+                (size, chunk) => size + fs.statSync(chunk.path).size,
+                0
+              ),
             });
 
             // Ensure upload directory exists
@@ -208,7 +216,7 @@ const uploadMiddleware = async (req, res) => {
               flags: 'w',
               encoding: 'binary',
               mode: 0o666,
-              autoClose: true
+              autoClose: true,
             });
 
             // Merge chunks sequentially with verification
@@ -216,17 +224,19 @@ const uploadMiddleware = async (req, res) => {
             for (let i = 0; i < sortedChunks.length; i++) {
               const chunk = sortedChunks[i];
               const chunkSize = fs.statSync(chunk.path).size;
-              
+
               log.app.info(`Merging chunk ${i + 1}/${sortedChunks.length}:`, {
                 chunkIndex: chunk.index,
                 chunkPath: chunk.path,
                 chunkSize,
-                assembledSize
+                assembledSize,
               });
 
               const chunkContent = fs.readFileSync(chunk.path);
               if (chunkContent.length !== chunkSize) {
-                throw new Error(`Chunk ${i} size mismatch: expected ${chunkSize}, got ${chunkContent.length}`);
+                throw new Error(
+                  `Chunk ${i} size mismatch: expected ${chunkSize}, got ${chunkContent.length}`
+                );
               }
 
               writeStream.write(chunkContent);
@@ -244,7 +254,7 @@ const uploadMiddleware = async (req, res) => {
             log.app.info('Assembly completed:', {
               finalPath,
               assembledSize,
-              expectedSize: contentLength || 'unknown'
+              expectedSize: contentLength || 'unknown',
             });
 
             // Clean up temp directory
@@ -252,19 +262,19 @@ const uploadMiddleware = async (req, res) => {
             fs.rmdirSync(tempDir);
           } catch (error) {
             log.error.error('Assembly failed:', error);
-            
+
             // Clean up failed assembly
             if (fs.existsSync(finalPath)) {
               fs.unlinkSync(finalPath);
             }
-            
+
             // Clean up temp directory
             if (fs.existsSync(tempDir)) {
               const remainingChunks = fs.readdirSync(tempDir);
               remainingChunks.forEach(chunk => fs.unlinkSync(path.join(tempDir, chunk)));
               fs.rmdirSync(tempDir);
             }
-            
+
             throw error;
           }
 
@@ -278,14 +288,16 @@ const uploadMiddleware = async (req, res) => {
           }
 
           // Update database (only load models when needed)
-          const db = require("../models");
+          const db = require('../models');
           const version = await db.versions.findOne({
             where: { versionNumber },
-            include: [{
-              model: db.box,
-              as: 'box',
-              where: { name: boxId }
-            }]
+            include: [
+              {
+                model: db.box,
+                as: 'box',
+                where: { name: boxId },
+              },
+            ],
           });
 
           if (!version) {
@@ -293,10 +305,10 @@ const uploadMiddleware = async (req, res) => {
           }
 
           const provider = await db.providers.findOne({
-            where: { 
+            where: {
               name: providerName,
-              versionId: version.id
-            }
+              versionId: version.id,
+            },
           });
 
           if (!provider) {
@@ -304,10 +316,10 @@ const uploadMiddleware = async (req, res) => {
           }
 
           const architecture = await db.architectures.findOne({
-            where: { 
+            where: {
               name: architectureName,
-              providerId: provider.id
-            }
+              providerId: provider.id,
+            },
           });
 
           if (!architecture) {
@@ -319,14 +331,14 @@ const uploadMiddleware = async (req, res) => {
             checksum: req.headers['x-checksum'] || null,
             checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
             architectureId: architecture.id,
-            fileSize: finalSize
+            fileSize: finalSize,
           };
 
           const fileRecord = await db.files.findOne({
             where: {
               fileName: 'vagrant.box',
-              architectureId: architecture.id
-            }
+              architectureId: architecture.id,
+            },
           });
 
           if (fileRecord) {
@@ -337,12 +349,12 @@ const uploadMiddleware = async (req, res) => {
 
           // Calculate stats
           const duration = Date.now() - startTime;
-          const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+          const speed = Math.round(((finalSize / duration) * 1000) / (1024 * 1024));
 
           log.app.info('Upload completed:', {
             finalSize,
             duration: `${Math.round(duration / 1000)}s`,
-            speed: `${speed} MB/s`
+            speed: `${speed} MB/s`,
           });
 
           // Return final success response
@@ -351,8 +363,8 @@ const uploadMiddleware = async (req, res) => {
             details: {
               isComplete: true,
               status: 'complete',
-              fileSize: finalSize
-            }
+              fileSize: finalSize,
+            },
           });
         }
 
@@ -363,9 +375,9 @@ const uploadMiddleware = async (req, res) => {
             isComplete: false,
             status: 'uploading',
             chunksReceived: chunks.length,
-            totalChunks: totalChunks,
-            currentChunk: chunkIndex
-          }
+            totalChunks,
+            currentChunk: chunkIndex,
+          },
         });
       } catch (error) {
         // Clean up temp files on error
@@ -386,14 +398,12 @@ const uploadMiddleware = async (req, res) => {
         flags: 'w',
         encoding: 'binary',
         mode: 0o666,
-        autoClose: true
+        autoClose: true,
       });
 
       // Write file
       await new Promise((resolve, reject) => {
-        req.pipe(writeStream)
-          .on('finish', resolve)
-          .on('error', reject);
+        req.pipe(writeStream).on('finish', resolve).on('error', reject);
       });
 
       // Verify file size
@@ -404,7 +414,9 @@ const uploadMiddleware = async (req, res) => {
         const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
         if (Math.abs(finalSize - contentLength) > maxDiff) {
           fs.unlinkSync(finalPath);
-          throw new Error(`File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`);
+          throw new Error(
+            `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
+          );
         }
       }
 
@@ -415,14 +427,16 @@ const uploadMiddleware = async (req, res) => {
       }
 
       // Update database (only load models when needed)
-      const db = require("../models");
+      const db = require('../models');
       const version = await db.versions.findOne({
         where: { versionNumber },
-        include: [{
-          model: db.box,
-          as: 'box',
-          where: { name: boxId }
-        }]
+        include: [
+          {
+            model: db.box,
+            as: 'box',
+            where: { name: boxId },
+          },
+        ],
       });
 
       if (!version) {
@@ -430,10 +444,10 @@ const uploadMiddleware = async (req, res) => {
       }
 
       const provider = await db.providers.findOne({
-        where: { 
+        where: {
           name: providerName,
-          versionId: version.id
-        }
+          versionId: version.id,
+        },
       });
 
       if (!provider) {
@@ -441,10 +455,10 @@ const uploadMiddleware = async (req, res) => {
       }
 
       const architecture = await db.architectures.findOne({
-        where: { 
+        where: {
           name: architectureName,
-          providerId: provider.id
-        }
+          providerId: provider.id,
+        },
       });
 
       if (!architecture) {
@@ -456,14 +470,14 @@ const uploadMiddleware = async (req, res) => {
         checksum: req.headers['x-checksum'] || null,
         checksumType: (req.headers['x-checksum-type'] || 'NULL').toUpperCase(),
         architectureId: architecture.id,
-        fileSize: finalSize
+        fileSize: finalSize,
       };
 
       const fileRecord = await db.files.findOne({
         where: {
           fileName: 'vagrant.box',
-          architectureId: architecture.id
-        }
+          architectureId: architecture.id,
+        },
       });
 
       if (fileRecord) {
@@ -474,12 +488,12 @@ const uploadMiddleware = async (req, res) => {
 
       // Calculate stats
       const duration = Date.now() - startTime;
-      const speed = Math.round(finalSize / duration * 1000 / (1024 * 1024));
+      const speed = Math.round(((finalSize / duration) * 1000) / (1024 * 1024));
 
       log.app.info('Upload completed:', {
         finalSize,
         duration: `${Math.round(duration / 1000)}s`,
-        speed: `${speed} MB/s`
+        speed: `${speed} MB/s`,
       });
 
       // Return success response
@@ -488,8 +502,8 @@ const uploadMiddleware = async (req, res) => {
         details: {
           isComplete: true,
           status: 'complete',
-          fileSize: finalSize
-        }
+          fileSize: finalSize,
+        },
       });
     }
   } catch (error) {
@@ -499,7 +513,7 @@ const uploadMiddleware = async (req, res) => {
     if (writeStream) {
       writeStream.end();
     }
-    
+
     // Clean up incomplete file if it exists
     if (error.message.includes('size mismatch') || error.message.includes('closed prematurely')) {
       try {
@@ -516,7 +530,7 @@ const uploadMiddleware = async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({
         error: 'UPLOAD_ERROR',
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -539,7 +553,7 @@ const uploadSSLMiddleware = async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({
         error: 'UPLOAD_ERROR',
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -547,5 +561,5 @@ const uploadSSLMiddleware = async (req, res) => {
 
 module.exports = {
   uploadFile: uploadMiddleware,
-  uploadSSLFile: uploadSSLMiddleware
+  uploadSSLFile: uploadSSLMiddleware,
 };

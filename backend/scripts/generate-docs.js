@@ -49,7 +49,6 @@ async function generateDocs() {
     log.app.info('  - docs/api/swagger-ui.html - Pure HTML Swagger UI (no Jekyll processing)');
     log.app.info('  - docs/api/reference.md - Jekyll page with embedded Swagger UI');
     log.app.info('');
-
   } catch (error) {
     log.error.error('❌ Error generating documentation:', error.message);
     process.exit(1);

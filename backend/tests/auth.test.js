@@ -15,12 +15,10 @@ describe('Authentication API', () => {
 
   describe('POST /api/auth/signin', () => {
     it('should authenticate user and return token', async () => {
-      const res = await request(app)
-        .post('/api/auth/signin')
-        .send({
-          username: 'SomeUser',
-          password: 'SoomePass'
-        });
+      const res = await request(app).post('/api/auth/signin').send({
+        username: 'SomeUser',
+        password: 'SoomePass',
+      });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessToken');
@@ -28,12 +26,10 @@ describe('Authentication API', () => {
     });
 
     it('should fail with invalid credentials', async () => {
-      const res = await request(app)
-        .post('/api/auth/signin')
-        .send({
-          username: 'SomeUser',
-          password: 'wrongpassword'
-        });
+      const res = await request(app).post('/api/auth/signin').send({
+        username: 'SomeUser',
+        password: 'wrongpassword',
+      });
 
       expect(res.statusCode).toBe(401);
       expect(res.body).toHaveProperty('message', 'Invalid Password!');

@@ -14,8 +14,8 @@ const configPaths = {
 
 let authorizedSetupToken = null; // Store the authorized token in memory
 
-const readConfig = (filePath) => {
-  return new Promise((resolve, reject) => {
+const readConfig = filePath =>
+  new Promise((resolve, reject) => {
     fs.readFile(filePath, 'utf8', (err, data) => {
       if (err) {
         return reject(err);
@@ -28,7 +28,6 @@ const readConfig = (filePath) => {
       }
     });
   });
-};
 
 const writeConfig = async (filePath, data) => {
   const yamlData = yaml.dump(data);
@@ -88,7 +87,7 @@ exports.verifySetupToken = (req, res) => {
 };
 
 const verifyAuthorizedToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
+  const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Extract the token from the Bearer header
 
   if (!token || token !== authorizedSetupToken) {
@@ -163,31 +162,35 @@ const verifyAuthorizedToken = (req, res, next) => {
  *                   type: string
  *                   example: "Failed to upload SSL certificate."
  */
-exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
-  try {
-    // Import upload middleware only when needed
-    const { uploadSSLFile } = require("../middleware/upload");
-    await uploadSSLFile(req, res);
-    const { file } = req;
-    if (!file) {
-      return res.status(400).send({ message: "No file uploaded!" });
+exports.uploadSSL = [
+  verifyAuthorizedToken,
+  async (req, res) => {
+    try {
+      // Import upload middleware only when needed
+      const { uploadSSLFile } = require('../middleware/upload');
+      await uploadSSLFile(req, res);
+      const { file } = req;
+      if (!file) {
+        return res.status(400).send({ message: 'No file uploaded!' });
+      }
+
+      const filePath = path.join('/config/ssl', file.originalname);
+
+      let certPath;
+      let keyPath;
+      if (file.originalname.endsWith('.crt')) {
+        certPath = filePath;
+      } else if (file.originalname.endsWith('.key')) {
+        keyPath = filePath;
+      }
+
+      res.status(200).send({ certPath, keyPath });
+    } catch (error) {
+      log.error.error('Error uploading SSL certificate:', error);
+      res.status(500).send({ message: 'Failed to upload SSL certificate.' });
     }
-
-    const filePath = path.join('/config/ssl', file.originalname);
-
-    let certPath, keyPath;
-    if (file.originalname.endsWith('.crt')) {
-      certPath = filePath;
-    } else if (file.originalname.endsWith('.key')) {
-      keyPath = filePath;
-    }
-
-    res.status(200).send({ certPath, keyPath });
-  } catch (error) {
-    log.error.error('Error uploading SSL certificate:', error);
-    res.status(500).send({ message: "Failed to upload SSL certificate." });
-  }
-}];
+  },
+];
 
 /**
  * @swagger
@@ -227,42 +230,45 @@ exports.uploadSSL = [verifyAuthorizedToken, async (req, res) => {
  *               type: string
  *               example: "Failed to update configuration"
  */
-exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
-  const { configs } = req.body;
+exports.updateConfigs = [
+  verifyAuthorizedToken,
+  async (req, res) => {
+    const { configs } = req.body;
 
-  try {
-    for (const [configName, configData] of Object.entries(configs)) {
-      if (configPaths[configName]) {
-        const currentConfig = await readConfig(configPaths[configName]);
-        let newConfig = { ...currentConfig, ...configData };
-        
-        // Handle database type selection for db config
-        if (configName === 'db' && newConfig.database_type) {
-          const dbType = newConfig.database_type.value;
-          
-          // Auto-set dialect based on database type
-          if (newConfig.sql && newConfig.sql.dialect) {
-            newConfig.sql.dialect.value = dbType;
+    try {
+      for (const [configName, configData] of Object.entries(configs)) {
+        if (configPaths[configName]) {
+          const currentConfig = await readConfig(configPaths[configName]);
+          const newConfig = { ...currentConfig, ...configData };
+
+          // Handle database type selection for db config
+          if (configName === 'db' && newConfig.database_type) {
+            const dbType = newConfig.database_type.value;
+
+            // Auto-set dialect based on database type
+            if (newConfig.sql && newConfig.sql.dialect) {
+              newConfig.sql.dialect.value = dbType;
+            }
+
+            // Note: SQLite directory creation is now handled in models/index.js
+            // when Sequelize is initialized, ensuring proper timing
           }
-          
-          // Note: SQLite directory creation is now handled in models/index.js
-          // when Sequelize is initialized, ensuring proper timing
+
+          await writeConfig(configPaths[configName], newConfig);
         }
-        
-        await writeConfig(configPaths[configName], newConfig);
       }
+
+      // Remove the setup token file to prevent further setup
+      const setupTokenPath = getSetupTokenPath();
+      fs.unlinkSync(setupTokenPath);
+
+      res.send('Configuration updated successfully');
+    } catch (error) {
+      log.error.error('Error updating configuration:', error);
+      res.status(500).send('Failed to update configuration');
     }
-
-    // Remove the setup token file to prevent further setup
-    const setupTokenPath = getSetupTokenPath();
-    fs.unlinkSync(setupTokenPath);
-
-    res.send('Configuration updated successfully');
-  } catch (error) {
-    log.error.error('Error updating configuration:', error);
-    res.status(500).send('Failed to update configuration');
-  }
-}];
+  },
+];
 
 /**
  * @swagger
@@ -295,25 +301,28 @@ exports.updateConfigs = [verifyAuthorizedToken, async (req, res) => {
  *               type: string
  *               example: "Failed to read configurations"
  */
-exports.getConfigs = [verifyAuthorizedToken, async (req, res) => {
-  try {
-    const dbConfig = await readConfig(configPaths.db);
-    const appConfig = await readConfig(configPaths.app);
-    const mailConfig = await readConfig(configPaths.mail);
-    const authConfig = await readConfig(configPaths.auth);
-    res.send({
-      configs: {
-        db: dbConfig,
-        app: appConfig,
-        mail: mailConfig,
-        auth: authConfig,
-      }
-    });
-  } catch (error) {
-    log.error.error('Error reading configurations:', error);
-    res.status(500).send('Failed to read configurations');
-  }
-}];
+exports.getConfigs = [
+  verifyAuthorizedToken,
+  async (req, res) => {
+    try {
+      const dbConfig = await readConfig(configPaths.db);
+      const appConfig = await readConfig(configPaths.app);
+      const mailConfig = await readConfig(configPaths.mail);
+      const authConfig = await readConfig(configPaths.auth);
+      res.send({
+        configs: {
+          db: dbConfig,
+          app: appConfig,
+          mail: mailConfig,
+          auth: authConfig,
+        },
+      });
+    } catch (error) {
+      log.error.error('Error reading configurations:', error);
+      res.status(500).send('Failed to read configurations');
+    }
+  },
+];
 
 /**
  * @swagger
@@ -345,7 +354,10 @@ exports.getConfigs = [verifyAuthorizedToken, async (req, res) => {
 exports.isSetupComplete = async (req, res) => {
   try {
     const dbConfig = await readConfig(configPaths.db);
-    const isConfigured = dbConfig.sql.dialect.value !== undefined && dbConfig.sql.dialect.value !== null && dbConfig.sql.dialect.value.trim() !== '';
+    const isConfigured =
+      dbConfig.sql.dialect.value !== undefined &&
+      dbConfig.sql.dialect.value !== null &&
+      dbConfig.sql.dialect.value.trim() !== '';
     res.send({ setupComplete: isConfigured });
   } catch (error) {
     log.error.error('Error checking setup status:', error);

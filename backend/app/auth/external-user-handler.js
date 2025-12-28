@@ -9,8 +9,11 @@ const { log } = require('../utils/Logger');
  * @param {Object} authConfig - Authentication configuration
  * @returns {Promise<Object>} User object for authentication
  */
-async function handleExternalUser(provider, profile, db, authConfig) {
-  const { user: User, credential: Credential, organization: Organization, invitation: Invitation } = db;
+const handleExternalUser = async (provider, profile, db, authConfig) => {
+  const {
+    user: User,
+    credential: Credential,
+  } = db;
 
   try {
     const email = profile.mail || profile.email || profile.emails?.[0]?.value;
@@ -21,9 +24,10 @@ async function handleExternalUser(provider, profile, db, authConfig) {
     let subject = profile.uid || profile.sub || profile.id || profile.cn;
 
     if (!subject && profile.dn) {
-      const dnMatch = profile.dn.match(/^uid=([^,]+)/i) || profile.dn.match(/^cn=([^,]+)/i);
+      const dnMatch = profile.dn.match(/^uid=(?<id>[^,]+)/i) || profile.dn.match(/^cn=(?<id>[^,]+)/i);
       if (dnMatch) {
-        subject = dnMatch[1];
+        const [, extractedSubject] = dnMatch;
+        subject = extractedSubject;
       }
     }
 
@@ -36,11 +40,11 @@ async function handleExternalUser(provider, profile, db, authConfig) {
 
     // 1. Check if credential already exists
     const credential = await Credential.findByProviderAndSubject(normalizedProvider, subject);
-    
+
     if (credential) {
       await credential.updateProfile(profile);
       const user = await User.findByPk(credential.user_id);
-      
+
       if (!user || user.suspended) {
         throw new Error('User account is inactive');
       }
@@ -48,7 +52,7 @@ async function handleExternalUser(provider, profile, db, authConfig) {
       if (!user.organizationId) {
         const organizationId = await determineUserOrganization(email, profile, db, authConfig);
         await user.update({
-          organizationId: organizationId,
+          organizationId,
           linkedAt: new Date(),
         });
       }
@@ -64,7 +68,7 @@ async function handleExternalUser(provider, profile, db, authConfig) {
       if (!user.organizationId) {
         const organizationId = await determineUserOrganization(email, profile, db, authConfig);
         await user.update({
-          organizationId: organizationId,
+          organizationId,
           authProvider: baseProvider,
           externalId: subject,
           linkedAt: new Date(),
@@ -87,12 +91,15 @@ async function handleExternalUser(provider, profile, db, authConfig) {
       const roles = await user.getRoles();
       if (!roles || roles.length === 0) {
         const { role: Role } = db;
-        const defaultRoleName = authConfig.auth?.external?.provisioning_default_role?.value || 'user';
+        const defaultRoleName =
+          authConfig.auth?.external?.provisioning_default_role?.value || 'user';
         const defaultRole = await Role.findOne({ where: { name: defaultRoleName } });
-        
+
         if (defaultRole) {
           await user.setRoles([defaultRole]);
-          log.app.info(`Assigned role '${defaultRoleName}' to existing external user: ${user.email}`);
+          log.app.info(
+            `Assigned role '${defaultRoleName}' to existing external user: ${user.email}`
+          );
         }
       }
 
@@ -109,7 +116,7 @@ async function handleExternalUser(provider, profile, db, authConfig) {
       password: 'external',
       emailHash: crypto.createHash('sha256').update(email.toLowerCase()).digest('hex'),
       verified: true,
-      organizationId: organizationId,
+      organizationId,
       authProvider: baseProvider,
       externalId: subject,
       linkedAt: new Date(),
@@ -119,7 +126,7 @@ async function handleExternalUser(provider, profile, db, authConfig) {
     const { role: Role } = db;
     const defaultRoleName = authConfig.auth?.external?.provisioning_default_role?.value || 'user';
     const defaultRole = await Role.findOne({ where: { name: defaultRoleName } });
-    
+
     if (defaultRole) {
       await user.setRoles([defaultRole]);
       log.app.info(`Assigned role '${defaultRoleName}' to new external user: ${user.email}`);
@@ -139,15 +146,14 @@ async function handleExternalUser(provider, profile, db, authConfig) {
 /**
  * Determine organization for external user
  * @param {string} email - User email address
- * @param {Object} profile - External user profile
+ * @param {Object} _profile - External user profile (reserved for future use)
  * @param {Object} db - Database models
  * @param {Object} authConfig - Authentication configuration
  * @returns {Promise<number>} Organization ID
  */
-async function determineUserOrganization(email, profile, db, authConfig) {
+const determineUserOrganization = async (email, _profile, db, authConfig) => {
   const { organization: Organization, invitation: Invitation } = db;
-  const domain = email.split('@')[1];
-  let mappedOrgCode = null;
+  const [, domain] = email.split('@');
 
   // 1. Check pending invitation
   const invitation = await Invitation.findOne({
@@ -172,12 +178,12 @@ async function determineUserOrganization(email, profile, db, authConfig) {
       const mappingsJson = authConfig.auth.external?.domain_mappings?.value || '{}';
       const mappings = JSON.parse(mappingsJson);
 
-      for (const [orgCode, domains] of Object.entries(mappings)) {
+      // eslint-disable-next-line no-await-in-loop -- Sequential search with early exit
+      for (const [, domains] of Object.entries(mappings)) {
         if (Array.isArray(domains) && domains.includes(domain)) {
-          mappedOrgCode = orgCode;
           // Use just the domain name for BoxVault (not ZoneWeaver prefix format)
           const orgName = domain;
-          
+
           const org = await Organization.findOne({ where: { name: orgName } });
           if (org) {
             return org.id;
@@ -191,7 +197,8 @@ async function determineUserOrganization(email, profile, db, authConfig) {
   }
 
   // 3. Apply fallback policy
-  const fallbackAction = authConfig.auth?.external?.provisioning_fallback_action?.value || 'require_invite';
+  const fallbackAction =
+    authConfig.auth?.external?.provisioning_fallback_action?.value || 'require_invite';
 
   switch (fallbackAction) {
     case 'require_invite':
@@ -220,12 +227,10 @@ async function determineUserOrganization(email, profile, db, authConfig) {
  * Generate a random organization code
  * @returns {string} Random 6-character hexcode
  */
-function generateOrgCode() {
-  return Math.random().toString(16).substr(2, 6).toUpperCase();
-}
+const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
 
 module.exports = {
   handleExternalUser,
   determineUserOrganization,
-  generateOrgCode
+  generateOrgCode,
 };

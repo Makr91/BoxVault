@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const db = require("../models");
+const db = require('../models');
 const User = db.user;
-const Organization = db.organization; 
+const Organization = db.organization;
 const crypto = require('crypto');
 
 let smtpConfig;
@@ -32,10 +32,10 @@ exports.sendVerificationMail = async (user, verificationToken, expirationTime) =
       secure: smtpConfig.smtp_connect.secure.value,
       auth: {
         user: smtpConfig.smtp_auth.user.value,
-        pass: smtpConfig.smtp_auth.password.value
+        pass: smtpConfig.smtp_auth.password.value,
       },
       debug: true, // Enable debug output
-      logger: true // Log to console
+      logger: true, // Log to console
     });
 
     log.app.info('Transporter created successfully');
@@ -55,7 +55,7 @@ exports.sendVerificationMail = async (user, verificationToken, expirationTime) =
         <p>Please click the link below to verify your email:</p>
         <a href="${verificationLink}">Verify Email</a>
         <p>This verification link will expire on: ${expirationDate}</p>
-      `
+      `,
     };
     log.app.info('Mail options:', JSON.stringify(mailOptions, null, 2));
 
@@ -132,19 +132,19 @@ exports.sendVerificationMail = async (user, verificationToken, expirationTime) =
 exports.resendVerificationMail = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
-      include: [{ model: Organization, as: 'organization' }]
+      include: [{ model: Organization, as: 'organization' }],
     });
 
     if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      return res.status(404).send({ message: 'User not found.' });
     }
 
     if (!user.organization) {
-      return res.status(404).send({ message: "Organization not found for this user." });
+      return res.status(404).send({ message: 'Organization not found for this user.' });
     }
 
     if (user.verified) {
-      return res.status(400).send({ message: "User is already verified." });
+      return res.status(400).send({ message: 'User is already verified.' });
     }
 
     user.verificationToken = crypto.randomBytes(20).toString('hex');
@@ -152,7 +152,7 @@ exports.resendVerificationMail = async (req, res) => {
 
     await user.save();
     await exports.sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires);
-    res.send({ message: "Verification email resent successfully." });
+    res.send({ message: 'Verification email resent successfully.' });
   } catch (err) {
     log.error.error('Error in resendVerificationMail:', err);
     res.status(500).send({ message: err.message });
@@ -167,8 +167,8 @@ exports.sendInvitationMail = async (email, token, organizationName, expirationTi
       secure: smtpConfig.smtp_connect.secure.value,
       auth: {
         user: smtpConfig.smtp_auth.user.value,
-        pass: smtpConfig.smtp_auth.password.value
-      }
+        pass: smtpConfig.smtp_auth.password.value,
+      },
     });
 
     const frontendUrl = appConfig.boxvault.origin.value;
@@ -184,7 +184,7 @@ exports.sendInvitationMail = async (email, token, organizationName, expirationTi
         <p>Please click the link below to join the organization:</p>
         <a href="${invitationLink}">Join Organization</a>
         <p>This invitation link will expire on: ${expirationDate}</p>
-      `
+      `,
     };
 
     await transporter.sendMail(mailOptions);
@@ -249,10 +249,10 @@ exports.testSmtp = async (req, res) => {
       secure: smtpConfig.smtp_connect.secure.value,
       auth: {
         user: smtpConfig.smtp_auth.user.value,
-        pass: smtpConfig.smtp_auth.password.value
+        pass: smtpConfig.smtp_auth.password.value,
       },
       debug: true, // Enable debug output
-      logger: true // Log to console
+      logger: true, // Log to console
     });
 
     log.app.info('Transporter created, verifying connection...');
@@ -264,7 +264,7 @@ exports.testSmtp = async (req, res) => {
       from: smtpConfig.smtp_settings.from.value,
       to: req.body.testEmail,
       subject: 'SMTP Test Email',
-      text: 'This is a test email to verify SMTP configuration.'
+      text: 'This is a test email to verify SMTP configuration.',
     });
 
     log.app.info('Test email sent successfully:', info.messageId);
@@ -275,6 +275,8 @@ exports.testSmtp = async (req, res) => {
     if (error.response) {
       log.error.error('SMTP Response:', error.response);
     }
-    res.status(500).send({ message: 'Error sending test email', error: error.message, stack: error.stack });
+    res
+      .status(500)
+      .send({ message: 'Error sending test email', error: error.message, stack: error.stack });
   }
 };

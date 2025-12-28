@@ -4,8 +4,8 @@ const yaml = require('js-yaml');
 const { loadConfig, getConfigPath } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
 
-const readConfig = (filePath) => {
-  return new Promise((resolve, reject) => {
+const readConfig = filePath =>
+  new Promise((resolve, reject) => {
     fs.readFile(filePath, 'utf8', (err, data) => {
       if (err) {
         return reject(err);
@@ -18,19 +18,17 @@ const readConfig = (filePath) => {
       }
     });
   });
-};
 
-const writeConfig = (filePath, data) => {
-  return new Promise((resolve, reject) => {
+const writeConfig = (filePath, data) =>
+  new Promise((resolve, reject) => {
     const yamlData = yaml.dump(data);
-    fs.writeFile(filePath, yamlData, 'utf8', (err) => {
+    fs.writeFile(filePath, yamlData, 'utf8', err => {
       if (err) {
         return reject(err);
       }
       resolve();
     });
   });
-};
 
 /**
  * @swagger
@@ -144,7 +142,7 @@ exports.updateConfig = async (req, res) => {
     // For updates, we still need to write to the actual file path
     const filePath = getConfigPath(configName);
     await writeConfig(filePath, req.body);
-    res.send({ message: "Configuration updated successfully." });
+    res.send({ message: 'Configuration updated successfully.' });
   } catch (err) {
     res.status(500).send({ message: err.message });
   }
@@ -191,7 +189,7 @@ exports.getGravatarConfig = async (req, res) => {
     if (data && data.gravatar) {
       res.send({ gravatar: data.gravatar });
     } else {
-      res.status(404).send({ message: "Gravatar configuration not found." });
+      res.status(404).send({ message: 'Gravatar configuration not found.' });
     }
   } catch (err) {
     res.status(500).send({ message: err.message });
@@ -205,15 +203,15 @@ exports.getGravatarConfig = async (req, res) => {
  *     summary: Restart the BoxVault server
  *     description: |
  *       **⚠️ DANGEROUS OPERATION ⚠️**
- *       
+ *
  *       Initiates a server restart using SystemD service management. This will:
  *       - Terminate all active connections
  *       - Stop the current server process
  *       - Restart the BoxVault service via SystemD
  *       - Cause temporary service unavailability
- *       
+ *
  *       **Use with extreme caution!** Only use this endpoint when necessary for applying critical configuration changes that require a server restart.
- *       
+ *
  *       The restart is performed by exiting the process with a failure code, which triggers SystemD's automatic restart mechanism configured with `Restart=on-failure`.
  *     tags: [Configuration]
  *     security:
@@ -250,13 +248,13 @@ exports.getGravatarConfig = async (req, res) => {
  */
 exports.restartServer = (req, res) => {
   log.app.info('Initiating server restart via process exit...');
-  
+
   // Send response immediately before process exits
   res.status(200).json({ message: 'Server restart initiated' });
-  
+
   // Close the response to ensure it's sent
   res.end();
-  
+
   // Give a brief moment for the response to be sent
   setTimeout(() => {
     log.app.info('Exiting process to trigger SystemD restart...');

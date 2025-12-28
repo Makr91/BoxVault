@@ -7,7 +7,7 @@ describe('Version API', () => {
   const testBox = {
     name: 'test-version-box',
     description: 'Test box for version API testing',
-    isPublic: true
+    isPublic: true,
   };
 
   beforeAll(async () => {
@@ -15,12 +15,10 @@ describe('Version API', () => {
     await db.sequelize.sync();
 
     // Get auth token
-    const authResponse = await request(app)
-      .post('/api/auth/signin')
-      .send({
-        username: 'SomeUser',
-        password: 'SoomePass'
-      });
+    const authResponse = await request(app).post('/api/auth/signin').send({
+      username: 'SomeUser',
+      password: 'SoomePass',
+    });
 
     authToken = authResponse.body.accessToken;
 
@@ -63,7 +61,7 @@ describe('Version API', () => {
   describe('POST /api/organization/:organization/box/:boxId/version', () => {
     const newVersion = {
       version: '1.0.0',
-      description: 'Test version'
+      description: 'Test version',
     };
 
     afterEach(async () => {
@@ -108,7 +106,7 @@ describe('Version API', () => {
   describe('GET /api/organization/:organization/box/:boxId/version/:version', () => {
     const version = {
       version: '1.0.0',
-      description: 'Test version'
+      description: 'Test version',
     };
 
     beforeEach(async () => {
@@ -152,7 +150,7 @@ describe('Version API', () => {
   describe('PUT /api/organization/:organization/box/:boxId/version/:version', () => {
     const version = {
       version: '1.0.0',
-      description: 'Initial description'
+      description: 'Initial description',
     };
 
     beforeEach(async () => {
@@ -176,7 +174,7 @@ describe('Version API', () => {
 
     it('should update version details', async () => {
       const updateData = {
-        description: 'Updated description'
+        description: 'Updated description',
       };
 
       const res = await request(app)
@@ -192,7 +190,7 @@ describe('Version API', () => {
   describe('DELETE /api/organization/:organization/box/:boxId/version/:version', () => {
     const version = {
       version: '1.0.0',
-      description: 'Version to delete'
+      description: 'Version to delete',
     };
 
     beforeEach(async () => {

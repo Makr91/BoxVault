@@ -9,6 +9,7 @@ export default [
     ignores: [
       'web/**/*', // Frontend has its own ESLint config
       'node_modules/**/*', // Dependencies
+      'backend/app/views/**/*', 
       'dist/**/*', // Build output
       'build/**/*', // Build output
       'coverage/**/*', // Test coverage
@@ -48,10 +49,11 @@ export default [
       'no-unused-vars': [
         'error',
         {
-          args: 'after-used',
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
+          vars: 'all',
+          args: 'all',
+          caughtErrors: 'all',
+          ignoreRestSiblings: false,
+          reportUsedIgnorePattern: false,
         },
       ],
       'no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
@@ -82,7 +84,7 @@ export default [
       'no-useless-concat': 'error',
 
       // === COMPARISON & CONDITIONALS ===
-      'eqeqeq': ['error', 'always'],
+      eqeqeq: ['error', 'always'],
       'no-nested-ternary': 'warn',
       'no-unneeded-ternary': 'error',
       'no-else-return': 'error',
@@ -119,13 +121,13 @@ export default [
       'no-console': 'off', // Allow console in backend (now using Winston)
 
       // === CODE QUALITY ===
-      'complexity': ['warn', 30], // Warn on high cyclomatic complexity (increased for system code)
+      complexity: ['warn', 30], // Warn on high cyclomatic complexity (increased for system code)
       'max-depth': ['warn', 6], // Warn on deeply nested code (increased for system logic)
       'max-params': ['warn', 8], // Warn on functions with many parameters (increased for APIs)
       // File and function size limits removed per user request
 
       // === NAMING CONVENTIONS ===
-      'camelcase': 'off', // Allow snake_case (user preference for system/API code)
+      camelcase: 'off', // Allow snake_case (user preference for system/API code)
       'new-cap': ['error', { newIsCap: true, capIsNew: false }],
 
       // === PERFORMANCE ===
@@ -145,7 +147,7 @@ export default [
       'require-jsdoc': 'off', // Optional, let developers decide
 
       // === STYLE (handled by Prettier, but keep logical ones) ===
-      'curly': ['error', 'all'], // Always use braces
+      curly: ['error', 'all'], // Always use braces
       'dot-notation': 'error',
       'no-multi-assign': 'error',
       'one-var': ['error', 'never'], // One variable declaration per statement

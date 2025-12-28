@@ -207,7 +207,36 @@ const refreshUserData = async () => {
   return null;
 };
 
-const logout = () => {
+const logout = async () => {
+  try {
+    // Check if user is logged in with OIDC provider
+    const user = getCurrentUser();
+    if (user?.provider?.startsWith('oidc-')) {
+      // Call backend to initiate OIDC logout
+      const response = await axios.post(
+        `${baseURL}/api/auth/oidc/logout`,
+        {},
+        { 
+          headers: authHeader(),
+          skipAuthRefresh: true // Don't refresh token during logout
+        }
+      );
+
+      // Clear local storage first
+      localStorage.removeItem("user");
+
+      // If provider supports RP-initiated logout, redirect to provider
+      if (response.data.redirect_url) {
+        window.location.href = response.data.redirect_url;
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('OIDC logout error:', error);
+    // Continue with local logout even if OIDC logout fails
+  }
+
+  // Fallback to local logout
   localStorage.removeItem("user");
   window.location.href = "/";
 };

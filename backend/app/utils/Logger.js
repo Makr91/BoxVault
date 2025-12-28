@@ -27,7 +27,7 @@ const extractedConfig = {
   console_enabled: loggingConfig.console_enabled?.value !== false,
   log_directory: loggingConfig.log_directory?.value || '/var/log/boxvault',
   performance_threshold_ms: loggingConfig.performance_threshold_ms?.value || 1000,
-  categories: {}
+  categories: {},
 };
 
 // Extract category values
@@ -87,7 +87,7 @@ const createCategoryLogger = (category, filename) => {
       format: logFormat,
       maxsize: 50 * 1024 * 1024, // 50MB max file size
       maxFiles: 5, // Keep 5 files
-      tailable: true
+      tailable: true,
     })
   );
 
@@ -193,7 +193,7 @@ const log = {
  * @param {string} operation - Operation name
  * @returns {Object} Timer object with end() function
  */
-const createTimer = (operation) => {
+const createTimer = operation => {
   const start = process.hrtime.bigint();
   return {
     end: (meta = {}) => {

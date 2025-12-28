@@ -10,12 +10,10 @@ describe('Box API', () => {
     await db.sequelize.sync();
 
     // Get auth token for subsequent requests
-    const authResponse = await request(app)
-      .post('/api/auth/signin')
-      .send({
-        username: 'SomeUser',
-        password: 'SoomePass'
-      });
+    const authResponse = await request(app).post('/api/auth/signin').send({
+      username: 'SomeUser',
+      password: 'SoomePass',
+    });
 
     authToken = authResponse.body.accessToken;
   });
@@ -34,7 +32,7 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
       expect(Array.isArray(res.body)).toBeTruthy();
       expect(res.body.length).toBeGreaterThan(0);
-      
+
       // Verify box structure
       const box = res.body[0];
       expect(box).toHaveProperty('name');
@@ -76,7 +74,7 @@ describe('Box API', () => {
     const newBox = {
       name: 'test-box',
       description: 'Test box for API testing',
-      isPublic: true
+      isPublic: true,
     };
 
     afterEach(async () => {
@@ -123,7 +121,7 @@ describe('Box API', () => {
     const initialBox = {
       name: boxName,
       description: 'Initial description',
-      isPublic: true
+      isPublic: true,
     };
 
     beforeEach(async () => {
@@ -148,7 +146,7 @@ describe('Box API', () => {
     it('should update box details', async () => {
       const updateData = {
         description: 'Updated description',
-        isPublic: false
+        isPublic: false,
       };
 
       const res = await request(app)
@@ -167,7 +165,7 @@ describe('Box API', () => {
     const testBox = {
       name: boxName,
       description: 'Box to delete',
-      isPublic: true
+      isPublic: true,
     };
 
     beforeEach(async () => {

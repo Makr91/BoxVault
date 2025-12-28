@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const jwt = require("jsonwebtoken");
-const db = require("../models");
+const jwt = require('jsonwebtoken');
+const db = require('../models');
 const Organization = db.organization;
 const Users = db.user;
 const Box = db.box;
@@ -11,7 +11,7 @@ const Architecture = db.architectures;
 const Version = db.versions;
 const Provider = db.providers;
 const File = db.files;
-const Op = db.Sequelize.Op;
+const { Op } = db.Sequelize;
 let authConfig;
 try {
   authConfig = loadConfig('auth');
@@ -88,11 +88,15 @@ try {
 exports.create = async (req, res) => {
   const { organization } = req.params;
   const { name, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
-  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name || name);
+  const newFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    name || name
+  );
 
   if (!req.body.name) {
     res.status(400).send({
-      message: "Name cannot be empty!"
+      message: 'Name cannot be empty!',
     });
     return;
   }
@@ -105,13 +109,13 @@ exports.create = async (req, res) => {
   // Create a Box
   const box = {
     name: req.body.name,
-    description: description,
+    description,
     published: published ? published : false,
     isPublic: isPublic ? isPublic : false,
     userId: req.userId,
     githubRepo: githubRepo || null,
     workflowFile: workflowFile || null,
-    cicdUrl: cicdUrl || null
+    cicdUrl: cicdUrl || null,
   };
 
   // Save Box in the database
@@ -120,13 +124,10 @@ exports.create = async (req, res) => {
     res.send(data);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while creating the Box."
+      message: err.message || 'Some error occurred while creating the Box.',
     });
   }
 };
-
-
-
 
 /**
  * @swagger
@@ -171,7 +172,7 @@ exports.create = async (req, res) => {
  */
 exports.getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
-  const token = req.headers["x-access-token"];
+  const token = req.headers['x-access-token'];
   let userId = null;
   let userOrganizationId = null;
   let isServiceAccount = false;
@@ -188,7 +189,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
         if (!isServiceAccount) {
           const user = await Users.findOne({
             where: { id: userId },
-            include: [{ model: Organization, as: 'organization' }]
+            include: [{ model: Organization, as: 'organization' }],
           });
 
           if (user) {
@@ -203,53 +204,57 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     // Retrieve all boxes from the specified organization
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [{
-        model: Users,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
+      include: [
+        {
+          model: Users,
+          as: 'users',
           include: [
             {
-              model: Version,
-              as: 'versions',
+              model: Box,
+              as: 'box',
               include: [
                 {
-                  model: Provider,
-                  as: 'providers',
+                  model: Version,
+                  as: 'versions',
                   include: [
                     {
-                      model: Architecture,
-                      as: 'architectures',
+                      model: Provider,
+                      as: 'providers',
                       include: [
                         {
-                          model: File,
-                          as: 'files'
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              model: Users,
-              as: 'user',
-              include: [
+                          model: Architecture,
+                          as: 'architectures',
+                          include: [
+                            {
+                              model: File,
+                              as: 'files',
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
                 {
-                  model: db.organization,
-                  as: 'organization',
-                  attributes: ['id', 'name', 'emailHash'] 
-                }
-              ]
-            }
-          ]
-        }]
-      }]
+                  model: Users,
+                  as: 'user',
+                  include: [
+                    {
+                      model: db.organization,
+                      as: 'organization',
+                      attributes: ['id', 'name', 'emailHash'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: "Organization not found." });
+      return res.status(404).send({ message: 'Organization not found.' });
     }
 
     // Get all boxes from the organization
@@ -260,10 +265,12 @@ exports.getOrganizationBoxDetails = async (req, res) => {
       boxes.map(async box => {
         const serviceAccount = await db.service_account.findOne({
           where: { id: box.userId },
-          include: [{
-            model: Users,
-            as: 'user'
-          }]
+          include: [
+            {
+              model: Users,
+              as: 'user',
+            },
+          ],
         });
         return { box, serviceAccount };
       })
@@ -324,31 +331,35 @@ exports.getOrganizationBoxDetails = async (req, res) => {
               fileSize: file.fileSize,
               createdAt: file.createdAt,
               updatedAt: file.updatedAt,
-              architectureId: file.architectureId
-            }))
-          }))
-        }))
+              architectureId: file.architectureId,
+            })),
+          })),
+        })),
       })),
-      user: box.user ? {
-        id: box.user.id,
-        username: box.user.username,
-        email: box.user.email,
-        emailHash: box.user.emailHash,
-        suspended: box.user.suspended,
-        createdAt: box.user.createdAt,
-        updatedAt: box.user.updatedAt,
-        organization: box.user.organization ? {
-          id: box.user.organization.id,
-          name: box.user.organization.name,
-          emailHash: box.user.organization.emailHash,
-        } : null
-      } : null
+      user: box.user
+        ? {
+            id: box.user.id,
+            username: box.user.username,
+            email: box.user.email,
+            emailHash: box.user.emailHash,
+            suspended: box.user.suspended,
+            createdAt: box.user.createdAt,
+            updatedAt: box.user.updatedAt,
+            organization: box.user.organization
+              ? {
+                  id: box.user.organization.id,
+                  name: box.user.organization.name,
+                  emailHash: box.user.organization.emailHash,
+                }
+              : null,
+          }
+        : null,
     }));
 
     res.status(200).send(boxes);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving the organization details."
+      message: err.message || 'Some error occurred while retrieving the organization details.',
     });
   }
 };
@@ -400,13 +411,13 @@ exports.discoverAll = async (req, res) => {
                     include: [
                       {
                         model: db.files,
-                        as: 'files'
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+                        as: 'files',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
           {
             model: db.user,
@@ -415,11 +426,11 @@ exports.discoverAll = async (req, res) => {
               {
                 model: db.organization,
                 as: 'organization',
-                attributes: ['id', 'name', 'emailHash'] 
-              }
-            ]
-          }
-        ]
+                attributes: ['id', 'name', 'emailHash'],
+              },
+            ],
+          },
+        ],
       });
     } else {
       // If the user is not authenticated, retrieve only public boxes
@@ -440,13 +451,13 @@ exports.discoverAll = async (req, res) => {
                     include: [
                       {
                         model: db.files,
-                        as: 'files'
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+                        as: 'files',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
           {
             model: db.user,
@@ -455,11 +466,11 @@ exports.discoverAll = async (req, res) => {
               {
                 model: db.organization,
                 as: 'organization',
-                attributes: ['id', 'name', 'emailHash'] // Include emailHash here
-              }
-            ]
-          }
-        ]
+                attributes: ['id', 'name', 'emailHash'], // Include emailHash here
+              },
+            ],
+          },
+        ],
       });
     }
 
@@ -475,7 +486,7 @@ exports.discoverAll = async (req, res) => {
     res.send(restructuredBoxes);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while retrieving boxes."
+      message: err.message || 'Some error occurred while retrieving boxes.',
     });
   }
 };
@@ -485,28 +496,30 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
   const response = {
     // Required fields from BoxMetadata class
     name: requestedName, // Use the exact name that Vagrant requested
-    description: box.description || "Build",
+    description: box.description || 'Build',
     versions: box.versions.map(version => ({
       // Version must be a valid Gem::Version (no 'v' prefix)
       version: version.versionNumber.replace(/^v/, ''),
-      status: "active",
-      description_html: "<p>Build</p>\n",
-      description_markdown: "Build",
-      providers: version.providers.flatMap(provider => 
+      status: 'active',
+      description_html: '<p>Build</p>\n',
+      description_markdown: 'Build',
+      providers: version.providers.flatMap(provider =>
         provider.architectures.map(arch => {
           const file = arch.files[0];
           return {
             // Required fields from Provider class
             name: provider.name,
             url: `${baseUrl}/${organization.name}/boxes/${box.name}/versions/${version.versionNumber.replace(/^v/, '')}/providers/${provider.name}/${arch.name}/vagrant.box`,
-            checksum: file?.checksum || "",
-            checksum_type: (file?.checksumType === "NULL" ? "sha256" : file?.checksumType?.toLowerCase()) || "sha256",
+            checksum: file?.checksum || '',
+            checksum_type:
+              (file?.checksumType === 'NULL' ? 'sha256' : file?.checksumType?.toLowerCase()) ||
+              'sha256',
             architecture: arch.name,
-            default_architecture: arch.defaultBox || true
+            default_architecture: arch.defaultBox || true,
           };
         })
-      )
-    }))
+      ),
+    })),
   };
 
   // Log the complete response for debugging
@@ -516,16 +529,16 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
     url: `${baseUrl}/${organization.name}/boxes/${box.name}`,
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Accept: 'application/json',
     },
-    body: JSON.stringify(response, null, 2)
+    body: JSON.stringify(response, null, 2),
   });
 
   // Verify the name matches exactly what Vagrant requested
   if (response.name !== requestedName) {
     log.error.error('Name mismatch:', {
       requested: requestedName,
-      actual: response.name
+      actual: response.name,
     });
   }
 
@@ -593,12 +606,12 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 exports.findOne = async (req, res) => {
   const { organization, name } = req.params;
   // Get auth info either from vagrantHandler or x-access-token
-  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
-  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
+  let { userId } = req; // Set by vagrantHandler for Vagrant requests
+  let { isServiceAccount } = req; // Set by vagrantHandler for Vagrant requests
 
   // If not set by vagrantHandler, try x-access-token
   if (!userId) {
-    const token = req.headers["x-access-token"];
+    const token = req.headers['x-access-token'];
     if (token) {
       try {
         const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
@@ -616,60 +629,66 @@ exports.findOne = async (req, res) => {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers
+    headers: req.headers,
   });
 
   try {
     // Find the organization and include users and boxes
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [{
-        model: Users,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name },
+      include: [
+        {
+          model: Users,
+          as: 'users',
           include: [
             {
-              model: Version,
-              as: 'versions',
+              model: Box,
+              as: 'box',
+              where: { name },
               include: [
                 {
-                  model: Provider,
-                  as: 'providers',
+                  model: Version,
+                  as: 'versions',
                   include: [
                     {
-                      model: Architecture,
-                      as: 'architectures',
+                      model: Provider,
+                      as: 'providers',
                       include: [
                         {
-                          model: File,
-                          as: 'files'
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              model: Users,
-              as: 'user',
-              include: [
+                          model: Architecture,
+                          as: 'architectures',
+                          include: [
+                            {
+                              model: File,
+                              as: 'files',
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
                 {
-                  model: Organization,
-                  as: 'organization'
-                }
-              ]
-            }
-          ]
-        }]
-      }]
+                  model: Users,
+                  as: 'user',
+                  include: [
+                    {
+                      model: Organization,
+                      as: 'organization',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
+      return res
+        .status(404)
+        .send({ message: `Organization not found with name: ${organization}.` });
     }
 
     // First try to find the box through organization users
@@ -679,49 +698,53 @@ exports.findOne = async (req, res) => {
     if (!box && isServiceAccount) {
       const serviceAccount = await db.service_account.findOne({
         where: { id: userId },
-        include: [{
-          model: Users,
-          as: 'user',
-          include: [{
-            model: Box,
-            as: 'box',
-            where: { name },
+        include: [
+          {
+            model: Users,
+            as: 'user',
             include: [
               {
-                model: Version,
-                as: 'versions',
+                model: Box,
+                as: 'box',
+                where: { name },
                 include: [
                   {
-                    model: Provider,
-                    as: 'providers',
+                    model: Version,
+                    as: 'versions',
                     include: [
                       {
-                        model: Architecture,
-                        as: 'architectures',
+                        model: Provider,
+                        as: 'providers',
                         include: [
                           {
-                            model: File,
-                            as: 'files'
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                model: Users,
-                as: 'user',
-                include: [
+                            model: Architecture,
+                            as: 'architectures',
+                            include: [
+                              {
+                                model: File,
+                                as: 'files',
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
                   {
-                    model: Organization,
-                    as: 'organization'
-                  }
-                ]
-              }
-            ]
-          }]
-        }]
+                    model: Users,
+                    as: 'user',
+                    include: [
+                      {
+                        model: Organization,
+                        as: 'organization',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       });
 
       if (serviceAccount?.user?.box) {
@@ -748,8 +771,8 @@ exports.findOne = async (req, res) => {
         organization: {
           id: organizationData.id,
           name: organizationData.name,
-          emailHash: organizationData.emailHash
-        }
+          emailHash: organizationData.emailHash,
+        },
       };
     }
 
@@ -758,7 +781,7 @@ exports.findOne = async (req, res) => {
       res.set({
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Vary': 'Accept'
+        Vary: 'Accept',
       });
     }
 
@@ -769,21 +792,23 @@ exports.findOne = async (req, res) => {
 
     // For private boxes, require authentication
     if (!userId) {
-      return res.status(403).json({ message: "Unauthorized access to private box." });
+      return res.status(403).json({ message: 'Unauthorized access to private box.' });
     }
 
     // Check if this box was created by a service account
     const serviceAccount = await db.service_account.findOne({
       where: { id: box.userId },
-      include: [{
-        model: Users,
-        as: 'user'
-      }]
+      include: [
+        {
+          model: Users,
+          as: 'user',
+        },
+      ],
     });
 
     // Check if the requesting user owns any service accounts
     const requestingUserServiceAccounts = await db.service_account.findAll({
-      where: { userId: userId }
+      where: { userId },
     });
 
     // Allow access if:
@@ -791,9 +816,9 @@ exports.findOne = async (req, res) => {
     // 2. The user is the owner of the service account that created the box
     // 3. The box was created by a service account owned by the requesting user
     // 4. The requester is a service account
-    const hasAccess = 
+    const hasAccess =
       organizationData.users.some(user => user.id === userId) ||
-      (serviceAccount?.user?.id === userId) ||
+      serviceAccount?.user?.id === userId ||
       requestingUserServiceAccounts.some(sa => sa.id === box.userId) ||
       isServiceAccount;
 
@@ -801,10 +826,9 @@ exports.findOne = async (req, res) => {
       return res.json(response);
     }
 
-    return res.status(403).json({ message: "Unauthorized access to private box." });
-
+    return res.status(403).json({ message: 'Unauthorized access to private box.' });
   } catch (err) {
-    res.status(500).send({ message: "Error retrieving box with name=" + name });
+    res.status(500).send({ message: `Error retrieving box with name=${name}` });
   }
 };
 
@@ -871,27 +895,43 @@ exports.findOne = async (req, res) => {
  */
 exports.update = async (req, res) => {
   const { organization, name } = req.params;
-  const { name: updatedName, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
+  const {
+    name: updatedName,
+    description,
+    published,
+    isPublic,
+    githubRepo,
+    workflowFile,
+    cicdUrl,
+  } = req.body;
   const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name);
-  const newFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, updatedName || name);
+  const newFilePath = path.join(
+    appConfig.boxvault.box_storage_directory.value,
+    organization,
+    updatedName || name
+  );
 
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [{
-        model: Users,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name }
-        }]
-      }]
+      include: [
+        {
+          model: Users,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -899,7 +939,7 @@ exports.update = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box not found with name: ${name} in organization=${organization}.`
+        message: `Box not found with name: ${name} in organization=${organization}.`,
       });
     }
 
@@ -927,13 +967,13 @@ exports.update = async (req, res) => {
       isPublic: isPublic !== undefined ? isPublic : box.isPublic,
       githubRepo: githubRepo !== undefined ? githubRepo : box.githubRepo,
       workflowFile: workflowFile !== undefined ? workflowFile : box.workflowFile,
-      cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl
+      cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl,
     });
 
     res.send(updatedBox);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while updating the Box."
+      message: err.message || 'Some error occurred while updating the Box.',
     });
   }
 };
@@ -990,20 +1030,24 @@ exports.delete = async (req, res) => {
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [{
-        model: Users,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name }
-        }]
-      }]
+      include: [
+        {
+          model: Users,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              where: { name },
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -1011,30 +1055,30 @@ exports.delete = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box not found in organization ${organization}.`
+        message: `Box not found in organization ${organization}.`,
       });
     }
 
     const deleted = await Box.destroy({
-      where: { id: box.id }
+      where: { id: box.id },
     });
 
     if (deleted) {
       // Delete the box's directory
       const boxPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name);
-      fs.rm(boxPath, { recursive: true, force: true }, (err) => {
+      fs.rm(boxPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the box directory: ${err}`);
         }
       });
 
-      return res.send({ message: "Box deleted successfully!" });
+      return res.send({ message: 'Box deleted successfully!' });
     }
 
     throw new Error('Box not found');
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while deleting the Box."
+      message: err.message || 'Some error occurred while deleting the Box.',
     });
   }
 };
@@ -1086,19 +1130,23 @@ exports.deleteAll = async (req, res) => {
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [{
-        model: Users,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box'
-        }]
-      }]
+      include: [
+        {
+          model: Users,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`
+        message: `Organization not found with name: ${organization}.`,
       });
     }
 
@@ -1106,34 +1154,40 @@ exports.deleteAll = async (req, res) => {
 
     if (boxes.length === 0) {
       return res.status(404).send({
-        message: `No boxes found under organization ${organization}.`
+        message: `No boxes found under organization ${organization}.`,
       });
     }
 
     // Delete all boxes from the database
     const deleted = await Box.destroy({
       where: { id: boxes.map(box => box.id) },
-      truncate: false
+      truncate: false,
     });
 
     if (deleted) {
       // Delete each box's directory
       boxes.forEach(box => {
-        const boxPath = path.join(appConfig.boxvault.box_storage_directory.value, organization, box.name);
-        fs.rm(boxPath, { recursive: true, force: true }, (err) => {
+        const boxPath = path.join(
+          appConfig.boxvault.box_storage_directory.value,
+          organization,
+          box.name
+        );
+        fs.rm(boxPath, { recursive: true, force: true }, err => {
           if (err) {
             log.app.info(`Could not delete the box directory for ${box.name}: ${err}`);
           }
         });
       });
 
-      return res.send({ message: `${deleted} Boxes were deleted successfully under organization=${organization}!` });
+      return res.send({
+        message: `${deleted} Boxes were deleted successfully under organization=${organization}!`,
+      });
     }
 
     throw new Error('No boxes found to delete');
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while removing all boxes."
+      message: err.message || 'Some error occurred while removing all boxes.',
     });
   }
 };
@@ -1216,21 +1270,21 @@ exports.deleteAll = async (req, res) => {
 // Handle Vagrant box downloads
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
-  
+
   // Get auth info either from vagrantHandler or x-access-token
-  let userId = req.userId;  // Set by vagrantHandler for Vagrant requests
-  let isServiceAccount = req.isServiceAccount;  // Set by vagrantHandler for Vagrant requests
+  let { userId } = req; // Set by vagrantHandler for Vagrant requests
+  let { isServiceAccount } = req; // Set by vagrantHandler for Vagrant requests
 
   // If not set by vagrantHandler, try x-access-token
   if (!userId) {
-    const token = req.headers["x-access-token"];
+    const token = req.headers['x-access-token'];
     if (token) {
       try {
         const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch (err) {
-        log.app.warn("Invalid x-access-token:", err.message);
+        log.app.warn('Invalid x-access-token:', err.message);
       }
     }
   }
@@ -1239,37 +1293,43 @@ exports.downloadBox = async (req, res) => {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers
+    headers: req.headers,
   });
 
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [{
-        model: Users,
-        as: 'users',
-        include: [{
-          model: Box,
-          as: 'box',
-          where: { name },
+      include: [
+        {
+          model: Users,
+          as: 'users',
           include: [
             {
-              model: Users,
-              as: 'user',
+              model: Box,
+              as: 'box',
+              where: { name },
               include: [
                 {
-                  model: Organization,
-                  as: 'organization'
-                }
-              ]
-            }
-          ]
-        }]
-      }]
+                  model: Users,
+                  as: 'user',
+                  include: [
+                    {
+                      model: Organization,
+                      as: 'organization',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: `Organization not found with name: ${organization}.` });
+      return res
+        .status(404)
+        .send({ message: `Organization not found with name: ${organization}.` });
     }
 
     const box = organizationData.users.flatMap(user => user.box).find(box => box.name === name);
@@ -1299,23 +1359,22 @@ exports.downloadBox = async (req, res) => {
 
     // Check if we have a user ID (either from vagrantHandler or x-access-token)
     if (!req.userId) {
-      return res.status(403).send({ message: "Unauthorized access to private box." });
+      return res.status(403).send({ message: 'Unauthorized access to private box.' });
     }
 
     // Check if user belongs to the organization
     const user = organizationData.users.find(user => user.id === req.userId);
     if (!user) {
-      return res.status(403).send({ message: "Unauthorized access to private box." });
+      return res.status(403).send({ message: 'Unauthorized access to private box.' });
     }
 
     // User belongs to organization, allow download
     return handleDownload();
-
   } catch (err) {
     log.error.error('Error in downloadBox:', err);
-    res.status(500).send({ 
-      message: "Error processing download request",
-      error: err.message 
+    res.status(500).send({
+      message: 'Error processing download request',
+      error: err.message,
     });
   }
 };
