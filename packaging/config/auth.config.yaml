@@ -149,7 +149,7 @@ auth:
     subsection: OIDC Providers
     required: false
     order: 50
-    providers:
+    providers: {}
   external:
     domain_mapping_enabled:
       type: boolean
