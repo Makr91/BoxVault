@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.4](https://github.com/Makr91/BoxVault/compare/v0.26.3...v0.26.4) (2025-12-29)
+
+
+### Bug Fixes
+
+* oidc logout ([5a111ed](https://github.com/Makr91/BoxVault/commit/5a111ed10d04c9910c24fda1a59aca1fdb5efda3))
+
 ## [0.26.3](https://github.com/Makr91/BoxVault/compare/v0.26.2...v0.26.3) (2025-12-28)
 
 
