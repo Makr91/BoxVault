@@ -68,6 +68,39 @@ gravatar:
     subsection: Gravatar Settings
     required: false
     order: 2
+ticket_system:
+  enabled:
+    type: boolean
+    value: true
+    description: Enable ticket/support request system integration
+    section: Application
+    subsection: Ticket System
+    required: false
+    order: 1
+  base_url:
+    type: url
+    value: https://xd.prominic.net/app/apprequest.nsf/router?openagent
+    description: Base URL for ticket system
+    section: Application
+    subsection: Ticket System
+    required: false
+    order: 2
+  req_type:
+    type: string
+    value: sso
+    description: Default request type parameter
+    section: Application
+    subsection: Ticket System
+    required: false
+    order: 3
+  context:
+    type: url
+    value: https://github.com/Makr91/BoxVault
+    description: Context URL for ticket system (usually repository URL)
+    section: Application
+    subsection: Ticket System
+    required: false
+    order: 4
 ssl:
   generate_ssl:
     type: boolean

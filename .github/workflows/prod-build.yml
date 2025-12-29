@@ -113,41 +113,41 @@ jobs:
         run: |
           dpkg-deb --build "${PACKAGE_NAME}_${VERSION}_${ARCH}" "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
 
-      # OmniOS Build Steps
-      - name: Fresh checkout for OmniOS build
-        uses: actions/checkout@v6
-        with:
-          path: omnios-source
-          clean: true
-
-      - name: Clean OmniOS build directory
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault/* /local/builds/boxvault/.*" || true
-
-      - name: Sync source code to OmniOS
-        run: |
-          rsync -av --delete \
-            --exclude='.git' \
-            --exclude='backend/node_modules' \
-            --exclude='frontend/node_modules' \
-            --exclude='frontend/dist' \
-            --exclude='*.deb' \
-            omnios-source/ ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault/
-
-      - name: Build package on OmniOS
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "
-            cd /local/builds/boxvault && 
-            export PATH=/opt/ooce/bin:/opt/ooce/node-22/bin:\$PATH &&
-            export MAKE=gmake &&
-            chmod +x packaging/omnios/build.sh &&
-            ./packaging/omnios/build.sh
-          "
-
-      - name: Transfer OmniOS package back
-        run: |
-          rsync -av ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault/*.p5p ./ || echo "No .p5p files found"
-
+#      # OmniOS Build Steps
+#      - name: Fresh checkout for OmniOS build
+#        uses: actions/checkout@v6
+#        with:
+#          path: omnios-source
+#          clean: true
+#
+#      - name: Clean OmniOS build directory
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault/* /local/builds/boxvault/.*" || true
+#
+#      - name: Sync source code to OmniOS
+#        run: |
+#          rsync -av --delete \
+#            --exclude='.git' \
+#            --exclude='backend/node_modules' \
+#            --exclude='frontend/node_modules' \
+#            --exclude='frontend/dist' \
+#            --exclude='*.deb' \
+#            omnios-source/ ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault/
+#
+#      - name: Build package on OmniOS
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "
+#            cd /local/builds/boxvault && 
+#            export PATH=/opt/ooce/bin:/opt/ooce/node-22/bin:\$PATH &&
+#            export MAKE=gmake &&
+#            chmod +x packaging/omnios/build.sh &&
+#            ./packaging/omnios/build.sh
+#          "
+#
+#      - name: Transfer OmniOS package back
+#        run: |
+#          rsync -av ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault/*.p5p ./ || echo "No .p5p files found"
+#
       - name: Install GitHub CLI
         run: |
           if ! command -v gh &> /dev/null; then
@@ -164,30 +164,30 @@ jobs:
         run: |
           gh release upload ${{ github.event.inputs.tag_name || env.TAG_NAME }} "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" --clobber
 
-      - name: Upload OmniOS package to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for file in *.p5p; do
-            if [ -f "$file" ]; then
-              echo "Uploading $file..."
-              gh release upload ${{ github.event.inputs.tag_name || env.TAG_NAME }} "$file" --clobber
-            fi
-          done
-
-      - name: Publish OmniOS package to repository
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "
-            cd /local/builds/boxvault &&
-            pfexec pkgsend publish -d proto -s file:///local/public/r151054/pkg boxvault.p5m.final &&
-            pfexec pkgrepo refresh -s /local/public/r151054/pkg &&
-            pfexec svcadm restart pkg/server:r151054_STARTcloud
-          "
-
-      - name: Clean up OmniOS build directory
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault/*"
-
+#      - name: Upload OmniOS package to release
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          for file in *.p5p; do
+#            if [ -f "$file" ]; then
+#              echo "Uploading $file..."
+#              gh release upload ${{ github.event.inputs.tag_name || env.TAG_NAME }} "$file" --clobber
+#            fi
+#          done
+#
+#      - name: Publish OmniOS package to repository
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "
+#            cd /local/builds/boxvault &&
+#            pfexec pkgsend publish -d proto -s file:///local/public/r151054/pkg boxvault.p5m.final &&
+#            pfexec pkgrepo refresh -s /local/public/r151054/pkg &&
+#            pfexec svcadm restart pkg/server:r151054_STARTcloud
+#          "
+#
+#      - name: Clean up OmniOS build directory
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault/*"
+#
       - name: Upload Debian package to repository server
         run: |
           rsync -av boxvault_*.deb startcloud@packages.debian.startcloud.com:/tmp/

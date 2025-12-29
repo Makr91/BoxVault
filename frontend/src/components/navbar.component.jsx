@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun, FaGlobe, FaHouse } from "react-icons/fa6";
+import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import FavoritesService from '../services/favorites.service';
+import ConfigService from '../services/config.service';
 
 const Navbar = ({
   currentUser,
@@ -18,6 +19,8 @@ const Navbar = ({
 }) => {
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
   const [favoriteApps, setFavoriteApps] = useState([]);
+  const [userClaims, setUserClaims] = useState(null);
+  const [ticketConfig, setTicketConfig] = useState(null);
 
   const handleLogout = () => {
     if (logoutEverywhere) {
@@ -27,35 +30,83 @@ const Navbar = ({
     }
   };
 
-  // Load favorites when user is authenticated with OIDC
+  // Load favorites and user claims when authenticated with OIDC
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
 
-    const loadFavorites = async () => {
+    const loadUserData = async () => {
       if (currentUser?.provider?.startsWith('oidc-')) {
         try {
           const response = await FavoritesService.getUserInfoClaims();
-          if (mounted && response.data?.favorite_apps) {
-            setFavoriteApps(response.data.favorite_apps);
+          if (mounted) {
+            setUserClaims(response.data);
+            setFavoriteApps(response.data?.favorite_apps || []);
           }
         } catch (error) {
           if (!error.name?.includes('Cancel') && !error.message?.includes('aborted')) {
-            console.error('Error loading favorites:', error);
+            console.error('Error loading user claims:', error);
           }
         }
       } else {
         setFavoriteApps([]);
+        setUserClaims(null);
       }
     };
 
-    loadFavorites();
+    loadUserData();
 
     return () => {
       mounted = false;
       controller.abort();
     };
   }, [currentUser]);
+
+  // Load ticket system config
+  useEffect(() => {
+    let mounted = true;
+    
+    const loadTicketConfig = async () => {
+      try {
+        const response = await ConfigService.getConfig('app');
+        if (mounted && response.data?.ticket_system) {
+          setTicketConfig(response.data.ticket_system);
+        }
+      } catch (error) {
+        console.error('Error loading ticket config:', error);
+      }
+    };
+
+    loadTicketConfig();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const buildTicketUrl = () => {
+    if (!ticketConfig || !ticketConfig.enabled?.value) return null;
+    if (!userClaims) return null;
+
+    const baseUrl = ticketConfig.base_url?.value || '';
+    const req = ticketConfig.req_type?.value || 'sso';
+    const context = ticketConfig.context?.value || '';
+    const customerId = userClaims.customer_id || 'BOXVAULT';
+    const userName = userClaims.name || userClaims.email || 'User';
+    const email = userClaims.email || '';
+
+    const params = new URLSearchParams({
+      req: req,
+      customerId: customerId,
+      user: userName,
+      email: email,
+      context: context
+    });
+
+    return `${baseUrl}&${params.toString()}`;
+  };
+
+  const ticketUrl = buildTicketUrl();
 
   const handleFavoriteClick = (app, event) => {
     event.preventDefault();
@@ -184,11 +235,34 @@ const Navbar = ({
                   </>
                 )}
                 {showAdminBoard && (
-                  <li>
-                    <Link to="/admin" className="dropdown-item">
-                      Admin
-                    </Link>
-                  </li>
+                  <>
+                    <li>
+                      <hr className="dropdown-divider" />
+                    </li>
+                    <li>
+                      <Link to="/admin" className="dropdown-item">
+                        Admin
+                      </Link>
+                    </li>
+                  </>
+                )}
+                {ticketUrl && (
+                  <>
+                    <li>
+                      <hr className="dropdown-divider" />
+                    </li>
+                    <li>
+                      <a
+                        href={ticketUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="dropdown-item"
+                      >
+                        <FaTicket className="me-2" />
+                        Open Ticket
+                      </a>
+                    </li>
+                  </>
                 )}
                 <li>
                   <hr className="dropdown-divider" />
