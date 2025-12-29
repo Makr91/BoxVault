@@ -222,23 +222,22 @@ const Navbar = ({
                     </Link>
                   </li>
                 )}
-                <li className="px-3 py-2">
-                  <div className="d-flex align-items-center gap-2">
+                <li>
+                  <div className="dropdown-item d-flex align-items-center">
                     {currentUser?.provider?.startsWith('oidc-') && authServerUrl ? (
                       <>
                         <button
-                          className="btn btn-link p-0"
+                          className="btn btn-link p-0 me-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             setProfileIsLocal(!profileIsLocal);
                           }}
                           title={profileIsLocal ? "Local profile" : "Auth server profile"}
-                          style={{ fontSize: '1.2rem' }}
                         >
                           {profileIsLocal ? <FaUser /> : <FaIdBadge />}
                         </button>
                         {profileIsLocal ? (
-                          <Link to="/profile" className="btn btn-link p-0">
+                          <Link to="/profile" className="text-decoration-none text-dark">
                             Profile
                           </Link>
                         ) : (
@@ -246,7 +245,7 @@ const Navbar = ({
                             href={`${authServerUrl}/user/profile`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="btn btn-link p-0"
+                            className="text-decoration-none text-dark"
                           >
                             Profile
                           </a>
@@ -254,8 +253,8 @@ const Navbar = ({
                       </>
                     ) : (
                       <>
-                        <FaUser style={{ fontSize: '1.2rem' }} />
-                        <Link to="/profile" className="btn btn-link p-0">
+                        <FaUser className="me-2" />
+                        <Link to="/profile" className="text-decoration-none text-dark">
                           Profile
                         </Link>
                       </>
@@ -326,25 +325,25 @@ const Navbar = ({
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
-                <li className="px-3 py-2">
-                  <div className="d-flex align-items-center gap-2">
+                <li>
+                  <div className="dropdown-item d-flex align-items-center">
                     <button
-                      className="btn btn-link p-0"
+                      className="btn btn-link p-0 me-2"
                       onClick={(e) => {
                         e.stopPropagation();
                         setLogoutEverywhere(!logoutEverywhere);
                       }}
                       title={logoutEverywhere ? "Logout everywhere" : "Logout locally only"}
-                      style={{ fontSize: '1.2rem' }}
                     >
                       {logoutEverywhere ? <FaGlobe /> : <FaHouse />}
                     </button>
-                    <button
+                    <span
                       onClick={handleLogout}
-                      className="btn btn-link text-danger p-0"
+                      className="text-danger cursor-pointer"
+                      style={{ cursor: 'pointer' }}
                     >
                       Logout
-                    </button>
+                    </span>
                   </div>
                 </li>
               </ul>
