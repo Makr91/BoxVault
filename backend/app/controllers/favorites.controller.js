@@ -113,14 +113,23 @@ exports.getFavorites = async (req, res) => {
       hasToken: !!oidcAccessToken 
     });
     
-    const response = await axios.get(`${authServerUrl}/user/favorites`, {
+    const response = await axios.get(`${authServerUrl}/userinfo`, {
       headers: {
         'Authorization': `Bearer ${oidcAccessToken}`,
         'Content-Type': 'application/json'
       }
     });
     
-    res.status(200).json(response.data);
+    // Extract favorite_apps from userinfo claims and return raw favorites format
+    const favoriteApps = response.data?.favorite_apps || [];
+    // Convert enriched format back to raw format (just clientId, customLabel, order)
+    const rawFavorites = favoriteApps.map(app => ({
+      clientId: app.clientId,
+      customLabel: app.customLabel,
+      order: app.order
+    }));
+    
+    res.status(200).json(rawFavorites);
   } catch (error) {
     log.error.error('Error fetching favorites from auth server:', {
       error: error.message,
@@ -275,7 +284,7 @@ exports.getUserInfoClaims = async (req, res) => {
       hasToken: !!oidcAccessToken 
     });
     
-    const response = await axios.get(`${authServerUrl}/api/userinfo/claims`, {
+    const response = await axios.get(`${authServerUrl}/userinfo`, {
       headers: {
         'Authorization': `Bearer ${oidcAccessToken}`,
         'Content-Type': 'application/json'
@@ -325,14 +334,14 @@ exports.getEnrichedFavorites = async (req, res) => {
     
     const authServerUrl = getAuthServerUrl(req);
     
-    const response = await axios.get(`${authServerUrl}/api/userinfo/favorites`, {
+    const response = await axios.get(`${authServerUrl}/userinfo`, {
       headers: {
         'Authorization': `Bearer ${oidcAccessToken}`,
         'Content-Type': 'application/json'
       }
     });
     
-    res.status(200).json(response.data);
+    res.status(200).json(response.data?.favorite_apps || []);
   } catch (error) {
     log.error.error('Error fetching enriched favorites:', error.message);
     res.status(200).json([]);
