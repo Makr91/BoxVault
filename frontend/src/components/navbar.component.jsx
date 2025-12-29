@@ -64,7 +64,7 @@ const Navbar = ({
     };
   }, [currentUser]);
 
-  // Load ticket system config and auth server URL
+  // Load ticket config and extract auth server URL from id_token
   useEffect(() => {
     let mounted = true;
     
@@ -79,22 +79,18 @@ const Navbar = ({
           }
         }
 
-        // Get auth server URL from auth config (only for OIDC users)
-        if (currentUser?.provider?.startsWith('oidc-')) {
+        // Get auth server URL from id_token for OIDC users
+        if (currentUser?.provider?.startsWith('oidc-') && currentUser?.accessToken) {
           try {
-            const authResponse = await fetch(`${window.location.origin}/api/config/auth`);
-            if (authResponse.ok) {
-              const authData = await authResponse.json();
-              const provider = currentUser.provider.replace('oidc-', '');
-              const issuer = authData?.auth?.oidc?.providers?.[provider]?.issuer?.value;
-              if (issuer && mounted) {
-                const url = new URL(issuer);
-                setAuthServerUrl(`${url.protocol}//${url.host}`);
+            const jwtPayload = JSON.parse(atob(currentUser.accessToken.split('.')[1]));
+            if (jwtPayload.id_token) {
+              const idTokenPayload = JSON.parse(atob(jwtPayload.id_token.split('.')[1]));
+              if (idTokenPayload.iss && mounted) {
+                setAuthServerUrl(idTokenPayload.iss);
               }
             }
           } catch (error) {
-            // If can't load auth config, extract from token or use default
-            console.debug('Could not load auth config, using default');
+            console.debug('Could not extract issuer from id_token:', error);
           }
         }
       } catch (error) {
@@ -227,40 +223,44 @@ const Navbar = ({
                   </li>
                 )}
                 <li className="px-3 py-2">
-                  {currentUser?.provider?.startsWith('oidc-') && authServerUrl ? (
-                    <div className="d-flex align-items-center gap-2">
-                      <button
-                        className="btn btn-link p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProfileIsLocal(!profileIsLocal);
-                        }}
-                        title={profileIsLocal ? "Local profile" : "Auth server profile"}
-                        style={{ fontSize: '1.2rem' }}
-                      >
-                        {profileIsLocal ? <FaUser /> : <FaIdBadge />}
-                      </button>
-                      {profileIsLocal ? (
-                        <Link to="/profile" className="btn btn-outline-primary btn-sm">
+                  <div className="d-flex align-items-center gap-2">
+                    {currentUser?.provider?.startsWith('oidc-') && authServerUrl ? (
+                      <>
+                        <button
+                          className="btn btn-link p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProfileIsLocal(!profileIsLocal);
+                          }}
+                          title={profileIsLocal ? "Local profile" : "Auth server profile"}
+                          style={{ fontSize: '1.2rem' }}
+                        >
+                          {profileIsLocal ? <FaUser /> : <FaIdBadge />}
+                        </button>
+                        {profileIsLocal ? (
+                          <Link to="/profile" className="btn btn-link p-0">
+                            Profile
+                          </Link>
+                        ) : (
+                          <a
+                            href={`${authServerUrl}/user/profile`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-link p-0"
+                          >
+                            Profile
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <FaUser style={{ fontSize: '1.2rem' }} />
+                        <Link to="/profile" className="btn btn-link p-0">
                           Profile
                         </Link>
-                      ) : (
-                        <a
-                          href={`${authServerUrl}/user/profile`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-outline-primary btn-sm"
-                        >
-                          Profile
-                        </a>
-                      )}
-                    </div>
-                  ) : (
-                    <Link to="/profile" className="dropdown-item">
-                      <FaUser className="me-2" />
-                      Profile
-                    </Link>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">
