@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FaMoon, FaSun, FaGlobe, FaHouse } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
+import FavoritesService from '../services/favorites.service';
 
 const Navbar = ({
   currentUser,
@@ -16,6 +17,7 @@ const Navbar = ({
   logOutLocal
 }) => {
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
+  const [favoriteApps, setFavoriteApps] = useState([]);
 
   const handleLogout = () => {
     if (logoutEverywhere) {
@@ -23,6 +25,81 @@ const Navbar = ({
     } else {
       logOutLocal();
     }
+  };
+
+  // Load favorites when user is authenticated with OIDC
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const loadFavorites = async () => {
+      if (currentUser?.provider?.startsWith('oidc-')) {
+        try {
+          const response = await FavoritesService.getUserInfoClaims();
+          if (mounted && response.data?.favorite_apps) {
+            setFavoriteApps(response.data.favorite_apps);
+          }
+        } catch (error) {
+          if (!error.name?.includes('Cancel') && !error.message?.includes('aborted')) {
+            console.error('Error loading favorites:', error);
+          }
+        }
+      } else {
+        setFavoriteApps([]);
+      }
+    };
+
+    loadFavorites();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, [currentUser]);
+
+  const handleFavoriteClick = (app, event) => {
+    event.preventDefault();
+    if (app.homeUrl && app.homeUrl !== '') {
+      window.open(app.homeUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const renderAppIcon = (app) => {
+    const iconStyle = { width: '20px', height: '20px', marginRight: '8px' };
+    
+    if (app.iconUrl && app.iconUrl !== '') {
+      return (
+        <img 
+          src={app.iconUrl} 
+          style={iconStyle}
+          alt=""
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+      );
+    }
+    
+    if (app.homeUrl && app.homeUrl !== '') {
+      try {
+        const faviconUrl = new URL(app.homeUrl).origin + '/favicon.ico';
+        return (
+          <img 
+            src={faviconUrl} 
+            style={iconStyle}
+            alt=""
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+        );
+      } catch (error) {
+        // Invalid URL, skip icon
+        return null;
+      }
+    }
+    
+    return null;
   };
   return (
     <nav className={`navbar navbar-expand-lg`}>
@@ -82,6 +159,30 @@ const Navbar = ({
                     About
                   </Link>
                 </li>
+                {favoriteApps && favoriteApps.length > 0 && (
+                  <>
+                    <li>
+                      <hr className="dropdown-divider" />
+                    </li>
+                    <li className="dropdown-header">Favorite Applications</li>
+                    {favoriteApps
+                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      .map(app => (
+                        <li key={app.clientId}>
+                          <a
+                            href={app.homeUrl || '#'}
+                            onClick={(e) => handleFavoriteClick(app, e)}
+                            className="dropdown-item"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {renderAppIcon(app)}
+                            {app.customLabel || app.clientName || app.clientId}
+                          </a>
+                        </li>
+                      ))}
+                  </>
+                )}
                 {showAdminBoard && (
                   <li>
                     <Link to="/admin" className="dropdown-item">

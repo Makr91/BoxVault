@@ -102,13 +102,14 @@ module.exports = function (app) {
         return res.redirect('/?error=user_creation_failed');
       }
 
-      // Generate JWT token with id_token stored for RP-initiated logout
+      // Generate JWT token with id_token and access_token stored for RP-initiated logout and favorites
       const token = jwt.sign(
         {
           id: user.id,
           isServiceAccount: false,
           provider: `oidc-${provider}`,
           id_token: tokens.id_token, // Store for RP-initiated logout
+          oidc_access_token: tokens.access_token, // Store for auth server API calls (favorites, etc.)
         },
         authConfig.auth.jwt.jwt_secret.value,
         {

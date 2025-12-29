@@ -320,6 +320,7 @@ async function initializeApp() {
     require('./app/routes/provider.routes')(app);
     require('./app/routes/architecture.routes')(app);
     require('./app/routes/service_account.routes')(app);
+    require('./app/routes/favorites.routes')(app);
     require('./app/routes/setup.routes')(app);
 
     log.app.info('All routes loaded successfully');

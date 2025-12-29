@@ -4,6 +4,7 @@ import AuthService from "../services/auth.service";
 import UserService from "../services/user.service";
 import ServiceAccountService from "../services/service_account.service";
 import ConfirmationModal from './confirmation.component';
+import FavoritesManager from './favorites-manager.component';
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
 const Profile = () => {
@@ -343,6 +344,19 @@ const Profile = () => {
                   Security
                 </button>
               </li>
+              {currentUser?.provider?.startsWith('oidc-') && (
+                <li className="nav-item">
+                  <button
+                    className={`nav-link ${activeTab === "favorites" ? "active" : ""}`}
+                    onClick={() => {
+                      setMessage("");
+                      setActiveTab("favorites");
+                    }}
+                  >
+                    Favorites
+                  </button>
+                </li>
+              )}
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "serviceAccounts" ? "active" : ""}`}
@@ -440,6 +454,11 @@ const Profile = () => {
                       Delete My Account
                     </button>
                   </div>
+                </div>
+              )}
+              {activeTab === "favorites" && (
+                <div className="tab-pane fade show active">
+                  <FavoritesManager />
                 </div>
               )}
               {activeTab === "serviceAccounts" && (
