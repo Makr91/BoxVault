@@ -9,6 +9,7 @@ module.exports = function (app) {
     next();
   });
   app.get('/api/config/gravatar', configController.getGravatarConfig);
+  app.get('/api/config/ticket', configController.getTicketConfig);
   app.get(
     '/api/config/:configName',
     [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket } from "react-icons/fa6";
+import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket, FaUser, FaCircleInfo, FaGear, FaUserShield } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import FavoritesService from '../services/favorites.service';
@@ -68,9 +68,12 @@ const Navbar = ({
     
     const loadTicketConfig = async () => {
       try {
-        const response = await ConfigService.getConfig('app');
-        if (mounted && response.data?.ticket_system) {
-          setTicketConfig(response.data.ticket_system);
+        const response = await fetch(`${window.location.origin}/api/config/ticket`);
+        if (response.ok) {
+          const data = await response.json();
+          if (mounted && data?.ticket_system) {
+            setTicketConfig(data.ticket_system);
+          }
         }
       } catch (error) {
         console.error('Error loading ticket config:', error);
@@ -196,17 +199,20 @@ const Navbar = ({
                 {showModeratorBoard && (
                   <li>
                     <Link to="/moderator" className="dropdown-item">
+                      <FaUserShield className="me-2" />
                       Moderator
                     </Link>
                   </li>
                 )}
                 <li>
                   <Link to="/profile" className="dropdown-item">
+                    <FaUser className="me-2" />
                     Profile
                   </Link>
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">
+                    <FaCircleInfo className="me-2" />
                     About
                   </Link>
                 </li>
@@ -241,6 +247,7 @@ const Navbar = ({
                     </li>
                     <li>
                       <Link to="/admin" className="dropdown-item">
+                        <FaGear className="me-2" />
                         Admin
                       </Link>
                     </li>
@@ -270,12 +277,6 @@ const Navbar = ({
                 <li className="px-3 py-2">
                   <div className="d-flex align-items-center gap-2">
                     <button
-                      onClick={handleLogout}
-                      className="btn btn-outline-danger btn-sm"
-                    >
-                      Logout
-                    </button>
-                    <button
                       className="btn btn-link p-0"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -285,6 +286,12 @@ const Navbar = ({
                       style={{ fontSize: '1.2rem' }}
                     >
                       {logoutEverywhere ? <FaGlobe /> : <FaHouse />}
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="btn btn-outline-danger btn-sm"
+                    >
+                      Logout
                     </button>
                   </div>
                 </li>
