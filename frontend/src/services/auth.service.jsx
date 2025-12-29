@@ -241,6 +241,11 @@ const logout = async () => {
   window.location.href = "/";
 };
 
+const logoutLocal = () => {
+  localStorage.removeItem("user");
+  window.location.href = "/";
+};
+
 const getCurrentUser = () => {
   return JSON.parse(localStorage.getItem("user"));
 };
@@ -300,6 +305,7 @@ const AuthService = {
   register,
   login,
   logout,
+  logoutLocal,
   getCurrentUser,
   getGravatarProfile,
   refreshUserData,

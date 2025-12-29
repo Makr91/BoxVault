@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { FaMoon, FaSun } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
@@ -12,8 +12,18 @@ const Navbar = ({
   showModeratorBoard,
   theme,
   toggleTheme,
-  logOut
+  logOut,
+  logOutLocal
 }) => {
+  const [logoutEverywhere, setLogoutEverywhere] = useState(true);
+
+  const handleLogout = () => {
+    if (logoutEverywhere) {
+      logOut();
+    } else {
+      logOutLocal();
+    }
+  };
   return (
     <nav className={`navbar navbar-expand-lg`}>
       <div className="container-fluid">
@@ -82,10 +92,31 @@ const Navbar = ({
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
-                <li>
-                  <button onClick={logOut} className="dropdown-item">
-                    Logout
-                  </button>
+                <li className="px-3 py-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      onClick={handleLogout}
+                      className="btn btn-outline-danger btn-sm"
+                    >
+                      Logout
+                    </button>
+                    <div className="form-check mb-0">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="logoutEverywhere"
+                        checked={logoutEverywhere}
+                        onChange={(e) => setLogoutEverywhere(e.target.checked)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="logoutEverywhere"
+                      >
+                        Everywhere
+                      </label>
+                    </div>
+                  </div>
                 </li>
               </ul>
             </li>

@@ -67,13 +67,25 @@ const AuthCallback = () => {
         })
         .then(fullUserData => {
           if (fullUserData) {
+            // Decode JWT to extract provider field for RP-initiated logout
+            let provider = null;
+            try {
+              const base64Url = token.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const decoded = JSON.parse(atob(base64));
+              provider = decoded.provider;
+            } catch (decodeError) {
+              console.warn("Failed to decode JWT for provider extraction:", decodeError);
+            }
+
             const completeUserData = {
               ...fullUserData,
               accessToken: token,
-              tokenRefreshTime: Date.now()
+              tokenRefreshTime: Date.now(),
+              provider
             };
             localStorage.setItem("user", JSON.stringify(completeUserData));
-            console.log("Full user data fetched and stored");
+            console.log("Full user data fetched and stored", { provider });
             
             // Trigger login event to update navbar
             EventBus.dispatch("login", completeUserData);

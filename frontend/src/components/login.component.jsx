@@ -186,8 +186,7 @@ const Login = ({ theme }) => {
             <div className="form-group">
               <div className="alert alert-info text-center">
                 <i className="fas fa-external-link-alt"></i>
-                <br />
-                You will be redirected to your identity provider to sign in.
+                Click Sign in Below and You will be redirected to your identity provider to sign in.
               </div>
             </div>
           )}

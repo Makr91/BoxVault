@@ -217,6 +217,16 @@ const App = () => {
     setGravatarFetched(false);
   };
 
+  const logOutLocal = () => {
+    AuthService.logoutLocal();
+    setShowAdminBoard(false);
+    setShowModeratorBoard(false);
+    setCurrentUser(undefined);
+    setUserOrganization("");
+    setGravatarUrl("");
+    setGravatarFetched(false);
+  };
+
   if (setupComplete === null) {
     // Show a loading indicator while checking setup status
     return <div>Loading...</div>;
@@ -234,6 +244,7 @@ const App = () => {
         theme={theme}
         toggleTheme={toggleTheme}
         logOut={logOut}
+        logOutLocal={logOutLocal}
       />
       <div className="container-fluid mt-3">
         <Routes>

@@ -123,10 +123,23 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
   try {
     log.auth.info('Processing OIDC callback', { provider: providerName });
 
-    const tokens = await client.authorizationCodeGrant(config, currentUrl, {
-      expectedState: state,
-      pkceCodeVerifier: codeVerifier,
-    });
+    let tokens;
+    try {
+      tokens = await client.authorizationCodeGrant(config, currentUrl, {
+        expectedState: state,
+        pkceCodeVerifier: codeVerifier,
+      });
+    } catch (grantError) {
+      // Log detailed token exchange error
+      log.auth.error('Token exchange failed', {
+        provider: providerName,
+        error: grantError.message,
+        errorType: grantError.constructor.name,
+        errorDetails: grantError.error,
+        errorDescription: grantError.error_description,
+      });
+      throw grantError;
+    }
 
     const userinfo = tokens.claims();
     log.auth.debug('OIDC user claims received', {
@@ -233,8 +246,29 @@ async function setupOidcProviders() {
 
         log.app.info(`Configuring OIDC provider: ${providerName}`, { issuer });
 
-        // Discover OIDC configuration
-        const oidcConfig = await client.discovery(new URL(issuer), clientId, clientSecret);
+        // Get token endpoint auth method from provider config (ARMOR pattern)
+        const authMethod = providerConfig.token_endpoint_auth_method?.value || 'client_secret_basic';
+        
+        log.app.info(`Using token endpoint auth method: ${authMethod}`, { provider: providerName });
+
+        // Create client authentication method (ARMOR pattern)
+        let clientAuth;
+        switch (authMethod) {
+          case 'client_secret_basic':
+            clientAuth = client.ClientSecretBasic(clientSecret);
+            break;
+          case 'client_secret_post':
+            clientAuth = client.ClientSecretPost(clientSecret);
+            break;
+          case 'none':
+            clientAuth = client.None();
+            break;
+          default:
+            clientAuth = client.ClientSecretBasic(clientSecret);
+        }
+
+        // Discover OIDC configuration with proper client authentication
+        const oidcConfig = await client.discovery(new URL(issuer), clientId, clientSecret, clientAuth);
 
         // Store configuration for later use by helper functions
         oidcConfigurations.set(providerName, oidcConfig);
