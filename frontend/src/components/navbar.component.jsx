@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket, FaUser, FaCircleInfo, FaGear, FaUserShield } from "react-icons/fa6";
+import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket, FaUser, FaCircleInfo, FaGear, FaUserShield, FaIdBadge } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import FavoritesService from '../services/favorites.service';
@@ -18,9 +18,11 @@ const Navbar = ({
   logOutLocal
 }) => {
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
+  const [profileIsLocal, setProfileIsLocal] = useState(true);
   const [favoriteApps, setFavoriteApps] = useState([]);
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
+  const [authServerUrl, setAuthServerUrl] = useState('');
 
   const handleLogout = () => {
     if (logoutEverywhere) {
@@ -62,30 +64,50 @@ const Navbar = ({
     };
   }, [currentUser]);
 
-  // Load ticket system config
+  // Load ticket system config and auth server URL
   useEffect(() => {
     let mounted = true;
     
-    const loadTicketConfig = async () => {
+    const loadConfigs = async () => {
       try {
-        const response = await fetch(`${window.location.origin}/api/config/ticket`);
-        if (response.ok) {
-          const data = await response.json();
+        // Load ticket config
+        const ticketResponse = await fetch(`${window.location.origin}/api/config/ticket`);
+        if (ticketResponse.ok) {
+          const data = await ticketResponse.json();
           if (mounted && data?.ticket_system) {
             setTicketConfig(data.ticket_system);
           }
         }
+
+        // Get auth server URL from auth config (only for OIDC users)
+        if (currentUser?.provider?.startsWith('oidc-')) {
+          try {
+            const authResponse = await fetch(`${window.location.origin}/api/config/auth`);
+            if (authResponse.ok) {
+              const authData = await authResponse.json();
+              const provider = currentUser.provider.replace('oidc-', '');
+              const issuer = authData?.auth?.oidc?.providers?.[provider]?.issuer?.value;
+              if (issuer && mounted) {
+                const url = new URL(issuer);
+                setAuthServerUrl(`${url.protocol}//${url.host}`);
+              }
+            }
+          } catch (error) {
+            // If can't load auth config, extract from token or use default
+            console.debug('Could not load auth config, using default');
+          }
+        }
       } catch (error) {
-        console.error('Error loading ticket config:', error);
+        console.error('Error loading configs:', error);
       }
     };
 
-    loadTicketConfig();
+    loadConfigs();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [currentUser]);
 
   const buildTicketUrl = () => {
     if (!ticketConfig || !ticketConfig.enabled?.value) return null;
@@ -204,11 +226,41 @@ const Navbar = ({
                     </Link>
                   </li>
                 )}
-                <li>
-                  <Link to="/profile" className="dropdown-item">
-                    <FaUser className="me-2" />
-                    Profile
-                  </Link>
+                <li className="px-3 py-2">
+                  {currentUser?.provider?.startsWith('oidc-') && authServerUrl ? (
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        className="btn btn-link p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProfileIsLocal(!profileIsLocal);
+                        }}
+                        title={profileIsLocal ? "Local profile" : "Auth server profile"}
+                        style={{ fontSize: '1.2rem' }}
+                      >
+                        {profileIsLocal ? <FaUser /> : <FaIdBadge />}
+                      </button>
+                      {profileIsLocal ? (
+                        <Link to="/profile" className="btn btn-outline-primary btn-sm">
+                          Profile
+                        </Link>
+                      ) : (
+                        <a
+                          href={`${authServerUrl}/user/profile`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-outline-primary btn-sm"
+                        >
+                          Profile
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <Link to="/profile" className="dropdown-item">
+                      <FaUser className="me-2" />
+                      Profile
+                    </Link>
+                  )}
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">

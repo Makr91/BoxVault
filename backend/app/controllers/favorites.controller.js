@@ -14,22 +14,38 @@ try {
 
 /**
  * Get authentication server base URL from OIDC provider config
+ * @param {Object} req - Express request object to extract provider from JWT
  * @returns {string} Auth server base URL
  */
-const getAuthServerUrl = () => {
-  const oidcProviders = authConfig.auth?.oidc?.providers || {};
-  
-  // Find the first enabled OIDC provider and extract base URL from issuer
-  for (const [providerName, providerConfig] of Object.entries(oidcProviders)) {
-    if (providerConfig.enabled?.value && providerConfig.issuer?.value) {
-      // Issuer is typically https://auth.example.com or https://auth.example.com/path
-      // We want just the base URL
-      const issuerUrl = new URL(providerConfig.issuer.value);
-      return `${issuerUrl.protocol}//${issuerUrl.host}`;
-    }
+const getAuthServerUrl = (req) => {
+  const token = req.headers['x-access-token'];
+  if (!token) {
+    throw new Error('No access token provided');
   }
   
-  throw new Error('No enabled OIDC provider found in configuration');
+  try {
+    // Decode JWT to get the provider user logged in with
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+    const provider = decoded.provider?.replace('oidc-', ''); // e.g., "oidc-startcloud" -> "startcloud"
+    
+    if (!provider) {
+      throw new Error('No provider in JWT');
+    }
+    
+    const oidcProviders = authConfig.auth?.oidc?.providers || {};
+    const providerConfig = oidcProviders[provider];
+    
+    if (!providerConfig || !providerConfig.issuer?.value) {
+      throw new Error(`Provider ${provider} not found in config`);
+    }
+    
+    // Extract base URL from issuer
+    const issuerUrl = new URL(providerConfig.issuer.value);
+    return `${issuerUrl.protocol}//${issuerUrl.host}`;
+  } catch (error) {
+    log.error.error('Failed to get auth server URL:', error.message);
+    throw error;
+  }
 };
 
 /**
@@ -90,7 +106,7 @@ exports.getFavorites = async (req, res) => {
       return res.status(200).json([]);
     }
     
-    const authServerUrl = getAuthServerUrl();
+    const authServerUrl = getAuthServerUrl(req);
     
     log.auth.debug('Fetching favorites from auth server', { 
       authServerUrl,
@@ -159,7 +175,7 @@ exports.saveFavorites = async (req, res) => {
       });
     }
     
-    const authServerUrl = getAuthServerUrl();
+    const authServerUrl = getAuthServerUrl(req);
     const favoritesJson = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     
     log.auth.debug('Saving favorites to auth server', { 
@@ -252,7 +268,7 @@ exports.getUserInfoClaims = async (req, res) => {
       });
     }
     
-    const authServerUrl = getAuthServerUrl();
+    const authServerUrl = getAuthServerUrl(req);
     
     log.auth.debug('Fetching enriched claims from auth server', { 
       authServerUrl,
@@ -307,7 +323,7 @@ exports.getEnrichedFavorites = async (req, res) => {
       return res.status(200).json([]);
     }
     
-    const authServerUrl = getAuthServerUrl();
+    const authServerUrl = getAuthServerUrl(req);
     
     const response = await axios.get(`${authServerUrl}/api/userinfo/favorites`, {
       headers: {
