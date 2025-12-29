@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.6](https://github.com/Makr91/BoxVault/compare/v0.26.5...v0.26.6) (2025-12-29)
+
+
+### Bug Fixes
+
+* logout icon ([e103a9b](https://github.com/Makr91/BoxVault/commit/e103a9bbe7c343d9c348942a8b62ab2017711f0c))
+
 ## [0.26.5](https://github.com/Makr91/BoxVault/compare/v0.26.4...v0.26.5) (2025-12-29)
 
 
