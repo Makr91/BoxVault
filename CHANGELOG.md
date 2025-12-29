@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.10](https://github.com/Makr91/BoxVault/compare/v0.26.9...v0.26.10) (2025-12-29)
+
+
+### Bug Fixes
+
+* disable omnios builds and udpate favorites and ticketing system ([78f18b9](https://github.com/Makr91/BoxVault/commit/78f18b9c8931ec3098de4be31d8d011df4b2d591))
+
 ## [0.26.9](https://github.com/Makr91/BoxVault/compare/v0.26.8...v0.26.9) (2025-12-29)
 
 
