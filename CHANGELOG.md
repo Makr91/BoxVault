@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.15](https://github.com/Makr91/BoxVault/compare/v0.26.14...v0.26.15) (2025-12-29)
+
+
+### Bug Fixes
+
+* NavMenu ([860fba4](https://github.com/Makr91/BoxVault/commit/860fba451fdf61c097965207d7ee5bb4ea709d3a))
+
 ## [0.26.14](https://github.com/Makr91/BoxVault/compare/v0.26.13...v0.26.14) (2025-12-29)
 
 
