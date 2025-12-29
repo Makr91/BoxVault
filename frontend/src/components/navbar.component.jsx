@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun, FaGlobe, FaHome } from "react-icons/fa6";
+import { FaMoon, FaSun, FaGlobe, FaHouse } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 
@@ -109,7 +109,7 @@ const Navbar = ({
                       title={logoutEverywhere ? "Logout everywhere" : "Logout locally only"}
                       style={{ fontSize: '1.2rem' }}
                     >
-                      {logoutEverywhere ? <FaGlobe /> : <FaHome />}
+                      {logoutEverywhere ? <FaGlobe /> : <FaHouse />}
                     </button>
                   </div>
                 </li>
