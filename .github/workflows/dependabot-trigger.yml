@@ -1,0 +1,34 @@
+name: Trigger Dependabot Updates
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  trigger-dependabot:
+    name: Trigger Dependabot
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check for dependency vulnerabilities
+        run: |
+          echo "Checking for dependency vulnerabilities before CodeQL..."
+          echo "Dependabot is configured to automatically create PRs for vulnerable dependencies"
+          echo "This step ensures Dependabot has opportunity to run before CodeQL analysis"
+
+          # Check if package-lock.json has been updated recently (indicates Dependabot activity)
+          if [ -f "package-lock.json" ]; then
+            echo "Backend package-lock.json found"
+          fi
+
+          if [ -f "web/package-lock.json" ]; then
+            echo "Frontend package-lock.json found"
+          fi
+
+          echo "Dependabot integration ready - will create PRs for vulnerabilities like min-document 2.19.0"

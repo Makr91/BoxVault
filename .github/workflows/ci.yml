@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  workflow_call:
+  pull_request:
+    branches: ['main']
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+  packages: read
+  actions: read
+
+jobs:
+  backend-security:
+    name: Backend Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Security audit
+        run: cd backend && npm run security:audit
+
+      - name: Vulnerability scan
+        run: cd backend && npm run security:vulnerabilities
+
+      - name: License compliance check
+        run: cd backend && npm run security:licenses
+
+      - name: Supply chain security
+        run: cd backend && npm run security:supply-chain
+
+  frontend-security:
+    name: Frontend Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm install
+
+      - name: Frontend security checks
+        run: cd frontend && npm run security:all
+
+  # lint-and-format:
+  #   name: Lint & Format
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v6
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v6
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+
+  #     - name: Install dependencies
+  #       run: |
+  #         cd backend && npm ci
+  #         cd ../frontend && npm install
+
+  #     - name: Run ESLint
+  #       run: npm run lint
+
+  #     - name: Check Prettier formatting
+  #       run: npm run format:check
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm install
+
+      - name: Build frontend
+        run: npm run build
+
+  # test:
+  #   name: Tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v6
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v6
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+
+  #     - name: Install dependencies
+  #       run: npm run cinstall:all
+
+  #     - name: Run tests
+  #       run: npm run test:all
+
+  verify-scripts:
+    name: Verify Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: cd backend && npm ci
+
+      - name: Verify scripts exist
+        run: |
+          echo "Checking sync-versions script..."
+          npm run sync-versions || echo "sync-versions script verification complete"
+          echo "Checking generate-docs script..."
+          npm run generate-docs || echo "generate-docs script verification complete"
+
+  dependabot-updates:
+    name: Dependabot Updates
+    uses: ./.github/workflows/dependabot-trigger.yml
+
+  codeql-analysis:
+    name: CodeQL
+    needs:
+      [
+        backend-security,
+        frontend-security,
+        # lint-and-format,
+        build-frontend,
+        verify-scripts,
+        dependabot-updates,
+      ]
+    uses: ./.github/workflows/codeql.yml

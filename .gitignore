@@ -12,7 +12,7 @@ stats.html
 boxvault.p5m.gen
 boxvault.mog
 boxvault_repo/
-
+.github/workflows/old
 backend/app/config/ssl/private.key
 backend/app/config/ssl/public.crt
 ROADMAP.md

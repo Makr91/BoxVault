@@ -31,7 +31,12 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format:check": "prettier --check .",
-    "format:fix": "prettier --write ."
+    "format:fix": "prettier --write .",
+    "security:audit": "npm audit --audit-level moderate",
+    "security:vulnerabilities": "npm audit && better-npm-audit audit",
+    "security:licenses": "license-checker-rseidelsohn --onlyAllow 'MIT;Apache-2.0;BSD;BSD-2-Clause;BSD-3-Clause;ISC;GPL-3.0;LGPL-2.1;LGPL-3.0;MPL-2.0;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;Unicode-DFS-2016;Apache 2.0;BlueOak-1.0.0' --excludePrivatePackages",
+    "security:supply-chain": "audit-ci --moderate",
+    "security:all": "npm run security:audit && npm run security:vulnerabilities && npm run security:licenses && npm run security:supply-chain"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -51,6 +56,8 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@rollup/wasm-node": "^4.24.0",
+    "audit-ci": "^7.1.0",
+    "better-npm-audit": "^3.11.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
@@ -59,6 +66,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^16.5.0",
+    "license-checker-rseidelsohn": "^4.4.2",
     "prettier": "^3.7.4",
     "rollup": "npm:@rollup/wasm-node@^4.24.0"
   }

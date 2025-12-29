@@ -4,16 +4,23 @@ on:
   push:
     branches:
       - main
-      - master
 
 permissions:
   contents: write
   pull-requests: write
   issues: write
   actions: write
+  security-events: write
+  packages: read
 
 jobs:
+  ci-checks:
+    name: CI Checks
+    uses: ./.github/workflows/ci.yml
+
   release-please:
+    name: Release Please
+    needs: ci-checks
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -22,235 +29,31 @@ jobs:
       minor: ${{ steps.release.outputs.minor }}
       patch: ${{ steps.release.outputs.patch }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Release Please
         uses: googleapis/release-please-action@v4
         id: release
 
-  build-packages:
+  build-production:
+    name: Production
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: self-hosted
-    steps:
-      # Debian Build Steps
-      - name: Checkout for Debian build
-        uses: actions/checkout@v6
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
-      - name: Install backend dependencies
-        run: cd backend && npm ci
-          
-      - name: Install frontend dependencies
-        run: cd frontend && npm install
-          
-      - name: Build frontend
-        run: npm run build
-        
-      - name: Set Debian package variables
-        run: |
-          echo "VERSION=${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}" >> $GITHUB_ENV
-          echo "PACKAGE_NAME=boxvault" >> $GITHUB_ENV
-          echo "ARCH=amd64" >> $GITHUB_ENV
-        
-      - name: Create Debian package structure
-        run: |
-          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/frontend,opt/boxvault/config-templates,opt/boxvault/scripts,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
-        
-      - name: Copy application files to Debian package
-        run: |
-          cp -r backend/app backend/server.js backend/package.json "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
-          cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
-          # Frontend files are built into backend/app/views, so they're already included with backend/app
-        
-      - name: Copy configuration templates and system files to Debian package
-        run: |
-          cp packaging/config/app.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
-          cp packaging/config/auth.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
-          cp packaging/config/db.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
-          cp packaging/config/mail.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/config-templates/"
-          cp packaging/scripts/certbot-deploy-hook.sh "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/scripts/"
-          cp packaging/DEBIAN/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
-          cp packaging/DEBIAN/preinst packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"
-        
-      - name: Create Debian control file
-        run: |
-          cat > "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/control" << EOF
-          Package: boxvault
-          Version: ${VERSION}
-          Section: misc
-          Priority: optional
-          Architecture: ${ARCH}
-          Maintainer: Makr91 <makr91@users.noreply.github.com>
-          Depends: nodejs (>= 20.0.0), sqlite3, openssl
-          Description: BoxVault - Vagrant Box Repository Management System
-           Comprehensive Vagrant box repository management system that provides
-           a web interface for managing, organizing, and distributing Vagrant
-           boxes across teams and organizations with multi-organization support,
-           role-based access control, and RESTful API for automation.
-          Homepage: https://github.com/Makr91/BoxVault
-          EOF
-        
-      - name: Set Debian package permissions
-        run: |
-          find "${PACKAGE_NAME}_${VERSION}_${ARCH}" -type d -exec chmod 755 {} \;
-          find "${PACKAGE_NAME}_${VERSION}_${ARCH}" -type f -exec chmod 644 {} \;
-          chmod 755 "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN"/{preinst,postinst,prerm,postrm}
-          chmod 755 "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/scripts"/*
-        
-      - name: Build Debian package
-        run: |
-          dpkg-deb --build "${PACKAGE_NAME}_${VERSION}_${ARCH}" "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+    uses: ./.github/workflows/prod-build.yml
+    with:
+      version: ${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}
+      tag_name: ${{ needs.release-please.outputs.tag_name }}
 
-      # OmniOS Build Steps
-      - name: Fresh checkout for OmniOS build
-        uses: actions/checkout@v6
-        with:
-          path: omnios-source
-          clean: true
-        
-      - name: Clean OmniOS build directory
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault/* /local/builds/boxvault/.*" || true
+  build-dev-packages:
+    name: Development
+    needs: release-please
+    if: ${{ !needs.release-please.outputs.release_created }}
+    uses: ./.github/workflows/dev-build.yml
 
-      - name: Sync source code to OmniOS
-        run: |
-          rsync -av --delete \
-            --exclude='.git' \
-            --exclude='backend/node_modules' \
-            --exclude='frontend/node_modules' \
-            --exclude='frontend/dist' \
-            --exclude='*.deb' \
-            omnios-source/ ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault/
-
-      - name: Build package on OmniOS
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "
-            cd /local/builds/boxvault && 
-            export PATH=/opt/ooce/bin:/opt/ooce/node-22/bin:\$PATH &&
-            export MAKE=gmake &&
-            chmod +x packaging/omnios/build.sh &&
-            ./packaging/omnios/build.sh
-          "
-
-      - name: Transfer OmniOS package back
-        run: |
-          rsync -av ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault/*.p5p ./ || echo "No .p5p files found"
-
-      - name: Install GitHub CLI
-        run: |
-          if ! command -v gh &> /dev/null; then
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install gh -y
-          fi
-
-      - name: Upload Debian package to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ needs.release-please.outputs.tag_name }} "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" --clobber
-
-      - name: Upload OmniOS package to release  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for file in *.p5p; do
-            if [ -f "$file" ]; then
-              echo "Uploading $file..."
-              gh release upload ${{ needs.release-please.outputs.tag_name }} "$file" --clobber
-            fi
-          done
-
-      - name: Publish OmniOS package to repository
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "
-            cd /local/builds/boxvault &&
-            pfexec pkgsend publish -d proto -s file:///local/public/r151054/pkg boxvault.p5m.final &&
-            pfexec pkgrepo refresh -s /local/public/r151054/pkg &&
-            pfexec svcadm restart pkg/server:r151054_STARTcloud
-          "
-
-      - name: Clean up OmniOS build directory
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault/*"
-
-      - name: Upload Debian package to repository server
-        run: |
-          rsync -av boxvault_*.deb startcloud@packages.debian.startcloud.com:/tmp/
-
-      - name: Add package to repository pool
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "
-            mkdir -p /local/public/debian/pool/main/b/boxvault
-            cp /tmp/boxvault_*.deb /local/public/debian/pool/main/b/boxvault/
-          "
-
-      - name: Create multi-suite repository structure
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "
-            cd /local/public/debian
-            mkdir -p dists/bookworm/main/binary-amd64
-            mkdir -p dists/trixie/main/binary-amd64
-          "
-
-      - name: Update repository Packages files for all suites
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "
-            cd /local/public/debian
-            for suite in bookworm trixie; do
-              dpkg-scanpackages --arch amd64 pool/ > dists/\$suite/main/binary-amd64/Packages
-              gzip -c dists/\$suite/main/binary-amd64/Packages > dists/\$suite/main/binary-amd64/Packages.gz
-            done
-          "
-
-      - name: Generate Release files for all suites
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "
-            cd /local/public/debian
-            for suite in bookworm trixie; do
-              cd dists/\$suite
-              /local/generate-release.sh \$suite > Release
-              cd ../..
-            done
-          "
-
-      - name: Create stable distribution with proper Release file
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "
-            cd /local/public/debian/dists
-            rm -rf stable 2>/dev/null || true
-            cp -r trixie stable
-            cd stable
-            /local/generate-release.sh stable > Release
-          "
-
-      - name: Sign repository for all suites including stable
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "
-            cd /local/public/debian
-            for suite in bookworm trixie stable; do
-              cd dists/\$suite
-              export GNUPGHOME=\$(mktemp -d /local/pgp/pgpkeys-XXXXXX)
-              cat /local/pgp/pgp-key.private | gpg --import
-              cat Release | gpg --default-key startcloud -abs > Release.gpg
-              cat Release | gpg --default-key startcloud -abs --clearsign > InRelease
-              rm -rf \$GNUPGHOME
-              cd ../..
-            done
-          "
-
-      - name: Cleanup temporary files
-        run: |
-          ssh startcloud@packages.debian.startcloud.com "rm -f /tmp/boxvault_*.deb"
-
-  build-docs:
-    needs: [release-please, build-packages]
+  deploy-documentation:
+    name: Publish Documentation
+    needs: build-production
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
