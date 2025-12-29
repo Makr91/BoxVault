@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.7](https://github.com/Makr91/BoxVault/compare/v0.26.6...v0.26.7) (2025-12-29)
+
+
+### Bug Fixes
+
+* dependencies ([e12e106](https://github.com/Makr91/BoxVault/commit/e12e106864b83a7810e02d9b0ff302618bb39555))
+* dependencies ([2c2e119](https://github.com/Makr91/BoxVault/commit/2c2e119eb4ae669dfdedbed2bd28375a635e8eb9))
+
 ## [0.26.6](https://github.com/Makr91/BoxVault/compare/v0.26.5...v0.26.6) (2025-12-29)
 
 
