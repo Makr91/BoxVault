@@ -132,41 +132,41 @@ jobs:
         run: |
           dpkg-deb --build "${PACKAGE_NAME}_${VERSION}_${ARCH}" "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
 
-      # OmniOS Build Steps
-      - name: Fresh checkout for OmniOS build
-        uses: actions/checkout@v6
-        with:
-          path: omnios-source
-          clean: true
-
-      - name: Clean OmniOS build directory
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault-dev/* /local/builds/boxvault-dev/.*" || true
-
-      - name: Sync source code to OmniOS
-        run: |
-          rsync -av --delete \
-            --exclude='.git' \
-            --exclude='backend/node_modules' \
-            --exclude='frontend/node_modules' \
-            --exclude='frontend/dist' \
-            --exclude='*.deb' \
-            omnios-source/ ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault-dev/
-
-      - name: Build package on OmniOS
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "
-            cd /local/builds/boxvault-dev && 
-            export PATH=/opt/ooce/bin:/opt/ooce/node-22/bin:\$PATH &&
-            export MAKE=gmake &&
-            export DEV_VERSION=${VERSION} &&
-            chmod +x packaging/omnios/build.sh &&
-            ./packaging/omnios/build.sh
-          "
-
-      - name: Transfer OmniOS package back
-        run: |
-          rsync -av ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault-dev/*.p5p ./ || echo "No .p5p files found"
+#      # OmniOS Build Steps
+#      - name: Fresh checkout for OmniOS build
+#        uses: actions/checkout@v6
+#        with:
+#          path: omnios-source
+#          clean: true
+#
+#      - name: Clean OmniOS build directory
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault-dev/* /local/builds/boxvault-dev/.*" || true
+#
+#      - name: Sync source code to OmniOS
+#        run: |
+#          rsync -av --delete \
+#            --exclude='.git' \
+#            --exclude='backend/node_modules' \
+#            --exclude='frontend/node_modules' \
+#            --exclude='frontend/dist' \
+#            --exclude='*.deb' \
+#            omnios-source/ ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault-dev/
+#
+#      - name: Build package on OmniOS
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "
+#            cd /local/builds/boxvault-dev && 
+#            export PATH=/opt/ooce/bin:/opt/ooce/node-22/bin:\$PATH &&
+#            export MAKE=gmake &&
+#            export DEV_VERSION=${VERSION} &&
+#            chmod +x packaging/omnios/build.sh &&
+#            ./packaging/omnios/build.sh
+#          "
+#
+#      - name: Transfer OmniOS package back
+#        run: |
+#          rsync -av ghrunner@omnios.packages.startcloud.com:/local/builds/boxvault-dev/*.p5p ./ || echo "No .p5p files found"
 
       - name: Upload Debian package to repository server
         run: |
@@ -228,14 +228,14 @@ jobs:
             done
           "
 
-      - name: Publish OmniOS package to repository
-        run: |
-          ssh ghrunner@omnios.packages.startcloud.com "
-            cd /local/builds/boxvault-dev &&
-            pfexec pkgsend publish -d proto -s file:///local/public/r151054/pkg boxvault.p5m.final &&
-            pfexec pkgrepo refresh -s /local/public/r151054/pkg &&
-            pfexec svcadm restart pkg/server:r151054_STARTcloud
-          "
+#      - name: Publish OmniOS package to repository
+#        run: |
+#          ssh ghrunner@omnios.packages.startcloud.com "
+#            cd /local/builds/boxvault-dev &&
+#            pfexec pkgsend publish -d proto -s file:///local/public/r151054/pkg boxvault.p5m.final &&
+#            pfexec pkgrepo refresh -s /local/public/r151054/pkg &&
+#            pfexec svcadm restart pkg/server:r151054_STARTcloud
+#          "
 
       - name: Create development draft release
         env:
@@ -255,8 +255,7 @@ jobs:
           ⚠️ **Warning**: This is a development release for testing purposes only. Use production releases for stable deployments.
 
           ## Packages
-          - \`boxvault-dev_${VERSION}_amd64.deb\` - Debian package
-          - \`boxvault-dev-${VERSION}.p5p\` - OmniOS package"
+          - \`boxvault-dev_${VERSION}_amd64.deb\` - Debian package"
 
           # Delete existing dev release if it exists
           gh release delete "$RELEASE_TAG" --yes || true
@@ -273,13 +272,13 @@ jobs:
           # Upload Debian package
           gh release upload "$RELEASE_TAG" "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" --clobber
 
-          # Upload OmniOS package if it exists
-          for file in *.p5p; do
-            if [ -f "$file" ]; then
-              echo "Uploading $file to draft release..."
-              gh release upload "$RELEASE_TAG" "$file" --clobber
-            fi
-          done
+#          # Upload OmniOS package if it exists
+#          for file in *.p5p; do
+#            if [ -f "$file" ]; then
+#              echo "Uploading $file to draft release..."
+#              gh release upload "$RELEASE_TAG" "$file" --clobber
+#            fi
+#          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
@@ -292,8 +291,8 @@ jobs:
 
       - name: Clean up
         run: |
-          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault-dev/*"
           ssh startcloud@packages.debian.startcloud.com "rm -f /tmp/${PACKAGE_NAME}_*.deb"
+#          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault-dev/*"
 
       - name: Summary
         run: |
