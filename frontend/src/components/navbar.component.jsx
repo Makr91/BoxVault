@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun } from "react-icons/fa6";
+import { FaMoon, FaSun, FaGlobe, FaHome } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 
@@ -100,22 +100,17 @@ const Navbar = ({
                     >
                       Logout
                     </button>
-                    <div className="form-check mb-0">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="logoutEverywhere"
-                        checked={logoutEverywhere}
-                        onChange={(e) => setLogoutEverywhere(e.target.checked)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="logoutEverywhere"
-                      >
-                        Everywhere
-                      </label>
-                    </div>
+                    <button
+                      className="btn btn-link p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLogoutEverywhere(!logoutEverywhere);
+                      }}
+                      title={logoutEverywhere ? "Logout everywhere" : "Logout locally only"}
+                      style={{ fontSize: '1.2rem' }}
+                    >
+                      {logoutEverywhere ? <FaGlobe /> : <FaHome />}
+                    </button>
                   </div>
                 </li>
               </ul>
