@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket, FaUser, FaCircleInfo, FaGear, FaUserShield, FaIdBadge } from "react-icons/fa6";
+import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket, FaUser, FaCircleInfo, FaGear, FaUserShield, FaIdBadge, FaHouseLock, FaBridgeLock } from "react-icons/fa6";
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import FavoritesService from '../services/favorites.service';
@@ -237,7 +237,7 @@ const Navbar = ({
                           {profileIsLocal ? <FaUser /> : <FaIdBadge />}
                         </button>
                         {profileIsLocal ? (
-                          <Link to="/profile" className="text-decoration-none text-dark">
+                          <Link to="/profile" className="text-decoration-none">
                             Profile
                           </Link>
                         ) : (
@@ -245,7 +245,7 @@ const Navbar = ({
                             href={`${authServerUrl}/user/profile`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-decoration-none text-dark"
+                            className="text-decoration-none"
                           >
                             Profile
                           </a>
@@ -254,7 +254,7 @@ const Navbar = ({
                     ) : (
                       <>
                         <FaUser className="me-2" />
-                        <Link to="/profile" className="text-decoration-none text-dark">
+                        <Link to="/profile" className="text-decoration-none">
                           Profile
                         </Link>
                       </>
@@ -335,7 +335,7 @@ const Navbar = ({
                       }}
                       title={logoutEverywhere ? "Logout everywhere" : "Logout locally only"}
                     >
-                      {logoutEverywhere ? <FaGlobe /> : <FaHouse />}
+                      {logoutEverywhere ? <FaBridgeLock /> : <FaHouseLock />}
                     </button>
                     <span
                       onClick={handleLogout}
