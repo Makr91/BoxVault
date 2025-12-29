@@ -226,18 +226,29 @@ const Navbar = ({
                   <div className="dropdown-item d-flex align-items-center">
                     {currentUser?.provider?.startsWith('oidc-') && authServerUrl ? (
                       <>
-                        <button
-                          className="btn btn-link p-0 me-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProfileIsLocal(!profileIsLocal);
-                          }}
-                          title={profileIsLocal ? "Local profile" : "Auth server profile"}
-                        >
-                          {profileIsLocal ? <FaUser /> : <FaIdBadge />}
-                        </button>
                         {profileIsLocal ? (
-                          <Link to="/profile" className="text-decoration-none">
+                          <FaUser 
+                            className="me-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProfileIsLocal(!profileIsLocal);
+                            }}
+                            title="Switch to auth server profile"
+                            style={{ cursor: 'pointer' }}
+                          />
+                        ) : (
+                          <FaIdBadge 
+                            className="me-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProfileIsLocal(!profileIsLocal);
+                            }}
+                            title="Switch to local profile"
+                            style={{ cursor: 'pointer' }}
+                          />
+                        )}
+                        {profileIsLocal ? (
+                          <Link to="/profile" className="text-decoration-none text-reset">
                             Profile
                           </Link>
                         ) : (
@@ -245,7 +256,7 @@ const Navbar = ({
                             href={`${authServerUrl}/user/profile`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-decoration-none"
+                            className="text-decoration-none text-reset"
                           >
                             Profile
                           </a>
@@ -254,7 +265,7 @@ const Navbar = ({
                     ) : (
                       <>
                         <FaUser className="me-2" />
-                        <Link to="/profile" className="text-decoration-none">
+                        <Link to="/profile" className="text-decoration-none text-reset">
                           Profile
                         </Link>
                       </>
@@ -327,16 +338,27 @@ const Navbar = ({
                 </li>
                 <li>
                   <div className="dropdown-item d-flex align-items-center">
-                    <button
-                      className="btn btn-link p-0 me-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLogoutEverywhere(!logoutEverywhere);
-                      }}
-                      title={logoutEverywhere ? "Logout everywhere" : "Logout locally only"}
-                    >
-                      {logoutEverywhere ? <FaBridgeLock /> : <FaHouseLock />}
-                    </button>
+                    {logoutEverywhere ? (
+                      <FaBridgeLock 
+                        className="me-2 text-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLogoutEverywhere(!logoutEverywhere);
+                        }}
+                        title="Click to logout locally only"
+                        style={{ cursor: 'pointer' }}
+                      />
+                    ) : (
+                      <FaHouseLock 
+                        className="me-2 text-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLogoutEverywhere(!logoutEverywhere);
+                        }}
+                        title="Click to logout everywhere"
+                        style={{ cursor: 'pointer' }}
+                      />
+                    )}
                     <span
                       onClick={handleLogout}
                       className="text-danger cursor-pointer"
