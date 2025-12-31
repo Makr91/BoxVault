@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import UserService from "../services/user.service";
-import FavoritesService from "../services/favorites.service";
-import AuthService from "../services/auth.service";
-import BoxVaultVersion from '../version.json';
+
 import { FaStar } from "react-icons/fa6";
+import AuthService from "../services/auth.service";
+import FavoritesService from "../services/favorites.service";
+import UserService from "../services/user.service";
+import BoxVaultVersion from "../version.json";
+
 
 const About = () => {
   const [projectData, setProjectData] = useState({
@@ -11,7 +13,7 @@ const About = () => {
     description: "",
     components: [],
     features: [],
-    goal: ""
+    goal: "",
   });
   const [currentUser, setCurrentUser] = useState(null);
   const [isBoxVaultFavorited, setIsBoxVaultFavorited] = useState(false);
@@ -36,13 +38,15 @@ const About = () => {
     const user = AuthService.getCurrentUser();
     setCurrentUser(user);
 
-    if (user?.provider?.startsWith('oidc-')) {
+    if (user?.provider?.startsWith("oidc-")) {
       FavoritesService.getFavorites()
-        .then(response => {
+        .then((response) => {
           const favorites = response.data || [];
-          setIsBoxVaultFavorited(favorites.some(f => f.clientId === 'boxvault'));
+          setIsBoxVaultFavorited(
+            favorites.some((f) => f.clientId === "boxvault")
+          );
         })
-        .catch(error => console.error('Error loading favorites:', error));
+        .catch((error) => console.error("Error loading favorites:", error));
     }
   }, []);
 
@@ -53,25 +57,26 @@ const About = () => {
 
       if (isBoxVaultFavorited) {
         // Remove from favorites
-        favorites = FavoritesService.removeFavorite(favorites, 'boxvault');
-        setFavoriteMessage('Removed BoxVault from favorites');
+        favorites = FavoritesService.removeFavorite(favorites, "boxvault");
+        setFavoriteMessage("Removed BoxVault from favorites");
       } else {
         // Add to favorites
-        favorites = FavoritesService.addFavorite(favorites, 'boxvault', null);
-        setFavoriteMessage('Added BoxVault to favorites!');
+        favorites = FavoritesService.addFavorite(favorites, "boxvault", null);
+        setFavoriteMessage("Added BoxVault to favorites!");
       }
 
       await FavoritesService.saveFavorites(favorites);
       setIsBoxVaultFavorited(!isBoxVaultFavorited);
-      
+
       // Clear message after 3 seconds
-      setTimeout(() => setFavoriteMessage(''), 3000);
+      setTimeout(() => setFavoriteMessage(""), 3000);
     } catch (error) {
-      console.error('Error toggling favorite:', error);
-      setFavoriteMessage('Failed to update favorites');
-      setTimeout(() => setFavoriteMessage(''), 3000);
+      console.error("Error toggling favorite:", error);
+      setFavoriteMessage("Failed to update favorites");
+      setTimeout(() => setFavoriteMessage(""), 3000);
     }
   };
+
 
   return (
     <div className="list row">

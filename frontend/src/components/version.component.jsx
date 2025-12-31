@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import ProviderService from "../services/provider.service";
-import VersionDataService from "../services/version.service";
+import Table from "react-bootstrap/Table";
+import { useParams, Link, useNavigate } from "react-router-dom";
+
 import ArchitectureService from "../services/architecture.service";
 import FileService from "../services/file.service";
-import ConfirmationModal from './confirmation.component';
-import Table from 'react-bootstrap/Table';
+import ProviderService from "../services/provider.service";
+import VersionDataService from "../services/version.service";
+
+import ConfirmationModal from "./confirmation.component";
 
 const Version = () => {
   const { organization, name, version } = useParams();
-  let navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [providers, setProviders] = useState([]);
   const [message, setMessage] = useState("");
@@ -35,104 +37,122 @@ const Version = () => {
   const form = useRef();
 
   const handleProviderDeleteClick = (providerName) => {
-    setItemToDelete({ type: 'provider', name: providerName });
+    setItemToDelete({ type: "provider", name: providerName });
     setShowDeleteModal(true);
   };
-  
+
   const handleVersionDeleteClick = () => {
-    setItemToDelete({ type: 'version', name: currentVersion.versionNumber });
+    setItemToDelete({ type: "version", name: currentVersion.versionNumber });
     setShowDeleteModal(true);
   };
-  
+
   const handleCloseDeleteModal = () => {
     setShowDeleteModal(false);
     setItemToDelete(null);
   };
-  
+
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      if (itemToDelete.type === 'provider') {
+      if (itemToDelete.type === "provider") {
         deleteProvider(itemToDelete.name);
-      } else if (itemToDelete.type === 'version') {
+      } else if (itemToDelete.type === "version") {
         deleteVersion();
       }
       handleCloseDeleteModal();
     }
   };
 
-  const required = (value) => {
-    return value ? undefined : "This field is required!";
-  };
+  const required = (value) => (value ? undefined : "This field is required!");
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) => {
-    return validCharsRegex.test(value) ? undefined : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-  };
+  const validateName = (value) =>
+    validCharsRegex.test(value)
+      ? undefined
+      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(localStorage.getItem("user"));
     if (user) {
       setIsAuthorized(user.organization === organization);
     }
 
     ProviderService.getProviders(organization, name, version)
-      .then(async response => {
+      .then(async (response) => {
         setProviders(response.data);
         const architecturesByProvider = {};
-        
+
         for (const provider of response.data) {
           try {
-            const archResponse = await ArchitectureService.getArchitectures(organization, name, version, provider.name);
-            const architecturesWithInfo = await Promise.all(archResponse.data.map(async architecture => {
-              try {
-                const [fileInfo, downloadLink] = await Promise.all([
-                  FileService.info(organization, name, version, provider.name, architecture.name),
-                  FileService.getDownloadLink(organization, name, version, provider.name, architecture.name)
-                ]);
-                return {
-                  ...architecture,
-                  downloadUrl: downloadLink,
-                };
-              } catch (error) {
-                return {
-                  ...architecture,
-                  downloadUrl: null,
-                };
-              }
-            }));
+            const archResponse = await ArchitectureService.getArchitectures(
+              organization,
+              name,
+              version,
+              provider.name
+            );
+            const architecturesWithInfo = await Promise.all(
+              archResponse.data.map(async (architecture) => {
+                try {
+                  const [fileInfo, downloadLink] = await Promise.all([
+                    FileService.info(
+                      organization,
+                      name,
+                      version,
+                      provider.name,
+                      architecture.name
+                    ),
+                    FileService.getDownloadLink(
+                      organization,
+                      name,
+                      version,
+                      provider.name,
+                      architecture.name
+                    ),
+                  ]);
+                  return {
+                    ...architecture,
+                    downloadUrl: downloadLink,
+                  };
+                } catch (error) {
+                  return {
+                    ...architecture,
+                    downloadUrl: null,
+                  };
+                }
+              })
+            );
             architecturesByProvider[provider.name] = architecturesWithInfo;
           } catch (e) {
             console.log(e);
             architecturesByProvider[provider.name] = [];
           }
         }
-        
+
         setArchitectures(architecturesByProvider);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
       });
 
-  VersionDataService.getVersion(organization, name, version)
-    .then(response => {
-      setCurrentVersion(response.data);
-    })
-    .catch(e => {
-      console.log(e);
-      setCurrentVersion(null);
-      setMessage("No Version Found");
-      setMessageType("danger");
-    });
+    VersionDataService.getVersion(organization, name, version)
+      .then((response) => {
+        setCurrentVersion(response.data);
+      })
+      .catch((e) => {
+        console.log(e);
+        setCurrentVersion(null);
+        setMessage("No Version Found");
+        setMessageType("danger");
+      });
 
-  VersionDataService.getVersions(organization, name)
-    .then(response => {
-      setAllVersions(response.data);
-    })
-    .catch(e => {
-      console.log(e);
-    });
-}, [organization, name, version, navigate]);
+    VersionDataService.getVersions(organization, name)
+      .then((response) => {
+        setAllVersions(response.data);
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  }, [organization, name, version, navigate]);
 
   const handleProviderInputChange = (event) => {
     const { name, value } = event.target;
@@ -154,15 +174,24 @@ const Version = () => {
       return;
     }
 
-    const providerExists = providers.some(provider => provider.name === newProvider.name);
+    const providerExists = providers.some(
+      (provider) => provider.name === newProvider.name
+    );
     if (providerExists) {
-      setMessage("A provider with this name already exists. Please choose a different name.");
+      setMessage(
+        "A provider with this name already exists. Please choose a different name."
+      );
       setMessageType("danger");
       return;
     }
 
     try {
-      const response = await ProviderService.createProvider(organization, name, version, newProvider);
+      const response = await ProviderService.createProvider(
+        organization,
+        name,
+        version,
+        newProvider
+      );
       setMessage("The provider was created successfully!");
       setMessageType("success");
       setProviders([...providers, response.data]);
@@ -178,33 +207,52 @@ const Version = () => {
     }
   };
 
-  const deleteFilesForArchitecture = (providerName, architectureName) => {
-    return FileService.delete(organization, name, version, providerName, architectureName)
-      .catch(e => {
-        console.log(`Error deleting files for architecture ${architectureName}:`, e);
-        throw e;
-      });
-  };
+  const deleteFilesForArchitecture = (providerName, architectureName) =>
+    FileService.delete(
+      organization,
+      name,
+      version,
+      providerName,
+      architectureName
+    ).catch((e) => {
+      console.log(
+        `Error deleting files for architecture ${architectureName}:`,
+        e
+      );
+      throw e;
+    });
 
   const deleteArchitecturesForProvider = async (providerName) => {
     const architecturesToDelete = architectures[providerName] || [];
     for (const architecture of architecturesToDelete) {
       await deleteFilesForArchitecture(providerName, architecture.name);
-      await ArchitectureService.deleteArchitecture(organization, name, version, providerName, architecture.name)
-        .catch(e => {
-          console.log(`Error deleting architecture ${architecture.name}:`, e);
-          throw e;
-        });
+      await ArchitectureService.deleteArchitecture(
+        organization,
+        name,
+        version,
+        providerName,
+        architecture.name
+      ).catch((e) => {
+        console.log(`Error deleting architecture ${architecture.name}:`, e);
+        throw e;
+      });
     }
   };
 
   const deleteProvider = async (providerName) => {
     try {
       await deleteArchitecturesForProvider(providerName);
-      await ProviderService.deleteProvider(organization, name, version, providerName);
+      await ProviderService.deleteProvider(
+        organization,
+        name,
+        version,
+        providerName
+      );
       setMessage("The provider was deleted successfully!");
       setMessageType("success");
-      setProviders(providers.filter(provider => provider.name !== providerName));
+      setProviders(
+        providers.filter((provider) => provider.name !== providerName)
+      );
     } catch (e) {
       console.log(`Error deleting provider ${providerName}:`, e);
       setMessage("Error deleting provider. Please try again.");
@@ -212,10 +260,10 @@ const Version = () => {
     }
   };
 
-  const handleInputChange = event => {
+  const handleInputChange = (event) => {
     const { name, value } = event.target;
     setCurrentVersion({ ...currentVersion, [name]: value });
-  
+
     // Validate the version number field
     if (name === "versionNumber") {
       const error = validateName(value);
@@ -225,47 +273,53 @@ const Version = () => {
 
   const deleteVersion = () => {
     VersionDataService.deleteVersion(organization, name, version)
-      .then(response => {
+      .then((response) => {
         setMessage("The version was deleted successfully!");
         setMessageType("success");
         navigate(`/${organization}/${name}`);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
       });
   };
-  
+
   const saveVersion = async (event) => {
     event.preventDefault();
-  
+
     // Check for validation errors
     if (validationErrors.versionNumber) {
       setMessage(validationErrors.versionNumber);
       setMessageType("danger");
       return;
     }
-  
+
     // Check for duplicate version number, excluding the current version
     if (currentVersion.versionNumber !== version) {
-      const versionExists = allVersions.some(v => v.version === currentVersion.versionNumber && v.id !== currentVersion.id);
+      const versionExists = allVersions.some(
+        (v) =>
+          v.version === currentVersion.versionNumber &&
+          v.id !== currentVersion.id
+      );
       if (versionExists) {
-        setMessage("A version with this number already exists. Please choose a different version number.");
+        setMessage(
+          "A version with this number already exists. Please choose a different version number."
+        );
         setMessageType("danger");
         return;
       }
     }
-  
+
     const data = {
       versionNumber: currentVersion.versionNumber,
       description: currentVersion.description,
     };
-  
+
     try {
       await VersionDataService.updateVersion(organization, name, version, data);
       setMessage("The version was updated successfully!");
       setMessageType("success");
       setEditMode(false);
-  
+
       if (version !== currentVersion.versionNumber) {
         navigate(`/${organization}/${name}/${currentVersion.versionNumber}`);
       }
@@ -285,11 +339,11 @@ const Version = () => {
 
   return (
     <div className="list row">
-      {message && (
+      {message ? (
         <div className={`alert alert-${messageType}`} role="alert">
           {message}
         </div>
-      )}
+      ) : null}
       {currentVersion ? (
         <>
           <div className="mb-4">
@@ -313,7 +367,10 @@ const Version = () => {
                       >
                         Cancel
                       </button>
-                      <Link className="btn btn-dark me-2" to={`/${organization}/${name}`}>
+                      <Link
+                        className="btn btn-dark me-2"
+                        to={`/${organization}/${name}`}
+                      >
                         Back
                       </Link>
                     </div>
@@ -329,9 +386,11 @@ const Version = () => {
                       name="versionNumber"
                       required
                     />
-                    {validationErrors.versionNumber && (
-                      <div className="text-danger">{validationErrors.versionNumber}</div>
-                    )}
+                    {validationErrors.versionNumber ? (
+                      <div className="text-danger">
+                        {validationErrors.versionNumber}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="form-group">
                     <label htmlFor="description">Description</label>
@@ -350,17 +409,26 @@ const Version = () => {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h4>Version Details</h4>
                   <div>
-                    {isAuthorized && (
+                    {isAuthorized ? (
                       <>
-                        <button className="btn btn-primary me-2" onClick={() => setEditMode(true)}>
+                        <button
+                          className="btn btn-primary me-2"
+                          onClick={() => setEditMode(true)}
+                        >
                           Edit
                         </button>
-                        <button className="btn btn-danger me-2" onClick={handleVersionDeleteClick}>
+                        <button
+                          className="btn btn-danger me-2"
+                          onClick={handleVersionDeleteClick}
+                        >
                           Delete
                         </button>
                       </>
-                    )}
-                    <Link className="btn btn-dark me-2" to={`/${organization}/${name}`}>
+                    ) : null}
+                    <Link
+                      className="btn btn-dark me-2"
+                      to={`/${organization}/${name}`}
+                    >
                       Back
                     </Link>
                   </div>
@@ -376,29 +444,33 @@ const Version = () => {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h4>Providers for Version: {version}</h4>
               <div>
-                {isAuthorized && (
+                {isAuthorized ? (
                   <>
                     <button
-                      className={`btn ${showAddProviderForm ? 'btn-secondary' : 'btn-outline-success'} me-2`}
-                      onClick={() => setShowAddProviderForm(!showAddProviderForm)}
+                      className={`btn ${showAddProviderForm ? "btn-secondary" : "btn-outline-success"} me-2`}
+                      onClick={() =>
+                        setShowAddProviderForm(!showAddProviderForm)
+                      }
                     >
                       {showAddProviderForm ? "Cancel" : "Add Provider"}
                     </button>
-                    {showAddProviderForm && (
+                    {showAddProviderForm ? (
                       <button
                         type="submit"
                         className="btn btn-success me-2"
-                        disabled={!newProvider.name || !!validationErrors.providerName}
+                        disabled={
+                          !newProvider.name || !!validationErrors.providerName
+                        }
                         onClick={addProvider}
                       >
                         Submit
                       </button>
-                    )}
+                    ) : null}
                   </>
-                )}
+                ) : null}
               </div>
             </div>
-            {showAddProviderForm && (
+            {showAddProviderForm ? (
               <form onSubmit={addProvider} ref={form}>
                 <div className="add-provider-form">
                   <div className="form-group col-md-3">
@@ -412,9 +484,11 @@ const Version = () => {
                       name="name"
                       required // This makes the field required
                     />
-                    {validationErrors.providerName && (
-                      <div className="text-danger">{validationErrors.providerName}</div>
-                    )}
+                    {validationErrors.providerName ? (
+                      <div className="text-danger">
+                        {validationErrors.providerName}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="form-group">
                     <label htmlFor="providerDescription">Description</label>
@@ -428,51 +502,59 @@ const Version = () => {
                   </div>
                 </div>
               </form>
-            )}
+            ) : null}
             <Table striped className="table">
               <thead>
                 <tr>
                   <th>Provider Name</th>
                   <th>Description</th>
                   <th>Download</th>
-                  {isAuthorized && <th>Delete</th>}
+                  {isAuthorized ? <th>Delete</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {providers.map((provider, index) => (
                   <tr key={index}>
                     <td>
-                      <Link to={`/${organization}/${name}/${version}/${provider.name}`}>
+                      <Link
+                        to={`/${organization}/${name}/${version}/${provider.name}`}
+                      >
                         {provider.name}
                       </Link>
                     </td>
                     <td>{provider.description}</td>
                     <td>
-                      {architectures[provider.name] && architectures[provider.name].map((architecture, idx) => (
-                        <div key={idx}>
-                          {architecture.downloadUrl && (
-                            <a
-                              href={architecture.downloadUrl}
-                              className="btn btn-outline-primary mt-2"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Download {architecture.name}
-                            </a>
-                          )}
-                        </div>
-                      ))}
+                      {architectures[provider.name]
+                        ? architectures[provider.name].map(
+                            (architecture, idx) => (
+                              <div key={idx}>
+                                {architecture.downloadUrl ? (
+                                  <a
+                                    href={architecture.downloadUrl}
+                                    className="btn btn-outline-primary mt-2"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Download {architecture.name}
+                                  </a>
+                                ) : null}
+                              </div>
+                            )
+                          )
+                        : null}
                     </td>
-                    {isAuthorized && (
+                    {isAuthorized ? (
                       <td>
                         <button
                           className="btn btn-danger"
-                          onClick={() => handleProviderDeleteClick(provider.name)}
+                          onClick={() =>
+                            handleProviderDeleteClick(provider.name)
+                          }
                         >
                           Delete
                         </button>
                       </td>
-                    )}
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

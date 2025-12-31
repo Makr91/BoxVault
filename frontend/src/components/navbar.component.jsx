@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from "react";
+import {
+  FaMoon,
+  FaSun,
+  FaGlobe,
+  FaHouse,
+  FaTicket,
+  FaUser,
+  FaCircleInfo,
+  FaGear,
+  FaUserShield,
+  FaIdBadge,
+  FaHouseLock,
+  FaBridgeLock,
+} from "react-icons/fa6";
 import { Link } from "react-router-dom";
-import { FaMoon, FaSun, FaGlobe, FaHouse, FaTicket, FaUser, FaCircleInfo, FaGear, FaUserShield, FaIdBadge, FaHouseLock, FaBridgeLock } from "react-icons/fa6";
-import BoxVaultLight from '../images/BoxVault.svg?react';
-import BoxVaultDark from '../images/BoxVaultDark.svg?react';
-import FavoritesService from '../services/favorites.service';
-import ConfigService from '../services/config.service';
+
+import BoxVaultLight from "../images/BoxVault.svg?react";
+import BoxVaultDark from "../images/BoxVaultDark.svg?react";
+import ConfigService from "../services/config.service";
+import FavoritesService from "../services/favorites.service";
 
 const Navbar = ({
   currentUser,
@@ -15,14 +29,14 @@ const Navbar = ({
   theme,
   toggleTheme,
   logOut,
-  logOutLocal
+  logOutLocal,
 }) => {
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
   const [profileIsLocal, setProfileIsLocal] = useState(true);
   const [favoriteApps, setFavoriteApps] = useState([]);
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
-  const [authServerUrl, setAuthServerUrl] = useState('');
+  const [authServerUrl, setAuthServerUrl] = useState("");
 
   const handleLogout = () => {
     if (logoutEverywhere) {
@@ -38,7 +52,7 @@ const Navbar = ({
     const controller = new AbortController();
 
     const loadUserData = async () => {
-      if (currentUser?.provider?.startsWith('oidc-')) {
+      if (currentUser?.provider?.startsWith("oidc-")) {
         try {
           const response = await FavoritesService.getUserInfoClaims();
           if (mounted) {
@@ -46,8 +60,11 @@ const Navbar = ({
             setFavoriteApps(response.data?.favorite_apps || []);
           }
         } catch (error) {
-          if (!error.name?.includes('Cancel') && !error.message?.includes('aborted')) {
-            console.error('Error loading user claims:', error);
+          if (
+            !error.name?.includes("Cancel") &&
+            !error.message?.includes("aborted")
+          ) {
+            console.error("Error loading user claims:", error);
           }
         }
       } else {
@@ -67,11 +84,13 @@ const Navbar = ({
   // Load ticket config and extract auth server URL from id_token
   useEffect(() => {
     let mounted = true;
-    
+
     const loadConfigs = async () => {
       try {
         // Load ticket config
-        const ticketResponse = await fetch(`${window.location.origin}/api/config/ticket`);
+        const ticketResponse = await fetch(
+          `${window.location.origin}/api/config/ticket`
+        );
         if (ticketResponse.ok) {
           const data = await ticketResponse.json();
           if (mounted && data?.ticket_system) {
@@ -80,21 +99,28 @@ const Navbar = ({
         }
 
         // Get auth server URL from id_token for OIDC users
-        if (currentUser?.provider?.startsWith('oidc-') && currentUser?.accessToken) {
+        if (
+          currentUser?.provider?.startsWith("oidc-") &&
+          currentUser?.accessToken
+        ) {
           try {
-            const jwtPayload = JSON.parse(atob(currentUser.accessToken.split('.')[1]));
+            const jwtPayload = JSON.parse(
+              atob(currentUser.accessToken.split(".")[1])
+            );
             if (jwtPayload.id_token) {
-              const idTokenPayload = JSON.parse(atob(jwtPayload.id_token.split('.')[1]));
+              const idTokenPayload = JSON.parse(
+                atob(jwtPayload.id_token.split(".")[1])
+              );
               if (idTokenPayload.iss && mounted) {
                 setAuthServerUrl(idTokenPayload.iss);
               }
             }
           } catch (error) {
-            console.debug('Could not extract issuer from id_token:', error);
+            console.debug("Could not extract issuer from id_token:", error);
           }
         }
       } catch (error) {
-        console.error('Error loading configs:', error);
+        console.error("Error loading configs:", error);
       }
     };
 
@@ -106,22 +132,26 @@ const Navbar = ({
   }, [currentUser]);
 
   const buildTicketUrl = () => {
-    if (!ticketConfig || !ticketConfig.enabled?.value) return null;
-    if (!userClaims) return null;
+    if (!ticketConfig || !ticketConfig.enabled?.value) {
+      return null;
+    }
+    if (!userClaims) {
+      return null;
+    }
 
-    const baseUrl = ticketConfig.base_url?.value || '';
-    const req = ticketConfig.req_type?.value || 'sso';
-    const context = ticketConfig.context?.value || '';
-    const customerId = userClaims.customer_id || 'BOXVAULT';
-    const userName = userClaims.name || userClaims.email || 'User';
-    const email = userClaims.email || '';
+    const baseUrl = ticketConfig.base_url?.value || "";
+    const req = ticketConfig.req_type?.value || "sso";
+    const context = ticketConfig.context?.value || "";
+    const customerId = userClaims.customer_id || "BOXVAULT";
+    const userName = userClaims.name || userClaims.email || "User";
+    const email = userClaims.email || "";
 
     const params = new URLSearchParams({
-      req: req,
-      customerId: customerId,
+      req,
+      customerId,
       user: userName,
-      email: email,
-      context: context
+      email,
+      context,
     });
 
     return `${baseUrl}&${params.toString()}`;
@@ -131,37 +161,37 @@ const Navbar = ({
 
   const handleFavoriteClick = (app, event) => {
     event.preventDefault();
-    if (app.homeUrl && app.homeUrl !== '') {
-      window.open(app.homeUrl, '_blank', 'noopener,noreferrer');
+    if (app.homeUrl && app.homeUrl !== "") {
+      window.open(app.homeUrl, "_blank", "noopener,noreferrer");
     }
   };
 
   const renderAppIcon = (app) => {
-    const iconStyle = { width: '20px', height: '20px', marginRight: '8px' };
-    
-    if (app.iconUrl && app.iconUrl !== '') {
+    const iconStyle = { width: "20px", height: "20px", marginRight: "8px" };
+
+    if (app.iconUrl && app.iconUrl !== "") {
       return (
-        <img 
-          src={app.iconUrl} 
+        <img
+          src={app.iconUrl}
           style={iconStyle}
           alt=""
           onError={(e) => {
-            e.target.style.display = 'none';
+            e.target.style.display = "none";
           }}
         />
       );
     }
-    
-    if (app.homeUrl && app.homeUrl !== '') {
+
+    if (app.homeUrl && app.homeUrl !== "") {
       try {
-        const faviconUrl = new URL(app.homeUrl).origin + '/favicon.ico';
+        const faviconUrl = `${new URL(app.homeUrl).origin}/favicon.ico`;
         return (
-          <img 
-            src={faviconUrl} 
+          <img
+            src={faviconUrl}
             style={iconStyle}
             alt=""
             onError={(e) => {
-              e.target.style.display = 'none';
+              e.target.style.display = "none";
             }}
           />
         );
@@ -170,24 +200,32 @@ const Navbar = ({
         return null;
       }
     }
-    
+
     return null;
   };
   return (
     <nav className={`navbar navbar-expand-lg`}>
       <div className="container-fluid">
         <Link to={"/"} className="navbar-brand">
-          {theme === "light" ? <BoxVaultLight style={{ width: "30px", height: "30px", marginRight: "10px" }}  /> : <BoxVaultDark style={{ width: "30px", height: "30px", marginRight: "10px" }}  />}
+          {theme === "light" ? (
+            <BoxVaultLight
+              style={{ width: "30px", height: "30px", marginRight: "10px" }}
+            />
+          ) : (
+            <BoxVaultDark
+              style={{ width: "30px", height: "30px", marginRight: "10px" }}
+            />
+          )}
           BoxVault
         </Link>
         <ul className="nav nav-pills me-auto">
-          {currentUser && userOrganization && (
+          {currentUser && userOrganization ? (
             <li className="nav-item">
               <Link to={`/${userOrganization}`} className="nav-link">
                 {userOrganization}
               </Link>
             </li>
-          )}
+          ) : null}
         </ul>
 
         {currentUser ? (
@@ -206,49 +244,67 @@ const Navbar = ({
                     className="rounded-circle"
                     width="30"
                     height="30"
-                    style={{ marginRight: '10px', verticalAlign: 'middle' }}
+                    style={{ marginRight: "10px", verticalAlign: "middle" }}
+                  />
+                ) : theme === "light" ? (
+                  <BoxVaultLight
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      marginRight: "10px",
+                    }}
                   />
                 ) : (
-                  theme === "light" ? <BoxVaultLight style={{ width: "30px", height: "30px", marginRight: "10px" }}  /> : <BoxVaultDark style={{ width: "30px", height: "30px", marginRight: "10px" }}  />
+                  <BoxVaultDark
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      marginRight: "10px",
+                    }}
+                  />
                 )}
                 {currentUser.username}
               </button>
               <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                {showModeratorBoard && (
+                {showModeratorBoard ? (
                   <li>
                     <Link to="/moderator" className="dropdown-item">
                       <FaUserShield className="me-2" />
                       Moderator
                     </Link>
                   </li>
-                )}
+                ) : null}
                 <li>
                   <div className="dropdown-item d-flex align-items-center">
-                    {currentUser?.provider?.startsWith('oidc-') && authServerUrl ? (
+                    {currentUser?.provider?.startsWith("oidc-") &&
+                    authServerUrl ? (
                       <>
                         {profileIsLocal ? (
-                          <FaUser 
+                          <FaUser
                             className="me-2"
                             onClick={(e) => {
                               e.stopPropagation();
                               setProfileIsLocal(!profileIsLocal);
                             }}
                             title="Switch to auth server profile"
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: "pointer" }}
                           />
                         ) : (
-                          <FaIdBadge 
+                          <FaIdBadge
                             className="me-2"
                             onClick={(e) => {
                               e.stopPropagation();
                               setProfileIsLocal(!profileIsLocal);
                             }}
                             title="Switch to local profile"
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: "pointer" }}
                           />
                         )}
                         {profileIsLocal ? (
-                          <Link to="/profile" className="text-decoration-none text-reset">
+                          <Link
+                            to="/profile"
+                            className="text-decoration-none text-reset"
+                          >
                             Profile
                           </Link>
                         ) : (
@@ -265,7 +321,10 @@ const Navbar = ({
                     ) : (
                       <>
                         <FaUser className="me-2" />
-                        <Link to="/profile" className="text-decoration-none text-reset">
+                        <Link
+                          to="/profile"
+                          className="text-decoration-none text-reset"
+                        >
                           Profile
                         </Link>
                       </>
@@ -278,7 +337,7 @@ const Navbar = ({
                     About
                   </Link>
                 </li>
-                {favoriteApps && favoriteApps.length > 0 && (
+                {favoriteApps && favoriteApps.length > 0 ? (
                   <>
                     <li>
                       <hr className="dropdown-divider" />
@@ -286,10 +345,10 @@ const Navbar = ({
                     <li className="dropdown-header">Favorite Applications</li>
                     {favoriteApps
                       .sort((a, b) => (a.order || 0) - (b.order || 0))
-                      .map(app => (
+                      .map((app) => (
                         <li key={app.clientId}>
                           <a
-                            href={app.homeUrl || '#'}
+                            href={app.homeUrl || "#"}
                             onClick={(e) => handleFavoriteClick(app, e)}
                             className="dropdown-item"
                             target="_blank"
@@ -301,8 +360,8 @@ const Navbar = ({
                         </li>
                       ))}
                   </>
-                )}
-                {showAdminBoard && (
+                ) : null}
+                {showAdminBoard ? (
                   <>
                     <li>
                       <hr className="dropdown-divider" />
@@ -314,8 +373,8 @@ const Navbar = ({
                       </Link>
                     </li>
                   </>
-                )}
-                {ticketUrl && (
+                ) : null}
+                {ticketUrl ? (
                   <>
                     <li>
                       <hr className="dropdown-divider" />
@@ -332,37 +391,37 @@ const Navbar = ({
                       </a>
                     </li>
                   </>
-                )}
+                ) : null}
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
                 <li>
                   <div className="dropdown-item d-flex align-items-center">
                     {logoutEverywhere ? (
-                      <FaBridgeLock 
+                      <FaBridgeLock
                         className="me-2 text-danger"
                         onClick={(e) => {
                           e.stopPropagation();
                           setLogoutEverywhere(!logoutEverywhere);
                         }}
                         title="Click to logout locally only"
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: "pointer" }}
                       />
                     ) : (
-                      <FaHouseLock 
+                      <FaHouseLock
                         className="me-2 text-danger"
                         onClick={(e) => {
                           e.stopPropagation();
                           setLogoutEverywhere(!logoutEverywhere);
                         }}
                         title="Click to logout everywhere"
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: "pointer" }}
                       />
                     )}
                     <span
                       onClick={handleLogout}
                       className="text-danger cursor-pointer"
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: "pointer" }}
                     >
                       Logout
                     </span>

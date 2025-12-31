@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import AuthService from "../services/auth.service";
-import UserService from "../services/user.service";
-import ServiceAccountService from "../services/service_account.service";
-import ConfirmationModal from './confirmation.component';
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import AuthService from "../services/auth.service";
+import ServiceAccountService from "../services/service_account.service";
+import UserService from "../services/user.service";
+
+import ConfirmationModal from "./confirmation.component";
 
 const Profile = () => {
   const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
@@ -20,8 +22,10 @@ const Profile = () => {
   const [isOnlyUserInOrg, setIsOnlyUserInOrg] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [serviceAccounts, setServiceAccounts] = useState([]);
-  const [newServiceAccountDescription, setNewServiceAccountDescription] = useState("");
-  const [newServiceAccountExpiration, setNewServiceAccountExpiration] = useState(30);
+  const [newServiceAccountDescription, setNewServiceAccountDescription] =
+    useState("");
+  const [newServiceAccountExpiration, setNewServiceAccountExpiration] =
+    useState(30);
   const [showPasswords, setShowPasswords] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -43,7 +47,7 @@ const Profile = () => {
   const closeDeleteModal = () => setShowDeleteModal(false);
 
   const refreshUserData = useCallback(() => {
-    AuthService.refreshUserData().then(updatedUser => {
+    AuthService.refreshUserData().then((updatedUser) => {
       if (updatedUser) {
         setCurrentUser(updatedUser);
       }
@@ -57,7 +61,7 @@ const Profile = () => {
 
   const checkEmailVerification = useCallback(() => {
     const searchParams = new URLSearchParams(location.search);
-    const token = searchParams.get('token');
+    const token = searchParams.get("token");
 
     if (token) {
       AuthService.verifyMail(token)
@@ -66,7 +70,10 @@ const Profile = () => {
           refreshUserData();
         })
         .catch((error) => {
-          setVerificationMessage(error.response?.data?.message || "Failed to verify email. Please try again or contact support.");
+          setVerificationMessage(
+            error.response?.data?.message ||
+              "Failed to verify email. Please try again or contact support."
+          );
         })
         .finally(() => {
           navigate("/profile", { replace: true });
@@ -80,31 +87,36 @@ const Profile = () => {
 
   useEffect(() => {
     let mounted = true;
-    let controller = new AbortController();
+    const controller = new AbortController();
 
     const loadUserData = async () => {
       if (currentUser) {
-        const emailHash = currentUser.emailHash;
+        const { emailHash } = currentUser;
         if (emailHash) {
           try {
-            const profile = await AuthService.getGravatarProfile(emailHash, controller.signal);
+            const profile = await AuthService.getGravatarProfile(
+              emailHash,
+              controller.signal
+            );
             if (mounted && profile) {
               setGravatarProfile(profile);
             }
           } catch (error) {
-            if (!error.name?.includes('Cancel')) {
+            if (!error.name?.includes("Cancel")) {
               console.error("Error loading Gravatar profile:", error);
             }
           }
         }
-        
+
         try {
-          const isOnly = await UserService.isOnlyUserInOrg(currentUser.organization);
+          const isOnly = await UserService.isOnlyUserInOrg(
+            currentUser.organization
+          );
           if (mounted) {
             setIsOnlyUserInOrg(isOnly);
           }
         } catch (error) {
-          if (!error.name?.includes('Cancel')) {
+          if (!error.name?.includes("Cancel")) {
             console.error("Error checking organization status:", error);
           }
         }
@@ -123,17 +135,23 @@ const Profile = () => {
 
   useEffect(() => {
     let mounted = true;
-    let controller = new AbortController();
-    
+    const controller = new AbortController();
+
     const loadData = async () => {
       if (activeTab === "serviceAccounts") {
         try {
-          const response = await ServiceAccountService.getServiceAccounts(controller.signal);
+          const response = await ServiceAccountService.getServiceAccounts(
+            controller.signal
+          );
           if (mounted) {
             setServiceAccounts(response.data);
           }
         } catch (error) {
-          if (mounted && !error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+          if (
+            mounted &&
+            !error.message?.includes("aborted") &&
+            !error.name?.includes("Cancel")
+          ) {
             console.error("Error loading service accounts:", error);
           }
         }
@@ -155,7 +173,10 @@ const Profile = () => {
       const response = await ServiceAccountService.getServiceAccounts(signal);
       setServiceAccounts(response.data);
     } catch (error) {
-      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+      if (
+        !error.message?.includes("aborted") &&
+        !error.name?.includes("Cancel")
+      ) {
         console.error("Error loading service accounts:", error);
       }
     }
@@ -165,12 +186,18 @@ const Profile = () => {
     e.preventDefault();
     const controller = new AbortController();
     try {
-      await ServiceAccountService.createServiceAccount(newServiceAccountDescription, newServiceAccountExpiration);
+      await ServiceAccountService.createServiceAccount(
+        newServiceAccountDescription,
+        newServiceAccountExpiration
+      );
       await loadServiceAccounts(controller.signal);
       setNewServiceAccountDescription("");
       setNewServiceAccountExpiration(30);
     } catch (error) {
-      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+      if (
+        !error.message?.includes("aborted") &&
+        !error.name?.includes("Cancel")
+      ) {
         console.error("Error creating service account:", error);
       }
     }
@@ -183,7 +210,10 @@ const Profile = () => {
       await ServiceAccountService.deleteServiceAccount(id);
       await loadServiceAccounts(controller.signal);
     } catch (error) {
-      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+      if (
+        !error.message?.includes("aborted") &&
+        !error.name?.includes("Cancel")
+      ) {
         console.error("Error deleting service account:", error);
       }
     }
@@ -194,12 +224,16 @@ const Profile = () => {
     const controller = new AbortController();
     setVerificationMessage("");
     try {
-      const response = await AuthService.resendVerificationMail(controller.signal);
+      const response = await AuthService.resendVerificationMail(
+        controller.signal
+      );
       setVerificationMessage(response.data.message);
       await refreshUserData();
     } catch (error) {
-      if (!error.name?.includes('Cancel')) {
-        setVerificationMessage("Error sending verification email: " + error.message);
+      if (!error.name?.includes("Cancel")) {
+        setVerificationMessage(
+          `Error sending verification email: ${error.message}`
+        );
       }
     }
     return () => controller.abort();
@@ -213,11 +247,15 @@ const Profile = () => {
     setPasswordErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
-        await UserService.changePassword(currentUser.id, newPassword, controller.signal);
+        await UserService.changePassword(
+          currentUser.id,
+          newPassword,
+          controller.signal
+        );
         setMessage("Password changed successfully!");
       } catch (error) {
-        if (!error.name?.includes('Cancel')) {
-          setMessage("Error changing password: " + error.message);
+        if (!error.name?.includes("Cancel")) {
+          setMessage(`Error changing password: ${error.message}`);
         }
       }
     }
@@ -232,12 +270,16 @@ const Profile = () => {
     setEmailErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
-        await UserService.changeEmail(currentUser.id, newEmail, controller.signal);
+        await UserService.changeEmail(
+          currentUser.id,
+          newEmail,
+          controller.signal
+        );
         setEmailMessage("Email changed successfully!");
         await refreshUserData();
       } catch (error) {
-        if (!error.name?.includes('Cancel')) {
-          setEmailMessage("Error changing email: " + error.message);
+        if (!error.name?.includes("Cancel")) {
+          setEmailMessage(`Error changing email: ${error.message}`);
         }
       }
     }
@@ -250,7 +292,9 @@ const Profile = () => {
         setMessage("Promoted to moderator successfully!");
         refreshUserData();
       })
-      .catch((error) => setMessage("Error promoting to moderator: " + error.message));
+      .catch((error) =>
+        setMessage(`Error promoting to moderator: ${error.message}`)
+      );
   };
 
   const validatePasswordForm = () => {

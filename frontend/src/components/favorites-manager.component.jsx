@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import FavoritesService from '../services/favorites.service';
-import { FaStar, FaXmark, FaGripVertical, FaPlus } from 'react-icons/fa6';
+import React, { useState, useEffect } from "react";
+import { FaStar, FaXmark, FaGripVertical, FaPlus } from "react-icons/fa6";
+
+import FavoritesService from "../services/favorites.service";
 
 const FavoritesManager = () => {
   const [favorites, setFavorites] = useState([]);
   const [enrichedFavorites, setEnrichedFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [newClientId, setNewClientId] = useState('');
-  const [newCustomLabel, setNewCustomLabel] = useState('');
+  const [message, setMessage] = useState("");
+  const [newClientId, setNewClientId] = useState("");
+  const [newCustomLabel, setNewCustomLabel] = useState("");
   const [draggedIndex, setDraggedIndex] = useState(null);
 
   useEffect(() => {
@@ -27,40 +28,40 @@ const FavoritesManager = () => {
       setFavorites(rawResponse.data || []);
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
-      console.error('Error loading favorites:', error);
-      setMessage('Failed to load favorites');
+      console.error("Error loading favorites:", error);
+      setMessage("Failed to load favorites");
     } finally {
       setLoading(false);
     }
   };
 
-  const saveFavorites = async newFavorites => {
+  const saveFavorites = async (newFavorites) => {
     setSaving(true);
-    setMessage('');
+    setMessage("");
     try {
       await FavoritesService.saveFavorites(newFavorites);
-      setMessage('Favorites saved successfully!');
+      setMessage("Favorites saved successfully!");
       setFavorites(newFavorites);
       // Reload enriched favorites
       const enrichedResponse = await FavoritesService.getUserInfoClaims();
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
-      console.error('Error saving favorites:', error);
-      setMessage('Failed to save favorites');
+      console.error("Error saving favorites:", error);
+      setMessage("Failed to save favorites");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAddFavorite = e => {
+  const handleAddFavorite = (e) => {
     e.preventDefault();
     if (!newClientId.trim()) {
-      setMessage('Please enter a client ID');
+      setMessage("Please enter a client ID");
       return;
     }
 
-    if (favorites.some(f => f.clientId === newClientId)) {
-      setMessage('This application is already in your favorites');
+    if (favorites.some((f) => f.clientId === newClientId)) {
+      setMessage("This application is already in your favorites");
       return;
     }
 
@@ -70,23 +71,23 @@ const FavoritesManager = () => {
       newCustomLabel.trim() || null
     );
     saveFavorites(updated);
-    setNewClientId('');
-    setNewCustomLabel('');
+    setNewClientId("");
+    setNewCustomLabel("");
   };
 
-  const handleRemoveFavorite = clientId => {
+  const handleRemoveFavorite = (clientId) => {
     const updated = FavoritesService.removeFavorite(favorites, clientId);
     saveFavorites(updated);
   };
 
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (e, dropIndex) => {
@@ -95,7 +96,11 @@ const FavoritesManager = () => {
       return;
     }
 
-    const updated = FavoritesService.reorderFavorites(favorites, draggedIndex, dropIndex);
+    const updated = FavoritesService.reorderFavorites(
+      favorites,
+      draggedIndex,
+      dropIndex
+    );
     setDraggedIndex(null);
     saveFavorites(updated);
   };
@@ -104,36 +109,35 @@ const FavoritesManager = () => {
     setDraggedIndex(null);
   };
 
-  const getEnrichedData = clientId => {
-    return enrichedFavorites.find(ef => ef.clientId === clientId) || {};
-  };
+  const getEnrichedData = (clientId) =>
+    enrichedFavorites.find((ef) => ef.clientId === clientId) || {};
 
-  const renderAppIcon = enriched => {
-    const iconStyle = { width: '24px', height: '24px', marginRight: '12px' };
+  const renderAppIcon = (enriched) => {
+    const iconStyle = { width: "24px", height: "24px", marginRight: "12px" };
 
-    if (enriched.iconUrl && enriched.iconUrl !== '') {
+    if (enriched.iconUrl && enriched.iconUrl !== "") {
       return (
         <img
           src={enriched.iconUrl}
           style={iconStyle}
           alt=""
-          onError={e => {
-            e.target.style.display = 'none';
+          onError={(e) => {
+            e.target.style.display = "none";
           }}
         />
       );
     }
 
-    if (enriched.homeUrl && enriched.homeUrl !== '') {
+    if (enriched.homeUrl && enriched.homeUrl !== "") {
       try {
-        const faviconUrl = new URL(enriched.homeUrl).origin + '/favicon.ico';
+        const faviconUrl = `${new URL(enriched.homeUrl).origin}/favicon.ico`;
         return (
           <img
             src={faviconUrl}
             style={iconStyle}
             alt=""
-            onError={e => {
-              e.target.style.display = 'none';
+            onError={(e) => {
+              e.target.style.display = "none";
             }}
           />
         );
@@ -162,11 +166,13 @@ const FavoritesManager = () => {
         Manage your favorite applications for quick access from the user menu.
       </p>
 
-      {message && (
-        <div className={`alert ${message.includes('success') ? 'alert-success' : 'alert-danger'}`}>
+      {message ? (
+        <div
+          className={`alert ${message.includes("success") ? "alert-success" : "alert-danger"}`}
+        >
           {message}
-        </div>
-      )}
+                 </div>
+      ) : null}
 
       {/* Add New Favorite Form */}
       <div className="card mb-4">
@@ -186,7 +192,7 @@ const FavoritesManager = () => {
                   className="form-control"
                   id="clientId"
                   value={newClientId}
-                  onChange={e => setNewClientId(e.target.value)}
+                  onChange={(e) => setNewClientId(e.target.value)}
                   placeholder="e.g., boxvault, armor, web-terminal"
                   required
                 />
@@ -203,13 +209,19 @@ const FavoritesManager = () => {
                   className="form-control"
                   id="customLabel"
                   value={newCustomLabel}
-                  onChange={e => setNewCustomLabel(e.target.value)}
+                  onChange={(e) => setNewCustomLabel(e.target.value)}
                   placeholder="e.g., My App Name"
                 />
-                <small className="form-text text-muted">Override the default app name</small>
+                <small className="form-text text-muted">
+                  Override the default app name
+                </small>
               </div>
               <div className="col-md-2 mb-3 d-flex align-items-end">
-                <button type="submit" className="btn btn-primary w-100" disabled={saving}>
+                <button
+                  type="submit"
+                  className="btn btn-primary w-100"
+                  disabled={saving}
+                >
                   {saving ? (
                     <span className="spinner-border spinner-border-sm me-2" />
                   ) : (
@@ -228,14 +240,15 @@ const FavoritesManager = () => {
         <div className="card-header">
           <FaStar className="me-2 text-warning" />
           Your Favorites
-          {favorites.length > 0 && (
+          {favorites.length > 0 ? (
             <span className="badge bg-primary ms-2">{favorites.length}</span>
-          )}
+          ) : null}
         </div>
         <div className="card-body">
           {favorites.length === 0 ? (
             <p className="text-muted">
-              No favorites yet. Add applications above to see them in your user menu.
+              No favorites yet. Add applications above to see them in your user
+              menu.
             </p>
           ) : (
             <div className="list-group">
@@ -251,12 +264,12 @@ const FavoritesManager = () => {
                       key={fav.clientId}
                       className="list-group-item"
                       draggable
-                      onDragStart={e => handleDragStart(e, index)}
-                      onDragOver={e => handleDragOver(e, index)}
-                      onDrop={e => handleDrop(e, index)}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
                       style={{
-                        cursor: 'move',
+                        cursor: "move",
                         opacity: draggedIndex === index ? 0.5 : 1,
                       }}
                     >
@@ -267,14 +280,14 @@ const FavoritesManager = () => {
                           <div>
                             <strong>{displayName}</strong>
                             {enriched.clientName &&
-                              fav.customLabel &&
-                              enriched.clientName !== fav.customLabel && (
-                                <small className="text-muted d-block">
-                                  {enriched.clientName}
-                                </small>
-                              )}
-                            {enriched.homeUrl && (
+                            fav.customLabel &&
+                            enriched.clientName !== fav.customLabel ? (
                               <small className="text-muted d-block">
+                                {enriched.clientName}
+                                                                        </small> : null}
+                            {enriched.homeUrl ? (
+                              (
+<small className="text-muted d-block">
                                 <a
                                   href={enriched.homeUrl}
                                   target="_blank"
@@ -284,7 +297,7 @@ const FavoritesManager = () => {
                                   {enriched.homeUrl}
                                 </a>
                               </small>
-                            )}
+) : null}
                           </div>
                         </div>
                         <button
@@ -328,9 +341,9 @@ const FavoritesManager = () => {
             </li>
           </ul>
           <p className="text-muted small">
-            Note: Applications must be configured in the authorization server to appear with
-            names and icons. Contact your administrator if an application doesn't display
-            correctly.
+            Note: Applications must be configured in the authorization server to
+            appear with names and icons. Contact your administrator if an
+            application doesn't display correctly.
           </p>
         </div>
       </div>

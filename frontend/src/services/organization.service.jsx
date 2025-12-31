@@ -1,39 +1,48 @@
 import axios from "axios";
+
 import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
 
-const getOrganizations = () => {
-  return axios.get(`${baseURL}/api/organizations`, { headers: authHeader() });
-};
+const getOrganizations = () =>
+  axios.get(`${baseURL}/api/organizations`, { headers: authHeader() });
 
-const getOrganizationsWithUsers = () => {
-  return axios.get(`${baseURL}/api/organizations-with-users`, { headers: authHeader() });
-};
+const getOrganizationsWithUsers = () =>
+  axios.get(`${baseURL}/api/organizations-with-users`, {
+    headers: authHeader(),
+  });
 
-const getOrganizationWithUsers = (organizationName) => {
-  return axios.get(`${baseURL}/api/organization/${organizationName}/users`, { headers: authHeader() });
-};
+const getOrganizationWithUsers = (organizationName) =>
+  axios.get(`${baseURL}/api/organization/${organizationName}/users`, {
+    headers: authHeader(),
+  });
 
-const updateOrganization = (organizationName, newData) => {
-  return axios.put(`${baseURL}/api/organization/${organizationName}`, newData, { headers: authHeader() });
-};
+const updateOrganization = (organizationName, newData) =>
+  axios.put(`${baseURL}/api/organization/${organizationName}`, newData, {
+    headers: authHeader(),
+  });
 
-const suspendOrganization = (organizationName) => {
-  return axios.put(`${baseURL}/api/organization/${organizationName}/suspend`, {}, { headers: authHeader() });
-};
+const suspendOrganization = (organizationName) =>
+  axios.put(
+    `${baseURL}/api/organization/${organizationName}/suspend`,
+    {},
+    { headers: authHeader() }
+  );
 
-const resumeOrganization = (organizationName) => {
-  return axios.put(`${baseURL}/api/organization/${organizationName}/resume`, {}, { headers: authHeader() });
-};
+const resumeOrganization = (organizationName) =>
+  axios.put(
+    `${baseURL}/api/organization/${organizationName}/resume`,
+    {},
+    { headers: authHeader() }
+  );
 
-const getOrganizationByName = (name) => {
-  return axios.get(`${baseURL}/api/organization/${name}`, { headers: authHeader() });
-};
+const getOrganizationByName = (name) =>
+  axios.get(`${baseURL}/api/organization/${name}`, { headers: authHeader() });
 
-const deleteOrganization = (organization) => {
-  return axios.delete(`${baseURL}/api/organization/${organization}`, { headers: authHeader() });
-};
+const deleteOrganization = (organization) =>
+  axios.delete(`${baseURL}/api/organization/${organization}`, {
+    headers: authHeader(),
+  });
 
 const OrganizationService = {
   getOrganizations,
@@ -43,7 +52,7 @@ const OrganizationService = {
   updateOrganization,
   resumeOrganization,
   suspendOrganization,
-  deleteOrganization
+  deleteOrganization,
 };
 
 export default OrganizationService;

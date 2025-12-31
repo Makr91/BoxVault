@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Table } from "react-bootstrap";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import ArchitectureService from "../services/architecture.service";
 import BoxDataService from "../services/box.service";
 import VersionDataService from "../services/version.service";
-import ArchitectureService from "../services/architecture.service";
 import ProviderService from "../services/provider.service";
 import FileService from "../services/file.service";
 import AuthService from "../services/auth.service";
-import ConfirmationModal from './confirmation.component';
-import { Table } from 'react-bootstrap';
+
+import ConfirmationModal from "./confirmation.component";
 
 const Box = ({ theme }) => {
   const { organization, name } = useParams();
@@ -16,8 +17,8 @@ const Box = ({ theme }) => {
   const [showModal, setShowModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState(null);
-  let navigate = useNavigate();
-  console.log(theme)
+  const navigate = useNavigate();
+  console.log(theme);
   const initialBoxState = {
     id: null,
     name: "",
@@ -28,7 +29,7 @@ const Box = ({ theme }) => {
     organization: null,
     githubRepo: "",
     workflowFile: "",
-    cicdUrl: ""
+    cicdUrl: "",
   };
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -38,7 +39,10 @@ const Box = ({ theme }) => {
   const [messageType, setMessageType] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [showAddVersionForm, setShowAddVersionForm] = useState(false);
-  const [newVersion, setNewVersion] = useState({ versionNumber: "", description: "" });
+  const [newVersion, setNewVersion] = useState({
+    versionNumber: "",
+    description: "",
+  });
   const [providers, setProviders] = useState({});
   const [allVersions, setAllVersions] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
@@ -46,16 +50,14 @@ const Box = ({ theme }) => {
 
   const form = useRef();
 
-  const required = (value) => {
-    return value ? undefined : "This field is required!";
-  };
+  const required = (value) => (value ? undefined : "This field is required!");
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) => {
-    return validCharsRegex.test(value) ? undefined : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-  };
-
+  const validateName = (value) =>
+    validCharsRegex.test(value)
+      ? undefined
+      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
 
   useEffect(() => {
     const user = AuthService.getCurrentUser();
@@ -67,7 +69,7 @@ const Box = ({ theme }) => {
     if (name) {
       // Fetch the box details using the box's organization
       BoxDataService.get(organization, name)
-        .then(response => {
+        .then((response) => {
           const boxData = response.data;
           setCurrentBox(boxData);
           setOriginalName(boxData.name);
@@ -77,26 +79,33 @@ const Box = ({ theme }) => {
           }
 
           // Check if the box is public or the user is authorized
-          if (boxData.isPublic || (user && user.organization === organization)) {
+          if (
+            boxData.isPublic ||
+            (user && user.organization === organization)
+          ) {
             // Fetch versions using the box's organization
             VersionDataService.getVersions(organization, name)
-              .then(response => {
+              .then((response) => {
                 setVersions(response.data);
                 setAllVersions(response.data);
-                response.data.forEach(version => {
-                  ProviderService.getProviders(organization, name, version.versionNumber)
-                    .then(providerResponse => {
-                      setProviders(prev => ({
+                response.data.forEach((version) => {
+                  ProviderService.getProviders(
+                    organization,
+                    name,
+                    version.versionNumber
+                  )
+                    .then((providerResponse) => {
+                      setProviders((prev) => ({
                         ...prev,
-                        [version.versionNumber]: providerResponse.data
+                        [version.versionNumber]: providerResponse.data,
                       }));
                     })
-                    .catch(e => {
+                    .catch((e) => {
                       console.log(e);
                     });
                 });
               })
-              .catch(e => {
+              .catch((e) => {
                 console.log(e);
               });
           } else {
@@ -104,7 +113,7 @@ const Box = ({ theme }) => {
             setMessageType("danger");
           }
         })
-        .catch(e => {
+        .catch((e) => {
           console.log(e);
           setMessage("No Box Found");
           setMessageType("danger");
@@ -112,11 +121,11 @@ const Box = ({ theme }) => {
     }
   }, [organization, name]);
 
-  const handleInputChange = event => {
+  const handleInputChange = (event) => {
     const { name, value } = event.target;
-    setCurrentBox({ 
-      ...currentBox, 
-      [name]: name === "isPublic" ? (value === "true" ? 1 : 0) : value 
+    setCurrentBox({
+      ...currentBox,
+      [name]: name === "isPublic" ? (value === "true" ? 1 : 0) : value,
     });
     setNewVersion({ ...newVersion, [name]: value });
 
@@ -133,44 +142,47 @@ const Box = ({ theme }) => {
     }
   };
 
-  const updateRelease = status => {
-    var data = {
+  const updateRelease = (status) => {
+    const data = {
       id: currentBox.id,
       name: currentBox.name,
       isPublic: currentBox.isPublic,
       description: currentBox.description,
-      published: status
+      published: status,
     };
 
-    BoxDataService.update(currentUser.organization, currentBox.name, data)
-      .then(response => {
+    BoxDataService.update(currentUser.organization, currentBox.name, data).then(
+      (response) => {
         setCurrentBox({ ...currentBox, published: status });
         console.log(response.data);
-      })
+      }
+    );
   };
 
   const updateBox = () => {
     // Check for duplicate box name
     if (currentBox.name !== originalName) {
-      const boxExists = allVersions.some(v => v.name === currentBox.name);
+      const boxExists = allVersions.some((v) => v.name === currentBox.name);
       if (boxExists) {
-        setMessage("A box with this name already exists. Please choose a different name.");
+        setMessage(
+          "A box with this name already exists. Please choose a different name."
+        );
         setMessageType("danger");
         return;
       }
     }
-  
+
     BoxDataService.update(currentUser.organization, originalName, currentBox)
       .then(() => {
         setMessage("The box was updated successfully!");
         setMessageType("success");
         setEditMode(false);
-  
+
         if (originalName !== currentBox.name) {
           navigate(`/${currentUser.organization}/${currentBox.name}`);
         }
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
@@ -183,11 +195,11 @@ const Box = ({ theme }) => {
 
   const deleteBox = () => {
     BoxDataService.remove(currentUser.organization, currentBox.name)
-      .then(response => {
+      .then((response) => {
         console.log(response.data);
         navigate(`/${currentUser.organization}`);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
         setMessage("An error occurred while deleting the box.");
         setMessageType("danger");
@@ -203,7 +215,9 @@ const Box = ({ theme }) => {
   const addVersion = (event) => {
     event.preventDefault();
 
-    const versionNumberError = required(newVersion.versionNumber) || validateName(newVersion.versionNumber);
+    const versionNumberError =
+      required(newVersion.versionNumber) ||
+      validateName(newVersion.versionNumber);
     if (versionNumberError) {
       setMessage(versionNumberError);
       setMessageType("danger");
@@ -211,22 +225,30 @@ const Box = ({ theme }) => {
     }
 
     // Check for duplicate version number
-    const versionExists = versions.some(v => v.versionNumber === newVersion.versionNumber);
+    const versionExists = versions.some(
+      (v) => v.versionNumber === newVersion.versionNumber
+    );
     if (versionExists) {
-      setMessage(`Version ${newVersion.versionNumber} with this number already exists. Please choose a different version number.`);
+      setMessage(
+        `Version ${newVersion.versionNumber} with this number already exists. Please choose a different version number.`
+      );
       setMessageType("danger");
       return;
     }
 
-    VersionDataService.createVersion(currentUser.organization, currentBox.name, newVersion)
-      .then(response => {
+    VersionDataService.createVersion(
+      currentUser.organization,
+      currentBox.name,
+      newVersion
+    )
+      .then((response) => {
         setMessage("The version was added successfully!");
         setMessageType("success");
         setVersions([...versions, response.data]);
         setShowAddVersionForm(false);
         setNewVersion({ versionNumber: "", description: "" });
       })
-      .catch(e => {
+      .catch((e) => {
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
         } else {
@@ -236,53 +258,96 @@ const Box = ({ theme }) => {
       });
   };
 
-  const deleteFilesForArchitecture = async (providerName, versionNumber, architectureName) => {
-    await FileService.delete(currentUser.organization, currentBox.name, versionNumber, providerName, architectureName)
-      .catch(e => {
-        console.log(`Error deleting files for architecture ${architectureName}:`, e);
-        throw e;
-      });
+  const deleteFilesForArchitecture = async (
+    providerName,
+    versionNumber,
+    architectureName
+  ) => {
+    await FileService.delete(
+      currentUser.organization,
+      currentBox.name,
+      versionNumber,
+      providerName,
+      architectureName
+    ).catch((e) => {
+      console.log(
+        `Error deleting files for architecture ${architectureName}:`,
+        e
+      );
+      throw e;
+    });
   };
 
-  const deleteArchitecturesForProvider = async (providerName, versionNumber) => {
-
-    const architectures = await ArchitectureService.getArchitectures(currentUser.organization, currentBox.name, versionNumber, providerName);
+  const deleteArchitecturesForProvider = async (
+    providerName,
+    versionNumber
+  ) => {
+    const architectures = await ArchitectureService.getArchitectures(
+      currentUser.organization,
+      currentBox.name,
+      versionNumber,
+      providerName
+    );
     for (const architecture of architectures.data) {
-      console.log(architecture.name)
-      await deleteFilesForArchitecture(providerName, versionNumber, architecture.name);
-      await ArchitectureService.deleteArchitecture(currentUser.organization, currentBox.name, versionNumber, providerName, architecture.name)
-        .catch(e => {
-          console.log(`Error deleting architecture ${architecture.name}:`, e);
-          throw e;
-        });
+      console.log(architecture.name);
+      await deleteFilesForArchitecture(
+        providerName,
+        versionNumber,
+        architecture.name
+      );
+      await ArchitectureService.deleteArchitecture(
+        currentUser.organization,
+        currentBox.name,
+        versionNumber,
+        providerName,
+        architecture.name
+      ).catch((e) => {
+        console.log(`Error deleting architecture ${architecture.name}:`, e);
+        throw e;
+      });
     }
   };
 
   const deleteProvidersForVersion = async (versionNumber) => {
-    const providers = await ProviderService.getProviders(currentUser.organization, currentBox.name, versionNumber);
+    const providers = await ProviderService.getProviders(
+      currentUser.organization,
+      currentBox.name,
+      versionNumber
+    );
     for (const provider of providers.data) {
-      console.log(provider.name)
+      console.log(provider.name);
       await deleteArchitecturesForProvider(provider.name, versionNumber);
-      await ProviderService.deleteProvider(currentUser.organization, currentBox.name, versionNumber, provider.name)
-        .catch(e => {
-          console.log(`Error deleting provider ${provider.name}:`, e);
-          throw e;
-        });
+      await ProviderService.deleteProvider(
+        currentUser.organization,
+        currentBox.name,
+        versionNumber,
+        provider.name
+      ).catch((e) => {
+        console.log(`Error deleting provider ${provider.name}:`, e);
+        throw e;
+      });
     }
   };
 
   const deleteVersion = async (versionNumber) => {
     try {
       await deleteProvidersForVersion(versionNumber);
-      await VersionDataService.deleteVersion(currentUser.organization, currentBox.name, versionNumber);
+      await VersionDataService.deleteVersion(
+        currentUser.organization,
+        currentBox.name,
+        versionNumber
+      );
       setMessage("The version was deleted successfully!");
       setMessageType("success");
-      setVersions(versions.filter(version => version.versionNumber !== versionNumber));
+      setVersions(
+        versions.filter((version) => version.versionNumber !== versionNumber)
+      );
     } catch (e) {
       console.log(`Error deleting version ${versionNumber}:`, e);
-      const errorMessage = e.response && e.response.data && e.response.data.message
-        ? e.response.data.message
-        : "Error deleting version. Please try again.";
+      const errorMessage =
+        e.response && e.response.data && e.response.data.message
+          ? e.response.data.message
+          : "Error deleting version. Please try again.";
       setMessage(errorMessage);
       setMessageType("danger");
     }
@@ -304,12 +369,12 @@ const Box = ({ theme }) => {
     setVersionToDelete(versionNumber);
     setShowVersionModal(true);
   };
-  
+
   const handleCloseVersionModal = () => {
     setShowVersionModal(false);
     setVersionToDelete(null);
   };
-  
+
   const handleConfirmVersionDelete = () => {
     if (versionToDelete) {
       deleteVersion(versionToDelete);

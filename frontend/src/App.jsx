@@ -2,46 +2,46 @@
 import React, { useState, useEffect, useCallback } from "react";
 
 // Styles
-import './scss/styles.scss';
+import "./scss/styles.scss";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 // Services
-import AuthService from "./services/auth.service";
-import SetupService from './services/setup.service';
 import EventBus from "./common/EventBus";
 
 // Components
-import Setup from "./components/setup.component";
-import Login from "./components/login.component";
-import Register from "./components/register.component";
 import About from "./components/about.component";
-import Profile from "./components/profile.component";
 import Admin from "./components/admin.component";
-import Moderator from "./components/moderator.component";
-import Box from "./components/box.component";
-import Organization from "./components/organization.component";
-import Version from "./components/version.component";
 import Provider from "./components/provider.component";
 import Navbar from "./components/navbar.component";
 import AuthCallback from "./components/AuthCallback";
+import Box from "./components/box.component";
+import Login from "./components/login.component";
+import Moderator from "./components/moderator.component";
+import Organization from "./components/organization.component";
+import Profile from "./components/profile.component";
+import Register from "./components/register.component";
+import Setup from "./components/setup.component";
+import Version from "./components/version.component";
 
 // Assets
-import BoxVaultLight from './images/BoxVault.svg';
-import BoxVaultDark from './images/BoxVaultDark.svg';
+import BoxVaultLight from "./images/BoxVault.svg";
+import BoxVaultDark from "./images/BoxVaultDark.svg";
+import AuthService from "./services/auth.service";
+import SetupService from "./services/setup.service";
 
 const App = () => {
   // Initialize Bootstrap
   useEffect(() => {
     let bootstrap;
     const loadBootstrap = async () => {
-      bootstrap = await import('bootstrap/dist/js/bootstrap.bundle.min.js');
+      bootstrap = await import("bootstrap/dist/js/bootstrap.bundle.min.js");
     };
     loadBootstrap();
     return () => {
       // Clean up Bootstrap
       if (bootstrap && bootstrap.Modal) {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
+        const modals = document.querySelectorAll(".modal");
+        modals.forEach((modal) => {
           const instance = bootstrap.Modal.getInstance(modal);
           if (instance) {
             instance.dispose();
@@ -70,9 +70,9 @@ const App = () => {
     localStorage.setItem("theme", theme);
 
     // Update favicon based on theme
-    const favicon = document.getElementById('favicon');
+    const favicon = document.getElementById("favicon");
     if (favicon) {
-      favicon.href = theme === 'dark' ? '/dark-favicon.ico' : '/favicon.ico';
+      favicon.href = theme === "dark" ? "/dark-favicon.ico" : "/favicon.ico";
     }
   }, [theme]);
 
@@ -82,15 +82,19 @@ const App = () => {
     const checkSetup = async () => {
       try {
         const response = await SetupService.isSetupComplete();
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         setSetupComplete(response.data.setupComplete);
         if (!response.data.setupComplete) {
           navigate("/setup");
         }
       } catch (error) {
-        if (!mounted) return;
-        console.error('Error checking setup status:', error);
+        if (!mounted) {
+          return;
+        }
+        console.error("Error checking setup status:", error);
       }
     };
 
@@ -101,32 +105,38 @@ const App = () => {
     };
   }, [navigate]);
 
-  const fetchGravatarUrl = useCallback((emailHash) => {
-    const controller = new AbortController();
+  const fetchGravatarUrl = useCallback(
+    (emailHash) => {
+      const controller = new AbortController();
 
-    const loadGravatar = async () => {
-      if (!gravatarFetched) {
-        try {
-          const profile = await AuthService.getGravatarProfile(emailHash, controller.signal);
-          if (profile?.avatar_url) {
-            setGravatarUrl(profile.avatar_url);
-          }
-          setGravatarFetched(true);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching Gravatar:", error);
+      const loadGravatar = async () => {
+        if (!gravatarFetched) {
+          try {
+            const profile = await AuthService.getGravatarProfile(
+              emailHash,
+              controller.signal
+            );
+            if (profile?.avatar_url) {
+              setGravatarUrl(profile.avatar_url);
+            }
             setGravatarFetched(true);
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              console.error("Error fetching Gravatar:", error);
+              setGravatarFetched(true);
+            }
           }
         }
-      }
-    };
+      };
 
-    loadGravatar();
+      loadGravatar();
 
-    return () => {
-      controller.abort();
-    };
-  }, [gravatarFetched]);
+      return () => {
+        controller.abort();
+      };
+    },
+    [gravatarFetched]
+  );
 
   useEffect(() => {
     const user = AuthService.getCurrentUser();
@@ -134,7 +144,9 @@ const App = () => {
     if (user) {
       setCurrentUser(user);
       setShowAdminBoard(user.roles && user.roles.includes("ROLE_ADMIN"));
-      setShowModeratorBoard(user.roles && user.roles.includes("ROLE_MODERATOR"));
+      setShowModeratorBoard(
+        user.roles && user.roles.includes("ROLE_MODERATOR")
+      );
       setUserOrganization(user.organization);
 
       if (user.emailHash) {
@@ -151,25 +163,32 @@ const App = () => {
 
     const loginCleanup = EventBus.on("login", (userData) => {
       setCurrentUser(userData);
-      setShowAdminBoard(userData.roles && userData.roles.includes("ROLE_ADMIN"));
-      setShowModeratorBoard(userData.roles && userData.roles.includes("ROLE_MODERATOR"));
+      setShowAdminBoard(
+        userData.roles && userData.roles.includes("ROLE_ADMIN")
+      );
+      setShowModeratorBoard(
+        userData.roles && userData.roles.includes("ROLE_MODERATOR")
+      );
       setUserOrganization(userData.organization);
-      
+
       if (userData.emailHash) {
         fetchGravatarUrl(userData.emailHash);
       }
     });
 
-    const organizationUpdateCleanup = EventBus.on("organizationUpdated", (data) => {
-      setUserOrganization(data.newName);
-      // Update currentUser state with new organization name
-      if (currentUser) {
-        setCurrentUser({
-          ...currentUser,
-          organization: data.newName
-        });
+    const organizationUpdateCleanup = EventBus.on(
+      "organizationUpdated",
+      (data) => {
+        setUserOrganization(data.newName);
+        // Update currentUser state with new organization name
+        if (currentUser) {
+          setCurrentUser({
+            ...currentUser,
+            organization: data.newName,
+          });
+        }
       }
-    });
+    );
 
     return () => {
       logoutCleanup();
@@ -232,7 +251,6 @@ const App = () => {
     return <div>Loading...</div>;
   }
 
-
   return (
     <div className="App">
       <Navbar
@@ -248,26 +266,44 @@ const App = () => {
       />
       <div className="container-fluid mt-3">
         <Routes>
-          <Route 
-            path="/setup" 
+          <Route
+            path="/setup"
             element={
               setupComplete ? <Navigate to="/register" replace /> : <Setup />
-            } 
+            }
           />
           {setupComplete ? (
             <>
-              <Route path="/" element={<Organization showOnlyPublic={true} theme={theme} />} />
+              <Route
+                path="/"
+                element={<Organization showOnlyPublic theme={theme} />}
+              />
               <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login theme={theme} />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/register" element={<Register theme={theme} />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<Admin />} />
-              <Route path="/moderator" element={<Moderator currentOrganization={userOrganization} />} />
-              <Route path="/:organization" element={<Organization showOnlyPublic={false} theme={theme} />} />
-              <Route path="/:organization/:name" element={<Box theme={theme} />} />
-              <Route path="/:organization/:name/:version" element={<Version />} />
-              <Route path="/:organization/:name/:version/:providerName" element={<Provider />} />
+              <Route
+                path="/moderator"
+                element={<Moderator currentOrganization={userOrganization} />}
+              />
+              <Route
+                path="/:organization"
+                element={<Organization showOnlyPublic={false} theme={theme} />}
+              />
+              <Route
+                path="/:organization/:name"
+                element={<Box theme={theme} />}
+              />
+              <Route
+                path="/:organization/:name/:version"
+                element={<Version />}
+              />
+              <Route
+                path="/:organization/:name/:version/:providerName"
+                element={<Provider />}
+              />
               <Route path="*" element={<Navigate to="/" />} />
             </>
           ) : (

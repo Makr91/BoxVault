@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from "react-router-dom";
+
+import BoxVaultLight from "../images/BoxVault.svg?react";
+import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
-import BoxVaultLight from '../images/BoxVault.svg?react';
-import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 
 const Login = ({ theme }) => {
-  let navigate = useNavigate();
+  const navigate = useNavigate();
   const location = useLocation();
 
   const [formValues, setFormValues] = useState({
     username: "",
     password: "",
-    stayLoggedIn: false
+    stayLoggedIn: false,
   });
 
   const [validationErrors, setValidationErrors] = useState({});
@@ -27,15 +28,15 @@ const Login = ({ theme }) => {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
-    const token = urlParams.get('token');
-    const error = urlParams.get('error');
+    const token = urlParams.get("token");
+    const error = urlParams.get("error");
 
     if (token) {
       try {
         const userData = { accessToken: token };
         localStorage.setItem("user", JSON.stringify(userData));
-        
-        const returnTo = urlParams.get('returnTo');
+
+        const returnTo = urlParams.get("returnTo");
         if (returnTo) {
           window.location.href = decodeURIComponent(returnTo);
         } else {
@@ -49,13 +50,14 @@ const Login = ({ theme }) => {
     } else if (error) {
       let errorMessage = "Authentication failed";
       switch (error) {
-        case 'oidc_failed':
+        case "oidc_failed":
           errorMessage = "OIDC authentication failed";
           break;
-        case 'access_denied':
-          errorMessage = "Access denied - you may not have permission to access this system";
+        case "access_denied":
+          errorMessage =
+            "Access denied - you may not have permission to access this system";
           break;
-        case 'no_provider':
+        case "no_provider":
           errorMessage = "No authentication provider specified";
           break;
         default:
@@ -72,7 +74,7 @@ const Login = ({ theme }) => {
 
       if (result.methods && result.methods.length > 0) {
         setAuthMethods(result.methods);
-        const firstMethod = result.methods.find(m => m.enabled);
+        const firstMethod = result.methods.find((m) => m.enabled);
         if (firstMethod) {
           setAuthMethod(firstMethod.id);
         }
@@ -106,9 +108,9 @@ const Login = ({ theme }) => {
 
   const handleInputChange = (event) => {
     const { name, value, type, checked } = event.target;
-    setFormValues(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setFormValues((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -128,11 +130,15 @@ const Login = ({ theme }) => {
     setMessage("");
     setLoading(true);
 
-    AuthService.login(formValues.username, formValues.password, formValues.stayLoggedIn)
+    AuthService.login(
+      formValues.username,
+      formValues.password,
+      formValues.stayLoggedIn
+    )
       .then(() => {
         const urlParams = new URLSearchParams(location.search);
-        const returnTo = urlParams.get('returnTo');
-        
+        const returnTo = urlParams.get("returnTo");
+
         if (returnTo) {
           window.location.href = decodeURIComponent(returnTo);
         } else {
@@ -140,11 +146,9 @@ const Login = ({ theme }) => {
           window.location.reload();
         }
       })
-      .catch(error => {
+      .catch((error) => {
         const resMessage =
-          (error.response?.data?.message) ||
-          error.message ||
-          error.toString();
+          error.response?.data?.message || error.message || error.toString();
 
         setLoading(false);
         setMessage(resMessage);

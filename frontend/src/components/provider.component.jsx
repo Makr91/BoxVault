@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from 'react-router-dom';
+import Table from "react-bootstrap/Table";
+import { useParams, useNavigate } from "react-router-dom";
+
 import ArchitectureService from "../services/architecture.service";
-import ProviderService from "../services/provider.service";
 import FileService from "../services/file.service";
-import ConfirmationModal from './confirmation.component';
-import Table from 'react-bootstrap/Table';
+import ProviderService from "../services/provider.service";
+
+import ConfirmationModal from "./confirmation.component";
 
 const Provider = () => {
   const { organization, name, version, providerName } = useParams();
@@ -26,30 +28,30 @@ const Provider = () => {
   const [checksum, setChecksum] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
-  const checksumTypes = ['NULL', 'MD5', 'SHA1', 'SHA256', 'SHA384', 'SHA512'];
+  const checksumTypes = ["NULL", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"];
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const handleProviderDeleteClick = () => {
-    setItemToDelete({ type: 'provider', name: providerName });
+    setItemToDelete({ type: "provider", name: providerName });
     setShowDeleteModal(true);
   };
-  
+
   const handleArchitectureDeleteClick = (architectureName) => {
-    setItemToDelete({ type: 'architecture', name: architectureName });
+    setItemToDelete({ type: "architecture", name: architectureName });
     setShowDeleteModal(true);
   };
-  
+
   const handleCloseDeleteModal = () => {
     setShowDeleteModal(false);
     setItemToDelete(null);
   };
-  
+
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      if (itemToDelete.type === 'provider') {
+      if (itemToDelete.type === "provider") {
         deleteProvider();
-      } else if (itemToDelete.type === 'architecture') {
+      } else if (itemToDelete.type === "architecture") {
         deleteArchitecture(itemToDelete.name);
       }
       handleCloseDeleteModal();
@@ -57,55 +59,74 @@ const Provider = () => {
   };
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(localStorage.getItem("user"));
     if (user) {
       setIsAuthorized(user.organization === organization);
     }
-  
+
     ProviderService.getProvider(organization, name, version, providerName)
-      .then(response => {
+      .then((response) => {
         setCurrentProvider(response.data);
         setOriginalProviderName(response.data.name);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
         setCurrentProvider(null);
         setMessage("No Provider Found");
         setMessageType("danger");
       });
-  
-    ArchitectureService.getArchitectures(organization, name, version, providerName)
-      .then(async response => {
-        const architecturesWithInfo = await Promise.all(response.data.map(async architecture => {
-          try {
-            const [fileInfo, downloadLink] = await Promise.all([
-              FileService.info(organization, name, version, providerName, architecture.name),
-              FileService.getDownloadLink(organization, name, version, providerName, architecture.name)
-            ]);
-            return {
-              ...architecture,
-              fileName: fileInfo.data.fileName,
-              downloadUrl: downloadLink,
-              fileSize: fileInfo.data.fileSize,
-              checksum: fileInfo.data.checksum,
-              checksumType: fileInfo.data.checksumType,
-              downloadCount: fileInfo.data.downloadCount,
-            };
-          } catch (error) {
-            return {
-              ...architecture,
-              fileName: null,
-              downloadUrl: null,
-              fileSize: null,
-              checksum: null,
-              checksumType: null,
-              downloadCount: 0,
-            };
-          }
-        }));
+
+    ArchitectureService.getArchitectures(
+      organization,
+      name,
+      version,
+      providerName
+    )
+      .then(async (response) => {
+        const architecturesWithInfo = await Promise.all(
+          response.data.map(async (architecture) => {
+            try {
+              const [fileInfo, downloadLink] = await Promise.all([
+                FileService.info(
+                  organization,
+                  name,
+                  version,
+                  providerName,
+                  architecture.name
+                ),
+                FileService.getDownloadLink(
+                  organization,
+                  name,
+                  version,
+                  providerName,
+                  architecture.name
+                ),
+              ]);
+              return {
+                ...architecture,
+                fileName: fileInfo.data.fileName,
+                downloadUrl: downloadLink,
+                fileSize: fileInfo.data.fileSize,
+                checksum: fileInfo.data.checksum,
+                checksumType: fileInfo.data.checksumType,
+                downloadCount: fileInfo.data.downloadCount,
+              };
+            } catch (error) {
+              return {
+                ...architecture,
+                fileName: null,
+                downloadUrl: null,
+                fileSize: null,
+                checksum: null,
+                checksumType: null,
+                downloadCount: 0,
+              };
+            }
+          })
+        );
         setArchitectures(architecturesWithInfo);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
       });
   }, [organization, name, version, providerName]);
@@ -113,18 +134,18 @@ const Provider = () => {
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     setCurrentProvider({ ...currentProvider, [name]: value });
-  
+
     // Validate the name field
     if (name === "name") {
       const error = required(value) || validateName(value);
       setValidationErrors({ ...validationErrors, name: error });
     }
   };
-  
+
   const handleArchitectureInputChange = (event) => {
     const { name, value } = event.target;
     setNewArchitecture({ ...newArchitecture, [name]: value });
-  
+
     if (name === "name") {
       const error = required(value) || validateName(value);
       setValidationErrors((prevErrors) => {
@@ -134,8 +155,8 @@ const Provider = () => {
     }
   };
 
-   // Define a function to validate the checksum based on the type
-   const validateChecksum = (checksum, type) => {
+  // Define a function to validate the checksum based on the type
+  const validateChecksum = (checksum, type) => {
     const checksumPatterns = {
       MD5: /^[a-fA-F0-9]{32}$/,
       SHA1: /^[a-fA-F0-9]{40}$/,
@@ -153,12 +174,14 @@ const Provider = () => {
       return "Unsupported checksum type!";
     }
 
-    return pattern.test(checksum) ? undefined : `Invalid ${type} checksum format!`;
+    return pattern.test(checksum)
+      ? undefined
+      : `Invalid ${type} checksum format!`;
   };
 
   // Update the handleChecksumChange function to include validation
   const handleChecksumChange = (event) => {
-    const value = event.target.value;
+    const { value } = event.target;
     setChecksum(value);
 
     // Validate the checksum field if the type is not "NULL"
@@ -175,7 +198,8 @@ const Provider = () => {
 
     // Validate the checksum field if the type is not "NULL"
     if (selectedType !== "NULL") {
-      const error = required(checksum) || validateChecksum(checksum, selectedType);
+      const error =
+        required(checksum) || validateChecksum(checksum, selectedType);
       setValidationErrors((prevErrors) => ({ ...prevErrors, checksum: error }));
     } else {
       // Clear checksum validation error if type is "NULL"
@@ -186,15 +210,14 @@ const Provider = () => {
     }
   };
 
-  const required = (value) => {
-    return value ? undefined : "This field is required!";
-  };
-  
+  const required = (value) => (value ? undefined : "This field is required!");
+
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-  
-  const validateName = (value) => {
-    return validCharsRegex.test(value) ? undefined : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-  };
+
+  const validateName = (value) =>
+    validCharsRegex.test(value)
+      ? undefined
+      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
 
   const requiredFile = (files) => {
     if (!files || files.length === 0) {
@@ -212,24 +235,37 @@ const Provider = () => {
 
   const saveProvider = async (event) => {
     event.preventDefault();
-  
+
     // Check for duplicate provider name only if the name has changed
     if (currentProvider.name !== originalProviderName) {
-      const providerExists = await checkProviderExists(organization, name, version, currentProvider.name);
+      const providerExists = await checkProviderExists(
+        organization,
+        name,
+        version,
+        currentProvider.name
+      );
       if (providerExists) {
-        setMessage('A provider with this name already exists. Please choose a different name.');
+        setMessage(
+          "A provider with this name already exists. Please choose a different name."
+        );
         setMessageType("danger");
         return;
       }
     }
-  
+
     const data = {
       name: currentProvider.name,
       description: currentProvider.description,
     };
-  
+
     try {
-      await ProviderService.updateProvider(organization, name, version, providerName, data);
+      await ProviderService.updateProvider(
+        organization,
+        name,
+        version,
+        providerName,
+        data
+      );
       setMessage("The provider was updated successfully!");
       setMessageType("success");
       setEditMode(false);
@@ -249,24 +285,36 @@ const Provider = () => {
 
   const deleteProvider = () => {
     ProviderService.deleteProvider(organization, name, version, providerName)
-      .then(response => {
+      .then((response) => {
         setMessage("The provider was deleted successfully!");
         setMessageType("success");
         navigate(`/${organization}/${name}/${version}`);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
       });
   };
 
   const deleteArchitecture = async (architectureName) => {
     try {
-      await ArchitectureService.deleteArchitecture(organization, name, version, providerName, architectureName);
+      await ArchitectureService.deleteArchitecture(
+        organization,
+        name,
+        version,
+        providerName,
+        architectureName
+      );
       setMessage("The architecture was deleted successfully!");
       setMessageType("success");
-      setArchitectures(architectures.filter(arch => arch.name !== architectureName));
+      setArchitectures(
+        architectures.filter((arch) => arch.name !== architectureName)
+      );
     } catch (error) {
-      if (error.response && error.response.data && error.response.data.message) {
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
         setMessage(error.response.data.message);
         setMessageType("danger");
       } else {
@@ -277,27 +325,42 @@ const Provider = () => {
   };
 
   const formatFileSize = (bytes) => {
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    if (bytes === 0) return '0 Byte';
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    if (bytes === 0) {
+      return "0 Byte";
+    }
     const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
-    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
   };
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setMessage("Checksum copied to clipboard!");
-      setMessageType("success");
-    }, (err) => {
-      console.error('Could not copy text: ', err);
-    });
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setMessage("Checksum copied to clipboard!");
+        setMessageType("success");
+      },
+      (err) => {
+        console.error("Could not copy text: ", err);
+      }
+    );
   };
 
-  const checkProviderExists = async (organization, name, version, providerName) => {
+  const checkProviderExists = async (
+    organization,
+    name,
+    version,
+    providerName
+  ) => {
     try {
-      const response = await ProviderService.getProvider(organization, name, version, providerName);
-      return response.data ? true : false;
+      const response = await ProviderService.getProvider(
+        organization,
+        name,
+        version,
+        providerName
+      );
+      return !!response.data;
     } catch (error) {
-      console.error('Error checking provider existence:', error);
+      console.error("Error checking provider existence:", error);
       return false;
     }
   };
@@ -306,7 +369,7 @@ const Provider = () => {
     event.preventDefault();
     setMessage("");
     setProgress(0);
-  
+
     try {
       // Validate inputs
       if (!selectedFiles || selectedFiles.length === 0) {
@@ -318,31 +381,31 @@ const Provider = () => {
       }
 
       const currentFile = selectedFiles[0];
-      console.log('Starting upload process:', {
+      console.log("Starting upload process:", {
         fileName: currentFile.name,
         fileSize: currentFile.size,
-        architectureName: newArchitecture.name
+        architectureName: newArchitecture.name,
       });
 
       // Set initial upload message
       setMessage("Starting file upload...");
       setMessageType("info");
-  
+
       // First create the architecture record
       const architectureData = {
         ...newArchitecture,
         checksum,
         checksumType,
       };
-  
+
       await ArchitectureService.createArchitecture(
-        organization, 
-        name, 
-        version, 
-        providerName, 
+        organization,
+        name,
+        version,
+        providerName,
         architectureData
       );
-  
+
       // Then upload the file
       const uploadResult = await FileService.upload(
         currentFile,
@@ -355,20 +418,22 @@ const Provider = () => {
         checksumType,
         (progressEvent) => {
           // Only show important status changes in the top message
-          if (progressEvent.status === 'assembling') {
+          if (progressEvent.status === "assembling") {
             setProgress(100);
-            setMessage("Assembling file chunks into final box file, this may take several minutes...");
+            setMessage(
+              "Assembling file chunks into final box file, this may take several minutes..."
+            );
             setMessageType("info");
             return;
-          } 
-          
-          if (progressEvent.status === 'complete') {
+          }
+
+          if (progressEvent.status === "complete") {
             setProgress(100);
             setMessage("File upload and assembly completed successfully!");
             setMessageType("success");
             return;
           }
-          
+
           // Update progress without showing a message for regular progress updates
           if (progressEvent.progress !== undefined) {
             setProgress(progressEvent.progress);
@@ -376,29 +441,29 @@ const Provider = () => {
         }
       );
 
-      console.log('Upload completed:', uploadResult);
-      
+      console.log("Upload completed:", uploadResult);
+
       // Keep detailed assembly message visible
-      if (uploadResult.details?.status === 'assembling') {
+      if (uploadResult.details?.status === "assembling") {
         setMessage(
           "File chunks uploaded successfully. Now assembling into final box file.\n" +
-          "This process may take several minutes depending on file size.\n" +
-          "Please keep this page open until assembly is complete."
+            "This process may take several minutes depending on file size.\n" +
+            "Please keep this page open until assembly is complete."
         );
         setMessageType("info");
       }
 
       // Refresh architectures list
       const updatedArchitectures = await ArchitectureService.getArchitectures(
-        organization, 
-        name, 
-        version, 
+        organization,
+        name,
+        version,
         providerName
       );
-      
+
       // Update UI state
       setArchitectures(updatedArchitectures.data);
-  
+
       // Reset form
       setShowAddArchitectureForm(false);
       setNewArchitecture({ name: "", defaultBox: false });
@@ -407,12 +472,12 @@ const Provider = () => {
       setSelectedFiles(undefined);
       setProgress(0);
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error("Upload failed:", error);
       setMessage(error.response?.data?.message || error.message);
       setMessageType("danger");
     }
   };
-  
+
   const cancelEdit = () => {
     setEditMode(false);
   };

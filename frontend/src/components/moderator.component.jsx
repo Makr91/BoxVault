@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import UserService from "../services/user.service";
-import OrganizationService from "../services/organization.service";
+
 import AuthService from "../services/auth.service";
+import OrganizationService from "../services/organization.service";
+import UserService from "../services/user.service";
 import InvitationService from "../services/invitation.service";
-import ConfirmationModal from './confirmation.component';
+
+import ConfirmationModal from "./confirmation.component";
+
 import EventBus from "../common/EventBus";
 
 const Moderator = ({ currentOrganization }) => {
@@ -38,10 +41,10 @@ const Moderator = ({ currentOrganization }) => {
 
       // Fetch active invitations
       InvitationService.getActiveInvitations(currentOrganization)
-        .then(response => {
+        .then((response) => {
           setActiveInvitations(response.data);
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Error fetching active invitations:", error);
           if (error.response && error.response.status === 401) {
             EventBus.dispatch("logout");
@@ -50,13 +53,13 @@ const Moderator = ({ currentOrganization }) => {
 
       // Fetch organization details
       OrganizationService.getOrganizationByName(currentOrganization)
-        .then(response => {
+        .then((response) => {
           setNewOrgName(response.data.name);
           setOrgEmail(response.data.email || "");
           setOrgEmailHash(response.data.emailHash || "");
           setOrgDescription(response.data.description || "");
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Error fetching organization details:", error);
           if (error.response && error.response.status === 401) {
             EventBus.dispatch("logout");
@@ -67,37 +70,41 @@ const Moderator = ({ currentOrganization }) => {
 
   const handleUpdateOrganization = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!newOrgName.trim()) {
-      setUpdateMessage('Organization name is required.');
+      setUpdateMessage("Organization name is required.");
       return;
     }
     if (!validateOrgName(newOrgName)) {
-      setUpdateMessage('Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.');
+      setUpdateMessage(
+        "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed."
+      );
       return;
     }
     if (!orgEmail.trim()) {
-      setUpdateMessage('Organization email is required.');
+      setUpdateMessage("Organization email is required.");
       return;
     }
     // Add more validation as needed
-  
+
     if (newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
-        setUpdateMessage('An organization with this name already exists. Please choose a different name.');
+        setUpdateMessage(
+          "An organization with this name already exists. Please choose a different name."
+        );
         return;
       }
     }
-  
+
     try {
       await OrganizationService.updateOrganization(currentOrganization, {
         organization: newOrgName,
         email: orgEmail,
-        description: orgDescription
+        description: orgDescription,
       });
-      
+
       // Update the user's organization in localStorage if name changed
       if (newOrgName !== currentOrganization) {
         const currentUser = AuthService.getCurrentUser();
@@ -105,22 +112,21 @@ const Moderator = ({ currentOrganization }) => {
           currentUser.organization = newOrgName;
           localStorage.setItem("user", JSON.stringify(currentUser));
         }
-        
+
         // Trigger an EventBus event to update App.jsx state
-        EventBus.dispatch("organizationUpdated", { 
-          oldName: currentOrganization, 
-          newName: newOrgName 
+        EventBus.dispatch("organizationUpdated", {
+          oldName: currentOrganization,
+          newName: newOrgName,
         });
       }
-      
-      setUpdateMessage('Organization updated successfully!');
+
+      setUpdateMessage("Organization updated successfully!");
     } catch (error) {
-      console.error('Error updating organization:', error);
-      setUpdateMessage('Error updating organization. Please try again.');
+      console.error("Error updating organization:", error);
+      setUpdateMessage("Error updating organization. Please try again.");
     }
   };
 
-  
   const handlePromoteUser = (userId) => {
     UserService.promoteToModerator(userId).then(() => {
       setUsers((prevUsers) =>
@@ -144,7 +150,7 @@ const Moderator = ({ currentOrganization }) => {
   const handleSendInvitation = (e) => {
     e.preventDefault();
     AuthService.sendInvitation(email, currentOrganization)
-      .then(response => {
+      .then((response) => {
         const invitationDetails = `Invitation sent! 
           Token: ${response.data.invitationToken}
           Expires: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
@@ -153,32 +159,34 @@ const Moderator = ({ currentOrganization }) => {
         setInvitationMessage(invitationDetails);
         setEmail(""); // Clear the input field
       })
-      .catch(error => {
+      .catch((error) => {
         console.error("Error sending invitation:", error);
         setInvitationMessage("Error sending invitation. Please try again.");
       });
   };
 
   const handleDeleteClick = (invitation) => {
-    setItemToDelete({ type: 'invitation', id: invitation.id });
+    setItemToDelete({ type: "invitation", id: invitation.id });
     setShowDeleteModal(true);
   };
-  
+
   const handleCloseDeleteModal = () => {
     setShowDeleteModal(false);
     setItemToDelete(null);
   };
-  
+
   const handleConfirmDelete = () => {
-    if (itemToDelete && itemToDelete.type === 'invitation') {
+    if (itemToDelete && itemToDelete.type === "invitation") {
       InvitationService.deleteInvitation(itemToDelete.id)
         .then(() => {
-          setActiveInvitations(prevInvitations => 
-            prevInvitations.filter(invitation => invitation.id !== itemToDelete.id)
+          setActiveInvitations((prevInvitations) =>
+            prevInvitations.filter(
+              (invitation) => invitation.id !== itemToDelete.id
+            )
           );
           handleCloseDeleteModal();
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Error deleting invitation:", error);
           handleCloseDeleteModal();
         });
@@ -193,9 +201,9 @@ const Moderator = ({ currentOrganization }) => {
   const checkOrganizationExists = async (name) => {
     try {
       const response = await OrganizationService.getOrganizationByName(name);
-      return response.data ? true : false;
+      return !!response.data;
     } catch (error) {
-      console.error('Error checking organization existence:', error);
+      console.error("Error checking organization existence:", error);
       return false;
     }
   };

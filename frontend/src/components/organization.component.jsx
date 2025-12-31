@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import BoxDataService from "../services/box.service";
-import AuthService from "../services/auth.service";
-import { Link } from "react-router-dom";
-import ConfirmationModal from './confirmation.component';
-import Table from 'react-bootstrap/Table';
-import BoxVaultLight from '../images/BoxVault.svg?react';
-import BoxVaultDark from '../images/BoxVaultDark.svg?react';
-import EventBus from "../common/EventBus";
+import Table from "react-bootstrap/Table";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
+import EventBus from "../common/EventBus";
+import BoxVaultLight from "../images/BoxVault.svg?react";
+import BoxVaultDark from "../images/BoxVaultDark.svg?react";
+import AuthService from "../services/auth.service";
+import BoxDataService from "../services/box.service";
+
+import ConfirmationModal from "./confirmation.component";
 
 const BoxesList = ({ showOnlyPublic, theme }) => {
   const isMountedRef = useRef(true);
@@ -17,7 +17,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [searchName, setSearchName] = useState("");
   const currentUser = AuthService.getCurrentUser();
-  const organization = routeOrganization || (currentUser ? currentUser.organization : null);
+  const organization =
+    routeOrganization || (currentUser ? currentUser.organization : null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [showModal, setShowModal] = useState(false);
@@ -49,13 +50,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const retrieveBoxes = useCallback(() => {
     if (showOnlyPublic) {
       BoxDataService.discoverAll()
-        .then(response => {
+        .then((response) => {
           if (isMountedRef.current) {
             const allBoxes = Array.isArray(response.data) ? response.data : [];
             setBoxes(allBoxes);
           }
         })
-        .catch(e => {
+        .catch((e) => {
           if (e.response?.status === 401) {
             // Token expired - clear cached data and update UI
             EventBus.dispatch("logout", null);
@@ -68,13 +69,15 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         });
     } else if (organization) {
       BoxDataService.getAll(organization)
-        .then(response => {
+        .then((response) => {
           if (isMountedRef.current) {
-            const allBoxes = Array.isArray(response.data.boxes) ? response.data.boxes : [];
+            const allBoxes = Array.isArray(response.data.boxes)
+              ? response.data.boxes
+              : [];
             setBoxes(allBoxes);
           }
         })
-        .catch(e => {
+        .catch((e) => {
           if (e.response?.status === 401) {
             // Token expired - clear cached data and update UI
             EventBus.dispatch("logout", null);
@@ -87,7 +90,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         });
     }
   }, [showOnlyPublic, organization]);
-
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -104,8 +106,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         }
 
         if (isMountedRef.current) {
-          const allBoxes = Array.isArray(response.data) ? response.data : 
-                           (response.data.boxes ? response.data.boxes : []);
+          const allBoxes = Array.isArray(response.data)
+            ? response.data
+            : response.data.boxes
+              ? response.data.boxes
+              : [];
           setBoxes(allBoxes);
 
           const urls = {};
@@ -118,7 +123,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                   const url = await fetchGravatarUrl(emailHash);
                   urls[orgName] = url;
                 } catch (error) {
-                  console.error(`Error fetching Gravatar for ${orgName}:`, error);
+                  console.error(
+                    `Error fetching Gravatar for ${orgName}:`,
+                    error
+                  );
                 }
               }
             }
@@ -129,9 +137,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         console.error("Error fetching boxes:", e);
         if (isMountedRef.current) {
           setBoxes([]);
-          const errorMessage = e.response && e.response.data && e.response.data.message
-            ? e.response.data.message
-            : "Error fetching boxes.";
+          const errorMessage =
+            e.response && e.response.data && e.response.data.message
+              ? e.response.data.message
+              : "Error fetching boxes.";
           setMessage(errorMessage);
           setMessageType("danger");
         }
@@ -145,13 +154,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     };
   }, [showOnlyPublic, organization, fetchGravatarUrl]);
 
-
-
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) => {
-    return validCharsRegex.test(value) ? undefined : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-  };
+  const validateName = (value) =>
+    validCharsRegex.test(value)
+      ? undefined
+      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
 
   const onChangeSearchName = (e) => {
     const searchName = e.target.value;
@@ -166,12 +174,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const removeAllBoxes = () => {
     if (organization) {
       BoxDataService.removeAll(organization)
-        .then(response => {
+        .then((response) => {
           refreshList();
           setMessage("All boxes removed successfully.");
           setMessageType("success");
         })
-        .catch(e => {
+        .catch((e) => {
           console.log(e);
           setMessage("Error removing all boxes.");
           setMessageType("danger");
@@ -197,11 +205,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       return;
     }
 
-    const filterBoxes = (boxesData) => {
-      return boxesData.filter(box => 
+    const filterBoxes = (boxesData) =>
+      boxesData.filter((box) =>
         box.name.toLowerCase().includes(searchName.toLowerCase())
       );
-    };
 
     const fetchAndFilterBoxes = async () => {
       try {
@@ -213,8 +220,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         }
 
         if (isMountedRef.current) {
-          const allBoxes = Array.isArray(response.data) ? response.data : 
-                           (response.data.boxes ? response.data.boxes : []);
+          const allBoxes = Array.isArray(response.data)
+            ? response.data
+            : response.data.boxes
+              ? response.data.boxes
+              : [];
           const filteredBoxes = filterBoxes(allBoxes);
           setBoxes(filteredBoxes);
         }
@@ -233,9 +243,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
-    setNewBox({ 
-      ...newBox, 
-      [name]: name === "isPublic" ? value === "true" : value 
+    setNewBox({
+      ...newBox,
+      [name]: name === "isPublic" ? value === "true" : value,
     });
 
     if (name === "name") {
@@ -256,7 +266,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     };
 
     BoxDataService.create(currentUser.organization, boxData)
-      .then(response => {
+      .then((response) => {
         setShowCreateForm(false);
         setNewBox({ name: "", description: "", isPublic: false });
         refreshList();
@@ -264,27 +274,27 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         setMessage("Box created successfully.");
         setMessageType("success");
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
-        const errorMessage = e.response && e.response.data && e.response.data.message
-          ? e.response.data.message
-          : "An error occurred while creating the box.";
+        const errorMessage =
+          e.response && e.response.data && e.response.data.message
+            ? e.response.data.message
+            : "An error occurred while creating the box.";
         setMessage(errorMessage);
         setMessageType("danger");
       });
   };
 
-  const canEditBoxes = (box) => {
-    return currentUser && currentUser.organization === box.organization;
-  };
+  const canEditBoxes = (box) =>
+    currentUser && currentUser.organization === box.organization;
 
   return (
     <div className="list row">
-      {message && (
+      {message ? (
         <div className={`alert alert-${messageType}`} role="alert">
           {message}
         </div>
-      )}
+      ) : null}
       <div className="d-flex justify-content-between align-items-center">
         <div className="search-bar">
           <div className="input-group">
@@ -311,7 +321,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           </div>
         </div>
         <div className="form-group">
-          {!showOnlyPublic && canEditBoxes({ organization }) && (
+          {!showOnlyPublic && canEditBoxes({ organization }) ? (
             <>
               <button
                 className="btn btn-outline-success me-2"
@@ -320,7 +330,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               >
                 {showCreateForm ? "Create Box" : "Create New Box"}
               </button>
-              {showCreateForm && (
+              {showCreateForm ? (
                 <button
                   className="btn btn-secondary me-2"
                   onClick={() => {
@@ -331,7 +341,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 >
                   Cancel
                 </button>
-              )}
+              ) : null}
               <button
                 className="btn btn-danger me-2"
                 onClick={handleDeleteClick}
@@ -344,19 +354,19 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 handleConfirm={handleConfirmDelete}
               />
             </>
-          )}
-          {!showOnlyPublic &&  (
+          ) : null}
+          {!showOnlyPublic ? (
             <button
               className="btn btn-outline-primary"
               onClick={() => navigate("/")}
             >
               Back
             </button>
-          )}
+          ) : null}
         </div>
       </div>
-  
-      {showCreateForm && (
+
+      {showCreateForm ? (
         <div className="create-form mt-2 mb-3">
           <h4>Create New Box</h4>
           <form>
@@ -371,7 +381,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     className="form-control"
                     id="organization"
                     name="organization"
-                    value={currentUser ? currentUser.organization : ''}
+                    value={currentUser ? currentUser.organization : ""}
                     onChange={handleInputChange}
                     disabled
                   />
@@ -391,11 +401,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                   />
                 </div>
               </div>
-              {validationErrors.name && (
+              {validationErrors.name ? (
                 <div className="text-danger">{validationErrors.name}</div>
-              )}
+              ) : null}
               <small className="form-text text-muted">
-                The name of your Vagrant box is used in tools, notifications, routing, and this UI. Short and simple is best.
+                The name of your Vagrant box is used in tools, notifications,
+                routing, and this UI. Short and simple is best.
               </small>
             </div>
             <div className="form-group mt-2">
@@ -426,7 +437,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     checked={!newBox.isPublic}
                     onChange={handleInputChange}
                   />
-                  <label className="form-check-label" htmlFor="visibilityPrivate">
+                  <label
+                    className="form-check-label"
+                    htmlFor="visibilityPrivate"
+                  >
                     Private
                   </label>
                 </div>
@@ -440,19 +454,23 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     checked={newBox.isPublic}
                     onChange={handleInputChange}
                   />
-                  <label className="form-check-label" htmlFor="visibilityPublic">
+                  <label
+                    className="form-check-label"
+                    htmlFor="visibilityPublic"
+                  >
                     Public
                   </label>
                 </div>
               </div>
               <small className="form-text text-muted">
-                Making a box private prevents users from accessing it unless given permission.
+                Making a box private prevents users from accessing it unless
+                given permission.
               </small>
             </div>
           </form>
         </div>
-      )}
-  
+      ) : null}
+
       <div className="col-md-12">
         <h4>Template List</h4>
         <Table striped className="table">
@@ -472,54 +490,120 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             {boxes.length > 0 ? (
               boxes.map((box, index) => {
                 // Calculate total downloads for public view
-                const totalDownloads = box.versions ? box.versions.reduce((versionTotal, version) => {
-                  return versionTotal + (version.providers ? version.providers.reduce((providerTotal, provider) => {
-                    return providerTotal + (provider.architectures ? provider.architectures.reduce((archTotal, architecture) => {
-                      return archTotal + (architecture.files ? architecture.files.reduce((fileTotal, file) => {
-                        return fileTotal + file.downloadCount;
-                      }, 0) : 0);
-                    }, 0) : 0);
-                  }, 0) : 0);
-                }, 0) : 0;
-              
+                const totalDownloads = box.versions
+                  ? box.versions.reduce(
+                      (versionTotal, version) =>
+                        versionTotal +
+                        (version.providers
+                          ? version.providers.reduce(
+                              (providerTotal, provider) =>
+                                providerTotal +
+                                (provider.architectures
+                                  ? provider.architectures.reduce(
+                                      (archTotal, architecture) =>
+                                        archTotal +
+                                        (architecture.files
+                                          ? architecture.files.reduce(
+                                              (fileTotal, file) =>
+                                                fileTotal + file.downloadCount,
+                                              0
+                                            )
+                                          : 0),
+                                      0
+                                    )
+                                  : 0),
+                              0
+                            )
+                          : 0),
+                      0
+                    )
+                  : 0;
+
                 // Calculate total downloads for private view
-                const totalDownloadsPrivate = box.providers ? box.providers.reduce((providerTotal, provider) => {
-                  return providerTotal + (provider.architectures ? provider.architectures.reduce((archTotal, architecture) => {
-                    return archTotal + (architecture.files ? architecture.files.reduce((fileTotal, file) => {
-                      return fileTotal + file.downloadCount;
-                    }, 0) : 0);
-                  }, 0) : 0);
-                }, 0) : 0;
-              
+                const totalDownloadsPrivate = box.providers
+                  ? box.providers.reduce(
+                      (providerTotal, provider) =>
+                        providerTotal +
+                        (provider.architectures
+                          ? provider.architectures.reduce(
+                              (archTotal, architecture) =>
+                                archTotal +
+                                (architecture.files
+                                  ? architecture.files.reduce(
+                                      (fileTotal, file) =>
+                                        fileTotal + file.downloadCount,
+                                      0
+                                    )
+                                  : 0),
+                              0
+                            )
+                          : 0),
+                      0
+                    )
+                  : 0;
+
                 // Get provider names for public view
-                const providerNames = box.versions ? [...new Set(box.versions.flatMap(version => 
-                  version.providers ? version.providers.map(provider => provider.name) : []
-                ))] : [];
-              
+                const providerNames = box.versions
+                  ? [
+                      ...new Set(
+                        box.versions.flatMap((version) =>
+                          version.providers
+                            ? version.providers.map((provider) => provider.name)
+                            : []
+                        )
+                      ),
+                    ]
+                  : [];
+
                 // Get provider names for private view
-                const providerNamesPrivate = box.providers ? [...new Set(box.providers.map(provider => provider.name))] : [];
-              
+                const providerNamesPrivate = box.providers
+                  ? [...new Set(box.providers.map((provider) => provider.name))]
+                  : [];
+
                 // Get architecture names for public view
-                const architectureNames = box.versions ? [...new Set(box.versions.flatMap(version => 
-                  version.providers ? version.providers.flatMap(provider => 
-                    provider.architectures ? provider.architectures.map(architecture => architecture.name) : []
-                  ) : []
-                ))] : [];
-              
+                const architectureNames = box.versions
+                  ? [
+                      ...new Set(
+                        box.versions.flatMap((version) =>
+                          version.providers
+                            ? version.providers.flatMap((provider) =>
+                                provider.architectures
+                                  ? provider.architectures.map(
+                                      (architecture) => architecture.name
+                                    )
+                                  : []
+                              )
+                            : []
+                        )
+                      ),
+                    ]
+                  : [];
+
                 // Get architecture names for private view
-                const architectureNamesPrivate = box.providers ? [...new Set(box.providers.flatMap(provider => 
-                  provider.architectures ? provider.architectures.map(architecture => architecture.name) : []
-                ))] : [];
-              
+                const architectureNamesPrivate = box.providers
+                  ? [
+                      ...new Set(
+                        box.providers.flatMap((provider) =>
+                          provider.architectures
+                            ? provider.architectures.map(
+                                (architecture) => architecture.name
+                              )
+                            : []
+                        )
+                      ),
+                    ]
+                  : [];
+
                 // Determine organization name
-                const organizationName = box.user.organization.name || currentUser.organization;
-              
+                const organizationName =
+                  box.user.organization.name || currentUser.organization;
+
                 return (
                   <tr
                     className={index === currentIndex ? "active" : ""}
                     key={index}
                   >
-                     <td>
+                    <td>
                       {gravatarUrls[box.user?.organization?.name] ? (
                         <img
                           src={gravatarUrls[box.user?.organization?.name]}
@@ -527,31 +611,64 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                           className="rounded-circle"
                           width="30"
                           height="30"
-                          style={{ marginRight: '10px', verticalAlign: 'middle' }}
+                          style={{
+                            marginRight: "10px",
+                            verticalAlign: "middle",
+                          }}
+                        />
+                      ) : theme === "light" ? (
+                        <BoxVaultLight
+                          style={{
+                            width: "30px",
+                            height: "30px",
+                            marginRight: "10px",
+                          }}
                         />
                       ) : (
-                        theme === "light" ? <BoxVaultLight style={{ width: "30px", height: "30px", marginRight: "10px" }}  /> : <BoxVaultDark style={{ width: "30px", height: "30px", marginRight: "10px" }}  />
+                        <BoxVaultDark
+                          style={{
+                            width: "30px",
+                            height: "30px",
+                            marginRight: "10px",
+                          }}
+                        />
                       )}
                       <Link
                         to={`/${organizationName}/${box.name}`}
-                        style={{ verticalAlign: 'middle' }}
+                        style={{ verticalAlign: "middle" }}
                       >
                         {organizationName}/{box.name}
                       </Link>
                     </td>
-                    <td className="px-2">{box.published ? "Published" : "Pending"}</td>
+                    <td className="px-2">
+                      {box.published ? "Published" : "Pending"}
+                    </td>
                     <td>{box.public || box.isPublic ? "Public" : "Private"}</td>
                     <td>{new Date(box.createdAt).toLocaleDateString()}</td>
                     <td>{totalDownloads || totalDownloadsPrivate}</td>
-                    <td>{box.versions ? box.versions.length : box.numberOfVersions || 0}</td>
-                    <td>{providerNames.length > 0 ? providerNames.join(', ') : providerNamesPrivate.join(', ') || "N/A"}</td>
-                    <td>{architectureNames.length > 0 ? architectureNames.join(', ') : architectureNamesPrivate.join(', ') || "N/A"}</td>
+                    <td>
+                      {box.versions
+                        ? box.versions.length
+                        : box.numberOfVersions || 0}
+                    </td>
+                    <td>
+                      {providerNames.length > 0
+                        ? providerNames.join(", ")
+                        : providerNamesPrivate.join(", ") || "N/A"}
+                    </td>
+                    <td>
+                      {architectureNames.length > 0
+                        ? architectureNames.join(", ")
+                        : architectureNamesPrivate.join(", ") || "N/A"}
+                    </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan="8" className="text-center">No boxes found</td>
+                <td colSpan="8" className="text-center">
+                  No boxes found
+                </td>
               </tr>
             )}
           </tbody>

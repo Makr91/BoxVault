@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from 'react-router-dom';
-import UserService from "../services/user.service";
+import { FaEye, FaEyeSlash } from "react-icons/fa6";
+import { Link, useNavigate } from "react-router-dom";
+
 import ConfigService from "../services/config.service";
+import UserService from "../services/user.service";
 import OrganizationService from "../services/organization.service";
-import ConfirmationModal from './confirmation.component';
+
+import ConfirmationModal from "./confirmation.component";
+
 import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
-import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -46,17 +49,16 @@ const Admin = () => {
   // Authentication guard - redirect if not authenticated or not admin
   useEffect(() => {
     const currentUser = AuthService.getCurrentUser();
-    
+
     if (!currentUser) {
       // Not authenticated, redirect to login
       navigate("/login");
       return;
     }
-    
+
     if (!currentUser.roles || !currentUser.roles.includes("ROLE_ADMIN")) {
       // Authenticated but not admin, redirect to home
       navigate("/");
-      return;
     }
   }, [navigate]);
 
@@ -90,18 +92,18 @@ const Admin = () => {
     setItemToDelete(item);
     setShowDeleteModal(true);
   };
-  
+
   const handleCloseDeleteModal = () => {
     setShowDeleteModal(false);
     setItemToDelete(null);
   };
-  
+
   const handleConfirmDelete = () => {
     if (itemToDelete) {
       // Perform the deletion based on the item type
-      if (itemToDelete.type === 'user') {
+      if (itemToDelete.type === "user") {
         handleDeleteUser(itemToDelete.id);
-      } else if (itemToDelete.type === 'organization') {
+      } else if (itemToDelete.type === "organization") {
         handleDeleteOrganization(itemToDelete.name);
       }
       handleCloseDeleteModal();
@@ -136,7 +138,9 @@ const Admin = () => {
 
   const handleDeleteOrganization = (organizationName) => {
     OrganizationService.deleteOrganization(organizationName).then(() => {
-      setOrganizations((prev) => prev.filter((org) => org.name !== organizationName));
+      setOrganizations((prev) =>
+        prev.filter((org) => org.name !== organizationName)
+      );
     });
   };
 
@@ -181,9 +185,7 @@ const Admin = () => {
         prev.map((org) => ({
           ...org,
           users: org.users.map((user) =>
-            user.id === userId
-              ? { ...user, roles: [{ name: "user" }] }
-              : user
+            user.id === userId ? { ...user, roles: [{ name: "user" }] } : user
           ),
         }))
       );
@@ -207,42 +209,50 @@ const Admin = () => {
     }
 
     if (newOrgName === oldName) {
-      setRenameMessage('New name is the same as the old name. Please enter a different name.');
+      setRenameMessage(
+        "New name is the same as the old name. Please enter a different name."
+      );
       return;
     }
 
     const organizationExists = await checkOrganizationExists(newOrgName);
     if (organizationExists) {
-      setRenameMessage('An organization with this name already exists. Please choose a different name.');
+      setRenameMessage(
+        "An organization with this name already exists. Please choose a different name."
+      );
       return;
     }
 
     try {
-      await OrganizationService.updateOrganization(oldName, { organization: newOrgName });
-      
+      await OrganizationService.updateOrganization(oldName, {
+        organization: newOrgName,
+      });
+
       // Update the user's organization in localStorage if they renamed their own org
       const currentUser = AuthService.getCurrentUser();
       if (currentUser && currentUser.organization === oldName) {
         currentUser.organization = newOrgName;
         localStorage.setItem("user", JSON.stringify(currentUser));
-        
+
         // Trigger an EventBus event to update App.jsx state
-        EventBus.dispatch("organizationUpdated", { 
-          oldName: oldName, 
-          newName: newOrgName 
+        EventBus.dispatch("organizationUpdated", {
+          oldName,
+          newName: newOrgName,
         });
       }
-      
+
       setOrganizations((prevOrgs) =>
-        prevOrgs.map((org) => (org.name === oldName ? { ...org, name: newOrgName } : org))
+        prevOrgs.map((org) =>
+          org.name === oldName ? { ...org, name: newOrgName } : org
+        )
       );
       setEditingOrgId(null);
-      setNewOrgName('');
-      setOldName('');
-      setRenameMessage('Organization renamed successfully!');
+      setNewOrgName("");
+      setOldName("");
+      setRenameMessage("Organization renamed successfully!");
     } catch (error) {
-      console.error('Error renaming organization:', error);
-      setRenameMessage('Error renaming organization. Please try again.');
+      console.error("Error renaming organization:", error);
+      setRenameMessage("Error renaming organization. Please try again.");
     }
   };
 
@@ -250,7 +260,10 @@ const Admin = () => {
     ConfigService.getConfig(configName).then(
       (response) => {
         setConfig(response.data);
-        const { extractedValues, organizedSections } = processConfig(response.data, configName);
+        const { extractedValues, organizedSections } = processConfig(
+          response.data,
+          configName
+        );
         setValues(extractedValues);
         setSections(organizedSections);
       },
@@ -276,8 +289,10 @@ const Admin = () => {
         ) {
           extractedValues[fullPath] = value.value;
 
-          const section = value.section || inferSection(fullPath, configType) || sectionName;
-          const subsection = value.subsection || inferSubsection(fullPath, section, configType);
+          const section =
+            value.section || inferSection(fullPath, configType) || sectionName;
+          const subsection =
+            value.subsection || inferSubsection(fullPath, section, configType);
 
           if (!organizedSections[section]) {
             organizedSections[section] = {
@@ -316,18 +331,18 @@ const Admin = () => {
               }
             }
             processObject(value.value, fullPath, section);
-          } else {
-            if (subsection) {
-              if (!organizedSections[section].subsections[subsection]) {
-                organizedSections[section].subsections[subsection] = {
-                  title: subsection,
-                  fields: [],
-                };
-              }
-              organizedSections[section].subsections[subsection].fields.push(fieldData);
-            } else {
-              organizedSections[section].fields.push(fieldData);
+          } else if (subsection) {
+            if (!organizedSections[section].subsections[subsection]) {
+              organizedSections[section].subsections[subsection] = {
+                title: subsection,
+                fields: [],
+              };
             }
+            organizedSections[section].subsections[subsection].fields.push(
+              fieldData
+            );
+          } else {
+            organizedSections[section].fields.push(fieldData);
           }
         } else if (
           value &&
@@ -336,8 +351,10 @@ const Admin = () => {
           value.hasOwnProperty("providers")
         ) {
           // Handle objects with 'providers' property (like oidc)
-          const section = value.section || inferSection(fullPath, configType) || sectionName;
-          const subsection = value.subsection || inferSubsection(fullPath, section, configType);
+          const section =
+            value.section || inferSection(fullPath, configType) || sectionName;
+          const subsection =
+            value.subsection || inferSubsection(fullPath, section, configType);
 
           if (!organizedSections[section]) {
             organizedSections[section] = {
@@ -359,14 +376,15 @@ const Admin = () => {
           }
 
           // Process the providers
-          processObject(value.providers, fullPath + ".providers", section);
+          processObject(value.providers, `${fullPath}.providers`, section);
         } else if (
           value &&
           typeof value === "object" &&
           !Array.isArray(value) &&
           !value.hasOwnProperty("type")
         ) {
-          const inferredSection = inferSection(fullPath, configType) || sectionName;
+          const inferredSection =
+            inferSection(fullPath, configType) || sectionName;
           processObject(value, fullPath, inferredSection);
         }
       }
@@ -408,42 +426,72 @@ const Admin = () => {
         smtp_connect: "Mail",
         smtp_settings: "Mail",
         smtp_auth: "Mail",
-      }
+      },
     };
-    
+
     const sectionMap = sectionMaps[configType] || {};
     const pathParts = path.split(".");
-    return sectionMap[pathParts[0]] || sectionMap[pathParts[1]] || (configType ? configType.charAt(0).toUpperCase() + configType.slice(1) : "General");
+    return (
+      sectionMap[pathParts[0]] ||
+      sectionMap[pathParts[1]] ||
+      (configType
+        ? configType.charAt(0).toUpperCase() + configType.slice(1)
+        : "General")
+    );
   };
 
   const inferSubsection = (path, section, configType) => {
     if (section === "Authentication") {
       const pathParts = path.split(".");
-      if (pathParts.includes("jwt")) return "JWT Settings";
-      if (pathParts.includes("local")) return "Local Authentication";
-      if (pathParts.includes("external")) return "External Providers";
-      if (pathParts.includes("oidc_providers")) return "OIDC Providers";
+      if (pathParts.includes("jwt")) {
+        return "JWT Settings";
+      }
+      if (pathParts.includes("local")) {
+        return "Local Authentication";
+      }
+      if (pathParts.includes("external")) {
+        return "External Providers";
+      }
+      if (pathParts.includes("oidc_providers")) {
+        return "OIDC Providers";
+      }
     } else if (section === "Application") {
       const pathParts = path.split(".");
-      if (pathParts.includes("boxvault")) return "BoxVault Settings";
-      if (pathParts.includes("gravatar")) return "Gravatar Settings";
-      if (pathParts.includes("ssl")) return "SSL Settings";
+      if (pathParts.includes("boxvault")) {
+        return "BoxVault Settings";
+      }
+      if (pathParts.includes("gravatar")) {
+        return "Gravatar Settings";
+      }
+      if (pathParts.includes("ssl")) {
+        return "SSL Settings";
+      }
     } else if (section === "Database") {
       const pathParts = path.split(".");
-      if (pathParts.includes("sql")) return "Database Connection";
-      if (pathParts.includes("mysql_pool")) return "Connection Pool";
+      if (pathParts.includes("sql")) {
+        return "Database Connection";
+      }
+      if (pathParts.includes("mysql_pool")) {
+        return "Connection Pool";
+      }
     } else if (section === "Mail") {
       const pathParts = path.split(".");
-      if (pathParts.includes("smtp_connect")) return "SMTP Connection";
-      if (pathParts.includes("smtp_settings")) return "SMTP Settings";
-      if (pathParts.includes("smtp_auth")) return "SMTP Authentication";
+      if (pathParts.includes("smtp_connect")) {
+        return "SMTP Connection";
+      }
+      if (pathParts.includes("smtp_settings")) {
+        return "SMTP Settings";
+      }
+      if (pathParts.includes("smtp_auth")) {
+        return "SMTP Authentication";
+      }
     }
     return null;
   };
 
   const generateLabel = (fieldName) => {
-    if (!fieldName || typeof fieldName !== 'string') {
-      return fieldName || '';
+    if (!fieldName || typeof fieldName !== "string") {
+      return fieldName || "";
     }
     return fieldName
       .split("_")
@@ -486,20 +534,26 @@ const Admin = () => {
       return true;
     }
     // Hide individual OIDC provider subsections (like "Google OIDC")
-    if (subsectionName && subsectionName.includes("OIDC") && subsectionName !== "OIDC Providers") {
+    if (
+      subsectionName &&
+      subsectionName.includes("OIDC") &&
+      subsectionName !== "OIDC Providers"
+    ) {
       return false;
     }
     return subsection.fields.length > 0;
   };
 
   const renderField = (field) => {
-    const currentValue = values[field.path] !== undefined ? values[field.path] : field.value;
+    const currentValue =
+      values[field.path] !== undefined ? values[field.path] : field.value;
 
     const fieldProps = {
       key: field.path,
       value: currentValue || "",
       onChange: (e) => {
-        const value = field.type === "boolean" ? e.target.checked : e.target.value;
+        const value =
+          field.type === "boolean" ? e.target.checked : e.target.value;
         handleFieldChange(field.path, value);
       },
       placeholder: field.placeholder,
@@ -525,9 +579,13 @@ const Admin = () => {
       case "select":
         inputElement = (
           <select className="form-select" {...fieldProps}>
-            {field.options && field.options.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {field.options
+              ? field.options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))
+              : null}
           </select>
         );
         break;
@@ -539,10 +597,15 @@ const Admin = () => {
               className="form-control"
               {...fieldProps}
             />
-            <button 
-              className="btn btn-outline-secondary" 
+            <button
+              className="btn btn-outline-secondary"
               type="button"
-              onClick={() => setShowPasswords(prev => ({...prev, [field.path]: !prev[field.path]}))}
+              onClick={() =>
+                setShowPasswords((prev) => ({
+                  ...prev,
+                  [field.path]: !prev[field.path],
+                }))
+              }
             >
               {showPasswords[field.path] ? <FaEyeSlash /> : <FaEye />}
             </button>
@@ -555,26 +618,36 @@ const Admin = () => {
         );
         break;
       case "array":
-        const arrayValue = Array.isArray(currentValue) ? currentValue.join(",") : currentValue || "";
+        const arrayValue = Array.isArray(currentValue)
+          ? currentValue.join(",")
+          : currentValue || "";
         inputElement = (
           <input
             type="text"
             className="form-control"
             value={arrayValue}
-            onChange={(e) => handleFieldChange(field.path, e.target.value.split(","))}
+            onChange={(e) =>
+              handleFieldChange(field.path, e.target.value.split(","))
+            }
             placeholder="Comma-separated values"
           />
         );
         break;
       default:
-        inputElement = <input type="text" className="form-control" {...fieldProps} />;
+        inputElement = (
+          <input type="text" className="form-control" {...fieldProps} />
+        );
     }
 
     return (
       <div className="mb-3" key={field.path}>
-        {field.type !== "boolean" && <label className="form-label">{field.label}</label>}
+        {field.type !== "boolean" ? (
+          <label className="form-label">{field.label}</label>
+        ) : null}
         {inputElement}
-        {field.description && <div className="form-text">{field.description}</div>}
+        {field.description ? (
+          <div className="form-text">{field.description}</div>
+        ) : null}
       </div>
     );
   };
@@ -584,7 +657,12 @@ const Admin = () => {
     let hasErrors = false;
 
     Object.entries(config).forEach(([key, value]) => {
-      if (typeof value === 'object' && value !== null && 'type' in value && 'value' in value) {
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        "type" in value &&
+        "value" in value
+      ) {
         const error = validateConfigValue(value.type, value.value);
         if (error) {
           newValidationErrors[key] = error;
@@ -628,13 +706,15 @@ const Admin = () => {
       return newConfig;
     });
 
-    const type = path.reduce((acc, key) => acc && acc[key], config).type;
+    const { type } = path.reduce((acc, key) => acc && acc[key], config);
     const validationError = validateConfigValue(type, value);
 
     setValidationErrors((prevErrors) => {
       const newErrors = { ...prevErrors, [path.join(".")]: validationError };
       // Update form validity
-      const hasErrors = Object.values(newErrors).some((error) => error !== null);
+      const hasErrors = Object.values(newErrors).some(
+        (error) => error !== null
+      );
       setIsFormValid(!hasErrors);
       return newErrors;
     });
@@ -642,36 +722,43 @@ const Admin = () => {
 
   const validateConfigValue = (type, value) => {
     switch (type) {
-      case 'url':
+      case "url":
         try {
           new URL(value);
           return null;
         } catch {
           return "Invalid URL format.";
         }
-      case 'host':
-        const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        const fqdnRegex = /^(?!:\/\/)(?=.{1,255}$)((.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
+      case "host":
+        const ipRegex =
+          /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        const fqdnRegex =
+          /^(?!:\/\/)(?=.{1,255}$)((.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
         if (ipRegex.test(value) || fqdnRegex.test(value)) {
           return null;
         }
         return "Invalid host. Must be a valid IP address or FQDN.";
-      case 'integer':
-        return Number.isInteger(Number(value)) ? null : "Value must be an integer.";
-      case 'boolean':
-        return typeof value === 'boolean' ? null : "Value must be a boolean.";
-      case 'password':
-        return value.length >= 6 ? null : "Password must be at least 6 characters.";
-      case 'email':
-        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+      case "integer":
+        return Number.isInteger(Number(value))
+          ? null
+          : "Value must be an integer.";
+      case "boolean":
+        return typeof value === "boolean" ? null : "Value must be a boolean.";
+      case "password":
+        return value.length >= 6
+          ? null
+          : "Password must be at least 6 characters.";
+      case "email":
+        const emailRegex =
+          /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
         return emailRegex.test(value) ? null : "Invalid email address.";
       default:
         return null;
     }
   };
 
-  const renderConfigFields = (obj, path = []) => {
-    return Object.keys(obj).map((key) => {
+  const renderConfigFields = (obj, path = []) =>
+    Object.keys(obj).map((key) => {
       const currentPath = [...path, key];
       const entry = obj[key];
       const errorKey = currentPath.join(".");
@@ -885,18 +972,17 @@ const Admin = () => {
             </div>
           </div>
         );
-      } else {
+      } 
         return null;
-      }
+      
     });
-  };
 
   const checkOrganizationExists = async (name) => {
     try {
       const response = await OrganizationService.getOrganizationByName(name);
-      return response.data ? true : false;
+      return !!response.data;
     } catch (error) {
-      console.error('Error checking organization existence:', error);
+      console.error("Error checking organization existence:", error);
       return false;
     }
   };
@@ -931,16 +1017,29 @@ const Admin = () => {
 
   const addOidcProvider = async (e) => {
     e.preventDefault();
-    const { name, displayName, issuer, clientId, clientSecret, scope, responseType, enabled } = oidcProviderForm;
+    const {
+      name,
+      displayName,
+      issuer,
+      clientId,
+      clientSecret,
+      scope,
+      responseType,
+      enabled,
+    } = oidcProviderForm;
 
     if (!name || !displayName || !issuer || !clientId || !clientSecret) {
-      setMessage("Provider name, display name, issuer, client ID, and client secret are required");
+      setMessage(
+        "Provider name, display name, issuer, client ID, and client secret are required"
+      );
       setMessageType("danger");
       return;
     }
 
     if (!/^[a-z0-9_]+$/i.test(name)) {
-      setMessage("Provider name must contain only letters, numbers, and underscores");
+      setMessage(
+        "Provider name must contain only letters, numbers, and underscores"
+      );
       setMessageType("danger");
       return;
     }
@@ -964,22 +1063,55 @@ const Admin = () => {
         newConfig.auth.oidc.providers = {
           type: "object",
           description: "Configure OpenID Connect authentication providers",
-          value: {}
+          value: {},
         };
       }
 
       newConfig.auth.oidc.providers.value[name] = {
-        enabled: { type: "boolean", value: enabled, description: `Enable ${displayName} OIDC authentication` },
-        display_name: { type: "string", value: displayName, description: "Display name shown on login button" },
-        issuer: { type: "string", value: issuer, description: `${displayName} OIDC issuer URL` },
-        client_id: { type: "string", value: clientId, description: `${displayName} OAuth Client ID` },
-        client_secret: { type: "password", value: clientSecret, description: `${displayName} OAuth Client Secret` },
-        scope: { type: "string", value: scope, description: "OAuth scopes to request" },
-        response_type: { type: "select", value: responseType, options: ["code", "id_token", "code id_token"], description: "OAuth 2.0 response type" },
-        prompt: { type: "string", value: "", description: "Optional prompt parameter" }
+        enabled: {
+          type: "boolean",
+          value: enabled,
+          description: `Enable ${displayName} OIDC authentication`,
+        },
+        display_name: {
+          type: "string",
+          value: displayName,
+          description: "Display name shown on login button",
+        },
+        issuer: {
+          type: "string",
+          value: issuer,
+          description: `${displayName} OIDC issuer URL`,
+        },
+        client_id: {
+          type: "string",
+          value: clientId,
+          description: `${displayName} OAuth Client ID`,
+        },
+        client_secret: {
+          type: "password",
+          value: clientSecret,
+          description: `${displayName} OAuth Client Secret`,
+        },
+        scope: {
+          type: "string",
+          value: scope,
+          description: "OAuth scopes to request",
+        },
+        response_type: {
+          type: "select",
+          value: responseType,
+          options: ["code", "id_token", "code id_token"],
+          description: "OAuth 2.0 response type",
+        },
+        prompt: {
+          type: "string",
+          value: "",
+          description: "Optional prompt parameter",
+        },
       };
 
-      await ConfigService.updateConfig('auth', newConfig);
+      await ConfigService.updateConfig("auth", newConfig);
       setConfig(newConfig);
       setMessage(`OIDC provider '${displayName}' added successfully!`);
       setMessageType("success");
@@ -987,7 +1119,9 @@ const Admin = () => {
       resetOidcProviderForm();
     } catch (error) {
       console.error("Error adding OIDC provider:", error);
-      setMessage(`Error adding OIDC provider: ${error.response?.data?.message || error.message}`);
+      setMessage(
+        `Error adding OIDC provider: ${error.response?.data?.message || error.message}`
+      );
       setMessageType("danger");
     } finally {
       setOidcProviderLoading(false);
@@ -995,7 +1129,11 @@ const Admin = () => {
   };
 
   const deleteOidcProvider = async (providerName) => {
-    if (!window.confirm(`Are you sure you want to delete the OIDC provider '${providerName}'? This cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete the OIDC provider '${providerName}'? This cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -1008,13 +1146,15 @@ const Admin = () => {
         delete newConfig.auth.oidc.providers.value[providerName];
       }
 
-      await ConfigService.updateConfig('auth', newConfig);
+      await ConfigService.updateConfig("auth", newConfig);
       setConfig(newConfig);
       setMessage(`OIDC provider '${providerName}' deleted successfully!`);
       setMessageType("success");
     } catch (error) {
       console.error("Error deleting OIDC provider:", error);
-      setMessage(`Error deleting OIDC provider: ${error.response?.data?.message || error.message}`);
+      setMessage(
+        `Error deleting OIDC provider: ${error.response?.data?.message || error.message}`
+      );
       setMessageType("danger");
     }
   };

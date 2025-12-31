@@ -1,42 +1,38 @@
-import axios from 'axios';
-import authHeader from './auth-header';
+import axios from "axios";
+
+import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
 
-const getFavorites = () => {
-  return axios.get(`${baseURL}/api/favorites`, { headers: authHeader() });
-};
+const getFavorites = () =>
+  axios.get(`${baseURL}/api/favorites`, { headers: authHeader() });
 
-const saveFavorites = favoritesArray => {
-  return axios.post(`${baseURL}/api/favorites/save`, favoritesArray, {
+const saveFavorites = (favoritesArray) =>
+  axios.post(`${baseURL}/api/favorites/save`, favoritesArray, {
     headers: {
       ...authHeader(),
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
-};
 
-const getUserInfoClaims = () => {
-  return axios.get(`${baseURL}/api/userinfo/claims`, { headers: authHeader() });
-};
+const getUserInfoClaims = () =>
+  axios.get(`${baseURL}/api/userinfo/claims`, { headers: authHeader() });
 
-const getEnrichedFavorites = () => {
-  return axios.get(`${baseURL}/api/userinfo/favorites`, { headers: authHeader() });
-};
+const getEnrichedFavorites = () =>
+  axios.get(`${baseURL}/api/userinfo/favorites`, { headers: authHeader() });
 
 const addFavorite = (currentFavorites, clientId, customLabel = null) => {
   const newFavorite = {
-    clientId: clientId,
-    customLabel: customLabel,
+    clientId,
+    customLabel,
     order: currentFavorites.length,
   };
 
   return [...currentFavorites, newFavorite];
 };
 
-const removeFavorite = (currentFavorites, clientId) => {
-  return currentFavorites.filter(f => f.clientId !== clientId);
-};
+const removeFavorite = (currentFavorites, clientId) =>
+  currentFavorites.filter((f) => f.clientId !== clientId);
 
 const reorderFavorites = (currentFavorites, fromIndex, toIndex) => {
   const reordered = [...currentFavorites];

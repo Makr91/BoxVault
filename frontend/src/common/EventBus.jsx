@@ -18,13 +18,13 @@ class EventBusService {
           callback(e.detail);
         }
       } catch (error) {
-        console.error('Error in event callback:', error);
+        console.error("Error in event callback:", error);
       }
     };
-    
+
     // Store the wrapped callback
     callbacks.add(wrappedCallback);
-    
+
     // Add event listener
     document.addEventListener(event, wrappedCallback);
 
@@ -39,7 +39,7 @@ class EventBusService {
           }
         }
       } catch (error) {
-        console.error('Error cleaning up event listener:', error);
+        console.error("Error cleaning up event listener:", error);
       }
     };
   }

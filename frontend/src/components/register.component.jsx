@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+
+import BoxVaultLight from "../images/BoxVault.svg?react";
+import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
-import BoxVaultLight from '../images/BoxVault.svg?react';
-import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 
 const Register = ({ theme }) => {
   const [formValues, setFormValues] = useState({
@@ -25,11 +26,13 @@ const Register = ({ theme }) => {
       setInvitationToken(token);
       // Optionally, you can validate the token here by calling an API
       // For example, fetch the organization name associated with the token
-      AuthService.validateInvitationToken(token).then(response => {
-        setOrganizationName(response.data.organizationName);
-      }).catch(error => {
-        console.error("Invalid or expired token:", error);
-      });
+      AuthService.validateInvitationToken(token)
+        .then((response) => {
+          setOrganizationName(response.data.organizationName);
+        })
+        .catch((error) => {
+          console.error("Invalid or expired token:", error);
+        });
     }
   }, [location]);
 
@@ -42,7 +45,10 @@ const Register = ({ theme }) => {
     const errors = {};
     if (!formValues.username) {
       errors.username = "This field is required!";
-    } else if (formValues.username.length < 3 || formValues.username.length > 20) {
+    } else if (
+      formValues.username.length < 3 ||
+      formValues.username.length > 20
+    ) {
       errors.username = "The username must be between 3 and 20 characters.";
     }
 
@@ -54,7 +60,10 @@ const Register = ({ theme }) => {
 
     if (!formValues.password) {
       errors.password = "This field is required!";
-    } else if (formValues.password.length < 6 || formValues.password.length > 40) {
+    } else if (
+      formValues.password.length < 6 ||
+      formValues.password.length > 40
+    ) {
       errors.password = "The password must be between 6 and 40 characters.";
     }
 
@@ -68,14 +77,21 @@ const Register = ({ theme }) => {
 
     if (Object.keys(errors).length === 0) {
       setIsSubmitting(true);
-      AuthService.register(formValues.username, formValues.email, formValues.password, invitationToken)
+      AuthService.register(
+        formValues.username,
+        formValues.email,
+        formValues.password,
+        invitationToken
+      )
         .then((response) => {
           setStatus({ success: true, message: response.data.message });
           setIsSubmitting(false);
         })
         .catch((error) => {
           const resMessage =
-            (error.response && error.response.data && error.response.data.message) ||
+            (error.response &&
+              error.response.data &&
+              error.response.data.message) ||
             error.message ||
             error.toString();
 

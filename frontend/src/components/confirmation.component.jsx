@@ -1,13 +1,13 @@
 // ConfirmationModal.js
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Form } from 'react-bootstrap';
+import React, { useState, useEffect } from "react";
+import { Modal, Button, Form } from "react-bootstrap";
 
 const ConfirmationModal = ({ show, handleClose, handleConfirm }) => {
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
 
   useEffect(() => {
     if (show) {
-      setInputValue(''); // Reset input value when modal is shown
+      setInputValue(""); // Reset input value when modal is shown
     }
   }, [show]);
 
@@ -16,7 +16,7 @@ const ConfirmationModal = ({ show, handleClose, handleConfirm }) => {
   };
 
   const handleConfirmClick = () => {
-    if (inputValue.toLowerCase() === 'delete') {
+    if (inputValue.toLowerCase() === "delete") {
       handleConfirm();
       handleClose();
     } else {
