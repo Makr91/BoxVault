@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Table from "react-bootstrap/Table";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -24,13 +24,123 @@ const Provider = () => {
   });
   const [selectedFiles, setSelectedFiles] = useState(undefined);
   const [progress, setProgress] = useState(0);
-  const [checksumType, setChecksumType] = useState("NULL"); // Initialize to "NULL"
+  const [checksumType, setChecksumType] = useState("NULL");
   const [checksum, setChecksum] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const checksumTypes = ["NULL", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"];
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+
+  const required = (value) => (value ? undefined : "This field is required!");
+
+  const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
+
+  const validateName = (value) =>
+    validCharsRegex.test(value)
+      ? undefined
+      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+
+  const validateChecksum = (checksumValue, type) => {
+    const checksumPatterns = {
+      MD5: /^[a-fA-F0-9]{32}$/,
+      SHA1: /^[a-fA-F0-9]{40}$/,
+      SHA256: /^[a-fA-F0-9]{64}$/,
+      SHA384: /^[a-fA-F0-9]{96}$/,
+      SHA512: /^[a-fA-F0-9]{128}$/,
+    };
+
+    if (type === "NULL") {
+      return undefined;
+    }
+
+    const pattern = checksumPatterns[type];
+    if (!pattern) {
+      return "Unsupported checksum type!";
+    }
+
+    return pattern.test(checksumValue)
+      ? undefined
+      : `Invalid ${type} checksum format!`;
+  };
+
+  const formatFileSize = (bytes) => {
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    if (bytes === 0) {
+      return "0 Byte";
+    }
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
+    return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setMessage("Checksum copied to clipboard!");
+        setMessageType("success");
+      },
+      (err) => {
+        console.error("Could not copy text: ", err);
+      }
+    );
+  };
+
+  const checkProviderExists = async (org, boxName, versionNum, provider) => {
+    try {
+      const response = await ProviderService.getProvider(
+        org,
+        boxName,
+        versionNum,
+        provider
+      );
+      return !!response.data;
+    } catch (error) {
+      console.error("Error checking provider existence:", error);
+      return false;
+    }
+  };
+
+  const deleteProvider = () => {
+    ProviderService.deleteProvider(organization, name, version, providerName)
+      .then(() => {
+        setMessage("The provider was deleted successfully!");
+        setMessageType("success");
+        navigate(`/${organization}/${name}/${version}`);
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  };
+
+  const deleteArchitecture = async (architectureName) => {
+    try {
+      await ArchitectureService.deleteArchitecture(
+        organization,
+        name,
+        version,
+        providerName,
+        architectureName
+      );
+      setMessage("The architecture was deleted successfully!");
+      setMessageType("success");
+      setArchitectures(
+        architectures.filter((arch) => arch.name !== architectureName)
+      );
+    } catch (error) {
+      console.error("Error deleting architecture:", error);
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setMessage(error.response.data.message);
+        setMessageType("danger");
+      } else {
+        setMessage("Could not delete the architecture");
+        setMessageType("danger");
+      }
+    }
+  };
 
   const handleProviderDeleteClick = () => {
     setItemToDelete({ type: "provider", name: providerName });
@@ -59,30 +169,35 @@ const Provider = () => {
   };
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user) {
-      setIsAuthorized(user.organization === organization);
-    }
+    const loadData = async () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (user) {
+        setIsAuthorized(user.organization === organization);
+      }
 
-    ProviderService.getProvider(organization, name, version, providerName)
-      .then((response) => {
+      try {
+        const response = await ProviderService.getProvider(
+          organization,
+          name,
+          version,
+          providerName
+        );
         setCurrentProvider(response.data);
         setOriginalProviderName(response.data.name);
-      })
-      .catch((e) => {
+      } catch (e) {
         console.log(e);
         setCurrentProvider(null);
         setMessage("No Provider Found");
         setMessageType("danger");
-      });
+      }
 
-    ArchitectureService.getArchitectures(
-      organization,
-      name,
-      version,
-      providerName
-    )
-      .then(async (response) => {
+      try {
+        const response = await ArchitectureService.getArchitectures(
+          organization,
+          name,
+          version,
+          providerName
+        );
         const architecturesWithInfo = await Promise.all(
           response.data.map(async (architecture) => {
             try {
@@ -112,6 +227,7 @@ const Provider = () => {
                 downloadCount: fileInfo.data.downloadCount,
               };
             } catch (error) {
+              console.error("Error fetching file info:", error);
               return {
                 ...architecture,
                 fileName: null,
@@ -125,107 +241,61 @@ const Provider = () => {
           })
         );
         setArchitectures(architecturesWithInfo);
-      })
-      .catch((e) => {
+      } catch (e) {
         console.log(e);
-      });
+      }
+    };
+
+    loadData();
   }, [organization, name, version, providerName]);
 
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setCurrentProvider({ ...currentProvider, [name]: value });
+    const { name: fieldName, value } = event.target;
+    setCurrentProvider({ ...currentProvider, [fieldName]: value });
 
-    // Validate the name field
-    if (name === "name") {
+    if (fieldName === "name") {
       const error = required(value) || validateName(value);
       setValidationErrors({ ...validationErrors, name: error });
     }
   };
 
   const handleArchitectureInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewArchitecture({ ...newArchitecture, [name]: value });
+    const { name: fieldName, value } = event.target;
+    setNewArchitecture({ ...newArchitecture, [fieldName]: value });
 
-    if (name === "name") {
+    if (fieldName === "name") {
       const error = required(value) || validateName(value);
-      setValidationErrors((prevErrors) => {
-        const updatedErrors = { ...prevErrors, architectureName: error };
-        return updatedErrors;
-      });
+      setValidationErrors((prevErrors) => ({
+        ...prevErrors,
+        architectureName: error,
+      }));
     }
   };
 
-  // Define a function to validate the checksum based on the type
-  const validateChecksum = (checksum, type) => {
-    const checksumPatterns = {
-      MD5: /^[a-fA-F0-9]{32}$/,
-      SHA1: /^[a-fA-F0-9]{40}$/,
-      SHA256: /^[a-fA-F0-9]{64}$/,
-      SHA384: /^[a-fA-F0-9]{96}$/,
-      SHA512: /^[a-fA-F0-9]{128}$/,
-    };
-
-    if (type === "NULL") {
-      return undefined; // No validation needed for NULL type
-    }
-
-    const pattern = checksumPatterns[type];
-    if (!pattern) {
-      return "Unsupported checksum type!";
-    }
-
-    return pattern.test(checksum)
-      ? undefined
-      : `Invalid ${type} checksum format!`;
-  };
-
-  // Update the handleChecksumChange function to include validation
   const handleChecksumChange = (event) => {
     const { value } = event.target;
     setChecksum(value);
 
-    // Validate the checksum field if the type is not "NULL"
     if (checksumType !== "NULL") {
       const error = required(value) || validateChecksum(value, checksumType);
       setValidationErrors((prevErrors) => ({ ...prevErrors, checksum: error }));
     }
   };
 
-  // Update the handleChecksumTypeChange function to clear errors if needed
   const handleChecksumTypeChange = (event) => {
     const selectedType = event.target.value;
     setChecksumType(selectedType);
 
-    // Validate the checksum field if the type is not "NULL"
     if (selectedType !== "NULL") {
       const error =
         required(checksum) || validateChecksum(checksum, selectedType);
       setValidationErrors((prevErrors) => ({ ...prevErrors, checksum: error }));
     } else {
-      // Clear checksum validation error if type is "NULL"
       setValidationErrors((prevErrors) => {
-        const { checksum, ...rest } = prevErrors;
-        return rest;
+        const newErrors = { ...prevErrors };
+        delete newErrors.checksum;
+        return newErrors;
       });
-    }
-  };
-
-  const required = (value) => (value ? undefined : "This field is required!");
-
-  const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-
-  const validateName = (value) =>
-    validCharsRegex.test(value)
-      ? undefined
-      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-
-  const requiredFile = (files) => {
-    if (!files || files.length === 0) {
-      return (
-        <div className="alert alert-danger" role="alert">
-          A file must be selected for upload!
-        </div>
-      );
     }
   };
 
@@ -236,7 +306,6 @@ const Provider = () => {
   const saveProvider = async (event) => {
     event.preventDefault();
 
-    // Check for duplicate provider name only if the name has changed
     if (currentProvider.name !== originalProviderName) {
       const providerExists = await checkProviderExists(
         organization,
@@ -275,93 +344,33 @@ const Provider = () => {
     } catch (e) {
       console.log(e);
       if (e.response && e.response.data && e.response.data.message) {
-        setMessage(e.response.data.message); // Display the specific error message from the response
+        setMessage(e.response.data.message);
       } else {
-        setMessage("Could not update the provider"); // Fallback message
+        setMessage("Could not update the provider");
       }
       setMessageType("danger");
     }
   };
 
-  const deleteProvider = () => {
-    ProviderService.deleteProvider(organization, name, version, providerName)
-      .then((response) => {
-        setMessage("The provider was deleted successfully!");
-        setMessageType("success");
-        navigate(`/${organization}/${name}/${version}`);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
-  };
-
-  const deleteArchitecture = async (architectureName) => {
-    try {
-      await ArchitectureService.deleteArchitecture(
-        organization,
-        name,
-        version,
-        providerName,
-        architectureName
+  const handleProgressUpdate = (progressEvent) => {
+    if (progressEvent.status === "assembling") {
+      setProgress(100);
+      setMessage(
+        "Assembling file chunks into final box file, this may take several minutes..."
       );
-      setMessage("The architecture was deleted successfully!");
+      setMessageType("info");
+      return;
+    }
+
+    if (progressEvent.status === "complete") {
+      setProgress(100);
+      setMessage("File upload and assembly completed successfully!");
       setMessageType("success");
-      setArchitectures(
-        architectures.filter((arch) => arch.name !== architectureName)
-      );
-    } catch (error) {
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
-        setMessage(error.response.data.message);
-        setMessageType("danger");
-      } else {
-        setMessage("Could not delete the architecture");
-        setMessageType("danger");
-      }
+      return;
     }
-  };
 
-  const formatFileSize = (bytes) => {
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    if (bytes === 0) {
-      return "0 Byte";
-    }
-    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
-    return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
-  };
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(
-      () => {
-        setMessage("Checksum copied to clipboard!");
-        setMessageType("success");
-      },
-      (err) => {
-        console.error("Could not copy text: ", err);
-      }
-    );
-  };
-
-  const checkProviderExists = async (
-    organization,
-    name,
-    version,
-    providerName
-  ) => {
-    try {
-      const response = await ProviderService.getProvider(
-        organization,
-        name,
-        version,
-        providerName
-      );
-      return !!response.data;
-    } catch (error) {
-      console.error("Error checking provider existence:", error);
-      return false;
+    if (progressEvent.progress !== undefined) {
+      setProgress(progressEvent.progress);
     }
   };
 
@@ -371,7 +380,6 @@ const Provider = () => {
     setProgress(0);
 
     try {
-      // Validate inputs
       if (!selectedFiles || selectedFiles.length === 0) {
         throw new Error("Please select a file before adding an architecture.");
       }
@@ -380,18 +388,16 @@ const Provider = () => {
         throw new Error("Please enter an architecture name.");
       }
 
-      const currentFile = selectedFiles[0];
+      const [currentFile] = selectedFiles;
       console.log("Starting upload process:", {
         fileName: currentFile.name,
         fileSize: currentFile.size,
         architectureName: newArchitecture.name,
       });
 
-      // Set initial upload message
       setMessage("Starting file upload...");
       setMessageType("info");
 
-      // First create the architecture record
       const architectureData = {
         ...newArchitecture,
         checksum,
@@ -406,7 +412,6 @@ const Provider = () => {
         architectureData
       );
 
-      // Then upload the file
       const uploadResult = await FileService.upload(
         currentFile,
         {
@@ -418,34 +423,11 @@ const Provider = () => {
           checksum,
           checksumType,
         },
-        (progressEvent) => {
-          // Only show important status changes in the top message
-          if (progressEvent.status === "assembling") {
-            setProgress(100);
-            setMessage(
-              "Assembling file chunks into final box file, this may take several minutes..."
-            );
-            setMessageType("info");
-            return;
-          }
-
-          if (progressEvent.status === "complete") {
-            setProgress(100);
-            setMessage("File upload and assembly completed successfully!");
-            setMessageType("success");
-            return;
-          }
-
-          // Update progress without showing a message for regular progress updates
-          if (progressEvent.progress !== undefined) {
-            setProgress(progressEvent.progress);
-          }
-        }
+        handleProgressUpdate
       );
 
       console.log("Upload completed:", uploadResult);
 
-      // Keep detailed assembly message visible
       if (uploadResult.details?.status === "assembling") {
         setMessage(
           "File chunks uploaded successfully. Now assembling into final box file.\n" +
@@ -455,7 +437,6 @@ const Provider = () => {
         setMessageType("info");
       }
 
-      // Refresh architectures list
       const updatedArchitectures = await ArchitectureService.getArchitectures(
         organization,
         name,
@@ -463,10 +444,7 @@ const Provider = () => {
         providerName
       );
 
-      // Update UI state
       setArchitectures(updatedArchitectures.data);
-
-      // Reset form
       setShowAddArchitectureForm(false);
       setNewArchitecture({ name: "", defaultBox: false });
       setChecksum("");
@@ -484,6 +462,246 @@ const Provider = () => {
     setEditMode(false);
   };
 
+  const handleChecksumClick = (checksumText) => {
+    copyToClipboard(checksumText);
+  };
+
+  const handleChecksumKeyPress = (event, checksumText) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      copyToClipboard(checksumText);
+    }
+  };
+
+  const renderProviderEditForm = () => (
+    <form onSubmit={saveProvider}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h4>Edit Provider</h4>
+        <div>
+          {isAuthorized && (
+            <>
+              <button
+                type="submit"
+                className="btn btn-success me-2"
+                disabled={!!validationErrors.name}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary me-2"
+                onClick={cancelEdit}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+          <button
+            className="btn btn-dark me-2"
+            onClick={() => navigate(`/${organization}/${name}/${version}`)}
+          >
+            Back
+          </button>
+        </div>
+      </div>
+      <div className="form-group col-md-3">
+        <label htmlFor="name">Provider Name</label>
+        <input
+          type="text"
+          className="form-control"
+          id="name"
+          value={currentProvider.name}
+          onChange={handleInputChange}
+          name="name"
+          required
+        />
+        {validationErrors.name && (
+          <div className="text-danger">{validationErrors.name}</div>
+        )}
+      </div>
+      <div className="form-group">
+        <label htmlFor="description">Description</label>
+        <textarea
+          className="form-control"
+          id="description"
+          value={currentProvider.description}
+          onChange={handleInputChange}
+          name="description"
+        />
+      </div>
+    </form>
+  );
+
+  const renderProviderDetails = () => (
+    <>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h4>Provider Details</h4>
+        <div>
+          {isAuthorized && (
+            <>
+              <button
+                className="btn btn-primary me-2"
+                onClick={() => setEditMode(true)}
+              >
+                Edit
+              </button>
+              <button
+                className="btn btn-danger me-2"
+                onClick={handleProviderDeleteClick}
+              >
+                Delete
+              </button>
+            </>
+          )}
+          <button
+            className="btn btn-dark me-2"
+            onClick={() => navigate(`/${organization}/${name}/${version}`)}
+          >
+            Back
+          </button>
+        </div>
+      </div>
+      <p>Provider Name: {currentProvider.name}</p>
+      <p>Description: {currentProvider.description}</p>
+    </>
+  );
+
+  const renderArchitectureForm = () => (
+    <div className="add-architecture-form">
+      <div className="form-group">
+        <div className="form-check form-switch">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            id="defaultBoxSwitch"
+            checked={newArchitecture.defaultBox}
+            onChange={() =>
+              setNewArchitecture({
+                ...newArchitecture,
+                defaultBox: !newArchitecture.defaultBox,
+              })
+            }
+            name="defaultBox"
+          />
+          <label className="form-check-label" htmlFor="defaultBoxSwitch">
+            Default Box
+          </label>
+        </div>
+        <div className="mb-3">
+          <label className="btn btn-outline-primary">
+            <input
+              type="file"
+              onChange={selectFile}
+              style={{ display: "none" }}
+              accept=".box,application/octet-stream"
+            />
+            Choose Box File
+          </label>
+          {selectedFiles && selectedFiles[0] && (
+            <div className="mt-2">
+              <small className="text-muted">
+                Selected: {selectedFiles[0].name} (
+                {formatFileSize(selectedFiles[0].size)})
+              </small>
+            </div>
+          )}
+        </div>
+        {selectedFiles && (
+          <div>
+            <div className="progress mb-2" style={{ height: "25px" }}>
+              <div
+                className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin="0"
+                aria-valuemax="100"
+                style={{ width: `${progress}%` }}
+              >
+                <span style={{ fontSize: "0.9em", fontWeight: "bold" }}>
+                  {progress}%
+                </span>
+              </div>
+            </div>
+            <div className="text-muted">
+              {selectedFiles[0] && (
+                <div className="upload-stats d-flex justify-content-between">
+                  <small>
+                    <strong>File Size:</strong>{" "}
+                    {formatFileSize(selectedFiles[0].size)}
+                  </small>
+                  <small>
+                    <strong>Uploaded:</strong>{" "}
+                    {formatFileSize(
+                      Math.round((progress / 100) * selectedFiles[0].size)
+                    )}{" "}
+                    ({progress}%)
+                  </small>
+                  <small>
+                    <strong>Remaining:</strong>{" "}
+                    {formatFileSize(
+                      Math.round(
+                        ((100 - progress) / 100) * selectedFiles[0].size
+                      )
+                    )}
+                  </small>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="form-group col-md-3">
+          <label htmlFor="architectureName">Architecture Name</label>
+          <input
+            type="text"
+            className="form-control"
+            id="architectureName"
+            value={newArchitecture.name}
+            onChange={handleArchitectureInputChange}
+            name="name"
+            required
+          />
+          {validationErrors.architectureName && (
+            <div className="text-danger">
+              {validationErrors.architectureName}
+            </div>
+          )}
+        </div>
+        <div className="form-group col-md-3">
+          <label htmlFor="checksumType">Checksum Type</label>
+          <select
+            className="form-control"
+            id="checksumType"
+            value={checksumType}
+            onChange={handleChecksumTypeChange}
+            name="checksumType"
+          >
+            {checksumTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+        {checksumType !== "NULL" && (
+          <div className="form-group">
+            <label htmlFor="checksum">Checksum</label>
+            <input
+              type="text"
+              className="form-control"
+              id="checksum"
+              value={checksum}
+              onChange={handleChecksumChange}
+              name="checksum"
+            />
+            {validationErrors.checksum && (
+              <div className="text-danger">{validationErrors.checksum}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="list row">
       {message && (
@@ -494,102 +712,7 @@ const Provider = () => {
       <div className="provider-form">
         {currentProvider ? (
           <div>
-            {editMode ? (
-              <div>
-                <form onSubmit={saveProvider}>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h4>Edit Provider</h4>
-                    <div>
-                      {isAuthorized && (
-                        <>
-                          <button
-                            type="submit"
-                            className="btn btn-success me-2"
-                            disabled={!!validationErrors.name}
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-secondary me-2"
-                            onClick={cancelEdit}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      )}
-                      <button
-                        className="btn btn-dark me-2"
-                        onClick={() =>
-                          navigate(`/${organization}/${name}/${version}`)
-                        }
-                      >
-                        Back
-                      </button>
-                    </div>
-                  </div>
-                  <div className="form-group col-md-3">
-                    <label htmlFor="name">Provider Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="name"
-                      value={currentProvider.name}
-                      onChange={handleInputChange}
-                      name="name"
-                      required
-                    />
-                    {validationErrors.name && (
-                      <div className="text-danger">{validationErrors.name}</div>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="description">Description</label>
-                    <textarea
-                      className="form-control"
-                      id="description"
-                      value={currentProvider.description}
-                      onChange={handleInputChange}
-                      name="description"
-                    />
-                  </div>
-                </form>
-              </div>
-            ) : (
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4>Provider Details</h4>
-                  <div>
-                    {isAuthorized && (
-                      <>
-                        <button
-                          className="btn btn-primary me-2"
-                          onClick={() => setEditMode(true)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-danger me-2"
-                          onClick={handleProviderDeleteClick}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                    <button
-                      className="btn btn-dark me-2"
-                      onClick={() =>
-                        navigate(`/${organization}/${name}/${version}`)
-                      }
-                    >
-                      Back
-                    </button>
-                  </div>
-                </div>
-                <p>Provider Name: {currentProvider.name}</p>
-                <p>Description: {currentProvider.description}</p>
-              </div>
-            )}
+            {editMode ? renderProviderEditForm() : renderProviderDetails()}
           </div>
         ) : (
           <div>
@@ -635,148 +758,7 @@ const Provider = () => {
               </div>
             )}
           </div>
-          {showAddArchitectureForm && (
-            <div className="add-architecture-form">
-              <div className="form-group">
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="defaultBoxSwitch"
-                    checked={newArchitecture.defaultBox}
-                    onChange={() =>
-                      setNewArchitecture({
-                        ...newArchitecture,
-                        defaultBox: !newArchitecture.defaultBox,
-                      })
-                    }
-                    name="defaultBox"
-                  />
-                  <label
-                    className="form-check-label"
-                    htmlFor="defaultBoxSwitch"
-                  >
-                    Default Box
-                  </label>
-                </div>
-                <div className="mb-3">
-                  <label className="btn btn-outline-primary">
-                    <input
-                      type="file"
-                      onChange={selectFile}
-                      style={{ display: "none" }}
-                      accept=".box,application/octet-stream"
-                    />
-                    Choose Box File
-                  </label>
-                  {selectedFiles && selectedFiles[0] && (
-                    <div className="mt-2">
-                      <small className="text-muted">
-                        Selected: {selectedFiles[0].name} (
-                        {formatFileSize(selectedFiles[0].size)})
-                      </small>
-                    </div>
-                  )}
-                </div>
-                {selectedFiles && (
-                  <div>
-                    <div className="progress mb-2" style={{ height: "25px" }}>
-                      <div
-                        className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                        role="progressbar"
-                        aria-valuenow={progress}
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        style={{ width: `${progress}%` }}
-                      >
-                        <span style={{ fontSize: "0.9em", fontWeight: "bold" }}>
-                          {progress}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-muted">
-                      {selectedFiles[0] && (
-                        <div className="upload-stats d-flex justify-content-between">
-                          <small>
-                            <strong>File Size:</strong>{" "}
-                            {formatFileSize(selectedFiles[0].size)}
-                          </small>
-                          <small>
-                            <strong>Uploaded:</strong>{" "}
-                            {formatFileSize(
-                              Math.round(
-                                (progress / 100) * selectedFiles[0].size
-                              )
-                            )}{" "}
-                            ({progress}%)
-                          </small>
-                          <small>
-                            <strong>Remaining:</strong>{" "}
-                            {formatFileSize(
-                              Math.round(
-                                ((100 - progress) / 100) * selectedFiles[0].size
-                              )
-                            )}
-                          </small>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="form-group col-md-3">
-                  <label htmlFor="architectureName">Architecture Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="architectureName"
-                    value={newArchitecture.name}
-                    onChange={handleArchitectureInputChange}
-                    name="name"
-                    required
-                  />
-                  {validationErrors.architectureName && (
-                    <div className="text-danger">
-                      {validationErrors.architectureName}
-                    </div>
-                  )}
-                </div>
-                <div className="form-group col-md-3">
-                  <label htmlFor="checksumType">Checksum Type</label>
-                  <select
-                    className="form-control"
-                    id="checksumType"
-                    value={checksumType}
-                    onChange={handleChecksumTypeChange}
-                    name="checksumType"
-                  >
-                    {checksumTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {checksumType !== "NULL" && (
-                  <div className="form-group">
-                    <label htmlFor="checksum">Checksum</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="checksum"
-                      value={checksum}
-                      onChange={handleChecksumChange}
-                      name="checksum"
-                    />
-                    {validationErrors.checksum && (
-                      <div className="text-danger">
-                        {validationErrors.checksum}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {showAddArchitectureForm && renderArchitectureForm()}
           <Table striped className="table">
             <thead>
               <tr>
@@ -790,8 +772,8 @@ const Provider = () => {
               </tr>
             </thead>
             <tbody>
-              {architectures.map((architecture, index) => (
-                <tr key={index}>
+              {architectures.map((architecture) => (
+                <tr key={architecture.name}>
                   <td>{architecture.name}</td>
                   <td>{architecture.defaultBox ? "Yes" : "No"}</td>
                   <td>
@@ -802,7 +784,14 @@ const Provider = () => {
                   <td>
                     {architecture.checksum ? (
                       <span
-                        onClick={() => copyToClipboard(architecture.checksum)}
+                        onClick={() =>
+                          handleChecksumClick(architecture.checksum)
+                        }
+                        onKeyPress={(e) =>
+                          handleChecksumKeyPress(e, architecture.checksum)
+                        }
+                        role="button"
+                        tabIndex={0}
                         title="Click to copy checksum"
                         style={{
                           cursor: "pointer",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FaStar, FaXmark, FaGripVertical, FaPlus } from "react-icons/fa6";
 
 import FavoritesService from "../services/favorites.service";
@@ -12,10 +12,6 @@ const FavoritesManager = () => {
   const [newClientId, setNewClientId] = useState("");
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [draggedIndex, setDraggedIndex] = useState(null);
-
-  useEffect(() => {
-    loadFavorites();
-  }, []);
 
   const loadFavorites = async () => {
     setLoading(true);
@@ -35,6 +31,10 @@ const FavoritesManager = () => {
     }
   };
 
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
   const saveFavorites = async (newFavorites) => {
     setSaving(true);
     setMessage("");
@@ -42,7 +42,6 @@ const FavoritesManager = () => {
       await FavoritesService.saveFavorites(newFavorites);
       setMessage("Favorites saved successfully!");
       setFavorites(newFavorites);
-      // Reload enriched favorites
       const enrichedResponse = await FavoritesService.getUserInfoClaims();
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
@@ -85,7 +84,7 @@ const FavoritesManager = () => {
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e, index) => {
+  const handleDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
@@ -112,13 +111,13 @@ const FavoritesManager = () => {
   const getEnrichedData = (clientId) =>
     enrichedFavorites.find((ef) => ef.clientId === clientId) || {};
 
-  const renderAppIcon = (enriched) => {
-    const iconStyle = { width: "24px", height: "24px", marginRight: "12px" };
+  const renderAppIcon = (app) => {
+    const iconStyle = { width: "20px", height: "20px", marginRight: "8px" };
 
-    if (enriched.iconUrl && enriched.iconUrl !== "") {
+    if (app.iconUrl && app.iconUrl !== "") {
       return (
         <img
-          src={enriched.iconUrl}
+          src={app.iconUrl}
           style={iconStyle}
           alt=""
           onError={(e) => {
@@ -128,9 +127,9 @@ const FavoritesManager = () => {
       );
     }
 
-    if (enriched.homeUrl && enriched.homeUrl !== "") {
+    if (app.homeUrl && app.homeUrl !== "") {
       try {
-        const faviconUrl = `${new URL(enriched.homeUrl).origin}/favicon.ico`;
+        const faviconUrl = `${new URL(app.homeUrl).origin}/favicon.ico`;
         return (
           <img
             src={faviconUrl}
@@ -141,7 +140,8 @@ const FavoritesManager = () => {
             }}
           />
         );
-      } catch (error) {
+      } catch (err) {
+        console.log("Invalid URL for favicon:", err);
         return <FaStar style={iconStyle} className="text-warning" />;
       }
     }
@@ -166,15 +166,14 @@ const FavoritesManager = () => {
         Manage your favorite applications for quick access from the user menu.
       </p>
 
-      {message ? (
+      {message && (
         <div
           className={`alert ${message.includes("success") ? "alert-success" : "alert-danger"}`}
         >
           {message}
-                 </div>
-      ) : null}
+        </div>
+      )}
 
-      {/* Add New Favorite Form */}
       <div className="card mb-4">
         <div className="card-header">
           <FaPlus className="me-2" />
@@ -235,14 +234,13 @@ const FavoritesManager = () => {
         </div>
       </div>
 
-      {/* Current Favorites List */}
       <div className="card">
         <div className="card-header">
           <FaStar className="me-2 text-warning" />
           Your Favorites
-          {favorites.length > 0 ? (
+          {favorites.length > 0 && (
             <span className="badge bg-primary ms-2">{favorites.length}</span>
-          ) : null}
+          )}
         </div>
         <div className="card-body">
           {favorites.length === 0 ? (
@@ -265,9 +263,16 @@ const FavoritesManager = () => {
                       className="list-group-item"
                       draggable
                       onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
+                      role="button"
+                      tabIndex={0}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                        }
+                      }}
                       style={{
                         cursor: "move",
                         opacity: draggedIndex === index ? 0.5 : 1,
@@ -280,14 +285,14 @@ const FavoritesManager = () => {
                           <div>
                             <strong>{displayName}</strong>
                             {enriched.clientName &&
-                            fav.customLabel &&
-                            enriched.clientName !== fav.customLabel ? (
+                              fav.customLabel &&
+                              enriched.clientName !== fav.customLabel && (
+                                <small className="text-muted d-block">
+                                  {enriched.clientName}
+                                </small>
+                              )}
+                            {enriched.homeUrl && (
                               <small className="text-muted d-block">
-                                {enriched.clientName}
-                                                                        </small> : null}
-                            {enriched.homeUrl ? (
-                              (
-<small className="text-muted d-block">
                                 <a
                                   href={enriched.homeUrl}
                                   target="_blank"
@@ -297,7 +302,7 @@ const FavoritesManager = () => {
                                   {enriched.homeUrl}
                                 </a>
                               </small>
-) : null}
+                            )}
                           </div>
                         </div>
                         <button
@@ -343,7 +348,7 @@ const FavoritesManager = () => {
           <p className="text-muted small">
             Note: Applications must be configured in the authorization server to
             appear with names and icons. Contact your administrator if an
-            application doesn't display correctly.
+            application doesn&apos;t display correctly.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 
@@ -31,13 +31,123 @@ const SetupComponent = () => {
       });
   }, []);
 
+  // Helper: Validate URL
+  const validateUrl = (value) => {
+    try {
+      new URL(value);
+      return null;
+    } catch {
+      return "Invalid URL format.";
+    }
+  };
+
+  // Helper: Validate host (IP, FQDN, or localhost)
+  const validateHost = (value) => {
+    if (value === "localhost" || value === "127.0.0.1") {
+      return null;
+    }
+    const ipRegex =
+      /^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const fqdnRegex =
+      /^(?!:\/\/)(?=.{1,255}$)(?:(?:.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
+    if (ipRegex.test(value) || fqdnRegex.test(value)) {
+      return null;
+    }
+    return "Invalid host. Must be a valid IP address, FQDN, or 'localhost'.";
+  };
+
+  // Helper: Validate other field types
+  const validateOtherTypes = (type, value) => {
+    switch (type) {
+      case "integer": {
+        return Number.isInteger(Number(value))
+          ? null
+          : "Value must be an integer.";
+      }
+      case "boolean": {
+        return typeof value === "boolean" ? null : "Value must be a boolean.";
+      }
+      case "password": {
+        return value.length >= 6
+          ? null
+          : "Password must be at least 6 characters.";
+      }
+      case "email": {
+        const emailRegex =
+          /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+        return emailRegex.test(value) ? null : "Invalid email address.";
+      }
+      case "port": {
+        const port = Number(value);
+        return port >= 1 && port <= 65535
+          ? null
+          : "Port must be between 1 and 65535.";
+      }
+      case "string": {
+        return value.trim() !== "" ? null : "Value cannot be empty.";
+      }
+      default:
+        return null;
+    }
+  };
+
+  const getValidationError = (type, value, isReadonly = false) => {
+    // Skip validation for readonly fields
+    if (isReadonly) {
+      return null;
+    }
+
+    if (value === null || value === undefined || value === "") {
+      return "Value cannot be empty.";
+    }
+
+    if (type === "url") {
+      return validateUrl(value);
+    }
+    if (type === "host") {
+      return validateHost(value);
+    }
+    return validateOtherTypes(type, value);
+  };
+
+  const updateFormValidity = (errors) => {
+    const hasErrors = ["db", "app", "auth", "mail"].some((configName) =>
+      Object.values(errors[configName] || {}).some((error) => error !== null)
+    );
+    setIsFormValid(!hasErrors);
+  };
+
+  const validateField = (configName, path, value) => {
+    const field = path.reduce(
+      (acc, key) => acc && acc[key],
+      configs[configName]
+    );
+    const isReadonly = field && field.readonly;
+    const error =
+      field && field.type
+        ? getValidationError(field.type, value, isReadonly)
+        : "Invalid field structure";
+
+    setValidationErrors((prevErrors) => {
+      const newErrors = {
+        ...prevErrors,
+        [configName]: {
+          ...prevErrors[configName],
+          [path.join(".")]: error,
+        },
+      };
+      updateFormValidity(newErrors);
+      return newErrors;
+    });
+  };
+
   const handleVerifyToken = () => {
     SetupService.verifySetupToken(setupToken)
-      .then((response) => {
-        setAuthorizedSetupToken(response.data.authorizedSetupToken);
-        SetupService.getConfigs(response.data.authorizedSetupToken)
-          .then((response) => {
-            const newConfigs = response.data.configs;
+      .then((tokenResponse) => {
+        setAuthorizedSetupToken(tokenResponse.data.authorizedSetupToken);
+        SetupService.getConfigs(tokenResponse.data.authorizedSetupToken)
+          .then((configResponse) => {
+            const newConfigs = configResponse.data.configs;
 
             // Auto-populate dialect on initial load if database_type is set but dialect is empty
             if (
@@ -125,115 +235,140 @@ const SetupComponent = () => {
     }
   };
 
-  const validateField = (configName, path, value) => {
-    const field = path.reduce(
-      (acc, key) => acc && acc[key],
-      configs[configName]
-    );
-    const isReadonly = field && field.readonly;
-    const error =
-      field && field.type
-        ? getValidationError(field.type, value, isReadonly)
-        : "Invalid field structure";
-
-    setValidationErrors((prevErrors) => {
-      const newErrors = {
-        ...prevErrors,
-        [configName]: {
-          ...prevErrors[configName],
-          [path.join(".")]: error,
-        },
-      };
-      updateFormValidity(newErrors);
-      return newErrors;
-    });
-  };
-
-  const getValidationError = (type, value, isReadonly = false) => {
-    // Skip validation for readonly fields
-    if (isReadonly) {
+  // Helper: Render SQLite storage field
+  const renderSqliteStorage = (configName, entry) => {
+    const storageEntry = entry.storage;
+    if (!storageEntry) {
       return null;
     }
-
-    if (value === null || value === undefined || value === "") {
-      return "Value cannot be empty.";
-    }
-
-    switch (type) {
-      case "url":
-        try {
-          new URL(value);
-          return null;
-        } catch {
-          return "Invalid URL format.";
-        }
-      case "host":
-        // Allow localhost, IP addresses, and FQDNs
-        if (value === "localhost" || value === "127.0.0.1") {
-          return null;
-        }
-        const ipRegex =
-          /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        const fqdnRegex =
-          /^(?!:\/\/)(?=.{1,255}$)((.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
-        if (ipRegex.test(value) || fqdnRegex.test(value)) {
-          return null;
-        }
-        return "Invalid host. Must be a valid IP address, FQDN, or 'localhost'.";
-      case "integer":
-        return Number.isInteger(Number(value))
-          ? null
-          : "Value must be an integer.";
-      case "boolean":
-        return typeof value === "boolean" ? null : "Value must be a boolean.";
-      case "password":
-        return value.length >= 6
-          ? null
-          : "Password must be at least 6 characters.";
-      case "email":
-        const emailRegex =
-          /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-        return emailRegex.test(value) ? null : "Invalid email address.";
-      case "port":
-        const port = Number(value);
-        return port >= 1 && port <= 65535
-          ? null
-          : "Port must be between 1 and 65535.";
-      case "string":
-        return value.trim() !== "" ? null : "Value cannot be empty.";
-      default:
-        return null;
-    }
-  };
-
-  const updateFormValidity = (errors) => {
-    const hasErrors = ["db", "app", "auth", "mail"].some((configName) =>
-      Object.values(errors[configName] || {}).some((error) => error !== null)
+    const storageError =
+      validationErrors[configName] &&
+      validationErrors[configName]["sql.storage"];
+    return (
+      <div className="form-group" key="sql.storage">
+        <label htmlFor="sql-storage">SQLite Database File Path</label>
+        <input
+          id="sql-storage"
+          type="text"
+          className={`form-control ${storageError ? "is-invalid" : ""}`}
+          value={storageEntry.value || ""}
+          onChange={(e) =>
+            handleConfigChange(configName, ["sql", "storage"], e.target.value)
+          }
+        />
+        <small className="form-text text-muted">
+          {storageEntry.description}
+        </small>
+        {storageError && <div className="invalid-feedback">{storageError}</div>}
+      </div>
     );
-    setIsFormValid(!hasErrors);
   };
 
-  const handleSubmit = () => {
-    if (!isFormValid) {
-      setMessage("Please fix all validation errors before submitting.");
-      return;
+  // Helper: Render OIDC provider info
+  const renderOidcInfo = (errorKey) => (
+    <div key={errorKey} className="col-md-12 mb-3">
+      <div className="alert alert-info">
+        <h6>
+          <i className="fas fa-info-circle me-2" />
+          OIDC Providers
+        </h6>
+        <p className="mb-0">
+          OIDC provider configuration is managed through the Admin interface
+          after setup is complete. Go to Admin → Configuration Management → Auth
+          Config to add OIDC providers.
+        </p>
+      </div>
+    </div>
+  );
+
+  // Helper: Render form input field
+  const renderInputField = (
+    configName,
+    currentPath,
+    entry,
+    errorKey,
+    error
+  ) => {
+    const { type, value, description, options } = entry;
+    const inputValue = value === null || value === undefined ? "" : value;
+    const fieldId = `field-${errorKey}`;
+
+    if (type === "select") {
+      return (
+        <div className="form-group" key={errorKey}>
+          <label htmlFor={fieldId}>{currentPath[currentPath.length - 1]}</label>
+          <select
+            id={fieldId}
+            className={`form-control ${error ? "is-invalid" : ""}`}
+            value={inputValue}
+            onChange={(e) =>
+              handleConfigChange(configName, currentPath, e.target.value)
+            }
+          >
+            {options &&
+              options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+          </select>
+          <small className="form-text text-muted">{description}</small>
+          {error && <div className="invalid-feedback">{error}</div>}
+        </div>
+      );
     }
 
-    SetupService.updateConfigs(authorizedSetupToken, configs)
-      .then(() => {
-        setMessage(
-          "Configuration updated successfully. Redirecting to registration page in 5 seconds..."
-        );
+    if (type === "password") {
+      return (
+        <div className="form-group" key={errorKey}>
+          <label htmlFor={fieldId}>{currentPath[currentPath.length - 1]}</label>
+          <div className="input-group">
+            <input
+              id={fieldId}
+              type={showPasswords[errorKey] ? "text" : "password"}
+              className={`form-control ${error ? "is-invalid" : ""}`}
+              value={inputValue}
+              onChange={(e) =>
+                handleConfigChange(configName, currentPath, e.target.value)
+              }
+            />
+            <button
+              className="btn btn-outline-secondary"
+              type="button"
+              onClick={() =>
+                setShowPasswords((prev) => ({
+                  ...prev,
+                  [errorKey]: !prev[errorKey],
+                }))
+              }
+            >
+              {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          <small className="form-text text-muted">{description}</small>
+          {error && <div className="invalid-feedback">{error}</div>}
+        </div>
+      );
+    }
 
-        // Set a 5-second delay before navigating
-        setTimeout(() => {
-          navigate("/register");
-        }, 5000);
-      })
-      .catch((error) => {
-        console.error("Error updating configuration:", error);
-        setMessage("Failed to update configuration.");
-      });
+    return (
+      <div className="form-group" key={errorKey}>
+        <label htmlFor={fieldId}>{currentPath[currentPath.length - 1]}</label>
+        <input
+          id={fieldId}
+          type="text"
+          className={`form-control ${error ? "is-invalid" : ""}`}
+          value={inputValue}
+          onChange={(e) =>
+            handleConfigChange(configName, currentPath, e.target.value)
+          }
+          readOnly={entry.readonly}
+          style={entry.readonly ? { backgroundColor: "#f8f9fa" } : undefined}
+        />
+        <small className="form-text text-muted">{description}</small>
+        {error && <div className="invalid-feedback">{error}</div>}
+      </div>
+    );
   };
 
   const renderConfigFields = (configName) => {
@@ -252,37 +387,7 @@ const SetupComponent = () => {
 
           if (key === "sql") {
             if (databaseType === "sqlite") {
-              // For SQLite, only show storage field
-              const storageEntry = entry.storage;
-              if (storageEntry) {
-                const storageError =
-                  validationErrors[configName] &&
-                  validationErrors[configName]["sql.storage"];
-                return (
-                  <div className="form-group" key="sql.storage">
-                    <label>SQLite Database File Path</label>
-                    <input
-                      type="text"
-                      className={`form-control ${storageError ? "is-invalid" : ""}`}
-                      value={storageEntry.value || ""}
-                      onChange={(e) =>
-                        handleConfigChange(
-                          configName,
-                          ["sql", "storage"],
-                          e.target.value
-                        )
-                      }
-                    />
-                    <small className="form-text text-muted">
-                      {storageEntry.description}
-                    </small>
-                    {storageError ? (
-                      <div className="invalid-feedback">{storageError}</div>
-                    ) : null}
-                  </div>
-                );
-              }
-              return null;
+              return renderSqliteStorage(configName, entry);
             }
           }
 
@@ -309,94 +414,45 @@ const SetupComponent = () => {
               </div>
             </div>
           );
-        } else if (key === "oidc_providers" && entry.type === "object") {
-          // Skip OIDC providers in setup wizard - managed in admin interface
-          return (
-            <div key={errorKey} className="col-md-12 mb-3">
-              <div className="alert alert-info">
-                <h6>
-                  <i className="fas fa-info-circle me-2" />
-                  OIDC Providers
-                </h6>
-                <p className="mb-0">
-                  OIDC provider configuration is managed through the Admin
-                  interface after setup is complete. Go to Admin → Configuration
-                  Management → Auth Config to add OIDC providers.
-                </p>
-              </div>
-            </div>
-          );
         }
-        const { type, value, description, options } = entry;
-        const inputValue = value === null || value === undefined ? "" : value; // Handle null and undefined
 
-        return (
-          <div className="form-group" key={errorKey}>
-            <label>{key}</label>
-            {type === "select" ? (
-              <select
-                className={`form-control ${error ? "is-invalid" : ""}`}
-                value={inputValue}
-                onChange={(e) =>
-                  handleConfigChange(configName, currentPath, e.target.value)
-                }
-              >
-                {options
-                  ? options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))
-                  : null}
-              </select>
-            ) : type === "password" ? (
-              <div className="input-group">
-                <input
-                  type={showPasswords[errorKey] ? "text" : "password"}
-                  className={`form-control ${error ? "is-invalid" : ""}`}
-                  value={inputValue}
-                  onChange={(e) =>
-                    handleConfigChange(configName, currentPath, e.target.value)
-                  }
-                />
-                <button
-                  className="btn btn-outline-secondary"
-                  type="button"
-                  onClick={() =>
-                    setShowPasswords((prev) => ({
-                      ...prev,
-                      [errorKey]: !prev[errorKey],
-                    }))
-                  }
-                >
-                  {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            ) : entry.readonly ? (
-              <input
-                type="text"
-                className={`form-control ${error ? "is-invalid" : ""}`}
-                value={inputValue}
-                readOnly
-                style={{ backgroundColor: "#f8f9fa" }}
-              />
-            ) : (
-              <input
-                type="text"
-                className={`form-control ${error ? "is-invalid" : ""}`}
-                value={inputValue}
-                onChange={(e) =>
-                  handleConfigChange(configName, currentPath, e.target.value)
-                }
-              />
-            )}
-            <small className="form-text text-muted">{description}</small>
-            {error ? <div className="invalid-feedback">{error}</div> : null}
-          </div>
+        if (key === "oidc_providers" && entry.type === "object") {
+          return renderOidcInfo(errorKey);
+        }
+
+        return renderInputField(
+          configName,
+          currentPath,
+          entry,
+          errorKey,
+          error
         );
       });
 
     return renderFields(configs[configName]);
+  };
+
+  const handleSubmit = () => {
+    if (!isFormValid) {
+      setMessage("Please fix all validation errors before submitting.");
+      return;
+    }
+
+    SetupService.updateConfigs(authorizedSetupToken, configs)
+      .then(() => {
+        setMessage(
+          "Configuration updated successfully. Redirecting to registration page in 5 seconds..."
+        );
+
+        // Set a 5-second delay before navigating
+        setTimeout(() => {
+          navigate("/register");
+        }, 5000);
+      })
+      .catch((error) => {
+        console.error("Error updating configuration:", error);
+        setMessage("Failed to update configuration.");
+      });
   };
 
   useEffect(() => {
@@ -411,6 +467,17 @@ const SetupComponent = () => {
         });
     }
   }, [authorizedSetupToken]);
+
+  // Helper: Get tab validation status class
+  const getTabStatusClass = (configName) => {
+    if (!validationErrors[configName]) {
+      return "";
+    }
+    const hasErrors = Object.values(validationErrors[configName]).some(
+      (error) => error !== null
+    );
+    return hasErrors ? "" : "text-success";
+  };
 
   return (
     <div className="container mt-5">
@@ -448,14 +515,7 @@ const SetupComponent = () => {
                 {["db", "app", "auth", "mail"].map((configName) => (
                   <li className="nav-item" key={configName}>
                     <button
-                      className={`nav-link ${activeTab === configName ? "active" : ""} ${
-                        !validationErrors[configName] ||
-                        Object.values(validationErrors[configName]).every(
-                          (error) => error === null
-                        )
-                          ? "text-success"
-                          : ""
-                      }`}
+                      className={`nav-link ${activeTab === configName ? "active" : ""} ${getTabStatusClass(configName)}`}
                       onClick={() => setActiveTab(configName)}
                     >
                       {configName.charAt(0).toUpperCase() + configName.slice(1)}{" "}
@@ -489,11 +549,11 @@ const SetupComponent = () => {
             </div>
           )}
 
-          {message ? (
+          {message && (
             <div className="alert alert-info mt-3" role="alert">
               {message}
             </div>
-          ) : null}
+          )}
         </>
       )}
     </div>

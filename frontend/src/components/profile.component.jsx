@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -32,6 +32,65 @@ const Profile = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePasswordForm = () => {
+    const errors = {};
+    if (!newPassword) {
+      errors.newPassword = "This field is required!";
+    } else if (newPassword.length < 6 || newPassword.length > 40) {
+      errors.newPassword = "The password must be between 6 and 40 characters.";
+    }
+    if (!confirmPassword) {
+      errors.confirmPassword = "This field is required!";
+    } else if (confirmPassword !== newPassword) {
+      errors.confirmPassword = "Passwords do not match!";
+    }
+    return errors;
+  };
+
+  const validateEmailForm = () => {
+    const errors = {};
+    if (!newEmail) {
+      errors.newEmail = "This field is required!";
+    } else if (!isValidEmail(newEmail)) {
+      errors.newEmail = "This is not a valid email.";
+    }
+    return errors;
+  };
+
+  const resetFormStates = useCallback(() => {
+    setMessage("");
+    setEmailMessage("");
+    setPasswordErrors({});
+    setEmailErrors({});
+    setNewPassword("");
+    setConfirmPassword("");
+    setNewEmail("");
+  }, []);
+
+  const resetServiceAccountStates = useCallback(() => {
+    setMessage("");
+    setShowPasswords({});
+    setNewServiceAccountDescription("");
+    setNewServiceAccountExpiration(30);
+  }, []);
+
+  const handleTabChange = useCallback(
+    (tab) => {
+      if (tab === "serviceAccounts") {
+        resetServiceAccountStates();
+      } else {
+        resetFormStates();
+      }
+      setActiveTab(tab);
+    },
+    [resetFormStates, resetServiceAccountStates]
+  );
+
   const handleDeleteAccount = async () => {
     try {
       await UserService.deleteUser(currentUser.id);
@@ -53,11 +112,6 @@ const Profile = () => {
       }
     });
   }, []);
-
-  const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
 
   const checkEmailVerification = useCallback(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -85,6 +139,30 @@ const Profile = () => {
     checkEmailVerification();
   }, [checkEmailVerification]);
 
+  const loadGravatarProfile = useCallback(async (emailHash, signal) => {
+    try {
+      const profile = await AuthService.getGravatarProfile(emailHash, signal);
+      if (profile) {
+        setGravatarProfile(profile);
+      }
+    } catch (error) {
+      if (!error.name?.includes("Cancel") && !error.name?.includes("Abort")) {
+        console.error("Error loading Gravatar profile:", error);
+      }
+    }
+  }, []);
+
+  const checkOrganizationStatus = useCallback(async (organizationName) => {
+    try {
+      const isOnly = await UserService.isOnlyUserInOrg(organizationName);
+      setIsOnlyUserInOrg(isOnly);
+    } catch (error) {
+      if (!error.name?.includes("Cancel") && !error.name?.includes("Abort")) {
+        console.error("Error checking organization status:", error);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
@@ -92,33 +170,12 @@ const Profile = () => {
     const loadUserData = async () => {
       if (currentUser) {
         const { emailHash } = currentUser;
-        if (emailHash) {
-          try {
-            const profile = await AuthService.getGravatarProfile(
-              emailHash,
-              controller.signal
-            );
-            if (mounted && profile) {
-              setGravatarProfile(profile);
-            }
-          } catch (error) {
-            if (!error.name?.includes("Cancel")) {
-              console.error("Error loading Gravatar profile:", error);
-            }
-          }
+        if (emailHash && mounted) {
+          await loadGravatarProfile(emailHash, controller.signal);
         }
 
-        try {
-          const isOnly = await UserService.isOnlyUserInOrg(
-            currentUser.organization
-          );
-          if (mounted) {
-            setIsOnlyUserInOrg(isOnly);
-          }
-        } catch (error) {
-          if (!error.name?.includes("Cancel")) {
-            console.error("Error checking organization status:", error);
-          }
+        if (mounted) {
+          await checkOrganizationStatus(currentUser.organization);
         }
       } else {
         navigate("/login");
@@ -131,7 +188,7 @@ const Profile = () => {
       mounted = false;
       controller.abort();
     };
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, loadGravatarProfile, checkOrganizationStatus]);
 
   useEffect(() => {
     let mounted = true;
@@ -164,7 +221,7 @@ const Profile = () => {
 
     return () => {
       mounted = false;
-      controller.abort(); // Cancel any in-flight requests
+      controller.abort();
     };
   }, [activeTab]);
 
@@ -201,7 +258,7 @@ const Profile = () => {
         console.error("Error creating service account:", error);
       }
     }
-    return () => controller.abort();
+    controller.abort();
   };
 
   const handleDeleteServiceAccount = async (id) => {
@@ -217,7 +274,7 @@ const Profile = () => {
         console.error("Error deleting service account:", error);
       }
     }
-    return () => controller.abort();
+    controller.abort();
   };
 
   const handleResendVerificationMail = async () => {
@@ -236,7 +293,7 @@ const Profile = () => {
         );
       }
     }
-    return () => controller.abort();
+    controller.abort();
   };
 
   const handlePasswordChange = async (e) => {
@@ -259,7 +316,7 @@ const Profile = () => {
         }
       }
     }
-    return () => controller.abort();
+    controller.abort();
   };
 
   const handleEmailChange = async (e) => {
@@ -283,7 +340,7 @@ const Profile = () => {
         }
       }
     }
-    return () => controller.abort();
+    controller.abort();
   };
 
   const handlePromoteToModerator = () => {
@@ -297,30 +354,201 @@ const Profile = () => {
       );
   };
 
-  const validatePasswordForm = () => {
-    const errors = {};
-    if (!newPassword) {
-      errors.newPassword = "This field is required!";
-    } else if (newPassword.length < 6 || newPassword.length > 40) {
-      errors.newPassword = "The password must be between 6 and 40 characters.";
-    }
-    if (!confirmPassword) {
-      errors.confirmPassword = "This field is required!";
-    } else if (confirmPassword !== newPassword) {
-      errors.confirmPassword = "Passwords do not match!";
-    }
-    return errors;
-  };
+  const renderProfileTab = () => (
+    <div className="tab-pane fade show active">
+      <p>
+        <strong>Full Name:</strong> {gravatarProfile.first_name}{" "}
+        {gravatarProfile.last_name}
+      </p>
+      <p>
+        <strong>Location:</strong> {gravatarProfile.location || "No Location"}
+      </p>
+      <p>
+        <strong>Email:</strong> {currentUser.email}
+      </p>
+      <p>
+        <strong>Organization:</strong> {currentUser.organization}
+      </p>
+      <p>
+        <strong>Roles:</strong>{" "}
+        {currentUser.roles ? currentUser.roles.join(", ") : "No roles assigned"}
+      </p>
+      <p>
+        <strong>Profile URL:</strong>{" "}
+        <a
+          href={gravatarProfile.profile_url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {gravatarProfile.profile_url}
+        </a>
+      </p>
+      <p>
+        <strong>Verified Accounts:</strong>{" "}
+        {gravatarProfile.number_verified_accounts}
+      </p>
+      <p>
+        <strong>Registration Date:</strong>{" "}
+        {new Date(gravatarProfile.registration_date).toLocaleDateString()}
+      </p>
+      <p>
+        <strong>Email Hash:</strong> {currentUser.emailHash}
+      </p>
+      <p>
+        <strong>User ID:</strong> {currentUser.id}
+      </p>
+      <p>
+        <strong>Access Token:</strong>{" "}
+        {currentUser.accessToken.substring(0, 20)}...
+      </p>
+    </div>
+  );
 
-  const validateEmailForm = () => {
-    const errors = {};
-    if (!newEmail) {
-      errors.newEmail = "This field is required!";
-    } else if (!isValidEmail(newEmail)) {
-      errors.newEmail = "This is not a valid email.";
-    }
-    return errors;
-  };
+  const renderSecurityTab = () => (
+    <div className="tab-pane fade show active">
+      <form onSubmit={handlePasswordChange}>
+        <h5>Change Password</h5>
+        <div className="form-group col-md-3 mb-3">
+          <input
+            type="password"
+            className="form-control"
+            placeholder="New Password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          {passwordErrors.newPassword && (
+            <div className="alert alert-danger">
+              {passwordErrors.newPassword}
+            </div>
+          )}
+        </div>
+        <div className="form-group col-md-3 mb-3">
+          <input
+            type="password"
+            className="form-control"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          {passwordErrors.confirmPassword && (
+            <div className="alert alert-danger">
+              {passwordErrors.confirmPassword}
+            </div>
+          )}
+        </div>
+        <button className="btn btn-primary mb-3">Change Password</button>
+        {message && <p className="mt-3">{message}</p>}
+      </form>
+      <form onSubmit={handleEmailChange} noValidate>
+        <h5>Change Email</h5>
+        <div className="form-group col-md-3 mb-3">
+          <input
+            type="email"
+            className="form-control"
+            placeholder="New Email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+          />
+          {emailErrors.newEmail && (
+            <div className="alert alert-danger">{emailErrors.newEmail}</div>
+          )}
+        </div>
+        <button className="btn btn-primary mb-3">Change Email</button>
+        {emailMessage && <p className="mt-3">{emailMessage}</p>}
+      </form>
+      {currentUser.roles.includes("ROLE_USER") && isOnlyUserInOrg && (
+        <div>
+          <button
+            className="btn btn-primary"
+            onClick={handlePromoteToModerator}
+          >
+            Promote to Moderator
+          </button>
+        </div>
+      )}
+      <div className="mt-3">
+        <h4>Delete Account</h4>
+        <p>Warning: This action cannot be undone.</p>
+        <button className="btn btn-danger" onClick={openDeleteModal}>
+          Delete My Account
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderServiceAccountsTab = () => (
+    <div className="tab-pane fade show active">
+      <h3>Service Accounts</h3>
+      <form onSubmit={handleCreateServiceAccount}>
+        <div className="form-group col-md-3 mb-3">
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Description"
+            value={newServiceAccountDescription}
+            onChange={(e) => setNewServiceAccountDescription(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group col-md-3 mb-3">
+          <select
+            className="form-control"
+            value={newServiceAccountExpiration}
+            onChange={(e) =>
+              setNewServiceAccountExpiration(Number(e.target.value))
+            }
+          >
+            <option value={30}>30 days</option>
+            <option value={60}>60 days</option>
+            <option value={90}>90 days</option>
+            <option value={365}>365 days</option>
+          </select>
+        </div>
+        <button className="btn btn-primary mb-3" type="submit">
+          Create Service Account
+        </button>
+      </form>
+      <ul className="list-group">
+        {serviceAccounts.map((account) => (
+          <li key={account.id} className="list-group-item">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{account.username}</strong> - {account.description}
+                <br />
+                <small>
+                  Expires: {new Date(account.expiresAt).toLocaleDateString()}
+                </small>
+              </div>
+              <div>
+                <button
+                  className="btn btn-outline-secondary btn-sm me-2"
+                  onClick={() =>
+                    setShowPasswords((prev) => ({
+                      ...prev,
+                      [account.id]: !prev[account.id],
+                    }))
+                  }
+                >
+                  {showPasswords[account.id] ? <FaEyeSlash /> : <FaEye />}
+                </button>
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => handleDeleteServiceAccount(account.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            {showPasswords[account.id] && (
+              <div className="mt-2">
+                <strong>Token:</strong> {account.token}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 
   return (
     <div className="list row">
@@ -362,17 +590,7 @@ const Profile = () => {
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "profile" ? "active" : ""}`}
-                  onClick={() => {
-                    // Clear any pending state updates before switching tabs
-                    setMessage("");
-                    setEmailMessage("");
-                    setPasswordErrors({});
-                    setEmailErrors({});
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    setNewEmail("");
-                    setActiveTab("profile");
-                  }}
+                  onClick={() => handleTabChange("profile")}
                 >
                   Profile
                 </button>
@@ -380,16 +598,7 @@ const Profile = () => {
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "security" ? "active" : ""}`}
-                  onClick={() => {
-                    setMessage("");
-                    setEmailMessage("");
-                    setPasswordErrors({});
-                    setEmailErrors({});
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    setNewEmail("");
-                    setActiveTab("security");
-                  }}
+                  onClick={() => handleTabChange("security")}
                 >
                   Security
                 </button>
@@ -397,237 +606,16 @@ const Profile = () => {
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === "serviceAccounts" ? "active" : ""}`}
-                  onClick={() => {
-                    setMessage("");
-                    setShowPasswords({});
-                    setNewServiceAccountDescription("");
-                    setNewServiceAccountExpiration(30);
-                    setActiveTab("serviceAccounts");
-                  }}
+                  onClick={() => handleTabChange("serviceAccounts")}
                 >
                   Service Accounts
                 </button>
               </li>
             </ul>
             <div className="tab-content mt-3">
-              {activeTab === "profile" && (
-                <div className="tab-pane fade show active">
-                  <p>
-                    <strong>Full Name:</strong> {gravatarProfile.first_name}{" "}
-                    {gravatarProfile.last_name}
-                  </p>
-                  <p>
-                    <strong>Location:</strong>{" "}
-                    {gravatarProfile.location || "No Location"}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {currentUser.email}
-                  </p>
-                  <p>
-                    <strong>Organization:</strong> {currentUser.organization}
-                  </p>
-                  <p>
-                    <strong>Roles:</strong>{" "}
-                    {currentUser.roles
-                      ? currentUser.roles.join(", ")
-                      : "No roles assigned"}
-                  </p>
-                  <p>
-                    <strong>Profile URL:</strong>{" "}
-                    <a
-                      href={gravatarProfile.profile_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {gravatarProfile.profile_url}
-                    </a>
-                  </p>
-                  <p>
-                    <strong>Verified Accounts:</strong>{" "}
-                    {gravatarProfile.number_verified_accounts}
-                  </p>
-                  <p>
-                    <strong>Registration Date:</strong>{" "}
-                    {new Date(
-                      gravatarProfile.registration_date
-                    ).toLocaleDateString()}
-                  </p>
-                  <p>
-                    <strong>Email Hash:</strong> {currentUser.emailHash}
-                  </p>
-                  <p>
-                    <strong>User ID:</strong> {currentUser.id}
-                  </p>
-                  <p>
-                    <strong>Access Token:</strong>{" "}
-                    {currentUser.accessToken.substring(0, 20)}...
-                  </p>
-                </div>
-              )}
-              {activeTab === "security" && (
-                <div className="tab-pane fade show active">
-                  <form onSubmit={handlePasswordChange}>
-                    <h5>Change Password</h5>
-                    <div className="form-group col-md-3 mb-3">
-                      <input
-                        type="password"
-                        className="form-control"
-                        placeholder="New Password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-                      {passwordErrors.newPassword && (
-                        <div className="alert alert-danger">
-                          {passwordErrors.newPassword}
-                        </div>
-                      )}
-                    </div>
-                    <div className="form-group col-md-3 mb-3">
-                      <input
-                        type="password"
-                        className="form-control"
-                        placeholder="Confirm Password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                      {passwordErrors.confirmPassword && (
-                        <div className="alert alert-danger">
-                          {passwordErrors.confirmPassword}
-                        </div>
-                      )}
-                    </div>
-                    <button className="btn btn-primary mb-3">
-                      Change Password
-                    </button>
-                    {message && <p className="mt-3">{message}</p>}
-                  </form>
-                  <form onSubmit={handleEmailChange} noValidate>
-                    <h5>Change Email</h5>
-                    <div className="form-group col-md-3 mb-3">
-                      <input
-                        type="email"
-                        className="form-control"
-                        placeholder="New Email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                      />
-                      {emailErrors.newEmail && (
-                        <div className="alert alert-danger">
-                          {emailErrors.newEmail}
-                        </div>
-                      )}
-                    </div>
-                    <button className="btn btn-primary mb-3">
-                      Change Email
-                    </button>
-                    {emailMessage && <p className="mt-3">{emailMessage}</p>}
-                  </form>
-                  {currentUser.roles.includes("ROLE_USER") &&
-                    isOnlyUserInOrg && (
-                      <div>
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePromoteToModerator}
-                        >
-                          Promote to Moderator
-                        </button>
-                      </div>
-                    )}
-                  <div className="mt-3">
-                    <h4>Delete Account</h4>
-                    <p>Warning: This action cannot be undone.</p>
-                    <button
-                      className="btn btn-danger"
-                      onClick={openDeleteModal}
-                    >
-                      Delete My Account
-                    </button>
-                  </div>
-                </div>
-              )}
-              {activeTab === "serviceAccounts" && (
-                <div className="tab-pane fade show active">
-                  <h3>Service Accounts</h3>
-                  <form onSubmit={handleCreateServiceAccount}>
-                    <div className="form-group col-md-3 mb-3">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Description"
-                        value={newServiceAccountDescription}
-                        onChange={(e) =>
-                          setNewServiceAccountDescription(e.target.value)
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-3 mb-3">
-                      <select
-                        className="form-control"
-                        value={newServiceAccountExpiration}
-                        onChange={(e) =>
-                          setNewServiceAccountExpiration(Number(e.target.value))
-                        }
-                      >
-                        <option value={30}>30 days</option>
-                        <option value={60}>60 days</option>
-                        <option value={90}>90 days</option>
-                        <option value={365}>365 days</option>
-                      </select>
-                    </div>
-                    <button className="btn btn-primary mb-3" type="submit">
-                      Create Service Account
-                    </button>
-                  </form>
-                  <ul className="list-group">
-                    {serviceAccounts.map((account) => (
-                      <li key={account.id} className="list-group-item">
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <strong>{account.username}</strong> -{" "}
-                            {account.description}
-                            <br />
-                            <small>
-                              Expires:{" "}
-                              {new Date(account.expiresAt).toLocaleDateString()}
-                            </small>
-                          </div>
-                          <div>
-                            <button
-                              className="btn btn-outline-secondary btn-sm me-2"
-                              onClick={() =>
-                                setShowPasswords((prev) => ({
-                                  ...prev,
-                                  [account.id]: !prev[account.id],
-                                }))
-                              }
-                            >
-                              {showPasswords[account.id] ? (
-                                <FaEyeSlash />
-                              ) : (
-                                <FaEye />
-                              )}
-                            </button>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() =>
-                                handleDeleteServiceAccount(account.id)
-                              }
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                        {showPasswords[account.id] && (
-                          <div className="mt-2">
-                            <strong>Token:</strong> {account.token}
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {activeTab === "profile" && renderProfileTab()}
+              {activeTab === "security" && renderSecurityTab()}
+              {activeTab === "serviceAccounts" && renderServiceAccountsTab()}
             </div>
           </div>
         </div>

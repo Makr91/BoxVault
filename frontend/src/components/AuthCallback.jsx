@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
@@ -71,10 +71,12 @@ const AuthCallback = () => {
               // Decode JWT to extract provider field for RP-initiated logout
               let provider = null;
               try {
-                const base64Url = token.split(".")[1];
+                const [, base64Url] = token.split(".");
                 const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-                const decoded = JSON.parse(atob(base64));
-                provider = decoded.provider;
+                const { provider: extractedProvider } = JSON.parse(
+                  atob(base64)
+                );
+                provider = extractedProvider;
               } catch (decodeError) {
                 console.warn(
                   "Failed to decode JWT for provider extraction:",
@@ -105,8 +107,8 @@ const AuthCallback = () => {
               navigate("/profile", { replace: true });
             }
           })
-          .catch((fetchError) => {
-            console.warn("Error fetching user data:", fetchError);
+          .catch((userFetchError) => {
+            console.warn("Error fetching user data:", userFetchError);
 
             // Navigate even if user data fetch fails
             const intendedUrl = localStorage.getItem("boxvault_intended_url");
@@ -118,8 +120,11 @@ const AuthCallback = () => {
               navigate("/profile", { replace: true });
             }
           });
-      } catch (error) {
-        console.error("Error processing authentication callback:", error);
+      } catch (callbackError) {
+        console.error(
+          "Error processing authentication callback:",
+          callbackError
+        );
         navigate("/login", {
           state: { error: "Failed to process authentication" },
           replace: true,

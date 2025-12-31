@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
@@ -15,57 +16,11 @@ const Login = ({ theme }) => {
     stayLoggedIn: false,
   });
 
-  const [validationErrors, setValidationErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [authMethod, setAuthMethod] = useState("local");
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
-
-  useEffect(() => {
-    loadAuthMethods();
-  }, []);
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const token = urlParams.get("token");
-    const error = urlParams.get("error");
-
-    if (token) {
-      try {
-        const userData = { accessToken: token };
-        localStorage.setItem("user", JSON.stringify(userData));
-
-        const returnTo = urlParams.get("returnTo");
-        if (returnTo) {
-          window.location.href = decodeURIComponent(returnTo);
-        } else {
-          navigate("/profile");
-          window.location.reload();
-        }
-      } catch (error) {
-        console.error("Error processing OIDC token:", error);
-        setMessage("Failed to process authentication");
-      }
-    } else if (error) {
-      let errorMessage = "Authentication failed";
-      switch (error) {
-        case "oidc_failed":
-          errorMessage = "OIDC authentication failed";
-          break;
-        case "access_denied":
-          errorMessage =
-            "Access denied - you may not have permission to access this system";
-          break;
-        case "no_provider":
-          errorMessage = "No authentication provider specified";
-          break;
-        default:
-          errorMessage = `Authentication error: ${error}`;
-      }
-      setMessage(errorMessage);
-    }
-  }, [location.search, navigate]);
 
   const loadAuthMethods = async () => {
     try {
@@ -90,6 +45,51 @@ const Login = ({ theme }) => {
       setMethodsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadAuthMethods();
+  }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get("token");
+    const error = urlParams.get("error");
+
+    if (token) {
+      try {
+        const userData = { accessToken: token };
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        const returnTo = urlParams.get("returnTo");
+        if (returnTo) {
+          window.location.href = decodeURIComponent(returnTo);
+        } else {
+          navigate("/profile");
+          window.location.reload();
+        }
+      } catch (tokenError) {
+        console.error("Error processing OIDC token:", tokenError);
+        setMessage("Failed to process authentication");
+      }
+    } else if (error) {
+      let errorMessage = "Authentication failed";
+      switch (error) {
+        case "oidc_failed":
+          errorMessage = "OIDC authentication failed";
+          break;
+        case "access_denied":
+          errorMessage =
+            "Access denied - you may not have permission to access this system";
+          break;
+        case "no_provider":
+          errorMessage = "No authentication provider specified";
+          break;
+        default:
+          errorMessage = `Authentication error: ${error}`;
+      }
+      setMessage(errorMessage);
+    }
+  }, [location.search, navigate]);
 
   const handleAuthMethodChange = (newMethod) => {
     setAuthMethod(newMethod);
@@ -269,6 +269,10 @@ const Login = ({ theme }) => {
       </div>
     </div>
   );
+};
+
+Login.propTypes = {
+  theme: PropTypes.string.isRequired,
 };
 
 export default Login;

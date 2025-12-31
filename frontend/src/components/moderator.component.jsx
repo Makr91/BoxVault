@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
 
 import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
@@ -21,6 +22,21 @@ const Moderator = ({ currentOrganization }) => {
   const [orgEmail, setOrgEmail] = useState("");
   const [orgEmailHash, setOrgEmailHash] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
+
+  const validateOrgName = (orgName) => {
+    const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
+    return orgName && validCharsRegex.test(orgName);
+  };
+
+  const checkOrganizationExists = async (name) => {
+    try {
+      const response = await OrganizationService.getOrganizationByName(name);
+      return !!response.data;
+    } catch (error) {
+      console.error("Error checking organization existence:", error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     if (currentOrganization) {
@@ -85,7 +101,6 @@ const Moderator = ({ currentOrganization }) => {
       setUpdateMessage("Organization email is required.");
       return;
     }
-    // Add more validation as needed
 
     if (newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
@@ -156,7 +171,7 @@ const Moderator = ({ currentOrganization }) => {
           Organization ID: ${response.data.organizationId}
           Invitation Link: ${response.data.invitationLink}`;
         setInvitationMessage(invitationDetails);
-        setEmail(""); // Clear the input field
+        setEmail("");
       })
       .catch((error) => {
         console.error("Error sending invitation:", error);
@@ -189,21 +204,6 @@ const Moderator = ({ currentOrganization }) => {
           console.error("Error deleting invitation:", error);
           handleCloseDeleteModal();
         });
-    }
-  };
-
-  const validateOrgName = (orgName) => {
-    const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-    return orgName && validCharsRegex.test(orgName);
-  };
-
-  const checkOrganizationExists = async (name) => {
-    try {
-      const response = await OrganizationService.getOrganizationByName(name);
-      return !!response.data;
-    } catch (error) {
-      console.error("Error checking organization existence:", error);
-      return false;
     }
   };
 
@@ -292,9 +292,7 @@ const Moderator = ({ currentOrganization }) => {
                       <small>Roles:</small>
                       <ul>
                         {user.roles &&
-                          user.roles.map((role, index) => (
-                            <li key={index}>{role}</li>
-                          ))}
+                          user.roles.map((role) => <li key={role}>{role}</li>)}
                       </ul>
                     </div>
                     <div>
@@ -408,6 +406,10 @@ const Moderator = ({ currentOrganization }) => {
       />
     </div>
   );
+};
+
+Moderator.propTypes = {
+  currentOrganization: PropTypes.string.isRequired,
 };
 
 export default Moderator;

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect, useRef } from "react";
 import { Table } from "react-bootstrap";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
@@ -60,84 +61,187 @@ const Box = ({ theme }) => {
       ? undefined
       : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
 
-  useEffect(() => {
-    const user = AuthService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthorized(user.organization === organization);
-    }
+  const deleteFilesForArchitecture = async (
+    providerName,
+    versionNumber,
+    architectureName
+  ) => {
+    await FileService.delete(
+      currentUser.organization,
+      currentBox.name,
+      versionNumber,
+      providerName,
+      architectureName
+    ).catch((e) => {
+      console.log(
+        `Error deleting files for architecture ${architectureName}:`,
+        e
+      );
+      throw e;
+    });
+  };
 
-    if (name) {
-      // Fetch the box details using the box's organization
-      BoxDataService.get(organization, name)
-        .then((response) => {
-          const boxData = response.data;
+  const deleteArchitecturesForProvider = async (
+    providerName,
+    versionNumber
+  ) => {
+    const architectures = await ArchitectureService.getArchitectures(
+      currentUser.organization,
+      currentBox.name,
+      versionNumber,
+      providerName
+    );
+    for (const architecture of architectures.data) {
+      console.log(architecture.name);
+      // eslint-disable-next-line no-await-in-loop
+      await deleteFilesForArchitecture(
+        providerName,
+        versionNumber,
+        architecture.name
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await ArchitectureService.deleteArchitecture(
+        currentUser.organization,
+        currentBox.name,
+        versionNumber,
+        providerName,
+        architecture.name
+      ).catch((e) => {
+        console.log(`Error deleting architecture ${architecture.name}:`, e);
+        throw e;
+      });
+    }
+  };
+
+  const deleteProvidersForVersion = async (versionNumber) => {
+    const versionProviders = await ProviderService.getProviders(
+      currentUser.organization,
+      currentBox.name,
+      versionNumber
+    );
+    for (const provider of versionProviders.data) {
+      console.log(provider.name);
+      // eslint-disable-next-line no-await-in-loop
+      await deleteArchitecturesForProvider(provider.name, versionNumber);
+      // eslint-disable-next-line no-await-in-loop
+      await ProviderService.deleteProvider(
+        currentUser.organization,
+        currentBox.name,
+        versionNumber,
+        provider.name
+      ).catch((e) => {
+        console.log(`Error deleting provider ${provider.name}:`, e);
+        throw e;
+      });
+    }
+  };
+
+  const deleteVersion = async (versionNumber) => {
+    try {
+      await deleteProvidersForVersion(versionNumber);
+      await VersionDataService.deleteVersion(
+        currentUser.organization,
+        currentBox.name,
+        versionNumber
+      );
+      setMessage("The version was deleted successfully!");
+      setMessageType("success");
+      setVersions(
+        versions.filter((version) => version.versionNumber !== versionNumber)
+      );
+    } catch (e) {
+      console.log(`Error deleting version ${versionNumber}:`, e);
+      const errorMessage =
+        e.response && e.response.data && e.response.data.message
+          ? e.response.data.message
+          : "Error deleting version. Please try again.";
+      setMessage(errorMessage);
+      setMessageType("danger");
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      const user = AuthService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        setIsAuthorized(user.organization === organization);
+      }
+
+      if (name) {
+        try {
+          const boxResponse = await BoxDataService.get(organization, name);
+          const boxData = boxResponse.data;
           setCurrentBox(boxData);
           setOriginalName(boxData.name);
-          // Fetch the organization of the box's user
+
           if (boxData.user && boxData.user.organization) {
             setBoxOrganization(boxData.user.organization.name);
           }
 
-          // Check if the box is public or the user is authorized
           if (
             boxData.isPublic ||
             (user && user.organization === organization)
           ) {
-            // Fetch versions using the box's organization
-            VersionDataService.getVersions(organization, name)
-              .then((response) => {
-                setVersions(response.data);
-                setAllVersions(response.data);
-                response.data.forEach((version) => {
-                  ProviderService.getProviders(
-                    organization,
-                    name,
-                    version.versionNumber
-                  )
-                    .then((providerResponse) => {
-                      setProviders((prev) => ({
-                        ...prev,
-                        [version.versionNumber]: providerResponse.data,
-                      }));
-                    })
-                    .catch((e) => {
-                      console.log(e);
-                    });
+            const versionsResponse = await VersionDataService.getVersions(
+              organization,
+              name
+            );
+            setVersions(versionsResponse.data);
+            setAllVersions(versionsResponse.data);
+
+            versionsResponse.data.forEach((version) => {
+              ProviderService.getProviders(
+                organization,
+                name,
+                version.versionNumber
+              )
+                .then((providerResponse) => {
+                  setProviders((prev) => ({
+                    ...prev,
+                    [version.versionNumber]: providerResponse.data,
+                  }));
+                })
+                .catch((e) => {
+                  console.log(e);
                 });
-              })
-              .catch((e) => {
-                console.log(e);
-              });
+            });
           } else {
             setMessage("No Box Found");
             setMessageType("danger");
           }
-        })
-        .catch((e) => {
+        } catch (e) {
           console.log(e);
           setMessage("No Box Found");
           setMessageType("danger");
-        });
-    }
+        }
+      }
+    };
+
+    loadData();
   }, [organization, name]);
 
+  const convertFieldValue = (fieldName, value) => {
+    if (fieldName === "isPublic") {
+      return value === "true" ? 1 : 0;
+    }
+    return value;
+  };
+
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
+    const { name: fieldName, value } = event.target;
     setCurrentBox({
       ...currentBox,
-      [name]: name === "isPublic" ? (value === "true" ? 1 : 0) : value,
+      [fieldName]: convertFieldValue(fieldName, value),
     });
-    setNewVersion({ ...newVersion, [name]: value });
+    setNewVersion({ ...newVersion, [fieldName]: value });
 
-    // Validate the name field
-    if (name === "name") {
+    if (fieldName === "name") {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, name: error });
     }
 
-    // Validate the versionNumber field
-    if (name === "versionNumber") {
+    if (fieldName === "versionNumber") {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, versionNumber: error });
     }
@@ -161,7 +265,6 @@ const Box = ({ theme }) => {
   };
 
   const updateBox = () => {
-    // Check for duplicate box name
     if (currentBox.name !== originalName) {
       const boxExists = allVersions.some((v) => v.name === currentBox.name);
       if (boxExists) {
@@ -225,7 +328,6 @@ const Box = ({ theme }) => {
       return;
     }
 
-    // Check for duplicate version number
     const versionExists = versions.some(
       (v) => v.versionNumber === newVersion.versionNumber
     );
@@ -259,101 +361,6 @@ const Box = ({ theme }) => {
       });
   };
 
-  const deleteFilesForArchitecture = async (
-    providerName,
-    versionNumber,
-    architectureName
-  ) => {
-    await FileService.delete(
-      currentUser.organization,
-      currentBox.name,
-      versionNumber,
-      providerName,
-      architectureName
-    ).catch((e) => {
-      console.log(
-        `Error deleting files for architecture ${architectureName}:`,
-        e
-      );
-      throw e;
-    });
-  };
-
-  const deleteArchitecturesForProvider = async (
-    providerName,
-    versionNumber
-  ) => {
-    const architectures = await ArchitectureService.getArchitectures(
-      currentUser.organization,
-      currentBox.name,
-      versionNumber,
-      providerName
-    );
-    for (const architecture of architectures.data) {
-      console.log(architecture.name);
-      await deleteFilesForArchitecture(
-        providerName,
-        versionNumber,
-        architecture.name
-      );
-      await ArchitectureService.deleteArchitecture(
-        currentUser.organization,
-        currentBox.name,
-        versionNumber,
-        providerName,
-        architecture.name
-      ).catch((e) => {
-        console.log(`Error deleting architecture ${architecture.name}:`, e);
-        throw e;
-      });
-    }
-  };
-
-  const deleteProvidersForVersion = async (versionNumber) => {
-    const providers = await ProviderService.getProviders(
-      currentUser.organization,
-      currentBox.name,
-      versionNumber
-    );
-    for (const provider of providers.data) {
-      console.log(provider.name);
-      await deleteArchitecturesForProvider(provider.name, versionNumber);
-      await ProviderService.deleteProvider(
-        currentUser.organization,
-        currentBox.name,
-        versionNumber,
-        provider.name
-      ).catch((e) => {
-        console.log(`Error deleting provider ${provider.name}:`, e);
-        throw e;
-      });
-    }
-  };
-
-  const deleteVersion = async (versionNumber) => {
-    try {
-      await deleteProvidersForVersion(versionNumber);
-      await VersionDataService.deleteVersion(
-        currentUser.organization,
-        currentBox.name,
-        versionNumber
-      );
-      setMessage("The version was deleted successfully!");
-      setMessageType("success");
-      setVersions(
-        versions.filter((version) => version.versionNumber !== versionNumber)
-      );
-    } catch (e) {
-      console.log(`Error deleting version ${versionNumber}:`, e);
-      const errorMessage =
-        e.response && e.response.data && e.response.data.message
-          ? e.response.data.message
-          : "Error deleting version. Please try again.";
-      setMessage(errorMessage);
-      setMessageType("danger");
-    }
-  };
-
   const handleDeleteClick = () => {
     setShowModal(true);
   };
@@ -383,6 +390,311 @@ const Box = ({ theme }) => {
     }
   };
 
+  const renderBackButton = () => (
+    <Link className="btn btn-dark me-2" to={`/${boxOrganization}`}>
+      Back
+    </Link>
+  );
+
+  const renderCicdIntegration = () => {
+    if (
+      !currentBox.githubRepo &&
+      !currentBox.workflowFile &&
+      !currentBox.cicdUrl
+    ) {
+      return null;
+    }
+
+    return (
+      <div className="mt-3">
+        <h5>
+          <strong>CI/CD Integration</strong>
+        </h5>
+        {currentBox.githubRepo && currentBox.workflowFile && (
+          <div className="mb-2">
+            <p>
+              <strong>Build Status:</strong>
+            </p>
+            <a
+              href={
+                currentBox.cicdUrl ||
+                `https://github.com/${currentBox.githubRepo}/actions`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
+                alt="Build Status"
+                style={{ maxHeight: "20px" }}
+              />
+            </a>
+          </div>
+        )}
+        {currentBox.githubRepo && (
+          <p>
+            <strong>Repository:</strong>
+            <a
+              href={`https://github.com/${currentBox.githubRepo}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ms-2"
+            >
+              {currentBox.githubRepo}
+            </a>
+          </p>
+        )}
+        {currentBox.workflowFile && (
+          <p>
+            <strong>Workflow:</strong> {currentBox.workflowFile}
+          </p>
+        )}
+        {currentBox.cicdUrl && (
+          <p>
+            <strong>CI/CD Pipeline:</strong>
+            <a
+              href={currentBox.cicdUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ms-2"
+            >
+              View Pipeline
+            </a>
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderPublishButton = () => {
+    if (currentBox.published) {
+      return (
+        <button
+          className="btn btn-warning me-2"
+          onClick={() => updateRelease(false)}
+        >
+          Unpublish
+        </button>
+      );
+    }
+
+    if (currentBox.id) {
+      return (
+        <button
+          className="btn btn-outline-primary me-2"
+          onClick={() => updateRelease(true)}
+          disabled={!!validationErrors.name}
+        >
+          Publish
+        </button>
+      );
+    }
+
+    return null;
+  };
+
+  const renderEditForm = () => (
+    <div className="edit-form">
+      <form ref={form}>
+        <div className="mb-1">
+          <strong>Box name:</strong>
+        </div>
+        <div className="form-group row align-items-center">
+          <div className="col-auto pe-0">
+            <input
+              type="text"
+              className="form-control"
+              id="organization"
+              name="organization"
+              value={currentUser ? currentUser.organization : ""}
+              onChange={handleInputChange}
+              disabled
+            />
+          </div>
+          <div className="col-auto px-1">
+            <span className="font-size-xl font-weight-bolder">/</span>
+          </div>
+          <div className="col-auto ps-0">
+            <input
+              type="text"
+              className="form-control"
+              id="name"
+              name="name"
+              value={currentBox.name}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+        </div>
+        {validationErrors.name && (
+          <div className="text-danger">{validationErrors.name}</div>
+        )}
+        <small className="form-text text-muted">
+          The name of your Vagrant box is used in tools, notifications, routing,
+          and this UI. Short and simple is best.
+        </small>
+        <div className="form-group mt-2">
+          <label htmlFor="boxStatus">
+            <strong>Status: </strong>
+          </label>
+          {currentBox.published ? "Published" : "Pending"}
+        </div>
+        <div className="form-group mt-2">
+          <label htmlFor="boxVisibility">
+            <strong>Visibility:</strong>
+          </label>
+          <div className="d-flex">
+            <div className="form-check me-3">
+              <input
+                type="radio"
+                className="form-check-input"
+                id="visibilityPrivate"
+                name="isPublic"
+                value="false"
+                checked={!currentBox.isPublic}
+                onChange={handleInputChange}
+              />
+              <label className="form-check-label" htmlFor="visibilityPrivate">
+                Private
+              </label>
+            </div>
+            <div className="form-check">
+              <input
+                type="radio"
+                className="form-check-input"
+                id="visibilityPublic"
+                name="isPublic"
+                value="true"
+                checked={currentBox.isPublic}
+                onChange={handleInputChange}
+              />
+              <label className="form-check-label" htmlFor="visibilityPublic">
+                Public
+              </label>
+            </div>
+          </div>
+          <small className="form-text text-muted">
+            Making a box private prevents users from accessing it unless given
+            permission.
+          </small>
+        </div>
+        <div className="form-group mt-2">
+          <label className="mb-1" htmlFor="description">
+            <strong>Description:</strong> (Optional)
+          </label>
+          <textarea
+            className="form-control"
+            id="description"
+            required
+            value={currentBox.description}
+            onChange={handleInputChange}
+            name="description"
+            rows="4"
+            placeholder="The short description is used to describe the box."
+          />
+        </div>
+        <div className="form-group mt-3">
+          <h5>
+            <strong>CI/CD Integration</strong> (Optional)
+          </h5>
+          <small className="form-text text-muted mb-3">
+            Connect your box to GitHub Actions for automated build status
+            badges.
+          </small>
+          <div className="form-group mt-2">
+            <label className="mb-1" htmlFor="githubRepo">
+              <strong>GitHub Repository:</strong> (Optional)
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              id="githubRepo"
+              name="githubRepo"
+              value={currentBox.githubRepo || ""}
+              onChange={handleInputChange}
+              placeholder="owner/repository-name"
+            />
+            <small className="form-text text-muted">
+              Format: owner/repository-name (e.g., myorg/my-vagrant-box)
+            </small>
+          </div>
+          <div className="form-group mt-2">
+            <label className="mb-1" htmlFor="workflowFile">
+              <strong>Workflow File:</strong> (Optional)
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              id="workflowFile"
+              name="workflowFile"
+              value={currentBox.workflowFile || ""}
+              onChange={handleInputChange}
+              placeholder="build.yml"
+            />
+            <small className="form-text text-muted">
+              GitHub Actions workflow file name (e.g., build.yml, ci.yaml)
+            </small>
+          </div>
+          <div className="form-group mt-2">
+            <label className="mb-1" htmlFor="cicdUrl">
+              <strong>CI/CD URL:</strong> (Optional)
+            </label>
+            <input
+              type="url"
+              className="form-control"
+              id="cicdUrl"
+              name="cicdUrl"
+              value={currentBox.cicdUrl || ""}
+              onChange={handleInputChange}
+              placeholder="https://github.com/owner/repo/actions"
+            />
+            <small className="form-text text-muted">
+              Direct link to your CI/CD pipeline or GitHub Actions page
+            </small>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+
+  const renderActionButtons = () => (
+    <>
+      {editMode ? (
+        <>
+          <button
+            type="submit"
+            className="btn btn-success me-2"
+            onClick={updateBox}
+            disabled={!!validationErrors.name}
+          >
+            Update
+          </button>
+          <button className="btn btn-secondary me-2" onClick={cancelEdit}>
+            Cancel
+          </button>
+        </>
+      ) : (
+        <button
+          className="btn btn-primary me-2"
+          onClick={() => setEditMode(true)}
+        >
+          Edit
+        </button>
+      )}
+      {currentBox.id && !editMode && (
+        <button className="btn btn-danger me-2" onClick={handleDeleteClick}>
+          Delete
+        </button>
+      )}
+      <ConfirmationModal
+        show={showModal}
+        handleClose={handleCloseModal}
+        handleConfirm={handleConfirmDelete}
+      />
+      {renderPublishButton()}
+    </>
+  );
+
   return (
     <div className="list row">
       {message && (
@@ -396,260 +708,12 @@ const Box = ({ theme }) => {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h4>Box Details</h4>
               <div>
-                {isAuthorized && (
-                  <>
-                    {editMode ? (
-                      <>
-                        <button
-                          type="submit"
-                          className="btn btn-success me-2"
-                          onClick={updateBox}
-                          disabled={!!validationErrors.name}
-                        >
-                          Update
-                        </button>
-                        <button
-                          className="btn btn-secondary me-2"
-                          onClick={cancelEdit}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className="btn btn-primary me-2"
-                        onClick={() => setEditMode(true)}
-                      >
-                        Edit
-                      </button>
-                    )}
-                    {currentBox.id && !editMode && (
-                      <button
-                        className="btn btn-danger me-2"
-                        onClick={handleDeleteClick}
-                      >
-                        Delete
-                      </button>
-                    )}
-                    <ConfirmationModal
-                      show={showModal}
-                      handleClose={handleCloseModal}
-                      handleConfirm={handleConfirmDelete}
-                    />
-                    {currentBox.published ? (
-                      <button
-                        className="btn btn-warning me-2"
-                        onClick={() => updateRelease(false)}
-                      >
-                        Unpublish
-                      </button>
-                    ) : (
-                      currentBox.id && (
-                        <button
-                          className="btn btn-outline-primary me-2"
-                          onClick={() => updateRelease(true)}
-                          disabled={!!validationErrors.name}
-                        >
-                          Publish
-                        </button>
-                      )
-                    )}
-                  </>
-                )}
-                {currentUser ? (
-                  <Link
-                    className="btn btn-dark me-2"
-                    to={`/${boxOrganization}`}
-                  >
-                    Back
-                  </Link>
-                ) : (
-                  <Link
-                    className="btn btn-dark me-2"
-                    to={`/${boxOrganization}`}
-                  >
-                    Back
-                  </Link>
-                )}
+                {isAuthorized && renderActionButtons()}
+                {renderBackButton()}
               </div>
             </div>
             {editMode ? (
-              <div className="edit-form">
-                <form ref={form}>
-                  <div className="mb-1">
-                    <strong>Box name:</strong>
-                  </div>
-                  <div className="form-group row align-items-center">
-                    <div className="col-auto pe-0">
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="organization"
-                        name="organization"
-                        value={currentUser ? currentUser.organization : ""}
-                        onChange={handleInputChange}
-                        disabled
-                      />
-                    </div>
-                    <div className="col-auto px-1">
-                      <span className="font-size-xl font-weight-bolder">/</span>
-                    </div>
-                    <div className="col-auto ps-0">
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="name"
-                        name="name"
-                        value={currentBox.name}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  {validationErrors.name && (
-                    <div className="text-danger">{validationErrors.name}</div>
-                  )}
-                  <small className="form-text text-muted">
-                    The name of your Vagrant box is used in tools,
-                    notifications, routing, and this UI. Short and simple is
-                    best.
-                  </small>
-                  <div className="form-group mt-2">
-                    <label>
-                      <strong>Status: </strong>
-                    </label>
-                    {currentBox.published ? "Published" : "Pending"}
-                  </div>
-                  <div className="form-group mt-2">
-                    <label>
-                      <strong>Visibility:</strong>
-                    </label>
-                    <div className="d-flex">
-                      <div className="form-check me-3">
-                        <input
-                          type="radio"
-                          className="form-check-input"
-                          id="visibilityPrivate"
-                          name="isPublic"
-                          value="false"
-                          checked={!currentBox.isPublic}
-                          onChange={handleInputChange}
-                        />
-                        <label
-                          className="form-check-label"
-                          htmlFor="visibilityPrivate"
-                        >
-                          Private
-                        </label>
-                      </div>
-                      <div className="form-check">
-                        <input
-                          type="radio"
-                          className="form-check-input"
-                          id="visibilityPublic"
-                          name="isPublic"
-                          value="true"
-                          checked={currentBox.isPublic}
-                          onChange={handleInputChange}
-                        />
-                        <label
-                          className="form-check-label"
-                          htmlFor="visibilityPublic"
-                        >
-                          Public
-                        </label>
-                      </div>
-                    </div>
-                    <small className="form-text text-muted">
-                      Making a box private prevents users from accessing it
-                      unless given permission.
-                    </small>
-                  </div>
-
-                  <div className="form-group mt-2">
-                    <label className="mb-1" htmlFor="description">
-                      <strong>Description:</strong> (Optional)
-                    </label>
-                    <textarea
-                      className="form-control"
-                      id="description"
-                      required
-                      value={currentBox.description}
-                      onChange={handleInputChange}
-                      name="description"
-                      rows="4"
-                      placeholder="The short description is used to describe the box."
-                    />
-                  </div>
-
-                  <div className="form-group mt-3">
-                    <h5>
-                      <strong>CI/CD Integration</strong> (Optional)
-                    </h5>
-                    <small className="form-text text-muted mb-3">
-                      Connect your box to GitHub Actions for automated build
-                      status badges.
-                    </small>
-
-                    <div className="form-group mt-2">
-                      <label className="mb-1" htmlFor="githubRepo">
-                        <strong>GitHub Repository:</strong> (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="githubRepo"
-                        name="githubRepo"
-                        value={currentBox.githubRepo || ""}
-                        onChange={handleInputChange}
-                        placeholder="owner/repository-name"
-                      />
-                      <small className="form-text text-muted">
-                        Format: owner/repository-name (e.g.,
-                        myorg/my-vagrant-box)
-                      </small>
-                    </div>
-
-                    <div className="form-group mt-2">
-                      <label className="mb-1" htmlFor="workflowFile">
-                        <strong>Workflow File:</strong> (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="workflowFile"
-                        name="workflowFile"
-                        value={currentBox.workflowFile || ""}
-                        onChange={handleInputChange}
-                        placeholder="build.yml"
-                      />
-                      <small className="form-text text-muted">
-                        GitHub Actions workflow file name (e.g., build.yml,
-                        ci.yaml)
-                      </small>
-                    </div>
-
-                    <div className="form-group mt-2">
-                      <label className="mb-1" htmlFor="cicdUrl">
-                        <strong>CI/CD URL:</strong> (Optional)
-                      </label>
-                      <input
-                        type="url"
-                        className="form-control"
-                        id="cicdUrl"
-                        name="cicdUrl"
-                        value={currentBox.cicdUrl || ""}
-                        onChange={handleInputChange}
-                        placeholder="https://github.com/owner/repo/actions"
-                      />
-                      <small className="form-text text-muted">
-                        Direct link to your CI/CD pipeline or GitHub Actions
-                        page
-                      </small>
-                    </div>
-                  </div>
-                </form>
-              </div>
+              renderEditForm()
             ) : (
               <div>
                 <p>
@@ -666,73 +730,7 @@ const Box = ({ theme }) => {
                 <p>
                   <strong>Description:</strong> {currentBox.description}
                 </p>
-
-                {/* CI/CD Integration Display */}
-                {(currentBox.githubRepo ||
-                  currentBox.workflowFile ||
-                  currentBox.cicdUrl) && (
-                  <div className="mt-3">
-                    <h5>
-                      <strong>CI/CD Integration</strong>
-                    </h5>
-
-                    {currentBox.githubRepo && currentBox.workflowFile && (
-                      <div className="mb-2">
-                        <p>
-                          <strong>Build Status:</strong>
-                        </p>
-                        <a
-                          href={
-                            currentBox.cicdUrl ||
-                            `https://github.com/${currentBox.githubRepo}/actions`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <img
-                            src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
-                            alt="Build Status"
-                            style={{ maxHeight: "20px" }}
-                          />
-                        </a>
-                      </div>
-                    )}
-
-                    {currentBox.githubRepo && (
-                      <p>
-                        <strong>Repository:</strong>
-                        <a
-                          href={`https://github.com/${currentBox.githubRepo}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ms-2"
-                        >
-                          {currentBox.githubRepo}
-                        </a>
-                      </p>
-                    )}
-
-                    {currentBox.workflowFile && (
-                      <p>
-                        <strong>Workflow:</strong> {currentBox.workflowFile}
-                      </p>
-                    )}
-
-                    {currentBox.cicdUrl && (
-                      <p>
-                        <strong>CI/CD Pipeline:</strong>
-                        <a
-                          href={currentBox.cicdUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ms-2"
-                        >
-                          View Pipeline
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                )}
+                {renderCicdIntegration()}
               </div>
             )}
           </div>
@@ -755,7 +753,7 @@ const Box = ({ theme }) => {
                       disabled={
                         !newVersion.versionNumber ||
                         !!validationErrors.versionNumber
-                      } // Disable if versionNumber is empty or has validation errors
+                      }
                     >
                       Submit
                     </button>
@@ -776,7 +774,7 @@ const Box = ({ theme }) => {
                     name="versionNumber"
                     value={newVersion.versionNumber}
                     onChange={handleInputChange}
-                    required // This makes the field required
+                    required
                   />
                   {validationErrors.versionNumber && (
                     <div className="text-danger">
@@ -785,10 +783,10 @@ const Box = ({ theme }) => {
                   )}
                 </div>
                 <div className="form-group">
-                  <label htmlFor="description">Description</label>
+                  <label htmlFor="versionDescription">Description</label>
                   <textarea
                     className="form-control"
-                    id="description"
+                    id="versionDescription"
                     name="description"
                     value={newVersion.description}
                     onChange={handleInputChange}
@@ -809,8 +807,8 @@ const Box = ({ theme }) => {
               </tr>
             </thead>
             <tbody>
-              {versions.map((version, index) => (
-                <tr key={index}>
+              {versions.map((version) => (
+                <tr key={version.id || version.versionNumber}>
                   <td>
                     <Link
                       to={`/${organization}/${name}/${version.versionNumber}`}
@@ -821,8 +819,8 @@ const Box = ({ theme }) => {
                   <td>{version.description}</td>
                   <td>
                     {providers[version.versionNumber] &&
-                      providers[version.versionNumber].map((provider, idx) => (
-                        <div key={idx}>
+                      providers[version.versionNumber].map((provider) => (
+                        <div key={provider.id || provider.name}>
                           <Link
                             to={`/${organization}/${name}/${version.versionNumber}/${provider.name}`}
                           >
@@ -864,6 +862,10 @@ const Box = ({ theme }) => {
       )}
     </div>
   );
+};
+
+Box.propTypes = {
+  theme: PropTypes.string.isRequired,
 };
 
 export default Box;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FaStar } from "react-icons/fa6";
 
 import AuthService from "../services/auth.service";
@@ -19,34 +19,35 @@ const About = () => {
   const [favoriteMessage, setFavoriteMessage] = useState("");
 
   useEffect(() => {
-    UserService.getPublicContent().then(
-      (response) => {
+    const loadData = async () => {
+      try {
+        const response = await UserService.getPublicContent();
         setProjectData(response.data);
-      },
-      (error) => {
-        const _content =
+      } catch (error) {
+        const content =
           (error.response && error.response.data) ||
           error.message ||
           error.toString();
-
-        setProjectData((prevData) => ({ ...prevData, title: _content }));
+        setProjectData((prevData) => ({ ...prevData, title: content }));
       }
-    );
 
-    // Check if user is logged in and if BoxVault is favorited
-    const user = AuthService.getCurrentUser();
-    setCurrentUser(user);
+      const user = AuthService.getCurrentUser();
+      setCurrentUser(user);
 
-    if (user?.provider?.startsWith("oidc-")) {
-      FavoritesService.getFavorites()
-        .then((response) => {
-          const favorites = response.data || [];
+      if (user?.provider?.startsWith("oidc-")) {
+        try {
+          const favResponse = await FavoritesService.getFavorites();
+          const favorites = favResponse.data || [];
           setIsBoxVaultFavorited(
             favorites.some((f) => f.clientId === "boxvault")
           );
-        })
-        .catch((error) => console.error("Error loading favorites:", error));
-    }
+        } catch (error) {
+          console.error("Error loading favorites:", error);
+        }
+      }
+    };
+
+    loadData();
   }, []);
 
   const handleToggleFavorite = async () => {
@@ -55,11 +56,9 @@ const About = () => {
       let favorites = response.data || [];
 
       if (isBoxVaultFavorited) {
-        // Remove from favorites
         favorites = FavoritesService.removeFavorite(favorites, "boxvault");
         setFavoriteMessage("Removed BoxVault from favorites");
       } else {
-        // Add to favorites
         favorites = FavoritesService.addFavorite(favorites, "boxvault", null);
         setFavoriteMessage("Added BoxVault to favorites!");
       }
@@ -67,7 +66,6 @@ const About = () => {
       await FavoritesService.saveFavorites(favorites);
       setIsBoxVaultFavorited(!isBoxVaultFavorited);
 
-      // Clear message after 3 seconds
       setTimeout(() => setFavoriteMessage(""), 3000);
     } catch (error) {
       console.error("Error toggling favorite:", error);
@@ -100,12 +98,12 @@ const About = () => {
           </div>
         )}
 
-        {projectData.components.map((component, index) => (
-          <section key={index} className="section">
+        {projectData.components.map((component) => (
+          <section key={component.title} className="section">
             <h2 className="section-title">{component.title}</h2>
             <ul className="list">
-              {component.details.map((detail, idx) => (
-                <li key={idx} className="list-item">
+              {component.details.map((detail) => (
+                <li key={detail} className="list-item">
                   {detail}
                 </li>
               ))}
@@ -115,8 +113,8 @@ const About = () => {
 
         <h2 className="section-title">Key Features:</h2>
         <ul className="list">
-          {projectData.features.map((feature, index) => (
-            <li key={index} className="list-item">
+          {projectData.features.map((feature) => (
+            <li key={feature} className="list-item">
               {feature}
             </li>
           ))}

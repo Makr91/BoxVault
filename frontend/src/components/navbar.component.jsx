@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
 import {
   FaMoon,
   FaSun,
-  FaGlobe,
-  FaHouse,
   FaTicket,
   FaUser,
   FaCircleInfo,
@@ -17,7 +16,6 @@ import { Link } from "react-router-dom";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
-import ConfigService from "../services/config.service";
 import FavoritesService from "../services/favorites.service";
 
 const Navbar = ({
@@ -46,7 +44,23 @@ const Navbar = ({
     }
   };
 
-  // Load favorites and user claims when authenticated with OIDC
+  const handleLogoutToggle = (e) => {
+    e.stopPropagation();
+    setLogoutEverywhere(!logoutEverywhere);
+  };
+
+  const handleProfileToggle = (e) => {
+    e.stopPropagation();
+    setProfileIsLocal(!profileIsLocal);
+  };
+
+  const handleLogoutToggleKeyPress = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleLogoutToggle(e);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
@@ -81,13 +95,26 @@ const Navbar = ({
     };
   }, [currentUser]);
 
-  // Load ticket config and extract auth server URL from id_token
+  const extractAuthServerUrl = (accessToken) => {
+    try {
+      const jwtPayload = JSON.parse(atob(accessToken.split(".")[1]));
+      if (jwtPayload.id_token) {
+        const idTokenPayload = JSON.parse(
+          atob(jwtPayload.id_token.split(".")[1])
+        );
+        return idTokenPayload.iss || "";
+      }
+    } catch (error) {
+      console.debug("Could not extract issuer from id_token:", error);
+    }
+    return "";
+  };
+
   useEffect(() => {
     let mounted = true;
 
     const loadConfigs = async () => {
       try {
-        // Load ticket config
         const ticketResponse = await fetch(
           `${window.location.origin}/api/config/ticket`
         );
@@ -98,25 +125,13 @@ const Navbar = ({
           }
         }
 
-        // Get auth server URL from id_token for OIDC users
         if (
           currentUser?.provider?.startsWith("oidc-") &&
           currentUser?.accessToken
         ) {
-          try {
-            const jwtPayload = JSON.parse(
-              atob(currentUser.accessToken.split(".")[1])
-            );
-            if (jwtPayload.id_token) {
-              const idTokenPayload = JSON.parse(
-                atob(jwtPayload.id_token.split(".")[1])
-              );
-              if (idTokenPayload.iss && mounted) {
-                setAuthServerUrl(idTokenPayload.iss);
-              }
-            }
-          } catch (error) {
-            console.debug("Could not extract issuer from id_token:", error);
+          const issuerUrl = extractAuthServerUrl(currentUser.accessToken);
+          if (issuerUrl && mounted) {
+            setAuthServerUrl(issuerUrl);
           }
         }
       } catch (error) {
@@ -195,18 +210,110 @@ const Navbar = ({
             }}
           />
         );
-      } catch (error) {
-        // Invalid URL, skip icon
+      } catch (e) {
+        console.log("Invalid URL for favicon:", e);
         return null;
       }
     }
 
     return null;
   };
+
+  const renderUserAvatar = () => {
+    if (gravatarUrl) {
+      return (
+        <img
+          src={gravatarUrl}
+          alt="User Avatar"
+          className="rounded-circle"
+          width="30"
+          height="30"
+          style={{ marginRight: "10px", verticalAlign: "middle" }}
+        />
+      );
+    }
+
+    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
+    return (
+      <LogoComponent
+        style={{
+          width: "30px",
+          height: "30px",
+          marginRight: "10px",
+        }}
+      />
+    );
+  };
+
+  const renderProfileMenuItem = () => {
+    const isOidcUser = currentUser?.provider?.startsWith("oidc-");
+
+    if (!isOidcUser || !authServerUrl) {
+      return (
+        <>
+          <FaUser className="me-2" />
+          <Link to="/profile" className="text-decoration-none text-reset">
+            Profile
+          </Link>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {profileIsLocal ? (
+          <FaUser
+            className="me-2"
+            onClick={handleProfileToggle}
+            onKeyPress={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleProfileToggle(e);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            title="Switch to auth server profile"
+            style={{ cursor: "pointer" }}
+          />
+        ) : (
+          <FaIdBadge
+            className="me-2"
+            onClick={handleProfileToggle}
+            onKeyPress={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleProfileToggle(e);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            title="Switch to local profile"
+            style={{ cursor: "pointer" }}
+          />
+        )}
+        {profileIsLocal ? (
+          <Link to="/profile" className="text-decoration-none text-reset">
+            Profile
+          </Link>
+        ) : (
+          <a
+            href={`${authServerUrl}/user/profile`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-decoration-none text-reset"
+          >
+            Profile
+          </a>
+        )}
+      </>
+    );
+  };
+
   return (
-    <nav className={`navbar navbar-expand-lg`}>
+    <nav className="navbar navbar-expand-lg">
       <div className="container-fluid">
-        <Link to={"/"} className="navbar-brand">
+        <Link to="/" className="navbar-brand">
           {theme === "light" ? (
             <BoxVaultLight
               style={{ width: "30px", height: "30px", marginRight: "10px" }}
@@ -219,13 +326,13 @@ const Navbar = ({
           BoxVault
         </Link>
         <ul className="nav nav-pills me-auto">
-          {currentUser && userOrganization ? (
+          {currentUser && userOrganization && (
             <li className="nav-item">
               <Link to={`/${userOrganization}`} className="nav-link">
                 {userOrganization}
               </Link>
             </li>
-          ) : null}
+          )}
         </ul>
 
         {currentUser ? (
@@ -237,98 +344,21 @@ const Navbar = ({
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
-                {gravatarUrl ? (
-                  <img
-                    src={gravatarUrl}
-                    alt="User Avatar"
-                    className="rounded-circle"
-                    width="30"
-                    height="30"
-                    style={{ marginRight: "10px", verticalAlign: "middle" }}
-                  />
-                ) : theme === "light" ? (
-                  <BoxVaultLight
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      marginRight: "10px",
-                    }}
-                  />
-                ) : (
-                  <BoxVaultDark
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      marginRight: "10px",
-                    }}
-                  />
-                )}
+                {renderUserAvatar()}
                 {currentUser.username}
               </button>
               <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                {showModeratorBoard ? (
+                {showModeratorBoard && (
                   <li>
                     <Link to="/moderator" className="dropdown-item">
                       <FaUserShield className="me-2" />
                       Moderator
                     </Link>
                   </li>
-                ) : null}
+                )}
                 <li>
                   <div className="dropdown-item d-flex align-items-center">
-                    {currentUser?.provider?.startsWith("oidc-") &&
-                    authServerUrl ? (
-                      <>
-                        {profileIsLocal ? (
-                          <FaUser
-                            className="me-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProfileIsLocal(!profileIsLocal);
-                            }}
-                            title="Switch to auth server profile"
-                            style={{ cursor: "pointer" }}
-                          />
-                        ) : (
-                          <FaIdBadge
-                            className="me-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProfileIsLocal(!profileIsLocal);
-                            }}
-                            title="Switch to local profile"
-                            style={{ cursor: "pointer" }}
-                          />
-                        )}
-                        {profileIsLocal ? (
-                          <Link
-                            to="/profile"
-                            className="text-decoration-none text-reset"
-                          >
-                            Profile
-                          </Link>
-                        ) : (
-                          <a
-                            href={`${authServerUrl}/user/profile`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-decoration-none text-reset"
-                          >
-                            Profile
-                          </a>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <FaUser className="me-2" />
-                        <Link
-                          to="/profile"
-                          className="text-decoration-none text-reset"
-                        >
-                          Profile
-                        </Link>
-                      </>
-                    )}
+                    {renderProfileMenuItem()}
                   </div>
                 </li>
                 <li>
@@ -337,7 +367,7 @@ const Navbar = ({
                     About
                   </Link>
                 </li>
-                {favoriteApps && favoriteApps.length > 0 ? (
+                {favoriteApps && favoriteApps.length > 0 && (
                   <>
                     <li>
                       <hr className="dropdown-divider" />
@@ -360,8 +390,8 @@ const Navbar = ({
                         </li>
                       ))}
                   </>
-                ) : null}
-                {showAdminBoard ? (
+                )}
+                {showAdminBoard && (
                   <>
                     <li>
                       <hr className="dropdown-divider" />
@@ -373,8 +403,8 @@ const Navbar = ({
                       </Link>
                     </li>
                   </>
-                ) : null}
-                {ticketUrl ? (
+                )}
+                {ticketUrl && (
                   <>
                     <li>
                       <hr className="dropdown-divider" />
@@ -391,7 +421,7 @@ const Navbar = ({
                       </a>
                     </li>
                   </>
-                ) : null}
+                )}
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
@@ -400,27 +430,35 @@ const Navbar = ({
                     {logoutEverywhere ? (
                       <FaBridgeLock
                         className="me-2 text-danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLogoutEverywhere(!logoutEverywhere);
-                        }}
+                        onClick={handleLogoutToggle}
+                        onKeyPress={handleLogoutToggleKeyPress}
+                        role="button"
+                        tabIndex={0}
                         title="Click to logout locally only"
                         style={{ cursor: "pointer" }}
                       />
                     ) : (
                       <FaHouseLock
                         className="me-2 text-danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLogoutEverywhere(!logoutEverywhere);
-                        }}
+                        onClick={handleLogoutToggle}
+                        onKeyPress={handleLogoutToggleKeyPress}
+                        role="button"
+                        tabIndex={0}
                         title="Click to logout everywhere"
                         style={{ cursor: "pointer" }}
                       />
                     )}
                     <span
                       onClick={handleLogout}
-                      className="text-danger cursor-pointer"
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleLogout();
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      className="text-danger"
                       style={{ cursor: "pointer" }}
                     >
                       Logout
@@ -442,17 +480,17 @@ const Navbar = ({
         ) : (
           <ul className="nav nav-pills ms-auto">
             <li className="nav-item">
-              <Link to={"/login"} className="nav-link">
+              <Link to="/login" className="nav-link">
                 Login
               </Link>
             </li>
             <li className="nav-item">
-              <Link to={"/register"} className="nav-link">
+              <Link to="/register" className="nav-link">
                 Sign Up
               </Link>
             </li>
             <li className="nav-item">
-              <Link to={"/about"} className="nav-link">
+              <Link to="/about" className="nav-link">
                 About
               </Link>
             </li>
@@ -470,6 +508,22 @@ const Navbar = ({
       </div>
     </nav>
   );
+};
+
+Navbar.propTypes = {
+  currentUser: PropTypes.shape({
+    username: PropTypes.string,
+    provider: PropTypes.string,
+    accessToken: PropTypes.string,
+  }),
+  userOrganization: PropTypes.string,
+  gravatarUrl: PropTypes.string,
+  showAdminBoard: PropTypes.bool,
+  showModeratorBoard: PropTypes.bool,
+  theme: PropTypes.string.isRequired,
+  toggleTheme: PropTypes.func.isRequired,
+  logOut: PropTypes.func.isRequired,
+  logOutLocal: PropTypes.func.isRequired,
 };
 
 export default Navbar;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Table from "react-bootstrap/Table";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
@@ -36,6 +36,82 @@ const Version = () => {
 
   const form = useRef();
 
+  const required = (value) => (value ? undefined : "This field is required!");
+
+  const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
+
+  const validateName = (value) =>
+    validCharsRegex.test(value)
+      ? undefined
+      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+
+  const deleteFilesForArchitecture = (providerName, architectureName) =>
+    FileService.delete(
+      organization,
+      name,
+      version,
+      providerName,
+      architectureName
+    ).catch((e) => {
+      console.log(
+        `Error deleting files for architecture ${architectureName}:`,
+        e
+      );
+      throw e;
+    });
+
+  const deleteArchitecturesForProvider = async (providerName) => {
+    const architecturesToDelete = architectures[providerName] || [];
+    for (const architecture of architecturesToDelete) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteFilesForArchitecture(providerName, architecture.name);
+      // eslint-disable-next-line no-await-in-loop
+      await ArchitectureService.deleteArchitecture(
+        organization,
+        name,
+        version,
+        providerName,
+        architecture.name
+      ).catch((e) => {
+        console.log(`Error deleting architecture ${architecture.name}:`, e);
+        throw e;
+      });
+    }
+  };
+
+  const deleteProvider = async (providerName) => {
+    try {
+      await deleteArchitecturesForProvider(providerName);
+      await ProviderService.deleteProvider(
+        organization,
+        name,
+        version,
+        providerName
+      );
+      setMessage("The provider was deleted successfully!");
+      setMessageType("success");
+      setProviders(
+        providers.filter((provider) => provider.name !== providerName)
+      );
+    } catch (e) {
+      console.log(`Error deleting provider ${providerName}:`, e);
+      setMessage("Error deleting provider. Please try again.");
+      setMessageType("danger");
+    }
+  };
+
+  const deleteVersion = () => {
+    VersionDataService.deleteVersion(organization, name, version)
+      .then(() => {
+        setMessage("The version was deleted successfully!");
+        setMessageType("success");
+        navigate(`/${organization}/${name}`);
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  };
+
   const handleProviderDeleteClick = (providerName) => {
     setItemToDelete({ type: "provider", name: providerName });
     setShowDeleteModal(true);
@@ -62,104 +138,114 @@ const Version = () => {
     }
   };
 
-  const required = (value) => (value ? undefined : "This field is required!");
-
-  const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-
-  const validateName = (value) =>
-    validCharsRegex.test(value)
-      ? undefined
-      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user) {
-      setIsAuthorized(user.organization === organization);
-    }
+    const fetchData = async () => {
+      // Check authorization
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userAuthorized = user && user.organization === organization;
+      setIsAuthorized(userAuthorized);
 
-    ProviderService.getProviders(organization, name, version)
-      .then(async (response) => {
-        setProviders(response.data);
-        const architecturesByProvider = {};
+      try {
+        const providerResponse = await ProviderService.getProviders(
+          organization,
+          name,
+          version
+        );
+        setProviders(providerResponse.data);
 
-        for (const provider of response.data) {
-          try {
-            const archResponse = await ArchitectureService.getArchitectures(
-              organization,
-              name,
-              version,
-              provider.name
-            );
-            const architecturesWithInfo = await Promise.all(
-              archResponse.data.map(async (architecture) => {
-                try {
-                  const [fileInfo, downloadLink] = await Promise.all([
-                    FileService.info(
+        // Fetch architectures for all providers in parallel
+        const architecturePromises = providerResponse.data.map(
+          async (provider) => {
+            try {
+              const archResponse = await ArchitectureService.getArchitectures(
+                organization,
+                name,
+                version,
+                provider.name
+              );
+              const architecturesWithInfo = await Promise.all(
+                archResponse.data.map(async (architecture) => {
+                  try {
+                    const downloadLink = await FileService.getDownloadLink(
                       organization,
                       name,
                       version,
                       provider.name,
                       architecture.name
-                    ),
-                    FileService.getDownloadLink(
-                      organization,
-                      name,
-                      version,
-                      provider.name,
-                      architecture.name
-                    ),
-                  ]);
-                  return {
-                    ...architecture,
-                    downloadUrl: downloadLink,
-                  };
-                } catch (error) {
-                  return {
-                    ...architecture,
-                    downloadUrl: null,
-                  };
-                }
-              })
-            );
-            architecturesByProvider[provider.name] = architecturesWithInfo;
-          } catch (e) {
-            console.log(e);
-            architecturesByProvider[provider.name] = [];
+                    );
+                    return {
+                      ...architecture,
+                      downloadUrl: downloadLink,
+                    };
+                  } catch (e) {
+                    console.log(
+                      `Error fetching download link for ${architecture.name}:`,
+                      e
+                    );
+                    return {
+                      ...architecture,
+                      downloadUrl: null,
+                    };
+                  }
+                })
+              );
+              return { providerName: provider.name, architecturesWithInfo };
+            } catch (e) {
+              console.log(
+                `Error fetching architectures for ${provider.name}:`,
+                e
+              );
+              return { providerName: provider.name, architecturesWithInfo: [] };
+            }
           }
-        }
+        );
+
+        const results = await Promise.all(architecturePromises);
+        const architecturesByProvider = {};
+        results.forEach((result) => {
+          architecturesByProvider[result.providerName] =
+            result.architecturesWithInfo;
+        });
 
         setArchitectures(architecturesByProvider);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+      } catch (e) {
+        console.log("Error fetching providers:", e);
+      }
 
-    VersionDataService.getVersion(organization, name, version)
-      .then((response) => {
-        setCurrentVersion(response.data);
-      })
-      .catch((e) => {
-        console.log(e);
+      try {
+        const versionResponse = await VersionDataService.getVersion(
+          organization,
+          name,
+          version
+        );
+        setCurrentVersion(versionResponse.data);
+      } catch (e) {
+        console.log("Error fetching version:", e);
         setCurrentVersion(null);
         setMessage("No Version Found");
         setMessageType("danger");
-      });
+      }
 
-    VersionDataService.getVersions(organization, name)
-      .then((response) => {
-        setAllVersions(response.data);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+      try {
+        const versionsResponse = await VersionDataService.getVersions(
+          organization,
+          name
+        );
+        setAllVersions(versionsResponse.data);
+      } catch (e) {
+        console.log("Error fetching all versions:", e);
+      }
+    };
+
+    fetchData();
   }, [organization, name, version, navigate]);
 
   const handleProviderInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewProvider({ ...newProvider, [name]: value });
+    const { name: fieldName, value } = event.target;
+    setNewProvider({ ...newProvider, [fieldName]: value });
 
     // Validate the provider name field
-    if (name === "name") {
+    if (fieldName === "name") {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, providerName: error });
     }
@@ -207,80 +293,15 @@ const Version = () => {
     }
   };
 
-  const deleteFilesForArchitecture = (providerName, architectureName) =>
-    FileService.delete(
-      organization,
-      name,
-      version,
-      providerName,
-      architectureName
-    ).catch((e) => {
-      console.log(
-        `Error deleting files for architecture ${architectureName}:`,
-        e
-      );
-      throw e;
-    });
-
-  const deleteArchitecturesForProvider = async (providerName) => {
-    const architecturesToDelete = architectures[providerName] || [];
-    for (const architecture of architecturesToDelete) {
-      await deleteFilesForArchitecture(providerName, architecture.name);
-      await ArchitectureService.deleteArchitecture(
-        organization,
-        name,
-        version,
-        providerName,
-        architecture.name
-      ).catch((e) => {
-        console.log(`Error deleting architecture ${architecture.name}:`, e);
-        throw e;
-      });
-    }
-  };
-
-  const deleteProvider = async (providerName) => {
-    try {
-      await deleteArchitecturesForProvider(providerName);
-      await ProviderService.deleteProvider(
-        organization,
-        name,
-        version,
-        providerName
-      );
-      setMessage("The provider was deleted successfully!");
-      setMessageType("success");
-      setProviders(
-        providers.filter((provider) => provider.name !== providerName)
-      );
-    } catch (e) {
-      console.log(`Error deleting provider ${providerName}:`, e);
-      setMessage("Error deleting provider. Please try again.");
-      setMessageType("danger");
-    }
-  };
-
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setCurrentVersion({ ...currentVersion, [name]: value });
+    const { name: fieldName, value } = event.target;
+    setCurrentVersion({ ...currentVersion, [fieldName]: value });
 
     // Validate the version number field
-    if (name === "versionNumber") {
+    if (fieldName === "versionNumber") {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, versionNumber: error });
     }
-  };
-
-  const deleteVersion = () => {
-    VersionDataService.deleteVersion(organization, name, version)
-      .then((response) => {
-        setMessage("The version was deleted successfully!");
-        setMessageType("success");
-        navigate(`/${organization}/${name}`);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
   };
 
   const saveVersion = async (event) => {
@@ -356,7 +377,7 @@ const Version = () => {
                       <button
                         type="submit"
                         className="btn btn-success me-2"
-                        disabled={!!validationErrors.versionNumber} // Disable if there's an error
+                        disabled={!!validationErrors.versionNumber}
                       >
                         Save
                       </button>
@@ -482,7 +503,7 @@ const Version = () => {
                       value={newProvider.name}
                       onChange={handleProviderInputChange}
                       name="name"
-                      required // This makes the field required
+                      required
                     />
                     {validationErrors.providerName ? (
                       <div className="text-danger">
@@ -513,8 +534,8 @@ const Version = () => {
                 </tr>
               </thead>
               <tbody>
-                {providers.map((provider, index) => (
-                  <tr key={index}>
+                {providers.map((provider) => (
+                  <tr key={provider.name}>
                     <td>
                       <Link
                         to={`/${organization}/${name}/${version}/${provider.name}`}
@@ -525,22 +546,20 @@ const Version = () => {
                     <td>{provider.description}</td>
                     <td>
                       {architectures[provider.name]
-                        ? architectures[provider.name].map(
-                            (architecture, idx) => (
-                              <div key={idx}>
-                                {architecture.downloadUrl ? (
-                                  <a
-                                    href={architecture.downloadUrl}
-                                    className="btn btn-outline-primary mt-2"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    Download {architecture.name}
-                                  </a>
-                                ) : null}
-                              </div>
-                            )
-                          )
+                        ? architectures[provider.name].map((architecture) => (
+                            <div key={architecture.name}>
+                              {architecture.downloadUrl ? (
+                                <a
+                                  href={architecture.downloadUrl}
+                                  className="btn btn-outline-primary mt-2"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Download {architecture.name}
+                                </a>
+                              ) : null}
+                            </div>
+                          ))
                         : null}
                     </td>
                     {isAuthorized ? (

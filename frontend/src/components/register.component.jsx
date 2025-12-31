@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
@@ -20,20 +21,21 @@ const Register = ({ theme }) => {
   const location = useLocation();
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const token = queryParams.get("token");
-    if (token) {
-      setInvitationToken(token);
-      // Optionally, you can validate the token here by calling an API
-      // For example, fetch the organization name associated with the token
-      AuthService.validateInvitationToken(token)
-        .then((response) => {
+    const validateToken = async () => {
+      const queryParams = new URLSearchParams(location.search);
+      const token = queryParams.get("token");
+      if (token) {
+        setInvitationToken(token);
+        try {
+          const response = await AuthService.validateInvitationToken(token);
           setOrganizationName(response.data.organizationName);
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error("Invalid or expired token:", error);
-        });
-    }
+        }
+      }
+    };
+
+    validateToken();
   }, [location]);
 
   const handleInputChange = (event) => {
@@ -197,6 +199,10 @@ const Register = ({ theme }) => {
       </div>
     </div>
   );
+};
+
+Register.propTypes = {
+  theme: PropTypes.string.isRequired,
 };
 
 export default Register;

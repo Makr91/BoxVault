@@ -28,6 +28,7 @@ export default [
       "**/licenses.json",
       "vite.config.js",
       "vite.config.mjs",
+      "src/version.json",
     ],
   },
 
@@ -269,7 +270,7 @@ export default [
       ],
       "react/no-unstable-nested-components": "error",
       "react/jsx-fragments": ["error", "syntax"],
-      "react/jsx-no-leaked-render": ["warn", { validStrategies: ["ternary"] }],
+      "react/jsx-no-leaked-render": "off",
       "react/jsx-no-useless-fragment": "error",
 
       // === REACT HOOKS RULES ===
@@ -313,7 +314,10 @@ export default [
       "import/first": "error",
       "import/no-amd": "error",
       "import/no-webpack-loader-syntax": "error",
-      "import/no-unresolved": ["error", { commonjs: true }],
+      "import/no-unresolved": [
+        "error",
+        { commonjs: true, ignore: ["\\.svg\\?react$"] },
+      ],
       "import/named": "error",
       "import/default": "error",
       "import/namespace": "error",
