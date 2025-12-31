@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const responseTime = require('response-time');
 const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/config-loader');
 const { log, morganMiddleware } = require('./app/utils/Logger');
 const crypto = require('crypto');
@@ -169,6 +170,18 @@ const app = express();
 app.set('timeout', 0);
 app.set('keep-alive-timeout', 0);
 app.set('headers-timeout', 0);
+
+// Add response time tracking to all requests (with logging)
+app.use(
+  responseTime((req, res, time) => {
+    log.api.info('Response time', {
+      method: req.method,
+      url: req.url,
+      duration_ms: time.toFixed(2),
+      status: res.statusCode,
+    });
+  })
+);
 
 // Debug middleware to log requests
 app.use((req, res, next) => {
