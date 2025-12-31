@@ -263,6 +263,10 @@ app.use((req, res, next) => {
 // Morgan HTTP request logging
 app.use(morganMiddleware);
 
+// Rate limiting middleware (applied globally before routes)
+const { rateLimiter } = require('./app/middleware');
+app.use(rateLimiter.rateLimiterMiddleware());
+
 // Initialize roles in database (must be defined before initializeApp uses it)
 const initial = async () => {
   try {

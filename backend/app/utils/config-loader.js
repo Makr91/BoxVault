@@ -62,9 +62,39 @@ const getSetupTokenPath = () => {
   return path.join(__dirname, '../../setup.token');
 };
 
+/**
+ * Get rate limiting configuration with defaults
+ * @returns {Object} Rate limiting configuration object
+ */
+const getRateLimitConfig = () => {
+  try {
+    const appConfig = loadConfig('app');
+    return {
+      window_minutes: appConfig.rate_limiting?.window_minutes?.value || 15,
+      max_requests: appConfig.rate_limiting?.max_requests?.value || 100,
+      message:
+        appConfig.rate_limiting?.message?.value ||
+        'Too many requests from this IP, please try again later.',
+      skip_successful_requests: appConfig.rate_limiting?.skip_successful_requests?.value || false,
+      skip_failed_requests: appConfig.rate_limiting?.skip_failed_requests?.value || false,
+    };
+  } catch (error) {
+    // Return defaults if config not available
+    console.warn('Failed to load rate limiting config, using defaults:', error.message);
+    return {
+      window_minutes: 15,
+      max_requests: 100,
+      message: 'Too many requests from this IP, please try again later.',
+      skip_successful_requests: false,
+      skip_failed_requests: false,
+    };
+  }
+};
+
 module.exports = {
   getConfigPath,
   loadConfig,
   loadConfigs,
   getSetupTokenPath,
+  getRateLimitConfig,
 };
