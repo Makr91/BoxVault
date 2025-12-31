@@ -6,10 +6,15 @@ import AuthService from "../services/auth.service";
 import InvitationService from "../services/invitation.service";
 import OrganizationService from "../services/organization.service";
 import UserService from "../services/user.service";
+import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
 const Moderator = ({ currentOrganization }) => {
+  useEffect(() => {
+    document.title = "Moderator";
+  }, []);
+
   const [users, setUsers] = useState([]);
   const [newOrgName, setNewOrgName] = useState("");
   const [updateMessage, setUpdateMessage] = useState("");
@@ -33,7 +38,10 @@ const Moderator = ({ currentOrganization }) => {
       const response = await OrganizationService.getOrganizationByName(name);
       return !!response.data;
     } catch (error) {
-      console.error("Error checking organization existence:", error);
+      log.api.error("Error checking organization existence", {
+        name,
+        error: error.message,
+      });
       return false;
     }
   };
@@ -46,7 +54,10 @@ const Moderator = ({ currentOrganization }) => {
           setLoading(false);
         },
         (error) => {
-          console.error("Error fetching organization data:", error);
+          log.api.error("Error fetching organization data", {
+            organization: currentOrganization,
+            error: error.message,
+          });
           if (error.response && error.response.status === 401) {
             EventBus.dispatch("logout");
           }
@@ -60,7 +71,10 @@ const Moderator = ({ currentOrganization }) => {
           setActiveInvitations(response.data);
         })
         .catch((error) => {
-          console.error("Error fetching active invitations:", error);
+          log.api.error("Error fetching active invitations", {
+            organization: currentOrganization,
+            error: error.message,
+          });
           if (error.response && error.response.status === 401) {
             EventBus.dispatch("logout");
           }
@@ -75,7 +89,10 @@ const Moderator = ({ currentOrganization }) => {
           setOrgDescription(response.data.description || "");
         })
         .catch((error) => {
-          console.error("Error fetching organization details:", error);
+          log.api.error("Error fetching organization details", {
+            organization: currentOrganization,
+            error: error.message,
+          });
           if (error.response && error.response.status === 401) {
             EventBus.dispatch("logout");
           }
@@ -136,7 +153,10 @@ const Moderator = ({ currentOrganization }) => {
 
       setUpdateMessage("Organization updated successfully!");
     } catch (error) {
-      console.error("Error updating organization:", error);
+      log.component.error("Error updating organization", {
+        organization: currentOrganization,
+        error: error.message,
+      });
       setUpdateMessage("Error updating organization. Please try again.");
     }
   };
@@ -174,7 +194,11 @@ const Moderator = ({ currentOrganization }) => {
         setEmail("");
       })
       .catch((error) => {
-        console.error("Error sending invitation:", error);
+        log.component.error("Error sending invitation", {
+          email,
+          organization: currentOrganization,
+          error: error.message,
+        });
         setInvitationMessage("Error sending invitation. Please try again.");
       });
   };
@@ -201,7 +225,10 @@ const Moderator = ({ currentOrganization }) => {
           handleCloseDeleteModal();
         })
         .catch((error) => {
-          console.error("Error deleting invitation:", error);
+          log.component.error("Error deleting invitation", {
+            invitationId: itemToDelete.id,
+            error: error.message,
+          });
           handleCloseDeleteModal();
         });
     }

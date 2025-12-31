@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ArchitectureService from "../services/architecture.service";
 import FileService from "../services/file.service";
 import ProviderService from "../services/provider.service";
+import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -80,7 +81,9 @@ const Provider = () => {
         setMessageType("success");
       },
       (err) => {
-        console.error("Could not copy text: ", err);
+        log.component.error("Could not copy text to clipboard", {
+          error: err.message,
+        });
       }
     );
   };
@@ -95,7 +98,10 @@ const Provider = () => {
       );
       return !!response.data;
     } catch (error) {
-      console.error("Error checking provider existence:", error);
+      log.api.error("Error checking provider existence", {
+        provider,
+        error: error.message,
+      });
       return false;
     }
   };
@@ -108,7 +114,10 @@ const Provider = () => {
         navigate(`/${organization}/${name}/${version}`);
       })
       .catch((e) => {
-        console.log(e);
+        log.api.error("Error deleting provider", {
+          providerName,
+          error: e.message,
+        });
       });
   };
 
@@ -127,7 +136,10 @@ const Provider = () => {
         architectures.filter((arch) => arch.name !== architectureName)
       );
     } catch (error) {
-      console.error("Error deleting architecture:", error);
+      log.component.error("Error deleting architecture", {
+        architectureName,
+        error: error.message,
+      });
       if (
         error.response &&
         error.response.data &&
@@ -169,6 +181,9 @@ const Provider = () => {
   };
 
   useEffect(() => {
+    // Set document title
+    document.title = `${providerName} - ${name}`;
+
     const loadData = async () => {
       const user = JSON.parse(localStorage.getItem("user"));
       if (user) {
@@ -185,7 +200,10 @@ const Provider = () => {
         setCurrentProvider(response.data);
         setOriginalProviderName(response.data.name);
       } catch (e) {
-        console.log(e);
+        log.api.error("Error fetching provider", {
+          providerName,
+          error: e.message,
+        });
         setCurrentProvider(null);
         setMessage("No Provider Found");
         setMessageType("danger");
@@ -227,7 +245,10 @@ const Provider = () => {
                 downloadCount: fileInfo.data.downloadCount,
               };
             } catch (error) {
-              console.error("Error fetching file info:", error);
+              log.api.error("Error fetching file info", {
+                architectureName: architecture.name,
+                error: error.message,
+              });
               return {
                 ...architecture,
                 fileName: null,
@@ -242,7 +263,10 @@ const Provider = () => {
         );
         setArchitectures(architecturesWithInfo);
       } catch (e) {
-        console.log(e);
+        log.api.error("Error fetching architectures", {
+          providerName,
+          error: e.message,
+        });
       }
     };
 
@@ -342,7 +366,10 @@ const Provider = () => {
         navigate(`/${organization}/${name}/${version}/${currentProvider.name}`);
       }
     } catch (e) {
-      console.log(e);
+      log.api.error("Error updating provider", {
+        providerName: currentProvider.name,
+        error: e.message,
+      });
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
@@ -389,7 +416,7 @@ const Provider = () => {
       }
 
       const [currentFile] = selectedFiles;
-      console.log("Starting upload process:", {
+      log.file.info("Starting upload process", {
         fileName: currentFile.name,
         fileSize: currentFile.size,
         architectureName: newArchitecture.name,
@@ -426,7 +453,10 @@ const Provider = () => {
         handleProgressUpdate
       );
 
-      console.log("Upload completed:", uploadResult);
+      log.file.info("Upload completed", {
+        uploadResult,
+        status: uploadResult.details?.status,
+      });
 
       if (uploadResult.details?.status === "assembling") {
         setMessage(
@@ -452,7 +482,10 @@ const Provider = () => {
       setSelectedFiles(undefined);
       setProgress(0);
     } catch (error) {
-      console.error("Upload failed:", error);
+      log.file.error("Upload failed", {
+        error: error.message,
+        stack: error.stack,
+      });
       setMessage(error.response?.data?.message || error.message);
       setMessageType("danger");
     }

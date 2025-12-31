@@ -3,7 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/config-loader');
-const { log } = require('./app/utils/Logger');
+const { log, morganMiddleware } = require('./app/utils/Logger');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
@@ -247,6 +247,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Morgan HTTP request logging
+app.use(morganMiddleware);
+
 // Initialize roles in database (must be defined before initializeApp uses it)
 const initial = async () => {
   try {
@@ -333,6 +336,7 @@ const initializeApp = async () => {
     // NOW load all routes - strategies are guaranteed to exist
     log.app.info('Loading application routes...');
 
+    require('./app/routes/health.routes')(app);
     require('./app/routes/auth.routes')(app);
     require('./app/routes/oidc.routes')(app);
     require('./app/routes/mail.routes')(app);

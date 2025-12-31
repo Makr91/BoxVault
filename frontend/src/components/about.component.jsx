@@ -4,6 +4,7 @@ import { FaStar } from "react-icons/fa6";
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
 import UserService from "../services/user.service";
+import { log } from "../utils/Logger";
 import BoxVaultVersion from "../version.json";
 
 const About = () => {
@@ -17,6 +18,10 @@ const About = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isBoxVaultFavorited, setIsBoxVaultFavorited] = useState(false);
   const [favoriteMessage, setFavoriteMessage] = useState("");
+
+  useEffect(() => {
+    document.title = "About";
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -42,7 +47,9 @@ const About = () => {
             favorites.some((f) => f.clientId === "boxvault")
           );
         } catch (error) {
-          console.error("Error loading favorites:", error);
+          log.api.error("Error loading favorites", {
+            error: error.message,
+          });
         }
       }
     };
@@ -68,7 +75,10 @@ const About = () => {
 
       setTimeout(() => setFavoriteMessage(""), 3000);
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      log.component.error("Error toggling favorite", {
+        clientId: "boxvault",
+        error: error.message,
+      });
       setFavoriteMessage("Failed to update favorites");
       setTimeout(() => setFavoriteMessage(""), 3000);
     }

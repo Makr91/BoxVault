@@ -6,6 +6,7 @@ import ArchitectureService from "../services/architecture.service";
 import FileService from "../services/file.service";
 import ProviderService from "../services/provider.service";
 import VersionDataService from "../services/version.service";
+import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -53,10 +54,10 @@ const Version = () => {
       providerName,
       architectureName
     ).catch((e) => {
-      console.log(
-        `Error deleting files for architecture ${architectureName}:`,
-        e
-      );
+      log.file.error("Error deleting files for architecture", {
+        architectureName,
+        error: e.message,
+      });
       throw e;
     });
 
@@ -73,7 +74,10 @@ const Version = () => {
         providerName,
         architecture.name
       ).catch((e) => {
-        console.log(`Error deleting architecture ${architecture.name}:`, e);
+        log.component.error("Error deleting architecture", {
+          architectureName: architecture.name,
+          error: e.message,
+        });
         throw e;
       });
     }
@@ -94,7 +98,10 @@ const Version = () => {
         providers.filter((provider) => provider.name !== providerName)
       );
     } catch (e) {
-      console.log(`Error deleting provider ${providerName}:`, e);
+      log.component.error("Error deleting provider", {
+        providerName,
+        error: e.message,
+      });
       setMessage("Error deleting provider. Please try again.");
       setMessageType("danger");
     }
@@ -108,7 +115,10 @@ const Version = () => {
         navigate(`/${organization}/${name}`);
       })
       .catch((e) => {
-        console.log(e);
+        log.component.error("Error deleting version", {
+          versionNumber: version,
+          error: e.message,
+        });
       });
   };
 
@@ -139,6 +149,9 @@ const Version = () => {
   };
 
   useEffect(() => {
+    // Set document title
+    document.title = `${name} v${version}`;
+
     const fetchData = async () => {
       // Check authorization
       const user = JSON.parse(localStorage.getItem("user"));
@@ -178,10 +191,10 @@ const Version = () => {
                       downloadUrl: downloadLink,
                     };
                   } catch (e) {
-                    console.log(
-                      `Error fetching download link for ${architecture.name}:`,
-                      e
-                    );
+                    log.api.error("Error fetching download link", {
+                      architectureName: architecture.name,
+                      error: e.message,
+                    });
                     return {
                       ...architecture,
                       downloadUrl: null,
@@ -191,10 +204,10 @@ const Version = () => {
               );
               return { providerName: provider.name, architecturesWithInfo };
             } catch (e) {
-              console.log(
-                `Error fetching architectures for ${provider.name}:`,
-                e
-              );
+              log.api.error("Error fetching architectures", {
+                providerName: provider.name,
+                error: e.message,
+              });
               return { providerName: provider.name, architecturesWithInfo: [] };
             }
           }
@@ -209,7 +222,10 @@ const Version = () => {
 
         setArchitectures(architecturesByProvider);
       } catch (e) {
-        console.log("Error fetching providers:", e);
+        log.api.error("Error fetching providers", {
+          versionNumber: version,
+          error: e.message,
+        });
       }
 
       try {
@@ -220,7 +236,10 @@ const Version = () => {
         );
         setCurrentVersion(versionResponse.data);
       } catch (e) {
-        console.log("Error fetching version:", e);
+        log.api.error("Error fetching version", {
+          versionNumber: version,
+          error: e.message,
+        });
         setCurrentVersion(null);
         setMessage("No Version Found");
         setMessageType("danger");
@@ -233,7 +252,10 @@ const Version = () => {
         );
         setAllVersions(versionsResponse.data);
       } catch (e) {
-        console.log("Error fetching all versions:", e);
+        log.api.error("Error fetching all versions", {
+          boxName: name,
+          error: e.message,
+        });
       }
     };
 

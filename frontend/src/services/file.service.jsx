@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { log } from "../utils/Logger";
+
 import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
@@ -100,7 +102,8 @@ class FileService {
 
     while (Date.now() - startTime < timeout) {
       try {
-        console.log(`Assembly check attempt ${attempts + 1}:`, {
+        log.file.debug("Assembly check attempt", {
+          attempt: attempts + 1,
           elapsed: `${Math.round((Date.now() - startTime) / 1000)}s`,
           delay: `${delay}ms`,
         });
@@ -120,7 +123,7 @@ class FileService {
           const maxDiff = Math.max(1024 * 1024, fileSize * 0.01);
 
           if (sizeDiff > maxDiff) {
-            console.error("Size mismatch after assembly:", {
+            log.file.error("Size mismatch after assembly", {
               originalSize: fileSize,
               assembledSize: assembledFileSize,
               difference: sizeDiff,
@@ -131,7 +134,7 @@ class FileService {
             );
           }
 
-          console.log("Assembly completed successfully:", {
+          log.file.info("Assembly completed successfully", {
             finalSize: assembledFileSize,
             originalSize: fileSize,
             duration: `${Math.round((Date.now() - startTime) / 1000)}s`,
@@ -175,7 +178,9 @@ class FileService {
         if (error.message.includes("size mismatch")) {
           throw error;
         }
-        console.warn("Assembly check failed:", error);
+        log.file.warn("Assembly check failed", {
+          error: error.message,
+        });
       }
     }
 
@@ -199,7 +204,7 @@ class FileService {
       throw new Error("No file provided");
     }
 
-    console.log("Starting file upload:", {
+    log.file.info("Starting file upload", {
       fileName: file.name,
       fileSize: file.size,
       checksum: checksum || "none",
@@ -212,7 +217,7 @@ class FileService {
       let uploadedBytes = 0;
       let currentChunk = 0;
 
-      console.log("Starting chunked upload:", {
+      log.file.info("Starting chunked upload", {
         fileName: file.name,
         fileSize: file.size,
         chunkSize: CHUNK_SIZE,
@@ -224,7 +229,9 @@ class FileService {
         const start = currentChunk * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE, file.size);
 
-        console.log(`Uploading chunk ${currentChunk + 1}/${totalChunks}:`, {
+        log.file.debug("Uploading chunk", {
+          current: currentChunk + 1,
+          total: totalChunks,
           start,
           end,
           size: end - start,
@@ -255,7 +262,7 @@ class FileService {
         );
 
         if (result.details.isComplete) {
-          console.log("Upload completed successfully:", result);
+          log.file.info("Upload completed successfully", { result });
           return result;
         }
 
@@ -263,7 +270,7 @@ class FileService {
       }
 
       // All chunks uploaded, poll for assembly
-      console.log("All chunks uploaded, starting assembly phase...");
+      log.file.info("All chunks uploaded, starting assembly phase");
 
       if (onUploadProgress) {
         onUploadProgress({
@@ -281,8 +288,9 @@ class FileService {
         onUploadProgress
       );
     } catch (error) {
-      console.error("Upload failed:", {
-        error,
+      log.file.error("Upload failed", {
+        error: error.message,
+        stack: error.stack,
         fileName: file.name,
         fileSize: file.size,
         type: file.type,
@@ -314,7 +322,10 @@ class FileService {
       );
       return response.data.downloadUrl;
     } catch (error) {
-      console.error("Error getting download link:", error);
+      log.api.error("Error getting download link", {
+        architecture,
+        error: error.message,
+      });
       throw error;
     }
   }

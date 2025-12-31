@@ -8,6 +8,7 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import BoxDataService from "../services/box.service";
+import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -54,7 +55,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         return profile.avatar_url;
       }
     } catch (error) {
-      console.error("Error fetching Gravatar profile:", error);
+      log.api.error("Error fetching Gravatar profile", {
+        emailHash,
+        error: error.message,
+      });
     }
     return null;
   }, []);
@@ -78,7 +82,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             const url = await fetchGravatarUrl(emailHash);
             return { orgName, url };
           } catch (error) {
-            console.error(`Error fetching Gravatar for ${orgName}:`, error);
+            log.api.error("Error fetching Gravatar for organization", {
+              orgName,
+              error: error.message,
+            });
             return { orgName, url: null };
           }
         }
@@ -219,7 +226,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             EventBus.dispatch("logout", null);
             setBoxes([]);
           } else {
-            console.log(e);
+            log.api.error("Error retrieving public boxes", {
+              error: e.message,
+            });
             setMessage("Error retrieving public boxes.");
             setMessageType("danger");
           }
@@ -228,9 +237,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       BoxDataService.getAll(organization)
         .then((response) => {
           if (isMountedRef.current) {
-            const allBoxes = Array.isArray(response.data.boxes)
-              ? response.data.boxes
-              : [];
+            const allBoxes = Array.isArray(response.data) ? response.data : [];
             setBoxes(allBoxes);
           }
         })
@@ -239,13 +246,25 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             EventBus.dispatch("logout", null);
             setBoxes([]);
           } else {
-            console.log(e);
+            log.api.error("Error retrieving organization boxes", {
+              organization,
+              error: e.message,
+            });
             setMessage("Error retrieving organization boxes.");
             setMessageType("danger");
           }
         });
     }
   }, [showOnlyPublic, organization]);
+
+  useEffect(() => {
+    // Set document title based on organization
+    if (organization) {
+      document.title = organization;
+    } else {
+      document.title = "BoxVault";
+    }
+  }, [organization]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -266,7 +285,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           if (showOnlyPublic) {
             allBoxes = Array.isArray(response.data) ? response.data : [];
           } else {
-            allBoxes = response.data.boxes || [];
+            allBoxes = Array.isArray(response.data) ? response.data : [];
           }
 
           setBoxes(allBoxes);
@@ -275,7 +294,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           setGravatarUrls(urls);
         }
       } catch (e) {
-        console.error("Error fetching boxes:", e);
+        log.api.error("Error fetching boxes", {
+          showOnlyPublic,
+          organization,
+          error: e.message,
+        });
         if (isMountedRef.current) {
           setBoxes([]);
           const errorMessage =
@@ -314,7 +337,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           setMessageType("success");
         })
         .catch((e) => {
-          console.log(e);
+          log.api.error("Error removing all boxes", {
+            organization,
+            error: e.message,
+          });
           setMessage("Error removing all boxes.");
           setMessageType("danger");
         });
@@ -358,13 +384,16 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           if (showOnlyPublic) {
             allBoxes = Array.isArray(response.data) ? response.data : [];
           } else {
-            allBoxes = response.data.boxes || [];
+            allBoxes = Array.isArray(response.data) ? response.data : [];
           }
           const filteredBoxes = filterBoxes(allBoxes);
           setBoxes(filteredBoxes);
         }
       } catch (e) {
-        console.log(e);
+        log.api.error("Error filtering boxes", {
+          searchName,
+          error: e.message,
+        });
         if (isMountedRef.current) {
           setBoxes([]);
         }
@@ -410,7 +439,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         setMessageType("success");
       })
       .catch((e) => {
-        console.log(e);
+        log.api.error("Error creating box", {
+          boxName: newBox.name,
+          error: e.message,
+        });
         const errorMessage =
           e.response && e.response.data && e.response.data.message
             ? e.response.data.message

@@ -2,9 +2,13 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
+import { log } from "./utils/Logger";
 import version from "./version.json";
 
-console.log(`${version.name} - Version: ${version.version}`);
+log.app.info("BoxVault application starting", {
+  name: version.name,
+  version: version.version,
+});
 
 const container = document.getElementById("root");
 const root = createRoot(container);

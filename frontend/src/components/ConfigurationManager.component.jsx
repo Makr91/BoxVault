@@ -6,6 +6,7 @@ import {
   processConfig,
   validateConfigValue,
 } from "../utils/ConfigProcessorUtils";
+import { log } from "../utils/Logger";
 
 import ConfigFieldRenderer from "./ConfigFieldRenderer.component";
 import OidcProviderManager from "./OidcProviderManager.component";
@@ -35,7 +36,10 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           setSections(organizedSections);
         },
         (error) => {
-          console.error("Error fetching config:", error);
+          log.api.error("Error fetching config", {
+            configName,
+            error: error.message,
+          });
         }
       );
     },
@@ -115,7 +119,10 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
         setSubmitError("");
       },
       (error) => {
-        console.error("Error updating config:", error);
+        log.component.error("Error updating config", {
+          configName: selectedConfig,
+          error: error.message,
+        });
         setMessage("Error updating configuration.");
         setMessageType("danger");
       }

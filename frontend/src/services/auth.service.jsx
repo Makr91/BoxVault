@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import EventBus from "../common/EventBus";
+import { log } from "../utils/Logger";
 
 import authHeader from "./auth-header";
 
@@ -19,7 +20,9 @@ const getGravatarConfig = async () => {
     }
     return null;
   } catch (error) {
-    console.error("Error fetching Gravatar configuration:", error);
+    log.api.error("Error fetching Gravatar configuration", {
+      error: error.message,
+    });
     return null;
   }
 };
@@ -62,7 +65,7 @@ const refreshTokenIfNeeded = async () => {
       return userData;
     }
   } catch (error) {
-    console.error("Token refresh failed:", error);
+    log.auth.error("Token refresh failed", { error: error.message });
     return null;
   }
   return null;
@@ -147,7 +150,9 @@ axios.interceptors.response.use(
           }
         } catch (refreshError) {
           if (!refreshError.name?.includes("Cancel")) {
-            console.error("Token refresh failed:", refreshError);
+            log.auth.error("Token refresh failed", {
+              error: refreshError.message,
+            });
           }
         }
       }
@@ -222,7 +227,9 @@ const refreshUserData = async () => {
       return userData;
     }
   } catch (error) {
-    console.error("Error refreshing user data:", error);
+    log.auth.error("Error refreshing user data", {
+      error: error.message,
+    });
   }
   return null;
 };
@@ -252,7 +259,7 @@ const logout = async () => {
       }
     }
   } catch (error) {
-    console.error("OIDC logout error:", error);
+    log.auth.error("OIDC logout error", { error: error.message });
     // Continue with local logout even if OIDC logout fails
   }
 
@@ -292,7 +299,10 @@ const getGravatarProfile = async (emailHash, signal) => {
     if (error.name === "AbortError") {
       return null;
     }
-    console.error("Error fetching Gravatar profile:", error);
+    log.api.error("Error fetching Gravatar profile", {
+      emailHash,
+      error: error.message,
+    });
     return null;
   }
 };

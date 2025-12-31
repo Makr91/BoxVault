@@ -1,16 +1,10 @@
-/**
- * @fileoverview Centralized Logging System for BoxVault
- * @description Winston-based logging system for structured application logging
- * @author Mark Gilbert
- * @license GPL-3.0
- */
-
 const winston = require('winston');
-const fs = require('fs');
+const morgan = require('morgan');
+const fsPromises = require('fs').promises;
 const path = require('path');
+const { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync } = require('fs');
+const { createGzip } = require('zlib');
 
-// Get logging configuration (config should be loaded before Logger)
-// This avoids circular dependency by having config loaded in main app before Logger import
 let loggingConfig;
 try {
   const { loadConfig } = require('./config-loader');
@@ -18,103 +12,255 @@ try {
   loggingConfig = appConfig.logging || {};
 } catch (e) {
   void e;
-  // If config loading fails, use defaults
   loggingConfig = {};
 }
 
-// Extract values from config objects and merge with defaults
 const extractedConfig = {
   level: loggingConfig.level?.value || 'info',
   console_enabled: loggingConfig.console_enabled?.value !== false,
   log_directory: loggingConfig.log_directory?.value || '/var/log/boxvault',
   performance_threshold_ms: loggingConfig.performance_threshold_ms?.value || 1000,
+  enable_compression: loggingConfig.enable_compression?.value !== false,
+  compression_age_days: loggingConfig.compression_age_days?.value || 7,
+  max_files: loggingConfig.max_files?.value || 30,
   categories: {},
 };
 
-// Extract category values
 if (loggingConfig.categories) {
   for (const [category, config] of Object.entries(loggingConfig.categories)) {
     extractedConfig.categories[category] = config?.value || extractedConfig.level;
   }
 }
 
-// Ensure log directory exists
 const logDir = extractedConfig.log_directory;
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true, mode: 0o755 });
+if (!existsSync(logDir)) {
+  mkdirSync(logDir, { recursive: true, mode: 0o755 });
 }
 
-/**
- * Common log format configuration
- */
-const logFormat = winston.format.combine(
-  winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss.SSS',
-  }),
-  winston.format.errors({ stack: true }),
-  winston.format.json()
-);
+const compressFile = async filePath => {
+  try {
+    const compressedPath = `${filePath}.gz`;
 
-/**
- * Console format for development
- */
-const consoleFormat = winston.format.combine(
-  winston.format.timestamp({
-    format: 'HH:mm:ss',
-  }),
-  winston.format.colorize({ all: true }),
-  winston.format.printf(({ level, message, timestamp, category, ...meta }) => {
-    const categoryStr = category ? `[${category}]` : '';
-    const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta, null, 0)}` : '';
-    return `${timestamp} ${categoryStr} ${level}: ${message}${metaStr}`;
-  })
-);
+    if (existsSync(compressedPath)) {
+      return;
+    }
 
-/**
- * Create a logger for a specific category
- * @param {string} category - Log category name
- * @param {string} filename - Log filename (without extension)
- * @returns {winston.Logger} Configured winston logger
- */
+    const readStream = createReadStream(filePath);
+    const writeStream = createWriteStream(compressedPath);
+    const gzip = createGzip();
+
+    await new Promise((resolve, reject) => {
+      readStream.pipe(gzip).pipe(writeStream).on('finish', resolve).on('error', reject);
+    });
+
+    await fsPromises.unlink(filePath);
+  } catch {
+    void 0;
+  }
+};
+
+const rotateLogFile = async (filePath, maxFiles) => {
+  try {
+    const archiveDir = path.join(path.dirname(filePath), 'archive');
+
+    try {
+      await fsPromises.mkdir(archiveDir, { recursive: true });
+    } catch {
+      return;
+    }
+
+    const baseName = path.basename(filePath);
+    const [today] = new Date().toISOString().split('T');
+    const archiveName = `${baseName}.${today}`;
+
+    if (existsSync(filePath)) {
+      await fsPromises.rename(filePath, path.join(archiveDir, archiveName));
+    }
+
+    if (extractedConfig.enable_compression) {
+      const compressionAgeDays = extractedConfig.compression_age_days;
+      const compressionThreshold = new Date();
+      compressionThreshold.setDate(compressionThreshold.getDate() - compressionAgeDays);
+
+      const archiveFiles = await fsPromises.readdir(archiveDir);
+      const uncompressedArchives = archiveFiles
+        .filter(file => file.startsWith(baseName) && !file.endsWith('.gz'))
+        .filter(file => {
+          const dateMatch = file.match(/\.(?<date>\d{4}-\d{2}-\d{2})(?:\.(?<counter>\d+))?$/);
+          if (dateMatch) {
+            const fileDate = new Date(dateMatch.groups.date);
+            return fileDate < compressionThreshold;
+          }
+          return false;
+        });
+
+      await Promise.all(
+        uncompressedArchives.map(file => compressFile(path.join(archiveDir, file)))
+      );
+    }
+
+    const archiveFiles = await fsPromises.readdir(archiveDir);
+    const logArchives = archiveFiles
+      .filter(file => file.startsWith(baseName))
+      .sort()
+      .reverse();
+
+    if (logArchives.length > maxFiles) {
+      const filesToDelete = logArchives.slice(maxFiles);
+      await Promise.all(filesToDelete.map(file => fsPromises.unlink(path.join(archiveDir, file))));
+    }
+  } catch {
+    void 0;
+  }
+};
+
+class DailyRotatingFileTransport extends winston.transports.File {
+  constructor(options) {
+    super(options);
+    this.maxFiles = options.maxFiles || 5;
+    this.lastRotateDate = null;
+  }
+
+  async write(info, callback) {
+    try {
+      const [currentDate] = new Date().toISOString().split('T');
+
+      if (this.lastRotateDate !== currentDate && existsSync(this.filename)) {
+        await rotateLogFile(this.filename, this.maxFiles);
+        this.lastRotateDate = currentDate;
+      }
+    } catch {
+      void 0;
+    }
+
+    super.write(info, callback);
+  }
+}
+
+const transports = [
+  new winston.transports.Console({
+    format: winston.format.simple(),
+  }),
+];
+
+try {
+  if (!existsSync(logDir)) {
+    mkdirSync(logDir, { recursive: true });
+  }
+
+  const logFiles = [
+    'application.log',
+    'access.log',
+    'database.log',
+    'errors.log',
+    'auth.log',
+    'api-requests.log',
+    'file-operations.log',
+  ];
+
+  for (const logFile of logFiles) {
+    const logPath = path.join(logDir, logFile);
+    if (existsSync(logPath)) {
+      try {
+        const archiveDir = path.join(logDir, 'archive');
+        if (!existsSync(archiveDir)) {
+          mkdirSync(archiveDir, { recursive: true });
+        }
+
+        const [today] = new Date().toISOString().split('T');
+        let archiveName = `${logFile}.${today}`;
+        let archivePath = path.join(archiveDir, archiveName);
+
+        let counter = 1;
+        while (existsSync(archivePath)) {
+          archiveName = `${logFile}.${today}.${counter}`;
+          archivePath = path.join(archiveDir, archiveName);
+          counter++;
+        }
+
+        renameSync(logPath, archivePath);
+      } catch {
+        void 0;
+      }
+    }
+  }
+
+  transports.push(
+    new DailyRotatingFileTransport({
+      filename: path.join(logDir, 'application.log'),
+      format: winston.format.json(),
+      maxFiles: extractedConfig.max_files,
+    }),
+    new DailyRotatingFileTransport({
+      filename: path.join(logDir, 'errors.log'),
+      format: winston.format.json(),
+      level: 'error',
+      maxFiles: extractedConfig.max_files,
+    })
+  );
+} catch {
+  void 0;
+}
+
+const logger = winston.createLogger({
+  level: extractedConfig.level,
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports,
+});
+
+const accessLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [
+    new DailyRotatingFileTransport({
+      filename: path.join(logDir, 'access.log'),
+      format: winston.format.json(),
+      level: 'info',
+      maxFiles: extractedConfig.max_files,
+    }),
+  ],
+});
+
 const createCategoryLogger = (category, filename) => {
   const categoryLevel = extractedConfig.categories[category] || extractedConfig.level;
-  const transports = [];
+  const categoryTransports = [];
 
-  // File transport for this category
-  transports.push(
-    new winston.transports.File({
+  categoryTransports.push(
+    new DailyRotatingFileTransport({
       filename: path.join(logDir, `${filename}.log`),
       level: categoryLevel,
-      format: logFormat,
-      maxsize: 50 * 1024 * 1024, // 50MB max file size
-      maxFiles: 5, // Keep 5 files
-      tailable: true,
+      format: winston.format.json(),
+      maxFiles: extractedConfig.max_files,
     })
   );
 
-  // Console transport for development
   if (extractedConfig.console_enabled && process.env.NODE_ENV !== 'production') {
-    transports.push(
+    categoryTransports.push(
       new winston.transports.Console({
         level: categoryLevel,
-        format: consoleFormat,
+        format: winston.format.combine(
+          winston.format.timestamp({ format: 'HH:mm:ss' }),
+          winston.format.colorize({ all: true }),
+          winston.format.printf(({ level, message, timestamp, category: cat, ...meta }) => {
+            const categoryStr = cat ? `[${cat}]` : '';
+            const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta, null, 0)}` : '';
+            return `${timestamp} ${categoryStr} ${level}: ${message}${metaStr}`;
+          })
+        ),
       })
     );
   }
 
   return winston.createLogger({
     level: categoryLevel,
-    format: logFormat,
+    format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
     defaultMeta: { category, service: 'boxvault' },
-    transports,
+    transports: categoryTransports,
     exitOnError: false,
     silent: extractedConfig.level === 'silent',
   });
 };
 
-/**
- * Category-specific loggers for BoxVault
- */
 const appLogger = createCategoryLogger('app', 'application');
 const apiLogger = createCategoryLogger('api', 'api-requests');
 const databaseLogger = createCategoryLogger('database', 'database');
@@ -122,18 +268,10 @@ const authLogger = createCategoryLogger('auth', 'auth');
 const fileLogger = createCategoryLogger('file', 'file-operations');
 const errorLogger = createCategoryLogger('error', 'errors');
 
-/**
- * Helper function to safely log with fallback to stderr
- * @param {winston.Logger} logger - Winston logger instance
- * @param {string} level - Log level
- * @param {string} message - Log message
- * @param {Object} meta - Additional metadata
- */
-const safeLog = (logger, level, message, meta = {}) => {
+const safeLog = (loggerInstance, level, message, meta = {}) => {
   try {
-    logger[level](message, meta);
+    loggerInstance[level](message, meta);
   } catch (error) {
-    // Fallback to stderr if winston fails
     const timestamp = new Date().toISOString();
     const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
     process.stderr.write(
@@ -142,9 +280,6 @@ const safeLog = (logger, level, message, meta = {}) => {
   }
 };
 
-/**
- * Convenience logging functions for each category
- */
 const log = {
   app: {
     info: (msg, meta) => safeLog(appLogger, 'info', msg, meta),
@@ -189,19 +324,13 @@ const log = {
   },
 };
 
-/**
- * Performance timing helper
- * @param {string} operation - Operation name
- * @returns {Object} Timer object with end() function
- */
 const createTimer = operation => {
   const start = process.hrtime.bigint();
   return {
     end: (meta = {}) => {
       const end = process.hrtime.bigint();
-      const duration = Number(end - start) / 1000000; // Convert nanoseconds to milliseconds
+      const duration = Number(end - start) / 1000000;
 
-      // Log slow operations
       const thresholdMs = extractedConfig.performance_threshold_ms || 1000;
       if (duration >= thresholdMs) {
         log.app.warn(`Slow operation detected: ${operation}`, {
@@ -217,12 +346,6 @@ const createTimer = operation => {
   };
 };
 
-/**
- * Request logging middleware helper
- * @param {string} requestId - Unique request identifier
- * @param {Object} req - Express request object
- * @returns {Object} Request logger with timing
- */
 const createRequestLogger = (requestId, req) => {
   const start = Date.now();
 
@@ -263,15 +386,30 @@ const createRequestLogger = (requestId, req) => {
   };
 };
 
+const morganMiddleware = morgan('combined', {
+  stream: {
+    write: message => accessLogger.info(message.trim()),
+  },
+});
+
+logger.info('Application logger initialized');
+accessLogger.info('Access logger initialized');
+databaseLogger.info('Database logger initialized');
+authLogger.info('Auth logger initialized');
+fileLogger.info('File logger initialized');
+errorLogger.info('Error logger initialized');
+
 module.exports = {
   log,
   createTimer,
   createRequestLogger,
-  // Export individual loggers for direct use if needed
-  appLogger,
-  apiLogger,
+  morganMiddleware,
+  logger,
+  accessLogger,
   databaseLogger,
   authLogger,
   fileLogger,
   errorLogger,
+  appLogger,
+  apiLogger,
 };

@@ -5,10 +5,15 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AuthService from "../services/auth.service";
 import ServiceAccountService from "../services/service_account.service";
 import UserService from "../services/user.service";
+import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
 const Profile = () => {
+  useEffect(() => {
+    document.title = "Profile";
+  }, []);
+
   const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
   const [gravatarProfile, setGravatarProfile] = useState({});
   const [newPassword, setNewPassword] = useState("");
@@ -97,7 +102,10 @@ const Profile = () => {
       AuthService.logout();
       navigate("/login");
     } catch (error) {
-      console.error("Error deleting account:", error);
+      log.auth.error("Error deleting account", {
+        userId: currentUser.id,
+        error: error.message,
+      });
       setMessage("Failed to delete account. Please try again.");
     }
   };
@@ -147,7 +155,10 @@ const Profile = () => {
       }
     } catch (error) {
       if (!error.name?.includes("Cancel") && !error.name?.includes("Abort")) {
-        console.error("Error loading Gravatar profile:", error);
+        log.api.error("Error loading Gravatar profile", {
+          emailHash,
+          error: error.message,
+        });
       }
     }
   }, []);
@@ -158,7 +169,10 @@ const Profile = () => {
       setIsOnlyUserInOrg(isOnly);
     } catch (error) {
       if (!error.name?.includes("Cancel") && !error.name?.includes("Abort")) {
-        console.error("Error checking organization status:", error);
+        log.api.error("Error checking organization status", {
+          organizationName,
+          error: error.message,
+        });
       }
     }
   }, []);
@@ -209,7 +223,9 @@ const Profile = () => {
             !error.message?.includes("aborted") &&
             !error.name?.includes("Cancel")
           ) {
-            console.error("Error loading service accounts:", error);
+            log.api.error("Error loading service accounts", {
+              error: error.message,
+            });
           }
         }
       }
@@ -234,7 +250,9 @@ const Profile = () => {
         !error.message?.includes("aborted") &&
         !error.name?.includes("Cancel")
       ) {
-        console.error("Error loading service accounts:", error);
+        log.api.error("Error loading service accounts", {
+          error: error.message,
+        });
       }
     }
   };
@@ -255,7 +273,9 @@ const Profile = () => {
         !error.message?.includes("aborted") &&
         !error.name?.includes("Cancel")
       ) {
-        console.error("Error creating service account:", error);
+        log.api.error("Error creating service account", {
+          error: error.message,
+        });
       }
     }
     controller.abort();
@@ -271,7 +291,10 @@ const Profile = () => {
         !error.message?.includes("aborted") &&
         !error.name?.includes("Cancel")
       ) {
-        console.error("Error deleting service account:", error);
+        log.api.error("Error deleting service account", {
+          serviceAccountId: id,
+          error: error.message,
+        });
       }
     }
     controller.abort();

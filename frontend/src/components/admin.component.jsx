@@ -11,6 +11,10 @@ import OrganizationUserManager from "./OrganizationUserManager.component";
  * Provides authentication guard and tab management for admin features
  */
 const Admin = () => {
+  useEffect(() => {
+    document.title = "Admin";
+  }, []);
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("organizations");
   const [message, setMessage] = useState("");

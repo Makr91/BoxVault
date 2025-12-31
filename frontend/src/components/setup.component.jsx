@@ -3,6 +3,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 
 import SetupService from "../services/setup.service";
+import { log } from "../utils/Logger";
 
 const SetupComponent = () => {
   const [configs, setConfigs] = useState({
@@ -22,12 +23,18 @@ const SetupComponent = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.title = "Setup";
+  }, []);
+
+  useEffect(() => {
     SetupService.isSetupComplete()
       .then((response) => {
         setSetupComplete(response.data.setupComplete);
       })
       .catch((error) => {
-        console.error("Error checking setup status:", error);
+        log.api.error("Error checking setup status", {
+          error: error.message,
+        });
       });
   }, []);
 
@@ -192,11 +199,15 @@ const SetupComponent = () => {
             updateFormValidity(errors);
           })
           .catch((error) => {
-            console.error("Error fetching configs:", error);
+            log.api.error("Error fetching configs", {
+              error: error.message,
+            });
           });
       })
       .catch((error) => {
-        console.error("Error verifying setup token:", error);
+        log.api.error("Error verifying setup token", {
+          error: error.message,
+        });
         setMessage("Invalid setup token.");
       });
   };
@@ -450,7 +461,9 @@ const SetupComponent = () => {
         }, 5000);
       })
       .catch((error) => {
-        console.error("Error updating configuration:", error);
+        log.api.error("Error updating configuration", {
+          error: error.message,
+        });
         setMessage("Failed to update configuration.");
       });
   };
@@ -459,11 +472,15 @@ const SetupComponent = () => {
     if (authorizedSetupToken) {
       SetupService.getConfigs(authorizedSetupToken)
         .then((response) => {
-          console.log("Fetched configs:", response.data.configs);
+          log.component.debug("Fetched configs", {
+            configs: response.data.configs,
+          });
           setConfigs(response.data.configs);
         })
         .catch((error) => {
-          console.error("Error fetching configs:", error);
+          log.api.error("Error fetching configs", {
+            error: error.message,
+          });
         });
     }
   }, [authorizedSetupToken]);

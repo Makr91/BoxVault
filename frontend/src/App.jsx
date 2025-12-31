@@ -18,6 +18,7 @@ import Setup from "./components/setup.component";
 import Version from "./components/version.component";
 import AuthService from "./services/auth.service";
 import SetupService from "./services/setup.service";
+import { log } from "./utils/Logger";
 
 const App = () => {
   // Initialize Bootstrap
@@ -84,7 +85,7 @@ const App = () => {
         if (!mounted) {
           return;
         }
-        console.error("Error checking setup status:", error);
+        log.app.error("Error checking setup status", { error: error.message });
       }
     };
 
@@ -112,7 +113,10 @@ const App = () => {
             setGravatarFetched(true);
           } catch (error) {
             if (error.name !== "AbortError") {
-              console.error("Error fetching Gravatar:", error);
+              log.api.error("Error fetching Gravatar", {
+                emailHash,
+                error: error.message,
+              });
               setGravatarFetched(true);
             }
           }

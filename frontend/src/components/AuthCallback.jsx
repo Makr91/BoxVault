@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
+import { log } from "../utils/Logger";
 
 /**
  * AuthCallback Component
@@ -36,7 +37,7 @@ const AuthCallback = () => {
           errorMessage = `Authentication error: ${error}`;
       }
 
-      console.error("Authentication error:", error);
+      log.auth.error("Authentication error", { error, errorMessage });
       navigate("/login", {
         state: { error: errorMessage },
         replace: true,
@@ -50,7 +51,7 @@ const AuthCallback = () => {
         const userData = { accessToken: token };
         localStorage.setItem("user", JSON.stringify(userData));
 
-        console.log("Authentication successful, token stored");
+        log.auth.info("Authentication successful, token stored");
 
         // Fetch full user data with the token
         fetch(`${window.location.origin}/api/user`, {
@@ -63,7 +64,7 @@ const AuthCallback = () => {
             if (response.ok) {
               return response.json();
             }
-            console.warn("Failed to fetch user data, using token only");
+            log.auth.warn("Failed to fetch user data, using token only");
             return null;
           })
           .then((fullUserData) => {
@@ -78,10 +79,9 @@ const AuthCallback = () => {
                 );
                 provider = extractedProvider;
               } catch (decodeError) {
-                console.warn(
-                  "Failed to decode JWT for provider extraction:",
-                  decodeError
-                );
+                log.auth.warn("Failed to decode JWT for provider extraction", {
+                  error: decodeError.message,
+                });
               }
 
               const completeUserData = {
@@ -91,7 +91,7 @@ const AuthCallback = () => {
                 provider,
               };
               localStorage.setItem("user", JSON.stringify(completeUserData));
-              console.log("Full user data fetched and stored", { provider });
+              log.auth.info("Full user data fetched and stored", { provider });
 
               // Trigger login event to update navbar
               EventBus.dispatch("login", completeUserData);
@@ -101,37 +101,43 @@ const AuthCallback = () => {
             const intendedUrl = localStorage.getItem("boxvault_intended_url");
             if (intendedUrl) {
               localStorage.removeItem("boxvault_intended_url");
-              console.log("Redirecting to intended URL:", intendedUrl);
+              log.auth.info("Redirecting to intended URL", {
+                url: intendedUrl,
+              });
               navigate(intendedUrl, { replace: true });
             } else {
               navigate("/profile", { replace: true });
             }
           })
           .catch((userFetchError) => {
-            console.warn("Error fetching user data:", userFetchError);
+            log.auth.warn("Error fetching user data", {
+              error: userFetchError.message,
+            });
 
             // Navigate even if user data fetch fails
             const intendedUrl = localStorage.getItem("boxvault_intended_url");
             if (intendedUrl) {
               localStorage.removeItem("boxvault_intended_url");
-              console.log("Redirecting to intended URL:", intendedUrl);
+              log.auth.info("Redirecting to intended URL after error", {
+                url: intendedUrl,
+              });
               navigate(intendedUrl, { replace: true });
             } else {
               navigate("/profile", { replace: true });
             }
           });
       } catch (callbackError) {
-        console.error(
-          "Error processing authentication callback:",
-          callbackError
-        );
+        log.auth.error("Error processing authentication callback", {
+          error: callbackError.message,
+          stack: callbackError.stack,
+        });
         navigate("/login", {
           state: { error: "Failed to process authentication" },
           replace: true,
         });
       }
     } else {
-      console.error("Auth callback received with no token or error");
+      log.auth.error("Auth callback received with no token or error");
       navigate("/login", {
         state: { error: "Invalid authentication response" },
         replace: true,

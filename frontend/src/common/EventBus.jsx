@@ -1,3 +1,5 @@
+import { log } from "../utils/Logger";
+
 class EventBusService {
   constructor() {
     this.eventMap = new Map();
@@ -18,7 +20,10 @@ class EventBusService {
           callback(e.detail);
         }
       } catch (error) {
-        console.error("Error in event callback:", error);
+        log.error.error("Error in event callback", {
+          event,
+          error: error.message,
+        });
       }
     };
 
@@ -39,7 +44,10 @@ class EventBusService {
           }
         }
       } catch (error) {
-        console.error("Error cleaning up event listener:", error);
+        log.error.error("Error cleaning up event listener", {
+          event,
+          error: error.message,
+        });
       }
     };
   }

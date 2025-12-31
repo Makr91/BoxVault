@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FaStar, FaXmark, FaGripVertical, FaPlus } from "react-icons/fa6";
 
 import FavoritesService from "../services/favorites.service";
+import { log } from "../utils/Logger";
 
 const FavoritesManager = () => {
   const [favorites, setFavorites] = useState([]);
@@ -24,7 +25,7 @@ const FavoritesManager = () => {
       setFavorites(rawResponse.data || []);
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
-      console.error("Error loading favorites:", error);
+      log.api.error("Error loading favorites", { error: error.message });
       setMessage("Failed to load favorites");
     } finally {
       setLoading(false);
@@ -45,7 +46,7 @@ const FavoritesManager = () => {
       const enrichedResponse = await FavoritesService.getUserInfoClaims();
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
-      console.error("Error saving favorites:", error);
+      log.api.error("Error saving favorites", { error: error.message });
       setMessage("Failed to save favorites");
     } finally {
       setSaving(false);
@@ -141,7 +142,10 @@ const FavoritesManager = () => {
           />
         );
       } catch (err) {
-        console.log("Invalid URL for favicon:", err);
+        log.component.debug("Invalid URL for favicon", {
+          url: app.homeUrl,
+          error: err.message,
+        });
         return <FaStar style={iconStyle} className="text-warning" />;
       }
     }

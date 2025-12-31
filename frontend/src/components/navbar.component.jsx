@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import FavoritesService from "../services/favorites.service";
+import { log } from "../utils/Logger";
 
 const Navbar = ({
   currentUser,
@@ -78,7 +79,9 @@ const Navbar = ({
             !error.name?.includes("Cancel") &&
             !error.message?.includes("aborted")
           ) {
-            console.error("Error loading user claims:", error);
+            log.api.error("Error loading user claims", {
+              error: error.message,
+            });
           }
         }
       } else {
@@ -105,7 +108,9 @@ const Navbar = ({
         return idTokenPayload.iss || "";
       }
     } catch (error) {
-      console.debug("Could not extract issuer from id_token:", error);
+      log.auth.debug("Could not extract issuer from id_token", {
+        error: error.message,
+      });
     }
     return "";
   };
@@ -135,7 +140,7 @@ const Navbar = ({
           }
         }
       } catch (error) {
-        console.error("Error loading configs:", error);
+        log.api.error("Error loading configs", { error: error.message });
       }
     };
 
@@ -211,7 +216,10 @@ const Navbar = ({
           />
         );
       } catch (e) {
-        console.log("Invalid URL for favicon:", e);
+        log.component.debug("Invalid URL for favicon", {
+          url: app.homeUrl,
+          error: e.message,
+        });
         return null;
       }
     }

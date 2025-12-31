@@ -166,6 +166,30 @@ logging:
     subsection: Logging Settings
     required: true
     order: 4
+  enable_compression:
+    type: boolean
+    value: true
+    description: Enable gzip compression of archived log files
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 5
+  compression_age_days:
+    type: integer
+    value: 7
+    description: Number of days before archived logs are compressed
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 6
+  max_files:
+    type: integer
+    value: 30
+    description: Maximum number of archived log files to keep
+    section: Application
+    subsection: Logging Settings
+    required: true
+    order: 7
   categories:
     app:
       type: select
@@ -230,5 +254,99 @@ logging:
       description: Log level for file operations
       section: Application
       subsection: Logging Categories
+      required: false
+      order: 5
+frontend_logging:
+  enabled:
+    type: boolean
+    value: true
+    description: Enable frontend browser logging
+    section: Application
+    subsection: Frontend Logging
+    required: true
+    order: 1
+  level:
+    type: select
+    value: info
+    options:
+      - error
+      - warn
+      - info
+      - debug
+      - trace
+    description: Default frontend logging level
+    section: Application
+    subsection: Frontend Logging
+    required: true
+    order: 2
+  categories:
+    app:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend app-level logs
+      section: Application
+      subsection: Frontend Logging Categories
+      required: false
+      order: 1
+    auth:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend authentication logs
+      section: Application
+      subsection: Frontend Logging Categories
+      required: false
+      order: 2
+    api:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend API call logs
+      section: Application
+      subsection: Frontend Logging Categories
+      required: false
+      order: 3
+    file:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend file operation logs
+      section: Application
+      subsection: Frontend Logging Categories
+      required: false
+      order: 4
+    component:
+      type: select
+      value: debug
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend component logs
+      section: Application
+      subsection: Frontend Logging Categories
       required: false
       order: 5

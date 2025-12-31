@@ -5,8 +5,13 @@ import { useLocation } from "react-router-dom";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
+import { log } from "../utils/Logger";
 
 const Register = ({ theme }) => {
+  useEffect(() => {
+    document.title = "Register";
+  }, []);
+
   const [formValues, setFormValues] = useState({
     username: "",
     email: "",
@@ -30,7 +35,10 @@ const Register = ({ theme }) => {
           const response = await AuthService.validateInvitationToken(token);
           setOrganizationName(response.data.organizationName);
         } catch (error) {
-          console.error("Invalid or expired token:", error);
+          log.auth.error("Invalid or expired token", {
+            token,
+            error: error.message,
+          });
         }
       }
     };

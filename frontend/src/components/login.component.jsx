@@ -5,9 +5,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
+import { log } from "../utils/Logger";
 
 const Login = ({ theme }) => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "Login";
+  }, []);
   const location = useLocation();
 
   const [formValues, setFormValues] = useState({
@@ -38,7 +43,7 @@ const Login = ({ theme }) => {
         setAuthMethod("local");
       }
     } catch (error) {
-      console.error("Error loading auth methods:", error);
+      log.auth.error("Error loading auth methods", { error: error.message });
       setAuthMethods([{ id: "local", name: "Local Account", enabled: true }]);
       setAuthMethod("local");
     } finally {
@@ -68,7 +73,9 @@ const Login = ({ theme }) => {
           window.location.reload();
         }
       } catch (tokenError) {
-        console.error("Error processing OIDC token:", tokenError);
+        log.auth.error("Error processing OIDC token", {
+          error: tokenError.message,
+        });
         setMessage("Failed to process authentication");
       }
     } else if (error) {

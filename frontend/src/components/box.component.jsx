@@ -9,6 +9,7 @@ import BoxDataService from "../services/box.service";
 import FileService from "../services/file.service";
 import ProviderService from "../services/provider.service";
 import VersionDataService from "../services/version.service";
+import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -20,7 +21,7 @@ const Box = ({ theme }) => {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState(null);
   const navigate = useNavigate();
-  console.log(theme);
+  log.component.debug("Box component theme", { theme });
   const initialBoxState = {
     id: null,
     name: "",
@@ -73,10 +74,10 @@ const Box = ({ theme }) => {
       providerName,
       architectureName
     ).catch((e) => {
-      console.log(
-        `Error deleting files for architecture ${architectureName}:`,
-        e
-      );
+      log.file.error("Error deleting files for architecture", {
+        architectureName,
+        error: e.message,
+      });
       throw e;
     });
   };
@@ -92,7 +93,10 @@ const Box = ({ theme }) => {
       providerName
     );
     for (const architecture of architectures.data) {
-      console.log(architecture.name);
+      log.component.debug("Deleting architecture", {
+        architectureName: architecture.name,
+        provider: providerName,
+      });
       // eslint-disable-next-line no-await-in-loop
       await deleteFilesForArchitecture(
         providerName,
@@ -107,7 +111,10 @@ const Box = ({ theme }) => {
         providerName,
         architecture.name
       ).catch((e) => {
-        console.log(`Error deleting architecture ${architecture.name}:`, e);
+        log.component.error("Error deleting architecture", {
+          architectureName: architecture.name,
+          error: e.message,
+        });
         throw e;
       });
     }
@@ -120,7 +127,10 @@ const Box = ({ theme }) => {
       versionNumber
     );
     for (const provider of versionProviders.data) {
-      console.log(provider.name);
+      log.component.debug("Deleting provider", {
+        providerName: provider.name,
+        version: versionNumber,
+      });
       // eslint-disable-next-line no-await-in-loop
       await deleteArchitecturesForProvider(provider.name, versionNumber);
       // eslint-disable-next-line no-await-in-loop
@@ -130,7 +140,10 @@ const Box = ({ theme }) => {
         versionNumber,
         provider.name
       ).catch((e) => {
-        console.log(`Error deleting provider ${provider.name}:`, e);
+        log.component.error("Error deleting provider", {
+          providerName: provider.name,
+          error: e.message,
+        });
         throw e;
       });
     }
@@ -150,7 +163,10 @@ const Box = ({ theme }) => {
         versions.filter((version) => version.versionNumber !== versionNumber)
       );
     } catch (e) {
-      console.log(`Error deleting version ${versionNumber}:`, e);
+      log.component.error("Error deleting version", {
+        versionNumber,
+        error: e.message,
+      });
       const errorMessage =
         e.response && e.response.data && e.response.data.message
           ? e.response.data.message
@@ -174,6 +190,9 @@ const Box = ({ theme }) => {
           const boxData = boxResponse.data;
           setCurrentBox(boxData);
           setOriginalName(boxData.name);
+
+          // Set document title
+          document.title = boxData.name;
 
           if (boxData.user && boxData.user.organization) {
             setBoxOrganization(boxData.user.organization.name);
@@ -203,7 +222,10 @@ const Box = ({ theme }) => {
                   }));
                 })
                 .catch((e) => {
-                  console.log(e);
+                  log.api.error("Error fetching providers", {
+                    versionNumber: version.versionNumber,
+                    error: e.message,
+                  });
                 });
             });
           } else {
@@ -211,7 +233,11 @@ const Box = ({ theme }) => {
             setMessageType("danger");
           }
         } catch (e) {
-          console.log(e);
+          log.api.error("Error loading box data", {
+            organization,
+            boxName: name,
+            error: e.message,
+          });
           setMessage("No Box Found");
           setMessageType("danger");
         }
@@ -220,6 +246,13 @@ const Box = ({ theme }) => {
 
     loadData();
   }, [organization, name]);
+
+  // Update title when box name changes (e.g., after edit)
+  useEffect(() => {
+    if (currentBox.name) {
+      document.title = currentBox.name;
+    }
+  }, [currentBox.name]);
 
   const convertFieldValue = (fieldName, value) => {
     if (fieldName === "isPublic") {
@@ -259,7 +292,11 @@ const Box = ({ theme }) => {
     BoxDataService.update(currentUser.organization, currentBox.name, data).then(
       (response) => {
         setCurrentBox({ ...currentBox, published: status });
-        console.log(response.data);
+        log.api.debug("Box release status updated", {
+          boxName: currentBox.name,
+          published: status,
+          response: response.data,
+        });
       }
     );
   };
@@ -287,7 +324,10 @@ const Box = ({ theme }) => {
         }
       })
       .catch((e) => {
-        console.log(e);
+        log.api.error("Error updating box", {
+          boxName: currentBox.name,
+          error: e.message,
+        });
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
         } else {
@@ -300,11 +340,17 @@ const Box = ({ theme }) => {
   const deleteBox = () => {
     BoxDataService.remove(currentUser.organization, currentBox.name)
       .then((response) => {
-        console.log(response.data);
+        log.api.debug("Box deleted successfully", {
+          boxName: currentBox.name,
+          response: response.data,
+        });
         navigate(`/${currentUser.organization}`);
       })
       .catch((e) => {
-        console.log(e);
+        log.api.error("Error deleting box", {
+          boxName: currentBox.name,
+          error: e.message,
+        });
         setMessage("An error occurred while deleting the box.");
         setMessageType("danger");
       });
