@@ -34,7 +34,10 @@ try {
   fs.writeFileSync(backendPackagePath, JSON.stringify(backendPackage, null, 2) + '\n');
   
   // 3. Update frontend version.json
-  const versionJson = { version: rootVersion };
+  const versionJson = { 
+    name: rootPackage.name,
+    version: rootVersion 
+  };
   fs.writeFileSync(frontendVersionPath, JSON.stringify(versionJson, null, 2) + '\n');
   
   // 4. Update config files (if they exist)
