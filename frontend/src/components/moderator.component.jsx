@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 
+import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
+import InvitationService from "../services/invitation.service";
 import OrganizationService from "../services/organization.service";
 import UserService from "../services/user.service";
-import InvitationService from "../services/invitation.service";
 
 import ConfirmationModal from "./confirmation.component";
-
-import EventBus from "../common/EventBus";
 
 const Moderator = ({ currentOrganization }) => {
   const [users, setUsers] = useState([]);
@@ -255,7 +254,9 @@ const Moderator = ({ currentOrganization }) => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="orgDescription">Organization Description</label>
+                    <label htmlFor="orgDescription">
+                      Organization Description
+                    </label>
                     <textarea
                       className="form-control"
                       id="orgDescription"
@@ -268,9 +269,7 @@ const Moderator = ({ currentOrganization }) => {
                   </button>
                 </form>
                 {updateMessage && (
-                  <div className="alert alert-info mt-3">
-                    {updateMessage}
-                  </div>
+                  <div className="alert alert-info mt-3">{updateMessage}</div>
                 )}
               </div>
             </div>
@@ -292,14 +291,16 @@ const Moderator = ({ currentOrganization }) => {
                       <small>Boxes: {user.totalBoxes || 0}</small> <br />
                       <small>Roles:</small>
                       <ul>
-                        {user.roles && user.roles.map((role, index) => (
-                          <li key={index}>{role}</li>
-                        ))}
+                        {user.roles &&
+                          user.roles.map((role, index) => (
+                            <li key={index}>{role}</li>
+                          ))}
                       </ul>
                     </div>
                     <div>
-                      {user.roles && !user.roles.some((role) => role === "admin") && (
-                        user.roles.some((role) => role === "moderator") ? (
+                      {user.roles &&
+                        !user.roles.some((role) => role === "admin") &&
+                        (user.roles.some((role) => role === "moderator") ? (
                           <button
                             className="btn btn-secondary btn-sm me-2"
                             onClick={() => handleDemoteUser(user.id)}
@@ -313,8 +314,7 @@ const Moderator = ({ currentOrganization }) => {
                           >
                             Promote
                           </button>
-                        )
-                      )}
+                        ))}
                     </div>
                   </li>
                 ))}
@@ -373,19 +373,19 @@ const Moderator = ({ currentOrganization }) => {
                       <tr key={invitation.id}>
                         <td>{invitation.email}</td>
                         <td>{new Date(invitation.expires).toLocaleString()}</td>
-                        <td>{invitation.accepted ? 'Yes' : 'No'}</td>
-                        <td>{invitation.expired ? 'Yes' : 'No'}</td>
+                        <td>{invitation.accepted ? "Yes" : "No"}</td>
+                        <td>{invitation.expired ? "Yes" : "No"}</td>
                         <td>
-                          <a 
-                            href={`${window.location.origin}/register?token=${invitation.token}&organization=${currentOrganization}`} 
-                            target="_blank" 
+                          <a
+                            href={`${window.location.origin}/register?token=${invitation.token}&organization=${currentOrganization}`}
+                            target="_blank"
                             rel="noopener noreferrer"
                           >
                             Invitation Link
                           </a>
                         </td>
                         <td>
-                          <button 
+                          <button
                             className="btn btn-danger btn-sm"
                             onClick={() => handleDeleteClick(invitation)}
                           >

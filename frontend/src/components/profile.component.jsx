@@ -334,8 +334,12 @@ const Profile = () => {
               width="100"
               height="100"
             />
-            <h3 className="mt-3">{gravatarProfile.display_name || currentUser.username}</h3>
-            <p className="text-muted">{gravatarProfile.job_title || "No Job Title"}</p>
+            <h3 className="mt-3">
+              {gravatarProfile.display_name || currentUser.username}
+            </h3>
+            <p className="text-muted">
+              {gravatarProfile.job_title || "No Job Title"}
+            </p>
           </div>
           <div className="card-body">
             {verificationMessage && (
@@ -345,8 +349,11 @@ const Profile = () => {
             )}
             {!currentUser.verified && (
               <div className="alert alert-warning" role="alert">
-                Your email is not verified. 
-                <button className="btn btn-link" onClick={handleResendVerificationMail}>
+                Your email is not verified.
+                <button
+                  className="btn btn-link"
+                  onClick={handleResendVerificationMail}
+                >
                   Resend verification email
                 </button>
               </div>
@@ -405,17 +412,56 @@ const Profile = () => {
             <div className="tab-content mt-3">
               {activeTab === "profile" && (
                 <div className="tab-pane fade show active">
-                  <p><strong>Full Name:</strong> {gravatarProfile.first_name} {gravatarProfile.last_name}</p>
-                  <p><strong>Location:</strong> {gravatarProfile.location || "No Location"}</p>
-                  <p><strong>Email:</strong> {currentUser.email}</p>
-                  <p><strong>Organization:</strong> {currentUser.organization}</p>
-                  <p><strong>Roles:</strong> {currentUser.roles ? currentUser.roles.join(", ") : "No roles assigned"}</p>
-                  <p><strong>Profile URL:</strong> <a href={gravatarProfile.profile_url} target="_blank" rel="noopener noreferrer">{gravatarProfile.profile_url}</a></p>
-                  <p><strong>Verified Accounts:</strong> {gravatarProfile.number_verified_accounts}</p>
-                  <p><strong>Registration Date:</strong> {new Date(gravatarProfile.registration_date).toLocaleDateString()}</p>
-                  <p><strong>Email Hash:</strong> {currentUser.emailHash}</p>
-                  <p><strong>User ID:</strong> {currentUser.id}</p>
-                  <p><strong>Access Token:</strong> {currentUser.accessToken.substring(0, 20)}...</p>
+                  <p>
+                    <strong>Full Name:</strong> {gravatarProfile.first_name}{" "}
+                    {gravatarProfile.last_name}
+                  </p>
+                  <p>
+                    <strong>Location:</strong>{" "}
+                    {gravatarProfile.location || "No Location"}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {currentUser.email}
+                  </p>
+                  <p>
+                    <strong>Organization:</strong> {currentUser.organization}
+                  </p>
+                  <p>
+                    <strong>Roles:</strong>{" "}
+                    {currentUser.roles
+                      ? currentUser.roles.join(", ")
+                      : "No roles assigned"}
+                  </p>
+                  <p>
+                    <strong>Profile URL:</strong>{" "}
+                    <a
+                      href={gravatarProfile.profile_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {gravatarProfile.profile_url}
+                    </a>
+                  </p>
+                  <p>
+                    <strong>Verified Accounts:</strong>{" "}
+                    {gravatarProfile.number_verified_accounts}
+                  </p>
+                  <p>
+                    <strong>Registration Date:</strong>{" "}
+                    {new Date(
+                      gravatarProfile.registration_date
+                    ).toLocaleDateString()}
+                  </p>
+                  <p>
+                    <strong>Email Hash:</strong> {currentUser.emailHash}
+                  </p>
+                  <p>
+                    <strong>User ID:</strong> {currentUser.id}
+                  </p>
+                  <p>
+                    <strong>Access Token:</strong>{" "}
+                    {currentUser.accessToken.substring(0, 20)}...
+                  </p>
                 </div>
               )}
               {activeTab === "security" && (
@@ -431,7 +477,9 @@ const Profile = () => {
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
                       {passwordErrors.newPassword && (
-                        <div className="alert alert-danger">{passwordErrors.newPassword}</div>
+                        <div className="alert alert-danger">
+                          {passwordErrors.newPassword}
+                        </div>
                       )}
                     </div>
                     <div className="form-group col-md-3 mb-3">
@@ -443,7 +491,9 @@ const Profile = () => {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                       />
                       {passwordErrors.confirmPassword && (
-                        <div className="alert alert-danger">{passwordErrors.confirmPassword}</div>
+                        <div className="alert alert-danger">
+                          {passwordErrors.confirmPassword}
+                        </div>
                       )}
                     </div>
                     <button className="btn btn-primary mb-3">
@@ -462,7 +512,9 @@ const Profile = () => {
                         onChange={(e) => setNewEmail(e.target.value)}
                       />
                       {emailErrors.newEmail && (
-                        <div className="alert alert-danger">{emailErrors.newEmail}</div>
+                        <div className="alert alert-danger">
+                          {emailErrors.newEmail}
+                        </div>
                       )}
                     </div>
                     <button className="btn btn-primary mb-3">
@@ -470,17 +522,24 @@ const Profile = () => {
                     </button>
                     {emailMessage && <p className="mt-3">{emailMessage}</p>}
                   </form>
-                  {currentUser.roles.includes("ROLE_USER") && isOnlyUserInOrg && (
-                    <div>
-                      <button className="btn btn-primary" onClick={handlePromoteToModerator}>
-                        Promote to Moderator
-                      </button>
-                    </div>
-                  )}
+                  {currentUser.roles.includes("ROLE_USER") &&
+                    isOnlyUserInOrg && (
+                      <div>
+                        <button
+                          className="btn btn-primary"
+                          onClick={handlePromoteToModerator}
+                        >
+                          Promote to Moderator
+                        </button>
+                      </div>
+                    )}
                   <div className="mt-3">
                     <h4>Delete Account</h4>
                     <p>Warning: This action cannot be undone.</p>
-                    <button className="btn btn-danger" onClick={openDeleteModal}>
+                    <button
+                      className="btn btn-danger"
+                      onClick={openDeleteModal}
+                    >
                       Delete My Account
                     </button>
                   </div>
@@ -496,7 +555,9 @@ const Profile = () => {
                         className="form-control"
                         placeholder="Description"
                         value={newServiceAccountDescription}
-                        onChange={(e) => setNewServiceAccountDescription(e.target.value)}
+                        onChange={(e) =>
+                          setNewServiceAccountDescription(e.target.value)
+                        }
                         required
                       />
                     </div>
@@ -504,7 +565,9 @@ const Profile = () => {
                       <select
                         className="form-control"
                         value={newServiceAccountExpiration}
-                        onChange={(e) => setNewServiceAccountExpiration(Number(e.target.value))}
+                        onChange={(e) =>
+                          setNewServiceAccountExpiration(Number(e.target.value))
+                        }
                       >
                         <option value={30}>30 days</option>
                         <option value={60}>60 days</option>
@@ -517,22 +580,42 @@ const Profile = () => {
                     </button>
                   </form>
                   <ul className="list-group">
-                    {serviceAccounts.map(account => (
+                    {serviceAccounts.map((account) => (
                       <li key={account.id} className="list-group-item">
                         <div className="d-flex justify-content-between align-items-center">
                           <div>
-                            <strong>{account.username}</strong> - {account.description}
+                            <strong>{account.username}</strong> -{" "}
+                            {account.description}
                             <br />
-                            <small>Expires: {new Date(account.expiresAt).toLocaleDateString()}</small>
+                            <small>
+                              Expires:{" "}
+                              {new Date(account.expiresAt).toLocaleDateString()}
+                            </small>
                           </div>
                           <div>
-                            <button 
-                              className="btn btn-outline-secondary btn-sm me-2" 
-                              onClick={() => setShowPasswords(prev => ({...prev, [account.id]: !prev[account.id]}))}
+                            <button
+                              className="btn btn-outline-secondary btn-sm me-2"
+                              onClick={() =>
+                                setShowPasswords((prev) => ({
+                                  ...prev,
+                                  [account.id]: !prev[account.id],
+                                }))
+                              }
                             >
-                               {showPasswords[account.id] ? <FaEyeSlash /> : <FaEye />}
+                              {showPasswords[account.id] ? (
+                                <FaEyeSlash />
+                              ) : (
+                                <FaEye />
+                              )}
                             </button>
-                            <button className="btn btn-danger btn-sm" onClick={() => handleDeleteServiceAccount(account.id)}>Delete</button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() =>
+                                handleDeleteServiceAccount(account.id)
+                              }
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                         {showPasswords[account.id] && (

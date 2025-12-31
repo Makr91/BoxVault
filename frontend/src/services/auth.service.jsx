@@ -6,6 +6,8 @@ import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
 
+const getCurrentUser = () => JSON.parse(localStorage.getItem("user"));
+
 const getGravatarConfig = async () => {
   try {
     const response = await axios.get(`${baseURL}/api/config/gravatar`);
@@ -63,6 +65,7 @@ const refreshTokenIfNeeded = async () => {
     console.error("Token refresh failed:", error);
     return null;
   }
+  return null;
 };
 
 // Add request interceptor to refresh token before requests
@@ -262,8 +265,6 @@ const logoutLocal = () => {
   localStorage.removeItem("user");
   window.location.href = "/";
 };
-
-const getCurrentUser = () => JSON.parse(localStorage.getItem("user"));
 
 const getGravatarProfile = async (emailHash, signal) => {
   try {

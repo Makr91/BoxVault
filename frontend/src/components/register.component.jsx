@@ -104,12 +104,17 @@ const Register = ({ theme }) => {
   return (
     <div className="col-md-12">
       <div className="container col-md-3">
-        {theme === "light" ? <BoxVaultLight className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3"/> : <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3"/>}
+        {theme === "light" ? (
+          <BoxVaultLight className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
+        ) : (
+          <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
+        )}
         <h2 className="fs-1 text-center mt-4">BoxVault</h2>
 
         {organizationName && (
           <div className="alert alert-info text-center">
-            You are joining the organization: <strong>{organizationName}</strong>
+            You are joining the organization:{" "}
+            <strong>{organizationName}</strong>
           </div>
         )}
 
@@ -126,7 +131,9 @@ const Register = ({ theme }) => {
                   onChange={handleInputChange}
                 />
                 {validationErrors.username && (
-                  <div className="alert alert-danger">{validationErrors.username}</div>
+                  <div className="alert alert-danger">
+                    {validationErrors.username}
+                  </div>
                 )}
               </div>
 
@@ -140,7 +147,9 @@ const Register = ({ theme }) => {
                   onChange={handleInputChange}
                 />
                 {validationErrors.email && (
-                  <div className="alert alert-danger">{validationErrors.email}</div>
+                  <div className="alert alert-danger">
+                    {validationErrors.email}
+                  </div>
                 )}
               </div>
 
@@ -154,7 +163,9 @@ const Register = ({ theme }) => {
                   onChange={handleInputChange}
                 />
                 {validationErrors.password && (
-                  <div className="alert alert-danger">{validationErrors.password}</div>
+                  <div className="alert alert-danger">
+                    {validationErrors.password}
+                  </div>
                 )}
               </div>
 

@@ -158,7 +158,11 @@ const Login = ({ theme }) => {
   return (
     <div className="col-md-12">
       <div className="container col-md-3">
-        {theme === "light" ? <BoxVaultLight className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" /> : <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />}
+        {theme === "light" ? (
+          <BoxVaultLight className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
+        ) : (
+          <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
+        )}
         <h2 className="fs-1 text-center mt-4">BoxVault</h2>
 
         <form onSubmit={handleLogin} noValidate>
@@ -189,8 +193,9 @@ const Login = ({ theme }) => {
           {authMethod.startsWith("oidc-") && (
             <div className="form-group">
               <div className="alert alert-info text-center">
-                <i className="fas fa-external-link-alt"></i>
-                Click Sign in Below and You will be redirected to your identity provider to sign in.
+                <i className="fas fa-external-link-alt" />
+                Click Sign in Below and You will be redirected to your identity
+                provider to sign in.
               </div>
             </div>
           )}
@@ -205,8 +210,8 @@ const Login = ({ theme }) => {
                   name="username"
                   value={formValues.username}
                   onChange={handleInputChange}
-                  onFocus={e => e.preventDefault()}
-                  onBlur={e => e.preventDefault()}
+                  onFocus={(e) => e.preventDefault()}
+                  onBlur={(e) => e.preventDefault()}
                 />
               </div>
 
@@ -218,8 +223,8 @@ const Login = ({ theme }) => {
                   name="password"
                   value={formValues.password}
                   onChange={handleInputChange}
-                  onFocus={e => e.preventDefault()}
-                  onBlur={e => e.preventDefault()}
+                  onFocus={(e) => e.preventDefault()}
+                  onBlur={(e) => e.preventDefault()}
                 />
               </div>
             </>
@@ -243,12 +248,11 @@ const Login = ({ theme }) => {
 
           <div className="d-grid gap-2 col-6 mx-auto mt-3">
             <button className="btn btn-primary btn-block" disabled={loading}>
-              {loading && (
-                <span className="spinner-border spinner-border-sm"></span>
-              )}
+              {loading && <span className="spinner-border spinner-border-sm" />}
               <span>
                 {authMethod.startsWith("oidc-")
-                  ? authMethods.find((m) => m.id === authMethod)?.name || "Continue with OIDC"
+                  ? authMethods.find((m) => m.id === authMethod)?.name ||
+                    "Continue with OIDC"
                   : "Login"}
               </span>
             </button>

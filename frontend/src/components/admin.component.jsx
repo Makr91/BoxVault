@@ -2,14 +2,13 @@ import React, { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { Link, useNavigate } from "react-router-dom";
 
-import ConfigService from "../services/config.service";
-import UserService from "../services/user.service";
-import OrganizationService from "../services/organization.service";
-
-import ConfirmationModal from "./confirmation.component";
-
 import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
+import ConfigService from "../services/config.service";
+import OrganizationService from "../services/organization.service";
+import UserService from "../services/user.service";
+
+import ConfirmationModal from "./confirmation.component";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -764,66 +763,84 @@ const Admin = () => {
       const errorKey = currentPath.join(".");
 
       // Handle database type conditional visibility for DB config
-      if (selectedConfig === 'db') {
-        const databaseType = config.database_type?.value || 'mysql';
-        
-        if (key === 'sql') {
-          if (databaseType === 'sqlite') {
+      if (selectedConfig === "db") {
+        const databaseType = config.database_type?.value || "mysql";
+
+        if (key === "sql") {
+          if (databaseType === "sqlite") {
             // For SQLite, only show storage field
             const storageEntry = entry.storage;
             if (storageEntry) {
-              const storageError = validationErrors['sql.storage'];
+              const storageError = validationErrors["sql.storage"];
               return (
                 <div className="form-group" key="sql.storage">
-                  <label htmlFor="sql.storage">SQLite Database File Path:</label>
+                  <label htmlFor="sql.storage">
+                    SQLite Database File Path:
+                  </label>
                   <input
                     type="text"
-                    className={`form-control ${storageError ? 'is-invalid' : ''}`}
+                    className={`form-control ${storageError ? "is-invalid" : ""}`}
                     id="sql.storage"
-                    value={storageEntry.value || ''}
-                    onChange={(e) => handleConfigChange(['sql', 'storage'], e.target.value)}
+                    value={storageEntry.value || ""}
+                    onChange={(e) =>
+                      handleConfigChange(["sql", "storage"], e.target.value)
+                    }
                   />
-                  <small className="form-text text-muted">{storageEntry.description}</small>
-                  {storageError && <div className="text-danger">{storageError}</div>}
+                  <small className="form-text text-muted">
+                    {storageEntry.description}
+                  </small>
+                  {storageError && (
+                    <div className="text-danger">{storageError}</div>
+                  )}
                 </div>
               );
             }
             return null;
           }
         }
-        
+
         // Hide mysql_pool section when SQLite is selected
-        if (key === 'mysql_pool' && databaseType === 'sqlite') {
+        if (key === "mysql_pool" && databaseType === "sqlite") {
           return null;
         }
       }
-  
-      if (typeof entry === 'object' && entry !== null && 'type' in entry && 'value' in entry) {
+
+      if (
+        typeof entry === "object" &&
+        entry !== null &&
+        "type" in entry &&
+        "value" in entry
+      ) {
         const { type, value, description, options } = entry;
         const error = validationErrors[errorKey];
 
         // Special handling for object-type fields - don't render as input
-        if (type === 'object') {
+        if (type === "object") {
           // Skip object fields - they should be processed recursively, not rendered as inputs
           return null;
         }
-  
+
         const renderInput = () => {
           switch (type) {
-            case 'select':
+            case "select":
               return (
                 <select
-                  className={`form-control ${error ? 'is-invalid' : ''}`}
+                  className={`form-control ${error ? "is-invalid" : ""}`}
                   id={errorKey}
                   value={value}
-                  onChange={(e) => handleConfigChange(currentPath, e.target.value)}
+                  onChange={(e) =>
+                    handleConfigChange(currentPath, e.target.value)
+                  }
                 >
-                  {options && options.map(option => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
+                  {options &&
+                    options.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                 </select>
               );
-            case 'boolean':
+            case "boolean":
               return (
                 <div className="form-check">
                   <input
@@ -831,14 +848,16 @@ const Admin = () => {
                     className="form-check-input"
                     id={errorKey}
                     checked={value}
-                    onChange={(e) => handleConfigChange(currentPath, e.target.checked)}
+                    onChange={(e) =>
+                      handleConfigChange(currentPath, e.target.checked)
+                    }
                   />
                   <label className="form-check-label" htmlFor={errorKey}>
                     {description}
                   </label>
                 </div>
               );
-            case 'password':
+            case "password":
               return (
                 <div className="input-group">
                   <input
@@ -846,36 +865,49 @@ const Admin = () => {
                     className="form-control"
                     id={errorKey}
                     value={value}
-                    onChange={(e) => handleConfigChange(currentPath, e.target.value)}
+                    onChange={(e) =>
+                      handleConfigChange(currentPath, e.target.value)
+                    }
                   />
-                  <button 
-                    className="btn btn-outline-secondary" 
+                  <button
+                    className="btn btn-outline-secondary"
                     type="button"
-                    onClick={() => setShowPasswords(prev => ({...prev, [errorKey]: !prev[errorKey]}))}
+                    onClick={() =>
+                      setShowPasswords((prev) => ({
+                        ...prev,
+                        [errorKey]: !prev[errorKey],
+                      }))
+                    }
                   >
-                     {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
+                    {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
               );
-            case 'textarea':
+            case "textarea":
               return (
                 <textarea
                   className="form-control"
                   id={errorKey}
                   value={value}
-                  onChange={(e) => handleConfigChange(currentPath, e.target.value)}
+                  onChange={(e) =>
+                    handleConfigChange(currentPath, e.target.value)
+                  }
                   rows={3}
                 />
               );
-            case 'array':
-              const arrayValue = Array.isArray(value) ? value.join(',') : value || '';
+            case "array":
+              const arrayValue = Array.isArray(value)
+                ? value.join(",")
+                : value || "";
               return (
                 <input
                   type="text"
                   className="form-control"
                   id={errorKey}
                   value={arrayValue}
-                  onChange={(e) => handleConfigChange(currentPath, e.target.value.split(','))}
+                  onChange={(e) =>
+                    handleConfigChange(currentPath, e.target.value.split(","))
+                  }
                   placeholder="Comma-separated values"
                 />
               );
@@ -886,12 +918,14 @@ const Admin = () => {
                   className="form-control"
                   id={errorKey}
                   value={value}
-                  onChange={(e) => handleConfigChange(currentPath, e.target.value)}
+                  onChange={(e) =>
+                    handleConfigChange(currentPath, e.target.value)
+                  }
                 />
               );
           }
         };
-  
+
         return (
           <div key={errorKey} className="form-group">
             <label htmlFor={errorKey}>{key}:</label>
@@ -900,15 +934,15 @@ const Admin = () => {
             {error && <div className="text-danger">{error}</div>}
           </div>
         );
-      } else if (typeof entry === 'object' && entry !== null) {
+      } else if (typeof entry === "object" && entry !== null) {
         // Special handling for oidc_providers
-        if (key === 'oidc_providers' && selectedConfig === 'auth') {
+        if (key === "oidc_providers" && selectedConfig === "auth") {
           return (
             <div key={errorKey} className="col-md-12 mt-3">
               <div className="card">
                 <div className="card-header d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">
-                    <i className="fas fa-shield-alt me-2"></i>
+                    <i className="fas fa-shield-alt me-2" />
                     OIDC Providers
                   </h5>
                   <button
@@ -918,44 +952,57 @@ const Admin = () => {
                       setShowOidcProviderModal(true);
                     }}
                   >
-                    <i className="fas fa-plus me-1"></i>
+                    <i className="fas fa-plus me-1" />
                     Add OIDC Provider
                   </button>
                 </div>
                 <div className="card-body">
                   <p className="text-muted mb-3">
-                    Manage OpenID Connect authentication providers for single sign-on integration.
+                    Manage OpenID Connect authentication providers for single
+                    sign-on integration.
                   </p>
-                  
+
                   {entry.value && Object.keys(entry.value).length > 0 ? (
                     <div className="row">
-                      {Object.entries(entry.value).map(([providerName, providerConfig]) => (
-                        <div key={providerName} className="col-md-6 mb-3">
-                          <div className="card border-secondary">
-                            <div className="card-header">
-                              <h6 className="mb-0">
-                                <i className="fab fa-openid me-2"></i>
-                                {providerConfig.display_name?.value || providerName}
-                                {providerConfig.enabled?.value && (
-                                  <span className="badge bg-success ms-2">Enabled</span>
-                                )}
-                              </h6>
-                            </div>
-                            <div className="card-body">
-                              <small className="text-muted">
-                                <strong>Issuer:</strong> {providerConfig.issuer?.value}<br/>
-                                <strong>Client ID:</strong> {providerConfig.client_id?.value}<br/>
-                                <strong>Scope:</strong> {providerConfig.scope?.value}
-                              </small>
+                      {Object.entries(entry.value).map(
+                        ([providerName, providerConfig]) => (
+                          <div key={providerName} className="col-md-6 mb-3">
+                            <div className="card border-secondary">
+                              <div className="card-header">
+                                <h6 className="mb-0">
+                                  <i className="fab fa-openid me-2" />
+                                  {providerConfig.display_name?.value ||
+                                    providerName}
+                                  {providerConfig.enabled?.value && (
+                                    <span className="badge bg-success ms-2">
+                                      Enabled
+                                    </span>
+                                  )}
+                                </h6>
+                              </div>
+                              <div className="card-body">
+                                <small className="text-muted">
+                                  <strong>Issuer:</strong>{" "}
+                                  {providerConfig.issuer?.value}
+                                  <br />
+                                  <strong>Client ID:</strong>{" "}
+                                  {providerConfig.client_id?.value}
+                                  <br />
+                                  <strong>Scope:</strong>{" "}
+                                  {providerConfig.scope?.value}
+                                </small>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   ) : (
                     <div className="alert alert-info">
-                      <i className="fas fa-info-circle me-2"></i>
-                      No OIDC providers configured yet. Click "Add OIDC Provider" to set up authentication with providers like Google, Microsoft, GitHub, etc.
+                      <i className="fas fa-info-circle me-2" />
+                      No OIDC providers configured yet. Click "Add OIDC
+                      Provider" to set up authentication with providers like
+                      Google, Microsoft, GitHub, etc.
                     </div>
                   )}
                 </div>
@@ -963,18 +1010,22 @@ const Admin = () => {
             </div>
           );
         }
-        
+
         return (
           <div key={errorKey} className="col-md-6 mt-3">
-            <h5 style={{ borderBottom: '1px solid rgb(204, 204, 204)', paddingBottom: '10px' }}>{key}</h5>
-            <div className="row">
-              {renderConfigFields(entry, currentPath)}
-            </div>
+            <h5
+              style={{
+                borderBottom: "1px solid rgb(204, 204, 204)",
+                paddingBottom: "10px",
+              }}
+            >
+              {key}
+            </h5>
+            <div className="row">{renderConfigFields(entry, currentPath)}</div>
           </div>
         );
-      } 
-        return null;
-      
+      }
+      return null;
     });
 
   const checkOrganizationExists = async (name) => {
@@ -1207,7 +1258,10 @@ const Admin = () => {
                           value={newOrgName}
                           onChange={(e) => setNewOrgName(e.target.value)}
                         />
-                        <button className="btn btn-success btn-sm mt-2" type="submit">
+                        <button
+                          className="btn btn-success btn-sm mt-2"
+                          type="submit"
+                        >
                           Save
                         </button>
                         <button
@@ -1218,7 +1272,9 @@ const Admin = () => {
                         </button>
                       </form>
                     ) : (
-                      <Link to={`/${org.name}`} className="card-title">{org.name}</Link>
+                      <Link to={`/${org.name}`} className="card-title">
+                        {org.name}
+                      </Link>
                     )}
                     <div>
                       <button
@@ -1233,13 +1289,23 @@ const Admin = () => {
                       </button>
                       <button
                         className={`btn btn-${org.suspended ? "success" : "warning"} btn-sm me-2`}
-                        onClick={() => handleSuspendOrResumeOrganization(org.name, org.suspended)}
+                        onClick={() =>
+                          handleSuspendOrResumeOrganization(
+                            org.name,
+                            org.suspended
+                          )
+                        }
                       >
                         {org.suspended ? "Resume" : "Suspend"}
                       </button>
                       <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDeleteClick({ type: 'organization', name: org.name })}
+                        onClick={() =>
+                          handleDeleteClick({
+                            type: "organization",
+                            name: org.name,
+                          })
+                        }
                       >
                         Delete
                       </button>
@@ -1260,14 +1326,18 @@ const Admin = () => {
                           <small>Boxes: {user.totalBoxes}</small> <br />
                           <small>Roles:</small>
                           <ul>
-                            {user.roles && user.roles.map((role, index) => (
-                              <li key={index}>{role.name}</li>
-                            ))}
+                            {user.roles &&
+                              user.roles.map((role, index) => (
+                                <li key={index}>{role.name}</li>
+                              ))}
                           </ul>
                         </div>
                         <div>
-                          {user.roles && !user.roles.some((role) => role.name === "admin") && (
-                            user.roles.some((role) => role.name === "moderator") ? (
+                          {user.roles &&
+                            !user.roles.some((role) => role.name === "admin") &&
+                            (user.roles.some(
+                              (role) => role.name === "moderator"
+                            ) ? (
                               <button
                                 className="btn btn-secondary btn-sm me-2"
                                 onClick={() => handleDemoteUser(user.id)}
@@ -1281,17 +1351,20 @@ const Admin = () => {
                               >
                                 Promote
                               </button>
-                            )
-                          )}
+                            ))}
                           <button
                             className={`btn btn-${user.suspended ? "success" : "warning"} btn-sm me-2`}
-                            onClick={() => handleSuspendOrResumeUser(user.id, user.suspended)}
+                            onClick={() =>
+                              handleSuspendOrResumeUser(user.id, user.suspended)
+                            }
                           >
                             {user.suspended ? "Resume" : "Suspend"}
                           </button>
                           <button
                             className="btn btn-danger btn-sm"
-                            onClick={() => handleDeleteClick({ type: 'user', id: user.id })}
+                            onClick={() =>
+                              handleDeleteClick({ type: "user", id: user.id })
+                            }
                           >
                             Delete
                           </button>
@@ -1309,32 +1382,32 @@ const Admin = () => {
             <ul className="nav nav-tabs d-flex">
               <li className="nav-item">
                 <button
-                  className={`nav-link ${selectedConfig === 'app' ? 'active' : ''}`}
-                  onClick={() => setSelectedConfig('app')}
+                  className={`nav-link ${selectedConfig === "app" ? "active" : ""}`}
+                  onClick={() => setSelectedConfig("app")}
                 >
                   App Config
                 </button>
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${selectedConfig === 'auth' ? 'active' : ''}`}
-                  onClick={() => setSelectedConfig('auth')}
+                  className={`nav-link ${selectedConfig === "auth" ? "active" : ""}`}
+                  onClick={() => setSelectedConfig("auth")}
                 >
                   Auth Config
                 </button>
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${selectedConfig === 'db' ? 'active' : ''}`}
-                  onClick={() => setSelectedConfig('db')}
+                  className={`nav-link ${selectedConfig === "db" ? "active" : ""}`}
+                  onClick={() => setSelectedConfig("db")}
                 >
                   DB Config
                 </button>
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${selectedConfig === 'mail' ? 'active' : ''}`}
-                  onClick={() => setSelectedConfig('mail')}
+                  className={`nav-link ${selectedConfig === "mail" ? "active" : ""}`}
+                  onClick={() => setSelectedConfig("mail")}
                 >
                   Email Config
                 </button>
@@ -1342,10 +1415,10 @@ const Admin = () => {
               <li className="nav-item ms-auto">
                 <button
                   type="button"
-                  className={`nav-link ${!isFormValid ? 'disabled' : ''}`}
+                  className={`nav-link ${!isFormValid ? "disabled" : ""}`}
                   onClick={updateConfig}
                   disabled={!isFormValid}
-                  style={{ cursor: isFormValid ? 'pointer' : 'not-allowed' }}
+                  style={{ cursor: isFormValid ? "pointer" : "not-allowed" }}
                 >
                   Update Configuration
                 </button>
@@ -1360,7 +1433,7 @@ const Admin = () => {
                         setMessage("Server restart initiated");
                         setMessageType("success");
                       })
-                      .catch(error => {
+                      .catch((error) => {
                         setMessage("Failed to restart server");
                         setMessageType("danger");
                       });
@@ -1383,10 +1456,11 @@ const Admin = () => {
                       <div className="card mb-4">
                         <div className="card-header">
                           <h5 className="mb-0">
-                            <i className={`${section.icon} me-2`}></i>
+                            <i className={`${section.icon} me-2`} />
                             {section.title} Settings
                             <span className="badge bg-light text-dark ms-2">
-                              {section.fields.length} setting{section.fields.length !== 1 ? "s" : ""}
+                              {section.fields.length} setting
+                              {section.fields.length !== 1 ? "s" : ""}
                             </span>
                           </h5>
                         </div>
@@ -1396,7 +1470,8 @@ const Admin = () => {
                               <div
                                 key={field.path}
                                 className={
-                                  field.type === "textarea" || field.type === "array"
+                                  field.type === "textarea" ||
+                                  field.type === "array"
                                     ? "col-12"
                                     : "col-md-6"
                                 }
@@ -1415,22 +1490,38 @@ const Admin = () => {
                           return null;
                         }
 
-                        const isCollapsed = isSubsectionCollapsed(sectionName, subsectionName);
+                        const isCollapsed = isSubsectionCollapsed(
+                          sectionName,
+                          subsectionName
+                        );
 
                         if (subsectionName === "OIDC Providers") {
                           return (
                             <div key={subsectionName} className="card mb-4">
                               <div
                                 className="card-header d-flex justify-content-between align-items-center"
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => toggleSubsection(sectionName, subsectionName)}
+                                style={{ cursor: "pointer" }}
+                                onClick={() =>
+                                  toggleSubsection(sectionName, subsectionName)
+                                }
                               >
                                 <h6 className="mb-0">
-                                  <i className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}></i>
-                                  <i className="fas fa-shield-alt me-2"></i>
+                                  <i
+                                    className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}
+                                  />
+                                  <i className="fas fa-shield-alt me-2" />
                                   OIDC Providers
                                   <span className="badge bg-light text-dark ms-2">
-                                    {config.auth?.oidc?.providers ? Object.keys(config.auth.oidc.providers).length : 0} provider{Object.keys(config.auth?.oidc?.providers || {}).length !== 1 ? "s" : ""}
+                                    {config.auth?.oidc?.providers
+                                      ? Object.keys(config.auth.oidc.providers)
+                                          .length
+                                      : 0}{" "}
+                                    provider
+                                    {Object.keys(
+                                      config.auth?.oidc?.providers || {}
+                                    ).length !== 1
+                                      ? "s"
+                                      : ""}
                                   </span>
                                 </h6>
                                 <button
@@ -1442,62 +1533,111 @@ const Admin = () => {
                                     setShowOidcProviderModal(true);
                                   }}
                                 >
-                                  <i className="fas fa-plus me-1"></i>
+                                  <i className="fas fa-plus me-1" />
                                   Add OIDC Provider
                                 </button>
                               </div>
                               {!isCollapsed && (
                                 <div className="card-body">
                                   <p className="text-muted mb-3">
-                                    Manage OpenID Connect authentication providers for single sign-on integration. Click on a provider card to edit its settings.
+                                    Manage OpenID Connect authentication
+                                    providers for single sign-on integration.
+                                    Click on a provider card to edit its
+                                    settings.
                                   </p>
-                                  
-                                  {config.auth?.oidc?.providers && Object.keys(config.auth.oidc.providers).length > 0 ? (
+
+                                  {config.auth?.oidc?.providers &&
+                                  Object.keys(config.auth.oidc.providers)
+                                    .length > 0 ? (
                                     <div className="row">
-                                      {Object.entries(config.auth.oidc.providers).map(([providerName, providerConfig]) => (
-                                        <div key={providerName} className="col-md-6 mb-3">
-                                          <div 
-                                            className="card border-secondary"
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => {
-                                              setEditingProvider(providerName);
-                                              setOidcProviderForm({
-                                                name: providerName,
-                                                displayName: providerConfig.display_name?.value || "",
-                                                issuer: providerConfig.issuer?.value || "",
-                                                clientId: providerConfig.client_id?.value || "",
-                                                clientSecret: providerConfig.client_secret?.value || "",
-                                                scope: providerConfig.scope?.value || "openid profile email",
-                                                responseType: providerConfig.response_type?.value || "code",
-                                                enabled: providerConfig.enabled?.value !== undefined ? providerConfig.enabled.value : false,
-                                              });
-                                              setShowOidcProviderModal(true);
-                                            }}
+                                      {Object.entries(
+                                        config.auth.oidc.providers
+                                      ).map(
+                                        ([providerName, providerConfig]) => (
+                                          <div
+                                            key={providerName}
+                                            className="col-md-6 mb-3"
                                           >
-                                            <div className="card-header">
-                                              <h6 className="mb-0">
-                                                <i className="fab fa-openid me-2"></i>
-                                                {providerConfig.display_name?.value || providerName}
-                                                {providerConfig.enabled?.value && (
-                                                  <span className="badge bg-success ms-2">Enabled</span>
-                                                )}
-                                              </h6>
-                                            </div>
-                                            <div className="card-body">
-                                              <small className="text-muted">
-                                                <strong>Issuer:</strong> {providerConfig.issuer?.value}<br/>
-                                                <strong>Client ID:</strong> {providerConfig.client_id?.value}<br/>
-                                                <strong>Scope:</strong> {providerConfig.scope?.value}
-                                              </small>
+                                            <div
+                                              className="card border-secondary"
+                                              style={{ cursor: "pointer" }}
+                                              onClick={() => {
+                                                setEditingProvider(
+                                                  providerName
+                                                );
+                                                setOidcProviderForm({
+                                                  name: providerName,
+                                                  displayName:
+                                                    providerConfig.display_name
+                                                      ?.value || "",
+                                                  issuer:
+                                                    providerConfig.issuer
+                                                      ?.value || "",
+                                                  clientId:
+                                                    providerConfig.client_id
+                                                      ?.value || "",
+                                                  clientSecret:
+                                                    providerConfig.client_secret
+                                                      ?.value || "",
+                                                  scope:
+                                                    providerConfig.scope
+                                                      ?.value ||
+                                                    "openid profile email",
+                                                  responseType:
+                                                    providerConfig.response_type
+                                                      ?.value || "code",
+                                                  enabled:
+                                                    providerConfig.enabled
+                                                      ?.value !== undefined
+                                                      ? providerConfig.enabled
+                                                          .value
+                                                      : false,
+                                                });
+                                                setShowOidcProviderModal(true);
+                                              }}
+                                            >
+                                              <div className="card-header">
+                                                <h6 className="mb-0">
+                                                  <i className="fab fa-openid me-2" />
+                                                  {providerConfig.display_name
+                                                    ?.value || providerName}
+                                                  {providerConfig.enabled
+                                                    ?.value && (
+                                                    <span className="badge bg-success ms-2">
+                                                      Enabled
+                                                    </span>
+                                                  )}
+                                                </h6>
+                                              </div>
+                                              <div className="card-body">
+                                                <small className="text-muted">
+                                                  <strong>Issuer:</strong>{" "}
+                                                  {providerConfig.issuer?.value}
+                                                  <br />
+                                                  <strong>
+                                                    Client ID:
+                                                  </strong>{" "}
+                                                  {
+                                                    providerConfig.client_id
+                                                      ?.value
+                                                  }
+                                                  <br />
+                                                  <strong>Scope:</strong>{" "}
+                                                  {providerConfig.scope?.value}
+                                                </small>
+                                              </div>
                                             </div>
                                           </div>
-                                        </div>
-                                      ))}
+                                        )
+                                      )}
                                     </div>
                                   ) : (
                                     <div className="alert alert-info">
-                                      <i className="fas fa-info-circle me-2"></i>
-                                      No OIDC providers configured yet. Click "Add OIDC Provider" to set up authentication with providers like Google, Microsoft, GitHub, etc.
+                                      <i className="fas fa-info-circle me-2" />
+                                      No OIDC providers configured yet. Click
+                                      "Add OIDC Provider" to set up
+                                      authentication with providers like Google,
+                                      Microsoft, GitHub, etc.
                                     </div>
                                   )}
                                 </div>
@@ -1510,15 +1650,20 @@ const Admin = () => {
                           <div key={subsectionName} className="card mb-4">
                             <div
                               className="card-header"
-                              style={{ cursor: 'pointer' }}
-                              onClick={() => toggleSubsection(sectionName, subsectionName)}
+                              style={{ cursor: "pointer" }}
+                              onClick={() =>
+                                toggleSubsection(sectionName, subsectionName)
+                              }
                             >
                               <h6 className="mb-0">
-                                <i className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}></i>
-                                <i className={`${section.icon} me-2`}></i>
+                                <i
+                                  className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}
+                                />
+                                <i className={`${section.icon} me-2`} />
                                 {subsection.title}
                                 <span className="badge bg-light text-dark ms-2">
-                                  {subsection.fields.length} setting{subsection.fields.length !== 1 ? "s" : ""}
+                                  {subsection.fields.length} setting
+                                  {subsection.fields.length !== 1 ? "s" : ""}
                                 </span>
                               </h6>
                             </div>
@@ -1529,7 +1674,8 @@ const Admin = () => {
                                     <div
                                       key={field.path}
                                       className={
-                                        field.type === "textarea" || field.type === "array"
+                                        field.type === "textarea" ||
+                                        field.type === "array"
                                           ? "col-12"
                                           : "col-md-6"
                                       }
@@ -1559,56 +1705,77 @@ const Admin = () => {
 
       {/* Add OIDC Provider Modal */}
       {showOidcProviderModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  <i className="fab fa-openid me-2"></i>
+                  <i className="fab fa-openid me-2" />
                   {editingProvider ? "Edit OIDC Provider" : "Add OIDC Provider"}
                 </h5>
                 <button
                   type="button"
                   className="btn-close"
                   onClick={() => setShowOidcProviderModal(false)}
-                ></button>
+                />
               </div>
               <form onSubmit={addOidcProvider}>
                 <div className="modal-body">
                   <p className="text-muted mb-4">
-                    Configure a new OpenID Connect authentication provider. You'll need to register your application with the provider first to get the client ID and client secret.
+                    Configure a new OpenID Connect authentication provider.
+                    You'll need to register your application with the provider
+                    first to get the client ID and client secret.
                   </p>
 
                   <div className="row">
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="providerName">Provider Name <span className="text-danger">*</span></label>
+                        <label htmlFor="providerName">
+                          Provider Name <span className="text-danger">*</span>
+                        </label>
                         <input
                           type="text"
                           className="form-control"
                           id="providerName"
                           placeholder="e.g., mycompany, enterprise, provider1"
                           value={oidcProviderForm.name}
-                          onChange={(e) => handleOidcProviderFormChange("name", e.target.value.toLowerCase())}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "name",
+                              e.target.value.toLowerCase()
+                            )
+                          }
                           disabled={oidcProviderLoading}
                           required
                         />
                         <small className="form-text text-muted">
-                          Internal identifier (lowercase, letters, numbers, and underscores only)
+                          Internal identifier (lowercase, letters, numbers, and
+                          underscores only)
                         </small>
                       </div>
                     </div>
 
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="displayName">Display Name <span className="text-danger">*</span></label>
+                        <label htmlFor="displayName">
+                          Display Name <span className="text-danger">*</span>
+                        </label>
                         <input
                           type="text"
                           className="form-control"
                           id="displayName"
                           placeholder="e.g., Sign in with Company SSO"
                           value={oidcProviderForm.displayName}
-                          onChange={(e) => handleOidcProviderFormChange("displayName", e.target.value)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "displayName",
+                              e.target.value
+                            )
+                          }
                           disabled={oidcProviderLoading}
                           required
                         />
@@ -1620,33 +1787,48 @@ const Admin = () => {
 
                     <div className="col-md-12">
                       <div className="form-group mb-3">
-                        <label htmlFor="issuer">Issuer URL <span className="text-danger">*</span></label>
+                        <label htmlFor="issuer">
+                          Issuer URL <span className="text-danger">*</span>
+                        </label>
                         <input
                           type="url"
                           className="form-control"
                           id="issuer"
                           placeholder="https://your-provider.com or https://your-domain.auth0.com"
                           value={oidcProviderForm.issuer}
-                          onChange={(e) => handleOidcProviderFormChange("issuer", e.target.value)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "issuer",
+                              e.target.value
+                            )
+                          }
                           disabled={oidcProviderLoading}
                           required
                         />
                         <small className="form-text text-muted">
-                          The OIDC issuer URL (check your provider's documentation for the correct URL)
+                          The OIDC issuer URL (check your provider's
+                          documentation for the correct URL)
                         </small>
                       </div>
                     </div>
 
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="clientId">Client ID <span className="text-danger">*</span></label>
+                        <label htmlFor="clientId">
+                          Client ID <span className="text-danger">*</span>
+                        </label>
                         <input
                           type="text"
                           className="form-control"
                           id="clientId"
                           placeholder="Your OAuth client ID"
                           value={oidcProviderForm.clientId}
-                          onChange={(e) => handleOidcProviderFormChange("clientId", e.target.value)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "clientId",
+                              e.target.value
+                            )
+                          }
                           disabled={oidcProviderLoading}
                           required
                         />
@@ -1658,14 +1840,21 @@ const Admin = () => {
 
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="clientSecret">Client Secret <span className="text-danger">*</span></label>
+                        <label htmlFor="clientSecret">
+                          Client Secret <span className="text-danger">*</span>
+                        </label>
                         <input
                           type="password"
                           className="form-control"
                           id="clientSecret"
                           placeholder="Your OAuth client secret"
                           value={oidcProviderForm.clientSecret}
-                          onChange={(e) => handleOidcProviderFormChange("clientSecret", e.target.value)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "clientSecret",
+                              e.target.value
+                            )
+                          }
                           disabled={oidcProviderLoading}
                           required
                         />
@@ -1683,11 +1872,17 @@ const Admin = () => {
                           className="form-control"
                           id="scope"
                           value={oidcProviderForm.scope}
-                          onChange={(e) => handleOidcProviderFormChange("scope", e.target.value)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "scope",
+                              e.target.value
+                            )
+                          }
                           disabled={oidcProviderLoading}
                         />
                         <small className="form-text text-muted">
-                          OAuth scopes (space-separated). Default is usually sufficient.
+                          OAuth scopes (space-separated). Default is usually
+                          sufficient.
                         </small>
                       </div>
                     </div>
@@ -1699,10 +1894,17 @@ const Admin = () => {
                           className="form-control"
                           id="responseType"
                           value={oidcProviderForm.responseType}
-                          onChange={(e) => handleOidcProviderFormChange("responseType", e.target.value)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "responseType",
+                              e.target.value
+                            )
+                          }
                           disabled={oidcProviderLoading}
                         >
-                          <option value="code">Authorization Code (Recommended)</option>
+                          <option value="code">
+                            Authorization Code (Recommended)
+                          </option>
                           <option value="id_token">ID Token</option>
                           <option value="code id_token">Code + ID Token</option>
                         </select>
@@ -1719,7 +1921,12 @@ const Admin = () => {
                           className="form-check-input"
                           id="enabled"
                           checked={oidcProviderForm.enabled}
-                          onChange={(e) => handleOidcProviderFormChange("enabled", e.target.checked)}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "enabled",
+                              e.target.checked
+                            )
+                          }
                           disabled={oidcProviderLoading}
                         />
                         <label className="form-check-label" htmlFor="enabled">
@@ -1732,11 +1939,27 @@ const Admin = () => {
                   <div className="alert alert-info mt-3">
                     <h6>Configuration Instructions</h6>
                     <ol className="mb-0">
-                      <li>Register your application with your OIDC provider's developer console</li>
-                      <li>Add <code>https://your-domain.com/api/auth/oidc/callback</code> as an allowed redirect URI</li>
-                      <li>Copy the Client ID and Client Secret from your provider's console</li>
-                      <li>Find your provider's issuer URL in their documentation</li>
-                      <li>Fill out the form above and test the configuration</li>
+                      <li>
+                        Register your application with your OIDC provider's
+                        developer console
+                      </li>
+                      <li>
+                        Add{" "}
+                        <code>
+                          https://your-domain.com/api/auth/oidc/callback
+                        </code>{" "}
+                        as an allowed redirect URI
+                      </li>
+                      <li>
+                        Copy the Client ID and Client Secret from your
+                        provider's console
+                      </li>
+                      <li>
+                        Find your provider's issuer URL in their documentation
+                      </li>
+                      <li>
+                        Fill out the form above and test the configuration
+                      </li>
                     </ol>
                   </div>
                 </div>
@@ -1751,7 +1974,7 @@ const Admin = () => {
                       }}
                       disabled={oidcProviderLoading}
                     >
-                      <i className="fas fa-trash me-1"></i>
+                      <i className="fas fa-trash me-1" />
                       Delete Provider
                     </button>
                   )}
@@ -1770,11 +1993,13 @@ const Admin = () => {
                   >
                     {oidcProviderLoading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        <span className="spinner-border spinner-border-sm me-2" />
                         {editingProvider ? "Updating..." : "Adding..."}
                       </>
+                    ) : editingProvider ? (
+                      "Update Provider"
                     ) : (
-                      editingProvider ? "Update Provider" : "Add Provider"
+                      "Add Provider"
                     )}
                   </button>
                 </div>

@@ -51,10 +51,10 @@ class EventBusService {
     }
   }
 
-  remove(event, callback) {
+  remove(event) {
     const callbacks = this.eventMap.get(event);
     if (callbacks) {
-      // Find and remove the wrapped version of the callback
+      // Remove all callbacks for this event
       for (const wrappedCallback of callbacks) {
         document.removeEventListener(event, wrappedCallback);
         callbacks.delete(wrappedCallback);

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-
 import { FaStar } from "react-icons/fa6";
+
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
 import UserService from "../services/user.service";
 import BoxVaultVersion from "../version.json";
-
 
 const About = () => {
   const [projectData, setProjectData] = useState({
@@ -77,7 +76,6 @@ const About = () => {
     }
   };
 
-
   return (
     <div className="list row">
       <header className="header">
@@ -85,19 +83,19 @@ const About = () => {
         <p className="description">{projectData.description}</p>
         <h2 className="title">Version: {BoxVaultVersion.version}</h2>
 
-        {currentUser?.provider?.startsWith('oidc-') && (
+        {currentUser?.provider?.startsWith("oidc-") && (
           <div className="mb-4">
-            <button 
-              className={`btn ${isBoxVaultFavorited ? 'btn-warning' : 'btn-outline-warning'}`}
+            <button
+              className={`btn ${isBoxVaultFavorited ? "btn-warning" : "btn-outline-warning"}`}
               onClick={handleToggleFavorite}
             >
               <FaStar className="me-2" />
-              {isBoxVaultFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
+              {isBoxVaultFavorited
+                ? "Remove from Favorites"
+                : "Add to Favorites"}
             </button>
             {favoriteMessage && (
-              <div className="alert alert-info mt-2">
-                {favoriteMessage}
-              </div>
+              <div className="alert alert-info mt-2">{favoriteMessage}</div>
             )}
           </div>
         )}
@@ -107,7 +105,9 @@ const About = () => {
             <h2 className="section-title">{component.title}</h2>
             <ul className="list">
               {component.details.map((detail, idx) => (
-                <li key={idx} className="list-item">{detail}</li>
+                <li key={idx} className="list-item">
+                  {detail}
+                </li>
               ))}
             </ul>
           </section>
@@ -116,7 +116,9 @@ const About = () => {
         <h2 className="section-title">Key Features:</h2>
         <ul className="list">
           {projectData.features.map((feature, index) => (
-            <li key={index} className="list-item">{feature}</li>
+            <li key={index} className="list-item">
+              {feature}
+            </li>
           ))}
         </ul>
 
@@ -126,17 +128,32 @@ const About = () => {
           <h2 className="section-title">Support and Follow</h2>
           <ul className="list">
             <li className="list-item">
-              <a href="https://www.patreon.com/Philotic" target="_blank" rel="noopener noreferrer" className="link">
+              <a
+                href="https://www.patreon.com/Philotic"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link"
+              >
                 Support on Patreon
               </a>
             </li>
             <li className="list-item">
-              <a href="https://github.com/makr91" target="_blank" rel="noopener noreferrer" className="link">
+              <a
+                href="https://github.com/makr91"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link"
+              >
                 GitHub Profile
               </a>
             </li>
             <li className="list-item">
-              <a href="https://github.com/makr91/BoxVault" target="_blank" rel="noopener noreferrer" className="link">
+              <a
+                href="https://github.com/makr91/BoxVault"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link"
+              >
                 Project Repository
               </a>
             </li>

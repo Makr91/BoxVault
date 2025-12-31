@@ -409,13 +409,15 @@ const Provider = () => {
       // Then upload the file
       const uploadResult = await FileService.upload(
         currentFile,
-        organization,
-        name,
-        version,
-        providerName,
-        newArchitecture.name,
-        checksum,
-        checksumType,
+        {
+          organization,
+          name,
+          version,
+          provider: providerName,
+          architecture: newArchitecture.name,
+          checksum,
+          checksumType,
+        },
         (progressEvent) => {
           // Only show important status changes in the top message
           if (progressEvent.status === "assembling") {
@@ -498,17 +500,30 @@ const Provider = () => {
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <h4>Edit Provider</h4>
                     <div>
-                    {isAuthorized && (
+                      {isAuthorized && (
                         <>
-                          <button type="submit" className="btn btn-success me-2" disabled={!!validationErrors.name}>
+                          <button
+                            type="submit"
+                            className="btn btn-success me-2"
+                            disabled={!!validationErrors.name}
+                          >
                             Save
                           </button>
-                          <button type="button" className="btn btn-secondary me-2" onClick={cancelEdit}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary me-2"
+                            onClick={cancelEdit}
+                          >
                             Cancel
                           </button>
                         </>
                       )}
-                      <button className="btn btn-dark me-2" onClick={() => navigate(`/${organization}/${name}/${version}`)}>
+                      <button
+                        className="btn btn-dark me-2"
+                        onClick={() =>
+                          navigate(`/${organization}/${name}/${version}`)
+                        }
+                      >
                         Back
                       </button>
                     </div>
@@ -545,17 +560,28 @@ const Provider = () => {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h4>Provider Details</h4>
                   <div>
-                  {isAuthorized && (
-                        <>
-                          <button className="btn btn-primary me-2" onClick={() => setEditMode(true)}>
-                            Edit
-                          </button>
-                          <button className="btn btn-danger me-2" onClick={handleProviderDeleteClick}>
-                            Delete
-                          </button>
-                        </>
+                    {isAuthorized && (
+                      <>
+                        <button
+                          className="btn btn-primary me-2"
+                          onClick={() => setEditMode(true)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-danger me-2"
+                          onClick={handleProviderDeleteClick}
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
-                    <button className="btn btn-dark me-2" onClick={() => navigate(`/${organization}/${name}/${version}`)}>
+                    <button
+                      className="btn btn-dark me-2"
+                      onClick={() =>
+                        navigate(`/${organization}/${name}/${version}`)
+                      }
+                    >
                       Back
                     </button>
                   </div>
@@ -568,7 +594,10 @@ const Provider = () => {
         ) : (
           <div>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <button className="btn btn-dark me-2" onClick={() => navigate(`/`)}>
+              <button
+                className="btn btn-dark me-2"
+                onClick={() => navigate(`/`)}
+              >
                 Back
               </button>
             </div>
@@ -582,8 +611,10 @@ const Provider = () => {
             {isAuthorized && (
               <div>
                 <button
-                  className={`btn ${showAddArchitectureForm ? 'btn-secondary' : 'btn-outline-success'} me-2`}
-                  onClick={() => setShowAddArchitectureForm(!showAddArchitectureForm)}
+                  className={`btn ${showAddArchitectureForm ? "btn-secondary" : "btn-outline-success"} me-2`}
+                  onClick={() =>
+                    setShowAddArchitectureForm(!showAddArchitectureForm)
+                  }
                 >
                   {showAddArchitectureForm ? "Cancel" : "Add Architecture"}
                 </button>
@@ -613,19 +644,27 @@ const Provider = () => {
                     type="checkbox"
                     id="defaultBoxSwitch"
                     checked={newArchitecture.defaultBox}
-                    onChange={() => setNewArchitecture({ ...newArchitecture, defaultBox: !newArchitecture.defaultBox })}
+                    onChange={() =>
+                      setNewArchitecture({
+                        ...newArchitecture,
+                        defaultBox: !newArchitecture.defaultBox,
+                      })
+                    }
                     name="defaultBox"
                   />
-                  <label className="form-check-label" htmlFor="defaultBoxSwitch">
+                  <label
+                    className="form-check-label"
+                    htmlFor="defaultBoxSwitch"
+                  >
                     Default Box
                   </label>
                 </div>
                 <div className="mb-3">
                   <label className="btn btn-outline-primary">
-                    <input 
-                      type="file" 
-                      onChange={selectFile} 
-                      style={{ display: 'none' }}
+                    <input
+                      type="file"
+                      onChange={selectFile}
+                      style={{ display: "none" }}
                       accept=".box,application/octet-stream"
                     />
                     Choose Box File
@@ -633,23 +672,24 @@ const Provider = () => {
                   {selectedFiles && selectedFiles[0] && (
                     <div className="mt-2">
                       <small className="text-muted">
-                        Selected: {selectedFiles[0].name} ({formatFileSize(selectedFiles[0].size)})
+                        Selected: {selectedFiles[0].name} (
+                        {formatFileSize(selectedFiles[0].size)})
                       </small>
                     </div>
                   )}
                 </div>
                 {selectedFiles && (
                   <div>
-                    <div className="progress mb-2" style={{ height: '25px' }}>
+                    <div className="progress mb-2" style={{ height: "25px" }}>
                       <div
                         className="progress-bar bg-success progress-bar-striped progress-bar-animated"
                         role="progressbar"
                         aria-valuenow={progress}
                         aria-valuemin="0"
                         aria-valuemax="100"
-                        style={{ width: progress + "%" }}
+                        style={{ width: `${progress}%` }}
                       >
-                        <span style={{ fontSize: '0.9em', fontWeight: 'bold' }}>
+                        <span style={{ fontSize: "0.9em", fontWeight: "bold" }}>
                           {progress}%
                         </span>
                       </div>
@@ -658,14 +698,25 @@ const Provider = () => {
                       {selectedFiles[0] && (
                         <div className="upload-stats d-flex justify-content-between">
                           <small>
-                            <strong>File Size:</strong> {formatFileSize(selectedFiles[0].size)}
+                            <strong>File Size:</strong>{" "}
+                            {formatFileSize(selectedFiles[0].size)}
                           </small>
                           <small>
-                            <strong>Uploaded:</strong> {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))}
-                            {' '} ({progress}%)
+                            <strong>Uploaded:</strong>{" "}
+                            {formatFileSize(
+                              Math.round(
+                                (progress / 100) * selectedFiles[0].size
+                              )
+                            )}{" "}
+                            ({progress}%)
                           </small>
                           <small>
-                            <strong>Remaining:</strong> {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
+                            <strong>Remaining:</strong>{" "}
+                            {formatFileSize(
+                              Math.round(
+                                ((100 - progress) / 100) * selectedFiles[0].size
+                              )
+                            )}
                           </small>
                         </div>
                       )}
@@ -684,7 +735,9 @@ const Provider = () => {
                     required
                   />
                   {validationErrors.architectureName && (
-                    <div className="text-danger">{validationErrors.architectureName}</div>
+                    <div className="text-danger">
+                      {validationErrors.architectureName}
+                    </div>
                   )}
                 </div>
                 <div className="form-group col-md-3">
@@ -715,7 +768,9 @@ const Provider = () => {
                       name="checksum"
                     />
                     {validationErrors.checksum && (
-                      <div className="text-danger">{validationErrors.checksum}</div>
+                      <div className="text-danger">
+                        {validationErrors.checksum}
+                      </div>
                     )}
                   </div>
                 )}
@@ -739,22 +794,34 @@ const Provider = () => {
                 <tr key={index}>
                   <td>{architecture.name}</td>
                   <td>{architecture.defaultBox ? "Yes" : "No"}</td>
-                  <td>{architecture.fileSize ? formatFileSize(architecture.fileSize) : "N/A"}</td>
+                  <td>
+                    {architecture.fileSize
+                      ? formatFileSize(architecture.fileSize)
+                      : "N/A"}
+                  </td>
                   <td>
                     {architecture.checksum ? (
                       <span
                         onClick={() => copyToClipboard(architecture.checksum)}
                         title="Click to copy checksum"
-                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                        style={{
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}
                       >
-                        {architecture.checksum.substring(0, 20)}...{architecture.checksum.substring(architecture.checksum.length - 20)}
+                        {architecture.checksum.substring(0, 20)}...
+                        {architecture.checksum.substring(
+                          architecture.checksum.length - 20
+                        )}
                       </span>
-                    ) : "N/A"}
+                    ) : (
+                      "N/A"
+                    )}
                   </td>
                   <td>{architecture.checksumType || "N/A"}</td>
                   <td>
                     {architecture.downloadUrl && (
-                      <a 
+                      <a
                         href={architecture.downloadUrl}
                         className="btn btn-outline-primary"
                         target="_blank"
@@ -766,7 +833,12 @@ const Provider = () => {
                   </td>
                   {isAuthorized && (
                     <td>
-                      <button className="btn btn-danger me-2" onClick={() => handleArchitectureDeleteClick(architecture.name)}>
+                      <button
+                        className="btn btn-danger me-2"
+                        onClick={() =>
+                          handleArchitectureDeleteClick(architecture.name)
+                        }
+                      >
                         Delete
                       </button>
                     </td>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table } from "react-bootstrap";
 import { useParams, useNavigate, Link } from "react-router-dom";
+
 import ArchitectureService from "../services/architecture.service";
-import BoxDataService from "../services/box.service";
-import VersionDataService from "../services/version.service";
-import ProviderService from "../services/provider.service";
-import FileService from "../services/file.service";
 import AuthService from "../services/auth.service";
+import BoxDataService from "../services/box.service";
+import FileService from "../services/file.service";
+import ProviderService from "../services/provider.service";
+import VersionDataService from "../services/version.service";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -398,22 +399,22 @@ const Box = ({ theme }) => {
                 {isAuthorized && (
                   <>
                     {editMode ? (
-                    <>
-                      <button
-                        type="submit"
-                        className="btn btn-success me-2"
-                        onClick={updateBox}
-                        disabled={!!validationErrors.name}
-                      >
-                        Update
-                      </button>
-                      <button
-                        className="btn btn-secondary me-2"
-                        onClick={cancelEdit}
-                      >
-                        Cancel
-                      </button>
-                    </>
+                      <>
+                        <button
+                          type="submit"
+                          className="btn btn-success me-2"
+                          onClick={updateBox}
+                          disabled={!!validationErrors.name}
+                        >
+                          Update
+                        </button>
+                        <button
+                          className="btn btn-secondary me-2"
+                          onClick={cancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </>
                     ) : (
                       <button
                         className="btn btn-primary me-2"
@@ -423,7 +424,10 @@ const Box = ({ theme }) => {
                       </button>
                     )}
                     {currentBox.id && !editMode && (
-                      <button className="btn btn-danger me-2" onClick={handleDeleteClick}>
+                      <button
+                        className="btn btn-danger me-2"
+                        onClick={handleDeleteClick}
+                      >
                         Delete
                       </button>
                     )}
@@ -482,7 +486,7 @@ const Box = ({ theme }) => {
                         className="form-control"
                         id="organization"
                         name="organization"
-                        value={currentUser ? currentUser.organization : ''}
+                        value={currentUser ? currentUser.organization : ""}
                         onChange={handleInputChange}
                         disabled
                       />
@@ -506,7 +510,9 @@ const Box = ({ theme }) => {
                     <div className="text-danger">{validationErrors.name}</div>
                   )}
                   <small className="form-text text-muted">
-                    The name of your Vagrant box is used in tools, notifications, routing, and this UI. Short and simple is best.
+                    The name of your Vagrant box is used in tools,
+                    notifications, routing, and this UI. Short and simple is
+                    best.
                   </small>
                   <div className="form-group mt-2">
                     <label>
@@ -518,43 +524,52 @@ const Box = ({ theme }) => {
                     <label>
                       <strong>Visibility:</strong>
                     </label>
-                      <div className="d-flex">
-                        <div className="form-check me-3">
-                          <input
-                            type="radio"
-                            className="form-check-input"
-                            id="visibilityPrivate"
-                            name="isPublic"
-                            value="false"
-                            checked={!currentBox.isPublic}
-                            onChange={handleInputChange}
-                          />
-                          <label className="form-check-label" htmlFor="visibilityPrivate">
-                            Private
-                          </label>
-                        </div>
-                        <div className="form-check">
-                          <input
-                            type="radio"
-                            className="form-check-input"
-                            id="visibilityPublic"
-                            name="isPublic"
-                            value="true"
-                            checked={currentBox.isPublic}
-                            onChange={handleInputChange}
-                          />
-                          <label className="form-check-label" htmlFor="visibilityPublic">
-                            Public
-                          </label>
-                        </div>
+                    <div className="d-flex">
+                      <div className="form-check me-3">
+                        <input
+                          type="radio"
+                          className="form-check-input"
+                          id="visibilityPrivate"
+                          name="isPublic"
+                          value="false"
+                          checked={!currentBox.isPublic}
+                          onChange={handleInputChange}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor="visibilityPrivate"
+                        >
+                          Private
+                        </label>
                       </div>
-                      <small className="form-text text-muted">
-                        Making a box private prevents users from accessing it unless given permission.
-                      </small>
+                      <div className="form-check">
+                        <input
+                          type="radio"
+                          className="form-check-input"
+                          id="visibilityPublic"
+                          name="isPublic"
+                          value="true"
+                          checked={currentBox.isPublic}
+                          onChange={handleInputChange}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor="visibilityPublic"
+                        >
+                          Public
+                        </label>
+                      </div>
+                    </div>
+                    <small className="form-text text-muted">
+                      Making a box private prevents users from accessing it
+                      unless given permission.
+                    </small>
                   </div>
-                    
+
                   <div className="form-group mt-2">
-                    <label className="mb-1" htmlFor="description"><strong>Description:</strong> (Optional)</label>
+                    <label className="mb-1" htmlFor="description">
+                      <strong>Description:</strong> (Optional)
+                    </label>
                     <textarea
                       className="form-control"
                       id="description"
@@ -568,13 +583,18 @@ const Box = ({ theme }) => {
                   </div>
 
                   <div className="form-group mt-3">
-                    <h5><strong>CI/CD Integration</strong> (Optional)</h5>
+                    <h5>
+                      <strong>CI/CD Integration</strong> (Optional)
+                    </h5>
                     <small className="form-text text-muted mb-3">
-                      Connect your box to GitHub Actions for automated build status badges.
+                      Connect your box to GitHub Actions for automated build
+                      status badges.
                     </small>
-                    
+
                     <div className="form-group mt-2">
-                      <label className="mb-1" htmlFor="githubRepo"><strong>GitHub Repository:</strong> (Optional)</label>
+                      <label className="mb-1" htmlFor="githubRepo">
+                        <strong>GitHub Repository:</strong> (Optional)
+                      </label>
                       <input
                         type="text"
                         className="form-control"
@@ -585,12 +605,15 @@ const Box = ({ theme }) => {
                         placeholder="owner/repository-name"
                       />
                       <small className="form-text text-muted">
-                        Format: owner/repository-name (e.g., myorg/my-vagrant-box)
+                        Format: owner/repository-name (e.g.,
+                        myorg/my-vagrant-box)
                       </small>
                     </div>
 
                     <div className="form-group mt-2">
-                      <label className="mb-1" htmlFor="workflowFile"><strong>Workflow File:</strong> (Optional)</label>
+                      <label className="mb-1" htmlFor="workflowFile">
+                        <strong>Workflow File:</strong> (Optional)
+                      </label>
                       <input
                         type="text"
                         className="form-control"
@@ -601,12 +624,15 @@ const Box = ({ theme }) => {
                         placeholder="build.yml"
                       />
                       <small className="form-text text-muted">
-                        GitHub Actions workflow file name (e.g., build.yml, ci.yaml)
+                        GitHub Actions workflow file name (e.g., build.yml,
+                        ci.yaml)
                       </small>
                     </div>
 
                     <div className="form-group mt-2">
-                      <label className="mb-1" htmlFor="cicdUrl"><strong>CI/CD URL:</strong> (Optional)</label>
+                      <label className="mb-1" htmlFor="cicdUrl">
+                        <strong>CI/CD URL:</strong> (Optional)
+                      </label>
                       <input
                         type="url"
                         className="form-control"
@@ -617,7 +643,8 @@ const Box = ({ theme }) => {
                         placeholder="https://github.com/owner/repo/actions"
                       />
                       <small className="form-text text-muted">
-                        Direct link to your CI/CD pipeline or GitHub Actions page
+                        Direct link to your CI/CD pipeline or GitHub Actions
+                        page
                       </small>
                     </div>
                   </div>
@@ -625,36 +652,56 @@ const Box = ({ theme }) => {
               </div>
             ) : (
               <div>
-                <p><strong>Name:</strong> {currentBox.name}</p>
-                <p><strong>Status:</strong> {currentBox.published ? "Published" : "Pending"}</p>
-                <p><strong>Visibility:</strong> {currentBox.isPublic ? "Public" : "Private"}</p>
-                <p><strong>Description:</strong> {currentBox.description}</p>
-                
+                <p>
+                  <strong>Name:</strong> {currentBox.name}
+                </p>
+                <p>
+                  <strong>Status:</strong>{" "}
+                  {currentBox.published ? "Published" : "Pending"}
+                </p>
+                <p>
+                  <strong>Visibility:</strong>{" "}
+                  {currentBox.isPublic ? "Public" : "Private"}
+                </p>
+                <p>
+                  <strong>Description:</strong> {currentBox.description}
+                </p>
+
                 {/* CI/CD Integration Display */}
-                {(currentBox.githubRepo || currentBox.workflowFile || currentBox.cicdUrl) && (
+                {(currentBox.githubRepo ||
+                  currentBox.workflowFile ||
+                  currentBox.cicdUrl) && (
                   <div className="mt-3">
-                    <h5><strong>CI/CD Integration</strong></h5>
-                    
+                    <h5>
+                      <strong>CI/CD Integration</strong>
+                    </h5>
+
                     {currentBox.githubRepo && currentBox.workflowFile && (
                       <div className="mb-2">
-                        <p><strong>Build Status:</strong></p>
-                        <a 
-                          href={currentBox.cicdUrl || `https://github.com/${currentBox.githubRepo}/actions`}
+                        <p>
+                          <strong>Build Status:</strong>
+                        </p>
+                        <a
+                          href={
+                            currentBox.cicdUrl ||
+                            `https://github.com/${currentBox.githubRepo}/actions`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <img 
+                          <img
                             src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
                             alt="Build Status"
-                            style={{ maxHeight: '20px' }}
+                            style={{ maxHeight: "20px" }}
                           />
                         </a>
                       </div>
                     )}
-                    
+
                     {currentBox.githubRepo && (
-                      <p><strong>Repository:</strong> 
-                        <a 
+                      <p>
+                        <strong>Repository:</strong>
+                        <a
                           href={`https://github.com/${currentBox.githubRepo}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -664,14 +711,17 @@ const Box = ({ theme }) => {
                         </a>
                       </p>
                     )}
-                    
+
                     {currentBox.workflowFile && (
-                      <p><strong>Workflow:</strong> {currentBox.workflowFile}</p>
+                      <p>
+                        <strong>Workflow:</strong> {currentBox.workflowFile}
+                      </p>
                     )}
-                    
+
                     {currentBox.cicdUrl && (
-                      <p><strong>CI/CD Pipeline:</strong> 
-                        <a 
+                      <p>
+                        <strong>CI/CD Pipeline:</strong>
+                        <a
                           href={currentBox.cicdUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -692,7 +742,7 @@ const Box = ({ theme }) => {
               {isAuthorized && (
                 <div>
                   <button
-                    className={`btn ${showAddVersionForm ? 'btn-secondary' : 'btn-outline-success'} me-2`}
+                    className={`btn ${showAddVersionForm ? "btn-secondary" : "btn-outline-success"} me-2`}
                     onClick={() => setShowAddVersionForm(!showAddVersionForm)}
                   >
                     {showAddVersionForm ? "Cancel" : "Add Version"}
@@ -702,7 +752,10 @@ const Box = ({ theme }) => {
                       type="button"
                       className="btn btn-success"
                       onClick={addVersion}
-                      disabled={!newVersion.versionNumber || !!validationErrors.versionNumber} // Disable if versionNumber is empty or has validation errors
+                      disabled={
+                        !newVersion.versionNumber ||
+                        !!validationErrors.versionNumber
+                      } // Disable if versionNumber is empty or has validation errors
                     >
                       Submit
                     </button>
@@ -726,7 +779,9 @@ const Box = ({ theme }) => {
                     required // This makes the field required
                   />
                   {validationErrors.versionNumber && (
-                    <div className="text-danger">{validationErrors.versionNumber}</div>
+                    <div className="text-danger">
+                      {validationErrors.versionNumber}
+                    </div>
                   )}
                 </div>
                 <div className="form-group">
@@ -743,7 +798,7 @@ const Box = ({ theme }) => {
               </form>
             </div>
           )}
-  
+
           <Table striped className="table">
             <thead>
               <tr>
@@ -757,25 +812,32 @@ const Box = ({ theme }) => {
               {versions.map((version, index) => (
                 <tr key={index}>
                   <td>
-                    <Link to={`/${organization}/${name}/${version.versionNumber}`}>
+                    <Link
+                      to={`/${organization}/${name}/${version.versionNumber}`}
+                    >
                       {version.versionNumber}
                     </Link>
                   </td>
                   <td>{version.description}</td>
                   <td>
-                    {providers[version.versionNumber] && providers[version.versionNumber].map((provider, idx) => (
-                      <div key={idx}>
-                        <Link to={`/${organization}/${name}/${version.versionNumber}/${provider.name}`}>
-                          {provider.name}
-                        </Link>
-                      </div>
-                    ))}
+                    {providers[version.versionNumber] &&
+                      providers[version.versionNumber].map((provider, idx) => (
+                        <div key={idx}>
+                          <Link
+                            to={`/${organization}/${name}/${version.versionNumber}/${provider.name}`}
+                          >
+                            {provider.name}
+                          </Link>
+                        </div>
+                      ))}
                   </td>
                   {isAuthorized && (
                     <td>
                       <button
                         className="btn btn-danger"
-                        onClick={() => handleVersionDeleteClick(version.versionNumber)}
+                        onClick={() =>
+                          handleVersionDeleteClick(version.versionNumber)
+                        }
                       >
                         Delete
                       </button>

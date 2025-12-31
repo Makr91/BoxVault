@@ -1,31 +1,21 @@
-// React and routing
-import React, { useState, useEffect, useCallback } from "react";
-
-// Styles
-import "./scss/styles.scss";
+import { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
-// Services
+import "./scss/styles.scss";
 import EventBus from "./common/EventBus";
-
-// Components
 import About from "./components/about.component";
 import Admin from "./components/admin.component";
-import Provider from "./components/provider.component";
-import Navbar from "./components/navbar.component";
 import AuthCallback from "./components/AuthCallback";
 import Box from "./components/box.component";
 import Login from "./components/login.component";
 import Moderator from "./components/moderator.component";
+import Navbar from "./components/navbar.component";
 import Organization from "./components/organization.component";
 import Profile from "./components/profile.component";
+import Provider from "./components/provider.component";
 import Register from "./components/register.component";
 import Setup from "./components/setup.component";
 import Version from "./components/version.component";
-
-// Assets
-import BoxVaultLight from "./images/BoxVault.svg";
-import BoxVaultDark from "./images/BoxVaultDark.svg";
 import AuthService from "./services/auth.service";
 import SetupService from "./services/setup.service";
 
@@ -155,6 +145,30 @@ const App = () => {
     }
   }, [fetchGravatarUrl]);
 
+  const logOut = useCallback(() => {
+    AuthService.logout();
+    setShowAdminBoard(false);
+    setShowModeratorBoard(false);
+    setCurrentUser(undefined);
+    setUserOrganization("");
+    setGravatarUrl("");
+    setGravatarFetched(false);
+  }, []);
+
+  const logOutLocal = useCallback(() => {
+    AuthService.logoutLocal();
+    setShowAdminBoard(false);
+    setShowModeratorBoard(false);
+    setCurrentUser(undefined);
+    setUserOrganization("");
+    setGravatarUrl("");
+    setGravatarFetched(false);
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  };
+
   useEffect(() => {
     // Set up EventBus listeners independently of user state
     const logoutCleanup = EventBus.on("logout", () => {
@@ -180,13 +194,8 @@ const App = () => {
       "organizationUpdated",
       (data) => {
         setUserOrganization(data.newName);
-        // Update currentUser state with new organization name
-        if (currentUser) {
-          setCurrentUser({
-            ...currentUser,
-            organization: data.newName,
-          });
-        }
+        // Use functional update to avoid stale closure
+        setCurrentUser((c) => (c ? { ...c, organization: data.newName } : c));
       }
     );
 
@@ -195,7 +204,7 @@ const App = () => {
       loginCleanup();
       organizationUpdateCleanup();
     };
-  }, [fetchGravatarUrl]);
+  }, [fetchGravatarUrl, logOut, logOutLocal]);
 
   useEffect(() => {
     let mounted = true;
@@ -221,30 +230,6 @@ const App = () => {
       }
     };
   }, [currentUser]);
-
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
-
-  const logOut = () => {
-    AuthService.logout();
-    setShowAdminBoard(false);
-    setShowModeratorBoard(false);
-    setCurrentUser(undefined);
-    setUserOrganization("");
-    setGravatarUrl("");
-    setGravatarFetched(false);
-  };
-
-  const logOutLocal = () => {
-    AuthService.logoutLocal();
-    setShowAdminBoard(false);
-    setShowModeratorBoard(false);
-    setCurrentUser(undefined);
-    setUserOrganization("");
-    setGravatarUrl("");
-    setGravatarFetched(false);
-  };
 
   if (setupComplete === null) {
     // Show a loading indicator while checking setup status
