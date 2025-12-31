@@ -9,7 +9,8 @@ export default [
     ignores: [
       'web/**/*', // Frontend has its own ESLint config
       'node_modules/**/*', // Dependencies
-      'backend/app/views/**/*', 
+      'app/views/**/*', // Backend views (generated frontend files)
+      'scripts/**/*', // Build/utility scripts
       'dist/**/*', // Build output
       'build/**/*', // Build output
       'coverage/**/*', // Test coverage

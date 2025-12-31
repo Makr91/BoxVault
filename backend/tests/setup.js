@@ -2,6 +2,7 @@ const db = require('../app/models');
 const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
+const { log } = require('../app/utils/Logger');
 
 // Load test configuration
 const testConfig = {
@@ -65,6 +66,7 @@ beforeAll(async () => {
       emailHash: 'd47b0c84e924f69e8601b3772785607615934159defdafca51013afecc2a7f11',
       suspended: false,
     });
+    void testOrg;
 
     // Assign roles to test user
     await testUser.setRoles([2, 3]); // Moderator and Admin roles

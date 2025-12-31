@@ -17,6 +17,7 @@ try {
   const appConfig = loadConfig('app');
   loggingConfig = appConfig.logging || {};
 } catch (e) {
+  void e;
   // If config loading fails, use defaults
   loggingConfig = {};
 }

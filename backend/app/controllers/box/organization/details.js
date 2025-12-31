@@ -1,0 +1,255 @@
+// details.js
+const { loadConfig } = require('../../../utils/config-loader');
+const { log } = require('../../../utils/Logger');
+const jwt = require('jsonwebtoken');
+const db = require('../../../models');
+
+const Organization = db.organization;
+const Users = db.user;
+const Box = db.box;
+const Architecture = db.architectures;
+const Version = db.versions;
+const Provider = db.providers;
+const File = db.files;
+
+let authConfig;
+try {
+  authConfig = loadConfig('auth');
+} catch (e) {
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
+}
+
+/**
+ * @swagger
+ * /api/organization/{organization}/box:
+ *   get:
+ *     summary: Get organization box details
+ *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility.
+ *     tags: [Boxes]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token for accessing private boxes
+ *     responses:
+ *       200:
+ *         description: Detailed list of boxes in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BoxWithFullDetails'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+exports.getOrganizationBoxDetails = async (req, res) => {
+  const { organization } = req.params;
+  const token = req.headers['x-access-token'];
+  let userId = null;
+  let userOrganizationId = null;
+  let isServiceAccount = false;
+
+  try {
+    // If a token is provided, verify it and extract the user ID
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+        userId = decoded.id;
+        isServiceAccount = decoded.isServiceAccount || false;
+
+        // Retrieve the user's organization ID
+        if (!isServiceAccount) {
+          const user = await Users.findOne({
+            where: { id: userId },
+            include: [{ model: Organization, as: 'organization' }],
+          });
+
+          if (user) {
+            userOrganizationId = user.organization.id;
+          }
+        }
+      } catch {
+        log.app.warn('Unauthorized User.');
+      }
+    }
+
+    // Retrieve all boxes from the specified organization
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+      include: [
+        {
+          model: Users,
+          as: 'users',
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              include: [
+                {
+                  model: Version,
+                  as: 'versions',
+                  include: [
+                    {
+                      model: Provider,
+                      as: 'providers',
+                      include: [
+                        {
+                          model: Architecture,
+                          as: 'architectures',
+                          include: [
+                            {
+                              model: File,
+                              as: 'files',
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  model: Users,
+                  as: 'user',
+                  include: [
+                    {
+                      model: db.organization,
+                      as: 'organization',
+                      attributes: ['id', 'name', 'emailHash'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({ message: 'Organization not found.' });
+    }
+
+    // Get all boxes from the organization
+    let boxes = organizationData.users.flatMap(u => u.box);
+
+    // For each box, check if it was created by a service account
+    const serviceAccountBoxes = await Promise.all(
+      boxes.map(async box => {
+        const serviceAccount = await db.service_account.findOne({
+          where: { id: box.userId },
+          include: [
+            {
+              model: Users,
+              as: 'user',
+            },
+          ],
+        });
+        return { box, serviceAccount };
+      })
+    );
+
+    // Filter boxes based on access rules
+    boxes = boxes.filter((box, index) => {
+      const { serviceAccount } = serviceAccountBoxes[index];
+
+      // Allow access if:
+      // 1. Box is public
+      // 2. User belongs to organization
+      // 3. User is the owner of the service account that created the box
+      return (
+        box.isPublic ||
+        (userId && userOrganizationId === organizationData.id) ||
+        (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId)
+      );
+    });
+
+    // Map boxes to response format
+    const formattedBoxes = boxes.map(box => ({
+      id: box.id,
+      name: box.name,
+      description: box.description,
+      published: box.published,
+      isPublic: box.isPublic,
+      userId: box.userId,
+      createdAt: box.createdAt,
+      updatedAt: box.updatedAt,
+      versions: box.versions.map(version => ({
+        id: version.id,
+        versionNumber: version.versionNumber,
+        description: version.description,
+        boxId: version.boxId,
+        createdAt: version.createdAt,
+        updatedAt: version.updatedAt,
+        providers: version.providers.map(provider => ({
+          id: provider.id,
+          name: provider.name,
+          description: provider.description,
+          versionId: provider.versionId,
+          createdAt: provider.createdAt,
+          updatedAt: provider.updatedAt,
+          architectures: provider.architectures.map(architecture => ({
+            id: architecture.id,
+            name: architecture.name,
+            defaultBox: architecture.defaultBox,
+            providerId: architecture.providerId,
+            createdAt: architecture.createdAt,
+            updatedAt: architecture.updatedAt,
+            files: architecture.files.map(file => ({
+              id: file.id,
+              fileName: file.fileName,
+              checksum: file.checksum,
+              checksumType: file.checksumType,
+              downloadCount: file.downloadCount,
+              fileSize: file.fileSize,
+              createdAt: file.createdAt,
+              updatedAt: file.updatedAt,
+              architectureId: file.architectureId,
+            })),
+          })),
+        })),
+      })),
+      user: box.user
+        ? {
+            id: box.user.id,
+            username: box.user.username,
+            email: box.user.email,
+            emailHash: box.user.emailHash,
+            suspended: box.user.suspended,
+            createdAt: box.user.createdAt,
+            updatedAt: box.user.updatedAt,
+            organization: box.user.organization
+              ? {
+                  id: box.user.organization.id,
+                  name: box.user.organization.name,
+                  emailHash: box.user.organization.emailHash,
+                }
+              : null,
+          }
+        : null,
+    }));
+
+    return res.status(200).send(formattedBoxes);
+  } catch (err) {
+    return res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving the organization details.',
+    });
+  }
+};

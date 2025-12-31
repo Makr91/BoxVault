@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
 const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/config-loader');
 const { log } = require('./app/utils/Logger');
 const crypto = require('crypto');
@@ -23,7 +22,7 @@ try {
 
 const dbConfigPath = getConfigPath('db');
 
-function isDialectConfigured() {
+const isDialectConfigured = () => {
   try {
     const dbConfig = loadConfig('db');
     const dialect = dbConfig.sql.dialect.value;
@@ -32,9 +31,9 @@ function isDialectConfigured() {
     log.database.error('Error reading db.config.yaml', { error: error.message });
     return false;
   }
-}
+};
 
-function resolveSSLPath(filePath) {
+const resolveSSLPath = filePath => {
   if (!filePath) {
     return null;
   }
@@ -42,9 +41,9 @@ function resolveSSLPath(filePath) {
     return filePath;
   }
   return path.join(__dirname, 'app', 'config', 'ssl', filePath);
-}
+};
 
-function isSSLConfigured() {
+const isSSLConfigured = () => {
   if (!boxConfig.ssl || !boxConfig.ssl.cert_path || !boxConfig.ssl.key_path) {
     return false;
   }
@@ -52,12 +51,12 @@ function isSSLConfigured() {
   const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
   const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
   return fs.existsSync(certPath) && fs.existsSync(keyPath);
-}
+};
 
 /**
  * Generate SSL certificates if they don't exist and generate_ssl is enabled
  */
-async function generateSSLCertificatesIfNeeded() {
+const generateSSLCertificatesIfNeeded = () => {
   if (!boxConfig.ssl || !boxConfig.ssl.generate_ssl || !boxConfig.ssl.generate_ssl.value) {
     return false; // SSL generation disabled
   }
@@ -104,9 +103,9 @@ async function generateSSLCertificatesIfNeeded() {
     log.app.warn('Continuing with HTTP fallback...');
     return false; // Generation failed
   }
-}
+};
 
-function getOrGenerateSetupToken() {
+const getOrGenerateSetupToken = () => {
   const setupTokenPath = getSetupTokenPath();
 
   // Check if setup token already exists (from package installation)
@@ -134,12 +133,12 @@ function getOrGenerateSetupToken() {
 
   fs.writeFileSync(setupTokenPath, token);
   return token;
-}
+};
 
 /**
  * Check for Certbot integration and provide guidance if needed
  */
-function checkCertbotIntegration() {
+const checkCertbotIntegration = () => {
   const hookDir = '/etc/letsencrypt/renewal-hooks/deploy';
   const hookPath = `${hookDir}/boxvault-cert-deploy.sh`;
   const sourceHook = '/opt/boxvault/scripts/certbot-deploy-hook.sh';
@@ -160,7 +159,7 @@ function checkCertbotIntegration() {
     log.app.info('='.repeat(60));
     log.app.info('');
   }
-}
+};
 
 const static_path = `${__dirname}/app/views/`;
 
@@ -173,6 +172,7 @@ app.set('headers-timeout', 0);
 
 // Debug middleware to log requests
 app.use((req, res, next) => {
+  void res;
   log.app.info('Request:', {
     method: req.method,
     url: req.url,
@@ -188,12 +188,13 @@ app.use((req, res, next) => {
 // Configure static file serving with proper content types first
 app.use(
   express.static(static_path, {
-    setHeaders: (res, path, stat) => {
+    setHeaders: (res, filePath, stat) => {
+      void stat;
       log.app.info('Serving static file:', {
-        path,
-        type: path.endsWith('.ico') ? 'image/x-icon' : null,
+        path: filePath,
+        type: filePath.endsWith('.ico') ? 'image/x-icon' : null,
       });
-      if (path.endsWith('.ico')) {
+      if (filePath.endsWith('.ico')) {
         res.setHeader('Content-Type', 'image/x-icon');
         res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache favicons for 24 hours
       }
@@ -234,26 +235,50 @@ app.use((req, res, next) => {
         log.error.error('JSON parsing error:', err);
         return res.status(413).json({ error: 'Request too large' });
       }
-      express.urlencoded({ extended: true, limit: maxSize })(req, res, next);
+      return express.urlencoded({ extended: true, limit: maxSize })(req, res, next);
     });
   }
 });
 
 // Add headers for Cloudflare
 app.use((req, res, next) => {
+  void req;
   res.setHeader('Cache-Control', 'no-transform');
   next();
 });
 
+// Initialize roles in database (must be defined before initializeApp uses it)
+const initial = async () => {
+  try {
+    const db = require('./app/models');
+    const { role: Role } = db;
+    const roles = [
+      { id: 1, name: 'user' },
+      { id: 2, name: 'moderator' },
+      { id: 3, name: 'admin' },
+    ];
+
+    await Promise.all(
+      roles.map(role =>
+        Role.findOrCreate({
+          where: { name: role.name },
+          defaults: role,
+        })
+      )
+    );
+  } catch (error) {
+    log.error.error('Error initializing roles:', error);
+  }
+};
+
 // Function to initialize the application - REFACTORED with async/await pattern
-async function initializeApp() {
+const initializeApp = async () => {
   try {
     // Add Vagrant request handler
     const { vagrantHandler } = require('./app/middleware');
     app.use(vagrantHandler);
 
     const db = require('./app/models');
-    const Role = db.role;
 
     // Configure session middleware for OIDC
     const sessionStore = new SequelizeStore({
@@ -344,6 +369,7 @@ async function initializeApp() {
 
     // SPA catch-all route
     app.get('*splat', (req, res) => {
+      void req;
       res.sendFile(path.join(static_path, 'index.html'));
     });
 
@@ -355,7 +381,7 @@ async function initializeApp() {
     });
     throw error;
   }
-}
+};
 
 // Check if the database dialect is configured
 let isConfigured = isDialectConfigured();
@@ -370,6 +396,7 @@ if (isConfigured) {
   require('./app/routes/setup.routes')(app);
 
   app.get('/', (req, res) => {
+    void req;
     res.sendFile(path.join(static_path, 'index.html'));
   });
 
@@ -393,10 +420,43 @@ if (isConfigured) {
 const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted.value || 5000;
 const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
 
+// HTTP Server starter function (must be defined before IIFE uses it)
+const startHTTPServer = () => {
+  const httpServer = http.createServer(
+    {
+      requestTimeout: 0,
+      headersTimeout: 0,
+      keepAliveTimeout: 0,
+      maxHeaderSize: 32 * 1024, // 32KB
+    },
+    app
+  );
+  httpServer.on('connection', socket => {
+    socket.setNoDelay(true);
+    socket.setKeepAlive(true, 60000); // 60 seconds
+
+    // Set buffer size using the correct Node.js method
+    socket.bufferSize = 64 * 1024 * 1024; // 64MB
+
+    // Optimize socket for large transfers
+    socket.on('error', err => {
+      log.error.error('Socket error:', err);
+    });
+  });
+
+  // Disable timeouts for uploads
+  httpServer.timeout = 0;
+  httpServer.keepAliveTimeout = 0;
+
+  httpServer.listen(HTTP_PORT, () => {
+    log.app.info(`HTTP Server is running on port ${HTTP_PORT}.`);
+  });
+};
+
 // SSL/HTTPS Configuration with auto-generation - MOVED TO HAPPEN BEFORE SETUP
-(async () => {
-  // Generate SSL certificates BEFORE setup wizard, like ZoneWeaver does
-  await generateSSLCertificatesIfNeeded();
+(() => {
+  // Generate SSL certificates BEFORE setup wizard (synchronous operation)
+  generateSSLCertificatesIfNeeded();
 
   // Check for Certbot integration after SSL setup
   checkCertbotIntegration();
@@ -455,6 +515,7 @@ const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
 
       // Create HTTP server to redirect to HTTPS
       const httpServer = http.createServer((req, res) => {
+        void req;
         res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
         res.end();
       });
@@ -471,56 +532,3 @@ const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
     startHTTPServer();
   }
 })();
-
-function startHTTPServer() {
-  const httpServer = http.createServer(
-    {
-      requestTimeout: 0,
-      headersTimeout: 0,
-      keepAliveTimeout: 0,
-      maxHeaderSize: 32 * 1024, // 32KB
-    },
-    app
-  );
-  httpServer.on('connection', socket => {
-    socket.setNoDelay(true);
-    socket.setKeepAlive(true, 60000); // 60 seconds
-
-    // Set buffer size using the correct Node.js method
-    socket.bufferSize = 64 * 1024 * 1024; // 64MB
-
-    // Optimize socket for large transfers
-    socket.on('error', err => {
-      log.error.error('Socket error:', err);
-    });
-  });
-
-  // Disable timeouts for uploads
-  httpServer.timeout = 0;
-  httpServer.keepAliveTimeout = 0;
-
-  httpServer.listen(HTTP_PORT, () => {
-    log.app.info(`HTTP Server is running on port ${HTTP_PORT}.`);
-  });
-}
-
-async function initial() {
-  try {
-    const db = require('./app/models');
-    const Role = db.role;
-    const roles = [
-      { id: 1, name: 'user' },
-      { id: 2, name: 'moderator' },
-      { id: 3, name: 'admin' },
-    ];
-
-    for (const role of roles) {
-      await Role.findOrCreate({
-        where: { name: role.name },
-        defaults: role,
-      });
-    }
-  } catch (error) {
-    log.error.error('Error initializing roles:', error);
-  }
-}

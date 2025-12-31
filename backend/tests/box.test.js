@@ -34,7 +34,7 @@ describe('Box API', () => {
       expect(res.body.length).toBeGreaterThan(0);
 
       // Verify box structure
-      const box = res.body[0];
+      const [box] = res.body;
       expect(box).toHaveProperty('name');
       expect(box).toHaveProperty('description');
       expect(box).toHaveProperty('versions');
@@ -84,6 +84,7 @@ describe('Box API', () => {
           .delete(`/api/organization/STARTcloud/box/${newBox.name}`)
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -139,6 +140,7 @@ describe('Box API', () => {
           .delete(`/api/organization/STARTcloud/box/${boxName}`)
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });

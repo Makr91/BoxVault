@@ -3,6 +3,7 @@ const serviceAccount = require('../controllers/service_account.controller');
 
 module.exports = function (app) {
   app.use((req, res, next) => {
+    void req;
     res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
     next();
   });

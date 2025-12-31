@@ -31,7 +31,7 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.STRING,
       allowNull: true,
       validate: {
-        is: /^[a-zA-Z0-9._-]+\.(yml|yaml)$/i,
+        is: /^[a-zA-Z0-9._-]+\.(?:yml|yaml)$/i,
       },
     },
     cicdUrl: {

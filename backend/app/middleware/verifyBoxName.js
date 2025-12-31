@@ -3,7 +3,7 @@ const db = require('../models');
 const Box = db.box;
 
 // Function to check the format of the box name
-function validateBoxName(req, res, next) {
+const validateBoxName = (req, res, next) => {
   const { name } = req.body;
   const boxNameRegex = /^[A-Za-z0-9.-]+$/;
 
@@ -14,10 +14,10 @@ function validateBoxName(req, res, next) {
     });
   }
 
-  next();
-}
+  return next();
+};
 
-async function checkBoxDuplicate(req, res, next) {
+const checkBoxDuplicate = async (req, res, next) => {
   // This Function checks when a new box, or an existing box is created, if its name is not already in use by another box in the organization.
   // This Function should allow an existing box to be updated, so long as it is the only box in the organization with its name.
   // New Boxes are submitted via POST request, the POST request's body contains the name of the box.
@@ -62,13 +62,13 @@ async function checkBoxDuplicate(req, res, next) {
       });
     }
 
-    next();
+    return next();
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: err.message || 'Some error occurred while checking the box.',
     });
   }
-}
+};
 
 const verifyBoxName = {
   validateBoxName,

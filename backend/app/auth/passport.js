@@ -7,10 +7,8 @@ const db = require('../models');
 const { handleExternalUser } = require('./external-user-handler');
 
 let authConfig;
-let boxConfig;
 try {
   authConfig = loadConfig('auth');
-  boxConfig = loadConfig('app');
 } catch (e) {
   log.error.error(`Failed to load configuration: ${e.message}`);
 }
@@ -203,12 +201,14 @@ const buildEndSessionUrl = (providerName, postLogoutRedirectUri, state, idToken)
  * OIDC Provider Setup - Following ARMOR pattern
  * No passport strategies - uses openid-client API directly
  */
-async function setupOidcProviders() {
+const setupOidcProviders = async () => {
   try {
     await db.user.findOne({ limit: 1 });
   } catch {
     log.app.info('Database not ready yet, waiting for migrations to complete');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => {
+      setTimeout(resolve, 2000);
+    });
   }
 
   const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
@@ -247,8 +247,9 @@ async function setupOidcProviders() {
         log.app.info(`Configuring OIDC provider: ${providerName}`, { issuer });
 
         // Get token endpoint auth method from provider config (ARMOR pattern)
-        const authMethod = providerConfig.token_endpoint_auth_method?.value || 'client_secret_basic';
-        
+        const authMethod =
+          providerConfig.token_endpoint_auth_method?.value || 'client_secret_basic';
+
         log.app.info(`Using token endpoint auth method: ${authMethod}`, { provider: providerName });
 
         // Create client authentication method (ARMOR pattern)
@@ -268,7 +269,12 @@ async function setupOidcProviders() {
         }
 
         // Discover OIDC configuration with proper client authentication
-        const oidcConfig = await client.discovery(new URL(issuer), clientId, clientSecret, clientAuth);
+        const oidcConfig = await client.discovery(
+          new URL(issuer),
+          clientId,
+          clientSecret,
+          clientAuth
+        );
 
         // Store configuration for later use by helper functions
         oidcConfigurations.set(providerName, oidcConfig);
@@ -293,9 +299,7 @@ async function setupOidcProviders() {
 
   const results = await Promise.allSettled(providerPromises);
 
-  const successCount = results.filter(
-    r => r.status === 'fulfilled' && r.value?.success
-  ).length;
+  const successCount = results.filter(r => r.status === 'fulfilled' && r.value?.success).length;
   const failCount = results.length - successCount;
 
   log.app.info('OIDC provider setup completed', {
@@ -303,12 +307,12 @@ async function setupOidcProviders() {
     successful: successCount,
     failed: failCount,
   });
-}
+};
 
 /**
  * Initialize passport strategies
  */
-async function initializeStrategies() {
+const initializeStrategies = async () => {
   const enabledStrategies = authConfig.auth?.enabled_strategies?.value || [];
 
   log.app.info('Initializing authentication strategies', { enabledStrategies });
@@ -318,7 +322,7 @@ async function initializeStrategies() {
   }
 
   log.app.info('Passport strategies initialized');
-}
+};
 
 module.exports = {
   passport,

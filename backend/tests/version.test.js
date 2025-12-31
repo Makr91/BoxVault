@@ -71,6 +71,7 @@ describe('Version API', () => {
           .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${newVersion.version}`)
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -124,6 +125,7 @@ describe('Version API', () => {
           .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${version.version}`)
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -168,6 +170,7 @@ describe('Version API', () => {
           .delete(`/api/organization/STARTcloud/box/${testBox.name}/version/${version.version}`)
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });

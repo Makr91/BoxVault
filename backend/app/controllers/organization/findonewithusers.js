@@ -1,0 +1,120 @@
+// findonewithusers.js
+const { log } = require('../../utils/Logger');
+const db = require('../../models');
+
+const Organization = db.organization;
+const User = db.user;
+const Role = db.role;
+const Box = db.box;
+
+/**
+ * @swagger
+ * /api/organization/{organizationName}/users:
+ *   get:
+ *     summary: Get users in a specific organization
+ *     description: Retrieve all users belonging to a specific organization with their roles and box counts
+ *     tags: [Organizations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *     responses:
+ *       200:
+ *         description: List of users in the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     description: User ID
+ *                   username:
+ *                     type: string
+ *                     description: Username
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     description: User email
+ *                   verified:
+ *                     type: boolean
+ *                     description: Email verification status
+ *                   suspended:
+ *                     type: boolean
+ *                     description: User suspension status
+ *                   roles:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: User roles
+ *                   totalBoxes:
+ *                     type: integer
+ *                     description: Number of boxes accessible to the requesting user
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+exports.findOneWithUsers = async (req, res) => {
+  const { organizationName } = req.params;
+  const { userId } = req;
+
+  try {
+    const organization = await Organization.findOne({
+      where: { name: organizationName },
+      include: [
+        {
+          model: User,
+          as: 'users',
+          include: [
+            {
+              model: Role,
+              as: 'roles',
+              through: { attributes: [] },
+            },
+            {
+              model: Box,
+              as: 'box',
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!organization) {
+      return res.status(404).send({ message: 'Organization not found.' });
+    }
+
+    const users = organization.users.map(user => ({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      verified: user.verified,
+      suspended: user.suspended,
+      roles: user.roles.map(role => role.name),
+      totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
+    }));
+
+    return res.status(200).send(users);
+  } catch (err) {
+    log.error.error('Error in findOneWithUsers:', err);
+    return res.status(500).send({
+      message: err.message || 'Some error occurred while retrieving users.',
+    });
+  }
+};

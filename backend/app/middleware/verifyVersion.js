@@ -3,7 +3,7 @@ const db = require('../models');
 const { log } = require('../utils/Logger');
 const Version = db.versions;
 
-function validateVersion(req, res, next) {
+const validateVersion = (req, res, next) => {
   log.app.info('Full request body:', req.body);
 
   // Check in multiple places for the version number
@@ -41,10 +41,10 @@ function validateVersion(req, res, next) {
     });
   }
 
-  next();
-}
+  return next();
+};
 
-async function checkVersionDuplicate(req, res, next) {
+const checkVersionDuplicate = async (req, res, next) => {
   const { organization, boxId, versionNumber: currentVersionNumber } = req.params; // Get currentVersionNumber from params
   const { versionNumber } = req.body; // Get the new versionNumber from the request body
 
@@ -83,7 +83,7 @@ async function checkVersionDuplicate(req, res, next) {
     }
 
     // Extract the box from the organization data
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+    const box = organizationData.users.flatMap(user => user.box).find(b => b.name === boxId);
 
     if (!box) {
       return res.status(404).send({
@@ -104,13 +104,13 @@ async function checkVersionDuplicate(req, res, next) {
       });
     }
 
-    next();
+    return next();
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: err.message || 'Some error occurred while checking the version.',
     });
   }
-}
+};
 
 const verifyVersion = {
   validateVersion,

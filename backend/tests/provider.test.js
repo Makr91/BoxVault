@@ -85,6 +85,7 @@ describe('Provider API', () => {
           )
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -148,6 +149,7 @@ describe('Provider API', () => {
           )
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -200,6 +202,7 @@ describe('Provider API', () => {
           )
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });

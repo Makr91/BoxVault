@@ -3,7 +3,7 @@ const db = require('../models');
 const { log } = require('../utils/Logger');
 const Architecture = db.architectures;
 
-function validateArchitecture(req, res, next) {
+const validateArchitecture = (req, res, next) => {
   const { name } = req.body;
   log.app.info('Validating architecture name:', name);
 
@@ -23,10 +23,10 @@ function validateArchitecture(req, res, next) {
     });
   }
 
-  next();
-}
+  return next();
+};
 
-async function checkArchitectureDuplicate(req, res, next) {
+const checkArchitectureDuplicate = async (req, res, next) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
   const { name } = req.body;
 
@@ -62,7 +62,7 @@ async function checkArchitectureDuplicate(req, res, next) {
     }
 
     // Extract the box and version from the organization data
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+    const box = organizationData.users.flatMap(user => user.box).find(b => b.name === boxId);
 
     if (!box) {
       return res.status(404).send({
@@ -70,7 +70,7 @@ async function checkArchitectureDuplicate(req, res, next) {
       });
     }
 
-    const version = box.versions.find(version => version.versionNumber === versionNumber);
+    const version = box.versions.find(v => v.versionNumber === versionNumber);
 
     if (!version) {
       return res.status(404).send({
@@ -101,13 +101,13 @@ async function checkArchitectureDuplicate(req, res, next) {
       });
     }
 
-    next();
+    return next();
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: err.message || 'Some error occurred while checking the architecture.',
     });
   }
-}
+};
 
 const verifyArchitecture = {
   validateArchitecture,

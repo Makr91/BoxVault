@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('path');
 
 /**
  * Atomically write content to a file using a temporary file approach
@@ -19,7 +18,7 @@ const atomicWriteFile = (filePath, content, encoding = 'utf8') =>
     fs.writeFile(tempPath, content, encoding, writeErr => {
       if (writeErr) {
         // Clean up temp file if write failed
-        fs.unlink(tempPath, () => {}); // Ignore cleanup errors
+        fs.unlink(tempPath, () => undefined); // Ignore cleanup errors
         return reject(writeErr);
       }
 
@@ -28,12 +27,13 @@ const atomicWriteFile = (filePath, content, encoding = 'utf8') =>
       fs.rename(tempPath, filePath, renameErr => {
         if (renameErr) {
           // Clean up temp file if rename failed
-          fs.unlink(tempPath, () => {}); // Ignore cleanup errors
+          fs.unlink(tempPath, () => undefined); // Ignore cleanup errors
           return reject(renameErr);
         }
 
-        resolve();
+        return resolve();
       });
+      return undefined;
     });
   });
 
@@ -58,6 +58,7 @@ const atomicWriteFileSync = (filePath, content, encoding = 'utf8') => {
     try {
       fs.unlinkSync(tempPath);
     } catch (cleanupError) {
+      void cleanupError;
       // Ignore cleanup errors
     }
     throw error;

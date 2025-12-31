@@ -70,7 +70,7 @@ const validateVagrantToken = async token => {
 
 const parseVagrantUrl = url => {
   // Remove any query parameters
-  const urlPath = url.split('?')[0];
+  const [urlPath] = url.split('?');
   const parts = urlPath.split('/').filter(Boolean);
 
   // Handle all formats that Vagrant uses:
@@ -142,7 +142,7 @@ const vagrantHandler = async (req, res, next) => {
   }
 
   // Skip static files
-  if (req.url.match(/\.(ico|png|jpg|jpeg|gif|css|js|json|svg|woff|woff2|ttf|eot)$/)) {
+  if (req.url.match(/\.(?:ico|png|jpg|jpeg|gif|css|js|json|svg|woff|woff2|ttf|eot)$/)) {
     return next();
   }
 
@@ -173,7 +173,7 @@ const vagrantHandler = async (req, res, next) => {
     // Only set Content-Type to indicate this is metadata
     res.set('Content-Type', 'application/json');
     res.status(200).end();
-    return;
+    return undefined;
   }
 
   // For box downloads
@@ -184,7 +184,7 @@ const vagrantHandler = async (req, res, next) => {
     // Don't set Content-Type for downloads
     // Let the download endpoint handle streaming the file
     next();
-    return;
+    return undefined;
   }
 
   // For GET requests to metadata endpoint
@@ -225,7 +225,7 @@ const vagrantHandler = async (req, res, next) => {
     headers: res.getHeaders(),
   });
 
-  next();
+  return next();
 };
 
 module.exports = vagrantHandler;

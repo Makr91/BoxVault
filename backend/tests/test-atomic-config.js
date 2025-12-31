@@ -6,10 +6,10 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 const yaml = require('js-yaml');
-const { getConfigPath } = require('./app/utils/config-loader');
-const { atomicWriteFile } = require('./app/utils/atomic-file-writer');
+const { getConfigPath } = require('../app/utils/config-loader');
+const { atomicWriteFile } = require('../app/utils/atomic-file-writer');
+const { log } = require('../app/utils/Logger');
 
 // Test configuration
 const testConfig = {
@@ -35,7 +35,7 @@ const testConfig = {
   },
 };
 
-async function testAtomicWrite() {
+const testAtomicWrite = async () => {
   log.app.info('Testing atomic file operations...');
 
   // Get the config path using the same logic as the application
@@ -73,9 +73,9 @@ async function testAtomicWrite() {
     log.app.info('\n🎉 All tests passed! Atomic file operations are working correctly.');
   } catch (error) {
     log.error.error('❌ Test failed:', error.message);
-    process.exit(1);
+    throw new Error(`Test failed: ${error.message}`);
   }
-}
+};
 
 // Run the test
 testAtomicWrite().catch(console.error);

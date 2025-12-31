@@ -100,6 +100,7 @@ describe('Architecture API', () => {
           )
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -182,6 +183,7 @@ describe('Architecture API', () => {
           )
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });
@@ -236,6 +238,7 @@ describe('Architecture API', () => {
           )
           .set('x-access-token', authToken);
       } catch (err) {
+        void err;
         // Ignore errors during cleanup
       }
     });

@@ -4,6 +4,7 @@ const file = require('../controllers/file.controller');
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
+  void next;
   log.error.error('File operation error:', {
     error: err.message,
     stack: err.stack,
@@ -33,7 +34,7 @@ const handleFileError = (err, req, res, next) => {
     });
   }
 
-  res.status(500).json({
+  return res.status(500).json({
     error: 'UPLOAD_FAILED',
     message: 'File operation failed',
   });
@@ -41,6 +42,7 @@ const handleFileError = (err, req, res, next) => {
 
 module.exports = function (app) {
   app.use((req, res, next) => {
+    void req;
     res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
     next();
   });

@@ -10,6 +10,7 @@ const { log } = require('../utils/Logger');
 
 module.exports = function (app) {
   app.use((req, res, next) => {
+    void req;
     res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
     next();
   });
@@ -229,7 +230,7 @@ module.exports = function (app) {
 
       log.auth.info('Redirecting to OIDC provider', {
         provider,
-        authUrl: authUrl.toString().substring(0, 100) + '...',
+        authUrl: `${authUrl.toString().substring(0, 100)}...`,
       });
 
       return res.redirect(authUrl.toString());
@@ -318,7 +319,7 @@ module.exports = function (app) {
         if (endSessionUrl) {
           log.auth.info('RP-initiated logout URL generated', {
             provider: providerName,
-            url: endSessionUrl.toString().substring(0, 100) + '...',
+            url: `${endSessionUrl.toString().substring(0, 100)}...`,
           });
 
           return res.json({
@@ -377,6 +378,7 @@ module.exports = function (app) {
    *         description: Internal server error
    */
   app.post('/api/auth/oidc/logout/local', (req, res) => {
+    void req;
     log.auth.info('Local-only logout requested');
     return res.json({
       success: true,
@@ -420,6 +422,7 @@ module.exports = function (app) {
    *         description: Internal server error
    */
   app.get('/api/auth/methods', (req, res) => {
+    void req;
     try {
       const authConfig = loadConfig('auth');
       const methods = [];

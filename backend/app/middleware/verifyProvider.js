@@ -2,7 +2,7 @@
 const db = require('../models');
 const Provider = db.providers;
 
-function validateProvider(req, res, next) {
+const validateProvider = (req, res, next) => {
   const { name } = req.body;
 
   // This regex allows only alphanumeric characters, hyphens, underscores, and periods
@@ -22,11 +22,11 @@ function validateProvider(req, res, next) {
     });
   }
 
-  next();
-}
+  return next();
+};
 
 // Function to check for duplicate provider names
-async function checkProviderDuplicate(req, res, next) {
+const checkProviderDuplicate = async (req, res, next) => {
   const { organization, boxId, versionNumber } = req.params;
   const { name } = req.body;
 
@@ -62,7 +62,7 @@ async function checkProviderDuplicate(req, res, next) {
     }
 
     // Extract the box and version from the organization data
-    const box = organizationData.users.flatMap(user => user.box).find(box => box.name === boxId);
+    const box = organizationData.users.flatMap(user => user.box).find(b => b.name === boxId);
 
     if (!box) {
       return res.status(404).send({
@@ -70,7 +70,7 @@ async function checkProviderDuplicate(req, res, next) {
       });
     }
 
-    const version = box.versions.find(version => version.versionNumber === versionNumber);
+    const version = box.versions.find(v => v.versionNumber === versionNumber);
 
     if (!version) {
       return res.status(404).send({
@@ -91,13 +91,13 @@ async function checkProviderDuplicate(req, res, next) {
       });
     }
 
-    next();
+    return next();
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: err.message || 'Some error occurred while checking the provider.',
     });
   }
-}
+};
 
 const verifyProvider = {
   validateProvider,

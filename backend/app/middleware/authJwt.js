@@ -11,7 +11,7 @@ try {
   log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
-verifyToken = async (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   try {
     const token = req.headers['x-access-token'];
 
@@ -21,11 +21,11 @@ verifyToken = async (req, res, next) => {
 
     try {
       const decoded = await new Promise((resolve, reject) => {
-        jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decoded) => {
+        jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
           if (err) {
             reject(err);
           } else {
-            resolve(decoded);
+            resolve(decodedToken);
           }
         });
       });
@@ -59,7 +59,7 @@ verifyToken = async (req, res, next) => {
         req.user = user;
       }
 
-      next();
+      return next();
     } catch (jwtError) {
       log.error.error('JWT verification error:', {
         error: jwtError.message,
@@ -75,22 +75,21 @@ verifyToken = async (req, res, next) => {
       error: err.message,
       stack: err.stack,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error verifying authentication',
     });
   }
 };
 
-isServiceAccount = (req, res, next) => {
+const isServiceAccount = (req, res, next) => {
   if (req.isServiceAccount) {
-    next();
-    return;
+    return next();
   }
 
-  res.status(403).send({ message: 'Require Service Account Role!' });
+  return res.status(403).send({ message: 'Require Service Account Role!' });
 };
 
-isUser = async (req, res, next) => {
+const isUser = async (req, res, next) => {
   try {
     // First, check if it's not a service account
     if (req.isServiceAccount) {
@@ -110,11 +109,10 @@ isUser = async (req, res, next) => {
     const hasValidRole = roles.some(role => ['user', 'moderator', 'admin'].includes(role.name));
 
     if (hasValidRole) {
-      next();
-      return;
+      return next();
     }
 
-    res.status(403).send({
+    return res.status(403).send({
       message: 'Require User, Moderator or Admin Role!',
     });
   } catch (err) {
@@ -123,13 +121,13 @@ isUser = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error checking user permissions',
     });
   }
 };
 
-isSelfOrAdmin = async (req, res, next) => {
+const isSelfOrAdmin = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.userId);
     if (!user) {
@@ -139,14 +137,13 @@ isSelfOrAdmin = async (req, res, next) => {
     }
 
     const roles = await user.getRoles();
-    const isAdmin = roles.some(role => role.name === 'admin');
+    const isAdminRole = roles.some(role => role.name === 'admin');
 
-    if (isAdmin || req.userId == req.params.userId) {
-      next();
-      return;
+    if (isAdminRole || req.userId === req.params.userId) {
+      return next();
     }
 
-    res.status(403).send({
+    return res.status(403).send({
       message: 'Require Admin role or account ownership!',
     });
   } catch (err) {
@@ -155,17 +152,16 @@ isSelfOrAdmin = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error checking user permissions',
     });
   }
 };
 
-isUserOrServiceAccount = async (req, res, next) => {
+const isUserOrServiceAccount = async (req, res, next) => {
   try {
     if (req.isServiceAccount) {
-      next();
-      return;
+      return next();
     }
 
     const user = await User.findByPk(req.userId);
@@ -179,11 +175,10 @@ isUserOrServiceAccount = async (req, res, next) => {
     const hasValidRole = roles.some(role => ['user', 'moderator', 'admin'].includes(role.name));
 
     if (hasValidRole) {
-      next();
-      return;
+      return next();
     }
 
-    res.status(403).send({
+    return res.status(403).send({
       message: 'Require User, Moderator or Admin Role!',
     });
   } catch (err) {
@@ -192,13 +187,13 @@ isUserOrServiceAccount = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error checking user permissions',
     });
   }
 };
 
-isAdmin = async (req, res, next) => {
+const isAdmin = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.userId);
     if (!user) {
@@ -208,14 +203,13 @@ isAdmin = async (req, res, next) => {
     }
 
     const roles = await user.getRoles();
-    const isAdmin = roles.some(role => role.name === 'admin');
+    const isAdminRole = roles.some(role => role.name === 'admin');
 
-    if (isAdmin) {
-      next();
-      return;
+    if (isAdminRole) {
+      return next();
     }
 
-    res.status(403).send({
+    return res.status(403).send({
       message: 'Require Admin Role!',
     });
   } catch (err) {
@@ -224,13 +218,13 @@ isAdmin = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error checking user permissions',
     });
   }
 };
 
-isModerator = async (req, res, next) => {
+const isModerator = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.userId);
     if (!user) {
@@ -240,14 +234,13 @@ isModerator = async (req, res, next) => {
     }
 
     const roles = await user.getRoles();
-    const isModerator = roles.some(role => role.name === 'moderator');
+    const isModeratorRole = roles.some(role => role.name === 'moderator');
 
-    if (isModerator) {
-      next();
-      return;
+    if (isModeratorRole) {
+      return next();
     }
 
-    res.status(403).send({
+    return res.status(403).send({
       message: 'Require Moderator Role!',
     });
   } catch (err) {
@@ -256,13 +249,13 @@ isModerator = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error checking user permissions',
     });
   }
 };
 
-isModeratorOrAdmin = async (req, res, next) => {
+const isModeratorOrAdmin = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.userId);
     if (!user) {
@@ -275,11 +268,10 @@ isModeratorOrAdmin = async (req, res, next) => {
     const hasValidRole = roles.some(role => ['moderator', 'admin'].includes(role.name));
 
     if (hasValidRole) {
-      next();
-      return;
+      return next();
     }
 
-    res.status(403).send({
+    return res.status(403).send({
       message: 'Require Moderator or Admin Role!',
     });
   } catch (err) {
@@ -288,7 +280,7 @@ isModeratorOrAdmin = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    res.status(500).send({
+    return res.status(500).send({
       message: 'Error checking user permissions',
     });
   }

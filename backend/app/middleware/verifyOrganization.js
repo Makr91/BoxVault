@@ -3,7 +3,7 @@ const db = require('../models');
 const Organization = db.organization;
 
 // Function to check the format of the organization name
-function validateOrganization(req, res, next) {
+const validateOrganization = (req, res, next) => {
   const { organization } = req.body;
   const organizationRegex = /^[A-Za-z0-9.-]+$/;
 
@@ -14,11 +14,11 @@ function validateOrganization(req, res, next) {
     });
   }
 
-  next();
-}
+  return next();
+};
 
 // Function to check for duplicate organization names
-async function checkOrganizationDuplicate(req, res, next) {
+const checkOrganizationDuplicate = async (req, res, next) => {
   const { organization } = req.body;
 
   try {
@@ -32,13 +32,13 @@ async function checkOrganizationDuplicate(req, res, next) {
       });
     }
 
-    next();
+    return next();
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: err.message || 'Some error occurred while checking the organization.',
     });
   }
-}
+};
 
 const verifyOrganization = {
   validateOrganization,

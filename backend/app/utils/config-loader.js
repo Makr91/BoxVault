@@ -55,8 +55,8 @@ const loadConfigs = configNames => {
 const getSetupTokenPath = () => {
   if (process.env.NODE_ENV === 'production') {
     // Production: use CONFIG_DIR environment variable or default to /etc/boxvault/
-    const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
-    return `${configDir}/setup.token`;
+    const setupConfigDir = process.env.CONFIG_DIR || '/etc/boxvault';
+    return `${setupConfigDir}/setup.token`;
   }
   // Development: use relative path from project root
   return path.join(__dirname, '../../setup.token');
