@@ -263,10 +263,6 @@ app.use((req, res, next) => {
 // Morgan HTTP request logging
 app.use(morganMiddleware);
 
-// Rate limiting middleware (applied globally before routes)
-const { rateLimiter } = require('./app/middleware');
-app.use(rateLimiter.rateLimiterMiddleware());
-
 // Initialize roles in database (must be defined before initializeApp uses it)
 const initial = async () => {
   try {
@@ -350,6 +346,11 @@ const initializeApp = async () => {
     // Initialize roles
     await initial();
 
+    // Rate limiting middleware (applied before routes for CodeQL detection)
+    const { rateLimiter } = require('./app/middleware');
+    app.use(rateLimiter.rateLimiterMiddleware());
+    log.app.info('Rate limiting middleware applied');
+
     // NOW load all routes - strategies are guaranteed to exist
     log.app.info('Loading application routes...');
 
@@ -412,6 +413,11 @@ if (isConfigured) {
 } else {
   const setupToken = getOrGenerateSetupToken();
   log.app.info(`Setup token: ${setupToken}`);
+
+  // Rate limiting middleware (applied before setup routes for CodeQL detection)
+  const { rateLimiter } = require('./app/middleware');
+  app.use(rateLimiter.rateLimiterMiddleware());
+  log.app.info('Rate limiting middleware applied for setup routes');
 
   // Load only the setup route
   require('./app/routes/setup.routes')(app);
