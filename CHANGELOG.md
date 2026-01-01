@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.26.20](https://github.com/Makr91/BoxVault/compare/v0.26.19...v0.26.20) (2026-01-01)
+
+
+### Bug Fixes
+
+* changelog ([6ae7532](https://github.com/Makr91/BoxVault/commit/6ae753210a34112b315e8de879f0012f2ea37f91))
+* linting docs/markdown ([7cf75d0](https://github.com/Makr91/BoxVault/commit/7cf75d03dc9d31d488e58f097f56076d6cc4ba73))
+* linting docs/markdown ([dc68adf](https://github.com/Makr91/BoxVault/commit/dc68adfd04b5560dc2b7816274ec19aa5c8f3e38))
+* linting docs/markdown ([96e3f14](https://github.com/Makr91/BoxVault/commit/96e3f14739fa0cea476880ce26be1516acfba6ed))
+
 ## [0.26.19](https://github.com/Makr91/BoxVault/compare/v0.26.18...v0.26.19) (2026-01-01)
 
 ### Bug Fixes
