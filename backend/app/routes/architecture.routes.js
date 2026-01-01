@@ -59,6 +59,7 @@ router.put(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
+  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   architecture.delete
@@ -66,6 +67,7 @@ router.delete(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
+  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   architecture.deleteAllByProvider
