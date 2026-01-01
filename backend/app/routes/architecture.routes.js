@@ -1,7 +1,7 @@
 // architecture.routes.js
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
-const { authJwt, verifyArchitecture } = require('../middleware');
+const { authJwt, verifyArchitecture, sessionAuth } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const architecture = require('../controllers/architecture.controller');
 
@@ -27,12 +27,14 @@ router.use((req, res, next) => {
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
   architectureOperationLimiter,
+  sessionAuth,
   architecture.findAllByProvider
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
   architectureOperationLimiter,
+  sessionAuth,
   architecture.findOne
 );
 

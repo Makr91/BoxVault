@@ -1,17 +1,7 @@
 // findone.js
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 const Architecture = db.architectures;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -98,19 +88,8 @@ try {
  */
 exports.findOne = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const token = req.headers['x-access-token'];
 
-  if (!token) {
-    return res.status(403).send({ message: 'No token provided!' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-    req.userId = decoded.id;
-    req.isServiceAccount = decoded.isServiceAccount;
-  } catch {
-    return res.status(401).send({ message: 'Unauthorized!' });
-  }
+  // req.userId and req.isServiceAccount are set by sessionAuth middleware or vagrantHandler
 
   try {
     // Find the box and its public status

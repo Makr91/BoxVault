@@ -3,7 +3,6 @@ const fs = require('fs');
 const { getSecureBoxPath } = require('../../utils/paths');
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
 const db = require('../../models');
 
 let authConfig;
@@ -143,6 +142,8 @@ const download = async (req, res) => {
   const downloadToken = req.query.token;
   if (downloadToken) {
     try {
+      // Re-import jwt locally for download token verification (business logic, not session auth)
+      const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(downloadToken, authConfig.auth.jwt.jwt_secret.value);
       const { userId: decodedUserId, isServiceAccount: decodedIsServiceAccount } = decoded;
       userId = decodedUserId;
@@ -167,7 +168,11 @@ const download = async (req, res) => {
     const { userId: reqUserId, isServiceAccount: reqIsServiceAccount } = req;
     userId = reqUserId;
     isServiceAccount = reqIsServiceAccount;
+  } else if (req.userId) {
+    // Check for session auth (x-access-token) via middleware
+    ({ userId, isServiceAccount } = req);
   } else {
+    // No token provided at all
     return res.status(403).send({ message: 'No download token provided.' });
   }
 

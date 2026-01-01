@@ -1,19 +1,10 @@
 // download.js
-const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
 const db = require('../../models');
 
 const Organization = db.organization;
 const Users = db.user;
 const Box = db.box;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -94,27 +85,11 @@ try {
 exports.downloadBox = async (req, res) => {
   const { organization, name, version, provider, architecture } = req.params;
 
-  // Get auth info either from vagrantHandler or x-access-token
-  let { userId } = req; // Set by vagrantHandler for Vagrant requests
-  let { isServiceAccount } = req; // Set by vagrantHandler for Vagrant requests
-
-  // If not set by vagrantHandler, try x-access-token
-  if (!userId) {
-    const token = req.headers['x-access-token'];
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-        userId = decoded.id;
-        isServiceAccount = decoded.isServiceAccount || false;
-      } catch {
-        log.app.warn('Invalid x-access-token');
-      }
-    }
-  }
+  // req.userId and req.isServiceAccount are set by sessionAuth middleware or vagrantHandler
 
   log.app.info('Auth context in downloadBox:', {
-    userId,
-    isServiceAccount,
+    userId: req.userId,
+    isServiceAccount: req.isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
     headers: req.headers,
   });
