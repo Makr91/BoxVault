@@ -1,11 +1,11 @@
 const { verifyDownloadToken } = require('../utils/auth');
 const { log } = require('../utils/Logger');
 
-const downloadAuth = (req, res, next) => {
+const downloadAuth = async (req, res, next) => {
   const downloadToken = req.query.token;
   if (downloadToken) {
     try {
-      const decoded = verifyDownloadToken(downloadToken);
+      const decoded = await verifyDownloadToken(downloadToken);
       req.downloadTokenDecoded = decoded;
       req.userId = decoded.userId;
       req.isServiceAccount = decoded.isServiceAccount;

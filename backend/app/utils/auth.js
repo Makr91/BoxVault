@@ -9,7 +9,7 @@ try {
   log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 
-const checkSessionAuth = req => {
+const checkSessionAuth = async req => {
   const token = req.headers['x-access-token'];
 
   if (!token) {
@@ -17,7 +17,15 @@ const checkSessionAuth = req => {
   }
 
   try {
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+    const decoded = await new Promise((resolve, reject) => {
+      jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decodedToken);
+        }
+      });
+    });
     req.userId = decoded.id;
     req.isServiceAccount = decoded.isServiceAccount || false;
     return true;
@@ -27,9 +35,17 @@ const checkSessionAuth = req => {
   }
 };
 
-const verifyDownloadToken = token => {
+const verifyDownloadToken = async token => {
   try {
-    return jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+    return await new Promise((resolve, reject) => {
+      jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decodedToken);
+        }
+      });
+    });
   } catch (err) {
     log.app.warn('Invalid download token:', err.message);
     throw err;

@@ -27,21 +27,18 @@ router.use((req, res, next) => {
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  architectureOperationLimiter,
   sessionAuth,
   architecture.findAllByProvider
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  architectureOperationLimiter,
   sessionAuth,
   architecture.findOne
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
@@ -51,7 +48,6 @@ router.post(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
@@ -60,7 +56,6 @@ router.put(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   architecture.delete
@@ -68,7 +63,6 @@ router.delete(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   architecture.deleteAllByProvider
