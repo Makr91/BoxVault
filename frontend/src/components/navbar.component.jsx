@@ -86,11 +86,13 @@ const Navbar = ({
   };
 
   const handleLogoutToggle = (e) => {
+    e.preventDefault();
     e.stopPropagation();
     setLogoutEverywhere(!logoutEverywhere);
   };
 
   const handleProfileToggle = (e) => {
+    e.preventDefault();
     e.stopPropagation();
     setProfileIsLocal(!profileIsLocal);
   };
@@ -99,6 +101,13 @@ const Navbar = ({
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       handleLogoutToggle(e);
+    }
+  };
+
+  const handleProfileToggleKeyPress = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleProfileToggle(e);
     }
   };
 
@@ -395,12 +404,7 @@ const Navbar = ({
           <FaUser
             className="me-2"
             onClick={handleProfileToggle}
-            onKeyPress={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleProfileToggle(e);
-              }
-            }}
+            onKeyPress={handleProfileToggleKeyPress}
             role="button"
             tabIndex={0}
             title="Switch to auth server profile"
@@ -410,12 +414,7 @@ const Navbar = ({
           <FaIdBadge
             className="me-2"
             onClick={handleProfileToggle}
-            onKeyPress={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleProfileToggle(e);
-              }
-            }}
+            onKeyPress={handleProfileToggleKeyPress}
             role="button"
             tabIndex={0}
             title="Switch to local profile"
