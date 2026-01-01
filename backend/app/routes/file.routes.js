@@ -25,6 +25,14 @@ const getDownloadLinkLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Dedicated rate limiter for file downloads
+const downloadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5000, // align with general file operation limits
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
   void next;
@@ -94,6 +102,7 @@ router.get(
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
   downloadAuth,
+  downloadLimiter,
   sessionAuth,
   file.download
 );
