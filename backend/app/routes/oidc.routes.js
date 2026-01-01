@@ -296,9 +296,7 @@ router.get('/auth/oidc/callback', async (req, res) => {
     return res.redirect(`/auth/callback?token=${encodeURIComponent(token)}`);
   } catch (error) {
     // Enhanced error logging with all available details
-    const safeParamLength = (value) => {
-      return typeof value === 'string' ? value.length : undefined;
-    };
+    const safeParamLength = value => (typeof value === 'string' ? value.length : undefined);
 
     log.auth.error('OIDC callback error - DETAILED', {
       provider,
