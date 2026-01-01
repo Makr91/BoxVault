@@ -7,6 +7,14 @@ import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
 
+const sanitizeProvider = (provider) => {
+  const safeProviderPattern = /^[A-Za-z0-9_-]+$/;
+  if (typeof provider !== "string" || !safeProviderPattern.test(provider)) {
+    throw new Error("Invalid authentication provider");
+  }
+  return provider;
+};
+
 const Login = ({ theme }) => {
   const navigate = useNavigate();
 
@@ -117,7 +125,14 @@ const Login = ({ theme }) => {
 
     setLoading(true);
     setMessage("");
-    window.location.href = `/api/auth/oidc/${provider}`;
+    try {
+      const safeProvider = sanitizeProvider(provider);
+      window.location.href = `/api/auth/oidc/${safeProvider}`;
+    } catch (err) {
+      log("Invalid OIDC provider selected", err);
+      setLoading(false);
+      setMessage("Invalid authentication provider selected.");
+    }
   };
 
   const handleInputChange = (event) => {
