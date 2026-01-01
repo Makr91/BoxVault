@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 
+import EventBus from "../common/EventBus";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
@@ -163,9 +164,12 @@ const Login = ({ theme }) => {
       formValues.password,
       formValues.stayLoggedIn
     )
-      .then(() => {
+      .then((user) => {
         const urlParams = new URLSearchParams(location.search);
         const returnTo = urlParams.get("returnTo");
+
+        // Dispatch login event to update UI components like the navbar
+        EventBus.dispatch("login", user);
 
         if (returnTo) {
           const decodedUrl = decodeURIComponent(returnTo);
