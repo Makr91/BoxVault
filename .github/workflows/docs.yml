@@ -43,6 +43,19 @@ jobs:
           npm ci
           cd backend && npm ci
 
+      - name: Copy and modify configs for CI
+        run: |
+          mkdir -p backend/app/config
+          # Copy and modify app config - replace absolute paths with relative paths
+          sed 's|/var/log/boxvault|./logs|g; s|/var/lib/boxvault/storage|./storage|g' \
+              packaging/config/app.config.yaml > backend/app/config/app.dev.config.yaml
+          # Copy and modify db config - replace absolute path with relative path
+          sed 's|/var/lib/boxvault/database/boxvault.db|./boxvault.db|g; s|value: ""|value: sqlite|g' \
+              packaging/config/db.config.yaml > backend/app/config/db.dev.config.yaml
+          # Copy auth and mail configs as-is (no path modifications needed)
+          cp packaging/config/auth.config.yaml backend/app/config/auth.dev.config.yaml
+          cp packaging/config/mail.config.yaml backend/app/config/mail.dev.config.yaml
+
       - name: Generate OpenAPI documentation
         run: |
           npm run generate-docs
