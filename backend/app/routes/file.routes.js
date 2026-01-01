@@ -1,9 +1,21 @@
 const express = require('express');
-const { authJwt, sessionAuth, downloadAuth, fileOperationLimiter } = require('../middleware');
+const { rateLimit } = require('express-rate-limit');
+const { authJwt, sessionAuth, downloadAuth } = require('../middleware');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
 
 const router = express.Router();
+
+// Explicit rate limiter for file operations (CodeQL requirement)
+const fileOperationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all routes in this router
+router.use(fileOperationLimiter);
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
@@ -51,7 +63,6 @@ router.use((req, res, next) => {
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.update,
@@ -60,7 +71,6 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.upload,
@@ -69,14 +79,12 @@ router.post(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
-  fileOperationLimiter,
   sessionAuth,
   file.info
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
-  fileOperationLimiter, // rate limit download requests before authorization
   downloadAuth,
   sessionAuth,
   file.download
@@ -84,14 +92,12 @@ router.get(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
-  fileOperationLimiter,
   sessionAuth,
   file.getDownloadLink
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.remove
