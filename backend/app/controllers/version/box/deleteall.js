@@ -1,19 +1,11 @@
 // deleteall.js
 const fs = require('fs');
-const path = require('path');
-const { loadConfig } = require('../../../utils/config-loader');
+const { getSecureBoxPath } = require('../../../utils/paths');
 const { log } = require('../../../utils/Logger');
 const db = require('../../../models');
 
 const Version = db.versions;
 const Box = db.box;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -109,11 +101,7 @@ exports.deleteAllByBox = async (req, res) => {
     });
 
     if (deleted) {
-      const boxPath = path.join(
-        appConfig.boxvault.box_storage_directory.value,
-        organization,
-        boxId
-      );
+      const boxPath = getSecureBoxPath(organization, boxId);
       fs.rm(boxPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the box directory: ${err}`);

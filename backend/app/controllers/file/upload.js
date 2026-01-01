@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
+const { getSecureBoxPath } = require('../../utils/paths');
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
@@ -197,15 +198,14 @@ const Architecture = db.architectures;
 const upload = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const filePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
+  const baseDir = getSecureBoxPath(
     organization,
     boxId,
     versionNumber,
     providerName,
-    architectureName,
-    fileName
+    architectureName
   );
+  const filePath = path.join(baseDir, fileName);
   const uploadStartTime = Date.now();
 
   log.app.info('=== FILE UPLOAD STARTED ===', {

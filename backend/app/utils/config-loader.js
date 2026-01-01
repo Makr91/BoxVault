@@ -7,8 +7,15 @@ const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
  * Get the appropriate config file path based on environment
  * @param {string} configName - Name of config file (without .config.yaml extension)
  * @returns {string} Full path to config file
+ * @throws {Error} If config name is not in whitelist
  */
 const getConfigPath = configName => {
+  // Whitelist allowed config names to prevent path traversal
+  const allowedConfigs = ['app', 'auth', 'db', 'mail'];
+  if (!allowedConfigs.includes(configName)) {
+    throw new Error(`Invalid config name: ${configName}`);
+  }
+
   if (process.env.NODE_ENV === 'production') {
     return `${configDir}/${configName}.config.yaml`;
   }
