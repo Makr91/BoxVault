@@ -1,18 +1,10 @@
 // delete.js
 const fs = require('fs');
-const path = require('path');
-const { loadConfig } = require('../../utils/config-loader');
+const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 const Version = db.versions;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -129,12 +121,7 @@ exports.delete = async (req, res) => {
     });
 
     if (deleted) {
-      const versionPath = path.join(
-        appConfig.boxvault.box_storage_directory.value,
-        organization,
-        boxId,
-        versionNumber
-      );
+      const versionPath = getSecureBoxPath(organization, boxId, versionNumber);
       fs.rm(versionPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the version directory: ${err}`);

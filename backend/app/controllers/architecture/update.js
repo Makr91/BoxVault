@@ -1,19 +1,10 @@
 // update.js
 const fs = require('fs');
-const path = require('path');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
+const { getSecureBoxPath } = require('../../utils/paths');
 const db = require('../../models');
 
 const Architecture = db.architectures;
 const Provider = db.providers;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -105,22 +96,14 @@ exports.update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const { name, defaultBox } = req.body;
 
-  const oldFilePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
+  const oldFilePath = getSecureBoxPath(
     organization,
     boxId,
     versionNumber,
     providerName,
     architectureName
   );
-  const newFilePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
-    organization,
-    boxId,
-    versionNumber,
-    providerName,
-    name
-  );
+  const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, providerName, name);
 
   try {
     const organizationData = await db.organization.findOne({

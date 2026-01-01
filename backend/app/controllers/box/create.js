@@ -1,18 +1,9 @@
 // create.js
 const fs = require('fs');
-const path = require('path');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
+const { getSecureBoxPath } = require('../../utils/paths');
 const db = require('../../models');
 
 const Box = db.box;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -76,17 +67,14 @@ try {
 exports.create = async (req, res) => {
   const { organization } = req.params;
   const { name, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
-  const newFilePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
-    organization,
-    name || name
-  );
 
   if (!req.body.name) {
     return res.status(400).send({
       message: 'Name cannot be empty!',
     });
   }
+
+  const newFilePath = getSecureBoxPath(organization, name);
 
   // Create the new directory if it doesn't exist
   if (!fs.existsSync(newFilePath)) {

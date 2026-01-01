@@ -67,20 +67,10 @@
 
 // create.js
 const fs = require('fs');
-const path = require('path');
-
-const { loadConfig } = require('../../utils/config-loader');
+const { getSecureBoxPath } = require('../../utils/paths');
 const db = require('../../models');
 
 const Provider = db.providers;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  const { log } = require('../../utils/Logger');
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -146,13 +136,7 @@ try {
 exports.create = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
   const { name, description } = req.body;
-  const newFilePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
-    organization,
-    boxId,
-    versionNumber,
-    name
-  );
+  const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, name);
 
   try {
     const organizationData = await db.organization.findOne({

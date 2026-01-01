@@ -1,19 +1,9 @@
 // delete.js
 const fs = require('fs');
-const path = require('path');
-
-const { loadConfig } = require('../../utils/config-loader');
+const { getSecureBoxPath } = require('../../utils/paths');
 const db = require('../../models');
 
 const Organization = db.organization;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  const { log } = require('../../utils/Logger');
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -71,13 +61,11 @@ exports.delete = async (req, res) => {
       });
     }
 
-    // Determine the directory path
-    const dirPath = path.join(appConfig.boxvault.box_storage_directory.value, organizationName);
-
     // Delete the organization
     await organization.destroy();
 
     // Delete the directory
+    const dirPath = getSecureBoxPath(organizationName);
     if (fs.existsSync(dirPath)) {
       fs.rmdirSync(dirPath, { recursive: true });
     }

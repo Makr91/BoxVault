@@ -1,20 +1,11 @@
 // update.js
 const fs = require('fs');
-const path = require('path');
-
-const { loadConfig } = require('../../utils/config-loader');
+const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const crypto = require('crypto');
 const db = require('../../models');
 
 const Organization = db.organization;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 const generateEmailHash = email =>
   crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
@@ -86,11 +77,8 @@ const generateEmailHash = email =>
 exports.update = async (req, res) => {
   const { organizationName } = req.params;
   const { organization, description, email, website } = req.body;
-  const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organizationName);
-  const newFilePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
-    organization || organizationName
-  );
+  const oldFilePath = getSecureBoxPath(organizationName);
+  const newFilePath = getSecureBoxPath(organization || organizationName);
 
   try {
     const org = await Organization.findOne({

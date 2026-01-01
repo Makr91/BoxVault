@@ -1,20 +1,11 @@
 // update.js
 const fs = require('fs');
-const path = require('path');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
+const { getSecureBoxPath } = require('../../utils/paths');
 const db = require('../../models');
 
 const Organization = db.organization;
 const Users = db.user;
 const Box = db.box;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -88,12 +79,8 @@ exports.update = async (req, res) => {
     workflowFile,
     cicdUrl,
   } = req.body;
-  const oldFilePath = path.join(appConfig.boxvault.box_storage_directory.value, organization, name);
-  const newFilePath = path.join(
-    appConfig.boxvault.box_storage_directory.value,
-    organization,
-    updatedName || name
-  );
+  const oldFilePath = getSecureBoxPath(organization, name);
+  const newFilePath = getSecureBoxPath(organization, updatedName || name);
 
   try {
     const organizationData = await Organization.findOne({

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
+const { getSecureBoxPath } = require('../utils/paths');
 
 // Load app config for max file size
 let maxFileSize;
@@ -419,11 +420,9 @@ const uploadMiddleware = async (req, res) => {
       });
     }
 
-    // Load config and prepare upload directory
+    // Load config and prepare upload directory using secure path
     log.app.info('Loading config and preparing upload directory...');
-    const config = loadConfig('app');
-    const uploadDir = path.join(
-      config.boxvault.box_storage_directory.value,
+    const uploadDir = getSecureBoxPath(
       organization,
       boxId,
       versionNumber,

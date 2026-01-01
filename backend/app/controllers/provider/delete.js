@@ -67,21 +67,12 @@
 
 // delete.js
 const fs = require('fs');
-const path = require('path');
-
-const { loadConfig } = require('../../utils/config-loader');
+const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 const Provider = db.providers;
 const Architecture = db.architectures;
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 /**
  * @swagger
@@ -234,8 +225,7 @@ exports.delete = async (req, res) => {
 
     // Delete all files and directories associated with each architecture
     const deletePromises = architectures.map(architecture => {
-      const filePath = path.join(
-        appConfig.boxvault.box_storage_directory.value,
+      const filePath = getSecureBoxPath(
         organization,
         boxId,
         versionNumber,
@@ -260,13 +250,7 @@ exports.delete = async (req, res) => {
     await provider.destroy();
 
     // Delete the provider's directory
-    const providerPath = path.join(
-      appConfig.boxvault.box_storage_directory.value,
-      organization,
-      boxId,
-      versionNumber,
-      providerName
-    );
+    const providerPath = getSecureBoxPath(organization, boxId, versionNumber, providerName);
     fs.rm(providerPath, { recursive: true, force: true }, err => {
       if (err) {
         log.app.info(`Could not delete the provider directory: ${err}`);
