@@ -9,10 +9,13 @@ const router = express.Router();
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10000,
+  max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Apply rate limiting to all routes in this router
+router.use(fileOperationLimiter);
 
 // Dedicated rate limiter for download-link generation
 const getDownloadLinkLimiter = rateLimit({
@@ -68,7 +71,6 @@ router.use((req, res, next) => {
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.update,
@@ -77,7 +79,6 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.upload,
@@ -86,14 +87,12 @@ router.post(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
-  fileOperationLimiter,
   sessionAuth,
   file.info
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
-  fileOperationLimiter,
   downloadAuth,
   sessionAuth,
   file.download
@@ -108,7 +107,6 @@ router.post(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.remove

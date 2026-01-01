@@ -39,7 +39,7 @@ const rateLimiter = rateLimit({
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10000,
+  max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -47,7 +47,7 @@ const fileOperationLimiter = rateLimit({
 // Explicit rate limiter for architecture operations (CodeQL requirement)
 const architectureOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10000,
+  max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
 });

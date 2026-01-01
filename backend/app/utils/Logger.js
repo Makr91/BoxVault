@@ -329,7 +329,7 @@ const createTimer = operation => {
   return {
     end: (meta = {}) => {
       const end = process.hrtime.bigint();
-      const duration = Number(end - start) / 1000000;
+      const duration = Number(end - start) / 500000;
 
       const thresholdMs = extractedConfig.performance_threshold_ms || 1000;
       if (duration >= thresholdMs) {

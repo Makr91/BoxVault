@@ -122,7 +122,7 @@ mysql_pool:
     order: 3
   idle:
     type: integer
-    value: 10000
+    value: 5000
     description: >-
       Maximum time, in milliseconds, that a connection can be idle before being
       released (MySQL only)
