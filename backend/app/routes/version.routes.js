@@ -1,9 +1,12 @@
 // version.routes.js
 const express = require('express');
-const { authJwt, verifyVersion } = require('../middleware');
+const { authJwt, verifyVersion, rateLimiter } = require('../middleware');
 const version = require('../controllers/version.controller');
 
 const router = express.Router();
+
+// Apply rate limiting to this router
+router.use(rateLimiter.rateLimiterMiddleware());
 
 router.use((req, res, next) => {
   void req;

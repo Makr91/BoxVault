@@ -1,9 +1,12 @@
 const express = require('express');
-const { authJwt } = require('../middleware');
+const { authJwt, rateLimiter } = require('../middleware');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
 
 const router = express.Router();
+
+// Apply rate limiting to this router
+router.use(rateLimiter.rateLimiterMiddleware());
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {

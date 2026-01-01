@@ -1,9 +1,12 @@
 // box.routes.js
 const express = require('express');
-const { authJwt, verifyBoxName } = require('../middleware');
+const { authJwt, verifyBoxName, rateLimiter } = require('../middleware');
 const box = require('../controllers/box.controller');
 
 const router = express.Router();
+
+// Apply rate limiting to this router
+router.use(rateLimiter.rateLimiterMiddleware());
 
 router.use((req, res, next) => {
   void req;

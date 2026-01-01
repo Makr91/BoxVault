@@ -1,8 +1,11 @@
 const express = require('express');
-const { authJwt, verifyOrganization } = require('../middleware');
+const { authJwt, verifyOrganization, rateLimiter } = require('../middleware');
 const organization = require('../controllers/organization.controller');
 
 const router = express.Router();
+
+// Apply rate limiting to this router
+router.use(rateLimiter.rateLimiterMiddleware());
 
 router.use((req, res, next) => {
   void req;
