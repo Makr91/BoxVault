@@ -9,7 +9,7 @@ const router = express.Router();
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5000,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -28,7 +28,7 @@ const getDownloadLinkLimiter = rateLimit({
 // Dedicated rate limiter for file downloads
 const downloadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5000, // align with general file operation limits
+  max: 2000, // align with general file operation limits
   standardHeaders: true,
   legacyHeaders: false,
 });
