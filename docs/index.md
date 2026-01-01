@@ -80,6 +80,7 @@ When contributing to this repository, please first discuss the change you wish t
 
 #### Thank you to the contributors of BoxVault!
 
+<!-- markdownlint-disable MD033 -->
 <ul class="list-style-none">
 {% for contributor in site.github.contributors %}
   <li class="d-inline-block mr-1">
@@ -87,6 +88,7 @@ When contributing to this repository, please first discuss the change you wish t
   </li>
 {% endfor %}
 </ul>
+<!-- markdownlint-enable MD033 -->
 
 ### Code of Conduct
 

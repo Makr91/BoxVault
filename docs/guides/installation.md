@@ -6,7 +6,7 @@ nav_order: 2
 permalink: /docs/guides/installation/
 ---
 
-# Installation Guide
+## Installation Guide
 
 {: .no_toc }
 

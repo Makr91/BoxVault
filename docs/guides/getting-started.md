@@ -80,11 +80,7 @@ This will guide you through:
 
 ### 2. Access the Web Interface
 
-Open your browser and navigate to:
-
-```
-http://localhost:3000
-```
+  Open your browser and navigate to: [http://localhost:3000](http://localhost:3000)
 
 ### 3. Create Your First Organization
 

@@ -209,26 +209,26 @@ BoxVault provides multiple ways to download box files:
 
 1. **Direct browser download:**
 
-```bash
-curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box"
-```
+    ```bash
+    curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/    providers/virtualbox/amd64/vagrant.box"
+    ```
 
 2. **Using Vagrant CLI:**
 
-```bash
-vagrant box add "boxvault.example.com/myorg/debian12"
-```
+    ```bash
+    vagrant box add "boxvault.example.com/myorg/debian12"
+    ```
 
 3. **Using download link:**
 
-```bash
-# Get download link
-curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
-  -H "x-access-token: YOUR_JWT_TOKEN"
+    ```bash
+    # Get download link
+    curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/   version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
+      -H "x-access-token: YOUR_JWT_TOKEN"
 
-# Download using returned URL
-curl -O "DOWNLOAD_URL"
-```
+    # Download using returned URL
+    curl -O "DOWNLOAD_URL"
+    ```
 
 ### Get Box Metadata
 

@@ -20,8 +20,10 @@ Security policies and vulnerability reporting for BoxVault.
 
 ---
 
+<!-- markdownlint-disable MD033 -->
 <div id="supported-versions-content">
   <p><em>Loading supported versions...</em></p>
 </div>
+<!-- markdownlint-enable MD033 -->
 
 {% include SECURITY.md %}

@@ -20,8 +20,10 @@ Release history and changes for BoxVault.
 
 ---
 
+<!-- markdownlint-disable MD033 -->
 <div id="latest-release-content">
   <p><em>Loading latest release information...</em></p>
 </div>
+<!-- markdownlint-enable MD033 -->
 
 {% include CHANGELOG.md %}

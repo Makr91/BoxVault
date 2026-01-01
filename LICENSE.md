@@ -563,7 +563,7 @@ law that most closely approximates an absolute waiver of all civil liability in
 connection with the Program, unless a warranty or assumption of liability accompanies
 a copy of the Program in return for a fee.
 
-_END OF TERMS AND CONDITIONS_
+END OF TERMS AND CONDITIONS
 
 ## How to Apply These Terms to Your New Programs
 
