@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.27](https://github.com/Makr91/BoxVault/compare/v0.26.26...v0.26.27) (2026-01-01)
+
+
+### Bug Fixes
+
+* profile toggle ([5f8c4cb](https://github.com/Makr91/BoxVault/commit/5f8c4cbdbc77c79a4d7da18c600543efc532e06d))
+
 ## [0.26.26](https://github.com/Makr91/BoxVault/compare/v0.26.25...v0.26.26) (2026-01-01)
 
 
