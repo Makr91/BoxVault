@@ -208,12 +208,25 @@ const Navbar = ({
         );
         const issuer = idTokenPayload.iss || "";
 
+        // Normalize URLs for comparison (strip trailing slashes)
+        const normalizeUrl = (url) => url.replace(/\/+$/, "");
+
         // CRITICAL: Validate against backend-provided whitelist (CodeQL requirement)
+        // Normalize both sides for comparison to handle trailing slash differences
+        const normalizedIssuer = normalizeUrl(issuer);
         const isTrusted = trustedIssuers.some(
-          (trustedIssuer) => trustedIssuer.issuer === issuer
+          (trustedIssuer) =>
+            normalizeUrl(trustedIssuer.issuer) === normalizedIssuer
         );
+
         if (!isTrusted) {
-          log.auth.warn("Issuer not in trusted whitelist", { issuer });
+          log.auth.warn("Issuer not in trusted whitelist", {
+            issuer,
+            normalizedIssuer,
+            trustedIssuers: trustedIssuers.map((trustedIssuer) =>
+              normalizeUrl(trustedIssuer.issuer)
+            ),
+          });
           return "";
         }
 
@@ -226,7 +239,7 @@ const Navbar = ({
           const url = new URL(issuer);
           // Additional security checks
           if (url.protocol === "https:" && url.hostname) {
-            return issuer;
+            return issuer; // Return original URL (not normalized)
           }
         } catch {
           log.auth.warn("Invalid issuer URL format", { issuer });
@@ -381,11 +394,11 @@ const Navbar = ({
 
   const renderProfileMenuItem = () => {
     const isOidcUser = currentUser?.provider?.startsWith("oidc-");
-    // Validate auth server URL is a safe HTTPS URL
-    const isValidAuthServerUrl =
+    const hasValidAuthServer =
       authServerUrl && authServerUrl.startsWith("https://");
 
-    if (!isOidcUser || !isValidAuthServerUrl) {
+    // For non-OIDC users (local accounts), show simple profile link without toggle
+    if (!isOidcUser) {
       return (
         <>
           <FaUser className="me-2" />
@@ -396,6 +409,34 @@ const Navbar = ({
       );
     }
 
+    // Determine profile link destination for OIDC users
+    let profileLink;
+    if (profileIsLocal) {
+      profileLink = (
+        <Link to="/profile" className="text-decoration-none text-reset">
+          Profile
+        </Link>
+      );
+    } else if (hasValidAuthServer) {
+      profileLink = (
+        <a
+          href={`${authServerUrl}/user/profile`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-decoration-none text-reset"
+        >
+          Profile
+        </a>
+      );
+    } else {
+      profileLink = (
+        <Link to="/profile" className="text-decoration-none text-reset">
+          Profile
+        </Link>
+      );
+    }
+
+    // For OIDC users, ALWAYS show the toggle (even if auth server URL isn't loaded yet)
     return (
       <>
         {profileIsLocal ? (
@@ -419,20 +460,7 @@ const Navbar = ({
             style={{ cursor: "pointer" }}
           />
         )}
-        {profileIsLocal ? (
-          <Link to="/profile" className="text-decoration-none text-reset">
-            Profile
-          </Link>
-        ) : (
-          <a
-            href={`${authServerUrl}/user/profile`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-decoration-none text-reset"
-          >
-            Profile
-          </a>
-        )}
+        {profileLink}
       </>
     );
   };
