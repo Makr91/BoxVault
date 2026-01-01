@@ -14,6 +14,14 @@ const fileOperationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Dedicated rate limiter for download-link generation
+const getDownloadLinkLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 download-link requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Apply rate limiting to all routes in this router
 router.use(fileOperationLimiter);
 
@@ -92,6 +100,7 @@ router.get(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
+  getDownloadLinkLimiter,
   sessionAuth,
   file.getDownloadLink
 );
