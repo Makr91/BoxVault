@@ -1,18 +1,9 @@
 const express = require('express');
-const { rateLimit } = require('express-rate-limit');
-const { authJwt, sessionAuth, downloadAuth } = require('../middleware');
+const { authJwt, sessionAuth, downloadAuth, fileOperationLimiter } = require('../middleware');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
 
 const router = express.Router();
-
-// Explicit rate limiter for file operations (CodeQL requirement)
-const fileOperationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10000,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
