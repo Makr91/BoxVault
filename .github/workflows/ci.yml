@@ -30,7 +30,7 @@ jobs:
         run: npm run cinstall:backend
 
       - name: Security audit
-        run: npm run security:audit
+        run: cd backend && npm run security:audit
 
       - name: Vulnerability scan
         run: cd backend && npm run security:vulnerabilities
