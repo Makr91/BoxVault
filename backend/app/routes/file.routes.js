@@ -102,6 +102,7 @@ router.get(
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
   downloadLimiter,
+  fileOperationLimiter,
   downloadAuth,
   sessionAuth,
   file.download
