@@ -60,29 +60,29 @@ jobs:
       - name: Frontend security checks
         run: cd frontend && npm run security:all
 
-   lint-and-format:
-     name: Lint & Format
-     runs-on: ubuntu-latest
-     steps:
-       - name: Checkout code
-         uses: actions/checkout@v6
+  lint-and-format:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-       - name: Setup Node.js
-         uses: actions/setup-node@v6
-         with:
-           node-version: '22'
-           cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
 
-       - name: Install dependencies
-         run: |
-           cd backend && npm ci
-           cd ../frontend && npm install
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm install
 
-       - name: Run ESLint
-         run: npm run lint
+      - name: Run ESLint
+        run: npm run lint
 
-       - name: Check Prettier formatting
-         run: npm run format:check
+      - name: Check Prettier formatting
+        run: npm run format:check
 
   build-frontend:
     name: Build Frontend
@@ -105,24 +105,24 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-  # test:
-  #   name: Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: '22'
-  #         cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
 
-  #     - name: Install dependencies
-  #       run: npm run cinstall:all
+      - name: Install dependencies
+        run: npm run cinstall:all
 
-  #     - name: Run tests
-  #       run: npm run test:all
+      - name: Run tests
+        run: npm run test:all
 
   verify-scripts:
     name: Verify Scripts
