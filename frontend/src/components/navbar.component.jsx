@@ -86,13 +86,11 @@ const Navbar = ({
   };
 
   const handleLogoutToggle = (e) => {
-    e.preventDefault();
     e.stopPropagation();
     setLogoutEverywhere(!logoutEverywhere);
   };
 
   const handleProfileToggle = (e) => {
-    e.preventDefault();
     e.stopPropagation();
     setProfileIsLocal(!profileIsLocal);
   };
