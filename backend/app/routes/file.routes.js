@@ -1,4 +1,5 @@
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const { authJwt } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const { log } = require('../utils/Logger');
@@ -8,6 +9,14 @@ const router = express.Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
+
+// Explicit rate limiter for file operations (CodeQL requirement)
+const fileOperationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
@@ -55,6 +64,7 @@ router.use((req, res, next) => {
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.update,
@@ -63,6 +73,7 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.upload,
@@ -71,21 +82,25 @@ router.post(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
+  fileOperationLimiter,
   file.info
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
+  fileOperationLimiter,
   file.download
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
+  fileOperationLimiter,
   file.getDownloadLink
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.remove

@@ -1,5 +1,6 @@
 // architecture.routes.js
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const { authJwt, verifyArchitecture } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const architecture = require('../controllers/architecture.controller');
@@ -8,6 +9,14 @@ const router = express.Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
+
+// Explicit rate limiter for architecture operations (CodeQL requirement)
+const architectureOperationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 router.use((req, res, next) => {
   void req;
@@ -27,6 +36,7 @@ router.get(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
+  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
@@ -36,6 +46,7 @@ router.post(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
+  architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,

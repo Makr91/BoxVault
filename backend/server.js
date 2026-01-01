@@ -12,6 +12,7 @@ const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { passport, initializeStrategies } = require('./app/auth/passport');
 const lusca = require('lusca');
+const { rateLimit } = require('express-rate-limit');
 
 global.__basedir = __dirname;
 
@@ -412,8 +413,16 @@ const initializeApp = async () => {
       log.app.warn('Swagger configuration not available:', error.message);
     }
 
+    // Explicit rate limiter for SPA catch-all (CodeQL requirement)
+    const spaLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 10000,
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+
     // SPA catch-all route
-    app.get('*splat', (req, res) => {
+    app.get('*splat', spaLimiter, (req, res) => {
       void req;
       res.sendFile(path.join(static_path, 'index.html'));
     });
