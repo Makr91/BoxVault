@@ -1,8 +1,8 @@
 # Jekyll configuration for BoxVault documentation
 title: BoxVault Documentation
 description: Documentation for BoxVault - Vagrant Box Repository Management System
-url: "https://makr91.github.io"
-baseurl: "/BoxVault"
+url: 'https://makr91.github.io'
+baseurl: '/BoxVault'
 
 # Theme
 theme: just-the-docs
@@ -13,7 +13,7 @@ color_scheme: wider
 
 # Logo and favicon
 # logo: "/BoxVault/frontend/src/images/BoxVault.svg"
-favicon_ico: "/BoxVault/frontend/public/favicon.ico"
+favicon_ico: '/BoxVault/frontend/public/favicon.ico'
 
 # Search
 search_enabled: true
@@ -34,11 +34,11 @@ footer_content: 'Copyright &copy; 2024 BoxVault Project. Distributed under the <
 
 # Back to top link
 back_to_top: true
-back_to_top_text: "Back to top"
+back_to_top_text: 'Back to top'
 
 # Last edit timestamp
 last_edit_timestamp: true
-last_edit_time_format: "%b %e %Y at %I:%M %p"
+last_edit_time_format: '%b %e %Y at %I:%M %p'
 
 # GitHub metadata
 repository: Makr91/BoxVault
@@ -67,27 +67,27 @@ sass:
 # Collections
 collections:
   guides:
-    permalink: "/:collection/:name/"
+    permalink: '/:collection/:name/'
     output: true
 
 # Defaults
 defaults:
   - scope:
-      path: ""
-      type: "pages"
+      path: ''
+      type: 'pages'
     values:
-      layout: "default"
+      layout: 'default'
   - scope:
-      path: "docs"
-      type: "pages"
+      path: 'docs'
+      type: 'pages'
     values:
-      layout: "default"
+      layout: 'default'
   - scope:
-      path: ""
-      type: "guides"
+      path: ''
+      type: 'guides'
     values:
-      layout: "default"
-      parent: "Guides"
+      layout: 'default'
+      parent: 'Guides'
 
 # Exclude from processing
 exclude:
@@ -110,7 +110,7 @@ exclude:
   - frontend/vite.config.mjs
   - packaging/
   - scripts/
-  - "*.log"
+  - '*.log'
   - .git/
   - .github/
   - README.md
@@ -120,11 +120,11 @@ include:
   - _pages
   - docs/
   - head_custom.html
-  - "docs/api/*.html"
-  - "docs/api/*.json"
+  - 'docs/api/*.html'
+  - 'docs/api/*.json'
 
 # Includes directory (allows Jekyll to find include files in root directory)
-includes_dir: "."
+includes_dir: '.'
 
 # SEO
 lang: en-US
@@ -143,7 +143,7 @@ social:
 
 # Mermaid diagrams support
 mermaid:
-  version: "9.4.3"
+  version: '9.4.3'
 
 # Callouts
 callouts_level: quiet

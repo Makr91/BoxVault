@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Release tag name (e.g., v1.2.3)"
+        description: 'Release tag name (e.g., v1.2.3)'
         required: false
-        default: "v0.0.0-dev"
+        default: 'v0.0.0-dev'
       release_url:
-        description: "URL to the GitHub release"
+        description: 'URL to the GitHub release'
         required: false
-        default: "https://github.com/Makr91/BoxVault"
+        default: 'https://github.com/Makr91/BoxVault'
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: true
 
 jobs:
@@ -35,8 +35,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: '22'
+          cache: 'npm'
 
       - name: Install Node.js dependencies
         run: |
@@ -73,7 +73,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.1"
+          ruby-version: '3.1'
           bundler-cache: true
 
       - name: Setup Pages

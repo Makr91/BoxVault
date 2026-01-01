@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Package files
+package-lock.json
+yarn.lock
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Packaging
+packaging/
+
+# Documentation 
+docs/
+_sass/
+assets/
+*.md
+
+# Git files
+.git/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Skip specific scripts
+packaging/scripts/sync-versions.js
+packaging/scripts/generate-docs.js
+
+# SQLite files
+*.sqlite
+*.db
+
+# SSL certificates
+*.key
+*.crt
+*.pem
+
+# Configuration that should remain as-is
+.gitignore
+.eslintignore
+.prettierignore
+
+**/swagger-custom.js
+
+CHANGELOG.md

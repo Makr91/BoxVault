@@ -4,13 +4,13 @@ on:
   workflow_call:
     inputs:
       version:
-        description: "Development version to build (optional - auto-calculated if not provided)"
+        description: 'Development version to build (optional - auto-calculated if not provided)'
         required: false
         type: string
   workflow_dispatch:
     inputs:
       version:
-        description: "Development version to build (optional - auto-calculated if not provided)"
+        description: 'Development version to build (optional - auto-calculated if not provided)'
         required: false
         type: string
 
@@ -61,8 +61,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: '22'
+          cache: 'npm'
 
       - name: Install dependencies
         run: |
@@ -283,7 +283,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: "development-packages"
+          name: 'development-packages'
           path: |
             *.deb
             *.p5p
