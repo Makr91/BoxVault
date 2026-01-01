@@ -144,7 +144,7 @@ curl https://localhost:3000
 
 The IPS package will create:
 
-```
+```file
 /opt/boxvault/                      # Application files
 ├── server.js                       # Main Node.js application
 ├── package.json                    # Package metadata
@@ -217,6 +217,7 @@ The package automatically:
    ```
 
 4. **Package validation errors:**
+
    ```bash
    # Check manifest syntax
    pkglint boxvault.p5m.final

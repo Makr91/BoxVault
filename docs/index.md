@@ -78,7 +78,7 @@ BoxVault is distributed by an [GPL-3.0 license](https://github.com/Makr91/BoxVau
 
 When contributing to this repository, please first discuss the change you wish to make via issue, email, or any other method with the owners of this repository before making a change. Read more about becoming a contributor in [our GitHub repo](https://github.com/Makr91/BoxVault#contributing).
 
-#### Thank you to the contributors of BoxVault!
+#### Thank you! to the contributors of BoxVault
 
 <!-- markdownlint-disable MD033 -->
 <ul class="list-style-none">
