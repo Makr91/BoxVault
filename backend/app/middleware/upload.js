@@ -432,7 +432,7 @@ const uploadMiddleware = async (req, res) => {
     );
 
     log.app.info('Creating upload directory:', { uploadDir });
-    fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
+    safeMkdirSync(uploadDir, { recursive: true, mode: 0o755 });
     finalPath = path.join(uploadDir, 'vagrant.box');
 
     // Get chunk information from headers
@@ -450,7 +450,7 @@ const uploadMiddleware = async (req, res) => {
     const tempDir = path.join(uploadDir, '.temp');
     if (isMultipart) {
       log.app.info('Creating temp directory for chunks:', { tempDir });
-      fs.mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+      safeMkdirSync(tempDir, { recursive: true, mode: 0o755 });
     }
 
     // Log upload start

@@ -2,7 +2,7 @@
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
-const { checkSessionAuth, generateDownloadToken } = require('../../utils/auth');
+const { generateDownloadToken } = require('../../utils/auth');
 
 let appConfig;
 try {
@@ -91,16 +91,11 @@ const getDownloadLink = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
   // Get auth info from x-access-token
-  let { userId } = req;
-  let { isServiceAccount } = req;
+  const { userId } = req;
+  const { isServiceAccount } = req;
 
-  // If not set, try x-access-token
-  if (!userId) {
-    if (checkSessionAuth(req)) {
-      // checkSessionAuth sets req.userId and req.isServiceAccount
-      ({ userId, isServiceAccount } = req);
-    }
-  }
+  // req.userId and req.isServiceAccount are set by sessionAuth middleware
+  // No need to manually check here as the middleware handles it
 
   try {
     const organizationData = await db.organization.findOne({

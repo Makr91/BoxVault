@@ -1,5 +1,4 @@
 // upload.file.controller.js
-const fs = require('fs');
 const path = require('path');
 
 const { getSecureBoxPath } = require('../../utils/paths');
@@ -7,6 +6,7 @@ const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
 const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
+const { safeMkdirSync, safeExistsSync } = require('../../utils/fsHelper');
 
 let appConfig;
 try {
@@ -237,8 +237,8 @@ const upload = async (req, res) => {
 
     // Create directory if it doesn't exist
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!safeExistsSync(dir)) {
+      safeMkdirSync(dir, { recursive: true });
       log.app.info('Created upload directory:', { dir });
     } else {
       log.app.info('Upload directory already exists:', { dir });
