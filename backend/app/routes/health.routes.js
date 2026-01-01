@@ -1,5 +1,8 @@
+const express = require('express');
 const healthController = require('../controllers/health.controller');
 
-module.exports = function (app) {
-  app.get('/api/health', healthController.getHealth);
-};
+const router = express.Router();
+
+router.get('/health', healthController.getHealth);
+
+module.exports = router;

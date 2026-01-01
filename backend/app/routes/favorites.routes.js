@@ -1,30 +1,29 @@
+const express = require('express');
 const { authJwt } = require('../middleware');
 const favorites = require('../controllers/favorites.controller');
 
-module.exports = function (app) {
-  app.use((req, res, next) => {
-    void req;
-    res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
-    next();
-  });
+const router = express.Router();
 
-  // Get raw favorites JSON
-  app.get('/api/favorites', [authJwt.verifyToken, authJwt.isUser], favorites.getFavorites);
+router.use((req, res, next) => {
+  void req;
+  res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
+  next();
+});
 
-  // Save favorites JSON
-  app.post('/api/favorites/save', [authJwt.verifyToken, authJwt.isUser], favorites.saveFavorites);
+// Get raw favorites JSON
+router.get('/favorites', [authJwt.verifyToken, authJwt.isUser], favorites.getFavorites);
 
-  // Get enriched user claims (includes favorite_apps with metadata)
-  app.get(
-    '/api/userinfo/claims',
-    [authJwt.verifyToken, authJwt.isUser],
-    favorites.getUserInfoClaims
-  );
+// Save favorites JSON
+router.post('/favorites/save', [authJwt.verifyToken, authJwt.isUser], favorites.saveFavorites);
 
-  // Get enriched favorites only (lightweight)
-  app.get(
-    '/api/userinfo/favorites',
-    [authJwt.verifyToken, authJwt.isUser],
-    favorites.getEnrichedFavorites
-  );
-};
+// Get enriched user claims (includes favorite_apps with metadata)
+router.get('/userinfo/claims', [authJwt.verifyToken, authJwt.isUser], favorites.getUserInfoClaims);
+
+// Get enriched favorites only (lightweight)
+router.get(
+  '/userinfo/favorites',
+  [authJwt.verifyToken, authJwt.isUser],
+  favorites.getEnrichedFavorites
+);
+
+module.exports = router;

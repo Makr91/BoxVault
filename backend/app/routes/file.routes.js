@@ -1,6 +1,9 @@
+const express = require('express');
 const { authJwt } = require('../middleware');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
+
+const router = express.Router();
 
 // Error handling middleware for file operations
 const handleFileError = (err, req, res, next) => {
@@ -40,41 +43,45 @@ const handleFileError = (err, req, res, next) => {
   });
 };
 
-module.exports = function (app) {
-  app.use((req, res, next) => {
-    void req;
-    res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
-    next();
-  });
+router.use((req, res, next) => {
+  void req;
+  res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
+  next();
+});
 
-  app.put(
-    '/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-    [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-    file.update,
-    handleFileError
-  );
+router.put(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  file.update,
+  handleFileError
+);
 
-  app.post(
-    '/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-    [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-    file.upload,
-    handleFileError
-  );
-  app.get(
-    '/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
-    file.info
-  );
-  app.get(
-    '/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
-    file.download
-  );
-  app.post(
-    '/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
-    file.getDownloadLink
-  );
-  app.delete(
-    '/api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
-    [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-    file.remove
-  );
-};
+router.post(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  file.upload,
+  handleFileError
+);
+
+router.get(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
+  file.info
+);
+
+router.get(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
+  file.download
+);
+
+router.post(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
+  file.getDownloadLink
+);
+
+router.delete(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  file.remove
+);
+
+module.exports = router;

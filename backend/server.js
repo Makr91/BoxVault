@@ -354,21 +354,23 @@ const initializeApp = async () => {
     // NOW load all routes - strategies are guaranteed to exist
     log.app.info('Loading application routes...');
 
-    require('./app/routes/health.routes')(app);
-    require('./app/routes/auth.routes')(app);
-    require('./app/routes/oidc.routes')(app);
-    require('./app/routes/mail.routes')(app);
-    require('./app/routes/config.routes')(app);
-    require('./app/routes/user.routes')(app);
-    require('./app/routes/box.routes')(app);
-    require('./app/routes/file.routes')(app);
-    require('./app/routes/version.routes')(app);
-    require('./app/routes/organization.routes')(app);
-    require('./app/routes/provider.routes')(app);
-    require('./app/routes/architecture.routes')(app);
-    require('./app/routes/service_account.routes')(app);
-    require('./app/routes/favorites.routes')(app);
-    require('./app/routes/setup.routes')(app);
+    app.use('/api', require('./app/routes/health.routes'));
+    app.use('/api', require('./app/routes/auth.routes'));
+    app.use('/api', require('./app/routes/oidc.routes'));
+    app.use('/api', require('./app/routes/mail.routes'));
+    app.use('/api', require('./app/routes/config.routes'));
+    app.use('/api', require('./app/routes/user.routes'));
+    const boxRouter = require('./app/routes/box.routes');
+    app.use('/api', boxRouter);
+    app.use('/', boxRouter); // Also mount at root for Vagrant download route
+    app.use('/api', require('./app/routes/file.routes'));
+    app.use('/api', require('./app/routes/version.routes'));
+    app.use('/api', require('./app/routes/organization.routes'));
+    app.use('/api', require('./app/routes/provider.routes'));
+    app.use('/api', require('./app/routes/architecture.routes'));
+    app.use('/api', require('./app/routes/service_account.routes'));
+    app.use('/api', require('./app/routes/favorites.routes'));
+    app.use('/api', require('./app/routes/setup.routes'));
 
     log.app.info('All routes loaded successfully');
 
@@ -415,7 +417,7 @@ if (isConfigured) {
   log.app.info(`Setup token: ${setupToken}`);
 
   // Load only the setup route
-  require('./app/routes/setup.routes')(app);
+  app.use('/api', require('./app/routes/setup.routes'));
 
   app.get('/', (req, res) => {
     void req;

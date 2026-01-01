@@ -1,18 +1,21 @@
+const express = require('express');
 const { authJwt } = require('../middleware');
 const serviceAccount = require('../controllers/service_account.controller');
 
-module.exports = function (app) {
-  app.use((req, res, next) => {
-    void req;
-    res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
-    next();
-  });
+const router = express.Router();
 
-  app.post('/api/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.create);
-  app.get('/api/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.findAll);
-  app.delete(
-    '/api/service-accounts/:id',
-    [authJwt.verifyToken, authJwt.isUser],
-    serviceAccount.delete
-  );
-};
+router.use((req, res, next) => {
+  void req;
+  res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
+  next();
+});
+
+router.post('/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.create);
+router.get('/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.findAll);
+router.delete(
+  '/service-accounts/:id',
+  [authJwt.verifyToken, authJwt.isUser],
+  serviceAccount.delete
+);
+
+module.exports = router;
