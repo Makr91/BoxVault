@@ -3,7 +3,6 @@ const fs = require('fs');
 const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
-const { verifyDownloadToken } = require('../../utils/auth');
 
 const File = db.files;
 
@@ -132,33 +131,23 @@ const download = async (req, res) => {
   let userId;
   let isServiceAccount;
 
-  const downloadToken = req.query.token;
-  if (downloadToken) {
-    try {
-      const decoded = verifyDownloadToken(downloadToken);
-      const { userId: decodedUserId, isServiceAccount: decodedIsServiceAccount } = decoded;
-      userId = decodedUserId;
-      isServiceAccount = decodedIsServiceAccount;
+  // Check if downloadAuth middleware successfully verified a token
+  if (req.downloadTokenDecoded) {
+    const decoded = req.downloadTokenDecoded;
+    ({ userId, isServiceAccount } = decoded);
 
-      // Verify the token matches the requested download
-      if (
-        decoded.organization !== organization ||
-        decoded.boxId !== boxId ||
-        decoded.versionNumber !== versionNumber ||
-        decoded.providerName !== providerName ||
-        decoded.architectureName !== architectureName
-      ) {
-        return res.status(403).send({ message: 'Invalid download token.' });
-      }
-    } catch (err) {
-      log.app.warn('Invalid download token:', err.message);
-      return res.status(403).send({ message: 'Invalid or expired download token.' });
+    if (
+      decoded.organization !== organization ||
+      decoded.boxId !== boxId ||
+      decoded.versionNumber !== versionNumber ||
+      decoded.providerName !== providerName ||
+      decoded.architectureName !== architectureName
+    ) {
+      return res.status(403).send({ message: 'Invalid download token.' });
     }
   } else if (req.isVagrantRequest) {
     // For Vagrant requests, use the auth info set by vagrantHandler
-    const { userId: reqUserId, isServiceAccount: reqIsServiceAccount } = req;
-    userId = reqUserId;
-    isServiceAccount = reqIsServiceAccount;
+    ({ userId, isServiceAccount } = req);
   } else if (req.userId) {
     // Check for session auth (x-access-token) via middleware
     ({ userId, isServiceAccount } = req);

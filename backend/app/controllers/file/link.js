@@ -1,16 +1,8 @@
 // download.link.file.controller.js
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
 const db = require('../../models');
-const { checkSessionAuth } = require('../../utils/auth');
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+const { checkSessionAuth, generateDownloadToken } = require('../../utils/auth');
 
 let appConfig;
 try {
@@ -179,7 +171,7 @@ const getDownloadLink = async (req, res) => {
     }
 
     // Generate a secure download token
-    const downloadToken = jwt.sign(
+    const downloadToken = generateDownloadToken(
       {
         userId,
         isServiceAccount,
@@ -189,8 +181,7 @@ const getDownloadLink = async (req, res) => {
         providerName,
         architectureName,
       },
-      authConfig.auth.jwt.jwt_secret.value,
-      { expiresIn: '1h' }
+      '1h'
     );
 
     // Return the secure download URL

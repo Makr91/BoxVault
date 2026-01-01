@@ -3,6 +3,7 @@ const path = require('path');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
 const { getSecureBoxPath } = require('../utils/paths');
+const { safeUnlink, safeRmdirSync, safeMkdirSync, safeExistsSync } = require('../utils/fsHelper');
 
 // Load app config for max file size
 let maxFileSize;
@@ -88,7 +89,7 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
   });
 
   // Ensure upload directory exists
-  fs.mkdirSync(path.dirname(finalPath), { recursive: true, mode: 0o755 });
+  safeMkdirSync(path.dirname(finalPath), { recursive: true, mode: 0o755 });
 
   // Create write stream for final file
   const writeStream = fs.createWriteStream(finalPath, {
@@ -120,7 +121,7 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
 
     writeStream.write(chunkContent);
     assembledSize += chunkContent.length;
-    fs.unlinkSync(chunk.path); // Delete chunk after merging
+    safeUnlink(chunk.path); // Delete chunk after merging
   }
 
   // Finish write stream
@@ -237,11 +238,11 @@ const handleChunkedUpload = async (req, params, tempDir, finalPath, contentLengt
 
       // Clean up temp directory
       log.app.info('Cleaning up temp directory:', tempDir);
-      fs.rmdirSync(tempDir);
+      safeRmdirSync(tempDir);
 
       // Verify against max file size
       if (finalSize > maxFileSize) {
-        fs.unlinkSync(finalPath);
+        safeUnlink(finalPath);
         throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
       }
 
@@ -288,9 +289,9 @@ const handleChunkedUpload = async (req, params, tempDir, finalPath, contentLengt
   } catch (error) {
     // Clean up temp files on error
     try {
-      if (fs.existsSync(tempDir)) {
+      if (safeExistsSync(tempDir)) {
         const chunks = fs.readdirSync(tempDir);
-        chunks.forEach(chunk => fs.unlinkSync(path.join(tempDir, chunk)));
+        chunks.forEach(chunk => safeUnlink(path.join(tempDir, chunk)));
         fs.rmdirSync(tempDir);
       }
     } catch (cleanupError) {
@@ -322,7 +323,7 @@ const handleSingleUpload = async (req, params, finalPath, contentLength, isChunk
   if (!isChunked && !isNaN(contentLength)) {
     const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
     if (Math.abs(finalSize - contentLength) > maxDiff) {
-      fs.unlinkSync(finalPath);
+      safeUnlink(finalPath);
       throw new Error(
         `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
       );
@@ -331,7 +332,7 @@ const handleSingleUpload = async (req, params, finalPath, contentLength, isChunk
 
   // Verify against max file size
   if (finalSize > maxFileSize) {
-    fs.unlinkSync(finalPath);
+    safeUnlink(finalPath);
     throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
   }
 
@@ -502,10 +503,10 @@ const uploadMiddleware = async (req, res) => {
     }
 
     // Clean up incomplete file if it exists
-    if (finalPath && fs.existsSync(finalPath)) {
+    if (finalPath && safeExistsSync(finalPath)) {
       if (error.message.includes('size mismatch') || error.message.includes('closed prematurely')) {
         try {
-          fs.unlinkSync(finalPath);
+          safeUnlink(finalPath);
           log.app.info('Cleaned up incomplete file:', finalPath);
         } catch (cleanupError) {
           log.error.error('Error cleaning up file:', cleanupError);

@@ -31,8 +31,21 @@ const safeRmdirSync = (path, options) => {
   }
 };
 
+const safeMkdirSync = (path, options) => {
+  fs.mkdirSync(path, options);
+};
+
+const safeRenameSync = (oldPath, newPath) => {
+  fs.renameSync(oldPath, newPath);
+};
+
+const safeExistsSync = path => fs.existsSync(path);
+
 module.exports = {
   safeUnlink,
   safeRm,
   safeRmdirSync,
+  safeMkdirSync,
+  safeRenameSync,
+  safeExistsSync,
 };

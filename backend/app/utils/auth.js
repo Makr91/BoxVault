@@ -36,4 +36,7 @@ const verifyDownloadToken = token => {
   }
 };
 
-module.exports = { checkSessionAuth, verifyDownloadToken };
+const generateDownloadToken = (payload, expiresIn = '1h') =>
+  jwt.sign(payload, authConfig.auth.jwt.jwt_secret.value, { expiresIn });
+
+module.exports = { checkSessionAuth, verifyDownloadToken, generateDownloadToken };
