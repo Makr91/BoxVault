@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release tag name (e.g., v1.2.3)'
+        description: "Release tag name (e.g., v1.2.3)"
         required: false
-        default: 'v0.0.0-dev'
+        default: "v0.0.0-dev"
       release_url:
-        description: 'URL to the GitHub release'
+        description: "URL to the GitHub release"
         required: false
-        default: 'https://github.com/Makr91/BoxVault'
+        default: "https://github.com/Makr91/BoxVault"
 
 permissions:
   contents: read
