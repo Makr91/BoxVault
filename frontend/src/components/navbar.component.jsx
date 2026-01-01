@@ -110,8 +110,26 @@ const Navbar = ({
         const response = await fetch(
           `${window.location.origin}/api/auth/oidc/issuers`
         );
-        if (response.ok && mounted) {
-          const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Check if response is JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          log.auth.warn("Trusted issuers endpoint returned non-JSON response", {
+            contentType,
+            status: response.status,
+          });
+          if (mounted) {
+            setTrustedIssuers([]);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (mounted) {
           setTrustedIssuers(data.issuers || []);
           log.auth.debug("Trusted issuers loaded", {
             count: data.issuers?.length,
@@ -121,7 +139,9 @@ const Navbar = ({
         log.auth.error("Failed to load trusted issuers", {
           error: error.message,
         });
-        setTrustedIssuers([]);
+        if (mounted) {
+          setTrustedIssuers([]);
+        }
       }
     };
 

@@ -7,6 +7,8 @@ const errorHandler = (err, req, res, next) => {
   log.error.error('Express error handler', {
     error: err.message,
     stack: err.stack,
+    path: req.path,
+    method: req.method,
   });
 
   // Log request details for debugging
@@ -26,7 +28,19 @@ const errorHandler = (err, req, res, next) => {
     return next(err);
   }
 
-  // Serve React app with error state instead of plain text
+  // Return JSON for API routes
+  if (req.path.startsWith('/api/')) {
+    log.app.debug('Returning JSON error for API route', {
+      path: req.path,
+      error: err.message,
+    });
+    return res.status(500).json({
+      error: 'INTERNAL_SERVER_ERROR',
+      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    });
+  }
+
+  // Serve React app with error state for non-API routes
   const staticPath = path.join(__dirname, '..', 'views', 'index.html');
   if (existsSync(staticPath)) {
     res.status(500);

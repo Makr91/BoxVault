@@ -23,6 +23,152 @@ router.use((req, res, next) => {
 
 /**
  * @swagger
+ * /api/auth/oidc/issuers:
+ *   get:
+ *     summary: Get trusted OIDC issuer URLs
+ *     description: Retrieve list of configured and enabled OIDC provider issuer URLs for client-side validation
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Trusted issuers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 issuers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       provider:
+ *                         type: string
+ *                         description: Provider name
+ *                         example: "google"
+ *                       issuer:
+ *                         type: string
+ *                         description: Trusted issuer URL
+ *                         example: "https://accounts.google.com"
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/auth/oidc/issuers', (req, res) => {
+  void req;
+  try {
+    const authConfig = loadConfig('auth');
+    const trustedIssuers = [];
+
+    const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
+
+    Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
+      if (providerConfig.enabled?.value && providerConfig.issuer?.value) {
+        trustedIssuers.push({
+          provider: providerName,
+          issuer: providerConfig.issuer.value,
+        });
+      }
+    });
+
+    log.auth.debug('Trusted OIDC issuers', {
+      count: trustedIssuers.length,
+      issuers: trustedIssuers.map(t => t.issuer),
+    });
+
+    return res.json({ issuers: trustedIssuers });
+  } catch (error) {
+    log.auth.error('Get trusted issuers error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({
+      error: 'INTERNAL_SERVER_ERROR',
+      message: 'Failed to load trusted issuers',
+      issuers: [],
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/auth/methods:
+ *   get:
+ *     summary: Get available authentication methods
+ *     description: Retrieve list of enabled authentication methods for the login form
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Authentication methods retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 methods:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: Method identifier
+ *                         example: "local"
+ *                       name:
+ *                         type: string
+ *                         description: Human-readable method name
+ *                         example: "Local Account"
+ *                       enabled:
+ *                         type: boolean
+ *                         description: Whether method is enabled
+ *                         example: true
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/auth/methods', (req, res) => {
+  void req;
+  try {
+    const authConfig = loadConfig('auth');
+    const methods = [];
+
+    // Local authentication
+    methods.push({
+      id: 'local',
+      name: 'Local Account',
+      enabled: true,
+    });
+
+    // OIDC providers
+    const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
+
+    Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
+      if (providerConfig.enabled?.value && providerConfig.display_name?.value) {
+        methods.push({
+          id: `oidc-${providerName}`,
+          name: providerConfig.display_name.value,
+          enabled: true,
+        });
+      }
+    });
+
+    log.auth.debug('Available auth methods', {
+      count: methods.length,
+      methods: methods.map(m => m.id),
+    });
+
+    return res.json({ methods });
+  } catch (error) {
+    log.auth.error('Get auth methods error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({
+      error: 'INTERNAL_SERVER_ERROR',
+      message: 'Failed to load authentication methods',
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/auth/oidc/callback:
  *   get:
  *     summary: Handle OIDC callback from providers
@@ -50,10 +196,16 @@ router.use((req, res, next) => {
  *         description: Internal server error
  */
 router.get('/auth/oidc/callback', async (req, res) => {
-  log.auth.info('OIDC callback received', {
+  log.auth.info('OIDC callback received - ENHANCED', {
     sessionId: req.sessionID,
     hasSession: !!req.session,
     sessionKeys: req.session ? Object.keys(req.session) : [],
+    cookies: req.headers.cookie ? 'present' : 'missing',
+    protocol: req.protocol,
+    secure: req.secure,
+    host: req.get('host'),
+    origin: req.get('origin'),
+    referer: req.get('referer'),
   });
 
   // Retrieve session data
@@ -67,6 +219,9 @@ router.get('/auth/oidc/callback', async (req, res) => {
     hasState: !!state,
     hasCodeVerifier: !!codeVerifier,
     returnUrl,
+    queryCode: req.query.code ? 'present' : 'missing',
+    queryState: req.query.state ? 'present' : 'missing',
+    stateMatch: req.query.state === state,
   });
 
   // Clean up session data
@@ -140,10 +295,26 @@ router.get('/auth/oidc/callback', async (req, res) => {
 
     return res.redirect(`/auth/callback?token=${encodeURIComponent(token)}`);
   } catch (error) {
-    log.auth.error('OIDC callback error', {
+    // Enhanced error logging with all available details
+    log.auth.error('OIDC callback error - DETAILED', {
       provider,
-      error: error.message,
+      errorName: error.name,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorType: error.constructor.name,
+      errorDetails: error.error,
+      errorDescription: error.error_description,
       stack: error.stack,
+      // Session debugging
+      sessionPresent: !!req.session,
+      sessionId: req.sessionID,
+      // Request details
+      queryParams: {
+        hasCode: !!req.query.code,
+        hasState: !!req.query.state,
+        codeLength: req.query.code?.length,
+        stateLength: req.query.state?.length,
+      },
     });
 
     // Handle specific error cases
@@ -387,150 +558,6 @@ router.post('/auth/oidc/logout/local', (req, res) => {
     success: true,
     message: 'Logged out locally',
   });
-});
-
-/**
- * @swagger
- * /api/auth/oidc/issuers:
- *   get:
- *     summary: Get trusted OIDC issuer URLs
- *     description: Retrieve list of configured and enabled OIDC provider issuer URLs for client-side validation
- *     tags: [Authentication]
- *     responses:
- *       200:
- *         description: Trusted issuers retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 issuers:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       provider:
- *                         type: string
- *                         description: Provider name
- *                         example: "google"
- *                       issuer:
- *                         type: string
- *                         description: Trusted issuer URL
- *                         example: "https://accounts.google.com"
- *       500:
- *         description: Internal server error
- */
-router.get('/auth/oidc/issuers', (req, res) => {
-  void req;
-  try {
-    const authConfig = loadConfig('auth');
-    const trustedIssuers = [];
-
-    const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
-
-    Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
-      if (providerConfig.enabled?.value && providerConfig.issuer?.value) {
-        trustedIssuers.push({
-          provider: providerName,
-          issuer: providerConfig.issuer.value,
-        });
-      }
-    });
-
-    log.auth.debug('Trusted OIDC issuers', {
-      count: trustedIssuers.length,
-      issuers: trustedIssuers.map(t => t.issuer),
-    });
-
-    return res.json({ issuers: trustedIssuers });
-  } catch (error) {
-    log.auth.error('Get trusted issuers error', {
-      error: error.message,
-      stack: error.stack,
-    });
-    return res.status(500).json({
-      message: 'Internal server error',
-      issuers: [],
-    });
-  }
-});
-
-/**
- * @swagger
- * /api/auth/methods:
- *   get:
- *     summary: Get available authentication methods
- *     description: Retrieve list of enabled authentication methods for the login form
- *     tags: [Authentication]
- *     responses:
- *       200:
- *         description: Authentication methods retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 methods:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         description: Method identifier
- *                         example: "local"
- *                       name:
- *                         type: string
- *                         description: Human-readable method name
- *                         example: "Local Account"
- *                       enabled:
- *                         type: boolean
- *                         description: Whether method is enabled
- *                         example: true
- *       500:
- *         description: Internal server error
- */
-router.get('/auth/methods', (req, res) => {
-  void req;
-  try {
-    const authConfig = loadConfig('auth');
-    const methods = [];
-
-    // Local authentication
-    methods.push({
-      id: 'local',
-      name: 'Local Account',
-      enabled: true,
-    });
-
-    // OIDC providers
-    const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
-
-    Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
-      if (providerConfig.enabled?.value && providerConfig.display_name?.value) {
-        methods.push({
-          id: `oidc-${providerName}`,
-          name: providerConfig.display_name.value,
-          enabled: true,
-        });
-      }
-    });
-
-    log.auth.debug('Available auth methods', {
-      count: methods.length,
-      methods: methods.map(m => m.id),
-    });
-
-    return res.json({ methods });
-  } catch (error) {
-    log.auth.error('Get auth methods error', {
-      error: error.message,
-      stack: error.stack,
-    });
-    return res.status(500).json({
-      message: 'Internal server error',
-    });
-  }
 });
 
 module.exports = router;

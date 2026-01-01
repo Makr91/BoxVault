@@ -121,6 +121,19 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
   try {
     log.auth.info('Processing OIDC callback', { provider: providerName });
 
+    // CRITICAL: Get redirect_uri from app config to ensure consistency
+    const appConfig = loadConfig('app');
+    const redirectUri = `${appConfig.boxvault.origin.value}/api/auth/oidc/callback`;
+
+    log.auth.debug('Token exchange parameters', {
+      provider: providerName,
+      redirectUri,
+      callbackUrl: currentUrl.toString(),
+      hasCode: currentUrl.searchParams.has('code'),
+      hasState: currentUrl.searchParams.has('state'),
+      stateMatch: currentUrl.searchParams.get('state') === state,
+    });
+
     let tokens;
     try {
       tokens = await client.authorizationCodeGrant(config, currentUrl, {
@@ -128,15 +141,35 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
         pkceCodeVerifier: codeVerifier,
       });
     } catch (grantError) {
-      // Log detailed token exchange error
-      log.auth.error('Token exchange failed', {
+      // Enhanced token exchange error logging
+      log.auth.error('Token exchange failed - DETAILED', {
         provider: providerName,
         error: grantError.message,
         errorType: grantError.constructor.name,
-        errorDetails: grantError.error,
+        errorCode: grantError.error,
         errorDescription: grantError.error_description,
+        errorUri: grantError.error_uri,
+        // Request details for debugging
+        callbackUrl: currentUrl.toString(),
+        redirectUri,
+        hasCode: currentUrl.searchParams.has('code'),
+        hasState: currentUrl.searchParams.has('state'),
+        stateMatches: currentUrl.searchParams.get('state') === state,
+        codeLength: currentUrl.searchParams.get('code')?.length,
+        // PKCE details
+        hasCodeVerifier: !!codeVerifier,
+        codeVerifierLength: codeVerifier?.length,
       });
-      throw grantError;
+
+      // Re-throw with enhanced message for upstream handling
+      const enhancedError = new Error(
+        `OIDC token exchange failed: ${grantError.error || grantError.message}`
+      );
+      enhancedError.originalError = grantError;
+      enhancedError.provider = providerName;
+      enhancedError.error = grantError.error;
+      enhancedError.error_description = grantError.error_description;
+      throw enhancedError;
     }
 
     const userinfo = tokens.claims();
