@@ -9,7 +9,6 @@ const router = express.Router();
 // Explicit rate limiter for architecture operations (CodeQL requirement)
 const architectureOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 2000,
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
