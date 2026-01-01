@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.22](https://github.com/Makr91/BoxVault/compare/v0.26.21...v0.26.22) (2026-01-01)
+
+
+### Bug Fixes
+
+* prettier ([01e4d3f](https://github.com/Makr91/BoxVault/commit/01e4d3f27afa945fc3608f0a7ed36e3378542778))
+
 ## [0.26.21](https://github.com/Makr91/BoxVault/compare/v0.26.20...v0.26.21) (2026-01-01)
 
 
