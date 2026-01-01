@@ -89,7 +89,7 @@ router.get(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
-  fileOperationLimiter,
+  fileOperationLimiter, // rate limit download requests before authorization
   downloadAuth,
   sessionAuth,
   file.download
