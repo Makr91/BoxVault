@@ -247,11 +247,14 @@ router.get('/auth/oidc/callback', async (req, res) => {
 
     log.auth.info('Processing OIDC callback', { provider });
 
-    // Create current URL for callback processing
-    const currentUrl = new URL(appConfig.boxvault.origin.value + req.url);
+    // CRITICAL FIX: Use req.originalUrl instead of req.url
+    // req.url doesn't include the /api/ prefix when route is mounted
+    const currentUrl = new URL(appConfig.boxvault.origin.value + req.originalUrl);
 
     log.auth.debug('OIDC callback URL', {
       currentUrl: currentUrl.toString(),
+      originalUrl: req.originalUrl,
+      url: req.url,
       hasCode: !!req.query.code,
       hasState: !!req.query.state,
     });
