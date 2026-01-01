@@ -67,15 +67,17 @@ exports.testSmtp = async (req, res) => {
     log.app.info('Test email sent successfully:', info.messageId);
     return res
       .status(200)
-      .send({ message: 'Test email sent successfully', messageId: info.messageId });
+      .send({ message: req.__('mail.testEmailSent'), messageId: info.messageId });
   } catch (error) {
     log.error.error('Error in SMTP test:', error);
     log.error.error('Error stack:', error.stack);
     if (error.response) {
       log.error.error('SMTP Response:', error.response);
     }
-    return res
-      .status(500)
-      .send({ message: 'Error sending test email', error: error.message, stack: error.stack });
+    return res.status(500).send({
+      message: req.__('mail.errorSendingEmail'),
+      error: error.message,
+      stack: error.stack,
+    });
   }
 };

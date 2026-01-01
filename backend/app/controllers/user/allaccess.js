@@ -43,15 +43,14 @@
 exports.allAccess = (req, res) => {
   // Log request for audit purposes
   const { log } = require('../../utils/Logger');
-  log.app.debug('All access endpoint called', { method: req.method });
+  log.app.debug('All access endpoint called', { method: req.method, locale: req.getLocale() });
 
   const projectData = {
-    title: 'BoxVault Project Synopsis',
-    description:
-      'BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates.',
+    title: req.__('about.title'),
+    description: req.__('about.description'),
     components: [
       {
-        title: 'Backend API',
+        title: req.__('about.components.backend.title'),
         details: [
           'Built using Node.js and Express.js',
           'Handles user authentication and authorization',
@@ -60,7 +59,7 @@ exports.allAccess = (req, res) => {
         ],
       },
       {
-        title: 'Frontend Interface',
+        title: req.__('about.components.frontend.title'),
         details: [
           'Created with React and React Hooks',
           'Offers a user-friendly interface for interacting with the backend API',
@@ -69,12 +68,14 @@ exports.allAccess = (req, res) => {
       },
     ],
     features: [
-      'User authentication and role-based access control',
-      'File upload and storage management for Vagrant boxes',
-      'Box listing and filtering capabilities',
-      'User profile management',
+      req.__('about.features.authentication'),
+      req.__('about.features.boxManagement'),
+      req.__('about.features.versionControl'),
+      req.__('about.features.organizationSupport'),
+      req.__('about.features.apiDocumentation'),
+      req.__('about.features.secureStorage'),
     ],
-    goal: 'The project aims to provide a secure, scalable, and easy-to-use platform for developers to store and share their Virtual Machine templates within their own infrastructure.',
+    goal: req.__('about.goal'),
   };
 
   res.status(200).json(projectData);

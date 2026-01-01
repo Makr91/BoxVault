@@ -67,15 +67,15 @@ exports.resendVerificationMail = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     if (!user.organization) {
-      return res.status(404).send({ message: 'Organization not found for this user.' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     if (user.verified) {
-      return res.status(400).send({ message: 'User is already verified.' });
+      return res.status(400).send({ message: req.__('auth.userAlreadyVerified') });
     }
 
     user.verificationToken = crypto.randomBytes(20).toString('hex');
@@ -83,7 +83,7 @@ exports.resendVerificationMail = async (req, res) => {
 
     await user.save();
     await sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires);
-    return res.send({ message: 'Verification email resent successfully.' });
+    return res.send({ message: req.__('auth.verificationEmailResent') });
   } catch (err) {
     log.error.error('Error in resendVerificationMail:', err);
     return res.status(500).send({ message: err.message });

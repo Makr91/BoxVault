@@ -9,6 +9,8 @@ const vagrantHandler = require('./vagrantHandler');
 const { rateLimiter } = require('./rateLimiter');
 const { downloadAuth } = require('./downloadAuth');
 const { sessionAuth } = require('./sessionAuth');
+const { errorHandler } = require('./errorHandler');
+const { configAwareI18nMiddleware } = require('../config/i18n');
 
 module.exports = {
   authJwt,
@@ -22,4 +24,6 @@ module.exports = {
   rateLimiter,
   downloadAuth,
   sessionAuth,
+  errorHandler,
+  i18nMiddleware: configAwareI18nMiddleware,
 };

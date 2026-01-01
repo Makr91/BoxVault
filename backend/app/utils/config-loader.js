@@ -98,10 +98,38 @@ const getRateLimitConfig = () => {
   }
 };
 
+/**
+ * Get internationalization (i18n) configuration with defaults
+ * @returns {Object} i18n configuration object
+ */
+const getI18nConfig = () => {
+  try {
+    const appConfig = loadConfig('app');
+    return {
+      default_language: appConfig.internationalization?.default_language?.value || 'en',
+      supported_languages: appConfig.internationalization?.supported_languages?.value || [], // Auto-detected from files
+      fallback_language: appConfig.internationalization?.fallback_language?.value || 'en',
+      auto_detect: appConfig.internationalization?.auto_detect?.value !== false, // Default true
+      force_language: appConfig.internationalization?.force_language?.value || null,
+    };
+  } catch (error) {
+    // Return defaults if config not available
+    console.warn('Failed to load i18n config, using defaults:', error.message);
+    return {
+      default_language: 'en',
+      supported_languages: [], // Auto-detected from files
+      fallback_language: 'en',
+      auto_detect: true,
+      force_language: null,
+    };
+  }
+};
+
 module.exports = {
   getConfigPath,
   loadConfig,
   loadConfigs,
   getSetupTokenPath,
   getRateLimitConfig,
+  getI18nConfig,
 };

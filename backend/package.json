@@ -41,6 +41,7 @@
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
     "fs": "^0.0.1-security",
+    "i18n": "^0.15.3",
     "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.2",
     "lusca": "^1.7.0",

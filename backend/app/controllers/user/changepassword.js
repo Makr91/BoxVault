@@ -64,16 +64,14 @@ exports.changePassword = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     user.password = bcrypt.hashSync(newPassword, 8);
     await user.save();
 
-    return res.status(200).send({ message: 'Password changed successfully!' });
+    return res.status(200).send({ message: req.__('users.passwordChanged') });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while changing the password.' });
+    return res.status(500).send({ message: err.message || req.__('errors.operationFailed') });
   }
 };

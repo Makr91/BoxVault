@@ -184,7 +184,7 @@ exports.delete = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFound'),
       });
     }
 
@@ -195,7 +195,7 @@ exports.delete = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFound'),
       });
     }
 
@@ -203,7 +203,7 @@ exports.delete = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
+        message: req.__('versions.versionNotFound'),
       });
     }
 
@@ -214,7 +214,7 @@ exports.delete = async (req, res) => {
 
     if (!provider) {
       return res.status(404).send({
-        message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId} in organization ${organization}.`,
+        message: req.__('providers.providerNotFound'),
       });
     }
 
@@ -257,10 +257,10 @@ exports.delete = async (req, res) => {
       }
     });
 
-    return res.send({ message: 'Provider and associated architectures deleted successfully!' });
+    return res.send({ message: req.__('providers.providerDeleted') });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while deleting the Provider.',
+      message: err.message || req.__('errors.operationFailed'),
     });
   }
 };

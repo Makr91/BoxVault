@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FaMoon,
   FaSun,
@@ -14,6 +15,7 @@ import {
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 
+import { getSupportedLanguages } from "../i18n";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import FavoritesService from "../services/favorites.service";
@@ -30,6 +32,7 @@ const Navbar = ({
   logOut,
   logOutLocal,
 }) => {
+  const { t, i18n } = useTranslation();
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
   const [profileIsLocal, setProfileIsLocal] = useState(true);
   const [favoriteApps, setFavoriteApps] = useState([]);
@@ -37,6 +40,42 @@ const Navbar = ({
   const [ticketConfig, setTicketConfig] = useState(null);
   const [authServerUrl, setAuthServerUrl] = useState("");
   const [trustedIssuers, setTrustedIssuers] = useState([]);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+
+  const changeLanguage = async (lng) => {
+    log.component.debug("Changing language", {
+      from: i18n.language,
+      to: lng,
+      currentLocalStorage: localStorage.getItem("i18nextLng"),
+    });
+
+    await i18n.changeLanguage(lng);
+
+    log.component.debug("Language changed", {
+      newLanguage: i18n.language,
+      localStorage: localStorage.getItem("i18nextLng"),
+    });
+
+    setShowLanguageModal(false);
+  };
+
+  // Get language display name
+  const getLanguageDisplayName = (languageCode) => {
+    const languageNames = {
+      en: "English",
+      es: "Español",
+    };
+    return languageNames[languageCode] || languageCode.toUpperCase();
+  };
+
+  // Get flag icon for language
+  const getLanguageFlag = (languageCode) => {
+    const flagKey = `language.flagIcon.${languageCode}`;
+    return t(flagKey, { ns: "common", defaultValue: "🌐" });
+  };
+
+  // Get supported languages from i18n
+  const supportedLanguages = getSupportedLanguages();
 
   const handleLogout = () => {
     if (logoutEverywhere) {
@@ -143,7 +182,9 @@ const Navbar = ({
         const issuer = idTokenPayload.iss || "";
 
         // CRITICAL: Validate against backend-provided whitelist (CodeQL requirement)
-        const isTrusted = trustedIssuers.some((t) => t.issuer === issuer);
+        const isTrusted = trustedIssuers.some(
+          (trustedIssuer) => trustedIssuer.issuer === issuer
+        );
         if (!isTrusted) {
           log.auth.warn("Issuer not in trusted whitelist", { issuer });
           return "";
@@ -416,7 +457,10 @@ const Navbar = ({
                 {renderUserAvatar()}
                 {currentUser.username}
               </button>
-              <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
+              <ul
+                className="dropdown-menu dropdown-menu-end"
+                aria-labelledby="navbarDropdown"
+              >
                 {showModeratorBoard && (
                   <li>
                     <Link to="/moderator" className="dropdown-item">
@@ -491,6 +535,20 @@ const Navbar = ({
                     </li>
                   </>
                 )}
+                <li>
+                  <hr className="dropdown-divider" />
+                </li>
+                <li>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => setShowLanguageModal(true)}
+                  >
+                    <span className="me-2" style={{ fontSize: "1.2em" }}>
+                      {getLanguageFlag(i18n.language)}
+                    </span>
+                    {getLanguageDisplayName(i18n.language)}
+                  </button>
+                </li>
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
@@ -575,6 +633,65 @@ const Navbar = ({
           </ul>
         )}
       </div>
+
+      {/* Language Selection Modal */}
+      {showLanguageModal && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-globe me-2" />
+                  {t("language.changeLanguage")}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowLanguageModal(false)}
+                  aria-label="Close"
+                />
+              </div>
+              <div className="modal-body">
+                <div className="list-group">
+                  {supportedLanguages.map((lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                        i18n.language === lang ? "active" : ""
+                      }`}
+                      onClick={() => changeLanguage(lang)}
+                    >
+                      <span>
+                        <span className="me-2" style={{ fontSize: "1.2em" }}>
+                          {getLanguageFlag(lang)}
+                        </span>
+                        {getLanguageDisplayName(lang)}
+                      </span>
+                      {i18n.language === lang && (
+                        <i className="bi bi-check-circle text-success" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowLanguageModal(false)}
+                >
+                  {t("buttons.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

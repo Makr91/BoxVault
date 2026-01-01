@@ -57,12 +57,12 @@ exports.verifyMail = async (req, res) => {
     const user = await User.findOne({ where: { verificationToken: token } });
 
     if (!user) {
-      return res.status(400).send({ message: 'Invalid or expired verification token.' });
+      return res.status(400).send({ message: req.__('auth.invalidVerificationToken') });
     }
 
     if (user.verificationTokenExpires < Date.now()) {
       return res.status(400).send({
-        message: 'Verification token has expired.',
+        message: req.__('auth.tokenExpired'),
         expirationTime: user.verificationTokenExpires,
       });
     }
@@ -73,7 +73,7 @@ exports.verifyMail = async (req, res) => {
     await user.save();
 
     return res.send({
-      message: 'Email verified successfully.',
+      message: req.__('auth.emailVerified'),
       expirationTime: user.verificationTokenExpires,
     });
   } catch (err) {

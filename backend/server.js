@@ -266,7 +266,7 @@ app.use((req, res, next) => {
 app.use(morganMiddleware);
 
 // Rate limiting middleware (applied at top level for CodeQL detection)
-const { rateLimiter } = require('./app/middleware');
+const { rateLimiter, errorHandler } = require('./app/middleware');
 app.use(rateLimiter);
 log.app.info('Rate limiting middleware applied globally');
 
@@ -370,6 +370,11 @@ const initializeApp = async () => {
     app.use(selectiveCSRF);
     log.app.info('Selective CSRF protection middleware applied');
 
+    // i18n internationalization middleware
+    const { i18nMiddleware } = require('./app/middleware');
+    app.use(i18nMiddleware);
+    log.app.info('i18n internationalization middleware applied');
+
     // Initialize roles
     await initial();
 
@@ -426,6 +431,10 @@ const initializeApp = async () => {
       void req;
       res.sendFile(path.join(static_path, 'index.html'));
     });
+
+    // Error handler middleware (MUST be last)
+    app.use(errorHandler);
+    log.app.info('Error handler middleware applied');
 
     log.app.info('BoxVault application initialized successfully');
   } catch (error) {

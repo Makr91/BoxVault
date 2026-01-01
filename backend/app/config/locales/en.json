@@ -1,0 +1,189 @@
+{
+  "api": {
+    "fileNotFound": "File not found",
+    "searchQueryRequired": "Search query is required",
+    "authenticationRequired": "Authentication required",
+    "accessDenied": "Access denied",
+    "adminPrivilegesRequired": "Admin privileges required",
+    "invalidCredentials": "Invalid credentials",
+    "sessionExpired": "Session expired",
+    "insufficientPermissions": "Insufficient permissions",
+    "internalServerError": "Internal server error",
+    "operationSuccessful": "Operation completed successfully",
+    "operationFailed": "Operation failed"
+  },
+  "about": {
+    "title": "BoxVault",
+    "description": "A Vagrant box repository management system",
+    "version": "Version",
+    "addToFavorites": "Add to Favorites",
+    "removeFromFavorites": "Remove from Favorites",
+    "addedToFavorites": "Added BoxVault to favorites!",
+    "removedFromFavorites": "Removed BoxVault from favorites",
+    "failedToUpdateFavorites": "Failed to update favorites",
+    "keyFeatures": "Key Features",
+    "supportAndFollow": "Support and Follow",
+    "supportOnPatreon": "Support on Patreon",
+    "githubProfile": "GitHub Profile",
+    "projectRepository": "Project Repository",
+    "goal": "BoxVault aims to provide a simple, secure, and efficient way to manage and distribute Vagrant boxes.",
+    "components": {
+      "backend": {
+        "title": "Backend",
+        "description": "Node.js/Express API with authentication and database support"
+      },
+      "frontend": {
+        "title": "Frontend",
+        "description": "React-based user interface"
+      }
+    },
+    "features": {
+      "authentication": "Multi-provider authentication (JWT, OIDC)",
+      "boxManagement": "Complete box lifecycle management",
+      "versionControl": "Version tracking and management",
+      "organizationSupport": "Organization-based access control",
+      "apiDocumentation": "Swagger API documentation",
+      "secureStorage": "Secure file storage and retrieval"
+    }
+  },
+  "boxes": {
+    "boxCreated": "Box created successfully",
+    "boxUpdated": "Box updated successfully",
+    "boxDeleted": "Box deleted successfully",
+    "boxNotFound": "Box not found",
+    "boxAlreadyExists": "Box already exists",
+    "nameRequired": "Box name is required",
+    "invalidBoxName": "Invalid box name"
+  },
+  "versions": {
+    "versionCreated": "Version created successfully",
+    "versionUpdated": "Version updated successfully",
+    "versionDeleted": "Version deleted successfully",
+    "versionNotFound": "Version not found",
+    "versionAlreadyExists": "Version already exists",
+    "numberRequired": "Version number is required",
+    "invalidVersion": "Invalid version format"
+  },
+  "providers": {
+    "providerCreated": "Provider created successfully",
+    "providerUpdated": "Provider updated successfully",
+    "providerDeleted": "Provider deleted successfully",
+    "providerNotFound": "Provider not found",
+    "providerAlreadyExists": "Provider already exists",
+    "nameRequired": "Provider name is required",
+    "invalidProvider": "Invalid provider name"
+  },
+  "organizations": {
+    "organizationCreated": "Organization created successfully",
+    "organizationUpdated": "Organization updated successfully",
+    "organizationDeleted": "Organization deleted successfully",
+    "organizationNotFound": "Organization not found",
+    "organizationAlreadyExists": "Organization already exists",
+    "nameRequired": "Organization name is required"
+  },
+  "files": {
+    "fileDeletedSuccessfully": "File deleted successfully",
+    "folderCreatedSuccessfully": "Folder created successfully",
+    "fileRenamedSuccessfully": "File renamed successfully",
+    "filesMovedSuccessfully": "{{count}} items moved successfully",
+    "uploadSuccessful": "File uploaded successfully",
+    "uploadFailed": "Upload failed",
+    "cannotDeleteDirectory": "Cannot delete directory",
+    "folderAlreadyExists": "Folder already exists",
+    "folderCreationFailed": "Failed to create folder",
+    "nameRequired": "Name is required",
+    "invalidName": "Invalid name",
+    "cannotMoveFromRoot": "Cannot move from root directory",
+    "newNameRequired": "New name is required",
+    "fileOrFolderNotFound": "File or folder not found",
+    "fileOrFolderAlreadyExists": "A file or folder with that name already exists",
+    "noFileUploaded": "No file uploaded",
+    "directoryDeletedSuccessfully": "Directory deleted successfully"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalid": "Invalid value",
+    "tooShort": "Value is too short",
+    "tooLong": "Value is too long",
+    "invalidFormat": "Invalid format"
+  },
+  "apiKeys": {
+    "apiKeyCreatedSuccessfully": "API key created successfully",
+    "apiKeyDeletedSuccessfully": "API key deleted successfully",
+    "apiKeyNotFound": "API key not found",
+    "invalidApiKey": "Invalid API key",
+    "apiKeyExpired": "API key expired",
+    "fullKeyRetrievalDisabled": "Full key retrieval is disabled",
+    "keyNameRequired": "Key name is required",
+    "invalidPermissions": "Invalid permissions",
+    "keyCreationFailed": "Failed to create API key",
+    "keyDeletionFailed": "Failed to delete API key"
+  },
+  "users": {
+    "userNotFound": "User not found",
+    "userDeleted": "User deleted successfully",
+    "userUpdated": "User updated successfully",
+    "passwordChanged": "Password changed successfully",
+    "emailChanged": "Email changed successfully",
+    "promotedToModerator": "Promoted to moderator successfully",
+    "demotedToUser": "Demoted to user successfully",
+    "unauthorized": "Unauthorized",
+    "unauthorizedAccess": "Unauthorized access"
+  },
+  "auth": {
+    "invalidCredentials": "Invalid credentials",
+    "invalidToken": "Invalid or expired token",
+    "tokenExpired": "Token has expired",
+    "emailVerified": "Email verified successfully",
+    "verificationEmailSent": "Verification email sent successfully",
+    "verificationEmailResent": "Verification email resent successfully",
+    "userAlreadyVerified": "User is already verified",
+    "invalidVerificationToken": "Invalid or expired verification token"
+  },
+  "mail": {
+    "testEmailSent": "Test email sent successfully",
+    "errorSendingEmail": "Error sending email",
+    "verificationEmailSent": "Verification email sent successfully"
+  },
+  "config": {
+    "configUpdated": "Configuration updated successfully",
+    "serverRestartInitiated": "Server restart initiated",
+    "ticketSystemNotConfigured": "Ticket system not configured",
+    "gravatarNotConfigured": "Gravatar configuration not found"
+  },
+  "serviceAccounts": {
+    "serviceAccountCreated": "Service account created successfully",
+    "serviceAccountDeleted": "Service account deleted successfully",
+    "serviceAccountNotFound": "Service account not found"
+  },
+  "architectures": {
+    "architectureCreated": "Architecture created successfully",
+    "architectureUpdated": "Architecture updated successfully",
+    "architectureDeleted": "Architecture deleted successfully",
+    "architectureNotFound": "Architecture not found",
+    "unauthorizedAccess": "Unauthorized access to architecture"
+  },
+  "downloads": {
+    "invalidDownloadToken": "Invalid download token",
+    "noDownloadToken": "No download token provided",
+    "unauthorizedAccess": "Unauthorized access to file download",
+    "fileNotFound": "File not found"
+  },
+  "uploads": {
+    "fileUploaded": "File uploaded successfully",
+    "fileUpdated": "File updated successfully",
+    "fileTooLarge": "File size cannot be larger than {{maxSize}}GB",
+    "uploadTimeout": "Upload timed out - Request took too long to complete",
+    "noStorageSpace": "Not enough storage space available",
+    "uploadError": "Could not upload the file",
+    "noFileUploaded": "No file uploaded"
+  },
+  "errors": {
+    "internalServerError": "Internal server error",
+    "operationFailed": "Operation failed",
+    "unauthorized": "Unauthorized",
+    "accessDenied": "Access denied",
+    "notFound": "Not found",
+    "invalidRequest": "Invalid request"
+  }
+}

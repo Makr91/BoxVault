@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
@@ -16,6 +17,7 @@ const sanitizeProvider = (provider) => {
 };
 
 const Login = ({ theme }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -89,27 +91,26 @@ const Login = ({ theme }) => {
         log.auth.error("Error processing OIDC token", {
           error: tokenError.message,
         });
-        setMessage("Failed to process authentication");
+        setMessage(t("errors.failedToProcess", { ns: "auth" }));
       }
     } else if (error) {
-      let errorMessage = "Authentication failed";
+      let errorMessage = t("errors.authenticationFailed", { ns: "auth" });
       switch (error) {
         case "oidc_failed":
-          errorMessage = "OIDC authentication failed";
+          errorMessage = t("errors.oidcFailed", { ns: "auth" });
           break;
         case "access_denied":
-          errorMessage =
-            "Access denied - you may not have permission to access this system";
+          errorMessage = t("errors.accessDenied", { ns: "auth" });
           break;
         case "no_provider":
-          errorMessage = "No authentication provider specified";
+          errorMessage = t("errors.noProvider", { ns: "auth" });
           break;
         default:
-          errorMessage = `Authentication error: ${error}`;
+          errorMessage = t("errors.authError", { ns: "auth", error });
       }
       setMessage(errorMessage);
     }
-  }, [location.search, navigate]);
+  }, [location.search, navigate, t]);
 
   const handleAuthMethodChange = (newMethod) => {
     setAuthMethod(newMethod);
@@ -200,7 +201,9 @@ const Login = ({ theme }) => {
         <form onSubmit={handleLogin} noValidate>
           {!methodsLoading && authMethods.length > 1 && (
             <div className="form-group">
-              <label htmlFor="authMethod">Authentication Method</label>
+              <label htmlFor="authMethod">
+                {t("login.authMethod", { ns: "auth" })}
+              </label>
               <select
                 className="form-control"
                 name="authMethod"
@@ -216,8 +219,8 @@ const Login = ({ theme }) => {
               </select>
               <small className="form-text text-muted">
                 {authMethod.startsWith("oidc-")
-                  ? "Sign in through your identity provider"
-                  : "Use your local account credentials"}
+                  ? t("login.oidcHint", { ns: "auth" })
+                  : t("login.localHint", { ns: "auth" })}
               </small>
             </div>
           )}
@@ -226,8 +229,7 @@ const Login = ({ theme }) => {
             <div className="form-group">
               <div className="alert alert-info text-center">
                 <i className="fas fa-external-link-alt" />
-                Click Sign in Below and You will be redirected to your identity
-                provider to sign in.
+                {t("login.redirectMessage", { ns: "auth" })}
               </div>
             </div>
           )}
@@ -235,7 +237,9 @@ const Login = ({ theme }) => {
           {!authMethod.startsWith("oidc-") && (
             <>
               <div className="form-group">
-                <label htmlFor="username">Username</label>
+                <label htmlFor="username">
+                  {t("login.username", { ns: "auth" })}
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -248,7 +252,9 @@ const Login = ({ theme }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password">Password</label>
+                <label htmlFor="password">
+                  {t("login.password", { ns: "auth" })}
+                </label>
                 <input
                   type="password"
                   className="form-control"
@@ -273,7 +279,7 @@ const Login = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="stayLoggedIn">
-                Stay logged in (required for long uploads)
+                {t("login.stayLoggedIn", { ns: "auth" })}
               </label>
             </div>
           </div>
@@ -284,8 +290,8 @@ const Login = ({ theme }) => {
               <span>
                 {authMethod.startsWith("oidc-")
                   ? authMethods.find((m) => m.id === authMethod)?.name ||
-                    "Continue with OIDC"
-                  : "Login"}
+                    t("login.continueWithOidc", { ns: "auth" })
+                  : t("login.loginButton", { ns: "auth" })}
               </span>
             </button>
           </div>

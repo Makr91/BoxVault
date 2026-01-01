@@ -77,7 +77,7 @@ exports.delete = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFound'),
       });
     }
 
@@ -85,7 +85,7 @@ exports.delete = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFound'),
       });
     }
 
@@ -102,13 +102,13 @@ exports.delete = async (req, res) => {
         }
       });
 
-      return res.send({ message: 'Box deleted successfully!' });
+      return res.send({ message: req.__('boxes.boxDeleted') });
     }
 
-    throw new Error('Box not found');
+    throw new Error(req.__('boxes.boxNotFound'));
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while deleting the Box.',
+      message: err.message || req.__('errors.operationFailed'),
     });
   }
 };

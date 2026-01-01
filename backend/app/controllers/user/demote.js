@@ -50,7 +50,7 @@ exports.demoteToUser = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     const userRole = await Role.findOne({ where: { name: 'user' } });
@@ -62,10 +62,8 @@ exports.demoteToUser = async (req, res) => {
     // Add the user role
     await user.addRole(userRole);
 
-    return res.status(200).send({ message: 'Demoted to user successfully!' });
+    return res.status(200).send({ message: req.__('users.demotedToUser') });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while demoting the user.' });
+    return res.status(500).send({ message: err.message || req.__('errors.operationFailed') });
   }
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { FaStar } from "react-icons/fa6";
 
 import AuthService from "../services/auth.service";
@@ -8,6 +9,7 @@ import { log } from "../utils/Logger";
 import BoxVaultVersion from "../version.json";
 
 const About = () => {
+  const { t } = useTranslation();
   const [projectData, setProjectData] = useState({
     title: "",
     description: "",
@@ -64,10 +66,12 @@ const About = () => {
 
       if (isBoxVaultFavorited) {
         favorites = FavoritesService.removeFavorite(favorites, "boxvault");
-        setFavoriteMessage("Removed BoxVault from favorites");
+        setFavoriteMessage(
+          t("messages.removedFromFavorites", { ns: "common" })
+        );
       } else {
         favorites = FavoritesService.addFavorite(favorites, "boxvault", null);
-        setFavoriteMessage("Added BoxVault to favorites!");
+        setFavoriteMessage(t("messages.addedToFavorites", { ns: "common" }));
       }
 
       await FavoritesService.saveFavorites(favorites);
@@ -79,7 +83,9 @@ const About = () => {
         clientId: "boxvault",
         error: error.message,
       });
-      setFavoriteMessage("Failed to update favorites");
+      setFavoriteMessage(
+        t("messages.failedToUpdateFavorites", { ns: "common" })
+      );
       setTimeout(() => setFavoriteMessage(""), 3000);
     }
   };
@@ -99,8 +105,8 @@ const About = () => {
             >
               <FaStar className="me-2" />
               {isBoxVaultFavorited
-                ? "Remove from Favorites"
-                : "Add to Favorites"}
+                ? t("about.removeFromFavorites", { ns: "common" })
+                : t("about.addToFavorites", { ns: "common" })}
             </button>
             {favoriteMessage && (
               <div className="alert alert-info mt-2">{favoriteMessage}</div>
@@ -121,7 +127,9 @@ const About = () => {
           </section>
         ))}
 
-        <h2 className="section-title">Key Features:</h2>
+        <h2 className="section-title">
+          {t("about.keyFeatures", { ns: "common" })}
+        </h2>
         <ul className="list">
           {projectData.features.map((feature) => (
             <li key={feature} className="list-item">
@@ -133,7 +141,9 @@ const About = () => {
         <p className="goal">{projectData.goal}</p>
 
         <section className="support-section">
-          <h2 className="section-title">Support and Follow</h2>
+          <h2 className="section-title">
+            {t("about.supportAndFollow", { ns: "common" })}
+          </h2>
           <ul className="list">
             <li className="list-item">
               <a
@@ -142,7 +152,7 @@ const About = () => {
                 rel="noopener noreferrer"
                 className="link"
               >
-                Support on Patreon
+                {t("about.supportOnPatreon", { ns: "common" })}
               </a>
             </li>
             <li className="list-item">
@@ -152,7 +162,7 @@ const About = () => {
                 rel="noopener noreferrer"
                 className="link"
               >
-                GitHub Profile
+                {t("about.githubProfile", { ns: "common" })}
               </a>
             </li>
             <li className="list-item">
@@ -162,7 +172,7 @@ const About = () => {
                 rel="noopener noreferrer"
                 className="link"
               >
-                Project Repository
+                {t("about.projectRepository", { ns: "common" })}
               </a>
             </li>
           </ul>

@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
+import "./i18n";
 import App from "./App";
 import { log } from "./utils/Logger";
 import version from "./version.json";

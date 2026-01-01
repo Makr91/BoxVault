@@ -60,7 +60,7 @@ exports.delete = async (req, res) => {
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${organizationName} not found.`,
+        message: req.__('organizations.organizationNotFound'),
       });
     }
 
@@ -73,15 +73,15 @@ exports.delete = async (req, res) => {
 
     if (!user) {
       return res.status(404).send({
-        message: `User ${userName} not found.`,
+        message: req.__('users.userNotFound'),
       });
     }
 
     await user.destroy();
-    return res.status(200).send({ message: `User ${userName} deleted successfully.` });
+    return res.status(200).send({ message: req.__('users.userDeleted') });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while deleting the user.',
+      message: err.message || req.__('errors.operationFailed'),
     });
   }
 };

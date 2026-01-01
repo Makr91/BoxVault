@@ -2,6 +2,7 @@ const { loadConfig } = require('../utils/config-loader');
 const db = require('../models');
 const fs = require('fs');
 const path = require('path');
+const { getSupportedLocales, getDefaultLocale } = require('../config/i18n');
 
 const getHealth = async (req, res) => {
   void req;
@@ -69,6 +70,8 @@ const getHealth = async (req, res) => {
       timestamp: new Date().toISOString(),
       version,
       environment,
+      supported_languages: getSupportedLocales(),
+      default_language: getDefaultLocale(),
       frontend_logging: loggingConfig,
       services: {
         database: dbStatus,

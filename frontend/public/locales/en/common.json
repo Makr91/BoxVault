@@ -1,0 +1,85 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "apiKeys": "API Keys",
+    "apiDocumentation": "API Documentation",
+    "logout": "Logout",
+    "logoutLocal": "Logout (Local)"
+  },
+  "language": {
+    "english": "English",
+    "spanish": "Español",
+    "selectLanguage": "Select Language",
+    "changeLanguage": "Change Language",
+    "flagIcon": {
+      "en": "🇺🇸",
+      "es": "🇪🇸"
+    }
+  },
+  "user": {
+    "unknownUser": "Unknown User",
+    "basicAuthUser": "Basic Auth User",
+    "oidcUser": "OIDC User",
+    "user": "User",
+    "apiKey": "API Key: {{keyName}}"
+  },
+  "buttons": {
+    "create": "Create",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save",
+    "close": "Close",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "clear": "Clear",
+    "copy": "Copy",
+    "move": "Move",
+    "rename": "Rename",
+    "upload": "Upload",
+    "download": "Download",
+    "search": "Search"
+  },
+  "status": {
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "pending": "Pending",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "actions": {
+    "copyToClipboard": "Copy to clipboard",
+    "copyFullChecksum": "Copy full checksum",
+    "backToFiles": "Back to Files",
+    "clearSelection": "Clear selection",
+    "selectAll": "Select All",
+    "retryUpload": "Retry upload"
+  },
+  "messages": {
+    "noResultsFound": "No Results Found",
+    "searchFailed": "Search Failed",
+    "uploadFailed": "Upload failed",
+    "deleteFailed": "Delete failed",
+    "operationSuccessful": "Operation completed successfully",
+    "operationFailed": "Operation failed",
+    "confirmAction": "Are you sure?",
+    "cannotUndoAction": "This action cannot be undone.",
+    "addedToFavorites": "Added BoxVault to favorites!",
+    "removedFromFavorites": "Removed BoxVault from favorites",
+    "failedToUpdateFavorites": "Failed to update favorites"
+  },
+  "about": {
+    "version": "Version",
+    "keyFeatures": "Key Features",
+    "supportAndFollow": "Support and Follow",
+    "addToFavorites": "Add to Favorites",
+    "removeFromFavorites": "Remove from Favorites",
+    "supportOnPatreon": "Support on Patreon",
+    "githubProfile": "GitHub Profile",
+    "projectRepository": "Project Repository"
+  },
+  "breadcrumbs": {
+    "boxvault": "BoxVault",
+    "home": "Home"
+  }
+}

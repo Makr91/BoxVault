@@ -50,7 +50,7 @@ exports.promoteToModerator = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     const userRole = await Role.findOne({ where: { name: 'user' } });
@@ -62,10 +62,8 @@ exports.promoteToModerator = async (req, res) => {
     // Add the moderator role
     await user.addRole(moderatorRole);
 
-    return res.status(200).send({ message: 'Promoted to moderator successfully!' });
+    return res.status(200).send({ message: req.__('users.promotedToModerator') });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while promoting the user.' });
+    return res.status(500).send({ message: err.message || req.__('errors.operationFailed') });
   }
 };

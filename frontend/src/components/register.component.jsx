@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
@@ -8,6 +9,8 @@ import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
 
 const Register = ({ theme }) => {
+  const { t } = useTranslation();
+
   useEffect(() => {
     document.title = "Register";
   }, []);
@@ -54,27 +57,27 @@ const Register = ({ theme }) => {
   const validateForm = () => {
     const errors = {};
     if (!formValues.username) {
-      errors.username = "This field is required!";
+      errors.username = t("errors.fieldRequired", { ns: "auth" });
     } else if (
       formValues.username.length < 3 ||
       formValues.username.length > 20
     ) {
-      errors.username = "The username must be between 3 and 20 characters.";
+      errors.username = t("errors.usernameLength", { ns: "auth" });
     }
 
     if (!formValues.email) {
-      errors.email = "This field is required!";
+      errors.email = t("errors.fieldRequired", { ns: "auth" });
     } else if (!/\S+@\S+\.\S+/.test(formValues.email)) {
-      errors.email = "This is not a valid email.";
+      errors.email = t("errors.invalidEmail", { ns: "auth" });
     }
 
     if (!formValues.password) {
-      errors.password = "This field is required!";
+      errors.password = t("errors.fieldRequired", { ns: "auth" });
     } else if (
       formValues.password.length < 6 ||
       formValues.password.length > 40
     ) {
-      errors.password = "The password must be between 6 and 40 characters.";
+      errors.password = t("errors.passwordLength", { ns: "auth" });
     }
 
     return errors;
@@ -123,7 +126,7 @@ const Register = ({ theme }) => {
 
         {organizationName && (
           <div className="alert alert-info text-center">
-            You are joining the organization:{" "}
+            {t("register.joiningOrganization", { ns: "auth" })}{" "}
             <strong>{organizationName}</strong>
           </div>
         )}
@@ -132,7 +135,9 @@ const Register = ({ theme }) => {
           {!status?.success && (
             <div>
               <div className="form-group">
-                <label htmlFor="username">Username</label>
+                <label htmlFor="username">
+                  {t("register.username", { ns: "auth" })}
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -148,7 +153,9 @@ const Register = ({ theme }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email">
+                  {t("register.email", { ns: "auth" })}
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -164,7 +171,9 @@ const Register = ({ theme }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password">Password</label>
+                <label htmlFor="password">
+                  {t("register.password", { ns: "auth" })}
+                </label>
                 <input
                   type="password"
                   className="form-control"
@@ -185,7 +194,7 @@ const Register = ({ theme }) => {
                   className="btn btn-primary btn-block"
                   disabled={isSubmitting}
                 >
-                  Sign Up
+                  {t("register.signUpButton", { ns: "auth" })}
                 </button>
               </div>
             </div>
