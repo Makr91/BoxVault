@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.18](https://github.com/Makr91/BoxVault/compare/v0.26.17...v0.26.18) (2026-01-01)
+
+
+### Bug Fixes
+
+* package locks ([fe6521c](https://github.com/Makr91/BoxVault/commit/fe6521c5c17eaebedbf219213db3a535579422e5))
+* package locks ([96698e5](https://github.com/Makr91/BoxVault/commit/96698e5fc0e8083d74d879d6f19972b5ffdb9237))
+
 ## [0.26.17](https://github.com/Makr91/BoxVault/compare/v0.26.16...v0.26.17) (2026-01-01)
 
 ### Bug Fixes
