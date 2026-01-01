@@ -101,24 +101,28 @@ const Navbar = ({
   const extractAuthServerUrl = (accessToken) => {
     try {
       const jwtPayload = JSON.parse(atob(accessToken.split(".")[1]));
-      if (jwtPayload.id_token) {
-        const idTokenPayload = JSON.parse(
-          atob(jwtPayload.id_token.split(".")[1])
-        );
-        const issuer = idTokenPayload.iss || "";
+      if (!jwtPayload.id_token) {
+        return "";
+      }
 
-        // Validate issuer URL for security (CodeQL requirement)
-        if (issuer && issuer.startsWith("https://")) {
-          try {
-            const url = new URL(issuer);
-            // Additional security checks
-            if (url.protocol === "https:" && url.hostname) {
-              return issuer;
-            }
-          } catch (urlError) {
-            log.auth.warn("Invalid issuer URL format", { issuer });
-          }
+      const idTokenPayload = JSON.parse(
+        atob(jwtPayload.id_token.split(".")[1])
+      );
+      const issuer = idTokenPayload.iss || "";
+      
+      // Validate issuer URL for security (CodeQL requirement)
+      if (!issuer || !issuer.startsWith("https://")) {
+        return "";
+      }
+
+      try {
+        const url = new URL(issuer);
+        // Additional security checks
+        if (url.protocol === "https:" && url.hostname) {
+          return issuer;
         }
+      } catch {
+        log.auth.warn("Invalid issuer URL format", { issuer });
       }
     } catch (error) {
       log.auth.debug("Could not extract issuer from id_token", {
