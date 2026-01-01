@@ -37,12 +37,14 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 ### Development Installation
 
 1. **Clone the repository**:
+
 ```bash
 git clone https://github.com/Makr91/BoxVault.git
 cd BoxVault
 ```
 
 2. **Install dependencies**:
+
 ```bash
 # For backend
 cd backend
@@ -58,6 +60,7 @@ npm install
    - Update the authentication configuration in `backend/app/config/auth.config.yaml`.
 
 4. **Run the application**:
+
 ```bash
 # Start the backend server
 cd backend
@@ -73,12 +76,14 @@ npm start
 BoxVault provides pre-built Debian packages for easy production deployment:
 
 1. **Download the latest release**:
+
 ```bash
 # Download from GitHub releases
 wget https://github.com/Makr91/BoxVault/releases/latest/download/boxvault_VERSION_amd64.deb
 ```
 
 2. **Install prerequisites**:
+
 ```bash
 # Install MySQL/MariaDB
 sudo apt install mysql-server
@@ -93,6 +98,7 @@ sudo mysql -e "FLUSH PRIVILEGES;"
 ```
 
 3. **Install BoxVault**:
+
 ```bash
 # Install the package
 sudo gdebi -n boxvault_VERSION_amd64.deb
@@ -125,20 +131,24 @@ For detailed packaging and build instructions, see [packaging/README.md](packagi
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/signup`: Register a new user.
 - `POST /api/auth/signin`: Login a user.
 
 ### Boxes
+
 - `GET /api/boxes`: Retrieve all boxes.
 - `POST /api/boxes`: Create a new box.
 - `PUT /api/boxes/:id`: Update a box.
 - `DELETE /api/boxes/:id`: Delete a box.
 
 ### Files
+
 - `POST /api/files/upload`: Upload a file.
 - `DELETE /api/files/:id`: Delete a file.
 
 ### Organizations
+
 - `GET /api/organizations`: Retrieve all organizations.
 - `POST /api/organizations`: Create a new organization.
 
@@ -158,7 +168,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Future TODOs:
 
-1. Make use of the published/unpublished flag of a box to only show to the user, but not to  others in organization
+1. Make use of the published/unpublished flag of a box to only show to the user, but not to others in organization
 
 2. Audit output for Passwords and sensitive data
 3. Audit API functionality against packer scripts and vagrant api

@@ -45,6 +45,7 @@ Due to limited development resources, please understand that:
 Given that BoxVault manages Vagrant box repositories and file uploads, please pay special attention to:
 
 ### High-Risk Areas
+
 - **API Key Authentication**: Bypasses or privilege escalation
 - **Zone Management**: Unauthorized zone creation/modification/deletion
 - **File System Operations**: Path traversal or unauthorized file access
@@ -52,6 +53,7 @@ Given that BoxVault manages Vagrant box repositories and file uploads, please pa
 - **Network Operations**: Unauthorized network configuration changes
 
 ### Configuration Security
+
 - **Default Configurations**: Insecure defaults
 - **SSL/TLS Implementation**: Certificate validation, cipher suites
 - **CORS Configuration**: Origin validation bypasses
@@ -85,7 +87,7 @@ We appreciate the security research community's efforts in making BoxVault more 
 
 Contributors who responsibly report security vulnerabilities will be acknowledged here (with their permission):
 
-- *No vulnerabilities reported yet*
+- _No vulnerabilities reported yet_
 
 ## Updates to This Policy
 

@@ -6,16 +6,18 @@ nav_order: 1
 permalink: /docs/guides/getting-started/
 ---
 
-# Getting Started with BoxVault
+## Getting Started with BoxVault
+
 {: .no_toc }
 
 Complete guide to setting up and using BoxVault for the first time.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -71,6 +73,7 @@ boxvault setup
 ```
 
 This will guide you through:
+
 - Database configuration
 - Admin user creation
 - Basic settings
@@ -78,6 +81,7 @@ This will guide you through:
 ### 2. Access the Web Interface
 
 Open your browser and navigate to:
+
 ```
 http://localhost:3000
 ```
@@ -109,6 +113,7 @@ http://localhost:3000
 ### Web Interface
 
 The web interface provides:
+
 - **Dashboard** - Overview of your boxes and organizations
 - **Box Management** - Create, edit, and delete boxes
 - **User Management** - Manage organization members
@@ -200,6 +205,7 @@ Manage organization membership:
 ### Box Naming
 
 Use consistent naming conventions:
+
 - `organization/box-name` (e.g., `mycompany/ubuntu-20.04`)
 - Include OS and version in the name
 - Use semantic versioning for box versions

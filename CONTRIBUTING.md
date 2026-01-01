@@ -47,6 +47,7 @@ We appreciate all pull requests! To ensure smooth collaboration:
 ### What We're Looking For
 
 **High Impact Contributions:**
+
 - Bug fixes (especially those affecting system stability)
 - Security improvements
 - Performance optimizations
@@ -54,6 +55,7 @@ We appreciate all pull requests! To ensure smooth collaboration:
 - Test coverage improvements
 
 **Feature Contributions:**
+
 - New zone management features
 - Enhanced monitoring capabilities
 - API improvements

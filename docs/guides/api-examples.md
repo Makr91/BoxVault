@@ -6,16 +6,18 @@ nav_order: 4
 permalink: /docs/guides/api-examples/
 ---
 
-# API Examples
+## API Examples
+
 {: .no_toc }
 
 This guide provides comprehensive examples for using the BoxVault REST API with curl commands and detailed responses.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -28,6 +30,7 @@ curl -H "x-access-token: YOUR_JWT_TOKEN" https://boxvault.example.com/api/user
 ```
 
 ### Sign In
+
 ```bash
 curl -X POST https://boxvault.example.com/api/auth/signin \
   -H "Content-Type: application/json" \
@@ -39,6 +42,7 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "user_id",
@@ -51,6 +55,7 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
 ```
 
 ### Sign Up
+
 ```bash
 curl -X POST https://boxvault.example.com/api/auth/signup \
   -H "Content-Type: application/json" \
@@ -63,6 +68,7 @@ curl -X POST https://boxvault.example.com/api/auth/signup \
 ```
 
 ### Refresh Token
+
 ```bash
 # Only available if stayLoggedIn=true during signin
 curl -X GET https://boxvault.example.com/api/auth/refresh-token \
@@ -74,6 +80,7 @@ curl -X GET https://boxvault.example.com/api/auth/refresh-token \
 ## Organizations
 
 ### Create Organization
+
 ```bash
 curl -X POST https://boxvault.example.com/api/organization \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -86,6 +93,7 @@ curl -X POST https://boxvault.example.com/api/organization \
 ```
 
 ### Send Invitation
+
 ```bash
 curl -X POST https://boxvault.example.com/api/auth/invite \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -97,6 +105,7 @@ curl -X POST https://boxvault.example.com/api/auth/invite \
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Invitation sent successfully!",
@@ -112,6 +121,7 @@ curl -X POST https://boxvault.example.com/api/auth/invite \
 ## Box Management
 
 ### Create Box
+
 ```bash
 curl -X POST https://boxvault.example.com/api/organization/myorg/box \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -124,6 +134,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box \
 ```
 
 ### Create Box Version
+
 ```bash
 curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/version \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -135,6 +146,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/ve
 ```
 
 ### Create Provider
+
 ```bash
 curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -146,6 +158,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/ve
 ```
 
 ### Create Architecture
+
 ```bash
 curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -161,6 +174,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/ve
 ## File Operations
 
 ### Upload Box File
+
 Files are uploaded directly to the server using a single request. To show upload progress, use curl's progress bar:
 
 ```bash
@@ -180,6 +194,7 @@ curl --progress-bar \
 ```
 
 **Upload Options Explained:**
+
 - `--progress-bar`: Show a progress bar during upload
 - `--max-time 0`: Disable maximum time the transfer can take
 - `--connect-timeout 0`: Disable connection timeout
@@ -189,19 +204,23 @@ curl --progress-bar \
 - `-o upload_response.txt`: Save server response to file
 
 ### Download Box File
+
 BoxVault provides multiple ways to download box files:
 
 1. **Direct browser download:**
+
 ```bash
 curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box"
 ```
 
 2. **Using Vagrant CLI:**
+
 ```bash
 vagrant box add "boxvault.example.com/myorg/debian12"
 ```
 
 3. **Using download link:**
+
 ```bash
 # Get download link
 curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
@@ -212,29 +231,36 @@ curl -O "DOWNLOAD_URL"
 ```
 
 ### Get Box Metadata
+
 ```bash
 curl "https://boxvault.example.com/api/organization/myorg/box/debian12/metadata"
 ```
 
 **Response:**
+
 ```json
 {
   "name": "debian12",
   "description": "Debian 12 Server",
-  "versions": [{
-    "version": "1.0.0",
-    "providers": [{
-      "name": "virtualbox",
-      "url": "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box",
-      "checksum_type": "sha256",
-      "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "fileSize": "1508591037"
-    }]
-  }]
+  "versions": [
+    {
+      "version": "1.0.0",
+      "providers": [
+        {
+          "name": "virtualbox",
+          "url": "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box",
+          "checksum_type": "sha256",
+          "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "fileSize": "1508591037"
+        }
+      ]
+    }
+  ]
 }
 ```
 
 **Note:** File sizes are returned in bytes. To convert to GB:
+
 ```javascript
 const bytesToGB = (bytes) => (bytes / 1024 / 1024 / 1024).toFixed(2);
 console.log(bytesToGB(1508591037)); // Outputs: "1.40"
@@ -245,6 +271,7 @@ console.log(bytesToGB(1508591037)); // Outputs: "1.40"
 ## Service Account Management
 
 ### Create Service Account
+
 ```bash
 curl -X POST https://boxvault.example.com/api/service-accounts \
   -H "x-access-token: YOUR_ADMIN_JWT_TOKEN" \
@@ -256,6 +283,7 @@ curl -X POST https://boxvault.example.com/api/service-accounts \
 ```
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -270,6 +298,7 @@ curl -X POST https://boxvault.example.com/api/service-accounts \
 ```
 
 ### Authenticate Service Account
+
 ```bash
 curl -X POST https://boxvault.example.com/api/auth/signin \
   -H "Content-Type: application/json" \
@@ -285,11 +314,13 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
 ## System Configuration
 
 ### Check Setup Status
+
 ```bash
 curl -X GET https://boxvault.example.com/api/setup/status
 ```
 
 ### Upload SSL Certificate
+
 ```bash
 curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
   -H "Content-Type: multipart/form-data" \
@@ -298,6 +329,7 @@ curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
 ```
 
 ### Test SMTP Configuration
+
 ```bash
 curl -X POST https://boxvault.example.com/api/mail/test-smtp \
   -H "x-access-token: YOUR_JWT_TOKEN" \
@@ -322,6 +354,7 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 ### Common Error Responses
 
 **Role-Based Access Errors:**
+
 ```json
 {
   "error": "INSUFFICIENT_PERMISSIONS",
@@ -334,6 +367,7 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 ```
 
 **Authentication Errors:**
+
 ```json
 {
   "error": "TOKEN_EXPIRED",
@@ -345,6 +379,7 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 ```
 
 **Upload Errors:**
+
 ```json
 {
   "error": "CHUNK_TOO_LARGE",
@@ -357,6 +392,7 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 ```
 
 **Validation Errors:**
+
 ```json
 {
   "error": "VALIDATION_ERROR",

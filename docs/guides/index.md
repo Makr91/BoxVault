@@ -6,16 +6,18 @@ has_children: true
 permalink: /docs/guides/
 ---
 
-# Guides
+## Guides
+
 {: .no_toc }
 
 Comprehensive guides for using BoxVault.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -24,18 +26,23 @@ Comprehensive guides for using BoxVault.
 New to BoxVault? Start with our comprehensive guides:
 
 ### [Getting Started Guide](getting-started/)
+
 Complete walkthrough for setting up and using BoxVault for the first time.
 
 ### [Installation Guide](installation/)
+
 Detailed installation instructions for different platforms and deployment scenarios.
 
 ### [Authentication Guide](authentication/)
+
 Learn about user authentication, JWT tokens, and API access.
 
 ### [Backend Integration Guide](backend-integration/)
+
 Integrate BoxVault with your existing infrastructure and CI/CD pipelines.
 
 ### [API Examples](api-examples/)
+
 Comprehensive examples for using the BoxVault REST API with curl commands and detailed responses.
 
 ## Quick Links

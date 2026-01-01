@@ -6,16 +6,18 @@ nav_order: 3
 permalink: /docs/guides/authentication/
 ---
 
-# Authentication Guide
+## Authentication Guide
+
 {: .no_toc }
 
 Learn about BoxVault authentication, JWT tokens, and API access.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -43,6 +45,7 @@ curl -X POST http://localhost:3000/api/auth/signin \
 ```
 
 Response:
+
 ```json
 {
   "id": 1,
@@ -72,7 +75,7 @@ JWT tokens have configurable expiration times:
 auth:
   jwt:
     secret: "your-secret-key"
-    expiresIn: "24h"  # 24 hours
+    expiresIn: "24h" # 24 hours
 ```
 
 ### Token Refresh
@@ -105,13 +108,13 @@ curl -X POST http://localhost:3000/api/auth/signout \
 
 ### Permission Matrix
 
-| Action | Admin | Moderator | User | Service Account |
-|--------|-------|-----------|------|-----------------|
-| Create Organization | ✓ | ✓ | ✗ | ✗ |
-| Manage Users | ✓ | ✓ (org only) | ✗ | ✗ |
-| Upload Boxes | ✓ | ✓ | ✓ | ✓ |
-| Download Boxes | ✓ | ✓ | ✓ | ✓ |
-| System Settings | ✓ | ✗ | ✗ | ✗ |
+| Action              | Admin | Moderator    | User | Service Account |
+| ------------------- | ----- | ------------ | ---- | --------------- |
+| Create Organization | ✓     | ✓            | ✗    | ✗               |
+| Manage Users        | ✓     | ✓ (org only) | ✗    | ✗               |
+| Upload Boxes        | ✓     | ✓            | ✓    | ✓               |
+| Download Boxes      | ✓     | ✓            | ✓    | ✓               |
+| System Settings     | ✓     | ✗            | ✗    | ✗               |
 
 ## Service Accounts
 
@@ -195,7 +198,7 @@ server:
       -H "Content-Type: application/json" \
       -d '{"clientId":"${{ secrets.BOXVAULT_CLIENT_ID }}","clientSecret":"${{ secrets.BOXVAULT_CLIENT_SECRET }}"}' \
       | jq -r '.accessToken')
-    
+
     curl -X POST $BOXVAULT_URL/api/organization/myorg/box/mybox/version/1.0.0/provider/virtualbox/architecture/amd64/file \
       -H "x-access-token: $TOKEN" \
       -F "file=@mybox.box"
@@ -219,16 +222,19 @@ end
 ### Common Issues
 
 **Invalid token:**
+
 - Check token expiration
 - Verify token format
 - Ensure correct header name
 
 **Permission denied:**
+
 - Check user role
 - Verify organization membership
 - Review resource permissions
 
 **Rate limit exceeded:**
+
 - Implement exponential backoff
 - Use service accounts for automation
 - Contact admin for limit increases

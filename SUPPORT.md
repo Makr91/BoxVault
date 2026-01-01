@@ -5,7 +5,9 @@ Thank you for using BoxVault! This document outlines the various ways you can ge
 ## Available Resources
 
 ### 📚 Documentation
+
 Start with our comprehensive documentation:
+
 - **[Main Documentation](https://boxvault.startcloud.com/)** - Complete guides and API reference
 - **[Getting Started](https://boxvault.startcloud.com/docs/guides/getting-started/)** - Quick start guide
 - **[Installation Guide](https://boxvault.startcloud.com/docs/guides/installation/)** - Production setup
@@ -13,19 +15,24 @@ Start with our comprehensive documentation:
 - **[API Documentation](https://boxvault.startcloud.com/docs/api/)** - Interactive API reference
 
 ### 🐛 Issues and Bug Reports
+
 For bugs and technical issues:
+
 - **[GitHub Issues](https://github.com/Makr91/BoxVault/issues)** - Report bugs or request features
 - Use the appropriate issue template (bug report, feature request, question)
 - Search existing issues first to avoid duplicates
 
 ### 💬 Community Discussion
+
 For general questions and discussions:
+
 - **[GitHub Discussions](https://github.com/Makr91/BoxVault/discussions)** - Ask questions, share ideas
 - **[GitHub Issues](https://github.com/Makr91/BoxVault/issues)** - Use the "question" template for specific inquiries
 
 ## Support Expectations
 
 ### Resource Limitations
+
 Please understand that BoxVault is maintained with limited development resources:
 
 - **Response Time**: We aim to respond to issues within a few days, but response times may vary based on current workload and complexity
@@ -33,7 +40,9 @@ Please understand that BoxVault is maintained with limited development resources
 - **Feature Requests**: Evaluated based on community needs and available development resources
 
 ### Community-Driven Support
+
 The BoxVault community is encouraged to:
+
 - **Help each other** in discussions and issue comments
 - **Share solutions** to common problems
 - **Contribute documentation** improvements
@@ -44,6 +53,7 @@ The BoxVault community is encouraged to:
 ### ✅ What We Can Help With
 
 **Technical Issues:**
+
 - Installation and configuration problems
 - API usage questions
 - Bug reports with reproducible steps
@@ -51,6 +61,7 @@ The BoxVault community is encouraged to:
 - Feature requests (evaluated for feasibility)
 
 **Documentation:**
+
 - Clarification on existing documentation
 - Suggestions for documentation improvements
 - Examples and use cases
@@ -58,6 +69,7 @@ The BoxVault community is encouraged to:
 ### ❌ What We Cannot Provide
 
 **Out of Scope:**
+
 - Custom development work
 - Extensive one-on-one troubleshooting
 - Support for modified or forked versions
@@ -69,6 +81,7 @@ The BoxVault community is encouraged to:
 To get the best assistance:
 
 ### For Bug Reports
+
 1. **Use the bug report template**
 2. **Include system information** (OmniOS version, Node.js version, etc.)
 3. **Provide reproduction steps** with expected vs. actual behavior
@@ -76,6 +89,7 @@ To get the best assistance:
 5. **Test with the latest version** when possible
 
 ### For Questions
+
 1. **Check the documentation first**
 2. **Search existing issues and discussions**
 3. **Be specific** about what you're trying to achieve
@@ -108,12 +122,16 @@ See our [Contributing Guide](CONTRIBUTING.md) for more information.
 ## Alternative Resources
 
 ### OmniOS Community
+
 For OmniOS-specific questions:
+
 - **[OmniOS Community](https://omnios.org/community)** - OS-level support
 - **[OmniOS Documentation](https://omnios.org/documentation)** - System administration
 
 ### Node.js Resources
+
 For Node.js development questions:
+
 - **[Node.js Documentation](https://nodejs.org/docs/)**
 - **[Stack Overflow](https://stackoverflow.com/questions/tagged/node.js)**
 

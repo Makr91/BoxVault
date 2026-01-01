@@ -9,7 +9,7 @@ smtp_connect:
     order: 1
   port:
     type: integer
-    value: '587'
+    value: "587"
     description: SMTP server port
     section: Mail
     subsection: SMTP Connection
@@ -50,7 +50,7 @@ smtp_settings:
     order: 2
   rateLimit:
     type: integer
-    value: '10'
+    value: "10"
     description: Maximum emails to send per second
     section: Mail
     subsection: SMTP Settings

@@ -5,16 +5,18 @@ nav_order: 10
 permalink: /docs/contributing/
 ---
 
-# Contributing
+## Contributing
+
 {: .no_toc }
 
 Guidelines for contributing to BoxVault.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 

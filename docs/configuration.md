@@ -5,16 +5,18 @@ nav_order: 4
 permalink: /docs/configuration/
 ---
 
-# Configuration
+## Configuration
+
 {: .no_toc }
 
 BoxVault configuration options and settings.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -195,3 +197,4 @@ BoxVault validates configuration on startup and will report any errors or missin
 
 ```bash
 npm start -- --validate-config
+```

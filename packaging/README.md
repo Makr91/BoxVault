@@ -12,6 +12,7 @@ sudo apt install nodejs npm dpkg-dev gdebi-core
 ## Quick Build Commands
 
 ### 1. Prepare Application
+
 ```bash
 # Install backend dependencies
 cd backend
@@ -33,6 +34,7 @@ cd ..
 ```
 
 ### 2. Create Package Structure
+
 ```bash
 # Extract version from package.json
 export VERSION=$(node -p "require('./package.json').version")
@@ -44,6 +46,7 @@ mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault,etc/boxvault,etc/sys
 ```
 
 ### 3. Copy Application Files
+
 ```bash
 # Backend application files to /opt/boxvault
 cp -r backend/app backend/server.js backend/package.json "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
@@ -66,6 +69,7 @@ cp packaging/DEBIAN/postinst packaging/DEBIAN/prerm packaging/DEBIAN/postrm "${P
 ```
 
 ### 4. Generate Control File
+
 ```bash
 # Create control file with dynamic version
 cat > "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/control" << EOF
@@ -86,6 +90,7 @@ EOF
 ```
 
 ### 5. Set Permissions
+
 ```bash
 # Set proper permissions
 find "${PACKAGE_NAME}_${VERSION}_${ARCH}" -type d -exec chmod 755 {} \;
@@ -94,6 +99,7 @@ chmod 755 "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN"/{postinst,prerm,postrm}
 ```
 
 ### 6. Build & Install Package
+
 ```bash
 # Build .deb package
 dpkg-deb --build "${PACKAGE_NAME}_${VERSION}_${ARCH}" "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
@@ -114,19 +120,25 @@ sudo systemctl status boxvault
 ## Critical Build Notes
 
 ### ⚠️ Required Directories
+
 **Must include these directories in the copy command or the package will fail:**
+
 - `backend/app/` - Contains all backend application code
 - `backend/node_modules/` - Backend dependencies
 - `frontend/dist/` - Must build frontend first with `npm run build`
 
 ### 🔧 Systemd Service
+
 The service includes:
+
 - **Environment variables** (`NODE_ENV=production`, `CONFIG_DIR=/etc/boxvault`)
 - **Security restrictions** (NoNewPrivileges, ProtectSystem, etc.)
 - **MySQL dependency** (starts after mysql.service)
 
 ### 📁 Configuration Files
+
 BoxVault uses multiple configuration files:
+
 - `app.config.yaml` - Main application settings
 - `auth.config.yaml` - JWT and authentication settings
 - `db.config.yaml` - Database connection settings
@@ -155,13 +167,16 @@ sudo nano /etc/boxvault/db.config.yaml
 ## Automated CI/CD
 
 ### Release Please Integration
+
 Every push to main triggers Release Please:
+
 1. **Creates release PR** with version bumps and changelog
 2. **Merges PR** → triggers package build
 3. **Creates GitHub release** with `.deb` package attached
 4. **Uses semantic versioning** based on conventional commits
 
 ### Manual Release Trigger
+
 ```bash
 gh workflow run release-please.yml
 ```
@@ -179,6 +194,7 @@ gh workflow run release-please.yml
 ## Troubleshooting
 
 ### Common Build Errors
+
 1. **Cannot find module '/opt/boxvault/app/...'**
    - ❌ Missing `backend/app` in copy command
    - ✅ Fix: Ensure `backend/app` is copied to package
@@ -192,6 +208,7 @@ gh workflow run release-please.yml
    - ✅ Fix: Install database and update `/etc/boxvault/db.config.yaml`
 
 ### Service Issues
+
 ```bash
 # Check logs
 sudo journalctl -fu boxvault
@@ -205,6 +222,7 @@ sudo systemctl restart boxvault
 ```
 
 ### Uninstall
+
 ```bash
 sudo systemctl stop boxvault
 sudo apt remove boxvault

@@ -3,7 +3,7 @@ name: CI
 on:
   workflow_call:
   pull_request:
-    branches: ['main']
+    branches: ["main"]
 
 permissions:
   contents: write
@@ -23,8 +23,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Install backend dependencies
         run: cd backend && npm ci
@@ -51,8 +51,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Install frontend dependencies
         run: cd frontend && npm install
@@ -70,8 +70,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Install dependencies
         run: |
@@ -94,8 +94,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Install dependencies
         run: |
@@ -105,24 +105,24 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-#  test:
-#    name: Tests
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v6
-#
-#      - name: Setup Node.js
-#        uses: actions/setup-node@v6
-#        with:
-#          node-version: '22'
-#          cache: 'npm'
-#
-#      - name: Install dependencies
-#        run: npm run cinstall:all
-#
-#      - name: Run tests
-#        run: npm run test:all
+  #  test:
+  #    name: Tests
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - name: Checkout code
+  #        uses: actions/checkout@v6
+  #
+  #      - name: Setup Node.js
+  #        uses: actions/setup-node@v6
+  #        with:
+  #          node-version: '22'
+  #          cache: 'npm'
+  #
+  #      - name: Install dependencies
+  #        run: npm run cinstall:all
+  #
+  #      - name: Run tests
+  #        run: npm run test:all
 
   verify-scripts:
     name: Verify Scripts
@@ -134,8 +134,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
 
       - name: Install dependencies
         run: cd backend && npm ci

@@ -6,7 +6,8 @@ description: "BoxVault Documentation - Vagrant Box Repository Management"
 permalink: /
 ---
 
-# BoxVault Documentation
+## BoxVault Documentation
+
 {: .fs-9 }
 
 Node.js and React-based web application for managing Vagrant box repositories. Provides user management, organization control, and comprehensive API for uploading, versioning, and distributing Vagrant boxes.
@@ -58,7 +59,7 @@ graph TD
 BoxVault provides comprehensive documentation:
 
 - **[API Reference](docs/api/)** - Complete API documentation with Swagger
-- **[Getting Started Guide](docs/guides/getting-started/)** - Step-by-step setup instructions  
+- **[Getting Started Guide](docs/guides/getting-started/)** - Step-by-step setup instructions
 - **[Installation Guide](docs/guides/installation/)** - Installation and deployment
 - **[User Guide](docs/guides/user-guide/)** - Web interface usage and features
 - **[Authentication Guide](docs/guides/authentication/)** - User and API authentication

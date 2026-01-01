@@ -7,9 +7,11 @@ Production-ready OmniOS IPS package build process for BoxVault.
 There are two approaches for building BoxVault OmniOS packages:
 
 ### Method 1: OmniOS Build Framework (Recommended)
+
 If you're using the OmniOS build framework (omniosorg/omnios-build), place the BoxVault source in the build tree and use the provided `build.sh` script.
 
 ### Method 2: Manual Build Process
+
 Traditional manual building using direct IPS commands.
 
 ## Prerequisites
@@ -34,6 +36,7 @@ pfexec pkg install ooce/runtime/node-22 database/sqlite-3
 If you're using the OmniOS build framework, follow these steps:
 
 ### Setup in Build Tree
+
 ```bash
 # Place BoxVault in your build tree (example path)
 cd /path/to/omnios-build/build
@@ -45,13 +48,14 @@ cp -r /path/to/boxvault-source/* .
 
 # The build.sh script expects these files:
 # - build.sh (provided)
-# - local.mog (provided)  
+# - local.mog (provided)
 # - boxvault-smf.xml (SMF manifest)
 # - startup.sh, shutdown.sh (method scripts)
 # - All source files (controllers, models, etc.)
 ```
 
 ### Build with Framework
+
 ```bash
 # From the boxvault directory in build tree
 ./build.sh
@@ -64,6 +68,7 @@ cp -r /path/to/boxvault-source/* .
 ```
 
 ### Integration Notes
+
 - The `build.sh` script follows OmniOS build framework conventions
 - Version is automatically extracted from `package.json`
 - Dependencies are handled via `BUILD_DEPENDS_IPS` and `RUN_DEPENDS_IPS`
@@ -73,10 +78,11 @@ cp -r /path/to/boxvault-source/* .
 ## Method 2: Manual Build Commands
 
 ### 1. Build Application (On OmniOS)
+
 ```bash
 cd /local/builds/boxvault
 
-# Build the frontend first  
+# Build the frontend first
 export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:$PATH"
 npm run sync-versions
 MAKE=gmake npm ci
@@ -90,6 +96,7 @@ export VERSION=$(node -p "require('./package.json').version")
 ```
 
 ### 2. Build IPS Package
+
 ```bash
 # Set version in manifest
 sed -i "s/@VERSION@/${VERSION}/g" packaging/omnios/boxvault.p5m
@@ -110,6 +117,7 @@ pkgsend publish -d . -s /tmp/local-repo boxvault.p5m.final
 ```
 
 ### 3. Install & Test Package
+
 ```bash
 # Add your local repository
 pfexec pkg set-publisher -g file:///tmp/local-repo Makr91
@@ -138,7 +146,7 @@ The IPS package will create:
 
 ```
 /opt/boxvault/                      # Application files
-├── server.js                       # Main Node.js application  
+├── server.js                       # Main Node.js application
 ├── package.json                    # Package metadata
 ├── app/                            # Backend application
 │   ├── controllers/                # API controllers
@@ -170,6 +178,7 @@ The IPS package will create:
 ## Dependencies
 
 The package depends on:
+
 - `ooce/runtime/node-22` (Node.js runtime)
 - `database/sqlite-3` (SQLite database)
 - Standard OmniOS system packages
@@ -177,6 +186,7 @@ The package depends on:
 ## User & Service Management
 
 The package automatically:
+
 - Creates `boxvault` user and group
 - Installs SMF service manifest
 - Sets up proper file permissions
@@ -187,17 +197,20 @@ The package automatically:
 ### Build Errors
 
 1. **Node.js not found:**
+
    ```bash
    export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:$PATH"
    ```
 
 2. **npm install fails:**
+
    ```bash
    # Ensure you have the latest npm
    npm install -g npm@latest
    ```
 
 3. **Rollup platform error (SunOS x64 not supported):**
+
    ```bash
    # This is resolved by using npm install instead of npm ci for frontend
    # The build.sh script handles this automatically
@@ -257,7 +270,7 @@ chmod 755 /opt/boxvault/shutdown.sh
 # Start service
 svcadm enable system/virtualization/boxvault
 
-# Stop service  
+# Stop service
 svcadm disable system/virtualization/boxvault
 
 # Restart service
@@ -291,6 +304,7 @@ The package version is automatically synchronized with the main `package.json` v
 ## Default Access
 
 After installation, BoxVault will be available at:
+
 - **HTTP:** `http://localhost:3000` (default)
 - **Configuration:** `/etc/boxvault/app.config.yaml`
 

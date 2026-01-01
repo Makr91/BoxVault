@@ -1,88 +1,132 @@
 <!-- Custom head content for BoxVault Documentation -->
-<link rel="icon" type="image/x-icon" href="{{ site.baseurl }}/frontend/public/favicon.ico">
-<link rel="apple-touch-icon" sizes="192x192" href="{{ site.baseurl }}/frontend/public/logo192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="{{ site.baseurl }}/frontend/public/logo512.png">
+<link
+  rel="icon"
+  type="image/x-icon"
+  href="{{ site.baseurl }}/frontend/public/favicon.ico"
+/>
+<link
+  rel="apple-touch-icon"
+  sizes="192x192"
+  href="{{ site.baseurl }}/frontend/public/logo192.png"
+/>
+<link
+  rel="apple-touch-icon"
+  sizes="512x512"
+  href="{{ site.baseurl }}/frontend/public/logo512.png"
+/>
 
 <!-- Dynamic version loading for releases page -->
 <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.location.pathname.includes('/releases/')) {
-    var releaseDiv = document.getElementById('latest-release-content');
-    if (releaseDiv) {
-      fetch('https://raw.githubusercontent.com/Makr91/BoxVault/refs/heads/main/package.json')
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          releaseDiv.innerHTML = '<p><strong>Version v' + data.version + '</strong> - Current Build</p>';
-          var p5pLink = document.querySelector('a[href*="boxvault.p5p"]');
-          if (p5pLink) {
-            p5pLink.href = 'https://github.com/Makr91/BoxVault/releases/latest/download/boxvault-' + data.version + '.p5p';
-          }
-          var debLink = document.querySelector('a[href*="boxvault.deb"]');
-          if (debLink) {
-            debLink.href = 'https://github.com/Makr91/BoxVault/releases/latest/download/boxvault_' + data.version + '_amd64.deb';
-          }
-        });
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.location.pathname.includes("/releases/")) {
+      var releaseDiv = document.getElementById("latest-release-content");
+      if (releaseDiv) {
+        fetch(
+          "https://raw.githubusercontent.com/Makr91/BoxVault/refs/heads/main/package.json",
+        )
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (data) {
+            releaseDiv.innerHTML =
+              "<p><strong>Version v" +
+              data.version +
+              "</strong> - Current Build</p>";
+            var p5pLink = document.querySelector('a[href*="boxvault.p5p"]');
+            if (p5pLink) {
+              p5pLink.href =
+                "https://github.com/Makr91/BoxVault/releases/latest/download/boxvault-" +
+                data.version +
+                ".p5p";
+            }
+            var debLink = document.querySelector('a[href*="boxvault.deb"]');
+            if (debLink) {
+              debLink.href =
+                "https://github.com/Makr91/BoxVault/releases/latest/download/boxvault_" +
+                data.version +
+                "_amd64.deb";
+            }
+          });
+      }
     }
-  }
-});
+  });
 </script>
 
 <!-- Dynamic version loading for changelog page -->
 <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.location.pathname.includes('/changelog/')) {
-    var releaseDiv = document.getElementById('latest-release-content');
-    if (releaseDiv) {
-      fetch('https://raw.githubusercontent.com/Makr91/BoxVault/refs/heads/main/package.json')
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          releaseDiv.innerHTML = '<p><strong>Version v' + data.version + '</strong> - Current Build</p>';
-        });
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.location.pathname.includes("/changelog/")) {
+      var releaseDiv = document.getElementById("latest-release-content");
+      if (releaseDiv) {
+        fetch(
+          "https://raw.githubusercontent.com/Makr91/BoxVault/refs/heads/main/package.json",
+        )
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (data) {
+            releaseDiv.innerHTML =
+              "<p><strong>Version v" +
+              data.version +
+              "</strong> - Current Build</p>";
+          });
+      }
     }
-  }
-});
+  });
 </script>
 
 <!-- Dynamic version loading for security page -->
 <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.location.pathname.includes('/security/')) {
-    var versionsDiv = document.getElementById('supported-versions-content');
-    if (versionsDiv) {
-      fetch('https://api.github.com/repos/Makr91/BoxVault/releases')
-        .then(function(response) {
-          return response.json();
-        })
-        .then(function(releases) {
-          var html = '<table><thead><tr><th>Version</th><th>Release Date</th><th>Supported</th><th>Download</th></tr></thead><tbody>';
-          var count = 0;
-          
-          for (var i = 0; i < releases.length && count < 5; i++) {
-            var release = releases[i];
-            if (!release.draft && !release.prerelease) {
-              var releaseDate = new Date(release.published_at).toLocaleDateString();
-              var isSupported = count < 3;
-              var supportIcon = isSupported ? '✅' : '❌';
-              
-              html += '<tr>';
-              html += '<td><a href="' + release.html_url + '">' + release.tag_name + '</a></td>';
-              html += '<td>' + releaseDate + '</td>';
-              html += '<td>' + supportIcon + '</td>';
-              html += '<td><a href="' + release.html_url + '">Download</a></td>';
-              html += '</tr>';
-              count++;
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.location.pathname.includes("/security/")) {
+      var versionsDiv = document.getElementById("supported-versions-content");
+      if (versionsDiv) {
+        fetch("https://api.github.com/repos/Makr91/BoxVault/releases")
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (releases) {
+            var html =
+              "<table><thead><tr><th>Version</th><th>Release Date</th><th>Supported</th><th>Download</th></tr></thead><tbody>";
+            var count = 0;
+
+            for (var i = 0; i < releases.length && count < 5; i++) {
+              var release = releases[i];
+              if (!release.draft && !release.prerelease) {
+                var releaseDate = new Date(
+                  release.published_at,
+                ).toLocaleDateString();
+                var isSupported = count < 3;
+                var supportIcon = isSupported ? "✅" : "❌";
+
+                html += "<tr>";
+                html +=
+                  '<td><a href="' +
+                  release.html_url +
+                  '">' +
+                  release.tag_name +
+                  "</a></td>";
+                html += "<td>" + releaseDate + "</td>";
+                html += "<td>" + supportIcon + "</td>";
+                html +=
+                  '<td><a href="' + release.html_url + '">Download</a></td>';
+                html += "</tr>";
+                count++;
+              }
             }
-          }
-          
-          html += '</tbody></table>';
-          html += '<p><em>Last updated: ' + new Date().toLocaleDateString() + '</em></p>';
-          
-          versionsDiv.innerHTML = html;
-        })
-        .catch(function(error) {
-          versionsDiv.innerHTML = '<p><em>Error loading versions</em></p>';
-        });
+
+            html += "</tbody></table>";
+            html +=
+              "<p><em>Last updated: " +
+              new Date().toLocaleDateString() +
+              "</em></p>";
+
+            versionsDiv.innerHTML = html;
+          })
+          .catch(function (error) {
+            versionsDiv.innerHTML = "<p><em>Error loading versions</em></p>";
+          });
+      }
     }
-  }
-});
+  });
 </script>

@@ -7,27 +7,31 @@ permalink: /docs/guides/installation/
 ---
 
 # Installation Guide
+
 {: .no_toc }
 
 Detailed installation instructions for BoxVault.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
 ## System Requirements
 
 ### Minimum Requirements
+
 - **CPU**: 1 core
 - **RAM**: 512 MB
 - **Storage**: 1 GB (plus space for box files)
 - **Node.js**: 16.x or higher
 
 ### Recommended Requirements
+
 - **CPU**: 2+ cores
 - **RAM**: 2 GB
 - **Storage**: 10 GB+ (depending on box storage needs)
@@ -99,6 +103,7 @@ GRANT ALL PRIVILEGES ON DATABASE boxvault TO boxvault;
 ```
 
 Configuration:
+
 ```yaml
 database:
   dialect: "postgresql"
@@ -147,6 +152,7 @@ WantedBy=multi-user.target
 ```
 
 Enable and start:
+
 ```bash
 sudo systemctl enable boxvault
 sudo systemctl start boxvault
@@ -279,6 +285,7 @@ Configure log rotation:
 ### Common Issues
 
 **Port already in use:**
+
 ```bash
 # Find process using port
 sudo lsof -i :3000
@@ -286,11 +293,13 @@ sudo lsof -i :3000
 ```
 
 **Database connection failed:**
+
 - Check database credentials
 - Verify database server is running
 - Check firewall settings
 
 **File upload fails:**
+
 - Check storage directory permissions
 - Verify disk space
 - Check file size limits
@@ -345,3 +354,4 @@ docker pull boxvault/boxvault:latest
 # Restart container
 docker-compose down
 docker-compose up -d
+```

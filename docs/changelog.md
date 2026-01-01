@@ -5,16 +5,18 @@ nav_order: 6
 permalink: /docs/changelog/
 ---
 
-# Changelog
+## Changelog
+
 {: .no_toc }
 
 Release history and changes for BoxVault.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 

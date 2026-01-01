@@ -1,6 +1,5 @@
 ---
--
-  name: "Publishing Zone Provider"
+- name: 'Publishing Zone Provider'
   become: true
   gather_facts: false
   hosts: localhost
@@ -8,246 +7,227 @@
   vars:
     provider: zone
     checksum: "{{ lookup('file', '../boxes/{{ distro }}-{{ distro_version }}-{{ vm_type }}-{{ version }}-{{ provider }}.checksum').split()[0] }}"
-    checksum_type: "SHA256" # Must match ENUM values in file.model.js: NULL, MD5, SHA1, SHA256, SHA384, SHA512
+    checksum_type: 'SHA256' # Must match ENUM values in file.model.js: NULL, MD5, SHA1, SHA256, SHA384, SHA512
 
-    organization: "{{ cloud_creator }}"
+    organization: '{{ cloud_creator }}'
     # Skip flags (0 = don't skip, 1 = skip)
     skip_vagrant_cloud: 1
     skip_boxvault: 0
   tasks:
-    -
-      name: "Publishing to Vagrant Cloud"
+    - name: 'Publishing to Vagrant Cloud'
       when: not skip_vagrant_cloud|bool
       block:
-        -
-          name: "Authenticating with Vagrant Cloud"
+        - name: 'Authenticating with Vagrant Cloud'
           ansible.builtin.lineinfile:
             path: ~/.bashrc
-            mode: "a+x"
+            mode: 'a+x'
             line: 'export VAGRANT_CLOUD_TOKEN={{ vagrant_cloud_token }}'
             create: true
 
-        -
-          name: "Logging into Hashicorp"
-          ansible.builtin.command: "hcp auth login --client-id={{ hcp_client_id }} --client-secret={{ hcp_client_secret }}"
+        - name: 'Logging into Hashicorp'
+          ansible.builtin.command: 'hcp auth login --client-id={{ hcp_client_id }} --client-secret={{ hcp_client_secret }}'
           changed_when: false
 
-        -
-          name: "Grabbing Access Token to upload box"
+        - name: 'Grabbing Access Token to upload box'
           changed_when: false
-          ansible.builtin.command: "hcp auth print-access-token"
+          ansible.builtin.command: 'hcp auth print-access-token'
           register: access_token
 
-        -
-          name: "Creating Box"
+        - name: 'Creating Box'
           register: box_creation_result
           ignore_errors: true
           ansible.builtin.uri:
-            url: "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/boxes"
+            url: 'https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/boxes'
             method: POST
             headers:
-              Content-Type: "application/json"
-              Authorization: "Bearer {{ access_token.stdout }}"
+              Content-Type: 'application/json'
+              Authorization: 'Bearer {{ access_token.stdout }}'
             body_format: json
             body:
-              name: "{{ boxshortname }}"
-              is_private: "{{ private | bool }}"
-              short_description: "{{ short_description }}"
-              description: "{{ description }}"
+              name: '{{ boxshortname }}'
+              is_private: '{{ private | bool }}'
+              short_description: '{{ short_description }}'
+              description: '{{ description }}'
 
-        -
-          name: "Creating Version"
+        - name: 'Creating Version'
           register: version_creation_result
           ignore_errors: true
           ansible.builtin.uri:
-            url: "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/versions"
+            url: 'https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/versions'
             method: POST
             headers:
-              Content-Type: "application/json"
-              Authorization: "Bearer {{ access_token.stdout }}"
+              Content-Type: 'application/json'
+              Authorization: 'Bearer {{ access_token.stdout }}'
             body_format: json
             body:
-              name: "{{ version }}"
-              description: "{{ description }}"
+              name: '{{ version }}'
+              description: '{{ description }}'
 
-        -
-          name: "Creating provider"
+        - name: 'Creating provider'
           register: provider_creation_result
           ignore_errors: true
           ansible.builtin.uri:
-            url: "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/providers"
+            url: 'https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/providers'
             method: POST
             headers:
-              Content-Type: "application/json"
-              Authorization: "Bearer {{ access_token.stdout }}"
+              Content-Type: 'application/json'
+              Authorization: 'Bearer {{ access_token.stdout }}'
             body_format: json
             body:
-              name: "{{ provider }}"
+              name: '{{ provider }}'
               summary:
-                architecture_types: ["amd64"]
+                architecture_types: ['amd64']
 
-        -
-          name: "Creating Architecture"
+        - name: 'Creating Architecture'
           register: architecture_creation_result
           ignore_errors: true
           ansible.builtin.uri:
-            url: "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architectures"
+            url: 'https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architectures'
             method: POST
             headers:
-              Content-Type: "application/json"
-              Authorization: "Bearer {{ access_token.stdout }}"
+              Content-Type: 'application/json'
+              Authorization: 'Bearer {{ access_token.stdout }}'
             body_format: json
             body:
-              architecture_type: "amd64"
+              architecture_type: 'amd64'
               default: true
               box_data:
-                checksum: "{{ checksum }}"
-                checksum_type: "{{ checksum_type }}"
+                checksum: '{{ checksum }}'
+                checksum_type: '{{ checksum_type }}'
 
-        -
-          name: "Grabbing Upload Path"
+        - name: 'Grabbing Upload Path'
           ansible.builtin.uri:
-            url: "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architecture/amd64/upload"
+            url: 'https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architecture/amd64/upload'
             method: GET
             headers:
-              Authorization: "Bearer {{ access_token.stdout }}"
+              Authorization: 'Bearer {{ access_token.stdout }}'
             return_content: true
           register: upload_path_result
 
-        -
-          name: "Uploading Box"
+        - name: 'Uploading Box'
           ansible.builtin.uri:
-            url: "{{ upload_path_result.json.url }}"
+            url: '{{ upload_path_result.json.url }}'
             method: PUT
             follow_redirects: all
-            src: "../boxes/{{ distro }}-{{ distro_version }}-{{ vm_type }}-{{ version }}-{{ provider }}.box"
+            src: '../boxes/{{ distro }}-{{ distro_version }}-{{ vm_type }}-{{ version }}-{{ provider }}.box'
           register: upload_result
 
-        -
-          name: "Releasing box"
+        - name: 'Releasing box'
           ansible.builtin.uri:
-            url: "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/release"
+            url: 'https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/{{ cloud_creator }}/box/{{ boxshortname }}/version/{{ version }}/release'
             method: PUT
             headers:
-              Authorization: "Bearer {{ access_token.stdout }}"
-            status_code: [200, 400]  # Accept both 200 and 400 status codes
+              Authorization: 'Bearer {{ access_token.stdout }}'
+            status_code: [200, 400] # Accept both 200 and 400 status codes
           register: release_result
-          failed_when: 
+          failed_when:
             - release_result.status != 200
             - release_result.status != 400 or release_result.json.message != "version is already released"
           changed_when: release_result.status == 200
 
-    -
-      name: "Publishing to BoxVault"
+    - name: 'Publishing to BoxVault'
       when: not skip_boxvault|bool
       block:
-        -
-          name: "Authenticate with BoxVault"
+        - name: 'Authenticate with BoxVault'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/auth/signin"
+            url: '{{ boxvault_url }}/api/auth/signin'
             method: POST
             body_format: json
             body:
-              username: "{{ boxvault_username }}"
-              password: "{{ boxvault_token }}"
+              username: '{{ boxvault_username }}'
+              password: '{{ boxvault_token }}'
               stayLoggedIn: true
             status_code: 200
           register: boxvault_auth_result
 
-        -
-          name: "Create Box"
+        - name: 'Create Box'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/organization/{{ organization }}/box"
+            url: '{{ boxvault_url }}/api/organization/{{ organization }}/box'
             method: POST
             headers:
-              x-access-token: "{{ boxvault_auth_result.json.accessToken }}"
+              x-access-token: '{{ boxvault_auth_result.json.accessToken }}'
             body_format: json
             body:
-              name: "{{ boxshortname }}"
-              description: "{{ description }}"
-              isPublic: "{{ not private | bool }}"
+              name: '{{ boxshortname }}'
+              description: '{{ description }}'
+              isPublic: '{{ not private | bool }}'
               published: false
             status_code: [200, 201]
           register: boxvault_box_result
 
-        -
-          name: "Create Version"
+        - name: 'Create Version'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version"
+            url: '{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version'
             method: POST
             headers:
-              x-access-token: "{{ boxvault_auth_result.json.accessToken }}"
+              x-access-token: '{{ boxvault_auth_result.json.accessToken }}'
             body_format: json
             body:
-              versionNumber: "{{ version }}"
+              versionNumber: '{{ version }}'
               description: '{{ description | to_json }}'
             status_code: [200, 201]
           register: boxvault_version_result
 
-        -
-          name: "Create Provider"
+        - name: 'Create Provider'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version/{{ version }}/provider"
+            url: '{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version/{{ version }}/provider'
             method: POST
             headers:
-              x-access-token: "{{ boxvault_auth_result.json.accessToken }}"
+              x-access-token: '{{ boxvault_auth_result.json.accessToken }}'
             body_format: json
             body:
-              name: "{{ provider }}"
-              description: "{{ provider }} provider"
+              name: '{{ provider }}'
+              description: '{{ provider }} provider'
             status_code: [200, 201]
           register: boxvault_provider_result
 
-        -
-          name: "Create Architecture"
+        - name: 'Create Architecture'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architecture"
+            url: '{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architecture'
             method: POST
             headers:
-              x-access-token: "{{ boxvault_auth_result.json.accessToken }}"
+              x-access-token: '{{ boxvault_auth_result.json.accessToken }}'
             body_format: json
             body:
-              name: "amd64"
+              name: 'amd64'
               defaultBox: true
-              checksum: "{{ checksum }}"
-              checksumType: "{{ checksum_type | upper }}"
+              checksum: '{{ checksum }}'
+              checksumType: '{{ checksum_type | upper }}'
             status_code: [200, 201]
           register: boxvault_architecture_result
 
-        -
-          name: "Upload Box File"
+        - name: 'Upload Box File'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architecture/amd64/file/upload"
+            url: '{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}/version/{{ version }}/provider/{{ provider }}/architecture/amd64/file/upload'
             method: POST
             headers:
-              x-access-token: "{{ boxvault_auth_result.json.accessToken }}"
+              x-access-token: '{{ boxvault_auth_result.json.accessToken }}'
               Content-Type: application/octet-stream
-              x-file-name: "vagrant.box"
-              x-checksum: "{{ checksum }}"
-              x-checksum-type: "{{ checksum_type | upper }}"
-            src: "../boxes/{{ distro }}-{{ distro_version }}-{{ vm_type }}-{{ version }}-{{ provider }}.box"
+              x-file-name: 'vagrant.box'
+              x-checksum: '{{ checksum }}'
+              x-checksum-type: '{{ checksum_type | upper }}'
+            src: '../boxes/{{ distro }}-{{ distro_version }}-{{ vm_type }}-{{ version }}-{{ provider }}.box'
             status_code: [200, 201]
           register: boxvault_upload_result
 
-        -
-          name: "Release Box"
+        - name: 'Release Box'
           ignore_errors: true
           ansible.builtin.uri:
-            url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}"
+            url: '{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ boxshortname }}'
             method: PUT
             headers:
-              x-access-token: "{{ boxvault_auth_result.json.accessToken }}"
+              x-access-token: '{{ boxvault_auth_result.json.accessToken }}'
             body_format: json
             body:
-              name: "{{ boxshortname }}"
-              description: "{{ description }}"
+              name: '{{ boxshortname }}'
+              description: '{{ description }}'
               published: true
-              isPublic: "{{ not private | bool }}"
+              isPublic: '{{ not private | bool }}'
             status_code: [200, 201]
           register: boxvault_release_result

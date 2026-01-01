@@ -5,16 +5,18 @@ nav_order: 5
 permalink: /docs/releases/
 ---
 
-# Releases
+## Releases
+
 {: .no_toc }
 
 BoxVault release information and download links.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -39,11 +41,13 @@ Detailed release notes and changelogs are available in the [Changelog](changelog
 BoxVault is available through various package managers:
 
 #### npm
+
 ```bash
 npm install -g boxvault
 ```
 
 #### Docker
+
 ```bash
 docker pull boxvault/boxvault:latest
 ```

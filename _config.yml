@@ -30,7 +30,7 @@ search:
 nav_sort: case_insensitive
 
 # Footer
-footer_content: "Copyright &copy; 2024 BoxVault Project. Distributed under the <a href=\"https://github.com/Makr91/BoxVault/blob/main/LICENSE.md\">GPL-3.0 License</a>."
+footer_content: 'Copyright &copy; 2024 BoxVault Project. Distributed under the <a href="https://github.com/Makr91/BoxVault/blob/main/LICENSE.md">GPL-3.0 License</a>.'
 
 # Back to top link
 back_to_top: true

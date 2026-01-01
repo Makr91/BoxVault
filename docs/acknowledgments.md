@@ -5,16 +5,18 @@ nav_order: 12
 permalink: /docs/acknowledgments/
 ---
 
-# Acknowledgments
+## Acknowledgments
+
 {: .no_toc }
 
 Recognition and thanks to contributors and projects that made BoxVault possible.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 

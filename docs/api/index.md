@@ -6,16 +6,18 @@ has_children: false
 permalink: /docs/api/
 ---
 
-# API Reference
+## API Reference
+
 {: .no_toc }
 
 The BoxVault API provides comprehensive RESTful endpoints for user management, organization control, and box repository management. This API handles authentication, authorization, and box management for the BoxVault web interface.
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -50,30 +52,35 @@ The BoxVault API is fully documented using OpenAPI 3.0 specification.
 The BoxVault API is organized into the following categories:
 
 #### Authentication & Authorization
+
 - User registration and login
 - JWT token management
 - Session management
 - Password reset and recovery
 
 #### User Management
+
 - User profile management
 - User preferences and settings
 - Account administration
 - Role-based access control
 
-#### Organization Management  
+#### Organization Management
+
 - Organization creation and configuration
 - Multi-tenant organization support
 - User-organization relationships
 - Invitation management
 
 #### Box Management
+
 - Vagrant box creation and management
 - Box versioning and provider support
 - Architecture-specific builds
 - Box metadata and descriptions
 
 #### File Operations
+
 - Secure file upload and download
 - Range request support for large files
 - File integrity verification
@@ -97,6 +104,7 @@ The API uses standard HTTP status codes and returns JSON error responses:
 ```
 
 Common status codes:
+
 - `200` - Success
 - `201` - Created
 - `400` - Bad Request
