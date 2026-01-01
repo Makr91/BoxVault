@@ -1,8 +1,8 @@
 // remove.file.controller.js
-const fs = require('fs');
 const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
+const { safeUnlink, safeRm } = require('../../utils/fsHelper');
 
 const Architecture = db.architectures;
 const File = db.files;
@@ -137,11 +137,7 @@ const remove = async (req, res) => {
     });
 
     // Attempt to delete the file from the disk
-    fs.unlink(filePath, err => {
-      if (err) {
-        log.app.info(`Could not delete the file from disk: ${err}`);
-      }
-    });
+    safeUnlink(filePath);
 
     // Proceed to delete the database record regardless of file deletion success
     try {
@@ -153,11 +149,7 @@ const remove = async (req, res) => {
       }
 
       // Attempt to delete the architecture directory
-      fs.rm(basefilePath, { recursive: true, force: true }, err => {
-        if (err) {
-          log.app.info(`Could not delete the architecture directory: ${err}`);
-        }
-      });
+      safeRm(basefilePath, { recursive: true, force: true });
 
       return res.status(200).send({
         message:

@@ -2,6 +2,7 @@
 const fs = require('fs');
 const { getSecureBoxPath } = require('../../utils/paths');
 const db = require('../../models');
+const { safeRmdirSync } = require('../../utils/fsHelper');
 
 const Architecture = db.architectures;
 const Provider = db.providers;
@@ -173,9 +174,7 @@ exports.update = async (req, res) => {
       fs.renameSync(oldFilePath, newFilePath);
 
       // Clean up the old directory if it still exists
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmdirSync(oldFilePath, { recursive: true });
-      }
+      safeRmdirSync(oldFilePath, { recursive: true });
     }
 
     const [updated] = await Architecture.update(

@@ -3,6 +3,7 @@ const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const jwt = require('jsonwebtoken');
 const db = require('../../models');
+const { checkSessionAuth } = require('../../utils/auth');
 
 let authConfig;
 try {
@@ -103,15 +104,9 @@ const getDownloadLink = async (req, res) => {
 
   // If not set, try x-access-token
   if (!userId) {
-    const token = req.headers['x-access-token'];
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-        userId = decoded.id;
-        isServiceAccount = decoded.isServiceAccount || false;
-      } catch (err) {
-        log.app.warn('Invalid x-access-token:', err.message);
-      }
+    if (checkSessionAuth(req)) {
+      // checkSessionAuth sets req.userId and req.isServiceAccount
+      ({ userId, isServiceAccount } = req);
     }
   }
 

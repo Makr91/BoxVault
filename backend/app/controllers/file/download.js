@@ -1,16 +1,9 @@
 // download.file.controller.js
 const fs = require('fs');
 const { getSecureBoxPath } = require('../../utils/paths');
-const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+const { verifyDownloadToken } = require('../../utils/auth');
 
 const File = db.files;
 
@@ -142,9 +135,7 @@ const download = async (req, res) => {
   const downloadToken = req.query.token;
   if (downloadToken) {
     try {
-      // Re-import jwt locally for download token verification (business logic, not session auth)
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(downloadToken, authConfig.auth.jwt.jwt_secret.value);
+      const decoded = verifyDownloadToken(downloadToken);
       const { userId: decodedUserId, isServiceAccount: decodedIsServiceAccount } = decoded;
       userId = decodedUserId;
       isServiceAccount = decodedIsServiceAccount;

@@ -27,4 +27,13 @@ const checkSessionAuth = req => {
   }
 };
 
-module.exports = { checkSessionAuth };
+const verifyDownloadToken = token => {
+  try {
+    return jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+  } catch (err) {
+    log.app.warn('Invalid download token:', err.message);
+    throw err;
+  }
+};
+
+module.exports = { checkSessionAuth, verifyDownloadToken };
