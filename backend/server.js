@@ -265,7 +265,7 @@ app.use(morganMiddleware);
 
 // Rate limiting middleware (applied at top level for CodeQL detection)
 const { rateLimiter } = require('./app/middleware');
-app.use(rateLimiter.rateLimiterMiddleware());
+app.use(rateLimiter);
 log.app.info('Rate limiting middleware applied globally');
 
 // Initialize roles in database (must be defined before initializeApp uses it)

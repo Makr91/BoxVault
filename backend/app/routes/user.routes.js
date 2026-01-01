@@ -2,14 +2,14 @@
 const express = require('express');
 const { authJwt } = require('../middleware');
 const { verifySignUp } = require('../middleware');
-const { rateLimiterMiddleware } = require('../middleware/rateLimiter');
+const { rateLimiter } = require('../middleware/rateLimiter');
 const user = require('../controllers/user.controller');
 const auth = require('../controllers/auth.controller');
 
 const router = express.Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiterMiddleware());
+router.use(rateLimiter);
 
 router.use((req, res, next) => {
   void req;

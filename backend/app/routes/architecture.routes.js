@@ -1,13 +1,13 @@
 // architecture.routes.js
 const express = require('express');
 const { authJwt, verifyArchitecture } = require('../middleware');
-const { rateLimiterMiddleware } = require('../middleware/rateLimiter');
+const { rateLimiter } = require('../middleware/rateLimiter');
 const architecture = require('../controllers/architecture.controller');
 
 const router = express.Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiterMiddleware());
+router.use(rateLimiter);
 
 router.use((req, res, next) => {
   void req;
@@ -17,19 +17,16 @@ router.use((req, res, next) => {
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  rateLimiterMiddleware(),
   architecture.findAllByProvider
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  rateLimiterMiddleware(),
   architecture.findOne
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  rateLimiterMiddleware(),
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
@@ -39,7 +36,6 @@ router.post(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  rateLimiterMiddleware(),
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
@@ -48,7 +44,6 @@ router.put(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  rateLimiterMiddleware(),
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   architecture.delete
@@ -56,7 +51,6 @@ router.delete(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  rateLimiterMiddleware(),
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   architecture.deleteAllByProvider
