@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.28](https://github.com/Makr91/BoxVault/compare/v0.26.27...v0.26.28) (2026-01-01)
+
+
+### Bug Fixes
+
+* navbar dropdown and os theme detection ([15e50d5](https://github.com/Makr91/BoxVault/commit/15e50d5093cce27aac869516a9d1976f2f1792d4))
+* profile toggle for oidc users ([fcd7190](https://github.com/Makr91/BoxVault/commit/fcd719087a872ee0bc6399cd824ba25efd975236))
+
 ## [0.26.27](https://github.com/Makr91/BoxVault/compare/v0.26.26...v0.26.27) (2026-01-01)
 
 

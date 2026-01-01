@@ -1,6 +1,6 @@
 {
   "name": "boxvault-frontend",
-  "version": "0.26.27",
+  "version": "0.26.28",
   "private": true,
   "type": "module",
   "dependencies": {
