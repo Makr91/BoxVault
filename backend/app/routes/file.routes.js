@@ -13,7 +13,7 @@ router.use(rateLimiter);
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
