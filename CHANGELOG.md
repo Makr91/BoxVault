@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.25](https://github.com/Makr91/BoxVault/compare/v0.26.24...v0.26.25) (2026-01-01)
+
+
+### Bug Fixes
+
+* oidc login endpoint construction ([9105690](https://github.com/Makr91/BoxVault/commit/9105690a8daccad81014d0de28742da19c8ab5ba))
+
 ## [0.26.24](https://github.com/Makr91/BoxVault/compare/v0.26.23...v0.26.24) (2026-01-01)
 
 
