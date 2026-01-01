@@ -7,6 +7,7 @@ const verifyArchitecture = require('./verifyArchitecture');
 const verifyOrganization = require('./verifyOrganization');
 const vagrantHandler = require('./vagrantHandler');
 const rateLimiter = require('./rateLimiter');
+const { boxAuth } = require('./boxAuth');
 
 module.exports = {
   authJwt,
@@ -18,4 +19,5 @@ module.exports = {
   verifyOrganization,
   vagrantHandler,
   rateLimiter,
+  boxAuth,
 };

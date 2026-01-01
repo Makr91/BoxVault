@@ -1,6 +1,6 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
-const { authJwt } = require('../middleware');
+const { authJwt, boxAuth } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
@@ -82,19 +82,22 @@ router.post(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false }),
+  fileOperationLimiter,
+  boxAuth,
   file.info
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
   fileOperationLimiter,
+  boxAuth,
   file.download
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
   fileOperationLimiter,
+  boxAuth,
   file.getDownloadLink
 );
 
