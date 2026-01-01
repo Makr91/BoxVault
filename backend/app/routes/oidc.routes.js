@@ -296,6 +296,21 @@ router.get('/auth/oidc/callback', async (req, res) => {
     return res.redirect(`/auth/callback?token=${encodeURIComponent(token)}`);
   } catch (error) {
     // Enhanced error logging with all available details
+    const codeParam = req.query.code;
+    const stateParam = req.query.state;
+    const codeLength =
+      Array.isArray(codeParam)
+        ? codeParam.join(',').length
+        : typeof codeParam === 'string'
+          ? codeParam.length
+          : undefined;
+    const stateLength =
+      Array.isArray(stateParam)
+        ? stateParam.join(',').length
+        : typeof stateParam === 'string'
+          ? stateParam.length
+          : undefined;
+
     log.auth.error('OIDC callback error - DETAILED', {
       provider,
       errorName: error.name,
@@ -312,8 +327,8 @@ router.get('/auth/oidc/callback', async (req, res) => {
       queryParams: {
         hasCode: !!req.query.code,
         hasState: !!req.query.state,
-        codeLength: req.query.code?.length,
-        stateLength: req.query.state?.length,
+        codeLength,
+        stateLength,
       },
     });
 
