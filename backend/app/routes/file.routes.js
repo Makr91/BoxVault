@@ -110,6 +110,7 @@ router.get(
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
   getDownloadLinkLimiter,
+  fileOperationLimiter,
   sessionAuth,
   file.getDownloadLink
 );
