@@ -2,14 +2,13 @@
 
 ## [0.26.19](https://github.com/Makr91/BoxVault/compare/v0.26.18...v0.26.19) (2026-01-01)
 
-
 ### Bug Fixes
 
-* ci/cd ([c8a7bdd](https://github.com/Makr91/BoxVault/commit/c8a7bdd4625bfa09ec445bb00516c4fd234b6722))
-* ci/cd ([39fa37d](https://github.com/Makr91/BoxVault/commit/39fa37d743fb9c3f5eb6b17ae5406e558abd7923))
-* ci/cd ([f6426fa](https://github.com/Makr91/BoxVault/commit/f6426fac97bd49c99f1c705d26f61b0526f8d946))
-* ci/cd ([4e62fb0](https://github.com/Makr91/BoxVault/commit/4e62fb02af3a9155f1d76c0b2d8c54a41af5d929))
-* ci/cd linting ([54c5af8](https://github.com/Makr91/BoxVault/commit/54c5af8e86c4bdda88317a92e8b412851a1b46e2))
+- ci/cd ([c8a7bdd](https://github.com/Makr91/BoxVault/commit/c8a7bdd4625bfa09ec445bb00516c4fd234b6722))
+- ci/cd ([39fa37d](https://github.com/Makr91/BoxVault/commit/39fa37d743fb9c3f5eb6b17ae5406e558abd7923))
+- ci/cd ([f6426fa](https://github.com/Makr91/BoxVault/commit/f6426fac97bd49c99f1c705d26f61b0526f8d946))
+- ci/cd ([4e62fb0](https://github.com/Makr91/BoxVault/commit/4e62fb02af3a9155f1d76c0b2d8c54a41af5d929))
+- ci/cd linting ([54c5af8](https://github.com/Makr91/BoxVault/commit/54c5af8e86c4bdda88317a92e8b412851a1b46e2))
 
 ## [0.26.18](https://github.com/Makr91/BoxVault/compare/v0.26.17...v0.26.18) (2026-01-01)
 
