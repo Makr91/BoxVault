@@ -1,0 +1,75 @@
+smtp_connect:
+  host:
+    type: host
+    value: smtp.example.com
+    description: SMTP server hostname
+    section: Mail
+    subsection: SMTP Connection
+    required: true
+    order: 1
+  port:
+    type: integer
+    value: 587
+    description: SMTP server port
+    section: Mail
+    subsection: SMTP Connection
+    required: true
+    order: 2
+  secure:
+    type: boolean
+    value: false
+    description: Use TLS for connection
+    section: Mail
+    subsection: SMTP Connection
+    required: true
+    order: 3
+  rejectUnauthorized:
+    type: boolean
+    value: false
+    description: Reject unauthorized TLS connections
+    section: Mail
+    subsection: SMTP Connection
+    required: true
+    order: 4
+smtp_settings:
+  from:
+    type: email
+    value: noreply@example.com
+    description: Default sender email address
+    section: Mail
+    subsection: SMTP Settings
+    required: true
+    order: 1
+  replyTo:
+    type: email
+    value: support@example.com
+    description: Default reply-to email address
+    section: Mail
+    subsection: SMTP Settings
+    required: false
+    order: 2
+  rateLimit:
+    type: integer
+    value: 10
+    description: Maximum emails to send per second
+    section: Mail
+    subsection: SMTP Settings
+    required: false
+    order: 3
+smtp_auth:
+  user:
+    type: string
+    value: smtp-username
+    description: SMTP username
+    section: Mail
+    subsection: SMTP Authentication
+    required: true
+    order: 1
+  password:
+    type: password
+    value: smtp-password
+    description: SMTP password
+    section: Mail
+    subsection: SMTP Authentication
+    required: true
+    order: 2
