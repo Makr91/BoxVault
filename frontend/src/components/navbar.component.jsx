@@ -109,7 +109,7 @@ const Navbar = ({
         atob(jwtPayload.id_token.split(".")[1])
       );
       const issuer = idTokenPayload.iss || "";
-      
+
       // Validate issuer URL for security (CodeQL requirement)
       if (!issuer || !issuer.startsWith("https://")) {
         return "";
