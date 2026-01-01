@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.23](https://github.com/Makr91/BoxVault/compare/v0.26.22...v0.26.23) (2026-01-01)
+
+
+### Bug Fixes
+
+* oidc ([8b71983](https://github.com/Makr91/BoxVault/commit/8b7198351a1b1a2fb9cf0c66f6034495b0fa6f7f))
+
 ## [0.26.22](https://github.com/Makr91/BoxVault/compare/v0.26.21...v0.26.22) (2026-01-01)
 
 
