@@ -1,14 +1,10 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { authJwt, sessionAuth, downloadAuth } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
 
 const router = express.Router();
-
-// Apply rate limiting to this router
-router.use(rateLimiter);
 
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({

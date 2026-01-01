@@ -2,13 +2,9 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { authJwt, verifyArchitecture, sessionAuth } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
 const architecture = require('../controllers/architecture.controller');
 
 const router = express.Router();
-
-// Apply rate limiting to this router
-router.use(rateLimiter);
 
 // Explicit rate limiter for architecture operations (CodeQL requirement)
 const architectureOperationLimiter = rateLimit({
