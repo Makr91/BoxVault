@@ -6,8 +6,9 @@ const verifyVersion = require('./verifyVersion');
 const verifyArchitecture = require('./verifyArchitecture');
 const verifyOrganization = require('./verifyOrganization');
 const vagrantHandler = require('./vagrantHandler');
-const rateLimiter = require('./rateLimiter');
+const { rateLimiter } = require('./rateLimiter');
 const { downloadAuth } = require('./downloadAuth');
+const { sessionAuth } = require('./sessionAuth');
 
 module.exports = {
   authJwt,
@@ -20,4 +21,5 @@ module.exports = {
   vagrantHandler,
   rateLimiter,
   downloadAuth,
+  sessionAuth,
 };

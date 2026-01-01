@@ -13,7 +13,7 @@ router.use(rateLimiter);
 // Explicit rate limiter for architecture operations (CodeQL requirement)
 const architectureOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 10000,
   standardHeaders: true,
   legacyHeaders: false,
 });

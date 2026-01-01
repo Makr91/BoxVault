@@ -78,7 +78,7 @@ const getRateLimitConfig = () => {
     const appConfig = loadConfig('app');
     return {
       window_minutes: appConfig.rate_limiting?.window_minutes?.value || 15,
-      max_requests: appConfig.rate_limiting?.max_requests?.value || 100,
+      max_requests: Math.max(appConfig.rate_limiting?.max_requests?.value || 1000, 10000),
       message:
         appConfig.rate_limiting?.message?.value ||
         'Too many requests from this IP, please try again later.',
@@ -90,7 +90,7 @@ const getRateLimitConfig = () => {
     console.warn('Failed to load rate limiting config, using defaults:', error.message);
     return {
       window_minutes: 15,
-      max_requests: 100,
+      max_requests: 10000,
       message: 'Too many requests from this IP, please try again later.',
       skip_successful_requests: false,
       skip_failed_requests: false,

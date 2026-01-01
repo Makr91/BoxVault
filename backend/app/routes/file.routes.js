@@ -1,6 +1,6 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
-const { authJwt, sessionAuth } = require('../middleware');
+const { authJwt, sessionAuth, downloadAuth } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const { log } = require('../utils/Logger');
 const file = require('../controllers/file.controller');
@@ -13,7 +13,7 @@ router.use(rateLimiter);
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 10000,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -90,6 +90,7 @@ router.get(
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
   fileOperationLimiter,
+  downloadAuth,
   sessionAuth,
   file.download
 );
