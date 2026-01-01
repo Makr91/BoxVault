@@ -27,6 +27,8 @@
   },
   "scripts": {
     "start": "vite",
+    "cinstall": "npm ci",
+    "cinstall:nodev": "npm ci --omit=dev",
     "build": "vite build --emptyOutDir",
     "preview": "vite preview",
     "watch-build": "vite build --emptyOutDir --watch",

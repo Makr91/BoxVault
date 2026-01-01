@@ -27,10 +27,10 @@ jobs:
           cache: "npm"
 
       - name: Install backend dependencies
-        run: cd backend && npm ci
+        run: npm run cinstall:backend
 
       - name: Security audit
-        run: cd backend && npm run security:audit
+        run: npm run security:audit
 
       - name: Vulnerability scan
         run: cd backend && npm run security:vulnerabilities
@@ -55,7 +55,7 @@ jobs:
           cache: "npm"
 
       - name: Install frontend dependencies
-        run: cd frontend && npm install
+        run: npm run cinstall:frontend
 
       - name: Frontend security checks
         run: cd frontend && npm run security:all
@@ -74,9 +74,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: |
-          cd backend && npm ci
-          cd ../frontend && npm install
+        run: npm run cinstall:all
 
       - name: Run ESLint
         run: npm run lint
@@ -98,9 +96,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: |
-          cd backend && npm ci
-          cd ../frontend && npm install
+        run: npm run cinstall:all
 
       - name: Build frontend
         run: npm run build
@@ -138,7 +134,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: cd backend && npm ci
+        run: npm run cinstall:backend
 
       - name: Verify scripts exist
         run: |
