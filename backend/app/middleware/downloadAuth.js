@@ -1,11 +1,27 @@
-const { verifyDownloadToken } = require('../utils/auth');
+const jwt = require('jsonwebtoken');
+const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
+
+let authConfig;
+try {
+  authConfig = loadConfig('auth');
+} catch (e) {
+  log.error.error(`Failed to load auth configuration: ${e.message}`);
+}
 
 const downloadAuth = async (req, res, next) => {
   const downloadToken = req.query.token;
   if (downloadToken) {
     try {
-      const decoded = await verifyDownloadToken(downloadToken);
+      const decoded = await new Promise((resolve, reject) => {
+        jwt.verify(downloadToken, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(decodedToken);
+          }
+        });
+      });
       req.downloadTokenDecoded = decoded;
       req.userId = decoded.userId;
       req.isServiceAccount = decoded.isServiceAccount;

@@ -14,9 +14,6 @@ const fileOperationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Apply rate limiting to all routes in this router
-router.use(fileOperationLimiter);
-
 // Dedicated rate limiter for download-link generation
 const getDownloadLinkLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -79,6 +76,7 @@ router.use((req, res, next) => {
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.update,
@@ -87,6 +85,7 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.upload,
@@ -95,6 +94,7 @@ router.post(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
+  fileOperationLimiter,
   sessionAuth,
   file.info
 );
@@ -118,6 +118,7 @@ router.post(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   file.remove
