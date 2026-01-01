@@ -506,6 +506,19 @@ const Navbar = ({
                 className="dropdown-menu dropdown-menu-end"
                 aria-labelledby="navbarDropdown"
               >
+                {showAdminBoard && (
+                  <>
+                    <li>
+                      <Link to="/admin" className="dropdown-item">
+                        <FaGear className="me-2" />
+                        Admin
+                      </Link>
+                    </li>
+                    <li>
+                      <hr className="dropdown-divider" />
+                    </li>
+                  </>
+                )}
                 {showModeratorBoard && (
                   <li>
                     <Link to="/moderator" className="dropdown-item">
@@ -515,9 +528,22 @@ const Navbar = ({
                   </li>
                 )}
                 <li>
-                  <div className="dropdown-item d-flex align-items-center">
+                  <Link
+                    to={profileIsLocal || !authServerUrl ? "/profile" : "#"}
+                    onClick={(e) => {
+                      if (!profileIsLocal && authServerUrl) {
+                        e.preventDefault();
+                        window.open(
+                          `${authServerUrl}/user/profile`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }}
+                    className="dropdown-item d-flex align-items-center"
+                  >
                     {renderProfileMenuItem()}
-                  </div>
+                  </Link>
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">
@@ -530,7 +556,12 @@ const Navbar = ({
                     <li>
                       <hr className="dropdown-divider" />
                     </li>
-                    <li className="dropdown-header">Favorite Applications</li>
+                    <li
+                      className="dropdown-header"
+                      style={{ paddingTop: 0, paddingBottom: 0 }}
+                    >
+                      Favorites
+                    </li>
                     {favoriteApps
                       .sort((a, b) => (a.order || 0) - (b.order || 0))
                       .map((app) => (
@@ -549,19 +580,6 @@ const Navbar = ({
                       ))}
                   </>
                 )}
-                {showAdminBoard && (
-                  <>
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-                    <li>
-                      <Link to="/admin" className="dropdown-item">
-                        <FaGear className="me-2" />
-                        Admin
-                      </Link>
-                    </li>
-                  </>
-                )}
                 {ticketUrl && (
                   <>
                     <li>
@@ -575,7 +593,7 @@ const Navbar = ({
                         className="dropdown-item"
                       >
                         <FaTicket className="me-2" />
-                        Open Ticket
+                        Help
                       </a>
                     </li>
                   </>
@@ -585,20 +603,23 @@ const Navbar = ({
                 </li>
                 <li>
                   <button
-                    className="dropdown-item"
+                    className="dropdown-item d-flex align-items-center"
                     onClick={() => setShowLanguageModal(true)}
                   >
-                    <span className="me-2" style={{ fontSize: "1.2em" }}>
+                    <span className="me-2">
                       {getLanguageFlag(i18n.language)}
                     </span>
-                    {getLanguageDisplayName(i18n.language)}
+                    <span>{getLanguageDisplayName(i18n.language)}</span>
                   </button>
                 </li>
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
                 <li>
-                  <div className="dropdown-item d-flex align-items-center">
+                  <button
+                    className="dropdown-item d-flex align-items-center"
+                    onClick={handleLogout}
+                  >
                     {logoutEverywhere ? (
                       <FaBridgeLock
                         className="me-2 text-danger"
@@ -620,22 +641,8 @@ const Navbar = ({
                         style={{ cursor: "pointer" }}
                       />
                     )}
-                    <span
-                      onClick={handleLogout}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleLogout();
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      className="text-danger"
-                      style={{ cursor: "pointer" }}
-                    >
-                      Logout
-                    </span>
-                  </div>
+                    <span className="text-danger">Logout</span>
+                  </button>
                 </li>
               </ul>
             </li>

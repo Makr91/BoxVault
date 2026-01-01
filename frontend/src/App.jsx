@@ -50,7 +50,19 @@ const App = () => {
   const [gravatarFetched, setGravatarFetched] = useState(false);
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
-    return savedTheme ? savedTheme : "light";
+    if (savedTheme) {
+      return savedTheme;
+    }
+
+    // Detect system theme preference
+    if (window.matchMedia) {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      return prefersDark ? "dark" : "dark"; // Default to dark in all cases
+    }
+
+    return "dark"; // Fallback to dark
   });
   const [setupComplete, setSetupComplete] = useState(null); // Initialize as null to indicate loading
   const navigate = useNavigate();
@@ -66,6 +78,27 @@ const App = () => {
       favicon.href = theme === "dark" ? "/dark-favicon.ico" : "/favicon.ico";
     }
   }, [theme]);
+
+  useEffect(() => {
+    // Listen to system theme changes only if user hasn't set a manual preference
+    const savedTheme = localStorage.getItem("theme");
+
+    if (!savedTheme && window.matchMedia) {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = (e) => {
+        const newTheme = e.matches ? "dark" : "light";
+        setTheme(newTheme);
+        log.app.debug("System theme changed", { newTheme });
+      };
+
+      mediaQuery.addEventListener("change", handleChange);
+      return () => {
+        mediaQuery.removeEventListener("change", handleChange);
+      };
+    }
+
+    return undefined;
+  }, []);
 
   useEffect(() => {
     let mounted = true;
