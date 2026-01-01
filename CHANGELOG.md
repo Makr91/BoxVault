@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.24](https://github.com/Makr91/BoxVault/compare/v0.26.23...v0.26.24) (2026-01-01)
+
+
+### Bug Fixes
+
+* linting oidc changes ([5e3f500](https://github.com/Makr91/BoxVault/commit/5e3f500575b08642aff7c8bb1b766db0c4636aa2))
+
 ## [0.26.23](https://github.com/Makr91/BoxVault/compare/v0.26.22...v0.26.23) (2026-01-01)
 
 
