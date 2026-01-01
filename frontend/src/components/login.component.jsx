@@ -67,7 +67,14 @@ const Login = ({ theme }) => {
 
         const returnTo = urlParams.get("returnTo");
         if (returnTo) {
-          window.location.href = decodeURIComponent(returnTo);
+          const decodedUrl = decodeURIComponent(returnTo);
+          // Only allow same-origin redirects (relative paths or same domain)
+          if (decodedUrl.startsWith("/") && !decodedUrl.startsWith("//")) {
+            window.location.href = decodedUrl;
+          } else {
+            navigate("/profile");
+            window.location.reload();
+          }
         } else {
           navigate("/profile");
           window.location.reload();
@@ -147,7 +154,14 @@ const Login = ({ theme }) => {
         const returnTo = urlParams.get("returnTo");
 
         if (returnTo) {
-          window.location.href = decodeURIComponent(returnTo);
+          const decodedUrl = decodeURIComponent(returnTo);
+          // Only allow same-origin redirects (relative paths or same domain)
+          if (decodedUrl.startsWith("/") && !decodedUrl.startsWith("//")) {
+            window.location.href = decodedUrl;
+          } else {
+            navigate("/profile");
+            window.location.reload();
+          }
         } else {
           navigate("/profile");
           window.location.reload();

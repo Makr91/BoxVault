@@ -255,8 +255,11 @@ const Navbar = ({
 
   const renderProfileMenuItem = () => {
     const isOidcUser = currentUser?.provider?.startsWith("oidc-");
+    // Validate auth server URL is a safe HTTPS URL
+    const isValidAuthServerUrl =
+      authServerUrl && authServerUrl.startsWith("https://");
 
-    if (!isOidcUser || !authServerUrl) {
+    if (!isOidcUser || !isValidAuthServerUrl) {
       return (
         <>
           <FaUser className="me-2" />
