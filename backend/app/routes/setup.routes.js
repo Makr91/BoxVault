@@ -1,12 +1,12 @@
 // setup.routes.js
 const express = require('express');
-const { rateLimiter } = require('../middleware');
+const { rateLimiterMiddleware } = require('../middleware/rateLimiter');
 const setupController = require('../controllers/setup.controller');
 
 const router = express.Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter.rateLimiterMiddleware());
+router.use(rateLimiterMiddleware());
 
 router.post('/setup/verify-token', setupController.verifySetupToken);
 router.put('/setup', setupController.updateConfigs);

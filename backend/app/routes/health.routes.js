@@ -1,11 +1,11 @@
 const express = require('express');
-const { rateLimiter } = require('../middleware');
+const { rateLimiterMiddleware } = require('../middleware/rateLimiter');
 const healthController = require('../controllers/health.controller');
 
 const router = express.Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter.rateLimiterMiddleware());
+router.use(rateLimiterMiddleware());
 
 router.get('/health', healthController.getHealth);
 

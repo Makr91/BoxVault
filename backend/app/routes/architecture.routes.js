@@ -1,12 +1,13 @@
 // architecture.routes.js
 const express = require('express');
-const { authJwt, verifyArchitecture, rateLimiter } = require('../middleware');
+const { authJwt, verifyArchitecture } = require('../middleware');
+const { rateLimiterMiddleware } = require('../middleware/rateLimiter');
 const architecture = require('../controllers/architecture.controller');
 
 const router = express.Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter.rateLimiterMiddleware());
+router.use(rateLimiterMiddleware());
 
 router.use((req, res, next) => {
   void req;

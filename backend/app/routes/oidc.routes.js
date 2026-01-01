@@ -8,12 +8,12 @@ const jwt = require('jsonwebtoken');
 const client = require('openid-client');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
-const { rateLimiter } = require('../middleware');
+const { rateLimiterMiddleware } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter.rateLimiterMiddleware());
+router.use(rateLimiterMiddleware());
 
 router.use((req, res, next) => {
   void req;
