@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.26.17](https://github.com/Makr91/BoxVault/compare/v0.26.16...v0.26.17) (2026-01-01)
+
+
+### Bug Fixes
+
+* changlog ([adf2d45](https://github.com/Makr91/BoxVault/commit/adf2d4508d9185ba5501f9818cfe0464755ff560))
+* codeql express routes --gemini v10 ([0e06d12](https://github.com/Makr91/BoxVault/commit/0e06d121d709f30c2325261e2ef86aa0da7343f1))
+* codeql express routes --gemini v10 ([889376c](https://github.com/Makr91/BoxVault/commit/889376c1d402d37dad7f039e900aaa919bb4f52d))
+* codeql express routes --gemini v6 ([9cf2bae](https://github.com/Makr91/BoxVault/commit/9cf2baecb5cfbfa7d44f37c937dc4d0fb3269ae6))
+* codeql express routes --gemini v7 ([972cb4c](https://github.com/Makr91/BoxVault/commit/972cb4c235ddf681cdf5a10314ca5f9b8258f580))
+* codeql express routes --gemini v8 ([1a19849](https://github.com/Makr91/BoxVault/commit/1a19849e183bb7a97dbcc34c9c0528ea5de3b18f))
+* codeql express routes --gemini v9 ([dc2658c](https://github.com/Makr91/BoxVault/commit/dc2658c28ff19559207630378fe0ad4a8f5c35c9))
+* codeql express routes --gemini v9 ([63d0c24](https://github.com/Makr91/BoxVault/commit/63d0c249ef264d46ecccdb7bc7afa81ebd22c1e6))
+* codeql express routes --gemini v9 ([d3f376e](https://github.com/Makr91/BoxVault/commit/d3f376ea65d30c3c890c3ab21af359a8b8c0f75f))
+* codeql express routes --gemini v9 ([46002ca](https://github.com/Makr91/BoxVault/commit/46002caa9797cae4b5df6f04b3e1e4bfcea3afd9))
+* codeql express routes --gemini v9 ([b8fd5c6](https://github.com/Makr91/BoxVault/commit/b8fd5c6cb1e35d43f36fc6d96846de8a09aaec87))
+* navbar render on local login ([483864f](https://github.com/Makr91/BoxVault/commit/483864fa1b199e23df90448017635684a51fcf6e))
+
 ## [0.26.16](https://github.com/Makr91/BoxVault/compare/v0.26.15...v0.26.16) (2026-01-01)
 
 ### Bug Fixes
