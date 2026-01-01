@@ -78,14 +78,12 @@ const Login = ({ theme }) => {
           const decodedUrl = decodeURIComponent(returnTo);
           // Only allow same-origin redirects (relative paths or same domain)
           if (decodedUrl.startsWith("/") && !decodedUrl.startsWith("//")) {
-            window.location.href = decodedUrl;
+            navigate(decodedUrl, { replace: true });
           } else {
-            navigate("/profile");
-            window.location.reload();
+            navigate("/profile", { replace: true });
           }
         } else {
-          navigate("/profile");
-          window.location.reload();
+          navigate("/profile", { replace: true });
         }
       } catch (tokenError) {
         log.auth.error("Error processing OIDC token", {
@@ -172,14 +170,12 @@ const Login = ({ theme }) => {
           const decodedUrl = decodeURIComponent(returnTo);
           // Only allow same-origin redirects (relative paths or same domain)
           if (decodedUrl.startsWith("/") && !decodedUrl.startsWith("//")) {
-            window.location.href = decodedUrl;
+            navigate(decodedUrl, { replace: true });
           } else {
-            navigate("/profile");
-            window.location.reload();
+            navigate("/profile", { replace: true });
           }
         } else {
-          navigate("/profile");
-          window.location.reload();
+          navigate("/profile", { replace: true });
         }
       })
       .catch((error) => {
