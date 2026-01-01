@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.26.16](https://github.com/Makr91/BoxVault/compare/v0.26.15...v0.26.16) (2026-01-01)
+
+
+### Bug Fixes
+
+* adding ratelimiting ([d88cda7](https://github.com/Makr91/BoxVault/commit/d88cda790d9fbe5e777bcea185dc6da0a15d431e))
+* adding Translations foundation ([0b8b04b](https://github.com/Makr91/BoxVault/commit/0b8b04b3b60494d7ac5feeb83225820766653c07))
+* app name in console ([7538648](https://github.com/Makr91/BoxVault/commit/7538648a3e7a72eb8b807a458710bde3e84cb30a))
+* backend lint ([10f9d6d](https://github.com/Makr91/BoxVault/commit/10f9d6d87f27e566fd4e9203a1c77f8e5d2f3f4d))
+* ci/cd ([f61960a](https://github.com/Makr91/BoxVault/commit/f61960ad21e4906f6b01a47362f65dd01442256c))
+* codeql express routes ([f60c8b3](https://github.com/Makr91/BoxVault/commit/f60c8b3ef427db401e1f7399b5156edea7906af9))
+* codeql express routes ([13756b4](https://github.com/Makr91/BoxVault/commit/13756b437f16ad3490f218543716317dbdd9f741))
+* codeql express routes ([3f2cbfc](https://github.com/Makr91/BoxVault/commit/3f2cbfc98ffb2a4f35a70e85b29385a0559e2bcf))
+* codeql express routes ([ceff2aa](https://github.com/Makr91/BoxVault/commit/ceff2aa36a960d84229f0219c16a50a75ce571ce))
+* codeql express routes ([27dd247](https://github.com/Makr91/BoxVault/commit/27dd247884cea032f0086d605e10141d3fceb0e5))
+* codeql express routes ([a3e3246](https://github.com/Makr91/BoxVault/commit/a3e324625a2152275e227e6547e3f5e2b0411ced))
+* codeql express routes ([ad96ef4](https://github.com/Makr91/BoxVault/commit/ad96ef4927fc9340fd68e643fe77b42cd5f01ff9))
+* codeql express routes ([69e2eca](https://github.com/Makr91/BoxVault/commit/69e2ecabae02f9613ef1ff89e9b43bae2ae750ca))
+* codeql express routes ([85445e2](https://github.com/Makr91/BoxVault/commit/85445e2ac1ce2f3408553ee6bf1c90e52df8b71c))
+* codeql express routes ([b4e83ab](https://github.com/Makr91/BoxVault/commit/b4e83ab3ebd4ca2904d6d00a9b2002f187bb2e6c))
+* codeql express routes ([3abfae5](https://github.com/Makr91/BoxVault/commit/3abfae53e84611361121caa9d04137a113273684))
+* codeql express routes ([751aa90](https://github.com/Makr91/BoxVault/commit/751aa90b585f0f48be5b186cca55c9b61df2610f))
+* codeql express routes ([78aa36e](https://github.com/Makr91/BoxVault/commit/78aa36e844979178804593f0d382b7225d85b1fc))
+* codeql express routes ([573774f](https://github.com/Makr91/BoxVault/commit/573774f1ea8e22cae847ce02aac0ec2bf37d009d))
+* codeql express routes ([327bb3d](https://github.com/Makr91/BoxVault/commit/327bb3dd4e3de8c56ed122864032a6f719b87bc3))
+* codeql express routes ([a961a75](https://github.com/Makr91/BoxVault/commit/a961a75086a1d7f8e65d82916a280f543611cb68))
+* codeql express routes --gemini ([733d676](https://github.com/Makr91/BoxVault/commit/733d676bef6fb378d59e0eb1f203eea1e1151015))
+* codeql express routes --gemini v2 ([d9f26bd](https://github.com/Makr91/BoxVault/commit/d9f26bd96c8e6a67609f154317dc1ce848a84813))
+* codeql express routes --gemini v3 ([5fc1ce4](https://github.com/Makr91/BoxVault/commit/5fc1ce41f26e698e8b369bbed732a5b6c98901e1))
+* codeql express routes --gemini v4 ([fd09ec3](https://github.com/Makr91/BoxVault/commit/fd09ec3c50f8be1cd3df1e7a459bce101a3be9ad))
+* codeql express routes --gemini v5 ([d45e90b](https://github.com/Makr91/BoxVault/commit/d45e90bb8afdfd903b2d6fd3edef73b94423e839))
+* formatting files with prettier ([84c4367](https://github.com/Makr91/BoxVault/commit/84c4367953da9a5a7c1278e3f31e6912c586b08d))
+* install lusca for CSRF ([28c39b4](https://github.com/Makr91/BoxVault/commit/28c39b47621e3864ac550991dfb83fb0dedb81ba))
+* lint v2 services and core files ([6a5470a](https://github.com/Makr91/BoxVault/commit/6a5470a2691270e37ad351c35d731b4eb64f9a9b))
+* linting frontend v1 ([7260fb8](https://github.com/Makr91/BoxVault/commit/7260fb8dd83a7b71c39475a1e62045f36ccfc9bd))
+* linting frontend v3 ([14d6e17](https://github.com/Makr91/BoxVault/commit/14d6e17efdcacd010d2277bced404bb17792b6b7))
+* linting, logging, and testing ([ec388a2](https://github.com/Makr91/BoxVault/commit/ec388a2394741bdedac39220bb388fbf04076768))
+* main page ([233d30e](https://github.com/Makr91/BoxVault/commit/233d30e5df699e18d1509f1b5781cbb53bd8cfba))
+* more codeql path issues ([9311b34](https://github.com/Makr91/BoxVault/commit/9311b34c5323076b81fb28b7d577549373c7980a))
+* more codeql path issues ([56414cd](https://github.com/Makr91/BoxVault/commit/56414cde7c098a55e8c64d3eaf4087a6319ce3a1))
+* more codeql path issues ([c239a3b](https://github.com/Makr91/BoxVault/commit/c239a3b532c889cb2b681daf8ae63505b908ced7))
+* npm scripts ([7d6e050](https://github.com/Makr91/BoxVault/commit/7d6e050218d15d19580bafc7d10257943e0a104d))
+* npm scripts ([d0b6446](https://github.com/Makr91/BoxVault/commit/d0b644662fd379638dfee8b35311042432103bd8))
+* path validations ([7850af6](https://github.com/Makr91/BoxVault/commit/7850af64780e9890aff15031a7c0fe8d96987100))
+* ratelimiting ([59b7ce8](https://github.com/Makr91/BoxVault/commit/59b7ce8a488ff269535b0b905a1a71b698f79d93))
+* redirect. codeql ([3eb16c2](https://github.com/Makr91/BoxVault/commit/3eb16c2376a941da877ebccb2f11f52860ec36cf))
+* response time ([74b18c3](https://github.com/Makr91/BoxVault/commit/74b18c3d8d0ee2203f5cec57a046a72ba986bf5f))
+
 ## [0.26.15](https://github.com/Makr91/BoxVault/compare/v0.26.14...v0.26.15) (2025-12-29)
 
 ### Bug Fixes
