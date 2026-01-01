@@ -17,40 +17,48 @@ router.use((req, res, next) => {
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
+  rateLimiterMiddleware(),
   architecture.findAllByProvider
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
+  rateLimiterMiddleware(),
   architecture.findOne
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyArchitecture.validateArchitecture,
-    verifyArchitecture.checkArchitectureDuplicate,
-  ],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyArchitecture.validateArchitecture,
+  verifyArchitecture.checkArchitectureDuplicate,
   architecture.create
 );
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyArchitecture.validateArchitecture],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyArchitecture.validateArchitecture,
   architecture.update
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   architecture.delete
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   architecture.deleteAllByProvider
 );
 

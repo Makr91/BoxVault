@@ -55,36 +55,45 @@ router.use((req, res, next) => {
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   file.update,
   handleFileError
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   file.upload,
   handleFileError
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
+  rateLimiterMiddleware(),
   file.info
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
+  rateLimiterMiddleware(),
   file.download
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
+  rateLimiterMiddleware(),
   file.getDownloadLink
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  rateLimiterMiddleware(),
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   file.remove
 );
 
