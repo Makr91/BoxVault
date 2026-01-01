@@ -2,6 +2,15 @@ name: Publish Documentation
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (e.g., v1.2.3)'
+        required: false
+        default: 'v0.0.0-dev'
+      release_url:
+        description: 'URL to the GitHub release'
+        required: false
+        default: 'https://github.com/Makr91/BoxVault'
 
 permissions:
   contents: read
@@ -40,9 +49,8 @@ jobs:
 
       - name: Copy changelog and generate version info
         run: |
-          # Generate version info JSON
-          echo "{\"version\": \"${{ github.event.release.tag_name }}\", \"release_date\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"release_url\": \"${{ github.event.release.html_url }}\"}" > docs/version.json
-
+          # Generate version info JSON from workflow inputs
+          echo "{\"version\": \"${{ github.event.inputs.tag_name }}\", \"release_date\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"release_url\": \"${{ github.event.inputs.release_url }}\"}" > docs/version.json
           # Append real changelog content to the Jekyll template
           echo "" >> docs/changelog.md
           echo "---" >> docs/changelog.md
