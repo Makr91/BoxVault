@@ -258,13 +258,17 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   }, [showOnlyPublic, organization]);
 
   useEffect(() => {
-    // Set document title based on organization
-    if (organization) {
+    // Set document title based on page type
+    // Main page (public view) should always show "BoxVault"
+    // Organization page should show organization name
+    if (showOnlyPublic) {
+      document.title = "BoxVault";
+    } else if (organization) {
       document.title = organization;
     } else {
       document.title = "BoxVault";
     }
-  }, [organization]);
+  }, [organization, showOnlyPublic]);
 
   useEffect(() => {
     isMountedRef.current = true;

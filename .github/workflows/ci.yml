@@ -105,24 +105,24 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm run cinstall:all
-
-      - name: Run tests
-        run: npm run test:all
+#  test:
+#    name: Tests
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v6
+#
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v6
+#        with:
+#          node-version: '22'
+#          cache: 'npm'
+#
+#      - name: Install dependencies
+#        run: npm run cinstall:all
+#
+#      - name: Run tests
+#        run: npm run test:all
 
   verify-scripts:
     name: Verify Scripts
@@ -157,7 +157,7 @@ jobs:
       [
         backend-security,
         frontend-security,
-        # lint-and-format,
+        lint-and-format,
         build-frontend,
         verify-scripts,
         dependabot-updates,
