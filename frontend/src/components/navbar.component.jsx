@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FaMoon,
   FaSun,
@@ -36,6 +36,7 @@ const Navbar = ({
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
   const [authServerUrl, setAuthServerUrl] = useState("");
+  const [trustedIssuers, setTrustedIssuers] = useState([]);
 
   const handleLogout = () => {
     if (logoutEverywhere) {
@@ -61,6 +62,36 @@ const Navbar = ({
       handleLogoutToggle(e);
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadTrustedIssuers = async () => {
+      try {
+        const response = await fetch(
+          `${window.location.origin}/api/auth/oidc/issuers`
+        );
+        if (response.ok && mounted) {
+          const data = await response.json();
+          setTrustedIssuers(data.issuers || []);
+          log.auth.debug("Trusted issuers loaded", {
+            count: data.issuers?.length,
+          });
+        }
+      } catch (error) {
+        log.auth.error("Failed to load trusted issuers", {
+          error: error.message,
+        });
+        setTrustedIssuers([]);
+      }
+    };
+
+    loadTrustedIssuers();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -98,39 +129,49 @@ const Navbar = ({
     };
   }, [currentUser]);
 
-  const extractAuthServerUrl = (accessToken) => {
-    try {
-      const jwtPayload = JSON.parse(atob(accessToken.split(".")[1]));
-      if (!jwtPayload.id_token) {
-        return "";
-      }
-
-      const idTokenPayload = JSON.parse(
-        atob(jwtPayload.id_token.split(".")[1])
-      );
-      const issuer = idTokenPayload.iss || "";
-
-      // Validate issuer URL for security (CodeQL requirement)
-      if (!issuer || !issuer.startsWith("https://")) {
-        return "";
-      }
-
+  const extractAuthServerUrl = useCallback(
+    (accessToken) => {
       try {
-        const url = new URL(issuer);
-        // Additional security checks
-        if (url.protocol === "https:" && url.hostname) {
-          return issuer;
+        const jwtPayload = JSON.parse(atob(accessToken.split(".")[1]));
+        if (!jwtPayload.id_token) {
+          return "";
         }
-      } catch {
-        log.auth.warn("Invalid issuer URL format", { issuer });
+
+        const idTokenPayload = JSON.parse(
+          atob(jwtPayload.id_token.split(".")[1])
+        );
+        const issuer = idTokenPayload.iss || "";
+
+        // CRITICAL: Validate against backend-provided whitelist (CodeQL requirement)
+        const isTrusted = trustedIssuers.some((t) => t.issuer === issuer);
+        if (!isTrusted) {
+          log.auth.warn("Issuer not in trusted whitelist", { issuer });
+          return "";
+        }
+
+        // Validate issuer URL for security
+        if (!issuer || !issuer.startsWith("https://")) {
+          return "";
+        }
+
+        try {
+          const url = new URL(issuer);
+          // Additional security checks
+          if (url.protocol === "https:" && url.hostname) {
+            return issuer;
+          }
+        } catch {
+          log.auth.warn("Invalid issuer URL format", { issuer });
+        }
+      } catch (error) {
+        log.auth.debug("Could not extract issuer from id_token", {
+          error: error.message,
+        });
       }
-    } catch (error) {
-      log.auth.debug("Could not extract issuer from id_token", {
-        error: error.message,
-      });
-    }
-    return "";
-  };
+      return "";
+    },
+    [trustedIssuers]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -166,7 +207,7 @@ const Navbar = ({
     return () => {
       mounted = false;
     };
-  }, [currentUser]);
+  }, [currentUser, extractAuthServerUrl]);
 
   const buildTicketUrl = () => {
     if (!ticketConfig || !ticketConfig.enabled?.value) {

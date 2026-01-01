@@ -402,7 +402,7 @@ const Moderator = ({ currentOrganization }) => {
                         <td>{invitation.expired ? "Yes" : "No"}</td>
                         <td>
                           <a
-                            href={`${window.location.origin}/register?token=${invitation.token}&organization=${currentOrganization}`}
+                            href={`${window.location.origin}/register?token=${encodeURIComponent(invitation.token)}&organization=${encodeURIComponent(currentOrganization)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

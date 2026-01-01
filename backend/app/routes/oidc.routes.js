@@ -391,6 +391,72 @@ router.post('/auth/oidc/logout/local', (req, res) => {
 
 /**
  * @swagger
+ * /api/auth/oidc/issuers:
+ *   get:
+ *     summary: Get trusted OIDC issuer URLs
+ *     description: Retrieve list of configured and enabled OIDC provider issuer URLs for client-side validation
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Trusted issuers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 issuers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       provider:
+ *                         type: string
+ *                         description: Provider name
+ *                         example: "google"
+ *                       issuer:
+ *                         type: string
+ *                         description: Trusted issuer URL
+ *                         example: "https://accounts.google.com"
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/auth/oidc/issuers', (req, res) => {
+  void req;
+  try {
+    const authConfig = loadConfig('auth');
+    const trustedIssuers = [];
+
+    const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
+
+    Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
+      if (providerConfig.enabled?.value && providerConfig.issuer?.value) {
+        trustedIssuers.push({
+          provider: providerName,
+          issuer: providerConfig.issuer.value,
+        });
+      }
+    });
+
+    log.auth.debug('Trusted OIDC issuers', {
+      count: trustedIssuers.length,
+      issuers: trustedIssuers.map(t => t.issuer),
+    });
+
+    return res.json({ issuers: trustedIssuers });
+  } catch (error) {
+    log.auth.error('Get trusted issuers error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({
+      message: 'Internal server error',
+      issuers: [],
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/auth/methods:
  *   get:
  *     summary: Get available authentication methods

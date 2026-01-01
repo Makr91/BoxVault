@@ -11,6 +11,7 @@ const https = require('https');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { passport, initializeStrategies } = require('./app/auth/passport');
+const lusca = require('lusca');
 
 global.__basedir = __dirname;
 
@@ -347,6 +348,26 @@ const initializeApp = async () => {
     // Wait for OIDC strategies to register (CRITICAL - must happen before routes load)
     await initializeStrategies();
     log.app.info('Passport.js initialized with OIDC providers');
+
+    // Selective CSRF protection middleware (following Armor pattern)
+    const selectiveCSRF = (req, res, next) => {
+      // Skip CSRF for API routes with JWT auth, GET requests, and static files
+      if (
+        req.path.startsWith('/api/') ||
+        req.path.startsWith('/auth/') ||
+        req.method === 'GET' ||
+        req.headers['x-access-token'] || // Skip for JWT authentication
+        req.headers.accept === 'text/event-stream'
+      ) {
+        return next();
+      }
+
+      // Apply CSRF protection for traditional form submissions
+      return lusca.csrf()(req, res, next);
+    };
+
+    app.use(selectiveCSRF);
+    log.app.info('Selective CSRF protection middleware applied');
 
     // Initialize roles
     await initial();
