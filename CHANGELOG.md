@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/Makr91/BoxVault/compare/v0.28.0...v0.29.0) (2026-01-03)
+
+
+### Features
+
+* update user deletion endpoint and improve organization user management ([0f04bb3](https://github.com/Makr91/BoxVault/commit/0f04bb37460e6fe518a1289d4217f14a6a9e056e))
+
 ## [0.28.0](https://github.com/Makr91/BoxVault/compare/v0.27.6...v0.28.0) (2026-01-03)
 
 
