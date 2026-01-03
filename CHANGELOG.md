@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.27.0](https://github.com/Makr91/BoxVault/compare/v0.26.28...v0.27.0) (2026-01-03)
+
+
+### Features
+
+* address issue [#3](https://github.com/Makr91/BoxVault/issues/3) ([f391328](https://github.com/Makr91/BoxVault/commit/f3913286ad4e6a77aabcc33c63e9861fd6fa20f3))
+
+
+### Bug Fixes
+
+* codeql issue ([8c713cf](https://github.com/Makr91/BoxVault/commit/8c713cf36c83e0aa21040f32080b0359f5957fbe))
+
 ## [0.26.28](https://github.com/Makr91/BoxVault/compare/v0.26.27...v0.26.28) (2026-01-01)
 
 
