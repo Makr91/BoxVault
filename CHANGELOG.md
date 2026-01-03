@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.3](https://github.com/Makr91/BoxVault/compare/v0.27.2...v0.27.3) (2026-01-03)
+
+
+### Bug Fixes
+
+* swagger, documentation, and navbar ([5dcb004](https://github.com/Makr91/BoxVault/commit/5dcb004d5dd4c67237d8c90cb31675aa9d010765))
+* table sorting and organization fix ([689d289](https://github.com/Makr91/BoxVault/commit/689d2897155be70eb18278bd4dda3f7dd218723e))
+
 ## [0.27.2](https://github.com/Makr91/BoxVault/compare/v0.27.1...v0.27.2) (2026-01-03)
 
 
