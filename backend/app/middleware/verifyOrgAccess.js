@@ -172,11 +172,23 @@ const isOrgModeratorOrAdmin = async (req, res, next) => {
       return res.status(401).send({ message: 'User not found!' });
     }
 
+    // Check if user is global admin first (bypasses org-specific checks)
+    const globalRoles = await user.getRoles();
+    const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
+
     const organization = await db.organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return res.status(404).send({ message: 'Organization not found!' });
     }
 
+    if (isGlobalAdmin) {
+      // Global admins can access any organization
+      req.organizationId = organization.id;
+      req.userOrgRole = 'admin'; // Treat as org admin
+      return next();
+    }
+
+    // Check org-specific role
     const hasRole = await UserOrg.hasRole(user.id, organization.id, ['moderator', 'admin']);
     if (!hasRole) {
       return res.status(403).send({
