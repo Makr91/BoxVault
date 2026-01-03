@@ -310,8 +310,12 @@ const download = async (req, res) => {
           }
         }
       } else if (req.isVagrantRequest) {
+        res.status(200);
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+        // Flush headers immediately so curl can initialize progress display
+        res.flushHeaders();
 
         const fileStream = fs.createReadStream(filePath);
         fileStream.pipe(res);
