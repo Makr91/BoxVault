@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/Makr91/BoxVault/compare/v0.27.6...v0.28.0) (2026-01-03)
+
+
+### Features
+
+* enhance invitation handling and user access management ([2e60f95](https://github.com/Makr91/BoxVault/commit/2e60f950bc417e5a8c0dbf31fad05c5a9d52c2e0))
+
 ## [0.27.6](https://github.com/Makr91/BoxVault/compare/v0.27.5...v0.27.6) (2026-01-03)
 
 
