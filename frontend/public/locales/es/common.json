@@ -7,14 +7,8 @@
     "logoutLocal": "Cerrar Sesión (Local)"
   },
   "language": {
-    "english": "Inglés",
-    "spanish": "Español",
-    "selectLanguage": "Seleccionar Idioma",
     "changeLanguage": "Cambiar Idioma",
-    "flagIcon": {
-      "en": "🇺🇸",
-      "es": "🇪🇸"
-    }
+    "changeLanguage": "Cambiar Idioma"
   },
   "user": {
     "unknownUser": "Usuario Desconocido",
@@ -53,6 +47,9 @@
     "updateError": "Error al actualizar la configuración.",
     "restartInitiated": "Reinicio del servidor iniciado",
     "restartFailed": "Error al reiniciar el servidor",
+    "testingSmtp": "Enviando correo de prueba...",
+    "testSmtpSuccess": "¡Correo de prueba enviado con éxito! Revisa la bandeja de entrada del destinatario.",
+    "testSmtpError": "Error al enviar el correo de prueba",
     "settingsCount": "{{count}} configuración",
     "settingsCount_plural": "{{count}} configuraciones",
     "tabs": {
@@ -63,7 +60,8 @@
     },
     "buttons": {
       "update": "Actualizar Configuración",
-      "restart": "Reiniciar Servidor"
+      "restart": "Reiniciar Servidor",
+      "testSmtp": "Probar SMTP"
     },
     "sections": {
       "authentication": "Autenticación",

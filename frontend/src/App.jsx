@@ -356,7 +356,9 @@ const App = () => {
                 <Route path="/admin" element={<Admin />} />
                 <Route
                   path="/moderator"
-                  element={<Moderator currentOrganization={userOrganization} />}
+                  element={
+                    <Moderator currentOrganization={activeOrganization} />
+                  }
                 />
                 <Route
                   path="/:organization"

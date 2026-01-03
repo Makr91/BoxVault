@@ -15,10 +15,14 @@ const updateConfig = (configName, configData) =>
 const restartServer = () =>
   axios.post(`${baseURL}/api/config/restart`, {}, { headers: authHeader() });
 
+const testSmtp = () =>
+  axios.post(`${baseURL}/api/mail/test-smtp`, {}, { headers: authHeader() });
+
 const ConfigService = {
   getConfig,
   updateConfig,
   restartServer,
+  testSmtp,
 };
 
 export default ConfigService;

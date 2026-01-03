@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
+import CountryFlag from "react-country-flag";
 import { useTranslation } from "react-i18next";
 import {
   FaMoon,
@@ -23,6 +24,94 @@ import FavoritesService from "../services/favorites.service";
 import { log } from "../utils/Logger";
 
 import OrganizationSwitcher from "./OrganizationSwitcher.component";
+
+// Helper to get language display name
+const getLanguageDisplayName = (languageCode) => {
+  const code = languageCode || "en";
+
+  if (code === "cimode") {
+    return "CI/CD Mode";
+  }
+
+  try {
+    const displayNames = new Intl.DisplayNames([code], { type: "language" });
+    const name = displayNames.of(code);
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return code.toUpperCase();
+  }
+};
+
+// Helper to normalize URLs
+const normalizeUrl = (url) => url.replace(/\/+$/, "");
+
+// Helper to validate issuer URL format
+const validateIssuerFormat = (issuer) => {
+  if (!issuer || !issuer.startsWith("https://")) {
+    return false;
+  }
+
+  try {
+    const url = new URL(issuer);
+    return url.protocol === "https:" && url.hostname;
+  } catch {
+    log.auth.warn("Invalid issuer URL format", { issuer });
+    return false;
+  }
+};
+
+const AppIcon = ({ app }) => {
+  if (app.iconUrl && app.iconUrl !== "") {
+    return (
+      <img
+        src={app.iconUrl}
+        className="logo-md icon-with-margin"
+        alt=""
+        onError={(e) => {
+          e.target.style.display = "none";
+        }}
+      />
+    );
+  }
+
+  // Note: Favicon logic removed from here to simplify, or can be kept if needed.
+  // For simplicity and complexity reduction, we'll rely on the parent or simplify this component.
+  // Re-implementing the logic from renderAppIcon:
+
+  if (app.homeUrl && app.homeUrl !== "") {
+    let faviconUrl = null;
+    try {
+      faviconUrl = `${new URL(app.homeUrl).origin}/favicon.ico`;
+    } catch (e) {
+      log.component.debug("Invalid URL for favicon", {
+        url: app.homeUrl,
+        error: e.message,
+      });
+    }
+
+    if (faviconUrl) {
+      return (
+        <img
+          src={faviconUrl}
+          className="logo-md icon-with-margin"
+          alt=""
+          onError={(e) => {
+            e.target.style.display = "none";
+          }}
+        />
+      );
+    }
+  }
+
+  return null;
+};
+
+AppIcon.propTypes = {
+  app: PropTypes.shape({
+    iconUrl: PropTypes.string,
+    homeUrl: PropTypes.string,
+  }).isRequired,
+};
 
 const Navbar = ({
   currentUser,
@@ -66,29 +155,33 @@ const Navbar = ({
     setShowLanguageModal(false);
   };
 
-  // Get language display name
-  const getLanguageDisplayName = (languageCode) => {
-    const [langPrefix] = (languageCode || "en").split("-");
-    const languageNames = {
-      en: "English",
-      es: "Español",
-      cimode: "CI/CD Mode",
-    };
-    return languageNames[langPrefix] || languageCode.toUpperCase();
-  };
-
   // Get flag icon for language
   const getLanguageFlag = (languageCode) => {
-    const [langPrefix] = (languageCode || "en").split("-");
-    const flagKey = `language.flagIcon.${langPrefix}`;
-    return t(flagKey, { ns: "common", defaultValue: "🌐" });
+    const code = languageCode || "en";
+
+    if (code === "cimode") {
+      return "🔧";
+    }
+
+    try {
+      const locale = new Intl.Locale(code);
+      const region = locale.region || locale.maximize().region;
+
+      if (region) {
+        return <CountryFlag countryCode={region} svg title={region} />;
+      }
+    } catch {
+      // Ignore errors
+    }
+
+    return "🌐";
   };
 
   // Get supported languages from i18n
   const supportedLanguages = getSupportedLanguages();
 
   const handleLogout = () => {
-    if (logoutEverywhere) {
+    if (currentUser?.provider?.startsWith("oidc-") && logoutEverywhere) {
       logOut();
     } else {
       logOutLocal();
@@ -205,9 +298,6 @@ const Navbar = ({
     };
   }, [currentUser]);
 
-  // Helper to normalize URLs
-  const normalizeUrl = useCallback((url) => url.replace(/\/+$/, ""), []);
-
   // Helper to validate issuer is trusted
   const validateIssuerTrusted = useCallback(
     (issuer) => {
@@ -228,23 +318,8 @@ const Navbar = ({
       }
       return isTrusted;
     },
-    [trustedIssuers, normalizeUrl]
+    [trustedIssuers]
   );
-
-  // Helper to validate issuer URL format
-  const validateIssuerFormat = useCallback((issuer) => {
-    if (!issuer || !issuer.startsWith("https://")) {
-      return false;
-    }
-
-    try {
-      const url = new URL(issuer);
-      return url.protocol === "https:" && url.hostname;
-    } catch {
-      log.auth.warn("Invalid issuer URL format", { issuer });
-      return false;
-    }
-  }, []);
 
   const extractAuthServerUrl = useCallback(
     (accessToken) => {
@@ -276,7 +351,7 @@ const Navbar = ({
         return "";
       }
     },
-    [validateIssuerTrusted, validateIssuerFormat]
+    [validateIssuerTrusted]
   );
 
   const fetchTicketConfig = useCallback(async (mounted) => {
@@ -411,45 +486,6 @@ const Navbar = ({
     }
   };
 
-  const renderAppIcon = (app) => {
-    if (app.iconUrl && app.iconUrl !== "") {
-      return (
-        <img
-          src={app.iconUrl}
-          className="logo-md icon-with-margin"
-          alt=""
-          onError={(e) => {
-            e.target.style.display = "none";
-          }}
-        />
-      );
-    }
-
-    if (app.homeUrl && app.homeUrl !== "") {
-      try {
-        const faviconUrl = `${new URL(app.homeUrl).origin}/favicon.ico`;
-        return (
-          <img
-            src={faviconUrl}
-            className="logo-md icon-with-margin"
-            alt=""
-            onError={(e) => {
-              e.target.style.display = "none";
-            }}
-          />
-        );
-      } catch (e) {
-        log.component.debug("Invalid URL for favicon", {
-          url: app.homeUrl,
-          error: e.message,
-        });
-        return null;
-      }
-    }
-
-    return null;
-  };
-
   const renderUserAvatar = () => {
     if (gravatarUrl) {
       return (
@@ -477,6 +513,34 @@ const Navbar = ({
     }
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
     return <LogoComponent className="logo-sm me-2" />;
+  };
+
+  const renderLogoutIcon = () => {
+    if (currentUser?.provider?.startsWith("oidc-")) {
+      if (logoutEverywhere) {
+        return (
+          <FaBridgeLock
+            className="me-2 text-danger cursor-pointer"
+            onClick={handleLogoutToggle}
+            onKeyPress={handleLogoutToggleKeyPress}
+            role="button"
+            tabIndex={0}
+            title="Click to logout locally only"
+          />
+        );
+      }
+      return (
+        <FaHouseLock
+          className="me-2 text-danger cursor-pointer"
+          onClick={handleLogoutToggle}
+          onKeyPress={handleLogoutToggleKeyPress}
+          role="button"
+          tabIndex={0}
+          title="Click to logout everywhere"
+        />
+      );
+    }
+    return <FaHouseLock className="me-2 text-danger" />;
   };
 
   return (
@@ -639,7 +703,7 @@ const Navbar = ({
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            {renderAppIcon(app)}
+                            <AppIcon app={app} />
                             {app.customLabel || app.clientName || app.clientId}
                           </a>
                         </li>
@@ -686,25 +750,7 @@ const Navbar = ({
                     className="dropdown-item d-flex align-items-center"
                     onClick={handleLogout}
                   >
-                    {logoutEverywhere ? (
-                      <FaBridgeLock
-                        className="me-2 text-danger cursor-pointer"
-                        onClick={handleLogoutToggle}
-                        onKeyPress={handleLogoutToggleKeyPress}
-                        role="button"
-                        tabIndex={0}
-                        title="Click to logout locally only"
-                      />
-                    ) : (
-                      <FaHouseLock
-                        className="me-2 text-danger cursor-pointer"
-                        onClick={handleLogoutToggle}
-                        onKeyPress={handleLogoutToggleKeyPress}
-                        role="button"
-                        tabIndex={0}
-                        title="Click to logout everywhere"
-                      />
-                    )}
+                    {renderLogoutIcon()}
                     <span className="text-danger">{t("navbar.logout")}</span>
                   </button>
                 </li>

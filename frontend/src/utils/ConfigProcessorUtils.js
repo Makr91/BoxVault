@@ -147,6 +147,7 @@ const createFieldData = (key, fullPath, value) => ({
   options: value.options || null,
   order: value.order || 0,
   value: value.value,
+  upload: value.upload || false,
 });
 
 /**

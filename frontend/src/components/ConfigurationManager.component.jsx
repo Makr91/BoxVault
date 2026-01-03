@@ -137,6 +137,26 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
     setConfig(newConfig);
   };
 
+  const handleTestSmtp = () => {
+    setMessage(t("configManager.testingSmtp"));
+    setMessageType("info");
+    ConfigService.testSmtp()
+      .then((response) => {
+        setMessage(response.data.message || t("configManager.testSmtpSuccess"));
+        setMessageType("success");
+      })
+      .catch((error) => {
+        const resMessage =
+          (error.response &&
+            error.response.data &&
+            error.response.data.message) ||
+          error.message ||
+          error.toString();
+        setMessage(`${t("configManager.testSmtpError")}: ${resMessage}`);
+        setMessageType("danger");
+      });
+  };
+
   const handleFileUpload = async (file, targetPath) => {
     if (!file || !targetPath) {
       return;
@@ -204,6 +224,52 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                           values[field.path] !== undefined
                             ? values[field.path]
                             : field.value;
+
+                        if (field.upload) {
+                          return (
+                            <div key={field.path} className="col-md-6">
+                              <div className="mb-3">
+                                <label className="form-label">
+                                  {field.label}
+                                  {field.required && (
+                                    <span className="text-danger">*</span>
+                                  )}
+                                </label>
+                                <div className="input-group">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={currentValue}
+                                    onChange={(e) =>
+                                      handleFieldChange(
+                                        field.path,
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={field.placeholder}
+                                  />
+                                  <label className="btn btn-outline-secondary">
+                                    {t("buttons.upload")}
+                                    <input
+                                      type="file"
+                                      hidden
+                                      onChange={(e) =>
+                                        handleFileUpload(
+                                          e.target.files[0],
+                                          currentValue
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                </div>
+                                <small className="form-text text-muted">
+                                  {field.description}
+                                </small>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         return (
                           <div
                             key={field.path}
@@ -387,6 +453,49 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                     values[field.path] !== undefined
                       ? values[field.path]
                       : field.value;
+
+                  if (field.upload) {
+                    return (
+                      <div key={field.path} className="col-md-6">
+                        <div className="mb-3">
+                          <label className="form-label">
+                            {field.label}
+                            {field.required && (
+                              <span className="text-danger">*</span>
+                            )}
+                          </label>
+                          <div className="input-group">
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={currentValue}
+                              onChange={(e) =>
+                                handleFieldChange(field.path, e.target.value)
+                              }
+                              placeholder={field.placeholder}
+                            />
+                            <label className="btn btn-outline-secondary">
+                              {t("buttons.upload")}
+                              <input
+                                type="file"
+                                hidden
+                                onChange={(e) =>
+                                  handleFileUpload(
+                                    e.target.files[0],
+                                    currentValue
+                                  )
+                                }
+                              />
+                            </label>
+                          </div>
+                          <small className="form-text text-muted">
+                            {field.description}
+                          </small>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={field.path}
@@ -454,6 +563,52 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                           values[field.path] !== undefined
                             ? values[field.path]
                             : field.value;
+
+                        if (field.upload) {
+                          return (
+                            <div key={field.path} className="col-md-6">
+                              <div className="mb-3">
+                                <label className="form-label">
+                                  {field.label}
+                                  {field.required && (
+                                    <span className="text-danger">*</span>
+                                  )}
+                                </label>
+                                <div className="input-group">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={currentValue}
+                                    onChange={(e) =>
+                                      handleFieldChange(
+                                        field.path,
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={field.placeholder}
+                                  />
+                                  <label className="btn btn-outline-secondary">
+                                    {t("buttons.upload")}
+                                    <input
+                                      type="file"
+                                      hidden
+                                      onChange={(e) =>
+                                        handleFileUpload(
+                                          e.target.files[0],
+                                          currentValue
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                </div>
+                                <small className="form-text text-muted">
+                                  {field.description}
+                                </small>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         return (
                           <div
                             key={field.path}
@@ -518,6 +673,13 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             {t("configManager.tabs.mail")}
           </button>
         </li>
+        {selectedConfig === "mail" && (
+          <li className="nav-item">
+            <button type="button" className="nav-link" onClick={handleTestSmtp}>
+              {t("configManager.buttons.testSmtp")}
+            </button>
+          </li>
+        )}
         <li className="nav-item ms-auto">
           <button
             type="button"

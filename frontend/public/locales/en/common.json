@@ -7,14 +7,8 @@
     "logoutLocal": "Logout (Local)"
   },
   "language": {
-    "english": "English",
-    "spanish": "Español",
-    "selectLanguage": "Select Language",
     "changeLanguage": "Change Language",
-    "flagIcon": {
-      "en": "🇺🇸",
-      "es": "🇪🇸"
-    }
+    "changeLanguage": "Change Language"
   },
   "user": {
     "unknownUser": "Unknown User",
@@ -53,6 +47,9 @@
     "updateError": "Error updating configuration.",
     "restartInitiated": "Server restart initiated",
     "restartFailed": "Failed to restart server",
+    "testingSmtp": "Sending test email...",
+    "testSmtpSuccess": "Test email sent successfully! Check the recipient's inbox.",
+    "testSmtpError": "Failed to send test email",
     "settingsCount": "{{count}} setting",
     "settingsCount_plural": "{{count}} settings",
     "tabs": {
@@ -63,7 +60,8 @@
     },
     "buttons": {
       "update": "Update Configuration",
-      "restart": "Restart Server"
+      "restart": "Restart Server",
+      "testSmtp": "Test SMTP"
     },
     "sections": {
       "authentication": "Authentication",
