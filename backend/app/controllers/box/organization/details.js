@@ -97,7 +97,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: 'Organization not found.' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     // Get all boxes for this organization using organizationId
@@ -251,7 +251,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     return res.status(200).send(formattedBoxes);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving the organization details.',
+      message: err.message || req.__('boxes.organizationDetails.error'),
     });
   }
 };

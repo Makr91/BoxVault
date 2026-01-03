@@ -52,7 +52,7 @@ exports.create = async (req, res) => {
   // Validate request
   if (!req.body.organization) {
     return res.status(400).send({
-      message: 'Organization cannot be empty!',
+      message: req.__('organizations.nameCannotBeEmpty'),
     });
   }
 
@@ -71,7 +71,7 @@ exports.create = async (req, res) => {
     return res.send(data);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while creating the Organization.',
+      message: err.message || req.__('organizations.createError'),
     });
   }
 };

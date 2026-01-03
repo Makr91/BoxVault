@@ -84,7 +84,7 @@ exports.discoverAll = async (req, res) => {
     return res.send(restructuredBoxes);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving boxes.',
+      message: err.message || req.__('boxes.discover.error'),
     });
   }
 };

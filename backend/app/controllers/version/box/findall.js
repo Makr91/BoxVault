@@ -99,7 +99,7 @@ exports.findAllByBox = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch {
-      return res.status(401).send({ message: 'Unauthorized!' });
+      return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
   }
 
@@ -111,7 +111,7 @@ exports.findAllByBox = async (req, res) => {
     if (!organizationData) {
       return res
         .status(404)
-        .send({ message: `Organization not found with name: ${organization}.` });
+        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
     }
 
     const box = await Box.findOne({
@@ -119,7 +119,9 @@ exports.findAllByBox = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({ message: `Box not found with name: ${boxId}.` });
+      return res
+        .status(404)
+        .send({ message: req.__('boxes.boxNotFoundWithName', { name: boxId }) });
     }
 
     // If the box is public, allow access
@@ -130,12 +132,12 @@ exports.findAllByBox = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: 'Unauthorized access to versions.' });
+      return res.status(403).send({ message: req.__('versions.unauthorized') });
     }
 
     const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to versions.' });
+      return res.status(403).send({ message: req.__('versions.unauthorized') });
     }
 
     // User is member of organization, allow access
@@ -143,7 +145,7 @@ exports.findAllByBox = async (req, res) => {
     return res.send(versions);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving versions.',
+      message: err.message || req.__('versions.findAll.error'),
     });
   }
 };

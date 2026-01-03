@@ -26,18 +26,18 @@ try {
   log.error.error(`Failed to load App configuration: ${e.message}`);
 }
 
-const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
+const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => {
   // Format response exactly as Vagrant expects based on box_metadata.rb
   const response = {
     // Required fields from BoxMetadata class
     name: requestedName, // Use the exact name that Vagrant requested
-    description: box.description || 'Build',
+    description: box.description || t('boxes.defaultDescription'),
     versions: box.versions.map(version => ({
       // Version must be a valid Gem::Version (no 'v' prefix)
       version: version.versionNumber.replace(/^v/, ''),
       status: 'active',
-      description_html: '<p>Build</p>\n',
-      description_markdown: 'Build',
+      description_html: `<p>${t('boxes.defaultDescription')}</p>\n`,
+      description_markdown: t('boxes.defaultDescription'),
       providers: version.providers.flatMap(provider =>
         provider.architectures.map(arch => {
           const [file] = arch.files;
@@ -216,7 +216,7 @@ exports.findOne = async (req, res) => {
     if (!organizationData) {
       return res
         .status(404)
-        .send({ message: `Organization not found with name: ${organization}.` });
+        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
     }
 
     // Find box by organizationId and name
@@ -259,7 +259,7 @@ exports.findOne = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({ message: `Box not found with name: ${name}.` });
+      return res.status(404).send({ message: req.__('boxes.boxNotFoundWithName', { name }) });
     }
 
     let response;
@@ -269,7 +269,7 @@ exports.findOne = async (req, res) => {
       // Always use the requested name from vagrantInfo
       // Use the requested name from vagrantInfo if available, otherwise construct it
       const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;
-      response = formatVagrantResponse(box, organizationData, baseUrl, requestedName);
+      response = formatVagrantResponse(box, organizationData, baseUrl, requestedName, req.__.bind(req));
     } else {
       // Format response for frontend
       response = {
@@ -298,7 +298,7 @@ exports.findOne = async (req, res) => {
 
     // For private boxes, require authentication
     if (!userId) {
-      return res.status(403).json({ message: 'Unauthorized access to private box.' });
+      return res.status(403).json({ message: req.__('boxes.unauthorized') });
     }
 
     // Check if this box was created by a service account
@@ -336,10 +336,10 @@ exports.findOne = async (req, res) => {
       return res.json(response);
     }
 
-    return res.status(403).json({ message: 'Unauthorized access to private box.' });
+    return res.status(403).json({ message: req.__('boxes.unauthorized') });
   } catch (err) {
     return res
       .status(500)
-      .send({ message: `Error retrieving box with name=${name}: ${err.message}` });
+      .send({ message: req.__('boxes.findOne.error', { name, error: err.message }) });
   }
 };

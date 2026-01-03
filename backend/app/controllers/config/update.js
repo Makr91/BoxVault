@@ -64,8 +64,8 @@ exports.updateConfig = async (req, res) => {
     // For updates, we still need to write to the actual file path
     const filePath = getConfigPath(configName);
     await writeConfig(filePath, req.body);
-    return res.send({ message: 'Configuration updated successfully.' });
+    return res.send({ message: req.__('config.updated') });
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: req.__('config.updateError') });
   }
 };

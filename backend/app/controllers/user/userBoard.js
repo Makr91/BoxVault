@@ -21,5 +21,5 @@ const { log } = require('../../utils/Logger');
  */
 exports.userBoard = (req, res) => {
   log.app.debug('User board accessed', { method: req.method });
-  res.status(200).send('User Content.');
+  res.status(200).send(req.__('users.userContent'));
 };

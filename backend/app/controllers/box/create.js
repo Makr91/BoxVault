@@ -70,7 +70,7 @@ exports.create = async (req, res) => {
 
   if (!req.body.name) {
     return res.status(400).send({
-      message: 'Name cannot be empty!',
+      message: req.__('boxes.nameCannotBeEmpty'),
     });
   }
 
@@ -79,7 +79,7 @@ exports.create = async (req, res) => {
     const org = await db.organization.findOne({ where: { name: organization } });
     if (!org) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -108,7 +108,7 @@ exports.create = async (req, res) => {
     return res.send(data);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while creating the Box.',
+      message: err.message || req.__('boxes.create.error'),
     });
   }
 };

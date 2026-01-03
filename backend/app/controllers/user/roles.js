@@ -50,14 +50,12 @@ exports.getUserRoles = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     const roles = user.roles.map(role => role.name);
     return res.status(200).send(roles);
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while retrieving user roles.' });
+    return res.status(500).send({ message: err.message || req.__('users.roles.error') });
   }
 };

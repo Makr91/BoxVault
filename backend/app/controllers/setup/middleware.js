@@ -6,7 +6,7 @@ const verifyAuthorizedToken = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1]; // Extract the token from the Bearer header
 
   if (!token || token !== getAuthorizedSetupToken()) {
-    return res.status(403).send('Invalid authorization token');
+    return res.status(403).send(req.__('setup.invalidToken'));
   }
   return next();
 };

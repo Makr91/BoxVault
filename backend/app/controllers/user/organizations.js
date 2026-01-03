@@ -90,7 +90,7 @@ const getUserOrganizations = async (req, res) => {
       error: err.message,
       userId: req.userId,
     });
-    return res.status(500).send({ message: 'Error fetching your organizations' });
+    return res.status(500).send({ message: req.__('users.fetchOrgsError') });
   }
 };
 

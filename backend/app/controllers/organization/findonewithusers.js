@@ -98,7 +98,7 @@ exports.findOneWithUsers = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found.' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     const users = organization.members.map(user => ({
@@ -115,7 +115,7 @@ exports.findOneWithUsers = async (req, res) => {
   } catch (err) {
     log.error.error('Error in findOneWithUsers:', err);
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving users.',
+      message: err.message || req.__('organizations.findUsersError'),
     });
   }
 };

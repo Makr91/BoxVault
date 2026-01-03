@@ -106,7 +106,7 @@ const getDownloadLink = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -138,19 +138,19 @@ const getDownloadLink = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
     // Check authorization
     if (!box.isPublic && !isServiceAccount) {
       if (!userId) {
-        return res.status(403).send({ message: 'Unauthorized access to file.' });
+        return res.status(403).send({ message: req.__('files.unauthorized') });
       }
 
       const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
       if (!membership) {
-        return res.status(403).send({ message: 'Unauthorized access to file.' });
+        return res.status(403).send({ message: req.__('files.unauthorized') });
       }
     }
 
@@ -175,7 +175,7 @@ const getDownloadLink = async (req, res) => {
     return res.status(200).json({ downloadUrl });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while generating the download link.',
+      message: err.message || req.__('files.link.error'),
       error: err,
     });
   }

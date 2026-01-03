@@ -74,7 +74,7 @@ exports.findAllWithUsers = async (req, res) => {
       log.app.info('Decoded user ID:', userId);
     } catch (err) {
       log.error.error('JWT verification error:', err.message);
-      return res.status(401).send({ message: 'Unauthorized!!!!' });
+      return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
   }
 
@@ -118,7 +118,7 @@ exports.findAllWithUsers = async (req, res) => {
     return res.status(200).send(result);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving organizations.',
+      message: err.message || req.__('organizations.findAllError'),
     });
   }
 };

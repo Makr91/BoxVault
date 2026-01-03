@@ -49,7 +49,7 @@ exports.validateInvitationToken = async (req, res) => {
     const invitation = await Invitation.findOne({ where: { token } });
 
     if (!invitation || invitation.expires < Date.now()) {
-      return res.status(400).send({ message: 'Invalid or expired invitation token.' });
+      return res.status(400).send({ message: req.__('invitations.invalidOrExpired') });
     }
 
     const organization = await Organization.findByPk(invitation.organizationId);
@@ -57,7 +57,7 @@ exports.validateInvitationToken = async (req, res) => {
     return res.status(200).send({ organizationName: organization.name });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while validating the invitation token.',
+      message: err.message || req.__('invitations.validate.error'),
     });
   }
 };

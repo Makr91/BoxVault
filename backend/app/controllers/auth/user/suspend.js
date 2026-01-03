@@ -48,14 +48,12 @@ exports.suspendUser = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
     // Assuming there's a 'suspended' field in the User model
     await user.update({ suspended: true });
-    return res.status(200).send({ message: 'User suspended successfully.' });
+    return res.status(200).send({ message: req.__('users.suspended') });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while suspending the user.' });
+    return res.status(500).send({ message: err.message || req.__('users.suspend.error') });
   }
 };

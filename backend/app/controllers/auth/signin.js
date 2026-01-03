@@ -146,19 +146,19 @@ exports.signin = async (req, res) => {
 
       if (serviceAccount) {
         if (new Date() > serviceAccount.expiresAt) {
-          return res.status(401).send({ message: 'Service account has expired.' });
+          return res.status(401).send({ message: req.__('auth.serviceAccountExpired') });
         }
         user = serviceAccount;
         isServiceAccount = true;
       } else {
-        return res.status(404).send({ message: 'User Not found.' });
+        return res.status(404).send({ message: req.__('auth.userNotFound') });
       }
     }
 
     if (!isServiceAccount) {
       const passwordIsValid = bcrypt.compareSync(password, user.password);
       if (!passwordIsValid) {
-        return res.status(401).send({ accessToken: null, message: 'Invalid Password!' });
+        return res.status(401).send({ accessToken: null, message: req.__('auth.invalidPassword') });
       }
     }
 
@@ -223,6 +223,6 @@ exports.signin = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error in signin:', err);
-    return res.status(500).send({ message: 'Error during signin process' });
+    return res.status(500).send({ message: req.__('auth.signinError') });
   }
 };

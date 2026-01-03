@@ -83,14 +83,14 @@ const getUserOrgRole = async (req, res) => {
     // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found!' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     // Get user's role in this organization
     const membership = await UserOrg.findUserOrgRole(userId, organizationId);
     if (!membership) {
       return res.status(404).send({
-        message: 'User is not a member of this organization!',
+        message: req.__('organizations.userNotMember'),
       });
     }
 
@@ -116,7 +116,7 @@ const getUserOrgRole = async (req, res) => {
       userId: req.params.userId,
       organizationId: req.organizationId,
     });
-    return res.status(500).send({ message: 'Error fetching user role' });
+    return res.status(500).send({ message: req.__('organizations.getUserRoleError') });
   }
 };
 

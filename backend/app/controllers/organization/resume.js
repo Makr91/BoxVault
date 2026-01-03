@@ -52,16 +52,14 @@ exports.resumeOrganization = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found.' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     organization.suspended = false;
     await organization.save();
 
-    return res.status(200).send({ message: 'Organization resumed successfully!' });
+    return res.status(200).send({ message: req.__('organizations.resumed') });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while resuming the organization.' });
+    return res.status(500).send({ message: err.message || req.__('organizations.resumeError') });
   }
 };

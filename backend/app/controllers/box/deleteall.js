@@ -58,7 +58,7 @@ exports.deleteAll = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -68,7 +68,7 @@ exports.deleteAll = async (req, res) => {
 
     if (boxes.length === 0) {
       return res.status(404).send({
-        message: `No boxes found under organization ${organization}.`,
+        message: req.__('boxes.noBoxesFoundInOrg', { organization }),
       });
     }
 
@@ -90,14 +90,14 @@ exports.deleteAll = async (req, res) => {
       });
 
       return res.send({
-        message: `${deleted} Boxes were deleted successfully under organization=${organization}!`,
+        message: req.__('boxes.deletedAllInOrg', { count: deleted, organization }),
       });
     }
 
-    throw new Error('No boxes found to delete');
+    throw new Error(req.__('boxes.notFoundToDelete'));
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while removing all boxes.',
+      message: err.message || req.__('boxes.deleteAll.error'),
     });
   }
 };

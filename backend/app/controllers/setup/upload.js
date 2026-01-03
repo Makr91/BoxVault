@@ -77,7 +77,7 @@ exports.uploadSSL = [
       await uploadSSLFile(req, res);
       const { file } = req;
       if (!file) {
-        return res.status(400).send({ message: 'No file uploaded!' });
+        return res.status(400).send({ message: req.__('files.noFileUploaded') });
       }
 
       const filePath = path.join('/config/ssl', file.originalname);
@@ -93,7 +93,7 @@ exports.uploadSSL = [
       return res.status(200).send({ certPath, keyPath });
     } catch (error) {
       log.error.error('Error uploading SSL certificate:', error);
-      return res.status(500).send({ message: 'Failed to upload SSL certificate.' });
+      return res.status(500).send({ message: req.__('setup.sslUploadError') });
     }
   },
 ];

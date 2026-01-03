@@ -146,7 +146,7 @@ exports.create = async (req, res) => {
     if (!organizationData) {
       return res
         .status(404)
-        .send({ message: `Organization not found with name: ${organization}.` });
+        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
     }
 
     const box = await db.box.findOne({
@@ -155,7 +155,7 @@ exports.create = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -166,8 +166,7 @@ exports.create = async (req, res) => {
 
     if (!canCreate) {
       return res.status(403).send({
-        message:
-          'You can only create providers for boxes you own, or you need moderator/admin role.',
+        message: req.__('providers.create.permissionDenied'),
       });
     }
 
@@ -177,7 +176,7 @@ exports.create = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
       });
     }
 
@@ -196,7 +195,7 @@ exports.create = async (req, res) => {
     return res.send(provider);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while creating the Provider.',
+      message: err.message || req.__('providers.create.error'),
     });
   }
 };

@@ -87,7 +87,7 @@ exports.update = async (req, res) => {
 
     if (!org) {
       return res.status(404).send({
-        message: 'Organization not found.',
+        message: req.__('organizations.organizationNotFound'),
       });
     }
 
@@ -117,8 +117,7 @@ exports.update = async (req, res) => {
     if (org_code !== undefined && org_code !== null && org_code !== '') {
       if (!/^[0-9A-F]{6}$/.test(org_code)) {
         return res.status(400).send({
-          message:
-            'Invalid organization code. Must be exactly 6 hexadecimal characters (0-9, A-F).',
+          message: req.__('organizations.invalidOrgCode'),
         });
       }
 
@@ -129,7 +128,7 @@ exports.update = async (req, res) => {
         });
         if (existingOrg) {
           return res.status(400).send({
-            message: `Organization code ${org_code} is already in use.`,
+            message: req.__('organizations.orgCodeInUse', { org_code }),
           });
         }
       }
@@ -151,12 +150,12 @@ exports.update = async (req, res) => {
     });
 
     return res.status(200).send({
-      message: 'Organization updated successfully.',
+      message: req.__('organizations.updated'),
       organization: org,
     });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while updating the organization.',
+      message: err.message || req.__('organizations.updateError'),
     });
   }
 };

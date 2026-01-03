@@ -95,7 +95,7 @@ exports.getUserProfile = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).send({ message: 'User Not found.' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     const token = jwt.sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
@@ -117,6 +117,6 @@ exports.getUserProfile = async (req, res) => {
     });
   } catch (error) {
     log.error.error('Error retrieving user profile:', error);
-    return res.status(500).send({ message: 'Error retrieving user profile' });
+    return res.status(500).send({ message: req.__('users.profile.error') });
   }
 };

@@ -87,13 +87,15 @@ exports.update = async (req, res) => {
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${old_organization} not found.`,
+        message: req.__('organizations.organizationNotFoundWithName', {
+          organization: organizationName,
+        }),
       });
     }
 
     if (!new_organization) {
       return res.status(404).send({
-        message: `New Organization ${new_organization} not found.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -106,7 +108,7 @@ exports.update = async (req, res) => {
 
     if (!user) {
       return res.status(404).send({
-        message: `User ${userName} not found.`,
+        message: req.__('users.userNotFoundWithName', { username: userName }),
       });
     }
 
@@ -121,7 +123,7 @@ exports.update = async (req, res) => {
     return res.status(200).send(user);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while updating the user.',
+      message: err.message || req.__('users.update.error'),
     });
   }
 };

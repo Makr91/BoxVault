@@ -117,7 +117,7 @@ exports.update = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -127,7 +127,7 @@ exports.update = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -138,8 +138,7 @@ exports.update = async (req, res) => {
 
     if (!canUpdate) {
       return res.status(403).send({
-        message:
-          'You can only update architectures for boxes you own, or you need moderator/admin role.',
+        message: req.__('architectures.update.permissionDenied'),
       });
     }
 
@@ -149,7 +148,7 @@ exports.update = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
       });
     }
 
@@ -159,7 +158,11 @@ exports.update = async (req, res) => {
 
     if (!provider) {
       return res.status(404).send({
-        message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId}.`,
+        message: req.__('providers.providerNotFoundInVersion', {
+          providerName,
+          versionNumber,
+          boxId,
+        }),
       });
     }
 
@@ -188,10 +191,10 @@ exports.update = async (req, res) => {
       return res.send(updatedArchitecture);
     }
 
-    throw new Error('Architecture not found');
+    throw new Error(req.__('architectures.notFound'));
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while updating the Architecture.',
+      message: err.message || req.__('architectures.update.error'),
     });
   }
 };

@@ -47,6 +47,6 @@ exports.getConfig = (req, res) => {
     const data = loadConfig(configName);
     return res.send(data);
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

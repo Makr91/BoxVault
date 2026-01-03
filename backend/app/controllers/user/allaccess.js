@@ -51,18 +51,18 @@ exports.allAccess = (req, res) => {
       {
         title: req.__('about.components.backend.title'),
         details: [
-          'Built using Node.js and Express.js',
-          'Handles user authentication and authorization',
-          'Provides endpoints for uploading, storing, and retrieving Vagrant boxes',
-          'Uses MariaDB, SQLite, or Postgres for database operations via Sequelize ORM',
+          req.__('about.components.backend.details.nodejs'),
+          req.__('about.components.backend.details.auth'),
+          req.__('about.components.backend.details.endpoints'),
+          req.__('about.components.backend.details.database'),
         ],
       },
       {
         title: req.__('about.components.frontend.title'),
         details: [
-          'Created with React and React Hooks',
-          'Offers a user-friendly interface for interacting with the backend API',
-          'Allows users to register, login, upload boxes, view box listings, and manage their accounts',
+          req.__('about.components.frontend.details.react'),
+          req.__('about.components.frontend.details.interface'),
+          req.__('about.components.frontend.details.features'),
         ],
       },
     ],

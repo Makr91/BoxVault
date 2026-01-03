@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const { createTransporter, smtpConfig } = require('./helpers');
+const { t } = require('../../config/i18n');
 
 let appConfig;
 try {
@@ -11,7 +12,7 @@ try {
   log.error.error(`Failed to load app configuration: ${e.message}`);
 }
 
-const sendVerificationMail = async (user, verificationToken, expirationTime) => {
+const sendVerificationMail = async (user, verificationToken, expirationTime, locale = 'en') => {
   log.app.info('Attempting to send verification email...');
   log.app.info('SMTP Configuration:', JSON.stringify(smtpConfig, null, 2));
 
@@ -30,12 +31,12 @@ const sendVerificationMail = async (user, verificationToken, expirationTime) => 
     const mailOptions = {
       from: smtpConfig.smtp_settings.from.value,
       to: user.email,
-      subject: 'BoxVault Email Verification',
+      subject: t('mail.verificationSubject', locale),
       html: `
-        <h1>Welcome to BoxVault</h1>
-        <p>Please click the link below to verify your email:</p>
-        <a href="${verificationLink}">Verify Email</a>
-        <p>This verification link will expire on: ${expirationDate}</p>
+        <h1>${t('mail.verificationTitle', locale)}</h1>
+        <p>${t('mail.verificationBody', locale)}</p>
+        <a href="${verificationLink}">${t('mail.verificationButton', locale)}</a>
+        <p>${t('mail.verificationExpiry', locale, { expirationDate })}</p>
       `,
     };
     log.app.info('Mail options:', JSON.stringify(mailOptions, null, 2));

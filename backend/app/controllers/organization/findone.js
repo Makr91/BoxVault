@@ -74,7 +74,7 @@ exports.findOne = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch {
-      return res.status(401).send({ message: 'Unauthorized!' });
+      return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
   }
 
@@ -100,7 +100,9 @@ exports.findOne = async (req, res) => {
 
     if (!organization) {
       return res.status(404).send({
-        message: `Cannot find Organization with name=${organizationName}.`,
+        message: req.__('organizations.organizationNotFoundWithName', {
+          organization: organizationName,
+        }),
       });
     }
 
@@ -124,7 +126,7 @@ exports.findOne = async (req, res) => {
   } catch (err) {
     log.error.error('Error in findOne:', err);
     return res.status(500).send({
-      message: `Error retrieving Organization with name=${organizationName}`,
+      message: req.__('organizations.findOneError', { organization: organizationName }),
     });
   }
 };

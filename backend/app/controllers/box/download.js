@@ -101,7 +101,7 @@ exports.downloadBox = async (req, res) => {
     if (!organizationData) {
       return res
         .status(404)
-        .send({ message: `Organization not found with name: ${organization}.` });
+        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
     }
 
     const box = await Box.findOne({
@@ -109,7 +109,7 @@ exports.downloadBox = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({ message: `Box not found with name: ${name}.` });
+      return res.status(404).send({ message: req.__('boxes.boxNotFoundWithName', { name }) });
     }
 
     // Function to handle the download redirect
@@ -133,13 +133,13 @@ exports.downloadBox = async (req, res) => {
 
     // Check if we have a user ID (either from vagrantHandler or x-access-token)
     if (!req.userId) {
-      return res.status(403).send({ message: 'Unauthorized access to private box.' });
+      return res.status(403).send({ message: req.__('boxes.unauthorized') });
     }
 
     // Check if user is member of the organization
     const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to private box.' });
+      return res.status(403).send({ message: req.__('boxes.unauthorized') });
     }
 
     // User is member of organization, allow download
@@ -147,7 +147,7 @@ exports.downloadBox = async (req, res) => {
   } catch (err) {
     log.error.error('Error in downloadBox:', err);
     return res.status(500).send({
-      message: 'Error processing download request',
+      message: req.__('boxes.download.error'),
       error: err.message,
     });
   }

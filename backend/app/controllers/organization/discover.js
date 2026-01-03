@@ -92,7 +92,7 @@ const discoverOrganizations = async (req, res) => {
       error: err.message,
       stack: err.stack,
     });
-    return res.status(500).send({ message: 'Error fetching discoverable organizations' });
+    return res.status(500).send({ message: req.__('organizations.discoverError') });
   }
 };
 

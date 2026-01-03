@@ -42,12 +42,12 @@ exports.verifySetupToken = (req, res) => {
   const setupTokenPath = getSetupTokenPath();
 
   if (!fs.existsSync(setupTokenPath)) {
-    return res.status(403).send('Setup is not allowed');
+    return res.status(403).send(req.__('setup.notAllowed'));
   }
 
   const storedToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
   if (token !== storedToken) {
-    return res.status(403).send('Invalid setup token');
+    return res.status(403).send(req.__('setup.invalidToken'));
   }
 
   // Generate an authorized token (for simplicity, we'll use the same token)

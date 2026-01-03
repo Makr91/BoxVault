@@ -21,5 +21,5 @@ const { log } = require('../../utils/Logger');
  */
 exports.adminBoard = (req, res) => {
   log.app.debug('Admin board accessed', { method: req.method });
-  res.status(200).send('Admin Board.');
+  res.status(200).send(req.__('users.adminBoard'));
 };

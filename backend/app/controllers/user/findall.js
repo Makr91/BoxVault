@@ -51,14 +51,16 @@ exports.findAll = async (req, res) => {
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${organizationName} not found.`,
+        message: req.__('organizations.organizationNotFoundWithName', {
+          organization: organizationName,
+        }),
       });
     }
 
     return res.send(organization.members);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving users.',
+      message: err.message || req.__('users.findAll.error'),
     });
   }
 };

@@ -99,21 +99,21 @@ const updateUserOrgRole = async (req, res) => {
     const validRoles = ['user', 'moderator', 'admin'];
     if (!validRoles.includes(role)) {
       return res.status(400).send({
-        message: 'Invalid role. Must be user, moderator, or admin.',
+        message: req.__('organizations.invalidRole'),
       });
     }
 
     // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found!' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     // Find user's membership in this organization
     const membership = await UserOrg.findUserOrgRole(userId, organizationId);
     if (!membership) {
       return res.status(404).send({
-        message: 'User is not a member of this organization!',
+        message: req.__('organizations.userNotMember'),
       });
     }
 
@@ -129,7 +129,7 @@ const updateUserOrgRole = async (req, res) => {
     });
 
     return res.send({
-      message: `User role updated to ${role}`,
+      message: req.__('organizations.userRoleUpdated', { role }),
       userId: user.id,
       username: user.username,
       newRole: role,
@@ -141,7 +141,7 @@ const updateUserOrgRole = async (req, res) => {
       organizationId: req.organizationId,
       requestedRole: req.body.role,
     });
-    return res.status(500).send({ message: 'Error updating user role' });
+    return res.status(500).send({ message: req.__('organizations.updateUserRoleError') });
   }
 };
 

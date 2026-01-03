@@ -43,8 +43,8 @@ exports.getGravatarConfig = (req, res) => {
     if (data && data.gravatar) {
       return res.send({ gravatar: data.gravatar });
     }
-    return res.status(404).send({ message: 'Gravatar configuration not found.' });
+    return res.status(404).send({ message: req.__('config.gravatarNotFound') });
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

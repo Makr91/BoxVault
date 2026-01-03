@@ -95,7 +95,7 @@ const updateAccessMode = async (req, res) => {
     const validAccessModes = ['private', 'invite_only', 'request_to_join'];
     if (!validAccessModes.includes(accessMode)) {
       return res.status(400).send({
-        message: 'Invalid access mode. Must be private, invite_only, or request_to_join.',
+        message: req.__('organizations.invalidAccessMode'),
       });
     }
 
@@ -103,14 +103,14 @@ const updateAccessMode = async (req, res) => {
     const validRoles = ['user', 'moderator'];
     if (defaultRole && !validRoles.includes(defaultRole)) {
       return res.status(400).send({
-        message: 'Invalid default role. Must be user or moderator.',
+        message: req.__('organizations.invalidDefaultRole'),
       });
     }
 
     // Find the organization
     const organization = await Organization.findOne({ where: { name: organizationName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     // Update access mode
@@ -129,7 +129,7 @@ const updateAccessMode = async (req, res) => {
     });
 
     return res.send({
-      message: 'Organization access mode updated successfully!',
+      message: req.__('organizations.accessModeUpdated'),
       accessMode,
       defaultRole: defaultRole || organization.default_role,
     });
@@ -138,7 +138,7 @@ const updateAccessMode = async (req, res) => {
       error: err.message,
       organizationName: req.params.organizationName,
     });
-    return res.status(500).send({ message: 'Error updating organization access mode' });
+    return res.status(500).send({ message: req.__('organizations.updateAccessModeError') });
   }
 };
 

@@ -78,7 +78,7 @@ exports.getActiveInvitations = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found.' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     const activeInvitations = await Invitation.findAll({
@@ -93,7 +93,7 @@ exports.getActiveInvitations = async (req, res) => {
   } catch (err) {
     log.error.error('Error in getActiveInvitations:', err);
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving active invitations.',
+      message: err.message || req.__('invitations.get.error'),
     });
   }
 };

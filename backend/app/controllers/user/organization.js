@@ -21,5 +21,5 @@ const { log } = require('../../utils/Logger');
  */
 exports.organization = (req, res) => {
   log.app.debug('Organization endpoint accessed', { method: req.method });
-  res.status(200).send('Organization Content.');
+  res.status(200).send(req.__('users.organizationContent'));
 };

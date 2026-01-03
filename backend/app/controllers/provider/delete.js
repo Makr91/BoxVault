@@ -195,8 +195,7 @@ exports.delete = async (req, res) => {
 
     if (!canDelete) {
       return res.status(403).send({
-        message:
-          'You can only delete providers for boxes you own, or you need moderator/admin role.',
+        message: req.__('providers.delete.permissionDenied'),
       });
     }
 

@@ -88,7 +88,7 @@ exports.update = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -98,7 +98,7 @@ exports.update = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box not found with name: ${name} in organization=${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId: name, organization }),
       });
     }
 
@@ -109,7 +109,7 @@ exports.update = async (req, res) => {
 
     if (!canUpdate) {
       return res.status(403).send({
-        message: 'You can only update boxes you own, or you need moderator/admin role.',
+        message: req.__('boxes.update.permissionDenied'),
       });
     }
 
@@ -143,7 +143,7 @@ exports.update = async (req, res) => {
     return res.send(updatedBox);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while updating the Box.',
+      message: err.message || req.__('boxes.update.error'),
     });
   }
 };

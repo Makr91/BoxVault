@@ -86,10 +86,10 @@ exports.updateConfigs = [
       const setupTokenPath = getSetupTokenPath();
       fs.unlinkSync(setupTokenPath);
 
-      return res.send('Configuration updated successfully');
+      return res.send(req.__('config.updated'));
     } catch (error) {
       log.error.error('Error updating configuration:', error);
-      return res.status(500).send('Failed to update configuration');
+      return res.status(500).send(req.__('config.updateError'));
     }
   },
 ];

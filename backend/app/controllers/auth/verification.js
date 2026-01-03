@@ -77,6 +77,6 @@ exports.verifyMail = async (req, res) => {
       expirationTime: user.verificationTokenExpires,
     });
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

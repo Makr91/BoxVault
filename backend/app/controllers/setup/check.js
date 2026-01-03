@@ -41,6 +41,6 @@ exports.isSetupComplete = async (req, res) => {
     return res.send({ setupComplete: isConfigured });
   } catch (error) {
     log.error.error('Error checking setup status:', error);
-    return res.status(500).send('Failed to check setup status');
+    return res.status(500).send(req.__('setup.checkError'));
   }
 };

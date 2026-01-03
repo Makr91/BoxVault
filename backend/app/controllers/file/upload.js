@@ -249,7 +249,7 @@ const upload = async (req, res) => {
       log.app.error('Organization not found', { organization });
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -261,7 +261,7 @@ const upload = async (req, res) => {
       log.app.error('Box not found', { boxId, organization });
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -274,7 +274,7 @@ const upload = async (req, res) => {
       log.app.error('Permission denied', { userId: req.userId, boxUserId: box.userId });
       return res.status(403).json({
         error: 'PERMISSION_DENIED',
-        message: 'You can only upload files for boxes you own, or you need moderator/admin role.',
+        message: req.__('files.upload.permissionDenied'),
       });
     }
 
@@ -286,7 +286,7 @@ const upload = async (req, res) => {
       log.app.error('Version not found', { versionNumber, boxId });
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Version ${versionNumber} not found.`,
+        message: req.__('versions.versionNotFound'),
       });
     }
 
@@ -298,7 +298,7 @@ const upload = async (req, res) => {
       log.app.error('Provider not found', { providerName, versionNumber });
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Provider ${providerName} not found.`,
+        message: req.__('providers.providerNotFound'),
       });
     }
 
@@ -316,7 +316,7 @@ const upload = async (req, res) => {
       });
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`,
+        message: req.__('architectures.notFound'),
       });
     }
 
@@ -348,7 +348,7 @@ const upload = async (req, res) => {
     // Handle specific error types
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).send({
-        message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
+        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
         error: 'FILE_TOO_LARGE',
       });
     }
@@ -356,7 +356,7 @@ const upload = async (req, res) => {
     if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
       const uploadDuration = (Date.now() - uploadStartTime) / 1000;
       return res.status(408).send({
-        message: 'Upload timed out - Request took too long to complete',
+        message: req.__('files.uploadTimeout'),
         error: 'UPLOAD_TIMEOUT',
         details: {
           duration: `${uploadDuration} seconds`,
@@ -368,15 +368,15 @@ const upload = async (req, res) => {
     // Handle disk space errors
     if (err.code === 'ENOSPC') {
       return res.status(507).send({
-        message: 'Not enough storage space available',
+        message: req.__('files.noStorageSpace'),
         error: 'NO_STORAGE_SPACE',
       });
     }
 
     // Generic error response with more details
     return res.status(500).json({
-      error: 'UPLOAD_ERROR',
-      message: 'Could not upload the file',
+      error: req.__('files.upload.error'),
+      message: req.__('files.upload.error'),
       details: {
         error: err.message,
         code: err.code || 'UNKNOWN_ERROR',

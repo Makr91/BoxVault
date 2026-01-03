@@ -92,10 +92,15 @@ exports.resendVerificationMail = async (req, res) => {
     user.verificationTokenExpires = Date.now() + verificationExpiryHours * 60 * 60 * 1000;
 
     await user.save();
-    await sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires);
+    await sendVerificationMail(
+      user,
+      user.verificationToken,
+      user.verificationTokenExpires,
+      req.getLocale()
+    );
     return res.send({ message: req.__('auth.verificationEmailResent') });
   } catch (err) {
     log.error.error('Error in resendVerificationMail:', err);
-    return res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: req.__('mail.errorSendingEmail') });
   }
 };

@@ -180,7 +180,7 @@ exports.findOne = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch {
-      return res.status(401).send({ message: 'Unauthorized!' });
+      return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
   }
 
@@ -191,7 +191,7 @@ exports.findOne = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -202,7 +202,7 @@ exports.findOne = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -212,7 +212,7 @@ exports.findOne = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version not found for box ${boxId} in organization ${organization}.`,
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
       });
     }
 
@@ -223,7 +223,11 @@ exports.findOne = async (req, res) => {
       });
       if (!provider) {
         return res.status(404).send({
-          message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId} in organization ${organization}.`,
+          message: req.__('providers.providerNotFoundInVersion', {
+            providerName,
+            versionNumber,
+            boxId,
+          }),
         });
       }
       return res.send(provider);
@@ -231,12 +235,12 @@ exports.findOne = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: 'Unauthorized access to provider.' });
+      return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
     const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to provider.' });
+      return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
     // User is member, allow access
@@ -245,13 +249,15 @@ exports.findOne = async (req, res) => {
     });
     if (!provider) {
       return res.status(404).send({
-        message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId} in organization ${organization}.`,
+        message: req.__('providers.providerNotFoundInVersion', {
+          providerName,
+          versionNumber,
+          boxId,
+        }),
       });
     }
     return res.send(provider);
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while retrieving the Provider.' });
+    return res.status(500).send({ message: err.message || req.__('providers.findOne.error') });
   }
 };

@@ -53,7 +53,11 @@ exports.isOnlyUserInOrg = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({ message: `Organization ${organizationName} not found.` });
+      return res.status(404).send({
+        message: req.__('organizations.organizationNotFoundWithName', {
+          organization: organizationName,
+        }),
+      });
     }
 
     const users = await User.findAll({
@@ -66,7 +70,7 @@ exports.isOnlyUserInOrg = async (req, res) => {
     return res.status(200).send({ isOnlyUser: false });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while checking the organization users.',
+      message: err.message || req.__('users.checkOrgUsers.error'),
     });
   }
 };

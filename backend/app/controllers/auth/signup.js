@@ -92,13 +92,13 @@ exports.signup = async (req, res) => {
       invitation = await Invitation.findOne({ where: { token: invitationToken } });
 
       if (!invitation) {
-        return res.status(400).send({ message: 'Invalid invitation token.' });
+        return res.status(400).send({ message: req.__('auth.invalidInvitationToken') });
       }
 
       if (invitation.expires < Date.now()) {
         // Set the expired flag to true
         await invitation.update({ expired: true });
-        return res.status(400).send({ message: 'Invitation token has expired.' });
+        return res.status(400).send({ message: req.__('auth.invitationTokenExpired') });
       }
 
       organization = await Organization.findByPk(invitation.organizationId);
@@ -112,7 +112,7 @@ exports.signup = async (req, res) => {
     }
 
     if (!organization) {
-      return res.status(400).send({ message: 'Organization not found.' });
+      return res.status(400).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     // Check for duplicate username or email
@@ -123,7 +123,7 @@ exports.signup = async (req, res) => {
     });
 
     if (duplicateUser) {
-      return res.status(400).send({ message: 'Username or email already in use.' });
+      return res.status(400).send({ message: req.__('auth.usernameOrEmailInUse') });
     }
 
     const emailHash = generateEmailHash(email);
@@ -171,7 +171,12 @@ exports.signup = async (req, res) => {
 
     // Send verification email asynchronously
     mailController
-      .sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires)
+      .sendVerificationMail(
+        user,
+        user.verificationToken,
+        user.verificationTokenExpires,
+        req.getLocale()
+      )
       .then(() => {
         log.app.info(`Verification email sent successfully to ${user.email}`);
       })
@@ -180,13 +185,12 @@ exports.signup = async (req, res) => {
       });
 
     return res.status(201).send({
-      message:
-        'User registered successfully! If configured, a verification email will be sent to your email address.',
+      message: req.__('auth.userRegistered'),
     });
   } catch (err) {
     log.error.error('Error during signup:', err);
     return res.status(500).send({
-      message: err.message || 'Some error occurred while signing up the user.',
+      message: err.message || req.__('auth.signupError'),
     });
   }
 };

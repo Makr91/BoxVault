@@ -171,7 +171,7 @@ exports.findAllByVersion = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch {
-      return res.status(401).send({ message: 'Unauthorized!' });
+      return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
   }
 
@@ -182,7 +182,7 @@ exports.findAllByVersion = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -193,7 +193,7 @@ exports.findAllByVersion = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -203,7 +203,7 @@ exports.findAllByVersion = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
       });
     }
 
@@ -215,20 +215,18 @@ exports.findAllByVersion = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: 'Unauthorized access to providers.' });
+      return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
     const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to providers.' });
+      return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
     // User is member, allow access
     const providers = await Provider.findAll({ where: { versionId: version.id } });
     return res.send(providers);
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while retrieving providers.' });
+    return res.status(500).send({ message: err.message || req.__('providers.findAll.error') });
   }
 };

@@ -59,9 +59,9 @@ exports.updateUser = (req, res) => {
 
   User.update({ email, emailHash }, { where: { id: userId } })
     .then(() => {
-      res.send({ message: 'User updated successfully!' });
+      res.send({ message: req.__('users.updated') });
     })
     .catch(err => {
-      res.status(500).send({ message: err.message });
+      res.status(500).send({ message: req.__('users.update.error') });
     });
 };

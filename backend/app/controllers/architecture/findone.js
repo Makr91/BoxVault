@@ -98,7 +98,7 @@ exports.findOne = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -124,21 +124,25 @@ exports.findOne = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found.`,
+        message: req.__('boxes.boxNotFound', { boxId }),
       });
     }
 
     const version = box.versions.find(v => v.versionNumber === versionNumber);
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId}.`,
+        message: req.__('versions.versionNotFoundForBox', { versionNumber, boxId }),
       });
     }
 
     const provider = version.providers.find(p => p.name === providerName);
     if (!provider) {
       return res.status(404).send({
-        message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId}.`,
+        message: req.__('providers.providerNotFoundInVersion', {
+          providerName,
+          versionNumber,
+          boxId,
+        }),
       });
     }
 
@@ -154,7 +158,7 @@ exports.findOne = async (req, res) => {
     // If the box is private and it's not a service account, check if the user is member of the organization
     const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to architecture.' });
+      return res.status(403).send({ message: req.__('architectures.unauthorized') });
     }
 
     // If the user belongs to the organization, allow access
@@ -163,8 +167,6 @@ exports.findOne = async (req, res) => {
     });
     return res.send(architecture);
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while retrieving the Architecture.' });
+    return res.status(500).send({ message: err.message || req.__('architectures.findOne.error') });
   }
 };

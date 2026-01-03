@@ -69,7 +69,7 @@ exports.findAll = async (req, res) => {
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch {
-      return res.status(401).send({ message: 'Unauthorized!' });
+      return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
   }
 
@@ -89,7 +89,7 @@ exports.findAll = async (req, res) => {
     return res.status(200).send(result);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving organizations.',
+      message: err.message || req.__('organizations.findAllError'),
     });
   }
 };

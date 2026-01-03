@@ -57,7 +57,7 @@ exports.delete = async (req, res) => {
 
     if (!organization) {
       return res.status(404).send({
-        message: 'Organization not found.',
+        message: req.__('organizations.organizationNotFound'),
       });
     }
 
@@ -71,11 +71,11 @@ exports.delete = async (req, res) => {
     }
 
     return res.status(200).send({
-      message: 'Organization and its files deleted successfully.',
+      message: req.__('organizations.deleted'),
     });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while deleting the organization.',
+      message: err.message || req.__('organizations.deleteError'),
     });
   }
 };

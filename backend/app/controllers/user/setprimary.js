@@ -74,14 +74,14 @@ const setPrimaryOrganization = async (req, res) => {
     // Find the organization
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     // Verify user is a member of this organization
     const membership = await UserOrg.findUserOrgRole(userId, organization.id);
     if (!membership) {
       return res.status(400).send({
-        message: 'You are not a member of this organization!',
+        message: req.__('organizations.userNotMember'),
       });
     }
 
@@ -98,7 +98,7 @@ const setPrimaryOrganization = async (req, res) => {
     });
 
     return res.send({
-      message: `Primary organization set to ${orgName}`,
+      message: req.__('users.primaryOrgSet', { orgName }),
       primaryOrganization: {
         id: organization.id,
         name: organization.name,
@@ -111,7 +111,7 @@ const setPrimaryOrganization = async (req, res) => {
       userId: req.userId,
       organization: req.params.orgName,
     });
-    return res.status(500).send({ message: 'Error setting primary organization' });
+    return res.status(500).send({ message: req.__('users.setPrimaryOrgError') });
   }
 };
 

@@ -106,7 +106,7 @@ exports.delete = async (req, res) => {
 
     if (!canDelete) {
       return res.status(403).send({
-        message: 'You can only delete versions of boxes you own, or you need moderator/admin role.',
+        message: req.__('versions.delete.permissionDenied'),
       });
     }
 

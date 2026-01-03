@@ -60,8 +60,8 @@ exports.testSmtp = async (req, res) => {
     const info = await transporter.sendMail({
       from: smtpConfig.smtp_settings.from.value,
       to: req.body.testEmail,
-      subject: 'SMTP Test Email',
-      text: 'This is a test email to verify SMTP configuration.',
+      subject: req.__('mail.testEmailSubject'),
+      text: req.__('mail.testEmailBody'),
     });
 
     log.app.info('Test email sent successfully:', info.messageId);

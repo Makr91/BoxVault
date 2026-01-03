@@ -39,8 +39,8 @@ exports.getTicketConfig = (req, res) => {
     if (data && data.ticket_system) {
       return res.send({ ticket_system: data.ticket_system });
     }
-    return res.status(404).send({ message: 'Ticket system not configured.' });
+    return res.status(404).send({ message: req.__('config.ticketSystemNotConfigured') });
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

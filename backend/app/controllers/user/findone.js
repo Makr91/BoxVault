@@ -56,7 +56,9 @@ exports.findOne = async (req, res) => {
 
     if (!organization) {
       return res.status(404).send({
-        message: `Organization ${organizationName} not found.`,
+        message: req.__('organizations.organizationNotFoundWithName', {
+          organization: organizationName,
+        }),
       });
     }
 
@@ -69,14 +71,14 @@ exports.findOne = async (req, res) => {
 
     if (!user) {
       return res.status(404).send({
-        message: `User ${userName} not found.`,
+        message: req.__('users.userNotFoundWithName', { username: userName }),
       });
     }
 
     return res.status(200).send(user);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving the user.',
+      message: err.message || req.__('users.findOne.error'),
     });
   }
 };

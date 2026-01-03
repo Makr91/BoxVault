@@ -65,9 +65,7 @@ exports.refreshToken = async (req, res) => {
 
     // Check if either the current token or the request wants stayLoggedIn
     if (!user.stayLoggedIn && !stayLoggedIn) {
-      return res
-        .status(403)
-        .send({ message: 'Token refresh only allowed for stay-logged-in sessions' });
+      return res.status(403).send({ message: req.__('auth.tokenRefreshNotAllowed') });
     }
 
     // Get user's organizations for multi-org JWT
@@ -117,6 +115,6 @@ exports.refreshToken = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error in refreshToken:', err);
-    return res.status(500).send({ message: 'Error refreshing token' });
+    return res.status(500).send({ message: req.__('auth.tokenRefreshError') });
   }
 };

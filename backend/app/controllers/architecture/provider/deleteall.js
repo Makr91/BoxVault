@@ -78,7 +78,7 @@ exports.deleteAllByProvider = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -88,7 +88,7 @@ exports.deleteAllByProvider = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -99,8 +99,7 @@ exports.deleteAllByProvider = async (req, res) => {
 
     if (!canDelete) {
       return res.status(403).send({
-        message:
-          'You can only delete architectures for boxes you own, or you need moderator/admin role.',
+        message: req.__('architectures.delete.permissionDenied'),
       });
     }
 
@@ -110,7 +109,7 @@ exports.deleteAllByProvider = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
       });
     }
 
@@ -120,7 +119,11 @@ exports.deleteAllByProvider = async (req, res) => {
 
     if (!provider) {
       return res.status(404).send({
-        message: `Provider ${providerName} not found for version ${versionNumber} in box ${boxId}.`,
+        message: req.__('providers.providerNotFoundInVersion', {
+          providerName,
+          versionNumber,
+          boxId,
+        }),
       });
     }
 
@@ -129,15 +132,15 @@ exports.deleteAllByProvider = async (req, res) => {
     });
 
     if (deleted) {
-      return res.send({ message: 'All architectures deleted successfully!' });
+      return res.send({ message: req.__('architectures.deletedAll') });
     }
 
     return res.status(404).send({
-      message: 'No architectures found to delete.',
+      message: req.__('architectures.notFoundToDelete'),
     });
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while deleting the architectures.',
+      message: err.message || req.__('architectures.delete.error'),
     });
   }
 };

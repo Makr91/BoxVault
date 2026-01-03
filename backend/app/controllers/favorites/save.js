@@ -41,7 +41,7 @@ exports.saveFavorites = async (req, res) => {
 
     if (!oidcAccessToken) {
       return res.status(401).json({
-        message: 'OIDC authentication required to manage favorites',
+        message: req.__('favorites.oidcRequired'),
       });
     }
 
@@ -60,7 +60,7 @@ exports.saveFavorites = async (req, res) => {
       },
     });
 
-    return res.status(200).json({ message: 'Favorites saved successfully' });
+    return res.status(200).json({ message: req.__('favorites.saved') });
   } catch (error) {
     log.error.error('Error saving favorites to auth server:', {
       error: error.message,
@@ -69,7 +69,7 @@ exports.saveFavorites = async (req, res) => {
     });
 
     return res.status(500).json({
-      message: error.response?.data?.message || 'Failed to save favorites',
+      message: error.response?.data?.message || req.__('favorites.saveError'),
     });
   }
 };

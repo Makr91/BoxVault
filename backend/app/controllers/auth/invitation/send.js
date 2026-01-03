@@ -83,7 +83,7 @@ exports.sendInvitation = async (req, res) => {
     const organization = await Organization.findOne({ where: { name: organizationName } });
 
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found.' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     // Validate invited role - only user and moderator allowed, never admin
@@ -91,7 +91,7 @@ exports.sendInvitation = async (req, res) => {
     const role = inviteRole || 'user';
     if (!validRoles.includes(role)) {
       return res.status(400).send({
-        message: 'Invalid role. Invitations can only assign user or moderator roles.',
+        message: req.__('invitations.invalidRole'),
       });
     }
 
@@ -113,19 +113,18 @@ exports.sendInvitation = async (req, res) => {
       email,
       invitationToken,
       organizationName,
-      invitationTokenExpires
+      invitationTokenExpires,
+      req.getLocale()
     );
 
     return res.status(200).send({
-      message: 'Invitation sent successfully!',
+      message: req.__('invitations.sent'),
       invitationToken,
       invitationTokenExpires,
       organizationId: organization.id,
       invitationLink,
     });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while sending the invitation.' });
+    return res.status(500).send({ message: err.message || req.__('invitations.send.error') });
   }
 };

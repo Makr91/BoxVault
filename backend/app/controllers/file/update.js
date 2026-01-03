@@ -206,7 +206,7 @@ const update = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -216,7 +216,7 @@ const update = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -227,7 +227,7 @@ const update = async (req, res) => {
 
     if (!canUpdate) {
       return res.status(403).send({
-        message: 'You can only update files for boxes you own, or you need moderator/admin role.',
+        message: req.__('files.update.permissionDenied'),
       });
     }
 
@@ -237,7 +237,7 @@ const update = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: `Version ${versionNumber} not found.`,
+        message: req.__('versions.versionNotFound'),
       });
     }
 
@@ -247,7 +247,7 @@ const update = async (req, res) => {
 
     if (!provider) {
       return res.status(404).send({
-        message: `Provider ${providerName} not found.`,
+        message: req.__('providers.providerNotFound'),
       });
     }
 
@@ -257,7 +257,7 @@ const update = async (req, res) => {
 
     if (!architecture) {
       return res.status(404).send({
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`,
+        message: req.__('architectures.notFound'),
       });
     }
 
@@ -270,7 +270,7 @@ const update = async (req, res) => {
 
     if (!fileRecord) {
       return res.status(404).send({
-        message: 'File not found. Please upload the file first.',
+        message: req.__('files.notFoundUploadFirst'),
       });
     }
 
@@ -280,7 +280,7 @@ const update = async (req, res) => {
         if (err) {
           reject(err);
         } else if (!req.file) {
-          reject(new Error('No file uploaded'));
+          reject(new Error(req.__('files.noFileUploaded')));
         } else {
           resolve(req.file);
         }
@@ -330,7 +330,7 @@ const update = async (req, res) => {
     });
 
     return res.status(200).send({
-      message: 'Updated the file successfully',
+      message: req.__('files.updated'),
       fileName,
       fileSize: req.file.size,
       path: req.file.path,
@@ -341,7 +341,7 @@ const update = async (req, res) => {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({
         error: 'FILE_TOO_LARGE',
-        message: `File size cannot be larger than ${appConfig.boxvault.box_max_file_size.value}GB!`,
+        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
         details: {
           maxSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
           duration: (Date.now() - uploadStartTime) / 1000,
@@ -353,7 +353,7 @@ const update = async (req, res) => {
       const uploadDuration = (Date.now() - uploadStartTime) / 1000;
       return res.status(408).json({
         error: 'UPLOAD_TIMEOUT',
-        message: 'Upload timed out - Request took too long to complete',
+        message: req.__('files.uploadTimeout'),
         details: {
           duration: uploadDuration,
           maxFileSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
@@ -365,7 +365,7 @@ const update = async (req, res) => {
     if (err.code === 'ENOSPC') {
       return res.status(507).json({
         error: 'NO_STORAGE_SPACE',
-        message: 'Not enough storage space available',
+        message: req.__('files.noStorageSpace'),
         details: {
           duration: (Date.now() - uploadStartTime) / 1000,
         },
@@ -373,7 +373,7 @@ const update = async (req, res) => {
     }
 
     return res.status(500).send({
-      message: `Could not update the file: ${req.file ? req.file.originalname : ''}`,
+      message: req.__('files.update.error', { file: req.file ? req.file.originalname : '' }),
       error: err.message,
       code: err.code || 'UNKNOWN_ERROR',
       details: {

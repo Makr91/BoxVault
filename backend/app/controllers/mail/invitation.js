@@ -2,6 +2,7 @@
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const { createTransporter, smtpConfig } = require('./helpers');
+const { t } = require('../../config/i18n');
 
 let appConfig;
 try {
@@ -10,7 +11,13 @@ try {
   log.error.error(`Failed to load app configuration: ${e.message}`);
 }
 
-const sendInvitationMail = async (email, token, organizationName, expirationTime) => {
+const sendInvitationMail = async (
+  email,
+  token,
+  organizationName,
+  expirationTime,
+  locale = 'en'
+) => {
   try {
     const transporter = createTransporter();
 
@@ -21,12 +28,12 @@ const sendInvitationMail = async (email, token, organizationName, expirationTime
     const mailOptions = {
       from: smtpConfig.smtp_settings.from.value,
       to: email,
-      subject: `BoxVault Organization Invitation for ${organizationName}`,
+      subject: t('mail.invitationSubject', locale, { organizationName }),
       html: `
-        <h1>Invitation to Join BoxVault Organization: ${organizationName}</h1>
-        <p>Please click the link below to join the organization:</p>
-        <a href="${invitationLink}">Join Organization</a>
-        <p>This invitation link will expire on: ${expirationDate}</p>
+        <h1>${t('mail.invitationTitle', locale, { organizationName })}</h1>
+        <p>${t('mail.invitationBody', locale)}</p>
+        <a href="${invitationLink}">${t('mail.invitationButton', locale)}</a>
+        <p>${t('mail.invitationExpiry', locale, { expirationDate })}</p>
       `,
     };
 

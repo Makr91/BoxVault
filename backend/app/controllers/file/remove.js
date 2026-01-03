@@ -92,7 +92,7 @@ const remove = async (req, res) => {
     if (!organizationData) {
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -103,7 +103,7 @@ const remove = async (req, res) => {
     if (!box) {
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -115,7 +115,7 @@ const remove = async (req, res) => {
     if (!canDelete) {
       return res.status(403).json({
         error: 'PERMISSION_DENIED',
-        message: 'You can only delete files for boxes you own, or you need moderator/admin role.',
+        message: req.__('files.delete.permissionDenied'),
       });
     }
 
@@ -126,7 +126,7 @@ const remove = async (req, res) => {
     if (!version) {
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Version ${versionNumber} not found.`,
+        message: req.__('versions.versionNotFound'),
       });
     }
 
@@ -137,7 +137,7 @@ const remove = async (req, res) => {
     if (!provider) {
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Provider ${providerName} not found.`,
+        message: req.__('providers.providerNotFound'),
       });
     }
 
@@ -148,7 +148,7 @@ const remove = async (req, res) => {
     if (!architecture) {
       return res.status(404).json({
         error: 'NOT_FOUND',
-        message: `Architecture not found for provider ${providerName} in version ${versionNumber} of box ${boxId}.`,
+        message: req.__('architectures.notFound'),
       });
     }
 
@@ -175,19 +175,17 @@ const remove = async (req, res) => {
       safeRm(basefilePath, { recursive: true, force: true });
 
       return res.status(200).send({
-        message:
-          'File and database record are deleted, or file was not found but cleanup attempted.',
+        message: req.__('files.deleted'),
       });
     } catch (dbErr) {
       log.app.info(`Could not delete the database record: ${dbErr}`);
       return res.status(200).send({
-        message:
-          'File deletion attempted, but encountered issues with database or directory cleanup.',
+        message: req.__('files.delete.partialError'),
       });
     }
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while deleting the file.',
+      message: err.message || req.__('files.delete.error'),
     });
   }
 };

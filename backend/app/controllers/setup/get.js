@@ -54,7 +54,7 @@ exports.getConfigs = [
       });
     } catch (error) {
       log.error.error('Error reading configurations:', error);
-      return res.status(500).send('Failed to read configurations');
+      return res.status(500).send(req.__('setup.readError'));
     }
   },
 ];

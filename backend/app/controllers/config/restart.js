@@ -56,7 +56,7 @@ exports.restartServer = (req, res) => {
   log.app.info('Initiating server restart via process exit...');
 
   // Send response immediately before process exits
-  res.status(200).json({ message: 'Server restart initiated' });
+  res.status(200).json({ message: req.__('config.restartInitiated') });
 
   // Close the response to ensure it's sent
   res.end();

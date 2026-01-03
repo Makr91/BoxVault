@@ -63,7 +63,7 @@ const getPrimaryOrganization = async (req, res) => {
 
     if (!primaryOrg) {
       return res.status(404).send({
-        message: 'No primary organization found. Please contact support.',
+        message: req.__('users.noPrimaryOrg'),
       });
     }
 
@@ -86,7 +86,7 @@ const getPrimaryOrganization = async (req, res) => {
       error: err.message,
       userId: req.userId,
     });
-    return res.status(500).send({ message: 'Error fetching primary organization' });
+    return res.status(500).send({ message: req.__('users.fetchPrimaryOrgError') });
   }
 };
 

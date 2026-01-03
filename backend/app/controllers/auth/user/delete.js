@@ -49,14 +49,14 @@ exports.deleteUser = (req, res) => {
   })
     .then(num => {
       if (num === 1) {
-        res.send({ message: 'User was deleted successfully!' });
+        res.send({ message: req.__('users.deleted') });
       } else {
-        res.send({ message: `Cannot delete User with id=${userId}. Maybe User was not found!` });
+        res.send({ message: req.__('users.cannotDelete', { userId }) });
       }
     })
     .catch(() => {
       res.status(500).send({
-        message: `Could not delete User with id=${userId}`,
+        message: req.__('users.delete.error', { userId }),
       });
     });
 };

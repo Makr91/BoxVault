@@ -71,7 +71,7 @@ exports.create = async (req, res) => {
     if (!organizationData) {
       return res
         .status(404)
-        .send({ message: `Organization not found with name: ${organization}.` });
+        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
     }
 
     const box = await Box.findOne({
@@ -79,7 +79,9 @@ exports.create = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({ message: `Box not found with name: ${boxId}.` });
+      return res
+        .status(404)
+        .send({ message: req.__('boxes.boxNotFoundWithName', { name: boxId }) });
     }
 
     // Check if user owns the box OR has moderator/admin role
@@ -89,8 +91,7 @@ exports.create = async (req, res) => {
 
     if (!canCreate) {
       return res.status(403).send({
-        message:
-          'You can only create versions for boxes you own, or you need moderator/admin role.',
+        message: req.__('versions.create.permissionDenied'),
       });
     }
 
@@ -104,7 +105,7 @@ exports.create = async (req, res) => {
     return res.send(version);
   } catch (err) {
     return res.status(500).send({
-      message: err.message || 'Some error occurred while creating the Version.',
+      message: err.message || req.__('versions.create.error'),
     });
   }
 };

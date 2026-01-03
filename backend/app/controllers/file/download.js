@@ -144,7 +144,7 @@ const download = async (req, res) => {
       decoded.providerName !== providerName ||
       decoded.architectureName !== architectureName
     ) {
-      return res.status(403).send({ message: 'Invalid download token.' });
+      return res.status(403).send({ message: req.__('files.invalidDownloadToken') });
     }
   } else if (req.isVagrantRequest) {
     // For Vagrant requests, use the auth info set by vagrantHandler
@@ -154,7 +154,7 @@ const download = async (req, res) => {
     ({ userId, isServiceAccount } = req);
   } else {
     // No token provided at all
-    return res.status(403).send({ message: 'No download token provided.' });
+    return res.status(403).send({ message: req.__('files.noDownloadToken') });
   }
 
   log.app.info('Auth context in download:', {
@@ -171,7 +171,7 @@ const download = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -203,7 +203,7 @@ const download = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -281,7 +281,7 @@ const download = async (req, res) => {
           fileStream.on('error', err => {
             if (!res.headersSent) {
               res.status(500).send({
-                message: `Could not download the file. ${err}`,
+                message: req.__('files.download.error', { error: err }),
               });
             }
           });
@@ -293,7 +293,7 @@ const download = async (req, res) => {
           });
           if (!res.headersSent) {
             res.status(500).send({
-              message: `Could not create file stream: ${streamErr.message}`,
+              message: req.__('files.download.streamError', { error: streamErr.message }),
             });
           }
         }
@@ -311,7 +311,7 @@ const download = async (req, res) => {
         fileStream.on('error', err => {
           if (!res.headersSent) {
             res.status(500).send({
-              message: `Could not download the file. ${err}`,
+              message: req.__('files.download.error', { error: err }),
             });
           }
         });
@@ -320,7 +320,7 @@ const download = async (req, res) => {
         res.download(filePath, fileName, err => {
           if (err && !res.headersSent) {
             res.status(500).send({
-              message: `Could not download the file. ${err}`,
+              message: req.__('files.download.error', { error: err }),
             });
           }
         });
@@ -335,20 +335,18 @@ const download = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: 'Unauthorized access to file download.' });
+      return res.status(403).send({ message: req.__('files.download.unauthorized') });
     }
 
     const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to file download.' });
+      return res.status(403).send({ message: req.__('files.download.unauthorized') });
     }
 
     // User is member, allow download
     return sendFile();
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: err.message || 'Some error occurred while downloading the file.' });
+    return res.status(500).send({ message: err.message || req.__('files.download.genericError') });
   }
 };
 

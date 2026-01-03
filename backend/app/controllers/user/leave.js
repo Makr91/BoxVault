@@ -64,14 +64,14 @@ const leaveOrganization = async (req, res) => {
     // Find the organization
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     // Find user's membership
     const membership = await UserOrg.findUserOrgRole(userId, organization.id);
     if (!membership) {
       return res.status(400).send({
-        message: 'You are not a member of this organization!',
+        message: req.__('organizations.userNotMember'),
       });
     }
 
@@ -87,8 +87,7 @@ const leaveOrganization = async (req, res) => {
 
       if (otherOrgs.length === 0) {
         return res.status(400).send({
-          message:
-            'Cannot leave your only organization! You must belong to at least one organization.',
+          message: req.__('organizations.cannotLeaveOnlyOrg'),
         });
       }
 
@@ -106,7 +105,7 @@ const leaveOrganization = async (req, res) => {
     });
 
     return res.send({
-      message: `Successfully left organization ${orgName}`,
+      message: req.__('organizations.leftOrganization', { orgName }),
     });
   } catch (err) {
     log.error.error('Error leaving organization:', {
@@ -114,7 +113,7 @@ const leaveOrganization = async (req, res) => {
       userId: req.userId,
       organization: req.params.orgName,
     });
-    return res.status(500).send({ message: 'Error leaving organization' });
+    return res.status(500).send({ message: req.__('organizations.leaveError') });
   }
 };
 

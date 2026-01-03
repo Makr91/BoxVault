@@ -81,14 +81,14 @@ const removeUserFromOrg = async (req, res) => {
     // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: 'User not found!' });
+      return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
     // Find user's membership in this organization
     const membership = await UserOrg.findUserOrgRole(userId, organizationId);
     if (!membership) {
       return res.status(404).send({
-        message: 'User is not a member of this organization!',
+        message: req.__('organizations.userNotMember'),
       });
     }
 
@@ -104,8 +104,7 @@ const removeUserFromOrg = async (req, res) => {
 
       if (otherOrgs.length === 0) {
         return res.status(400).send({
-          message:
-            'Cannot remove user from their only organization! User must belong to at least one organization.',
+          message: req.__('organizations.cannotRemoveOnlyOrg'),
         });
       }
 
@@ -130,7 +129,7 @@ const removeUserFromOrg = async (req, res) => {
     });
 
     return res.send({
-      message: `User ${user.username} removed from organization`,
+      message: req.__('organizations.userRemoved', { username: user.username }),
       userId: user.id,
       username: user.username,
     });
@@ -141,7 +140,7 @@ const removeUserFromOrg = async (req, res) => {
       organizationId: req.organizationId,
       removedBy: req.userId,
     });
-    return res.status(500).send({ message: 'Error removing user from organization' });
+    return res.status(500).send({ message: req.__('organizations.removeUserError') });
   }
 };
 
