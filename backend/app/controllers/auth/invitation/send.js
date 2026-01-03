@@ -77,13 +77,22 @@ try {
  *               $ref: '#/components/schemas/Error'
  */
 exports.sendInvitation = async (req, res) => {
-  const { email, organizationName } = req.body;
+  const { email, organizationName, inviteRole } = req.body;
 
   try {
     const organization = await Organization.findOne({ where: { name: organizationName } });
 
     if (!organization) {
       return res.status(404).send({ message: 'Organization not found.' });
+    }
+
+    // Validate invited role - only user and moderator allowed, never admin
+    const validRoles = ['user', 'moderator'];
+    const role = inviteRole || 'user';
+    if (!validRoles.includes(role)) {
+      return res.status(400).send({
+        message: 'Invalid role. Invitations can only assign user or moderator roles.',
+      });
     }
 
     const invitationToken = crypto.randomBytes(20).toString('hex');
@@ -96,6 +105,7 @@ exports.sendInvitation = async (req, res) => {
       token: invitationToken,
       expires: invitationTokenExpires,
       organizationId: organization.id,
+      invited_role: role,
     });
 
     // Send the invitation email and get the invitation link

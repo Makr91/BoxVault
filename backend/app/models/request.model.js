@@ -143,17 +143,15 @@ module.exports = (sequelize, Sequelize) => {
     const db = require('./index');
     const results = await this.findAll({
       where: { organization_id: organizationId, status: 'pending' },
+      include: [
+        {
+          model: db.user,
+          as: 'user',
+          attributes: ['id', 'username', 'email'],
+        },
+      ],
       order: [['created_at', 'ASC']],
     });
-
-    // Load users in parallel
-    await Promise.all(
-      results.map(async result => {
-        result.user = await db.user.findByPk(result.user_id, {
-          attributes: ['id', 'username', 'email'],
-        });
-      })
-    );
 
     return results;
   };

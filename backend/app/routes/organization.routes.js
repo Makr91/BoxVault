@@ -81,7 +81,7 @@ router.put(
 // Organization-specific user management
 router.put(
   '/organization/:organization/access-mode',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
   organization.updateAccessMode
 );
 
