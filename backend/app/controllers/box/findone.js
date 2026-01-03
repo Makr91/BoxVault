@@ -82,6 +82,46 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName) => {
 
 /**
  * @swagger
+ * /{organization}/{box}:
+ *   get:
+ *     summary: Get Vagrant box metadata
+ *     description: Vagrant CLI metadata endpoint (root path, no /api prefix). Returns box metadata in Vagrant-compatible JSON format.
+ *     tags: [Vagrant]
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: box
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Box name
+ *       - in: header
+ *         name: Authorization
+ *         schema:
+ *           type: string
+ *         description: Bearer token for private boxes
+ *       - in: header
+ *         name: User-Agent
+ *         schema:
+ *           type: string
+ *         description: Should start with "Vagrant/" for CLI requests
+ *     responses:
+ *       200:
+ *         description: Vagrant metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VagrantMetadata'
+ *       403:
+ *         description: Unauthorized access to private box
+ *       404:
+ *         description: Box not found
+ *
  * /api/organization/{organization}/box/{name}:
  *   get:
  *     summary: Get a specific box
