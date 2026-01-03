@@ -66,19 +66,6 @@ exports.deleteAllByBox = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: Box,
-              as: 'box',
-              where: { name: boxId },
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -87,12 +74,24 @@ exports.deleteAllByBox = async (req, res) => {
       });
     }
 
-    // Extract the box from the organization data
-    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === boxId);
+    const box = await Box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
 
     if (!box) {
       return res.status(404).send({
         message: `Box not found in organization ${organization}.`,
+      });
+    }
+
+    // Check if user owns the box OR has moderator/admin role
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const isOwner = box.userId === req.userId;
+    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+
+    if (!canDelete) {
+      return res.status(403).send({
+        message: 'You can only delete versions of boxes you own, or you need moderator/admin role.',
       });
     }
 

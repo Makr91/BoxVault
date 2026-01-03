@@ -113,26 +113,6 @@ exports.update = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: db.box,
-              as: 'box',
-              where: { name: boxId },
-              include: [
-                {
-                  model: db.versions,
-                  as: 'versions',
-                  where: { versionNumber },
-                },
-              ],
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -141,8 +121,9 @@ exports.update = async (req, res) => {
       });
     }
 
-    // Extract the box and version from the organization data
-    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === boxId);
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
 
     if (!box) {
       return res.status(404).send({
@@ -150,7 +131,21 @@ exports.update = async (req, res) => {
       });
     }
 
-    const version = box.versions.find(v => v.versionNumber === versionNumber);
+    // Check if user owns the box OR has moderator/admin role
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const isOwner = box.userId === req.userId;
+    const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+
+    if (!canUpdate) {
+      return res.status(403).send({
+        message:
+          'You can only update architectures for boxes you own, or you need moderator/admin role.',
+      });
+    }
+
+    const version = await db.versions.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
 
     if (!version) {
       return res.status(404).send({

@@ -141,26 +141,6 @@ exports.create = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: db.box,
-              as: 'box',
-              where: { name: boxId },
-              include: [
-                {
-                  model: db.versions,
-                  as: 'versions',
-                  where: { versionNumber },
-                },
-              ],
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -169,15 +149,9 @@ exports.create = async (req, res) => {
         .send({ message: `Organization not found with name: ${organization}.` });
     }
 
-    // Extract the box and version from the organization data
-    const box = organizationData.members
-      .flatMap(user => user.box)
-      .find(foundBox => foundBox.name === boxId);
-
-    // Create the new directory if it doesn't exist
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
-    }
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
 
     if (!box) {
       return res.status(404).send({
@@ -185,12 +159,31 @@ exports.create = async (req, res) => {
       });
     }
 
-    const version = box.versions.find(foundVersion => foundVersion.versionNumber === versionNumber);
+    // Check if user owns the box OR has moderator/admin role
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const isOwner = box.userId === req.userId;
+    const canCreate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+
+    if (!canCreate) {
+      return res.status(403).send({
+        message:
+          'You can only create providers for boxes you own, or you need moderator/admin role.',
+      });
+    }
+
+    const version = await db.versions.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
 
     if (!version) {
       return res.status(404).send({
         message: `Version ${versionNumber} not found for box ${boxId} in organization ${organization}.`,
       });
+    }
+
+    // Create the new directory if it doesn't exist
+    if (!fs.existsSync(newFilePath)) {
+      fs.mkdirSync(newFilePath, { recursive: true });
     }
 
     // Create the provider

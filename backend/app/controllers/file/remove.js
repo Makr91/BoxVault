@@ -85,42 +85,64 @@ const remove = async (req, res) => {
   const filePath = path.join(basefilePath, fileName);
 
   try {
+    const organizationData = await db.organization.findOne({
+      where: { name: organization },
+    });
+
+    if (!organizationData) {
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Organization not found with name: ${organization}.`,
+      });
+    }
+
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
+
+    if (!box) {
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Box ${boxId} not found in organization ${organization}.`,
+      });
+    }
+
+    // Check if user owns the box OR has moderator/admin role
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const isOwner = box.userId === req.userId;
+    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+
+    if (!canDelete) {
+      return res.status(403).json({
+        error: 'PERMISSION_DENIED',
+        message: 'You can only delete files for boxes you own, or you need moderator/admin role.',
+      });
+    }
+
+    const version = await db.versions.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
+
+    if (!version) {
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Version ${versionNumber} not found.`,
+      });
+    }
+
+    const provider = await db.providers.findOne({
+      where: { name: providerName, versionId: version.id },
+    });
+
+    if (!provider) {
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Provider ${providerName} not found.`,
+      });
+    }
+
     const architecture = await Architecture.findOne({
-      where: { name: architectureName },
-      include: [
-        {
-          model: db.providers,
-          as: 'provider',
-          where: { name: providerName },
-          include: [
-            {
-              model: db.versions,
-              as: 'version',
-              where: { versionNumber },
-              include: [
-                {
-                  model: db.box,
-                  as: 'box',
-                  where: { name: boxId },
-                  include: [
-                    {
-                      model: db.user,
-                      as: 'user',
-                      include: [
-                        {
-                          model: db.organization,
-                          as: 'primaryOrganization',
-                          where: { name: organization },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+      where: { name: architectureName, providerId: provider.id },
     });
 
     if (!architecture) {

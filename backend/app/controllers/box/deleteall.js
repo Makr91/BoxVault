@@ -5,7 +5,6 @@ const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 const Organization = db.organization;
-const Users = db.user;
 const Box = db.box;
 
 /**
@@ -55,18 +54,6 @@ exports.deleteAll = async (req, res) => {
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: Users,
-          as: 'members',
-          include: [
-            {
-              model: Box,
-              as: 'box',
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -75,7 +62,9 @@ exports.deleteAll = async (req, res) => {
       });
     }
 
-    const boxes = organizationData.members.flatMap(u => u.box);
+    const boxes = await Box.findAll({
+      where: { organizationId: organizationData.id },
+    });
 
     if (boxes.length === 0) {
       return res.status(404).send({
@@ -85,7 +74,7 @@ exports.deleteAll = async (req, res) => {
 
     // Delete all boxes from the database
     const deleted = await Box.destroy({
-      where: { id: boxes.map(b => b.id) },
+      where: { organizationId: organizationData.id },
       truncate: false,
     });
 

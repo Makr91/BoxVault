@@ -33,26 +33,6 @@ const checkProviderDuplicate = async (req, res, next) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: db.box,
-              as: 'box',
-              where: { name: boxId },
-              include: [
-                {
-                  model: db.versions,
-                  as: 'versions',
-                  where: { versionNumber },
-                },
-              ],
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -61,8 +41,9 @@ const checkProviderDuplicate = async (req, res, next) => {
       });
     }
 
-    // Extract the box and version from the organization data
-    const box = organizationData.members.flatMap(user => user.box).find(b => b.name === boxId);
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
 
     if (!box) {
       return res.status(404).send({
@@ -70,7 +51,9 @@ const checkProviderDuplicate = async (req, res, next) => {
       });
     }
 
-    const version = box.versions.find(v => v.versionNumber === versionNumber);
+    const version = await db.versions.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
 
     if (!version) {
       return res.status(404).send({

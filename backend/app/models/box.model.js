@@ -20,6 +20,17 @@ module.exports = (sequelize, Sequelize) => {
         key: 'id',
       },
     },
+    organizationId: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'organizations',
+        key: 'id',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+      field: 'organizationId',
+    },
     githubRepo: {
       type: Sequelize.STRING,
       allowNull: true,
@@ -47,6 +58,10 @@ module.exports = (sequelize, Sequelize) => {
     Box.belongsTo(models.user, {
       foreignKey: 'userId',
       as: 'user',
+    });
+    Box.belongsTo(models.organization, {
+      foreignKey: 'organizationId',
+      as: 'organization',
     });
     Box.hasMany(models.versions, {
       foreignKey: 'boxId',

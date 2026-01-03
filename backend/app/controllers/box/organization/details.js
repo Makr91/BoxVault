@@ -91,49 +91,34 @@ exports.getOrganizationBoxDetails = async (req, res) => {
       }
     }
 
-    // Retrieve all boxes from the specified organization
+    // Find organization
     const organizationData = await Organization.findOne({
       where: { name: organization },
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({ message: 'Organization not found.' });
+    }
+
+    // Get all boxes for this organization using organizationId
+    let boxes = await Box.findAll({
+      where: { organizationId: organizationData.id },
       include: [
         {
-          model: Users,
-          as: 'members',
-          through: { attributes: [] },
+          model: Version,
+          as: 'versions',
           include: [
             {
-              model: Box,
-              as: 'box',
+              model: Provider,
+              as: 'providers',
               include: [
                 {
-                  model: Version,
-                  as: 'versions',
+                  model: Architecture,
+                  as: 'architectures',
                   include: [
                     {
-                      model: Provider,
-                      as: 'providers',
-                      include: [
-                        {
-                          model: Architecture,
-                          as: 'architectures',
-                          include: [
-                            {
-                              model: File,
-                              as: 'files',
-                            },
-                          ],
-                        },
-                      ],
-                    },
-                  ],
-                },
-                {
-                  model: Users,
-                  as: 'user',
-                  include: [
-                    {
-                      model: db.organization,
-                      as: 'primaryOrganization',
-                      attributes: ['id', 'name', 'emailHash'],
+                      model: File,
+                      as: 'files',
                     },
                   ],
                 },
@@ -141,15 +126,19 @@ exports.getOrganizationBoxDetails = async (req, res) => {
             },
           ],
         },
+        {
+          model: Users,
+          as: 'user',
+          include: [
+            {
+              model: db.organization,
+              as: 'primaryOrganization',
+              attributes: ['id', 'name', 'emailHash'],
+            },
+          ],
+        },
       ],
     });
-
-    if (!organizationData) {
-      return res.status(404).send({ message: 'Organization not found.' });
-    }
-
-    // Get all boxes from the organization
-    let boxes = organizationData.members.flatMap(u => u.box);
 
     // For each box, check if it was created by a service account
     const serviceAccountBoxes = await Promise.all(

@@ -747,6 +747,10 @@ const Profile = ({ activeOrganization }) => {
                 <strong>{account.username}</strong> - {account.description}
                 <br />
                 <small>
+                  Organization: {account.organization?.name || "Unknown"}
+                </small>
+                <br />
+                <small>
                   Expires: {new Date(account.expiresAt).toLocaleDateString()}
                 </small>
               </div>

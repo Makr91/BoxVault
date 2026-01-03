@@ -5,7 +5,6 @@ const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 const Organization = db.organization;
-const Users = db.user;
 const Box = db.box;
 
 /**
@@ -60,19 +59,6 @@ exports.delete = async (req, res) => {
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: Users,
-          as: 'members',
-          include: [
-            {
-              model: Box,
-              as: 'box',
-              where: { name },
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -81,11 +67,23 @@ exports.delete = async (req, res) => {
       });
     }
 
-    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === name);
+    // Find the box first to check ownership
+    const box = await Box.findOne({
+      where: { name, organizationId: organizationData.id },
+    });
 
     if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFound'),
+      throw new Error(req.__('boxes.boxNotFound'));
+    }
+
+    // Check if user is owner OR has moderator/admin role
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const isOwner = box.userId === req.userId;
+    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+
+    if (!canDelete) {
+      return res.status(403).send({
+        message: 'You can only delete boxes you own, or you need moderator/admin role.',
       });
     }
 

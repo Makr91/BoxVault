@@ -178,27 +178,6 @@ exports.findAllByVersion = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: db.box,
-              as: 'box',
-              where: { name: boxId },
-              attributes: ['id', 'name', 'isPublic'], // Include isPublic attribute
-              include: [
-                {
-                  model: db.versions,
-                  as: 'versions',
-                  where: { versionNumber },
-                },
-              ],
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -207,9 +186,10 @@ exports.findAllByVersion = async (req, res) => {
       });
     }
 
-    const box = organizationData.members
-      .flatMap(user => user.box)
-      .find(foundBox => foundBox.name === boxId);
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+      attributes: ['id', 'name', 'isPublic'],
+    });
 
     if (!box) {
       return res.status(404).send({
@@ -217,7 +197,9 @@ exports.findAllByVersion = async (req, res) => {
       });
     }
 
-    const version = box.versions.find(foundVersion => foundVersion.versionNumber === versionNumber);
+    const version = await db.versions.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
 
     if (!version) {
       return res.status(404).send({
@@ -231,17 +213,17 @@ exports.findAllByVersion = async (req, res) => {
       return res.send(providers);
     }
 
-    // If the box is private, check if the user belongs to the organization
+    // If the box is private, check if the user is member of the organization
     if (!userId) {
       return res.status(403).send({ message: 'Unauthorized access to providers.' });
     }
 
-    const user = organizationData.members.find(u => u.id === userId);
-    if (!user) {
+    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    if (!membership) {
       return res.status(403).send({ message: 'Unauthorized access to providers.' });
     }
 
-    // If the user belongs to the organization, allow access
+    // User is member, allow access
     const providers = await Provider.findAll({ where: { versionId: version.id } });
     return res.send(providers);
   } catch (err) {

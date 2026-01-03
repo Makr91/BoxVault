@@ -125,41 +125,6 @@ const info = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: db.box,
-              as: 'box',
-              where: { name: boxId },
-              attributes: ['id', 'name', 'isPublic'],
-              include: [
-                {
-                  model: db.versions,
-                  as: 'versions',
-                  where: { versionNumber },
-                  include: [
-                    {
-                      model: db.providers,
-                      as: 'providers',
-                      where: { name: providerName },
-                      include: [
-                        {
-                          model: db.architectures,
-                          as: 'architectures',
-                          where: { name: architectureName },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -168,9 +133,31 @@ const info = async (req, res) => {
       });
     }
 
-    const box = organizationData.members
-      .flatMap(user => user.box)
-      .find(foundBox => foundBox.name === boxId);
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+      attributes: ['id', 'name', 'isPublic'],
+      include: [
+        {
+          model: db.versions,
+          as: 'versions',
+          where: { versionNumber },
+          include: [
+            {
+              model: db.providers,
+              as: 'providers',
+              where: { name: providerName },
+              include: [
+                {
+                  model: db.architectures,
+                  as: 'architectures',
+                  where: { name: architectureName },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
     if (!box) {
       return res.status(404).send({
@@ -218,17 +205,17 @@ const info = async (req, res) => {
       return res.status(404).send({ message: 'File not found.' });
     }
 
-    // If the box is private, check if the user belongs to the organization
+    // If the box is private, check if the user is member of the organization
     if (!userId) {
       return res.status(403).send({ message: 'Unauthorized access to file information.' });
     }
 
-    const user = organizationData.members.find(u => u.id === userId);
-    if (!user) {
+    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    if (!membership) {
       return res.status(403).send({ message: 'Unauthorized access to file information.' });
     }
 
-    // If the user belongs to the organization, allow access
+    // User is member, allow access
     const fileRecord = await File.findOne({
       where: {
         fileName: 'vagrant.box',

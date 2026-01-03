@@ -106,19 +106,6 @@ exports.findAllByBox = async (req, res) => {
   try {
     const organizationData = await db.organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          include: [
-            {
-              model: Box,
-              as: 'box',
-              where: { name: boxId },
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -127,7 +114,9 @@ exports.findAllByBox = async (req, res) => {
         .send({ message: `Organization not found with name: ${organization}.` });
     }
 
-    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === boxId);
+    const box = await Box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
 
     if (!box) {
       return res.status(404).send({ message: `Box not found with name: ${boxId}.` });
@@ -139,17 +128,17 @@ exports.findAllByBox = async (req, res) => {
       return res.send(versions);
     }
 
-    // If the box is private, check if the user belongs to the organization
+    // If the box is private, check if the user is member of the organization
     if (!userId) {
       return res.status(403).send({ message: 'Unauthorized access to versions.' });
     }
 
-    const user = organizationData.members.find(u => u.id === userId);
-    if (!user) {
+    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    if (!membership) {
       return res.status(403).send({ message: 'Unauthorized access to versions.' });
     }
 
-    // If the user belongs to the organization, allow access
+    // User is member of organization, allow access
     const versions = await Version.findAll({ where: { boxId: box.id } });
     return res.send(versions);
   } catch (err) {

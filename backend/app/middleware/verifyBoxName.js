@@ -34,25 +34,20 @@ const checkBoxDuplicate = async (req, res, next) => {
     return next();
   }
 
-  // We make a request to check if the Box we are adding already exists
+  // Check if box name exists in this organization
   try {
+    const org = await db.organization.findOne({ where: { name: organization } });
+    if (!org) {
+      return res.status(404).send({
+        message: `Organization not found with name: ${organization}.`,
+      });
+    }
+
     const existingBox = await Box.findOne({
       where: {
         name: newName,
-        '$user.primaryOrganization.name$': organization,
+        organizationId: org.id,
       },
-      include: [
-        {
-          model: db.user,
-          as: 'user',
-          include: [
-            {
-              model: db.organization,
-              as: 'primaryOrganization',
-            },
-          ],
-        },
-      ],
     });
 
     // If the box exists and it's not the same box being updated, then we return a 400 error

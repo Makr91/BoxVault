@@ -92,9 +92,19 @@ exports.findOne = async (req, res) => {
   // req.userId and req.isServiceAccount are set by sessionAuth middleware or vagrantHandler
 
   try {
-    // Find the box and its public status
+    const organizationData = await db.organization.findOne({
+      where: { name: organization },
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({
+        message: `Organization not found with name: ${organization}.`,
+      });
+    }
+
+    // Find the box by organizationId
     const box = await db.box.findOne({
-      where: { name: boxId },
+      where: { name: boxId, organizationId: organizationData.id },
       attributes: ['id', 'name', 'isPublic'],
       include: [
         {
@@ -141,19 +151,9 @@ exports.findOne = async (req, res) => {
       return res.send(architecture);
     }
 
-    // If the box is private and it's not a service account, check if the user belongs to the organization
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-      include: [
-        {
-          model: db.user,
-          as: 'members',
-          where: { id: req.userId },
-        },
-      ],
-    });
-
-    if (!organizationData) {
+    // If the box is private and it's not a service account, check if the user is member of the organization
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    if (!membership) {
       return res.status(403).send({ message: 'Unauthorized access to architecture.' });
     }
 

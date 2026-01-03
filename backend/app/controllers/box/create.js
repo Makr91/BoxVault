@@ -74,27 +74,36 @@ exports.create = async (req, res) => {
     });
   }
 
-  const newFilePath = getSecureBoxPath(organization, name);
-
-  // Create the new directory if it doesn't exist
-  if (!fs.existsSync(newFilePath)) {
-    fs.mkdirSync(newFilePath, { recursive: true });
-  }
-
-  // Create a Box
-  const box = {
-    name: req.body.name,
-    description,
-    published: published || false,
-    isPublic: isPublic || false,
-    userId: req.userId,
-    githubRepo: githubRepo || null,
-    workflowFile: workflowFile || null,
-    cicdUrl: cicdUrl || null,
-  };
-
-  // Save Box in the database
+  // Look up organization ID
   try {
+    const org = await db.organization.findOne({ where: { name: organization } });
+    if (!org) {
+      return res.status(404).send({
+        message: `Organization not found with name: ${organization}.`,
+      });
+    }
+
+    const newFilePath = getSecureBoxPath(organization, name);
+
+    // Create the new directory if it doesn't exist
+    if (!fs.existsSync(newFilePath)) {
+      fs.mkdirSync(newFilePath, { recursive: true });
+    }
+
+    // Create a Box
+    const box = {
+      name: req.body.name,
+      description,
+      published: published || false,
+      isPublic: isPublic || false,
+      userId: req.userId,
+      organizationId: org.id,
+      githubRepo: githubRepo || null,
+      workflowFile: workflowFile || null,
+      cicdUrl: cicdUrl || null,
+    };
+
+    // Save Box in the database
     const data = await Box.create(box);
     return res.send(data);
   } catch (err) {

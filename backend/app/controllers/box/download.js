@@ -3,7 +3,6 @@ const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 const Organization = db.organization;
-const Users = db.user;
 const Box = db.box;
 
 /**
@@ -97,31 +96,6 @@ exports.downloadBox = async (req, res) => {
   try {
     const organizationData = await Organization.findOne({
       where: { name: organization },
-      include: [
-        {
-          model: Users,
-          as: 'members',
-          include: [
-            {
-              model: Box,
-              as: 'box',
-              where: { name },
-              include: [
-                {
-                  model: Users,
-                  as: 'user',
-                  include: [
-                    {
-                      model: Organization,
-                      as: 'primaryOrganization',
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
     });
 
     if (!organizationData) {
@@ -130,7 +104,9 @@ exports.downloadBox = async (req, res) => {
         .send({ message: `Organization not found with name: ${organization}.` });
     }
 
-    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === name);
+    const box = await Box.findOne({
+      where: { name, organizationId: organizationData.id },
+    });
 
     if (!box) {
       return res.status(404).send({ message: `Box not found with name: ${name}.` });
@@ -160,13 +136,13 @@ exports.downloadBox = async (req, res) => {
       return res.status(403).send({ message: 'Unauthorized access to private box.' });
     }
 
-    // Check if user belongs to the organization
-    const user = organizationData.members.find(u => u.id === req.userId);
-    if (!user) {
+    // Check if user is member of the organization
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    if (!membership) {
       return res.status(403).send({ message: 'Unauthorized access to private box.' });
     }
 
-    // User belongs to organization, allow download
+    // User is member of organization, allow download
     return handleDownload();
   } catch (err) {
     log.error.error('Error in downloadBox:', err);

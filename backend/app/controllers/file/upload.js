@@ -239,44 +239,71 @@ const upload = async (req, res) => {
       log.app.info('Upload directory already exists:', { dir });
     }
 
-    log.app.info('Looking up architecture in database...');
+    log.app.info('Looking up box, version, provider, architecture...');
+
+    const organizationData = await db.organization.findOne({
+      where: { name: organization },
+    });
+
+    if (!organizationData) {
+      log.app.error('Organization not found', { organization });
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Organization not found with name: ${organization}.`,
+      });
+    }
+
+    const box = await db.box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
+
+    if (!box) {
+      log.app.error('Box not found', { boxId, organization });
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Box ${boxId} not found in organization ${organization}.`,
+      });
+    }
+
+    // Check if user owns the box OR has moderator/admin role
+    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const isOwner = box.userId === req.userId;
+    const canUpload = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+
+    if (!canUpload) {
+      log.app.error('Permission denied', { userId: req.userId, boxUserId: box.userId });
+      return res.status(403).json({
+        error: 'PERMISSION_DENIED',
+        message: 'You can only upload files for boxes you own, or you need moderator/admin role.',
+      });
+    }
+
+    const version = await db.versions.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
+
+    if (!version) {
+      log.app.error('Version not found', { versionNumber, boxId });
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Version ${versionNumber} not found.`,
+      });
+    }
+
+    const provider = await db.providers.findOne({
+      where: { name: providerName, versionId: version.id },
+    });
+
+    if (!provider) {
+      log.app.error('Provider not found', { providerName, versionNumber });
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Provider ${providerName} not found.`,
+      });
+    }
 
     const architecture = await Architecture.findOne({
-      where: { name: architectureName },
-      include: [
-        {
-          model: db.providers,
-          as: 'provider',
-          where: { name: providerName },
-          include: [
-            {
-              model: db.versions,
-              as: 'version',
-              where: { versionNumber },
-              include: [
-                {
-                  model: db.box,
-                  as: 'box',
-                  where: { name: boxId },
-                  include: [
-                    {
-                      model: db.user,
-                      as: 'user',
-                      include: [
-                        {
-                          model: db.organization,
-                          as: 'primaryOrganization',
-                          where: { name: organization },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+      where: { name: architectureName, providerId: provider.id },
     });
 
     if (!architecture) {
