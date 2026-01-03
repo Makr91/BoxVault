@@ -665,27 +665,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         <img
           src={gravatarUrls[orgName]}
           alt=""
-          className="rounded-circle"
-          width="30"
-          height="30"
-          style={{
-            marginRight: "10px",
-            verticalAlign: "middle",
-          }}
+          className="rounded-circle avatar-lg icon-with-margin-sm v-align-middle"
         />
       );
     }
 
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return (
-      <LogoComponent
-        style={{
-          width: "30px",
-          height: "30px",
-          marginRight: "10px",
-        }}
-      />
-    );
+    return <LogoComponent className="logo-xl icon-with-margin-sm" />;
   };
 
   const renderTableRow = (box, index) => {
@@ -707,7 +693,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           {renderOrgLogo(box)}
           <Link
             to={`/${organizationName}/${box.name}`}
-            style={{ verticalAlign: "middle" }}
+            className="v-align-middle"
           >
             {organizationName}/{box.name}
           </Link>
@@ -746,36 +732,83 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           {message}
         </div>
       )}
-      <div className="d-flex justify-content-between align-items-center">
-        <div className="search-bar">
-          <div className="input-group">
-            <div className="form-group col-md-8">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search by name"
-                id="search"
-                name="search"
-                value={searchName}
-                onChange={onChangeSearchName}
-              />
-            </div>
-            <div className="input-group-append">
-              <button
-                className="btn btn-outline-secondary"
-                type="button"
-                onClick={findByName}
-              >
-                Search
-              </button>
-            </div>
-          </div>
+      <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+        {/* Left: Search */}
+        <div className="d-flex align-items-center gap-2">
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            placeholder="Search by name"
+            id="search"
+            name="search"
+            value={searchName}
+            onChange={onChangeSearchName}
+          />
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            type="button"
+            onClick={findByName}
+          >
+            Search
+          </button>
         </div>
-        <div className="form-group">
+
+        {/* Center: Tag Cloud Pills (compact, inline) */}
+        {(Object.keys(allProviders).length > 0 ||
+          Object.keys(allArchitectures).length > 0) && (
+          <div className="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
+            <small className="text-muted">Filter:</small>
+            {Object.entries(allProviders).map(([provider, count]) => (
+              <span
+                key={provider}
+                className={`badge rounded-pill badge-xs cursor-pointer ${
+                  activeProviders.has(provider)
+                    ? "bg-primary"
+                    : "bg-secondary bg-opacity-25"
+                }`}
+                onClick={() => toggleProviderFilter(provider)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleProviderFilter(provider);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                {provider} ({count})
+              </span>
+            ))}
+            {Object.entries(allArchitectures).map(([arch, count]) => (
+              <span
+                key={arch}
+                className={`badge rounded-pill badge-xs cursor-pointer ${
+                  activeArchitectures.has(arch)
+                    ? "bg-info"
+                    : "bg-secondary bg-opacity-25"
+                }`}
+                onClick={() => toggleArchitectureFilter(arch)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleArchitectureFilter(arch);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                {arch} ({count})
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Right: Action Buttons */}
+        <div className="d-flex gap-2">
           {showOnlyPublic && (
             <Link
               to="/organizations/discover"
-              className="btn btn-outline-primary"
+              className="btn btn-sm btn-outline-primary"
             >
               Organizations
             </Link>
@@ -783,7 +816,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           {!showOnlyPublic && canEditBoxes({ organization }) && (
             <>
               <button
-                className="btn btn-outline-success me-2"
+                className="btn btn-sm btn-outline-success"
                 onClick={createBox}
                 disabled={!!validationErrors.name}
               >
@@ -791,7 +824,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               </button>
               {showCreateForm && (
                 <button
-                  className="btn btn-secondary me-2"
+                  className="btn btn-sm btn-secondary"
                   onClick={() => {
                     setShowCreateForm(false);
                     setNewBox({ name: "", description: "", isPublic: false });
@@ -802,7 +835,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 </button>
               )}
               <button
-                className="btn btn-danger me-2"
+                className="btn btn-sm btn-danger"
                 onClick={handleDeleteClick}
               >
                 Remove All
@@ -816,7 +849,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           )}
           {!showOnlyPublic && (
             <button
-              className="btn btn-outline-primary"
+              className="btn btn-sm btn-outline-primary"
               onClick={() => navigate("/")}
             >
               Back
@@ -930,43 +963,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         </div>
       )}
 
-      {/* Tag Cloud Filters */}
-      {(Object.keys(allProviders).length > 0 ||
-        Object.keys(allArchitectures).length > 0) && (
-        <div className="card mb-3">
-          <div className="card-body">
-            {Object.keys(allProviders).length > 0 && (
-              <div className="mb-2">
-                <strong className="me-2">Providers:</strong>
-                {Object.entries(allProviders).map(([provider, count]) => (
-                  <button
-                    key={provider}
-                    className={`btn btn-sm me-2 mb-1 ${activeProviders.has(provider) ? "btn-primary" : "btn-outline-secondary"}`}
-                    onClick={() => toggleProviderFilter(provider)}
-                  >
-                    {provider} ({count})
-                  </button>
-                ))}
-              </div>
-            )}
-            {Object.keys(allArchitectures).length > 0 && (
-              <div>
-                <strong className="me-2">Architectures:</strong>
-                {Object.entries(allArchitectures).map(([arch, count]) => (
-                  <button
-                    key={arch}
-                    className={`btn btn-sm me-2 mb-1 ${activeArchitectures.has(arch) ? "btn-primary" : "btn-outline-secondary"}`}
-                    onClick={() => toggleArchitectureFilter(arch)}
-                  >
-                    {arch} ({count})
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="col-md-12">
         <h4>Template List</h4>
         <Table striped className="table">
@@ -974,7 +970,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             <tr>
               <th
                 onClick={() => handleSort("name")}
-                style={{ cursor: "pointer" }}
+                className="sortable-header"
               >
                 Box {renderSortIcon("name")}
               </th>
@@ -982,19 +978,19 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               <th>Public</th>
               <th
                 onClick={() => handleSort("created")}
-                style={{ cursor: "pointer" }}
+                className="sortable-header"
               >
                 Created {renderSortIcon("created")}
               </th>
               <th
                 onClick={() => handleSort("downloads")}
-                style={{ cursor: "pointer" }}
+                className="sortable-header"
               >
                 Downloads {renderSortIcon("downloads")}
               </th>
               <th
                 onClick={() => handleSort("versions")}
-                style={{ cursor: "pointer" }}
+                className="sortable-header"
               >
                 # Versions {renderSortIcon("versions")}
               </th>

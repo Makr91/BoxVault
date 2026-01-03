@@ -278,8 +278,7 @@ const OidcProviderManager = ({
                 ([providerName, providerConfig]) => (
                   <div key={providerName} className="col-md-6 mb-3">
                     <div
-                      className="card border-secondary"
-                      style={{ cursor: "pointer" }}
+                      className="card border-secondary cursor-pointer"
                       role="button"
                       tabIndex={0}
                       onClick={() =>
@@ -331,11 +330,7 @@ const OidcProviderManager = ({
 
       {/* Add/Edit OIDC Provider Modal */}
       {showOidcProviderModal && (
-        <div
-          className="modal show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
+        <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">

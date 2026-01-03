@@ -99,7 +99,7 @@ const About = () => {
   };
 
   return (
-    <div className="container mt-4">
+    <div className="container">
       <div className="text-center mb-5">
         <h1 className="display-4 fw-bold">{projectData.title || "BoxVault"}</h1>
         <p className="lead text-muted">

@@ -210,8 +210,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                   return (
                     <div key={subsectionName} className="card mb-4">
                       <div
-                        className="card-header"
-                        style={{ cursor: "pointer" }}
+                        className="card-header cursor-pointer"
                         role="button"
                         tabIndex={0}
                         onClick={() =>
@@ -332,8 +331,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             return (
               <div key={subsectionName} className="card mb-4">
                 <div
-                  className="card-header"
-                  style={{ cursor: "pointer" }}
+                  className="card-header cursor-pointer"
                   role="button"
                   tabIndex={0}
                   onClick={() => toggleSubsection(sectionName, subsectionName)}
@@ -430,10 +428,9 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
         <li className="nav-item ms-auto">
           <button
             type="button"
-            className={`nav-link ${!isFormValid ? "disabled" : ""}`}
+            className={`nav-link ${!isFormValid ? "disabled" : "cursor-pointer"}`}
             onClick={updateConfig}
             disabled={!isFormValid}
-            style={{ cursor: isFormValid ? "pointer" : "not-allowed" }}
           >
             Update Configuration
           </button>

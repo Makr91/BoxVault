@@ -625,7 +625,7 @@ const Provider = () => {
             <input
               type="file"
               onChange={selectFile}
-              style={{ display: "none" }}
+              className="d-none"
               accept=".box,application/octet-stream"
             />
             Choose Box File
@@ -641,7 +641,7 @@ const Provider = () => {
         </div>
         {selectedFiles && (
           <div>
-            <div className="progress mb-2" style={{ height: "25px" }}>
+            <div className="progress progress-lg mb-2">
               <div
                 className="progress-bar bg-success progress-bar-striped progress-bar-animated"
                 role="progressbar"
@@ -650,9 +650,7 @@ const Provider = () => {
                 aria-valuemax="100"
                 style={{ width: `${progress}%` }}
               >
-                <span style={{ fontSize: "0.9em", fontWeight: "bold" }}>
-                  {progress}%
-                </span>
+                <span>{progress}%</span>
               </div>
             </div>
             <div className="text-muted">
@@ -826,10 +824,7 @@ const Provider = () => {
                         role="button"
                         tabIndex={0}
                         title="Click to copy checksum"
-                        style={{
-                          cursor: "pointer",
-                          textDecoration: "underline",
-                        }}
+                        className="text-clickable"
                       >
                         {architecture.checksum.substring(0, 20)}...
                         {architecture.checksum.substring(

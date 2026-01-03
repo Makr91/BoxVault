@@ -43,14 +43,134 @@ button::-moz-focus-inner {
 .navbar .dropdown-item {
   display: flex !important;
   align-items: center;
-
-  svg,
-  img {
+  
+  svg, img {
     flex-shrink: 0; // Prevent icons from shrinking
     line-height: 1; // Remove extra spacing
   }
-
+  
   span {
     line-height: 1; // Match text line-height to icon height
+  }
+}
+
+// Modal backdrop overlay
+.modal-backdrop-custom {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+// Full viewport height
+.min-vh-100-flex {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+// Cursor pointer utility
+.cursor-pointer {
+  cursor: pointer;
+}
+
+// Logo/Icon standard sizes
+.logo-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.logo-md {
+  width: 20px;
+  height: 20px;
+}
+
+.logo-lg {
+  width: 24px;
+  height: 24px;
+}
+
+.logo-xl {
+  width: 30px;
+  height: 30px;
+}
+
+// Icon with margin-right
+.icon-with-margin {
+  margin-right: 8px;
+}
+
+.icon-with-margin-sm {
+  margin-right: 10px;
+}
+
+// Avatar sizing
+.avatar-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.avatar-md {
+  width: 20px;
+  height: 20px;
+}
+
+.avatar-lg {
+  width: 30px;
+  height: 30px;
+}
+
+// Vertical align middle for inline elements
+.v-align-middle {
+  vertical-align: middle;
+}
+
+// Readonly input styling
+.readonly-input {
+  background-color: #f8f9fa;
+}
+
+// Badge max height
+.badge-max-height {
+  max-height: 20px;
+}
+
+// Clickable text decoration
+.text-clickable {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+// Drag and drop opacity
+.dragging {
+  opacity: 0.5;
+}
+
+// Small badge text
+.badge-xs {
+  font-size: 0.7rem;
+}
+
+// Sortable table headers
+.sortable-header {
+  cursor: pointer;
+}
+
+// Draggable items
+.draggable-item,
+.list-group-item[draggable="true"] {
+  cursor: move;
+}
+
+// Flag icons in language selector
+.flag-icon-lg {
+  font-size: 1.2em;
+}
+
+// Progress bar custom height
+.progress-lg {
+  height: 25px;
+  
+  .progress-bar span {
+    font-size: 0.9em;
+    font-weight: bold;
   }
 }

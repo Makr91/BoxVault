@@ -204,6 +204,47 @@ const Navbar = ({
     };
   }, [currentUser]);
 
+  // Helper to normalize URLs
+  const normalizeUrl = useCallback((url) => url.replace(/\/+$/, ""), []);
+
+  // Helper to validate issuer is trusted
+  const validateIssuerTrusted = useCallback(
+    (issuer) => {
+      const normalizedIssuer = normalizeUrl(issuer);
+      const isTrusted = trustedIssuers.some(
+        (trustedIssuer) =>
+          normalizeUrl(trustedIssuer.issuer) === normalizedIssuer
+      );
+
+      if (!isTrusted) {
+        log.auth.warn("Issuer not in trusted whitelist", {
+          issuer,
+          normalizedIssuer,
+          trustedIssuers: trustedIssuers.map((trustedIssuer) =>
+            normalizeUrl(trustedIssuer.issuer)
+          ),
+        });
+      }
+      return isTrusted;
+    },
+    [trustedIssuers, normalizeUrl]
+  );
+
+  // Helper to validate issuer URL format
+  const validateIssuerFormat = useCallback((issuer) => {
+    if (!issuer || !issuer.startsWith("https://")) {
+      return false;
+    }
+
+    try {
+      const url = new URL(issuer);
+      return url.protocol === "https:" && url.hostname;
+    } catch {
+      log.auth.warn("Invalid issuer URL format", { issuer });
+      return false;
+    }
+  }, []);
+
   const extractAuthServerUrl = useCallback(
     (accessToken) => {
       try {
@@ -217,50 +258,24 @@ const Navbar = ({
         );
         const issuer = idTokenPayload.iss || "";
 
-        // Normalize URLs for comparison (strip trailing slashes)
-        const normalizeUrl = (url) => url.replace(/\/+$/, "");
-
-        // CRITICAL: Validate against backend-provided whitelist (CodeQL requirement)
-        // Normalize both sides for comparison to handle trailing slash differences
-        const normalizedIssuer = normalizeUrl(issuer);
-        const isTrusted = trustedIssuers.some(
-          (trustedIssuer) =>
-            normalizeUrl(trustedIssuer.issuer) === normalizedIssuer
-        );
-
-        if (!isTrusted) {
-          log.auth.warn("Issuer not in trusted whitelist", {
-            issuer,
-            normalizedIssuer,
-            trustedIssuers: trustedIssuers.map((trustedIssuer) =>
-              normalizeUrl(trustedIssuer.issuer)
-            ),
-          });
+        // Validate against whitelist and format
+        if (!validateIssuerTrusted(issuer)) {
           return "";
         }
 
-        // Validate issuer URL for security
-        if (!issuer || !issuer.startsWith("https://")) {
+        if (!validateIssuerFormat(issuer)) {
           return "";
         }
 
-        try {
-          const url = new URL(issuer);
-          // Additional security checks
-          if (url.protocol === "https:" && url.hostname) {
-            return issuer; // Return original URL (not normalized)
-          }
-        } catch {
-          log.auth.warn("Invalid issuer URL format", { issuer });
-        }
+        return issuer;
       } catch (error) {
         log.auth.debug("Could not extract issuer from id_token", {
           error: error.message,
         });
+        return "";
       }
-      return "";
     },
-    [trustedIssuers]
+    [validateIssuerTrusted, validateIssuerFormat]
   );
 
   const fetchTicketConfig = useCallback(async (mounted) => {
@@ -347,7 +362,26 @@ const Navbar = ({
     fetchOrgGravatar,
   ]);
 
-  const buildTicketUrl = () => {
+  // Helper to get customer ID with priority logic
+  const getCustomerId = useCallback(
+    () => userClaims?.customer_id || activeOrgCode || "A55DF1",
+    [userClaims, activeOrgCode]
+  );
+
+  // Helper to get user name from claims or current user
+  const getUserName = useCallback(
+    () =>
+      userClaims?.name || userClaims?.email || currentUser?.username || "User",
+    [userClaims, currentUser]
+  );
+
+  // Helper to get email from claims or current user
+  const getUserEmail = useCallback(
+    () => userClaims?.email || currentUser?.email || "",
+    [userClaims, currentUser]
+  );
+
+  const buildTicketUrl = useCallback(() => {
     if (!ticketConfig || !ticketConfig.enabled?.value) {
       return null;
     }
@@ -356,24 +390,16 @@ const Navbar = ({
     const req = ticketConfig.req_type?.value || "sso";
     const context = ticketConfig.context?.value || "";
 
-    // Priority: OIDC customer_id > org_code > default "A55DF1"
-    const customerId = userClaims?.customer_id || activeOrgCode || "A55DF1";
-
-    // Use OIDC claims if available, otherwise use current user info
-    const userName =
-      userClaims?.name || userClaims?.email || currentUser?.username || "User";
-    const email = userClaims?.email || currentUser?.email || "";
-
     const params = new URLSearchParams({
       req,
-      customerId,
-      user: userName,
-      email,
+      customerId: getCustomerId(),
+      user: getUserName(),
+      email: getUserEmail(),
       context,
     });
 
     return `${baseUrl}&${params.toString()}`;
-  };
+  }, [ticketConfig, getCustomerId, getUserName, getUserEmail]);
 
   const ticketUrl = buildTicketUrl();
 
@@ -385,13 +411,11 @@ const Navbar = ({
   };
 
   const renderAppIcon = (app) => {
-    const iconStyle = { width: "20px", height: "20px", marginRight: "8px" };
-
     if (app.iconUrl && app.iconUrl !== "") {
       return (
         <img
           src={app.iconUrl}
-          style={iconStyle}
+          className="logo-md icon-with-margin"
           alt=""
           onError={(e) => {
             e.target.style.display = "none";
@@ -406,7 +430,7 @@ const Navbar = ({
         return (
           <img
             src={faviconUrl}
-            style={iconStyle}
+            className="logo-md icon-with-margin"
             alt=""
             onError={(e) => {
               e.target.style.display = "none";
@@ -431,24 +455,13 @@ const Navbar = ({
         <img
           src={gravatarUrl}
           alt="User Avatar"
-          className="rounded-circle"
-          width="30"
-          height="30"
-          style={{ marginRight: "10px", verticalAlign: "middle" }}
+          className="rounded-circle avatar-lg icon-with-margin-sm v-align-middle"
         />
       );
     }
 
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return (
-      <LogoComponent
-        style={{
-          width: "30px",
-          height: "30px",
-          marginRight: "10px",
-        }}
-      />
-    );
+    return <LogoComponent className="logo-xl icon-with-margin-sm" />;
   };
 
   const renderOrgIcon = () => {
@@ -457,19 +470,12 @@ const Navbar = ({
         <img
           src={activeOrgGravatar}
           alt=""
-          className="rounded-circle me-2"
-          width="16"
-          height="16"
+          className="rounded-circle avatar-sm me-2"
         />
       );
     }
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return (
-      <LogoComponent
-        className="me-2"
-        style={{ width: "16px", height: "16px" }}
-      />
-    );
+    return <LogoComponent className="logo-sm me-2" />;
   };
 
   return (
@@ -477,13 +483,9 @@ const Navbar = ({
       <div className="container-fluid">
         <Link to="/" className="navbar-brand">
           {theme === "light" ? (
-            <BoxVaultLight
-              style={{ width: "30px", height: "30px", marginRight: "10px" }}
-            />
+            <BoxVaultLight className="logo-xl icon-with-margin-sm" />
           ) : (
-            <BoxVaultDark
-              style={{ width: "30px", height: "30px", marginRight: "10px" }}
-            />
+            <BoxVaultDark className="logo-xl icon-with-margin-sm" />
           )}
           BoxVault
         </Link>
@@ -548,7 +550,7 @@ const Navbar = ({
                         role="button"
                         tabIndex={0}
                         title="Switch organization"
-                        style={{ cursor: "pointer" }}
+                        className="cursor-pointer"
                       >
                         {renderOrgIcon()}
                       </span>
@@ -572,7 +574,7 @@ const Navbar = ({
                         role="button"
                         tabIndex={0}
                         title="Switch profile mode"
-                        style={{ cursor: "pointer" }}
+                        className="cursor-pointer"
                       >
                         {profileIsLocal ? (
                           <FaUser className="me-2" />
@@ -599,7 +601,7 @@ const Navbar = ({
                         role="button"
                         tabIndex={0}
                         title="Switch profile mode"
-                        style={{ cursor: "pointer" }}
+                        className="cursor-pointer"
                       >
                         {profileIsLocal ? (
                           <FaUser className="me-2" />
@@ -622,12 +624,7 @@ const Navbar = ({
                     <li>
                       <hr className="dropdown-divider" />
                     </li>
-                    <li
-                      className="dropdown-header"
-                      style={{ paddingTop: 0, paddingBottom: 0 }}
-                    >
-                      Favorites
-                    </li>
+                    <li className="dropdown-header py-0">Favorites</li>
                     {favoriteApps
                       .sort((a, b) => (a.order || 0) - (b.order || 0))
                       .map((app) => (
@@ -688,23 +685,21 @@ const Navbar = ({
                   >
                     {logoutEverywhere ? (
                       <FaBridgeLock
-                        className="me-2 text-danger"
+                        className="me-2 text-danger cursor-pointer"
                         onClick={handleLogoutToggle}
                         onKeyPress={handleLogoutToggleKeyPress}
                         role="button"
                         tabIndex={0}
                         title="Click to logout locally only"
-                        style={{ cursor: "pointer" }}
                       />
                     ) : (
                       <FaHouseLock
-                        className="me-2 text-danger"
+                        className="me-2 text-danger cursor-pointer"
                         onClick={handleLogoutToggle}
                         onKeyPress={handleLogoutToggleKeyPress}
                         role="button"
                         tabIndex={0}
                         title="Click to logout everywhere"
-                        style={{ cursor: "pointer" }}
                       />
                     )}
                     <span className="text-danger">Logout</span>
@@ -754,11 +749,7 @@ const Navbar = ({
 
       {/* Language Selection Modal */}
       {showLanguageModal && (
-        <div
-          className="modal show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
+        <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -785,7 +776,7 @@ const Navbar = ({
                       onClick={() => changeLanguage(lang)}
                     >
                       <span>
-                        <span className="me-2" style={{ fontSize: "1.2em" }}>
+                        <span className="me-2 flag-icon-lg">
                           {getLanguageFlag(lang)}
                         </span>
                         {getLanguageDisplayName(lang)}
@@ -829,6 +820,8 @@ Navbar.propTypes = {
     username: PropTypes.string,
     provider: PropTypes.string,
     accessToken: PropTypes.string,
+    email: PropTypes.string,
+    organization: PropTypes.string,
   }),
   gravatarUrl: PropTypes.string,
   showAdminBoard: PropTypes.bool,

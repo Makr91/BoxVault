@@ -398,11 +398,7 @@ const OrganizationUserManager = () => {
 
       {/* Edit Organization Modal */}
       {showEditModal && editingOrg && (
-        <div
-          className="modal show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
+        <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">

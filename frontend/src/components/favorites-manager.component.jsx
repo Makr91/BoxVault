@@ -113,13 +113,11 @@ const FavoritesManager = () => {
     enrichedFavorites.find((ef) => ef.clientId === clientId) || {};
 
   const renderAppIcon = (app) => {
-    const iconStyle = { width: "20px", height: "20px", marginRight: "8px" };
-
     if (app.iconUrl && app.iconUrl !== "") {
       return (
         <img
           src={app.iconUrl}
-          style={iconStyle}
+          className="logo-md icon-with-margin"
           alt=""
           onError={(e) => {
             e.target.style.display = "none";
@@ -134,7 +132,7 @@ const FavoritesManager = () => {
         return (
           <img
             src={faviconUrl}
-            style={iconStyle}
+            className="logo-md icon-with-margin"
             alt=""
             onError={(e) => {
               e.target.style.display = "none";
@@ -146,11 +144,11 @@ const FavoritesManager = () => {
           url: app.homeUrl,
           error: err.message,
         });
-        return <FaStar style={iconStyle} className="text-warning" />;
+        return <FaStar className="logo-md icon-with-margin text-warning" />;
       }
     }
 
-    return <FaStar style={iconStyle} className="text-warning" />;
+    return <FaStar className="logo-md icon-with-margin text-warning" />;
   };
 
   if (loading) {
@@ -264,7 +262,6 @@ const FavoritesManager = () => {
                   return (
                     <div
                       key={fav.clientId}
-                      className="list-group-item"
                       draggable
                       onDragStart={(e) => handleDragStart(e, index)}
                       onDragOver={handleDragOver}
@@ -277,10 +274,7 @@ const FavoritesManager = () => {
                           e.preventDefault();
                         }
                       }}
-                      style={{
-                        cursor: "move",
-                        opacity: draggedIndex === index ? 0.5 : 1,
-                      }}
+                      className={`list-group-item ${draggedIndex === index ? "dragging" : ""}`}
                     >
                       <div className="d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center">

@@ -147,11 +147,7 @@ const OrganizationDiscovery = ({ theme }) => {
       );
     }
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return (
-      <LogoComponent
-        style={{ width: "24px", height: "24px", marginRight: "8px" }}
-      />
-    );
+    return <LogoComponent className="logo-lg icon-with-margin" />;
   };
 
   const filteredOrganizations = organizations.filter(
@@ -315,11 +311,7 @@ const OrganizationDiscovery = ({ theme }) => {
 
       {/* Join Request Modal */}
       {requestingOrg && (
-        <div
-          className="modal show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
+        <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">

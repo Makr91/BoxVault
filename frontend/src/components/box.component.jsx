@@ -472,7 +472,7 @@ const Box = ({ theme }) => {
               <img
                 src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
                 alt="Build Status"
-                style={{ maxHeight: "20px" }}
+                className="badge-max-height"
               />
             </a>
           </div>

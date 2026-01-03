@@ -105,11 +105,7 @@ const OrganizationSwitcher = ({
       );
     }
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return (
-      <LogoComponent
-        style={{ width: "20px", height: "20px", marginRight: "8px" }}
-      />
-    );
+    return <LogoComponent className="logo-md icon-with-margin" />;
   };
 
   if (!showModal) {
@@ -117,11 +113,7 @@ const OrganizationSwitcher = ({
   }
 
   return (
-    <div
-      className="modal show d-block"
-      tabIndex="-1"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-    >
+    <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header">

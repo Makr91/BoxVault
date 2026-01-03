@@ -368,13 +368,12 @@ const SetupComponent = () => {
         <input
           id={fieldId}
           type="text"
-          className={`form-control ${error ? "is-invalid" : ""}`}
+          className={`form-control ${error ? "is-invalid" : ""} ${entry.readonly ? "readonly-input" : ""}`}
           value={inputValue}
           onChange={(e) =>
             handleConfigChange(configName, currentPath, e.target.value)
           }
           readOnly={entry.readonly}
-          style={entry.readonly ? { backgroundColor: "#f8f9fa" } : undefined}
         />
         <small className="form-text text-muted">{description}</small>
         {error && <div className="invalid-feedback">{error}</div>}
@@ -543,10 +542,9 @@ const SetupComponent = () => {
                 <li className="nav-item ms-auto">
                   <button
                     type="button"
-                    className={`nav-link ${!isFormValid ? "disabled" : ""}`}
+                    className={`nav-link ${!isFormValid ? "disabled" : "cursor-pointer"}`}
                     onClick={handleSubmit}
                     disabled={!isFormValid}
-                    style={{ cursor: isFormValid ? "pointer" : "not-allowed" }}
                   >
                     Submit All Configurations
                   </button>
