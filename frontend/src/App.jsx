@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import "./scss/styles.scss";
+import ErrorBoundary from "./common/ErrorBoundary";
 import EventBus from "./common/EventBus";
 import About from "./components/about.component";
 import Admin from "./components/admin.component";
@@ -10,6 +11,7 @@ import Box from "./components/box.component";
 import Login from "./components/login.component";
 import Moderator from "./components/moderator.component";
 import Navbar from "./components/navbar.component";
+import OrganizationDiscovery from "./components/organization-discovery.component";
 import Organization from "./components/organization.component";
 import Profile from "./components/profile.component";
 import Provider from "./components/provider.component";
@@ -21,6 +23,8 @@ import SetupService from "./services/setup.service";
 import { log } from "./utils/Logger";
 
 const App = () => {
+  const isDevelopment = import.meta.env.NODE_ENV === "development";
+
   // Initialize Bootstrap
   useEffect(() => {
     let bootstrap;
@@ -46,6 +50,7 @@ const App = () => {
   const [showModeratorBoard, setShowModeratorBoard] = useState(false);
   const [currentUser, setCurrentUser] = useState(undefined);
   const [userOrganization, setUserOrganization] = useState("");
+  const [activeOrganization, setActiveOrganization] = useState("");
   const [gravatarUrl, setGravatarUrl] = useState("");
   const [gravatarFetched, setGravatarFetched] = useState(false);
   const [theme, setTheme] = useState(() => {
@@ -165,6 +170,7 @@ const App = () => {
     [gravatarFetched]
   );
 
+  // Organization context management
   useEffect(() => {
     const user = AuthService.getCurrentUser();
 
@@ -176,11 +182,41 @@ const App = () => {
       );
       setUserOrganization(user.organization);
 
+      // Set active organization from localStorage or default to user's org
+      const savedActiveOrg = localStorage.getItem("activeOrganization");
+      if (savedActiveOrg) {
+        setActiveOrganization(savedActiveOrg);
+      } else {
+        setActiveOrganization(user.organization);
+        localStorage.setItem("activeOrganization", user.organization);
+      }
+
       if (user.emailHash) {
         fetchGravatarUrl(user.emailHash);
       }
+    } else {
+      // Clear organization context when user logs out
+      setActiveOrganization("");
+      localStorage.removeItem("activeOrganization");
     }
   }, [fetchGravatarUrl]);
+
+  // Handle organization switching
+  const handleOrganizationSwitch = useCallback(
+    (newOrgName) => {
+      setActiveOrganization(newOrgName);
+      localStorage.setItem("activeOrganization", newOrgName);
+
+      log.app.info("Organization switched", {
+        from: activeOrganization,
+        to: newOrgName,
+      });
+
+      // Navigate to the new organization's page
+      navigate(`/${newOrgName}`);
+    },
+    [activeOrganization, navigate]
+  );
 
   const logOut = useCallback(() => {
     AuthService.logout();
@@ -274,66 +310,79 @@ const App = () => {
   }
 
   return (
-    <div className="App">
-      <Navbar
-        currentUser={currentUser}
-        userOrganization={userOrganization}
-        gravatarUrl={gravatarUrl}
-        showAdminBoard={showAdminBoard}
-        showModeratorBoard={showModeratorBoard}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        logOut={logOut}
-        logOutLocal={logOutLocal}
-      />
-      <div className="container-fluid mt-3">
-        <Routes>
-          <Route
-            path="/setup"
-            element={
-              setupComplete ? <Navigate to="/register" replace /> : <Setup />
-            }
-          />
-          {setupComplete ? (
-            <>
-              <Route
-                path="/"
-                element={<Organization showOnlyPublic theme={theme} />}
-              />
-              <Route path="/about" element={<About />} />
-              <Route path="/login" element={<Login theme={theme} />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/register" element={<Register theme={theme} />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route
-                path="/moderator"
-                element={<Moderator currentOrganization={userOrganization} />}
-              />
-              <Route
-                path="/:organization"
-                element={<Organization showOnlyPublic={false} theme={theme} />}
-              />
-              <Route
-                path="/:organization/:name"
-                element={<Box theme={theme} />}
-              />
-              <Route
-                path="/:organization/:name/:version"
-                element={<Version />}
-              />
-              <Route
-                path="/:organization/:name/:version/:providerName"
-                element={<Provider />}
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </>
-          ) : (
-            <Route path="*" element={<Navigate to="/setup" replace />} />
-          )}
-        </Routes>
+    <ErrorBoundary showErrorDetails={isDevelopment}>
+      <div className="App">
+        <Navbar
+          currentUser={currentUser}
+          userOrganization={userOrganization}
+          activeOrganization={activeOrganization}
+          onOrganizationSwitch={handleOrganizationSwitch}
+          gravatarUrl={gravatarUrl}
+          showAdminBoard={showAdminBoard}
+          showModeratorBoard={showModeratorBoard}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          logOut={logOut}
+          logOutLocal={logOutLocal}
+        />
+        <div className="container-fluid mt-3">
+          <Routes>
+            <Route
+              path="/setup"
+              element={
+                setupComplete ? <Navigate to="/register" replace /> : <Setup />
+              }
+            />
+            {setupComplete ? (
+              <>
+                <Route
+                  path="/"
+                  element={<Organization showOnlyPublic theme={theme} />}
+                />
+                <Route path="/about" element={<About />} />
+                <Route
+                  path="/organizations/discover"
+                  element={<OrganizationDiscovery theme={theme} />}
+                />
+                <Route path="/login" element={<Login theme={theme} />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/register" element={<Register theme={theme} />} />
+                <Route
+                  path="/profile"
+                  element={<Profile activeOrganization={activeOrganization} />}
+                />
+                <Route path="/admin" element={<Admin />} />
+                <Route
+                  path="/moderator"
+                  element={<Moderator currentOrganization={userOrganization} />}
+                />
+                <Route
+                  path="/:organization"
+                  element={
+                    <Organization showOnlyPublic={false} theme={theme} />
+                  }
+                />
+                <Route
+                  path="/:organization/:name"
+                  element={<Box theme={theme} />}
+                />
+                <Route
+                  path="/:organization/:name/:version"
+                  element={<Version />}
+                />
+                <Route
+                  path="/:organization/:name/:version/:providerName"
+                  element={<Provider />}
+                />
+                <Route path="*" element={<Navigate to="/" />} />
+              </>
+            ) : (
+              <Route path="*" element={<Navigate to="/setup" replace />} />
+            )}
+          </Routes>
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 

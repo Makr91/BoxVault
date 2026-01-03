@@ -126,11 +126,6 @@ exports.signin = async (req, res) => {
           attributes: ['name'],
           through: { attributes: [] },
         },
-        {
-          model: Organization,
-          as: 'organization',
-          attributes: ['name'],
-        },
       ],
     });
 
@@ -140,6 +135,13 @@ exports.signin = async (req, res) => {
     if (!user) {
       const serviceAccount = await ServiceAccount.findOne({
         where: { username, token: password },
+        include: [
+          {
+            model: Organization,
+            as: 'organization',
+            attributes: ['name'],
+          },
+        ],
       });
 
       if (serviceAccount) {
@@ -160,6 +162,27 @@ exports.signin = async (req, res) => {
       }
     }
 
+    // Get user's organizations for multi-org JWT
+    let userOrganizations = [];
+    let primaryOrgName = null;
+
+    if (isServiceAccount) {
+      // Service account has one organization
+      primaryOrgName = user.organization?.name || null;
+    } else {
+      // Get all user's organizations with roles
+      const userOrgs = await db.UserOrg.getUserOrganizations(user.id);
+      userOrganizations = userOrgs.map(userOrg => ({
+        name: userOrg.organization.name,
+        role: userOrg.role,
+        isPrimary: userOrg.is_primary,
+      }));
+
+      // Find primary organization
+      const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
+      primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
+    }
+
     // Use longer expiry for stayLoggedIn
     const tokenExpiry = stayLoggedIn ? '24h' : authConfig.auth.jwt.jwt_expiration.value || '24h';
 
@@ -169,6 +192,8 @@ exports.signin = async (req, res) => {
         isServiceAccount,
         stayLoggedIn,
         provider: isServiceAccount ? 'service_account' : user.authProvider || 'local',
+        organizations: userOrganizations, // Multi-org data for frontend
+        serviceAccountOrgId: isServiceAccount ? user.organization_id : null,
       },
       authConfig.auth.jwt.jwt_secret.value,
       {
@@ -182,8 +207,6 @@ exports.signin = async (req, res) => {
       ? ['ROLE_SERVICE_ACCOUNT']
       : user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
 
-    const organizationName = isServiceAccount ? null : (user.organization?.name ?? null);
-
     return res.status(200).send({
       id: user.id,
       username: user.username,
@@ -191,7 +214,8 @@ exports.signin = async (req, res) => {
       verified: isServiceAccount ? null : user.verified,
       emailHash: isServiceAccount ? null : user.emailHash,
       roles: authorities,
-      organization: organizationName,
+      organization: primaryOrgName,
+      organizations: userOrganizations, // All orgs for frontend
       accessToken: token,
       isServiceAccount,
       provider: isServiceAccount ? 'service_account' : user.authProvider || 'local',

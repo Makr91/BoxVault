@@ -88,7 +88,8 @@ exports.update = async (req, res) => {
       include: [
         {
           model: Users,
-          as: 'users',
+          as: 'members',
+          through: { attributes: [] },
           include: [
             {
               model: Box,
@@ -106,7 +107,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    const box = organizationData.users.flatMap(u => u.box).find(b => b.name === name);
+    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === name);
 
     if (!box) {
       return res.status(404).send({

@@ -1,15 +1,17 @@
+import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
+import RequestService from "../services/request.service";
 import ServiceAccountService from "../services/service_account.service";
 import UserService from "../services/user.service";
 import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
-const Profile = () => {
+const Profile = ({ activeOrganization }) => {
   useEffect(() => {
     document.title = "Profile";
   }, []);
@@ -33,9 +35,56 @@ const Profile = () => {
     useState(30);
   const [showPasswords, setShowPasswords] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userOrganizations, setUserOrganizations] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [organizationsLoading, setOrganizationsLoading] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLeaveOrganization = async (orgName) => {
+    try {
+      await UserService.leaveOrganization(orgName);
+      setMessage(`Successfully left organization ${orgName}`);
+
+      // Refresh organizations list
+      const response = await UserService.getUserOrganizations();
+      setUserOrganizations(response.data || []);
+    } catch (error) {
+      log.api.error("Error leaving organization", {
+        orgName,
+        error: error.message,
+      });
+      setMessage(`Error leaving organization: ${error.message}`);
+    }
+  };
+
+  const handleCancelJoinRequest = async (requestId) => {
+    try {
+      await RequestService.cancelJoinRequest(requestId);
+      setMessage("Join request cancelled successfully");
+
+      // Refresh join requests list
+      const response = await RequestService.getUserJoinRequests();
+      setJoinRequests(response.data || []);
+    } catch (error) {
+      log.api.error("Error cancelling join request", {
+        requestId,
+        error: error.message,
+      });
+      setMessage(`Error cancelling request: ${error.message}`);
+    }
+  };
+
+  const getRoleBadgeClass = (role) => {
+    if (role === "admin") {
+      return "bg-danger";
+    }
+    if (role === "moderator") {
+      return "bg-warning";
+    }
+    return "bg-secondary";
+  };
 
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -228,10 +277,36 @@ const Profile = () => {
             });
           }
         }
+      } else if (activeTab === "organizations") {
+        setOrganizationsLoading(true);
+        try {
+          const [orgsResponse, requestsResponse] = await Promise.all([
+            UserService.getUserOrganizations(),
+            RequestService.getUserJoinRequests(),
+          ]);
+          if (mounted) {
+            setUserOrganizations(orgsResponse.data || []);
+            setJoinRequests(requestsResponse.data || []);
+          }
+        } catch (error) {
+          if (
+            mounted &&
+            !error.message?.includes("aborted") &&
+            !error.name?.includes("Cancel")
+          ) {
+            log.api.error("Error loading organizations", {
+              error: error.message,
+            });
+          }
+        } finally {
+          if (mounted) {
+            setOrganizationsLoading(false);
+          }
+        }
       }
     };
 
-    if (activeTab === "serviceAccounts") {
+    if (activeTab === "serviceAccounts" || activeTab === "organizations") {
       loadData();
     }
 
@@ -261,13 +336,26 @@ const Profile = () => {
     e.preventDefault();
     const controller = new AbortController();
     try {
+      // Get active organization's ID
+      const orgsResponse = await UserService.getUserOrganizations();
+      const activeOrg = orgsResponse.data?.find(
+        (org) => org.name === activeOrganization
+      );
+
+      if (!activeOrg) {
+        setMessage("Error: Could not find active organization");
+        return;
+      }
+
       await ServiceAccountService.createServiceAccount(
         newServiceAccountDescription,
-        newServiceAccountExpiration
+        newServiceAccountExpiration,
+        activeOrg.id
       );
       await loadServiceAccounts(controller.signal);
       setNewServiceAccountDescription("");
       setNewServiceAccountExpiration(30);
+      setMessage("Service account created successfully!");
     } catch (error) {
       if (
         !error.message?.includes("aborted") &&
@@ -276,6 +364,9 @@ const Profile = () => {
         log.api.error("Error creating service account", {
           error: error.message,
         });
+        setMessage(
+          `Error creating service account: ${error.response?.data?.message || error.message}`
+        );
       }
     }
     controller.abort();
@@ -499,6 +590,123 @@ const Profile = () => {
     </div>
   );
 
+  const renderOrganizationsTab = () => (
+    <div className="tab-pane fade show active">
+      <h3>My Organizations</h3>
+
+      {organizationsLoading ? (
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="card mb-4">
+            <div className="card-header">
+              <h5>Organizations You Belong To</h5>
+            </div>
+            <div className="card-body">
+              {userOrganizations.length === 0 ? (
+                <div className="alert alert-info">
+                  You don&apos;t belong to any organizations yet.
+                </div>
+              ) : (
+                <ul className="list-group">
+                  {userOrganizations.map((org) => (
+                    <li key={org.id} className="list-group-item">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <div className="d-flex align-items-center">
+                            <div>
+                              <strong>{org.name}</strong>
+                              {org.isPrimary && (
+                                <span className="badge bg-primary ms-2">
+                                  Primary
+                                </span>
+                              )}
+                              <br />
+                              {org.description && (
+                                <small className="text-muted">
+                                  {org.description}
+                                </small>
+                              )}
+                              <br />
+                              <small className="text-muted">
+                                Joined:{" "}
+                                {new Date(org.joinedAt).toLocaleDateString()}
+                              </small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="d-flex align-items-center">
+                          <span
+                            className={`badge ${getRoleBadgeClass(org.role)} me-3`}
+                          >
+                            {org.role}
+                          </span>
+                          {userOrganizations.length > 1 && (
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => handleLeaveOrganization(org.name)}
+                            >
+                              Leave
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {joinRequests.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <h5>Pending Join Requests</h5>
+              </div>
+              <div className="card-body">
+                <ul className="list-group">
+                  {joinRequests.map((request) => (
+                    <li key={request.id} className="list-group-item">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>{request.organization.name}</strong>
+                          <br />
+                          {request.organization.description && (
+                            <small className="text-muted">
+                              {request.organization.description}
+                            </small>
+                          )}
+                          <br />
+                          <small className="text-muted">
+                            Requested:{" "}
+                            {new Date(request.created_at).toLocaleDateString()}
+                          </small>
+                        </div>
+                        <div>
+                          <span className="badge bg-warning me-3">Pending</span>
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => handleCancelJoinRequest(request.id)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
   const renderServiceAccountsTab = () => (
     <div className="tab-pane fade show active">
       <h3>Service Accounts</h3>
@@ -620,6 +828,14 @@ const Profile = () => {
               </li>
               <li className="nav-item">
                 <button
+                  className={`nav-link ${activeTab === "organizations" ? "active" : ""}`}
+                  onClick={() => handleTabChange("organizations")}
+                >
+                  Organizations
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
                   className={`nav-link ${activeTab === "security" ? "active" : ""}`}
                   onClick={() => handleTabChange("security")}
                 >
@@ -637,6 +853,7 @@ const Profile = () => {
             </ul>
             <div className="tab-content mt-3">
               {activeTab === "profile" && renderProfileTab()}
+              {activeTab === "organizations" && renderOrganizationsTab()}
               {activeTab === "security" && renderSecurityTab()}
               {activeTab === "serviceAccounts" && renderServiceAccountsTab()}
             </div>
@@ -652,6 +869,10 @@ const Profile = () => {
       />
     </div>
   );
+};
+
+Profile.propTypes = {
+  activeOrganization: PropTypes.string,
 };
 
 export default Profile;

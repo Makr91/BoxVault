@@ -76,6 +76,32 @@ const isOnlyUserInOrg = (organizationName) =>
     })
     .then((response) => response.data.length === 1);
 
+/**
+ * Get all organizations user belongs to with roles
+ */
+const getUserOrganizations = () =>
+  axios.get(`${baseURL}/api/user/organizations`, { headers: authHeader() });
+
+/**
+ * Leave an organization
+ */
+const leaveOrganization = (orgName) =>
+  axios.post(
+    `${baseURL}/api/user/leave/${orgName}`,
+    {},
+    { headers: authHeader() }
+  );
+
+/**
+ * Set user's primary organization
+ */
+const setPrimaryOrganization = (orgName) =>
+  axios.put(
+    `${baseURL}/api/user/primary-organization/${orgName}`,
+    {},
+    { headers: authHeader() }
+  );
+
 const UserService = {
   getPublicContent,
   getUserBoard,
@@ -90,6 +116,9 @@ const UserService = {
   promoteToModerator,
   demoteToUser,
   isOnlyUserInOrg,
+  getUserOrganizations,
+  leaveOrganization,
+  setPrimaryOrganization,
 };
 
 export default UserService;

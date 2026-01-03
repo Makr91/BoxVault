@@ -81,5 +81,12 @@
   "breadcrumbs": {
     "boxvault": "BoxVault",
     "home": "Home"
+  },
+  "error": {
+    "somethingWentWrong": "Something Went Wrong",
+    "unexpectedErrorOccurred": "An unexpected error occurred. Please try refreshing the page or return to the home page.",
+    "refreshPage": "Refresh Page",
+    "goHome": "Go Home",
+    "errorDetailsDevelopment": "Error Details (Development)"
   }
 }

@@ -56,7 +56,7 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.refreshToken = (req, res) => {
+exports.refreshToken = async (req, res) => {
   try {
     // Get user from request (set by authJwt middleware)
     const { user } = req;
@@ -69,12 +69,27 @@ exports.refreshToken = (req, res) => {
         .send({ message: 'Token refresh only allowed for stay-logged-in sessions' });
     }
 
-    // Generate new token with the requested stayLoggedIn state
+    // Get user's organizations for multi-org JWT
+    const db = require('../../models');
+    const userOrgs = await db.UserOrg.getUserOrganizations(user.id);
+    const userOrganizations = userOrgs.map(userOrg => ({
+      name: userOrg.organization.name,
+      role: userOrg.role,
+      isPrimary: userOrg.is_primary,
+    }));
+
+    // Find primary organization
+    const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
+    const primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
+
+    // Generate new token with multi-org data
     const token = jwt.sign(
       {
         id: user.id,
         isServiceAccount: false,
-        stayLoggedIn: stayLoggedIn || user.stayLoggedIn, // Keep existing state if not provided
+        stayLoggedIn: stayLoggedIn || user.stayLoggedIn,
+        provider: user.authProvider || 'local',
+        organizations: userOrganizations,
       },
       authConfig.auth.jwt.jwt_secret.value,
       {
@@ -84,8 +99,20 @@ exports.refreshToken = (req, res) => {
       }
     );
 
+    const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
+
     return res.status(200).send({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      verified: user.verified,
+      emailHash: user.emailHash,
+      roles: authorities,
+      organization: primaryOrgName,
+      organizations: userOrganizations,
       accessToken: token,
+      isServiceAccount: false,
+      provider: user.authProvider || 'local',
       stayLoggedIn: stayLoggedIn || user.stayLoggedIn,
     });
   } catch (err) {

@@ -2,6 +2,12 @@ const crypto = require('crypto');
 const { log } = require('../utils/Logger');
 
 /**
+ * Generate a random organization code
+ * @returns {string} Random 6-character hexcode
+ */
+const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
+
+/**
  * Assign default role to user if they don't have any roles
  * @param {Object} user - User object
  * @param {Object} db - Database models
@@ -90,6 +96,7 @@ const determineUserOrganization = async (email, db, authConfig) => {
       const orgName = domain;
       const newOrg = await Organization.create({
         name: orgName,
+        org_code: generateOrgCode(),
         description: `Auto-created organization for domain ${domain}`,
       });
       return newOrg.id;
@@ -101,6 +108,141 @@ const determineUserOrganization = async (email, db, authConfig) => {
     default:
       throw new Error(`Access denied: No provisioning policy match for domain ${domain}`);
   }
+};
+
+/**
+ * Handle existing credential user
+ * @param {Object} credential - Existing credential
+ * @param {Object} profile - User profile
+ * @param {string} email - User email
+ * @param {Object} db - Database models
+ * @param {Object} authConfig - Auth config
+ * @returns {Promise<Object>} User object
+ */
+const handleExistingCredentialUser = async (credential, profile, email, db, authConfig) => {
+  const { user: User } = db;
+
+  await credential.updateProfile(profile);
+  const user = await User.findByPk(credential.user_id);
+
+  if (!user || user.suspended) {
+    throw new Error('User account is inactive');
+  }
+
+  if (!user.primary_organization_id) {
+    const organizationId = await determineUserOrganization(email, db, authConfig);
+    await user.update({
+      primary_organization_id: organizationId,
+      linkedAt: new Date(),
+    });
+  }
+
+  return user;
+};
+
+/**
+ * Handle existing email user
+ * @param {Object} user - Existing user
+ * @param {string} provider - Auth provider
+ * @param {string} subject - User subject
+ * @param {Object} profile - User profile
+ * @param {string} email - User email
+ * @param {string} normalizedProvider - Normalized provider name
+ * @param {Object} db - Database models
+ * @param {Object} authConfig - Auth config
+ * @returns {Promise<Object>} User object
+ */
+const handleExistingEmailUser = async (
+  user,
+  provider,
+  subject,
+  profile,
+  email,
+  normalizedProvider,
+  db,
+  authConfig
+) => {
+  const { credential: Credential } = db;
+  const baseProvider = provider.startsWith('oidc-') ? 'oidc' : provider;
+
+  if (!user.primary_organization_id) {
+    const organizationId = await determineUserOrganization(email, db, authConfig);
+    await user.update({
+      primary_organization_id: organizationId,
+      authProvider: baseProvider,
+      externalId: subject,
+      linkedAt: new Date(),
+    });
+  } else {
+    await user.update({
+      authProvider: baseProvider,
+      externalId: subject,
+      linkedAt: new Date(),
+    });
+  }
+
+  try {
+    await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
+  } catch {
+    // Credential might already exist
+  }
+
+  await assignDefaultRoleIfNeeded(user, db, authConfig);
+
+  return user;
+};
+
+/**
+ * Create new external user
+ * @param {string} provider - Auth provider
+ * @param {Object} profile - User profile
+ * @param {string} email - User email
+ * @param {string} subject - User subject
+ * @param {string} normalizedProvider - Normalized provider name
+ * @param {Object} db - Database models
+ * @param {Object} authConfig - Auth config
+ * @returns {Promise<Object>} User object
+ */
+const createNewExternalUser = async (
+  provider,
+  profile,
+  email,
+  subject,
+  normalizedProvider,
+  db,
+  authConfig
+) => {
+  const { user: User, credential: Credential } = db;
+
+  const organizationId = await determineUserOrganization(email, db, authConfig);
+  const baseProvider = provider.startsWith('oidc-') ? 'oidc' : provider;
+
+  const user = await User.create({
+    username: profile.displayName || profile.cn || email.split('@')[0],
+    email,
+    password: 'external',
+    emailHash: crypto.createHash('sha256').update(email.toLowerCase()).digest('hex'),
+    verified: true,
+    primary_organization_id: organizationId,
+    authProvider: baseProvider,
+    externalId: subject,
+    linkedAt: new Date(),
+  });
+
+  await assignDefaultRoleIfNeeded(user, db, authConfig);
+
+  // Create user-organization relationship for external users
+  const defaultRole = authConfig.auth?.external?.provisioning_default_role?.value || 'user';
+  await db.UserOrg.create({
+    user_id: user.id,
+    organization_id: organizationId,
+    role: defaultRole,
+    is_primary: true,
+  });
+
+  await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
+
+  return user;
 };
 
 /**
@@ -140,90 +282,40 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
 
     // 1. Check if credential already exists
     const credential = await Credential.findByProviderAndSubject(normalizedProvider, subject);
-
     if (credential) {
-      await credential.updateProfile(profile);
-      const user = await User.findByPk(credential.user_id);
-
-      if (!user || user.suspended) {
-        throw new Error('User account is inactive');
-      }
-
-      if (!user.organizationId) {
-        const organizationId = await determineUserOrganization(email, db, authConfig);
-        await user.update({
-          organizationId,
-          linkedAt: new Date(),
-        });
-      }
-
-      return user;
+      return await handleExistingCredentialUser(credential, profile, email, db, authConfig);
     }
 
     // 2. Check if user exists by email
-    let user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email } });
     if (user) {
-      const baseProvider = provider.startsWith('oidc-') ? 'oidc' : provider;
-
-      if (!user.organizationId) {
-        const organizationId = await determineUserOrganization(email, db, authConfig);
-        await user.update({
-          organizationId,
-          authProvider: baseProvider,
-          externalId: subject,
-          linkedAt: new Date(),
-        });
-      } else {
-        await user.update({
-          authProvider: baseProvider,
-          externalId: subject,
-          linkedAt: new Date(),
-        });
-      }
-
-      try {
-        await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
-      } catch {
-        // Credential might already exist
-      }
-
-      await assignDefaultRoleIfNeeded(user, db, authConfig);
-
-      return user;
+      return await handleExistingEmailUser(
+        user,
+        provider,
+        subject,
+        profile,
+        email,
+        normalizedProvider,
+        db,
+        authConfig
+      );
     }
 
     // 3. New external user - apply provisioning policy
-    const organizationId = await determineUserOrganization(email, db, authConfig);
-    const baseProvider = provider.startsWith('oidc-') ? 'oidc' : provider;
-
-    user = await User.create({
-      username: profile.displayName || profile.cn || email.split('@')[0],
+    return await createNewExternalUser(
+      provider,
+      profile,
       email,
-      password: 'external',
-      emailHash: crypto.createHash('sha256').update(email.toLowerCase()).digest('hex'),
-      verified: true,
-      organizationId,
-      authProvider: baseProvider,
-      externalId: subject,
-      linkedAt: new Date(),
-    });
-
-    await assignDefaultRoleIfNeeded(user, db, authConfig);
-
-    await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
-
-    return user;
+      subject,
+      normalizedProvider,
+      db,
+      authConfig
+    );
   } catch (error) {
     log.error.error('External user handling failed:', error.message);
     throw error;
   }
 };
-
-/**
- * Generate a random organization code
- * @returns {string} Random 6-character hexcode
- */
-const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
 
 module.exports = {
   handleExternalUser,

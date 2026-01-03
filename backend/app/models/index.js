@@ -63,8 +63,38 @@ db.files = require('../models/file.model.js')(sequelize, Sequelize);
 db.invitation = require('../models/invitation.model.js')(sequelize, Sequelize);
 db.service_account = require('../models/service_account.model.js')(sequelize, Sequelize);
 db.credential = require('../models/credential.model.js')(sequelize, Sequelize);
+db.UserOrg = require('../models/user-org.model.js')(sequelize, Sequelize);
+db.Request = require('../models/request.model.js')(sequelize, Sequelize);
 
-// Define associations
+// Define associations for new models
+db.UserOrg.associate = function (models) {
+  db.UserOrg.belongsTo(models.user, {
+    foreignKey: 'user_id',
+    as: 'user',
+  });
+  db.UserOrg.belongsTo(models.organization, {
+    foreignKey: 'organization_id',
+    as: 'organization',
+  });
+};
+
+db.Request.associate = function (models) {
+  db.Request.belongsTo(models.user, {
+    foreignKey: 'user_id',
+    as: 'user',
+  });
+  db.Request.belongsTo(models.organization, {
+    foreignKey: 'organization_id',
+    as: 'organization',
+  });
+  db.Request.belongsTo(models.user, {
+    foreignKey: 'reviewed_by',
+    as: 'reviewer',
+  });
+};
+
+// DEPRECATED: Keep global roles for backward compatibility during migration
+// These will be removed in a future version
 db.role.belongsToMany(db.user, {
   through: 'user_roles',
 });

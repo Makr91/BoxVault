@@ -45,7 +45,7 @@ const Organization = db.organization;
  *               $ref: '#/components/schemas/Error'
  */
 exports.isOnlyUserInOrg = async (req, res) => {
-  const { organizationName } = req.params;
+  const { organization: organizationName } = req.params;
 
   try {
     const organization = await Organization.findOne({

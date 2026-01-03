@@ -69,8 +69,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       const uniqueOrgs = new Map();
 
       boxesList.forEach((box) => {
-        const orgName = box.user?.organization?.name;
-        const emailHash = box.user?.organization?.emailHash;
+        const orgName =
+          box.user?.organization?.name || box.user?.primaryOrganization?.name;
+        const emailHash =
+          box.user?.organization?.emailHash ||
+          box.user?.primaryOrganization?.emailHash;
         if (orgName && emailHash && !uniqueOrgs.has(orgName)) {
           uniqueOrgs.set(orgName, emailHash);
         }
@@ -134,31 +137,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         0
       );
       return versionTotal + versionDownloads;
-    }, 0);
-  };
-
-  const calculatePrivateDownloads = (box) => {
-    if (!box.providers) {
-      return 0;
-    }
-    return box.providers.reduce((providerTotal, provider) => {
-      if (!provider.architectures) {
-        return providerTotal;
-      }
-      const providerDownloads = provider.architectures.reduce(
-        (archTotal, architecture) => {
-          if (!architecture.files) {
-            return archTotal;
-          }
-          const archDownloads = architecture.files.reduce(
-            (fileTotal, file) => fileTotal + file.downloadCount,
-            0
-          );
-          return archTotal + archDownloads;
-        },
-        0
-      );
-      return providerTotal + providerDownloads;
     }, 0);
   };
 
@@ -460,10 +438,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     currentUser && currentUser.organization === box.organization;
 
   const renderOrgLogo = (box) => {
-    if (gravatarUrls[box.user?.organization?.name]) {
+    const orgName =
+      box.user?.organization?.name || box.user?.primaryOrganization?.name;
+    if (gravatarUrls[orgName]) {
       return (
         <img
-          src={gravatarUrls[box.user?.organization?.name]}
+          src={gravatarUrls[orgName]}
           alt=""
           className="rounded-circle"
           width="30"
@@ -489,13 +469,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   };
 
   const renderTableRow = (box, index) => {
-    const totalDownloads = showOnlyPublic
-      ? calculatePublicDownloads(box)
-      : calculatePrivateDownloads(box);
+    const totalDownloads = calculatePublicDownloads(box);
     const providerNames = getProviderNames(box);
     const architectureNames = getArchitectureNames(box);
     const organizationName =
-      box.user.organization.name || currentUser.organization;
+      box.user?.primaryOrganization?.name || currentUser.organization;
 
     return (
       <tr
@@ -559,6 +537,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           </div>
         </div>
         <div className="form-group">
+          {showOnlyPublic && (
+            <Link
+              to="/organizations/discover"
+              className="btn btn-outline-primary"
+            >
+              Organizations
+            </Link>
+          )}
           {!showOnlyPublic && canEditBoxes({ organization }) && (
             <>
               <button

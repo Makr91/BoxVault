@@ -75,8 +75,8 @@ const generateEmailHash = email =>
  */
 // Update the 'update' function
 exports.update = async (req, res) => {
-  const { organizationName } = req.params;
-  const { organization, description, email, website } = req.body;
+  const { organization: organizationName } = req.params;
+  const { organization, description, email, website, org_code } = req.body;
   const oldFilePath = getSecureBoxPath(organizationName);
   const newFilePath = getSecureBoxPath(organization || organizationName);
 
@@ -113,6 +113,28 @@ exports.update = async (req, res) => {
       // Continue with database update even if file operations fail
     }
 
+    // Validate org_code format if provided
+    if (org_code !== undefined && org_code !== null && org_code !== '') {
+      if (!/^[0-9A-F]{6}$/.test(org_code)) {
+        return res.status(400).send({
+          message:
+            'Invalid organization code. Must be exactly 6 hexadecimal characters (0-9, A-F).',
+        });
+      }
+
+      // Check uniqueness if changing org_code
+      if (org_code !== org.org_code) {
+        const existingOrg = await Organization.findOne({
+          where: { org_code },
+        });
+        if (existingOrg) {
+          return res.status(400).send({
+            message: `Organization code ${org_code} is already in use.`,
+          });
+        }
+      }
+    }
+
     // Generate email hash if email is provided
     let emailHash = null;
     if (email) {
@@ -124,6 +146,7 @@ exports.update = async (req, res) => {
       description: description || org.description,
       email: email || org.email,
       emailHash: emailHash || org.emailHash,
+      org_code: org_code !== undefined ? org_code : org.org_code,
       website: website || org.website,
     });
 

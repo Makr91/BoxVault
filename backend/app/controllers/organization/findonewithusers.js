@@ -71,7 +71,7 @@ const Box = db.box;
  *               $ref: '#/components/schemas/Error'
  */
 exports.findOneWithUsers = async (req, res) => {
-  const { organizationName } = req.params;
+  const { organization: organizationName } = req.params;
   const { userId } = req;
 
   try {
@@ -80,7 +80,8 @@ exports.findOneWithUsers = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'users',
+          as: 'members',
+          through: { attributes: [] },
           include: [
             {
               model: Role,
@@ -100,7 +101,7 @@ exports.findOneWithUsers = async (req, res) => {
       return res.status(404).send({ message: 'Organization not found.' });
     }
 
-    const users = organization.users.map(user => ({
+    const users = organization.members.map(user => ({
       id: user.id,
       username: user.username,
       email: user.email,

@@ -8,6 +8,11 @@ const { update } = require('./organization/update');
 const { delete: deleteOrganization } = require('./organization/delete');
 const { suspendOrganization } = require('./organization/suspend');
 const { resumeOrganization } = require('./organization/resume');
+const { discoverOrganizations } = require('./organization/discover');
+const { updateAccessMode } = require('./organization/accessmode');
+const { getUserOrgRole } = require('./organization/userrole');
+const { updateUserOrgRole } = require('./organization/updateuserrole');
+const { removeUserFromOrg } = require('./organization/removeuser');
 
 module.exports = {
   create,
@@ -19,4 +24,9 @@ module.exports = {
   delete: deleteOrganization,
   suspendOrganization,
   resumeOrganization,
+  discoverOrganizations,
+  updateAccessMode,
+  getUserOrgRole,
+  updateUserOrgRole,
+  removeUserFromOrg,
 };

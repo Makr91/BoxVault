@@ -96,8 +96,10 @@ exports.signup = async (req, res) => {
       organization = await Organization.findByPk(invitation.organizationId);
     } else {
       // Handle signup without invitation token
+      const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
       organization = await Organization.create({
         name: username,
+        org_code: generateOrgCode(),
       });
     }
 
@@ -123,23 +125,34 @@ exports.signup = async (req, res) => {
       email,
       password: bcrypt.hashSync(password, 8),
       emailHash,
-      organizationId: organization.id,
+      primary_organization_id: organization.id,
       verificationToken: crypto.randomBytes(20).toString('hex'),
       verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     });
 
     const userCount = await User.count();
+    let assignedRole = 'user';
 
     if (userCount === 1) {
-      // Assign "admin" role to the first user
+      // First user gets admin role
+      assignedRole = 'admin';
       const adminRole = await Role.findOne({ where: { name: 'admin' } });
       const moderatorRole = await Role.findOne({ where: { name: 'moderator' } });
       await user.setRoles([adminRole, moderatorRole]);
     } else {
-      // Assign "user" role to all subsequent users
+      // Use invited role or default to user
+      assignedRole = invitation?.invited_role || 'user';
       const userRole = await Role.findOne({ where: { name: 'user' } });
       await user.setRoles([userRole]);
     }
+
+    // Create user-organization relationship
+    await db.UserOrg.create({
+      user_id: user.id,
+      organization_id: organization.id,
+      role: assignedRole,
+      is_primary: true, // First/primary organization
+    });
 
     // If signup was done with an invitation, mark it as accepted
     if (invitation) {

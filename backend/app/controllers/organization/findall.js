@@ -79,7 +79,7 @@ exports.findAll = async (req, res) => {
 
     const result = organizations.map(org => ({
       ...org.toJSON(),
-      totalBoxes: org.users.reduce(
+      totalBoxes: org.members.reduce(
         (acc, user) =>
           acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
         0

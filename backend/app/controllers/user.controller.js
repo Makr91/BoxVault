@@ -14,6 +14,10 @@ const { promoteToModerator } = require('./user/promote');
 const { demoteToUser } = require('./user/demote');
 const { getUserRoles } = require('./user/roles');
 const { getUserProfile } = require('./user/getuserprofile');
+const { getUserOrganizations } = require('./user/organizations');
+const { leaveOrganization } = require('./user/leave');
+const { getPrimaryOrganization } = require('./user/primary');
+const { setPrimaryOrganization } = require('./user/setprimary');
 
 module.exports = {
   allAccess,
@@ -31,4 +35,8 @@ module.exports = {
   demoteToUser,
   getUserRoles,
   getUserProfile,
+  getUserOrganizations,
+  leaveOrganization,
+  getPrimaryOrganization,
+  setPrimaryOrganization,
 };

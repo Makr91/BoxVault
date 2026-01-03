@@ -63,14 +63,14 @@ const Organization = db.organization;
 exports.resendVerificationMail = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
-      include: [{ model: Organization, as: 'organization' }],
+      include: [{ model: Organization, as: 'primaryOrganization' }],
     });
 
     if (!user) {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    if (!user.organization) {
+    if (!user.primaryOrganization) {
       return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 

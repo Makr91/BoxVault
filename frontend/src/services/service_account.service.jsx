@@ -4,12 +4,17 @@ import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
 
-const createServiceAccount = (description, expirationDays) =>
+const createServiceAccount = (description, expirationDays, organizationId) =>
   axios.post(
     `${baseURL}/api/service-accounts/`,
-    { description, expirationDays },
+    { description, expirationDays, organizationId },
     { headers: authHeader() }
   );
+
+const getAvailableOrganizations = () =>
+  axios.get(`${baseURL}/api/service-accounts/organizations`, {
+    headers: authHeader(),
+  });
 
 const getServiceAccounts = (signal) =>
   axios.get(`${baseURL}/api/service-accounts/`, {
@@ -24,6 +29,7 @@ const deleteServiceAccount = (id) =>
 
 const ServiceAccountService = {
   createServiceAccount,
+  getAvailableOrganizations,
   getServiceAccounts,
   deleteServiceAccount,
 };

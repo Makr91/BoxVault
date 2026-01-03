@@ -387,6 +387,7 @@ const initializeApp = async () => {
     app.use('/api', require('./app/routes/mail.routes'));
     app.use('/api', require('./app/routes/config.routes'));
     app.use('/api', require('./app/routes/user.routes'));
+    app.use('/api', require('./app/routes/request.routes'));
     const boxRouter = require('./app/routes/box.routes');
     app.use('/api', boxRouter);
     app.use('/', boxRouter); // Also mount at root for Vagrant download route

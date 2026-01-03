@@ -43,7 +43,7 @@ const Organization = db.organization;
  */
 exports.findAll = async (req, res) => {
   try {
-    const { organizationName } = req.params;
+    const { organization: organizationName } = req.params;
     const organization = await Organization.findOne({
       where: { name: organizationName },
       include: ['users'],
@@ -55,7 +55,7 @@ exports.findAll = async (req, res) => {
       });
     }
 
-    return res.send(organization.users);
+    return res.send(organization.members);
   } catch (err) {
     return res.status(500).send({
       message: err.message || 'Some error occurred while retrieving users.',

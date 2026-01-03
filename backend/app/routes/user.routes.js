@@ -61,19 +61,36 @@ router.delete(
 );
 router.get('/user', [authJwt.verifyToken, authJwt.isUser], user.getUserProfile);
 
+// Multi-organization user management
+router.get('/user/organizations', [authJwt.verifyToken, authJwt.isUser], user.getUserOrganizations);
+
+router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], user.leaveOrganization);
+
+router.get(
+  '/user/primary-organization',
+  [authJwt.verifyToken, authJwt.isUser],
+  user.getPrimaryOrganization
+);
+
+router.put(
+  '/user/primary-organization/:orgName',
+  [authJwt.verifyToken, authJwt.isUser],
+  user.setPrimaryOrganization
+);
+
 router.get(
   '/organizations',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
   user.organization
 );
 router.get(
-  '/organizations/:organizationName/only-user',
+  '/organizations/:organization/only-user',
   [authJwt.verifyToken],
   authJwt.isUser,
   user.isOnlyUserInOrg
 );
 router.post(
-  '/organization/:organizationName/users',
+  '/organization/:organization/users',
   [
     authJwt.verifyToken,
     authJwt.isUser,
@@ -83,17 +100,17 @@ router.post(
   auth.signup
 );
 router.get(
-  '/organization/:organizationName/users/:userName',
+  '/organization/:organization/users/:userName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   user.findOne
 );
 router.put(
-  '/organization/:organizationName/users/:userName',
+  '/organization/:organization/users/:userName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   user.update
 );
 router.delete(
-  '/organization/:organizationName/users/:username',
+  '/organization/:organization/users/:username',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   user.delete
 );

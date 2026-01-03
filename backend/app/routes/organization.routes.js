@@ -1,5 +1,5 @@
 const express = require('express');
-const { authJwt, verifyOrganization } = require('../middleware');
+const { authJwt, verifyOrganization, verifyOrgAccess, sessionAuth } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const organization = require('../controllers/organization.controller');
 
@@ -14,6 +14,10 @@ router.use((req, res, next) => {
   next();
 });
 
+// Public organization discovery (uses sessionAuth to check if admin)
+router.get('/organizations/discover', sessionAuth, organization.discoverOrganizations);
+
+// Admin-only organization management (global)
 router.get(
   '/organizations-with-users',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
@@ -21,15 +25,15 @@ router.get(
 );
 
 router.get(
-  '/organization/:organizationName/users',
-  [authJwt.verifyToken, authJwt.isUser],
+  '/organization/:organization/users',
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
   organization.findOneWithUsers
 );
 
 router.get('/organization', [authJwt.verifyToken, authJwt.isUser], organization.findAll);
 
 router.get(
-  '/organization/:organizationName',
+  '/organization/:organization',
   [authJwt.verifyToken, authJwt.isUser],
   organization.findOne
 );
@@ -46,32 +50,57 @@ router.post(
 );
 
 router.put(
-  '/organization/:organizationName',
+  '/organization/:organization',
   [
     authJwt.verifyToken,
     authJwt.isUser,
-    authJwt.isModeratorOrAdmin,
+    verifyOrgAccess.isOrgModeratorOrAdmin,
     verifyOrganization.validateOrganization,
   ],
   organization.update
 );
 
 router.delete(
-  '/organization/:organizationName',
+  '/organization/:organization',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   organization.delete
 );
 
 router.put(
-  '/organization/:organizationName/suspend',
+  '/organization/:organization/suspend',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   organization.suspendOrganization
 );
 
 router.put(
-  '/organization/:organizationName/resume',
+  '/organization/:organization/resume',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   organization.resumeOrganization
+);
+
+// Organization-specific user management
+router.put(
+  '/organization/:organization/access-mode',
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  organization.updateAccessMode
+);
+
+router.get(
+  '/organization/:organization/users/:userId/role',
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModerator],
+  organization.getUserOrgRole
+);
+
+router.put(
+  '/organization/:organization/users/:userId/role',
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  organization.updateUserOrgRole
+);
+
+router.delete(
+  '/organization/:organization/users/:userId',
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  organization.removeUserFromOrg
 );
 
 module.exports = router;

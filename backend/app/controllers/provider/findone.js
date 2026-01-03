@@ -190,7 +190,7 @@ exports.findOne = async (req, res) => {
       include: [
         {
           model: db.user,
-          as: 'users',
+          as: 'members',
           include: [
             {
               model: db.box,
@@ -216,7 +216,7 @@ exports.findOne = async (req, res) => {
       });
     }
 
-    const box = organizationData.users
+    const box = organizationData.members
       .flatMap(user => user.box)
       .find(foundBox => foundBox.name === boxId);
 
@@ -252,7 +252,7 @@ exports.findOne = async (req, res) => {
       return res.status(403).send({ message: 'Unauthorized access to provider.' });
     }
 
-    const user = organizationData.users.find(u => u.id === userId);
+    const user = organizationData.members.find(u => u.id === userId);
     if (!user) {
       return res.status(403).send({ message: 'Unauthorized access to provider.' });
     }

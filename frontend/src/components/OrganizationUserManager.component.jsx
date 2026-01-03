@@ -19,7 +19,12 @@ const OrganizationUserManager = () => {
   const [oldName, setOldName] = useState("");
   const [renameMessage, setRenameMessage] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingOrg, setEditingOrg] = useState(null);
+  const [editOrgCode, setEditOrgCode] = useState("");
+  const [editMessage, setEditMessage] = useState("");
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     OrganizationService.getOrganizationsWithUsers().then(
@@ -56,7 +61,7 @@ const OrganizationUserManager = () => {
       setOrganizations((prev) =>
         prev.map((org) => ({
           ...org,
-          users: org.users.filter((user) => user.id !== userId),
+          members: org.members.filter((user) => user.id !== userId),
         }))
       );
     });
@@ -92,7 +97,7 @@ const OrganizationUserManager = () => {
       setOrganizations((prev) =>
         prev.map((org) => ({
           ...org,
-          users: org.users.map((user) =>
+          members: org.members.map((user) =>
             user.id === userId ? { ...user, suspended: !isSuspended } : user
           ),
         }))
@@ -121,7 +126,7 @@ const OrganizationUserManager = () => {
       setOrganizations((prev) =>
         prev.map((org) => ({
           ...org,
-          users: org.users.map((user) =>
+          members: org.members.map((user) =>
             user.id === userId
               ? { ...user, roles: [{ name: "moderator" }] }
               : user
@@ -136,7 +141,7 @@ const OrganizationUserManager = () => {
       setOrganizations((prev) =>
         prev.map((org) => ({
           ...org,
-          users: org.users.map((user) =>
+          members: org.members.map((user) =>
             user.id === userId ? { ...user, roles: [{ name: "user" }] } : user
           ),
         }))
@@ -203,141 +208,270 @@ const OrganizationUserManager = () => {
     }
   };
 
+  const filteredOrganizations = organizations.filter((org) => {
+    if (!searchTerm) {
+      return true;
+    }
+    const term = searchTerm.toLowerCase();
+    return (
+      org.name.toLowerCase().includes(term) ||
+      (org.org_code && org.org_code.toLowerCase().includes(term))
+    );
+  });
+
   return (
-    <div className="row">
-      {organizations.map((org) => (
-        <div className="col-md-6" key={org.id}>
-          <div className="card mt-4">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              {editingOrgId === org.id ? (
-                <form onSubmit={handleRenameOrganization} noValidate>
-                  {renameMessage && (
-                    <div className="alert alert-info mt-3 mb-3">
-                      {renameMessage}
-                    </div>
-                  )}
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={newOrgName}
-                    onChange={(e) => setNewOrgName(e.target.value)}
-                  />
-                  <button className="btn btn-success btn-sm mt-2" type="submit">
-                    Save
+    <>
+      <div className="mb-4">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search organizations by name or code..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      <div className="row">
+        {filteredOrganizations.map((org) => (
+          <div className="col-md-6" key={org.id}>
+            <div className="card mt-4">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                {editingOrgId === org.id ? (
+                  <form onSubmit={handleRenameOrganization} noValidate>
+                    {renameMessage && (
+                      <div className="alert alert-info mt-3 mb-3">
+                        {renameMessage}
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={newOrgName}
+                      onChange={(e) => setNewOrgName(e.target.value)}
+                    />
+                    <button
+                      className="btn btn-success btn-sm mt-2"
+                      type="submit"
+                    >
+                      Save
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm mt-2 ms-2"
+                      type="button"
+                      onClick={() => setEditingOrgId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <Link to={`/${org.name}`} className="card-title">
+                    {org.org_code ? `${org.org_code} - ${org.name}` : org.name}
+                  </Link>
+                )}
+                <div>
+                  <button
+                    className="btn btn-info btn-sm me-2"
+                    onClick={async () => {
+                      const response =
+                        await OrganizationService.getOrganizationByName(
+                          org.name
+                        );
+                      setEditingOrg(response.data);
+                      setEditOrgCode(response.data.org_code || "");
+                      setShowEditModal(true);
+                    }}
+                  >
+                    Edit
                   </button>
                   <button
-                    className="btn btn-secondary btn-sm mt-2 ms-2"
-                    type="button"
-                    onClick={() => setEditingOrgId(null)}
+                    className="btn btn-primary btn-sm me-2"
+                    onClick={() => {
+                      setEditingOrgId(org.id);
+                      setNewOrgName(org.name);
+                      setOldName(org.name);
+                    }}
                   >
-                    Cancel
+                    Rename
                   </button>
-                </form>
-              ) : (
-                <Link to={`/${org.name}`} className="card-title">
-                  {org.name}
-                </Link>
-              )}
-              <div>
-                <button
-                  className="btn btn-primary btn-sm me-2"
-                  onClick={() => {
-                    setEditingOrgId(org.id);
-                    setNewOrgName(org.name);
-                    setOldName(org.name);
-                  }}
-                >
-                  Rename
-                </button>
-                <button
-                  className={`btn btn-${org.suspended ? "success" : "warning"} btn-sm me-2`}
-                  onClick={() =>
-                    handleSuspendOrResumeOrganization(org.name, org.suspended)
-                  }
-                >
-                  {org.suspended ? "Resume" : "Suspend"}
-                </button>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() =>
-                    handleDeleteClick({
-                      type: "organization",
-                      name: org.name,
-                    })
-                  }
-                >
-                  Delete
-                </button>
+                  <button
+                    className={`btn btn-${org.suspended ? "success" : "warning"} btn-sm me-2`}
+                    onClick={() =>
+                      handleSuspendOrResumeOrganization(org.name, org.suspended)
+                    }
+                  >
+                    {org.suspended ? "Resume" : "Suspend"}
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() =>
+                      handleDeleteClick({
+                        type: "organization",
+                        name: org.name,
+                      })
+                    }
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="card-body">
-              <p>Total Boxes: {org.totalBoxes}</p>
-            </div>
-            <ul className="list-group list-group-flush">
-              {org.users.map((user) => (
-                <li
-                  className="list-group-item d-flex justify-content-between align-items-center"
-                  key={user.id}
-                >
-                  <div>
-                    <strong>{user.username}</strong> <br />
-                    <small>{user.email}</small> <br />
-                    <small>Boxes: {user.totalBoxes}</small> <br />
-                    <small>Roles:</small>
-                    <ul>
+              <div className="card-body">
+                <p>Total Boxes: {org.totalBoxes}</p>
+              </div>
+              <ul className="list-group list-group-flush">
+                {org.members.map((user) => (
+                  <li
+                    className="list-group-item d-flex justify-content-between align-items-center"
+                    key={user.id}
+                  >
+                    <div>
+                      <strong>{user.username}</strong> <br />
+                      <small>{user.email}</small> <br />
+                      <small>Boxes: {user.totalBoxes}</small> <br />
+                      <small>Roles:</small>
+                      <ul>
+                        {user.roles &&
+                          user.roles.map((role) => (
+                            <li key={role.name}>{role.name}</li>
+                          ))}
+                      </ul>
+                    </div>
+                    <div>
                       {user.roles &&
-                        user.roles.map((role) => (
-                          <li key={role.name}>{role.name}</li>
+                        !user.roles.some((role) => role.name === "admin") &&
+                        (user.roles.some(
+                          (role) => role.name === "moderator"
+                        ) ? (
+                          <button
+                            className="btn btn-secondary btn-sm me-2"
+                            onClick={() => handleDemoteUser(user.id)}
+                          >
+                            Demote
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-primary btn-sm me-2"
+                            onClick={() => handlePromoteUser(user.id)}
+                          >
+                            Promote
+                          </button>
                         ))}
-                    </ul>
-                  </div>
-                  <div>
-                    {user.roles &&
-                      !user.roles.some((role) => role.name === "admin") &&
-                      (user.roles.some((role) => role.name === "moderator") ? (
-                        <button
-                          className="btn btn-secondary btn-sm me-2"
-                          onClick={() => handleDemoteUser(user.id)}
-                        >
-                          Demote
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-primary btn-sm me-2"
-                          onClick={() => handlePromoteUser(user.id)}
-                        >
-                          Promote
-                        </button>
-                      ))}
-                    <button
-                      className={`btn btn-${user.suspended ? "success" : "warning"} btn-sm me-2`}
-                      onClick={() =>
-                        handleSuspendOrResumeUser(user.id, user.suspended)
-                      }
-                    >
-                      {user.suspended ? "Resume" : "Suspend"}
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() =>
-                        handleDeleteClick({ type: "user", id: user.id })
-                      }
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      <button
+                        className={`btn btn-${user.suspended ? "success" : "warning"} btn-sm me-2`}
+                        onClick={() =>
+                          handleSuspendOrResumeUser(user.id, user.suspended)
+                        }
+                      >
+                        {user.suspended ? "Resume" : "Suspend"}
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() =>
+                          handleDeleteClick({ type: "user", id: user.id })
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
       <ConfirmationModal
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}
       />
-    </div>
+
+      {/* Edit Organization Modal */}
+      {showEditModal && editingOrg && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  Edit Organization: {editingOrg.name}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowEditModal(false)}
+                />
+              </div>
+              <div className="modal-body">
+                {editMessage && (
+                  <div
+                    className={`alert alert-${editMessage.includes("success") ? "success" : "danger"}`}
+                  >
+                    {editMessage}
+                  </div>
+                )}
+                <div className="form-group">
+                  <label htmlFor="editOrgCode">Organization Code</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="editOrgCode"
+                    value={editOrgCode}
+                    onChange={(e) => {
+                      const value = e.target.value
+                        .toUpperCase()
+                        .replace(/[^0-9A-F]/g, "");
+                      setEditOrgCode(value);
+                    }}
+                    maxLength="6"
+                    pattern="[0-9A-F]{6}"
+                  />
+                  <small className="form-text text-muted">
+                    6-character hexadecimal identifier (0-9, A-F)
+                  </small>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    try {
+                      await OrganizationService.updateOrganization(
+                        editingOrg.name,
+                        {
+                          org_code: editOrgCode,
+                        }
+                      );
+                      setEditMessage("Organization code updated successfully!");
+                      setTimeout(() => {
+                        setShowEditModal(false);
+                        setEditMessage("");
+                      }, 1500);
+                    } catch (error) {
+                      setEditMessage(
+                        error.response?.data?.message ||
+                          "Error updating organization code"
+                      );
+                    }
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

@@ -69,7 +69,7 @@ const Invitation = db.invitation;
  *               $ref: '#/components/schemas/Error'
  */
 exports.getActiveInvitations = async (req, res) => {
-  const { organizationName } = req.params;
+  const { organization: organizationName } = req.params;
 
   try {
     // First, find the organization by name

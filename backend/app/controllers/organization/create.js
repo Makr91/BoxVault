@@ -57,8 +57,10 @@ exports.create = async (req, res) => {
   }
 
   // Create a Organization
+  const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
   const organization = {
     name: req.body.organization,
+    org_code: generateOrgCode(),
     description: req.body.description,
     details: '',
   };

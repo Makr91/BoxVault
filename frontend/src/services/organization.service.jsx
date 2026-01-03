@@ -44,6 +44,39 @@ const deleteOrganization = (organization) =>
     headers: authHeader(),
   });
 
+const getDiscoverableOrganizations = () =>
+  axios.get(`${baseURL}/api/organizations/discover`, { headers: authHeader() });
+
+const updateAccessMode = (organizationName, accessMode, defaultRole) =>
+  axios.put(
+    `${baseURL}/api/organization/${organizationName}/access-mode`,
+    { accessMode, defaultRole },
+    { headers: authHeader() }
+  );
+
+const getUserOrgRole = (organizationName, userId) =>
+  axios.get(
+    `${baseURL}/api/organization/${organizationName}/users/${userId}/role`,
+    {
+      headers: authHeader(),
+    }
+  );
+
+const updateUserOrgRole = (organizationName, userId, role) =>
+  axios.put(
+    `${baseURL}/api/organization/${organizationName}/users/${userId}/role`,
+    { role },
+    { headers: authHeader() }
+  );
+
+const removeUserFromOrg = (organizationName, userId) =>
+  axios.delete(
+    `${baseURL}/api/organization/${organizationName}/users/${userId}`,
+    {
+      headers: authHeader(),
+    }
+  );
+
 const OrganizationService = {
   getOrganizations,
   getOrganizationsWithUsers,
@@ -53,6 +86,11 @@ const OrganizationService = {
   resumeOrganization,
   suspendOrganization,
   deleteOrganization,
+  getDiscoverableOrganizations,
+  updateAccessMode,
+  getUserOrgRole,
+  updateUserOrgRole,
+  removeUserFromOrg,
 };
 
 export default OrganizationService;

@@ -270,7 +270,7 @@ const upload = async (req, res) => {
                       include: [
                         {
                           model: db.organization,
-                          as: 'organization',
+                          as: 'primaryOrganization',
                           where: { name: organization },
                         },
                       ],

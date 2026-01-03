@@ -47,7 +47,7 @@ const Organization = db.organization;
  */
 // Delete a Organization with the specified id in the request
 exports.delete = async (req, res) => {
-  const { organizationName } = req.params;
+  const { organization: organizationName } = req.params;
 
   try {
     // Find the organization by name

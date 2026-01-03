@@ -174,7 +174,8 @@ exports.findOne = async (req, res) => {
       include: [
         {
           model: Users,
-          as: 'users',
+          as: 'members',
+          through: { attributes: [] },
           include: [
             {
               model: Box,
@@ -209,7 +210,7 @@ exports.findOne = async (req, res) => {
                   include: [
                     {
                       model: Organization,
-                      as: 'organization',
+                      as: 'primaryOrganization',
                     },
                   ],
                 },
@@ -227,7 +228,7 @@ exports.findOne = async (req, res) => {
     }
 
     // First try to find the box through organization users
-    let box = organizationData.users.flatMap(u => u.box).find(b => b.name === name);
+    let box = organizationData.members.flatMap(u => u.box).find(b => b.name === name);
 
     // If box not found and we have a service account, try to find it through service accounts
     if (!box && isServiceAccount) {
@@ -271,7 +272,7 @@ exports.findOne = async (req, res) => {
                     include: [
                       {
                         model: Organization,
-                        as: 'organization',
+                        as: 'primaryOrganization',
                       },
                     ],
                   },
@@ -352,7 +353,7 @@ exports.findOne = async (req, res) => {
     // 3. The box was created by a service account owned by the requesting user
     // 4. The requester is a service account
     const hasAccess =
-      organizationData.users.some(u => u.id === userId) ||
+      organizationData.members.some(u => u.id === userId) ||
       serviceAccount?.user?.id === userId ||
       requestingUserServiceAccounts.some(sa => sa.id === box.userId) ||
       isServiceAccount;

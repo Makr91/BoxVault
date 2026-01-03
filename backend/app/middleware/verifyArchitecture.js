@@ -36,7 +36,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
       include: [
         {
           model: db.user,
-          as: 'users',
+          as: 'members',
           include: [
             {
               model: db.box,
@@ -62,7 +62,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
     }
 
     // Extract the box and version from the organization data
-    const box = organizationData.users.flatMap(user => user.box).find(b => b.name === boxId);
+    const box = organizationData.members.flatMap(user => user.box).find(b => b.name === boxId);
 
     if (!box) {
       return res.status(404).send({

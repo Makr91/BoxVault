@@ -73,7 +73,7 @@ const Organization = db.organization;
  *               $ref: '#/components/schemas/Error'
  */
 exports.update = async (req, res) => {
-  const { organizationName, userName } = req.params;
+  const { organization: organizationName, userName } = req.params;
   const { username, email, password, roles, organization } = req.body;
 
   try {

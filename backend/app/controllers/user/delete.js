@@ -51,7 +51,7 @@ const Organization = db.organization;
  *               $ref: '#/components/schemas/Error'
  */
 exports.delete = async (req, res) => {
-  const { organizationName, userName } = req.params;
+  const { organization: organizationName, userName } = req.params;
 
   try {
     const organization = await Organization.findOne({

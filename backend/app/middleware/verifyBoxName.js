@@ -39,7 +39,7 @@ const checkBoxDuplicate = async (req, res, next) => {
     const existingBox = await Box.findOne({
       where: {
         name: newName,
-        '$user.organization.name$': organization,
+        '$user.primaryOrganization.name$': organization,
       },
       include: [
         {
@@ -48,7 +48,7 @@ const checkBoxDuplicate = async (req, res, next) => {
           include: [
             {
               model: db.organization,
-              as: 'organization',
+              as: 'primaryOrganization',
             },
           ],
         },

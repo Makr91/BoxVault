@@ -18,12 +18,14 @@ import { Link } from "react-router-dom";
 import { getSupportedLanguages } from "../i18n";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
+import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
 import { log } from "../utils/Logger";
 
+import OrganizationSwitcher from "./OrganizationSwitcher.component";
+
 const Navbar = ({
   currentUser,
-  userOrganization,
   gravatarUrl,
   showAdminBoard,
   showModeratorBoard,
@@ -31,6 +33,8 @@ const Navbar = ({
   toggleTheme,
   logOut,
   logOutLocal,
+  activeOrganization,
+  onOrganizationSwitch,
 }) => {
   const { t, i18n } = useTranslation();
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
@@ -41,6 +45,8 @@ const Navbar = ({
   const [authServerUrl, setAuthServerUrl] = useState("");
   const [trustedIssuers, setTrustedIssuers] = useState([]);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [activeOrgGravatar, setActiveOrgGravatar] = useState(null);
 
   const changeLanguage = async (lng) => {
     log.component.debug("Changing language", {
@@ -61,6 +67,9 @@ const Navbar = ({
 
   // Get language display name
   const getLanguageDisplayName = (languageCode) => {
+    if (!languageCode) {
+      return "English";
+    }
     const languageNames = {
       en: "English",
       es: "Español",
@@ -254,32 +263,68 @@ const Navbar = ({
     [trustedIssuers]
   );
 
+  const fetchTicketConfig = useCallback(async (mounted) => {
+    try {
+      const response = await fetch(
+        `${window.location.origin}/api/config/ticket`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (mounted && data?.ticket_system) {
+          setTicketConfig(data.ticket_system);
+        }
+      }
+    } catch (error) {
+      log.api.error("Error fetching ticket config", { error: error.message });
+    }
+  }, []);
+
+  const fetchOrgGravatar = useCallback(async (org, user, mounted) => {
+    try {
+      const response = await fetch(
+        `${window.location.origin}/api/organization/${org}`,
+        {
+          headers: { "x-access-token": user.accessToken },
+        }
+      );
+      if (!response.ok) {
+        return;
+      }
+
+      const orgData = await response.json();
+      if (!orgData.emailHash || !mounted) {
+        return;
+      }
+
+      const profile = await AuthService.getGravatarProfile(orgData.emailHash);
+      if (profile?.avatar_url && mounted) {
+        setActiveOrgGravatar(profile.avatar_url);
+      }
+    } catch (error) {
+      log.api.error("Error fetching active org gravatar", {
+        error: error.message,
+      });
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
     const loadConfigs = async () => {
-      try {
-        const ticketResponse = await fetch(
-          `${window.location.origin}/api/config/ticket`
-        );
-        if (ticketResponse.ok) {
-          const data = await ticketResponse.json();
-          if (mounted && data?.ticket_system) {
-            setTicketConfig(data.ticket_system);
-          }
-        }
+      await fetchTicketConfig(mounted);
 
-        if (
-          currentUser?.provider?.startsWith("oidc-") &&
-          currentUser?.accessToken
-        ) {
-          const issuerUrl = extractAuthServerUrl(currentUser.accessToken);
-          if (issuerUrl && mounted) {
-            setAuthServerUrl(issuerUrl);
-          }
+      if (
+        currentUser?.provider?.startsWith("oidc-") &&
+        currentUser?.accessToken
+      ) {
+        const issuerUrl = extractAuthServerUrl(currentUser.accessToken);
+        if (issuerUrl && mounted) {
+          setAuthServerUrl(issuerUrl);
         }
-      } catch (error) {
-        log.api.error("Error loading configs", { error: error.message });
+      }
+
+      if (activeOrganization && currentUser) {
+        await fetchOrgGravatar(activeOrganization, currentUser, mounted);
       }
     };
 
@@ -288,7 +333,13 @@ const Navbar = ({
     return () => {
       mounted = false;
     };
-  }, [currentUser, extractAuthServerUrl]);
+  }, [
+    currentUser,
+    extractAuthServerUrl,
+    activeOrganization,
+    fetchTicketConfig,
+    fetchOrgGravatar,
+  ]);
 
   const buildTicketUrl = () => {
     if (!ticketConfig || !ticketConfig.enabled?.value) {
@@ -392,6 +443,30 @@ const Navbar = ({
     );
   };
 
+  const renderOrgIcon = () => {
+    if (activeOrgGravatar) {
+      return (
+        <img
+          src={activeOrgGravatar}
+          alt={`${activeOrganization} icon`}
+          className="rounded-circle me-2"
+          width="20"
+          height="20"
+        />
+      );
+    }
+    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
+    return (
+      <LogoComponent
+        style={{
+          width: "20px",
+          height: "20px",
+          marginRight: "8px",
+        }}
+      />
+    );
+  };
+
   const renderProfileMenuItem = () => {
     const isOidcUser = currentUser?.provider?.startsWith("oidc-");
     const hasValidAuthServer =
@@ -481,10 +556,10 @@ const Navbar = ({
           BoxVault
         </Link>
         <ul className="nav nav-pills me-auto">
-          {currentUser && userOrganization && (
+          {currentUser && activeOrganization && (
             <li className="nav-item">
-              <Link to={`/${userOrganization}`} className="nav-link">
-                {userOrganization}
+              <Link to={`/${activeOrganization}`} className="nav-link">
+                {activeOrganization}
               </Link>
             </li>
           )}
@@ -550,6 +625,15 @@ const Navbar = ({
                     <FaCircleInfo className="me-2" />
                     About
                   </Link>
+                </li>
+                <li>
+                  <button
+                    className="dropdown-item d-flex align-items-center"
+                    onClick={() => setShowOrgModal(true)}
+                  >
+                    {renderOrgIcon()}
+                    <span>{activeOrganization}</span>
+                  </button>
                 </li>
                 {favoriteApps && favoriteApps.length > 0 && (
                   <>
@@ -714,7 +798,7 @@ const Navbar = ({
                       key={lang}
                       type="button"
                       className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                        i18n.language === lang ? "active" : ""
+                        i18n.language === lang ? "border-primary border-2" : ""
                       }`}
                       onClick={() => changeLanguage(lang)}
                     >
@@ -744,6 +828,16 @@ const Navbar = ({
           </div>
         </div>
       )}
+
+      {/* Organization Switcher Modal */}
+      <OrganizationSwitcher
+        currentUser={currentUser}
+        activeOrganization={activeOrganization}
+        onOrganizationSwitch={onOrganizationSwitch}
+        showModal={showOrgModal}
+        setShowModal={setShowOrgModal}
+        theme={theme}
+      />
     </nav>
   );
 };
@@ -754,7 +848,6 @@ Navbar.propTypes = {
     provider: PropTypes.string,
     accessToken: PropTypes.string,
   }),
-  userOrganization: PropTypes.string,
   gravatarUrl: PropTypes.string,
   showAdminBoard: PropTypes.bool,
   showModeratorBoard: PropTypes.bool,
@@ -762,6 +855,8 @@ Navbar.propTypes = {
   toggleTheme: PropTypes.func.isRequired,
   logOut: PropTypes.func.isRequired,
   logOutLocal: PropTypes.func.isRequired,
+  activeOrganization: PropTypes.string,
+  onOrganizationSwitch: PropTypes.func,
 };
 
 export default Navbar;

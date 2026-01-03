@@ -64,7 +64,7 @@ try {
  *               $ref: '#/components/schemas/Error'
  */
 exports.findOne = async (req, res) => {
-  const { organizationName } = req.params;
+  const { organization: organizationName } = req.params;
   const token = req.headers['x-access-token'];
   let userId = null;
 
@@ -84,7 +84,8 @@ exports.findOne = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'users',
+          as: 'members',
+          through: { attributes: [] },
           include: [
             {
               model: Box,
@@ -106,8 +107,8 @@ exports.findOne = async (req, res) => {
     log.app.info('Org Detected!');
 
     let totalBoxes = 0;
-    if (organization.users && Array.isArray(organization.users)) {
-      totalBoxes = organization.users.reduce((acc, user) => {
+    if (organization.members && Array.isArray(organization.members)) {
+      totalBoxes = organization.members.reduce((acc, user) => {
         if (user.box && Array.isArray(user.box)) {
           return (
             acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length

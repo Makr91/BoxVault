@@ -23,7 +23,7 @@ router.post('/auth/signin', auth.signin);
 router.get('/auth/verify-mail/:token', auth.verifyMail);
 router.get('/auth/validate-invitation/:token', auth.validateInvitationToken);
 router.get(
-  '/invitations/active/:organizationName',
+  '/invitations/active/:organization',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isModerator],
   auth.getActiveInvitations
 );

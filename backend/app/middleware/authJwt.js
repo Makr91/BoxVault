@@ -46,7 +46,7 @@ const verifyToken = async (req, res, next) => {
             },
             {
               model: db.organization,
-              as: 'organization',
+              as: 'primaryOrganization',
               attributes: ['name'],
             },
           ],
@@ -57,6 +57,16 @@ const verifyToken = async (req, res, next) => {
         }
 
         req.user = user;
+      }
+
+      // Attach JWT organization context for service accounts
+      if (decoded.isServiceAccount && decoded.serviceAccountOrgId) {
+        req.serviceAccountOrgId = decoded.serviceAccountOrgId;
+      }
+
+      // Attach user's organizations from JWT for frontend
+      if (decoded.organizations) {
+        req.userOrganizations = decoded.organizations;
       }
 
       return next();

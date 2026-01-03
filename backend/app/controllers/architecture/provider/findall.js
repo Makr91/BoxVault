@@ -131,7 +131,7 @@ exports.findAllByProvider = async (req, res) => {
           include: [
             {
               model: db.user,
-              as: 'users',
+              as: 'members',
               where: { id: userId },
             },
           ],

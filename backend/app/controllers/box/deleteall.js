@@ -58,7 +58,7 @@ exports.deleteAll = async (req, res) => {
       include: [
         {
           model: Users,
-          as: 'users',
+          as: 'members',
           include: [
             {
               model: Box,
@@ -75,7 +75,7 @@ exports.deleteAll = async (req, res) => {
       });
     }
 
-    const boxes = organizationData.users.flatMap(u => u.box);
+    const boxes = organizationData.members.flatMap(u => u.box);
 
     if (boxes.length === 0) {
       return res.status(404).send({

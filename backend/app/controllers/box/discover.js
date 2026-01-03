@@ -29,95 +29,54 @@ const Box = db.box;
  *               $ref: '#/components/schemas/Error'
  */
 exports.discoverAll = async (req, res) => {
+  void req;
   try {
-    let boxes;
-
-    if (req.user) {
-      // If the user is authenticated, retrieve all boxes
-      boxes = await Box.findAll({
-        include: [
-          {
-            model: db.versions,
-            as: 'versions',
-            include: [
-              {
-                model: db.providers,
-                as: 'providers',
-                include: [
-                  {
-                    model: db.architectures,
-                    as: 'architectures',
-                    include: [
-                      {
-                        model: db.files,
-                        as: 'files',
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            model: db.user,
-            as: 'user',
-            include: [
-              {
-                model: db.organization,
-                as: 'organization',
-                attributes: ['id', 'name', 'emailHash'],
-              },
-            ],
-          },
-        ],
-      });
-    } else {
-      // If the user is not authenticated, retrieve only public boxes
-      boxes = await Box.findAll({
-        where: { isPublic: true },
-        include: [
-          {
-            model: db.versions,
-            as: 'versions',
-            include: [
-              {
-                model: db.providers,
-                as: 'providers',
-                include: [
-                  {
-                    model: db.architectures,
-                    as: 'architectures',
-                    include: [
-                      {
-                        model: db.files,
-                        as: 'files',
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            model: db.user,
-            as: 'user',
-            include: [
-              {
-                model: db.organization,
-                as: 'organization',
-                attributes: ['id', 'name', 'emailHash'], // Include emailHash here
-              },
-            ],
-          },
-        ],
-      });
-    }
+    // Home page only shows published AND public boxes (for everyone)
+    const boxes = await Box.findAll({
+      where: { published: true, isPublic: true },
+      include: [
+        {
+          model: db.versions,
+          as: 'versions',
+          include: [
+            {
+              model: db.providers,
+              as: 'providers',
+              include: [
+                {
+                  model: db.architectures,
+                  as: 'architectures',
+                  include: [
+                    {
+                      model: db.files,
+                      as: 'files',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: db.user,
+          as: 'user',
+          include: [
+            {
+              model: db.organization,
+              as: 'primaryOrganization',
+              attributes: ['id', 'name', 'emailHash'],
+            },
+          ],
+        },
+      ],
+    });
 
     // Ensure the emailHash is included in the response
     const restructuredBoxes = boxes.map(box => {
       const boxJson = box.toJSON();
-      if (boxJson.user && boxJson.user.organization) {
-        boxJson.user.organization.emailHash = boxJson.user.organization.emailHash || null;
+      if (boxJson.user && boxJson.user.primaryOrganization) {
+        boxJson.user.primaryOrganization.emailHash =
+          boxJson.user.primaryOrganization.emailHash || null;
       }
       return boxJson;
     });

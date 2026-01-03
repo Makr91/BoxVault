@@ -88,7 +88,7 @@ exports.getUserProfile = async (req, res) => {
         },
         {
           model: Organization,
-          as: 'organization',
+          as: 'primaryOrganization',
           attributes: ['name'],
         },
       ],
@@ -111,7 +111,7 @@ exports.getUserProfile = async (req, res) => {
       verified: user.verified,
       emailHash: user.emailHash,
       roles: authorities,
-      organization: user.organization ? user.organization.name : null,
+      organization: user.primaryOrganization ? user.primaryOrganization.name : null,
       accessToken: token,
       gravatarUrl: user.gravatarUrl,
     });

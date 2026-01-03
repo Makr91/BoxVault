@@ -1,6 +1,6 @@
 // box.routes.js
 const express = require('express');
-const { authJwt, verifyBoxName } = require('../middleware');
+const { authJwt, verifyBoxName, verifyOrgAccess } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const box = require('../controllers/box.controller');
 
@@ -21,12 +21,13 @@ router.get('/organization/:organization/box', box.getOrganizationBoxDetails);
 router.get('/organization/:organization/box/:name', box.findOne);
 router.get('/organization/:organization/box/:name/metadata', box.findOne);
 
-// Administrative Actions
+// Administrative Actions - Now require organization membership
 router.post(
   '/organization/:organization/box',
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgMember,
     verifyBoxName.validateBoxName,
     verifyBoxName.checkBoxDuplicate,
   ],
@@ -38,6 +39,7 @@ router.put(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgMember,
     verifyBoxName.validateBoxName,
     verifyBoxName.checkBoxDuplicate,
   ],
@@ -46,13 +48,13 @@ router.put(
 
 router.delete(
   '/organization/:organization/box/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
   box.delete
 );
 
 router.delete(
   '/organization/:organization/box',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
   box.deleteAll
 );
 

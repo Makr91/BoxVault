@@ -46,8 +46,21 @@ const crypto = require('crypto');
  */
 exports.create = async (req, res) => {
   try {
-    const { description, expirationDays } = req.body;
+    const { description, expirationDays, organizationId } = req.body;
     const { userId } = req;
+
+    if (!organizationId) {
+      return res.status(400).send({ message: 'Organization ID is required!' });
+    }
+
+    // Verify user has moderator/admin role in the organization
+    const userRole = await db.UserOrg.findUserOrgRole(userId, organizationId);
+    if (!userRole || !['moderator', 'admin'].includes(userRole.role)) {
+      return res.status(403).send({
+        message:
+          'You must be a moderator or admin in this organization to create service accounts!',
+      });
+    }
 
     const user = await User.findByPk(userId);
     const username = `${user.username}-${crypto.randomBytes(4).toString('hex')}`;
@@ -60,11 +73,12 @@ exports.create = async (req, res) => {
       expiresAt,
       description,
       userId,
+      organization_id: organizationId,
     });
 
-    res.status(201).send(serviceAccount);
+    return res.status(201).send(serviceAccount);
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: err.message });
   }
 };
 
@@ -102,10 +116,46 @@ exports.create = async (req, res) => {
 exports.findAll = async (req, res) => {
   try {
     const { userId } = req;
-    const serviceAccounts = await ServiceAccount.findAll({ where: { userId } });
-    res.send(serviceAccounts);
+    const serviceAccounts = await ServiceAccount.getForUser(userId);
+    return res.send(serviceAccounts);
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: err.message });
+  }
+};
+
+/**
+ * Get organizations where user can create service accounts
+ */
+exports.getAvailableOrganizations = async (req, res) => {
+  try {
+    const { userId } = req;
+
+    const userOrganizations = await db.UserOrg.findAll({
+      where: {
+        user_id: userId,
+        role: {
+          [db.Sequelize.Op.in]: ['moderator', 'admin'],
+        },
+      },
+      include: [
+        {
+          model: db.organization,
+          as: 'organization',
+          attributes: ['id', 'name', 'description'],
+        },
+      ],
+    });
+
+    const organizations = userOrganizations.map(userOrg => ({
+      id: userOrg.organization.id,
+      name: userOrg.organization.name,
+      description: userOrg.organization.description,
+      role: userOrg.role,
+    }));
+
+    return res.send(organizations);
+  } catch (err) {
+    return res.status(500).send({ message: err.message });
   }
 };
 
@@ -160,11 +210,10 @@ exports.delete = async (req, res) => {
     const deleted = await ServiceAccount.destroy({ where: { id, userId } });
 
     if (deleted) {
-      res.send({ message: 'Service account deleted successfully.' });
-    } else {
-      res.status(404).send({ message: 'Service account not found.' });
+      return res.send({ message: 'Service account deleted successfully.' });
     }
+    return res.status(404).send({ message: 'Service account not found.' });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    return res.status(500).send({ message: err.message });
   }
 };

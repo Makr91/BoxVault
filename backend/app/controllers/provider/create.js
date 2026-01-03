@@ -144,7 +144,7 @@ exports.create = async (req, res) => {
       include: [
         {
           model: db.user,
-          as: 'users',
+          as: 'members',
           include: [
             {
               model: db.box,
@@ -170,7 +170,7 @@ exports.create = async (req, res) => {
     }
 
     // Extract the box and version from the organization data
-    const box = organizationData.users
+    const box = organizationData.members
       .flatMap(user => user.box)
       .find(foundBox => foundBox.name === boxId);
 

@@ -83,7 +83,8 @@ exports.findAllWithUsers = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'users',
+          as: 'members',
+          through: { attributes: [] },
           include: [
             {
               model: Role,
@@ -103,11 +104,11 @@ exports.findAllWithUsers = async (req, res) => {
 
     const result = organizations.map(org => ({
       ...org.toJSON(),
-      users: org.users.map(user => ({
+      members: org.members.map(user => ({
         ...user.toJSON(),
         totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
       })),
-      totalBoxes: org.users.reduce(
+      totalBoxes: org.members.reduce(
         (acc, user) =>
           acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
         0

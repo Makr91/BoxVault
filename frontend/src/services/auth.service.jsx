@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import EventBus from "../common/EventBus";
+import { fetchWithDeduplication } from "../utils/GravatarCache";
 import { log } from "../utils/Logger";
 
 import authHeader from "./auth-header";
@@ -275,26 +276,28 @@ const logoutLocal = () => {
 
 const getGravatarProfile = async (emailHash, signal) => {
   try {
-    const config = await getGravatarConfig();
-    if (!config) {
-      return null;
-    }
+    // Use deduplicated fetch - ensures only ONE fetch per emailHash
+    return await fetchWithDeduplication(emailHash, async (hash) => {
+      const config = await getGravatarConfig();
+      if (!config) {
+        return null;
+      }
 
-    // Use fetch instead of axios to avoid message port issues
-    const response = await fetch(`${config.apiUrl}${emailHash}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      signal,
+      // Use fetch instead of axios to avoid message port issues
+      const response = await fetch(`${config.apiUrl}${hash}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
   } catch (error) {
     if (error.name === "AbortError") {
       return null;

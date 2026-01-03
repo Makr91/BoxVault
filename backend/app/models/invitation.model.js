@@ -28,6 +28,13 @@ module.exports = (sequelize, Sequelize) => {
         key: 'id',
       },
     },
+    invited_role: {
+      type: Sequelize.ENUM('user', 'moderator', 'admin'),
+      allowNull: false,
+      defaultValue: 'user',
+      comment: 'Role to assign when invitation is accepted',
+      field: 'invited_role',
+    },
   });
 
   Invitation.associate = function (models) {

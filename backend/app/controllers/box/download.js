@@ -100,7 +100,7 @@ exports.downloadBox = async (req, res) => {
       include: [
         {
           model: Users,
-          as: 'users',
+          as: 'members',
           include: [
             {
               model: Box,
@@ -113,7 +113,7 @@ exports.downloadBox = async (req, res) => {
                   include: [
                     {
                       model: Organization,
-                      as: 'organization',
+                      as: 'primaryOrganization',
                     },
                   ],
                 },
@@ -130,7 +130,7 @@ exports.downloadBox = async (req, res) => {
         .send({ message: `Organization not found with name: ${organization}.` });
     }
 
-    const box = organizationData.users.flatMap(u => u.box).find(b => b.name === name);
+    const box = organizationData.members.flatMap(u => u.box).find(b => b.name === name);
 
     if (!box) {
       return res.status(404).send({ message: `Box not found with name: ${name}.` });
@@ -161,7 +161,7 @@ exports.downloadBox = async (req, res) => {
     }
 
     // Check if user belongs to the organization
-    const user = organizationData.users.find(u => u.id === req.userId);
+    const user = organizationData.members.find(u => u.id === req.userId);
     if (!user) {
       return res.status(403).send({ message: 'Unauthorized access to private box.' });
     }

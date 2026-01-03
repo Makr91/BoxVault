@@ -16,6 +16,11 @@ router.use((req, res, next) => {
 
 router.post('/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.create);
 router.get('/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.findAll);
+router.get(
+  '/service-accounts/organizations',
+  [authJwt.verifyToken, authJwt.isUser],
+  serviceAccount.getAvailableOrganizations
+);
 router.delete(
   '/service-accounts/:id',
   [authJwt.verifyToken, authJwt.isUser],

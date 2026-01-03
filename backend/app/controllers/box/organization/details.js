@@ -75,15 +75,15 @@ exports.getOrganizationBoxDetails = async (req, res) => {
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
 
-        // Retrieve the user's organization ID
+        // Check if user is member of the organization
         if (!isServiceAccount) {
-          const user = await Users.findOne({
-            where: { id: userId },
-            include: [{ model: Organization, as: 'organization' }],
+          const orgData = await Organization.findOne({
+            where: { name: organization },
           });
 
-          if (user) {
-            userOrganizationId = user.organization.id;
+          if (orgData) {
+            const membership = await db.UserOrg.findUserOrgRole(userId, orgData.id);
+            userOrganizationId = membership ? orgData.id : null;
           }
         }
       } catch {
@@ -97,7 +97,8 @@ exports.getOrganizationBoxDetails = async (req, res) => {
       include: [
         {
           model: Users,
-          as: 'users',
+          as: 'members',
+          through: { attributes: [] },
           include: [
             {
               model: Box,
@@ -131,7 +132,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
                   include: [
                     {
                       model: db.organization,
-                      as: 'organization',
+                      as: 'primaryOrganization',
                       attributes: ['id', 'name', 'emailHash'],
                     },
                   ],
@@ -148,7 +149,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     }
 
     // Get all boxes from the organization
-    let boxes = organizationData.users.flatMap(u => u.box);
+    let boxes = organizationData.members.flatMap(u => u.box);
 
     // For each box, check if it was created by a service account
     const serviceAccountBoxes = await Promise.all(
@@ -174,11 +175,23 @@ exports.getOrganizationBoxDetails = async (req, res) => {
       // 1. Box is public
       // 2. User belongs to organization
       // 3. User is the owner of the service account that created the box
-      return (
+      const hasAccess =
         box.isPublic ||
         (userId && userOrganizationId === organizationData.id) ||
-        (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId)
-      );
+        (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId);
+
+      // Filter pending boxes - only show to owner
+      if (!hasAccess) {
+        return false;
+      }
+
+      // Show published boxes to everyone with access
+      if (box.published) {
+        return true;
+      }
+
+      // Show pending boxes only to the owner
+      return box.userId === userId;
     });
 
     // Map boxes to response format
@@ -235,11 +248,11 @@ exports.getOrganizationBoxDetails = async (req, res) => {
             suspended: box.user.suspended,
             createdAt: box.user.createdAt,
             updatedAt: box.user.updatedAt,
-            organization: box.user.organization
+            organization: box.user.primaryOrganization
               ? {
-                  id: box.user.organization.id,
-                  name: box.user.organization.name,
-                  emailHash: box.user.organization.emailHash,
+                  id: box.user.primaryOrganization.id,
+                  name: box.user.primaryOrganization.name,
+                  emailHash: box.user.primaryOrganization.emailHash,
                 }
               : null,
           }

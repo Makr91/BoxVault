@@ -5,6 +5,7 @@ const verifyProvider = require('./verifyProvider');
 const verifyVersion = require('./verifyVersion');
 const verifyArchitecture = require('./verifyArchitecture');
 const verifyOrganization = require('./verifyOrganization');
+const verifyOrgAccess = require('./verifyOrgAccess');
 const vagrantHandler = require('./vagrantHandler');
 const {
   rateLimiter,
@@ -24,6 +25,7 @@ module.exports = {
   verifyVersion,
   verifyArchitecture,
   verifyOrganization,
+  verifyOrgAccess,
   vagrantHandler,
   rateLimiter,
   fileOperationLimiter,
