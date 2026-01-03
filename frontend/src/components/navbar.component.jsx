@@ -46,6 +46,7 @@ const Navbar = ({
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [activeOrgGravatar, setActiveOrgGravatar] = useState(null);
+  const [activeOrgCode, setActiveOrgCode] = useState(null);
 
   const changeLanguage = async (lng) => {
     log.component.debug("Changing language", {
@@ -291,6 +292,12 @@ const Navbar = ({
       }
 
       const orgData = await response.json();
+
+      // Store org_code for ticket URL
+      if (orgData.org_code && mounted) {
+        setActiveOrgCode(orgData.org_code);
+      }
+
       if (!orgData.emailHash || !mounted) {
         return;
       }
@@ -344,16 +351,18 @@ const Navbar = ({
     if (!ticketConfig || !ticketConfig.enabled?.value) {
       return null;
     }
-    if (!userClaims) {
-      return null;
-    }
 
     const baseUrl = ticketConfig.base_url?.value || "";
     const req = ticketConfig.req_type?.value || "sso";
     const context = ticketConfig.context?.value || "";
-    const customerId = userClaims.customer_id || "BOXVAULT";
-    const userName = userClaims.name || userClaims.email || "User";
-    const email = userClaims.email || "";
+
+    // Priority: OIDC customer_id > org_code > default "A55DF1"
+    const customerId = userClaims?.customer_id || activeOrgCode || "A55DF1";
+
+    // Use OIDC claims if available, otherwise use current user info
+    const userName =
+      userClaims?.name || userClaims?.email || currentUser?.username || "User";
+    const email = userClaims?.email || currentUser?.email || "";
 
     const params = new URLSearchParams({
       req,
