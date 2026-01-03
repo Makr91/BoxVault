@@ -1,5 +1,6 @@
 // download.file.controller.js
 const fs = require('fs');
+const path = require('path');
 const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
@@ -126,7 +127,7 @@ const download = async (req, res) => {
     providerName,
     architectureName
   );
-  const filePath = require('path').join(baseDir, fileName);
+  const filePath = path.join(baseDir, fileName);
   // Get auth info from download token
   let userId;
   let isServiceAccount;

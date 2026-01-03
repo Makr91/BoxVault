@@ -1,4 +1,5 @@
 // remove.file.controller.js
+const path = require('path');
 const { getSecureBoxPath } = require('../../utils/paths');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
@@ -81,7 +82,7 @@ const remove = async (req, res) => {
     providerName,
     architectureName
   );
-  const filePath = require('path').join(basefilePath, fileName);
+  const filePath = path.join(basefilePath, fileName);
 
   try {
     const architecture = await Architecture.findOne({

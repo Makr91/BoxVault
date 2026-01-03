@@ -2,6 +2,7 @@
 const path = require('path');
 const { log } = require('../../utils/Logger');
 const { verifyAuthorizedToken } = require('./middleware');
+const { uploadSSLFile } = require('../../middleware/upload');
 
 /**
  * @swagger
@@ -73,8 +74,6 @@ exports.uploadSSL = [
   verifyAuthorizedToken,
   async (req, res) => {
     try {
-      // Import upload middleware only when needed
-      const { uploadSSLFile } = require('../../middleware/upload');
       await uploadSSLFile(req, res);
       const { file } = req;
       if (!file) {

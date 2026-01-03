@@ -4,10 +4,10 @@ const fsPromises = require('fs').promises;
 const path = require('path');
 const { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync } = require('fs');
 const { createGzip } = require('zlib');
+const { loadConfig } = require('./config-loader');
 
 let loggingConfig;
 try {
-  const { loadConfig } = require('./config-loader');
   const appConfig = loadConfig('app');
   loggingConfig = appConfig.logging || {};
 } catch (e) {

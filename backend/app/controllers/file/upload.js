@@ -1,19 +1,11 @@
 // upload.file.controller.js
 const path = require('path');
-
 const { getSecureBoxPath } = require('../../utils/paths');
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
 const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
 const { safeMkdirSync, safeExistsSync } = require('../../utils/fsHelper');
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
 
 const Architecture = db.architectures;
 
@@ -228,9 +220,12 @@ const upload = async (req, res) => {
     url: req.url,
   });
 
-  // Set a longer timeout for the request
-  req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
-  res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
+  // Set a longer timeout for the request from config
+  const appConfig = loadConfig('app');
+  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
+  const uploadTimeoutMs = uploadTimeoutHours * 60 * 60 * 1000;
+  req.setTimeout(uploadTimeoutMs);
+  res.setTimeout(uploadTimeoutMs);
 
   try {
     log.app.info('Creating upload directory if needed:', { filePath });

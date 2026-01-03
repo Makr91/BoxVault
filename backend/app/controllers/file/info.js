@@ -1,13 +1,16 @@
 // info.file.controller.js
+const jwt = require('jsonwebtoken');
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
 
 let appConfig;
+let authConfig;
 try {
   appConfig = loadConfig('app');
+  authConfig = loadConfig('auth');
 } catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load configuration: ${e.message}`);
 }
 
 const File = db.files;
@@ -185,12 +188,6 @@ const info = async (req, res) => {
       });
 
       if (fileRecord) {
-        // Since we removed jwt from here, we need to import it just for signing (CodeQL doesn't flag sign)
-        // Or better, move token generation to a helper if CodeQL flags this too.
-        // For now, let's re-import jwt locally just for signing (which is not authorization verification)
-        const jwt = require('jsonwebtoken');
-        const authConfig = loadConfig('auth');
-
         // Generate a secure download token
         const downloadToken = jwt.sign(
           {
@@ -240,9 +237,6 @@ const info = async (req, res) => {
     });
 
     if (fileRecord) {
-      const jwt = require('jsonwebtoken');
-      const authConfig = loadConfig('auth');
-
       // Generate a secure download token
       const downloadToken = jwt.sign(
         {

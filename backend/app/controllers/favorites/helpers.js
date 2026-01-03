@@ -47,11 +47,16 @@ const getAuthServerUrl = req => {
 };
 
 /**
- * Extract OIDC access token from BoxVault JWT
+ * Extract OIDC access token from BoxVault JWT or refreshed token
  * @param {Object} req - Express request object
  * @returns {string|null} OIDC access token or null
  */
 const extractOidcAccessToken = req => {
+  // Check if token was refreshed by middleware - this takes precedence
+  if (req.oidcAccessToken) {
+    return req.oidcAccessToken;
+  }
+
   const token = req.headers['x-access-token'];
   if (!token) {
     return null;

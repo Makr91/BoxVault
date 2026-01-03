@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
 
@@ -21,8 +23,6 @@ if (dbConfig.sql.dialect.value === 'sqlite') {
   sequelizeConfig.storage = dbConfig.sql.storage.value;
 
   // Ensure the directory exists for SQLite database file
-  const path = require('path');
-  const fs = require('fs');
   const storageDir = path.dirname(dbConfig.sql.storage.value);
   if (!fs.existsSync(storageDir)) {
     fs.mkdirSync(storageDir, { recursive: true, mode: 0o755 });

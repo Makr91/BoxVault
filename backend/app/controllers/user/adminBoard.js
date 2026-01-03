@@ -1,11 +1,12 @@
 // adminBoard.js
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
  * /api/users/admin:
  *   get:
  *     summary: Get admin board content
- *     description: Retrieve content for admin users only
+ *     description: Retrieve content for admin users (requires admin role)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -16,10 +17,9 @@
  *           text/plain:
  *             schema:
  *               type: string
- *               example: "Admin Content."
+ *               example: "Admin Board."
  */
 exports.adminBoard = (req, res) => {
-  const { log } = require('../../utils/Logger');
   log.app.debug('Admin board accessed', { method: req.method });
-  res.status(200).send('Admin Content.');
+  res.status(200).send('Admin Board.');
 };

@@ -2,6 +2,14 @@ const db = require('../models');
 const ServiceAccount = db.service_account;
 const User = db.user;
 const crypto = require('crypto');
+const { loadConfig } = require('../utils/config-loader');
+
+let authConfig;
+try {
+  authConfig = loadConfig('auth');
+} catch {
+  // Config will be loaded when needed
+}
 
 /**
  * @swagger
@@ -51,6 +59,14 @@ exports.create = async (req, res) => {
 
     if (!organizationId) {
       return res.status(400).send({ message: 'Organization ID is required!' });
+    }
+
+    // Validate expiration days against configured maximum
+    const maxExpiryDays = authConfig.auth?.jwt?.service_account_max_expiry_days?.value || 365;
+    if (expirationDays > maxExpiryDays) {
+      return res.status(400).send({
+        message: `Service account expiration cannot exceed ${maxExpiryDays} days.`,
+      });
     }
 
     // Verify user has moderator/admin role in the organization

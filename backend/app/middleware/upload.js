@@ -4,6 +4,7 @@ const { loadConfig } = require('../utils/config-loader');
 const { log } = require('../utils/Logger');
 const { getSecureBoxPath } = require('../utils/paths');
 const { safeUnlink, safeRmdirSync, safeMkdirSync, safeExistsSync } = require('../utils/fsHelper');
+const db = require('../models');
 
 // Load app config for max file size
 let maxFileSize;
@@ -144,7 +145,6 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
 const updateDatabase = async (params, finalSize, headers) => {
   const { versionNumber, boxId, providerName, architectureName } = params;
 
-  const db = require('../models');
   const version = await db.versions.findOne({
     where: { versionNumber },
     include: [

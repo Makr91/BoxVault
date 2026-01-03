@@ -3,6 +3,14 @@ const crypto = require('crypto');
 const { log } = require('../../utils/Logger');
 const db = require('../../models');
 const { sendVerificationMail } = require('./verification');
+const { loadConfig } = require('../../utils/config-loader');
+
+let authConfig;
+try {
+  authConfig = loadConfig('auth');
+} catch {
+  // Config will be loaded when needed
+}
 
 const User = db.user;
 const Organization = db.organization;
@@ -79,7 +87,9 @@ exports.resendVerificationMail = async (req, res) => {
     }
 
     user.verificationToken = crypto.randomBytes(20).toString('hex');
-    user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours from now
+    const verificationExpiryHours =
+      authConfig.auth?.jwt?.verification_token_expiry_hours?.value || 24;
+    user.verificationTokenExpires = Date.now() + verificationExpiryHours * 60 * 60 * 1000;
 
     await user.save();
     await sendVerificationMail(user, user.verificationToken, user.verificationTokenExpires);

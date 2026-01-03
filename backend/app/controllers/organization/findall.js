@@ -1,5 +1,6 @@
 // findall.js
 const { loadConfig } = require('../../utils/config-loader');
+const { log } = require('../../utils/Logger');
 const jwt = require('jsonwebtoken');
 const db = require('../../models');
 
@@ -10,7 +11,6 @@ let authConfig;
 try {
   authConfig = loadConfig('auth');
 } catch (e) {
-  const { log } = require('../../utils/Logger');
   log.error.error(`Failed to load auth configuration: ${e.message}`);
 }
 

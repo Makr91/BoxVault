@@ -2,9 +2,17 @@
 const crypto = require('crypto');
 const db = require('../../../models');
 const mailController = require('../../mail.controller');
+const { loadConfig } = require('../../../utils/config-loader');
 
 const Organization = db.organization;
 const Invitation = db.invitation;
+
+let authConfig;
+try {
+  authConfig = loadConfig('auth');
+} catch {
+  // Config will be loaded when needed
+}
 
 /**
  * @swagger
@@ -79,7 +87,8 @@ exports.sendInvitation = async (req, res) => {
     }
 
     const invitationToken = crypto.randomBytes(20).toString('hex');
-    const invitationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    const invitationExpiryHours = authConfig.auth?.jwt?.invitation_token_expiry_hours?.value || 24;
+    const invitationTokenExpires = Date.now() + invitationExpiryHours * 60 * 60 * 1000;
 
     // Save the invitation details in the database
     await Invitation.create({

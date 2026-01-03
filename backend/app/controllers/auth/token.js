@@ -2,6 +2,7 @@
 const jwt = require('jsonwebtoken');
 const { loadConfig } = require('../../utils/config-loader');
 const { log } = require('../../utils/Logger');
+const db = require('../../models');
 
 let authConfig;
 try {
@@ -70,7 +71,6 @@ exports.refreshToken = async (req, res) => {
     }
 
     // Get user's organizations for multi-org JWT
-    const db = require('../../models');
     const userOrgs = await db.UserOrg.getUserOrganizations(user.id);
     const userOrganizations = userOrgs.map(userOrg => ({
       name: userOrg.organization.name,

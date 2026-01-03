@@ -1,5 +1,5 @@
 const express = require('express');
-const { authJwt } = require('../middleware');
+const { authJwt, oidcTokenRefresh } = require('../middleware');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const favorites = require('../controllers/favorites.controller');
 
@@ -21,12 +21,18 @@ router.get('/favorites', [authJwt.verifyToken, authJwt.isUser], favorites.getFav
 router.post('/favorites/save', [authJwt.verifyToken, authJwt.isUser], favorites.saveFavorites);
 
 // Get enriched user claims (includes favorite_apps with metadata)
-router.get('/userinfo/claims', [authJwt.verifyToken, authJwt.isUser], favorites.getUserInfoClaims);
+// Apply OIDC token refresh middleware before this route as it uses OIDC access token
+router.get(
+  '/userinfo/claims',
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  favorites.getUserInfoClaims
+);
 
 // Get enriched favorites only (lightweight)
+// Apply OIDC token refresh middleware before this route as it uses OIDC access token
 router.get(
   '/userinfo/favorites',
-  [authJwt.verifyToken, authJwt.isUser],
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
   favorites.getEnrichedFavorites
 );
 

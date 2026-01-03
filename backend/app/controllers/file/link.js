@@ -5,10 +5,12 @@ const db = require('../../models');
 const { generateDownloadToken } = require('../../utils/auth');
 
 let appConfig;
+let authConfig;
 try {
   appConfig = loadConfig('app');
+  authConfig = loadConfig('auth');
 } catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
+  log.error.error(`Failed to load configuration: ${e.message}`);
 }
 
 /**
@@ -165,7 +167,8 @@ const getDownloadLink = async (req, res) => {
       }
     }
 
-    // Generate a secure download token
+    // Generate a secure download token with configurable expiry
+    const downloadLinkExpiry = authConfig.auth?.jwt?.download_link_expiry?.value || '1h';
     const downloadToken = generateDownloadToken(
       {
         userId,
@@ -176,7 +179,7 @@ const getDownloadLink = async (req, res) => {
         providerName,
         architectureName,
       },
-      '1h'
+      downloadLinkExpiry
     );
 
     // Return the secure download URL

@@ -5,6 +5,14 @@ const { log } = require('../../utils/Logger');
 const db = require('../../models');
 const mailController = require('../mail.controller');
 const { generateEmailHash } = require('./helpers');
+const { loadConfig } = require('../../utils/config-loader');
+
+let authConfig;
+try {
+  authConfig = loadConfig('auth');
+} catch {
+  // Config will be loaded when needed
+}
 
 const User = db.user;
 const Role = db.role;
@@ -127,7 +135,9 @@ exports.signup = async (req, res) => {
       emailHash,
       primary_organization_id: organization.id,
       verificationToken: crypto.randomBytes(20).toString('hex'),
-      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      verificationTokenExpires:
+        Date.now() +
+        (authConfig.auth?.jwt?.verification_token_expiry_hours?.value || 24) * 60 * 60 * 1000,
     });
 
     const userCount = await User.count();

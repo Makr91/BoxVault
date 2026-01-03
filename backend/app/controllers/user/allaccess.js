@@ -1,5 +1,5 @@
 // allaccess.js
-// This endpoint returns static project information - no imports needed
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
@@ -42,7 +42,6 @@
  */
 exports.allAccess = (req, res) => {
   // Log request for audit purposes
-  const { log } = require('../../utils/Logger');
   log.app.debug('All access endpoint called', { method: req.method, locale: req.getLocale() });
 
   const projectData = {

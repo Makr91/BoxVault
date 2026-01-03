@@ -1,11 +1,12 @@
 // organization.js
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
- * /api/organizations:
+ * /api/users/organization:
  *   get:
  *     summary: Get organization content
- *     description: Retrieve organization-related content for authenticated users
+ *     description: Retrieve content for organization access
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -16,10 +17,9 @@
  *           text/plain:
  *             schema:
  *               type: string
- *               example: "Moderator Content."
+ *               example: "Organization Content."
  */
 exports.organization = (req, res) => {
-  const { log } = require('../../utils/Logger');
   log.app.debug('Organization endpoint accessed', { method: req.method });
-  res.status(200).send('Moderator Content.');
+  res.status(200).send('Organization Content.');
 };

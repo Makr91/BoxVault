@@ -1,12 +1,32 @@
 boxvault:
   origin:
     type: url
-    value: https://your-domain.com
+    value: http://localhost:5000
     description: The origin URL for BoxVault
     section: Application
     subsection: BoxVault Settings
     required: true
     order: 1
+  upload_timeout_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 72
+    description: Maximum hours allowed for file uploads before timeout
+    section: Application
+    subsection: File Operations
+    required: false
+    order: 2
+  download_timeout_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 72
+    description: Maximum hours allowed for file downloads before timeout
+    section: Application
+    subsection: File Operations
+    required: false
+    order: 3
   api_url:
     type: url
     value: https://your-domain.com/api

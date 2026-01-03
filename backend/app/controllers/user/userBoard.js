@@ -1,4 +1,5 @@
 // userBoard.js
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
@@ -19,7 +20,6 @@
  *               example: "User Content."
  */
 exports.userBoard = (req, res) => {
-  const { log } = require('../../utils/Logger');
   log.app.debug('User board accessed', { method: req.method });
   res.status(200).send('User Content.');
 };

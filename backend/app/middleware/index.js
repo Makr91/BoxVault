@@ -16,6 +16,7 @@ const { downloadAuth } = require('./downloadAuth');
 const { sessionAuth } = require('./sessionAuth');
 const { errorHandler } = require('./errorHandler');
 const { configAwareI18nMiddleware } = require('../config/i18n');
+const { oidcTokenRefresh } = require('./oidcTokenRefresh');
 
 module.exports = {
   authJwt,
@@ -33,5 +34,6 @@ module.exports = {
   downloadAuth,
   sessionAuth,
   errorHandler,
+  oidcTokenRefresh,
   i18nMiddleware: configAwareI18nMiddleware,
 };

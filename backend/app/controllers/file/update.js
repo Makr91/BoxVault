@@ -4,13 +4,6 @@ const { log } = require('../../utils/Logger');
 const db = require('../../models');
 const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
 
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
-
 const Architecture = db.architectures;
 const File = db.files;
 
@@ -199,9 +192,12 @@ const update = async (req, res) => {
   const fileName = `vagrant.box`;
   const uploadStartTime = Date.now();
 
-  // Set a longer timeout for the request
-  req.setTimeout(24 * 60 * 60 * 1000); // 24 hours
-  res.setTimeout(24 * 60 * 60 * 1000); // 24 hours
+  // Set a longer timeout for the request from config
+  const appConfig = loadConfig('app');
+  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
+  const uploadTimeoutMs = uploadTimeoutHours * 60 * 60 * 1000;
+  req.setTimeout(uploadTimeoutMs);
+  res.setTimeout(uploadTimeoutMs);
 
   try {
     const architecture = await Architecture.findOne({

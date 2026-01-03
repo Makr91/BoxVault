@@ -267,7 +267,14 @@ router.get('/auth/oidc/callback', async (req, res) => {
       return res.redirect('/?error=user_creation_failed');
     }
 
-    // Generate JWT token with id_token and access_token stored for RP-initiated logout and favorites
+    // Calculate OIDC token expiration time
+    const claims = tokens.claims();
+    const defaultExpiryMinutes = authConfig.auth?.oidc?.token_default_expiry_minutes?.value || 30;
+    const oidcExpiresAt = claims.exp
+      ? claims.exp * 1000
+      : Date.now() + defaultExpiryMinutes * 60 * 1000;
+
+    // Generate JWT token with id_token, access_token, and refresh_token for automatic token refresh
     const token = jwt.sign(
       {
         id: user.id,
@@ -275,6 +282,8 @@ router.get('/auth/oidc/callback', async (req, res) => {
         provider: `oidc-${provider}`,
         id_token: tokens.id_token, // Store for RP-initiated logout
         oidc_access_token: tokens.access_token, // Store for auth server API calls (favorites, etc.)
+        oidc_refresh_token: tokens.refresh_token, // Store for automatic token refresh
+        oidc_expires_at: oidcExpiresAt, // Store expiration time for refresh check
       },
       authConfig.auth.jwt.jwt_secret.value,
       {
