@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.6](https://github.com/Makr91/BoxVault/compare/v0.27.5...v0.27.6) (2026-01-03)
+
+
+### Bug Fixes
+
+* all imports must be at the top of the page ([1332a33](https://github.com/Makr91/BoxVault/commit/1332a33defa249a25e7a35fa06a42c47ae5c922c))
+
 ## [0.27.5](https://github.com/Makr91/BoxVault/compare/v0.27.4...v0.27.5) (2026-01-03)
 
 
