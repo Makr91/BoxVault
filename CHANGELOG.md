@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/Makr91/BoxVault/compare/v0.27.0...v0.27.1) (2026-01-03)
+
+
+### Bug Fixes
+
+* org modification on admin page and fix page crash on unauthed org view ([21a2138](https://github.com/Makr91/BoxVault/commit/21a213853b3e05778dcd29d2fee517fd76ee3e1c))
+
 ## [0.27.0](https://github.com/Makr91/BoxVault/compare/v0.26.28...v0.27.0) (2026-01-03)
 
 
