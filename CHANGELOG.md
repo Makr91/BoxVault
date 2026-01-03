@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.2](https://github.com/Makr91/BoxVault/compare/v0.27.1...v0.27.2) (2026-01-03)
+
+
+### Bug Fixes
+
+* admin edit org code/all org fields ([63db386](https://github.com/Makr91/BoxVault/commit/63db38647937da38207ea84b4bd6c3a20e29bc6e))
+
 ## [0.27.1](https://github.com/Makr91/BoxVault/compare/v0.27.0...v0.27.1) (2026-01-03)
 
 
