@@ -280,6 +280,26 @@ const options = {
               example: 'Technology company specializing in virtual infrastructure',
               nullable: true,
             },
+            org_code: {
+              type: 'string',
+              maxLength: 6,
+              pattern: '^[0-9A-F]{6}$',
+              description: '6-character hexadecimal organization code',
+              example: 'A55D94',
+              nullable: true,
+            },
+            access_mode: {
+              type: 'string',
+              enum: ['private', 'invite_only', 'request_to_join'],
+              description: 'Organization visibility and access mode',
+              example: 'private',
+            },
+            default_role: {
+              type: 'string',
+              enum: ['user', 'moderator'],
+              description: 'Default role for new members',
+              example: 'user',
+            },
             createdAt: {
               type: 'string',
               format: 'date-time',
@@ -568,7 +588,7 @@ const options = {
         },
         ServiceAccountCreateRequest: {
           type: 'object',
-          required: ['description', 'expirationDays'],
+          required: ['description', 'expirationDays', 'organizationId'],
           properties: {
             description: {
               type: 'string',
@@ -581,6 +601,11 @@ const options = {
               maximum: 365,
               description: 'Number of days until token expires',
               example: 30,
+            },
+            organizationId: {
+              type: 'integer',
+              description: 'Organization ID to scope the service account to',
+              example: 1,
             },
           },
         },

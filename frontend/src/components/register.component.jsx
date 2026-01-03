@@ -8,6 +8,14 @@ import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
 
+const sanitizeProvider = (provider) => {
+  const safeProviderPattern = /^[A-Za-z0-9_-]+$/;
+  if (typeof provider !== "string" || !safeProviderPattern.test(provider)) {
+    throw new Error("Invalid authentication provider");
+  }
+  return provider;
+};
+
 const Register = ({ theme }) => {
   const { t } = useTranslation();
 
@@ -112,9 +120,21 @@ const Register = ({ theme }) => {
 
     // If OIDC method, redirect to OIDC provider
     if (authMethod.startsWith("oidc-")) {
-      const provider = authMethod.replace("oidc-", "");
-      localStorage.setItem("boxvault_intended_url", "/organizations/discover");
-      window.location.href = `/api/auth/oidc/${provider}`;
+      try {
+        const provider = authMethod.replace("oidc-", "");
+        const safeProvider = sanitizeProvider(provider);
+        localStorage.setItem(
+          "boxvault_intended_url",
+          "/organizations/discover"
+        );
+        window.location.href = `/api/auth/oidc/${safeProvider}`;
+      } catch (err) {
+        log.auth.error("Invalid OIDC provider selected", err);
+        setStatus({
+          success: false,
+          message: "Invalid authentication provider selected.",
+        });
+      }
       return;
     }
 
