@@ -1,8 +1,16 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 
-const ConfirmationModal = ({ show, handleClose, handleConfirm }) => {
+const ConfirmationModal = ({
+  show,
+  handleClose,
+  handleConfirm,
+  title,
+  message,
+}) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState("");
 
@@ -18,28 +26,33 @@ const ConfirmationModal = ({ show, handleClose, handleConfirm }) => {
   };
 
   const handleConfirmClick = () => {
-    if (inputValue.toLowerCase() === "delete") {
+    if (inputValue.toLowerCase() === t("deleteKeyword")) {
       handleConfirm();
       setInputValue("");
       setError("");
       handleClose();
     } else {
-      setError("Please type 'delete' to confirm.");
+      setError(t("confirmation.typeDeleteToConfirm"));
     }
   };
 
   return (
     <Modal show={show} onHide={handleModalClose}>
       <Modal.Header closeButton>
-        <Modal.Title>Confirm Deletion</Modal.Title>
+        <Modal.Title>{title || t("confirmation.title")}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <p>Please type &quot;delete&quot; to confirm the deletion.</p>
+        <p>
+          {message ||
+            t("confirmation.message", { keyword: t("deleteKeyword") })}
+        </p>
         <Form.Control
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          placeholder="Type 'delete' to confirm"
+          placeholder={t("confirmation.placeholder", {
+            keyword: t("deleteKeyword"),
+          })}
         />
         {error && (
           <div className="alert alert-danger mt-2" role="alert">
@@ -49,10 +62,10 @@ const ConfirmationModal = ({ show, handleClose, handleConfirm }) => {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={handleModalClose}>
-          Cancel
+          {t("buttons.cancel")}
         </Button>
         <Button variant="danger" onClick={handleConfirmClick}>
-          Confirm
+          {t("buttons.confirm")}
         </Button>
       </Modal.Footer>
     </Modal>
@@ -63,6 +76,8 @@ ConfirmationModal.propTypes = {
   show: PropTypes.bool.isRequired,
   handleClose: PropTypes.func.isRequired,
   handleConfirm: PropTypes.func.isRequired,
+  title: PropTypes.string,
+  message: PropTypes.string,
 };
 
 export default ConfirmationModal;

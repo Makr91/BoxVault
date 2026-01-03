@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
@@ -17,11 +17,11 @@ const sanitizeProvider = (provider) => {
 };
 
 const Register = ({ theme }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(["auth", "common"]);
 
   useEffect(() => {
-    document.title = "Register";
-  }, []);
+    document.title = t("register.pageTitle");
+  }, [t]);
 
   const [formValues, setFormValues] = useState({
     username: "",
@@ -39,26 +39,38 @@ const Register = ({ theme }) => {
 
   const location = useLocation();
 
-  const loadAuthMethods = async () => {
+  const loadAuthMethods = useCallback(async () => {
     try {
       setMethodsLoading(true);
       const result = await AuthService.getAuthMethods();
       if (result.methods && result.methods.length > 0) {
         setAuthMethods(result.methods);
       } else {
-        setAuthMethods([{ id: "local", name: "Local Account", enabled: true }]);
+        setAuthMethods([
+          {
+            id: "local",
+            name: t("login.localAccount", { ns: "auth" }),
+            enabled: true,
+          },
+        ]);
       }
     } catch (error) {
       log.auth.error("Error loading auth methods", { error: error.message });
-      setAuthMethods([{ id: "local", name: "Local Account", enabled: true }]);
+      setAuthMethods([
+        {
+          id: "local",
+          name: t("login.localAccount", { ns: "auth" }),
+          enabled: true,
+        },
+      ]);
     } finally {
       setMethodsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadAuthMethods();
-  }, []);
+  }, [loadAuthMethods]);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -132,7 +144,7 @@ const Register = ({ theme }) => {
         log.auth.error("Invalid OIDC provider selected", err);
         setStatus({
           success: false,
-          message: "Invalid authentication provider selected.",
+          message: t("errors.invalidProvider", { ns: "auth" }),
         });
       }
       return;
@@ -176,11 +188,11 @@ const Register = ({ theme }) => {
         ) : (
           <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
         )}
-        <h2 className="fs-1 text-center mt-4">BoxVault</h2>
+        <h2 className="fs-1 text-center mt-4">{t("register.title")}</h2>
 
         {organizationName && (
           <div className="alert alert-info text-center">
-            {t("register.joiningOrganization", { ns: "auth" })}{" "}
+            {t("register.joiningOrganization")}{" "}
             <strong>{organizationName}</strong>
           </div>
         )}
@@ -190,7 +202,9 @@ const Register = ({ theme }) => {
             <div>
               {!methodsLoading && authMethods.length > 1 && (
                 <div className="form-group">
-                  <label htmlFor="authMethod">Authentication Method</label>
+                  <label htmlFor="authMethod">
+                    {t("login.authMethod", { ns: "auth" })}
+                  </label>
                   <select
                     className="form-control"
                     name="authMethod"
@@ -205,27 +219,22 @@ const Register = ({ theme }) => {
                   </select>
                   <small className="form-text text-muted">
                     {authMethod.startsWith("oidc-")
-                      ? "You will be redirected to authenticate with your identity provider"
-                      : "Create a local BoxVault account"}
+                      ? t("register.oidcHint")
+                      : t("register.localHint")}
                   </small>
                 </div>
               )}
 
               {authMethod.startsWith("oidc-") && (
                 <div className="alert alert-info">
-                  <p className="mb-0">
-                    Click the button below to register using your
-                    organization&apos;s identity provider.
-                  </p>
+                  <p className="mb-0">{t("register.oidcMessage")}</p>
                 </div>
               )}
 
               {!authMethod.startsWith("oidc-") && (
                 <>
                   <div className="form-group">
-                    <label htmlFor="username">
-                      {t("register.username", { ns: "auth" })}
-                    </label>
+                    <label htmlFor="username">{t("register.username")}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -241,9 +250,7 @@ const Register = ({ theme }) => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="email">
-                      {t("register.email", { ns: "auth" })}
-                    </label>
+                    <label htmlFor="email">{t("register.email")}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -259,9 +266,7 @@ const Register = ({ theme }) => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="password">
-                      {t("register.password", { ns: "auth" })}
-                    </label>
+                    <label htmlFor="password">{t("register.password")}</label>
                     <input
                       type="password"
                       className="form-control"
@@ -283,9 +288,9 @@ const Register = ({ theme }) => {
                       disabled={isSubmitting}
                     >
                       {authMethod.startsWith("oidc-")
-                        ? authMethods.find((m) => m.id === authMethod)?.name ||
-                          "Continue with SSO"
-                        : t("register.signUpButton", { ns: "auth" })}
+                        ? (authMethods.find((m) => m.id === authMethod)?.name ??
+                          t("register.continueWithSso"))
+                        : t("register.signUpButton")}
                     </button>
                   </div>
                 </>

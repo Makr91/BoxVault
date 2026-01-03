@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 
@@ -6,6 +7,7 @@ import SetupService from "../services/setup.service";
 import { log } from "../utils/Logger";
 
 const SetupComponent = () => {
+  const { t } = useTranslation();
   const [configs, setConfigs] = useState({
     db: {},
     app: {},
@@ -23,8 +25,8 @@ const SetupComponent = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "Setup";
-  }, []);
+    document.title = t("setup.title");
+  }, [t]);
 
   useEffect(() => {
     SetupService.isSetupComplete()
@@ -44,7 +46,7 @@ const SetupComponent = () => {
       new URL(value);
       return null;
     } catch {
-      return "Invalid URL format.";
+      return t("validation.invalidUrl");
     }
   };
 
@@ -60,7 +62,7 @@ const SetupComponent = () => {
     if (ipRegex.test(value) || fqdnRegex.test(value)) {
       return null;
     }
-    return "Invalid host. Must be a valid IP address, FQDN, or 'localhost'.";
+    return t("validation.invalidHost");
   };
 
   // Helper: Validate other field types
@@ -69,29 +71,27 @@ const SetupComponent = () => {
       case "integer": {
         return Number.isInteger(Number(value))
           ? null
-          : "Value must be an integer.";
+          : t("validation.integerRequired");
       }
       case "boolean": {
-        return typeof value === "boolean" ? null : "Value must be a boolean.";
+        return typeof value === "boolean"
+          ? null
+          : t("validation.booleanRequired");
       }
       case "password": {
-        return value.length >= 6
-          ? null
-          : "Password must be at least 6 characters.";
+        return value.length >= 6 ? null : t("validation.passwordLength");
       }
       case "email": {
         const emailRegex =
           /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-        return emailRegex.test(value) ? null : "Invalid email address.";
+        return emailRegex.test(value) ? null : t("validation.invalidEmail");
       }
       case "port": {
         const port = Number(value);
-        return port >= 1 && port <= 65535
-          ? null
-          : "Port must be between 1 and 65535.";
+        return port >= 1 && port <= 65535 ? null : t("validation.portRange");
       }
       case "string": {
-        return value.trim() !== "" ? null : "Value cannot be empty.";
+        return value.trim() !== "" ? null : t("validation.valueRequired");
       }
       default:
         return null;
@@ -105,7 +105,7 @@ const SetupComponent = () => {
     }
 
     if (value === null || value === undefined || value === "") {
-      return "Value cannot be empty.";
+      return t("validation.valueRequired");
     }
 
     if (type === "url") {
@@ -133,7 +133,7 @@ const SetupComponent = () => {
     const error =
       field && field.type
         ? getValidationError(field.type, value, isReadonly)
-        : "Invalid field structure";
+        : t("validation.invalidFieldStructure");
 
     setValidationErrors((prevErrors) => {
       const newErrors = {
@@ -208,7 +208,7 @@ const SetupComponent = () => {
         log.api.error("Error verifying setup token", {
           error: error.message,
         });
-        setMessage("Invalid setup token.");
+        setMessage(t("setup.invalidToken"));
       });
   };
 
@@ -257,7 +257,7 @@ const SetupComponent = () => {
       validationErrors[configName]["sql.storage"];
     return (
       <div className="form-group" key="sql.storage">
-        <label htmlFor="sql-storage">SQLite Database File Path</label>
+        <label htmlFor="sql-storage">{t("setup.sqlitePath")}</label>
         <input
           id="sql-storage"
           type="text"
@@ -281,13 +281,9 @@ const SetupComponent = () => {
       <div className="alert alert-info">
         <h6>
           <i className="fas fa-info-circle me-2" />
-          OIDC Providers
+          {t("oidc.title")}
         </h6>
-        <p className="mb-0">
-          OIDC provider configuration is managed through the Admin interface
-          after setup is complete. Go to Admin → Configuration Management → Auth
-          Config to add OIDC providers.
-        </p>
+        <p className="mb-0">{t("setup.oidcNote")}</p>
       </div>
     </div>
   );
@@ -444,15 +440,13 @@ const SetupComponent = () => {
 
   const handleSubmit = () => {
     if (!isFormValid) {
-      setMessage("Please fix all validation errors before submitting.");
+      setMessage(t("validation.fixErrors"));
       return;
     }
 
     SetupService.updateConfigs(authorizedSetupToken, configs)
       .then(() => {
-        setMessage(
-          "Configuration updated successfully. Redirecting to registration page in 5 seconds..."
-        );
+        setMessage(t("setup.updateSuccess"));
 
         // Set a 5-second delay before navigating
         setTimeout(() => {
@@ -463,7 +457,7 @@ const SetupComponent = () => {
         log.api.error("Error updating configuration", {
           error: error.message,
         });
-        setMessage("Failed to update configuration.");
+        setMessage(t("setup.updateError"));
       });
   };
 
@@ -497,22 +491,22 @@ const SetupComponent = () => {
 
   return (
     <div className="container mt-5">
-      <h2 className="text-center mb-4">BoxVault Setup</h2>
+      <h2 className="text-center mb-4">{t("setup.title")}</h2>
       {setupComplete ? (
         <div className="alert alert-success" role="alert">
-          Setup is already complete. You can now use BoxVault.
+          {t("setup.alreadyComplete")}
         </div>
       ) : (
         <>
           {!authorizedSetupToken ? (
             <div className="card">
               <div className="card-body">
-                <h5 className="card-title">Enter Setup Token</h5>
+                <h5 className="card-title">{t("setup.enterToken")}</h5>
                 <div className="input-group mb-3">
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Setup Token"
+                    placeholder={t("setup.tokenPlaceholder")}
                     value={setupToken}
                     onChange={(e) => setSetupToken(e.target.value)}
                   />
@@ -520,7 +514,7 @@ const SetupComponent = () => {
                     className="btn btn-primary"
                     onClick={handleVerifyToken}
                   >
-                    Verify Token
+                    {t("setup.verifyToken")}
                   </button>
                 </div>
               </div>
@@ -546,7 +540,7 @@ const SetupComponent = () => {
                     onClick={handleSubmit}
                     disabled={!isFormValid}
                   >
-                    Submit All Configurations
+                    {t("setup.submitAll")}
                   </button>
                 </li>
               </ul>

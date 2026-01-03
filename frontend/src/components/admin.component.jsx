@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
@@ -11,9 +12,10 @@ import OrganizationUserManager from "./OrganizationUserManager.component";
  * Provides authentication guard and tab management for admin features
  */
 const Admin = () => {
+  const { t } = useTranslation();
   useEffect(() => {
-    document.title = "Admin";
-  }, []);
+    document.title = t("admin.pageTitle");
+  }, [t]);
 
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("organizations");
@@ -39,7 +41,7 @@ const Admin = () => {
   return (
     <div className="list row">
       <header>
-        <h3 className="text-center">Admin Panel</h3>
+        <h3 className="text-center">{t("admin.title")}</h3>
       </header>
       <ul className="nav nav-tabs">
         <li className="nav-item">
@@ -47,7 +49,7 @@ const Admin = () => {
             className={`nav-link ${activeTab === "organizations" ? "active" : ""}`}
             onClick={() => setActiveTab("organizations")}
           >
-            Organizations and Users
+            {t("admin.tabs.orgsAndUsers")}
           </button>
         </li>
         <li className="nav-item">
@@ -55,7 +57,7 @@ const Admin = () => {
             className={`nav-link ${activeTab === "config" ? "active" : ""}`}
             onClick={() => setActiveTab("config")}
           >
-            Configuration Management
+            {t("admin.tabs.configManagement")}
           </button>
         </li>
       </ul>

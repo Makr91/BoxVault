@@ -1,5 +1,6 @@
 // update.js
 const db = require('../../../models');
+const { log } = require('../../../utils/Logger');
 const { generateEmailHash } = require('../helpers');
 
 const User = db.user;
@@ -62,6 +63,7 @@ exports.updateUser = (req, res) => {
       res.send({ message: req.__('users.updated') });
     })
     .catch(err => {
+      log.error.error('Error updating user:', err);
       res.status(500).send({ message: req.__('users.update.error') });
     });
 };

@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useRef } from "react";
 import { Table } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
 import ArchitectureService from "../services/architecture.service";
@@ -14,6 +15,7 @@ import { log } from "../utils/Logger";
 import ConfirmationModal from "./confirmation.component";
 
 const Box = ({ theme }) => {
+  const { t } = useTranslation();
   const { organization, name } = useParams();
   const [versions, setVersions] = useState([]);
   const [originalName, setOriginalName] = useState("");
@@ -53,14 +55,12 @@ const Box = ({ theme }) => {
 
   const form = useRef();
 
-  const required = (value) => (value ? undefined : "This field is required!");
+  const required = (value) => (value ? undefined : t("validation.required"));
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
   const validateName = (value) =>
-    validCharsRegex.test(value)
-      ? undefined
-      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+    validCharsRegex.test(value) ? undefined : t("validation.invalidName");
 
   const deleteFilesForArchitecture = async (
     providerName,
@@ -157,7 +157,7 @@ const Box = ({ theme }) => {
         currentBox.name,
         versionNumber
       );
-      setMessage("The version was deleted successfully!");
+      setMessage(t("version.deleted"));
       setMessageType("success");
       setVersions(
         versions.filter((version) => version.versionNumber !== versionNumber)
@@ -170,7 +170,7 @@ const Box = ({ theme }) => {
       const errorMessage =
         e.response && e.response.data && e.response.data.message
           ? e.response.data.message
-          : "Error deleting version. Please try again.";
+          : t("version.deleteError");
       setMessage(errorMessage);
       setMessageType("danger");
     }
@@ -229,7 +229,7 @@ const Box = ({ theme }) => {
                 });
             });
           } else {
-            setMessage("No Box Found");
+            setMessage(t("box.notFound"));
             setMessageType("danger");
           }
         } catch (e) {
@@ -238,14 +238,14 @@ const Box = ({ theme }) => {
             boxName: name,
             error: e.message,
           });
-          setMessage("No Box Found");
+          setMessage(t("box.notFound"));
           setMessageType("danger");
         }
       }
     };
 
     loadData();
-  }, [organization, name]);
+  }, [organization, name, t]);
 
   // Update title when box name changes (e.g., after edit)
   useEffect(() => {
@@ -305,9 +305,7 @@ const Box = ({ theme }) => {
     if (currentBox.name !== originalName) {
       const boxExists = allVersions.some((v) => v.name === currentBox.name);
       if (boxExists) {
-        setMessage(
-          "A box with this name already exists. Please choose a different name."
-        );
+        setMessage(t("box.exists"));
         setMessageType("danger");
         return;
       }
@@ -315,7 +313,7 @@ const Box = ({ theme }) => {
 
     BoxDataService.update(currentUser.organization, originalName, currentBox)
       .then(() => {
-        setMessage("The box was updated successfully!");
+        setMessage(t("box.updated"));
         setMessageType("success");
         setEditMode(false);
 
@@ -331,7 +329,7 @@ const Box = ({ theme }) => {
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
         } else {
-          setMessage("An error occurred while updating the box.");
+          setMessage(t("box.updateError"));
         }
         setMessageType("danger");
       });
@@ -351,7 +349,7 @@ const Box = ({ theme }) => {
           boxName: currentBox.name,
           error: e.message,
         });
-        setMessage("An error occurred while deleting the box.");
+        setMessage(t("box.deleteError"));
         setMessageType("danger");
       });
   };
@@ -378,9 +376,7 @@ const Box = ({ theme }) => {
       (v) => v.versionNumber === newVersion.versionNumber
     );
     if (versionExists) {
-      setMessage(
-        `Version ${newVersion.versionNumber} with this number already exists. Please choose a different version number.`
-      );
+      setMessage(t("version.exists"));
       setMessageType("danger");
       return;
     }
@@ -391,7 +387,7 @@ const Box = ({ theme }) => {
       newVersion
     )
       .then((response) => {
-        setMessage("The version was added successfully!");
+        setMessage(t("version.added"));
         setMessageType("success");
         setVersions([...versions, response.data]);
         setShowAddVersionForm(false);
@@ -401,7 +397,7 @@ const Box = ({ theme }) => {
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
         } else {
-          setMessage("An error occurred while adding the version.");
+          setMessage(t("version.addError"));
         }
         setMessageType("danger");
       });
@@ -438,7 +434,7 @@ const Box = ({ theme }) => {
 
   const renderBackButton = () => (
     <Link className="btn btn-dark me-2" to={`/${boxOrganization}`}>
-      Back
+      {t("actions.backToFiles")}
     </Link>
   );
 
@@ -454,12 +450,12 @@ const Box = ({ theme }) => {
     return (
       <div className="mt-3">
         <h5>
-          <strong>CI/CD Integration</strong>
+          <strong>{t("box.cicd.title")}</strong>
         </h5>
         {currentBox.githubRepo && currentBox.workflowFile && (
           <div className="mb-2">
             <p>
-              <strong>Build Status:</strong>
+              <strong>{t("box.cicd.buildStatus")}:</strong>
             </p>
             <a
               href={
@@ -471,7 +467,7 @@ const Box = ({ theme }) => {
             >
               <img
                 src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
-                alt="Build Status"
+                alt={t("box.cicd.buildStatus")}
                 className="badge-max-height"
               />
             </a>
@@ -479,7 +475,7 @@ const Box = ({ theme }) => {
         )}
         {currentBox.githubRepo && (
           <p>
-            <strong>Repository:</strong>
+            <strong>{t("box.cicd.repository")}:</strong>
             <a
               href={`https://github.com/${currentBox.githubRepo}`}
               target="_blank"
@@ -492,19 +488,19 @@ const Box = ({ theme }) => {
         )}
         {currentBox.workflowFile && (
           <p>
-            <strong>Workflow:</strong> {currentBox.workflowFile}
+            <strong>{t("box.cicd.workflow")}:</strong> {currentBox.workflowFile}
           </p>
         )}
         {currentBox.cicdUrl && (
           <p>
-            <strong>CI/CD Pipeline:</strong>
+            <strong>{t("box.cicd.pipeline")}:</strong>
             <a
               href={currentBox.cicdUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="ms-2"
             >
-              View Pipeline
+              {t("box.cicd.viewPipeline")}
             </a>
           </p>
         )}
@@ -519,7 +515,7 @@ const Box = ({ theme }) => {
           className="btn btn-warning me-2"
           onClick={() => updateRelease(false)}
         >
-          Unpublish
+          {t("box.unpublish")}
         </button>
       );
     }
@@ -531,7 +527,7 @@ const Box = ({ theme }) => {
           onClick={() => updateRelease(true)}
           disabled={!!validationErrors.name}
         >
-          Publish
+          {t("box.publish")}
         </button>
       );
     }
@@ -543,7 +539,7 @@ const Box = ({ theme }) => {
     <div className="edit-form">
       <form ref={form}>
         <div className="mb-1">
-          <strong>Box name:</strong>
+          <strong>{t("box.name")}:</strong>
         </div>
         <div className="form-group row align-items-center">
           <div className="col-auto pe-0">
@@ -576,18 +572,17 @@ const Box = ({ theme }) => {
           <div className="text-danger">{validationErrors.name}</div>
         )}
         <small className="form-text text-muted">
-          The name of your Vagrant box is used in tools, notifications, routing,
-          and this UI. Short and simple is best.
+          {t("box.shortDescription")}
         </small>
         <div className="form-group mt-2">
           <label htmlFor="boxStatus">
-            <strong>Status: </strong>
+            <strong>{t("box.status")}: </strong>
           </label>
-          {currentBox.published ? "Published" : "Pending"}
+          {currentBox.published ? t("status.completed") : t("status.pending")}
         </div>
         <div className="form-group mt-2">
           <label htmlFor="boxVisibility">
-            <strong>Visibility:</strong>
+            <strong>{t("box.visibility")}:</strong>
           </label>
           <div className="d-flex">
             <div className="form-check me-3">
@@ -601,7 +596,7 @@ const Box = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="visibilityPrivate">
-                Private
+                {t("moderator.organization.accessModes.private")}
               </label>
             </div>
             <div className="form-check">
@@ -615,18 +610,17 @@ const Box = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="visibilityPublic">
-                Public
+                {t("moderator.organization.accessModes.public")}
               </label>
             </div>
           </div>
           <small className="form-text text-muted">
-            Making a box private prevents users from accessing it unless given
-            permission.
+            {t("box.visibilityHint")}
           </small>
         </div>
         <div className="form-group mt-2">
           <label className="mb-1" htmlFor="description">
-            <strong>Description:</strong> (Optional)
+            <strong>{t("box.description")}:</strong> {t("box.optional")}
           </label>
           <textarea
             className="form-control"
@@ -636,20 +630,19 @@ const Box = ({ theme }) => {
             onChange={handleInputChange}
             name="description"
             rows="4"
-            placeholder="The short description is used to describe the box."
+            placeholder={t("box.shortDescription")}
           />
         </div>
         <div className="form-group mt-3">
           <h5>
-            <strong>CI/CD Integration</strong> (Optional)
+            <strong>{t("box.cicd.title")}</strong> {t("box.optional")}
           </h5>
           <small className="form-text text-muted mb-3">
-            Connect your box to GitHub Actions for automated build status
-            badges.
+            {t("box.cicd.connect")}
           </small>
           <div className="form-group mt-2">
             <label className="mb-1" htmlFor="githubRepo">
-              <strong>GitHub Repository:</strong> (Optional)
+              <strong>{t("box.cicd.repository")}:</strong> {t("box.optional")}
             </label>
             <input
               type="text"
@@ -658,15 +651,15 @@ const Box = ({ theme }) => {
               name="githubRepo"
               value={currentBox.githubRepo || ""}
               onChange={handleInputChange}
-              placeholder="owner/repository-name"
+              placeholder={t("box.cicd.repositoryPlaceholder")}
             />
             <small className="form-text text-muted">
-              Format: owner/repository-name (e.g., myorg/my-vagrant-box)
+              {t("box.cicd.repositoryHint")}
             </small>
           </div>
           <div className="form-group mt-2">
             <label className="mb-1" htmlFor="workflowFile">
-              <strong>Workflow File:</strong> (Optional)
+              <strong>{t("box.cicd.workflow")}:</strong> {t("box.optional")}
             </label>
             <input
               type="text"
@@ -675,15 +668,15 @@ const Box = ({ theme }) => {
               name="workflowFile"
               value={currentBox.workflowFile || ""}
               onChange={handleInputChange}
-              placeholder="build.yml"
+              placeholder={t("box.cicd.workflowPlaceholder")}
             />
             <small className="form-text text-muted">
-              GitHub Actions workflow file name (e.g., build.yml, ci.yaml)
+              {t("box.cicd.workflowHint")}
             </small>
           </div>
           <div className="form-group mt-2">
             <label className="mb-1" htmlFor="cicdUrl">
-              <strong>CI/CD URL:</strong> (Optional)
+              <strong>{t("box.cicd.pipelineUrl")}:</strong> {t("box.optional")}
             </label>
             <input
               type="url"
@@ -692,10 +685,10 @@ const Box = ({ theme }) => {
               name="cicdUrl"
               value={currentBox.cicdUrl || ""}
               onChange={handleInputChange}
-              placeholder="https://github.com/owner/repo/actions"
+              placeholder={t("box.cicd.pipelinePlaceholder")}
             />
             <small className="form-text text-muted">
-              Direct link to your CI/CD pipeline or GitHub Actions page
+              {t("box.cicd.pipelineHint")}
             </small>
           </div>
         </div>
@@ -713,10 +706,10 @@ const Box = ({ theme }) => {
             onClick={updateBox}
             disabled={!!validationErrors.name}
           >
-            Update
+            {t("buttons.save")}
           </button>
           <button className="btn btn-secondary me-2" onClick={cancelEdit}>
-            Cancel
+            {t("buttons.cancel")}
           </button>
         </>
       ) : (
@@ -724,12 +717,12 @@ const Box = ({ theme }) => {
           className="btn btn-primary me-2"
           onClick={() => setEditMode(true)}
         >
-          Edit
+          {t("buttons.edit")}
         </button>
       )}
       {currentBox.id && !editMode && (
         <button className="btn btn-danger me-2" onClick={handleDeleteClick}>
-          Delete
+          {t("buttons.delete")}
         </button>
       )}
       <ConfirmationModal
@@ -752,7 +745,7 @@ const Box = ({ theme }) => {
         <>
           <div className="mb-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h4>Box Details</h4>
+              <h4>{t("box.details")}</h4>
               <div>
                 {isAuthorized && renderActionButtons()}
                 {renderBackButton()}
@@ -763,18 +756,23 @@ const Box = ({ theme }) => {
             ) : (
               <div>
                 <p>
-                  <strong>Name:</strong> {currentBox.name}
+                  <strong>{t("box.name")}:</strong> {currentBox.name}
                 </p>
                 <p>
-                  <strong>Status:</strong>{" "}
-                  {currentBox.published ? "Published" : "Pending"}
+                  <strong>{t("box.status")}:</strong>{" "}
+                  {currentBox.published
+                    ? t("status.completed")
+                    : t("status.pending")}
                 </p>
                 <p>
-                  <strong>Visibility:</strong>{" "}
-                  {currentBox.isPublic ? "Public" : "Private"}
+                  <strong>{t("box.visibility")}:</strong>{" "}
+                  {currentBox.isPublic
+                    ? t("moderator.organization.accessModes.public")
+                    : t("moderator.organization.accessModes.private")}
                 </p>
                 <p>
-                  <strong>Description:</strong> {currentBox.description}
+                  <strong>{t("box.description")}:</strong>{" "}
+                  {currentBox.description}
                 </p>
                 {renderCicdIntegration()}
               </div>
@@ -782,14 +780,16 @@ const Box = ({ theme }) => {
           </div>
           <div className="list-table">
             <div className="d-flex justify-content-between align-items-center">
-              <h4>Versions for Box: {currentBox.name}</h4>
+              <h4>{t("box.versions", { name: currentBox.name })}</h4>
               {isAuthorized && (
                 <div>
                   <button
                     className={`btn ${showAddVersionForm ? "btn-secondary" : "btn-outline-success"} me-2`}
                     onClick={() => setShowAddVersionForm(!showAddVersionForm)}
                   >
-                    {showAddVersionForm ? "Cancel" : "Add Version"}
+                    {showAddVersionForm
+                      ? t("buttons.cancel")
+                      : t("version.add")}
                   </button>
                   {showAddVersionForm && (
                     <button
@@ -801,7 +801,7 @@ const Box = ({ theme }) => {
                         !!validationErrors.versionNumber
                       }
                     >
-                      Submit
+                      {t("buttons.save")}
                     </button>
                   )}
                 </div>
@@ -812,7 +812,7 @@ const Box = ({ theme }) => {
             <div>
               <form onSubmit={addVersion} ref={form}>
                 <div className="form-group col-md-3">
-                  <label htmlFor="versionNumber">Version Number</label>
+                  <label htmlFor="versionNumber">{t("version.number")}</label>
                   <input
                     type="text"
                     className="form-control"
@@ -829,7 +829,9 @@ const Box = ({ theme }) => {
                   )}
                 </div>
                 <div className="form-group">
-                  <label htmlFor="versionDescription">Description</label>
+                  <label htmlFor="versionDescription">
+                    {t("provider.description")}
+                  </label>
                   <textarea
                     className="form-control"
                     id="versionDescription"
@@ -846,10 +848,12 @@ const Box = ({ theme }) => {
           <Table striped className="table">
             <thead>
               <tr>
-                <th>Version Number</th>
-                <th>Details</th>
-                <th>Providers</th>
-                {isAuthorized && <th>Actions</th>}
+                <th>{t("version.number")}</th>
+                <th>{t("version.details")}</th>
+                <th>
+                  {t("version.providers", { version: "" }).replace(":", "")}
+                </th>
+                {isAuthorized && <th>{t("provider.actions")}</th>}
               </tr>
             </thead>
             <tbody>
@@ -883,7 +887,7 @@ const Box = ({ theme }) => {
                           handleVersionDeleteClick(version.versionNumber)
                         }
                       >
-                        Delete
+                        {t("buttons.delete")}
                       </button>
                     </td>
                   )}
@@ -901,7 +905,7 @@ const Box = ({ theme }) => {
         <div>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <button className="btn btn-dark me-2" onClick={() => navigate(`/`)}>
-              Back
+              {t("actions.backToFiles")}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Table from "react-bootstrap/Table";
+import { useTranslation } from "react-i18next";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import ArchitectureService from "../services/architecture.service";
@@ -11,6 +12,7 @@ import { log } from "../utils/Logger";
 import ConfirmationModal from "./confirmation.component";
 
 const Version = () => {
+  const { t } = useTranslation();
   const { organization, name, version } = useParams();
   const navigate = useNavigate();
 
@@ -37,14 +39,12 @@ const Version = () => {
 
   const form = useRef();
 
-  const required = (value) => (value ? undefined : "This field is required!");
+  const required = (value) => (value ? undefined : t("validation.required"));
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
   const validateName = (value) =>
-    validCharsRegex.test(value)
-      ? undefined
-      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+    validCharsRegex.test(value) ? undefined : t("validation.invalidName");
 
   const deleteFilesForArchitecture = (providerName, architectureName) =>
     FileService.delete(
@@ -92,7 +92,7 @@ const Version = () => {
         version,
         providerName
       );
-      setMessage("The provider was deleted successfully!");
+      setMessage(t("provider.deleted"));
       setMessageType("success");
       setProviders(
         providers.filter((provider) => provider.name !== providerName)
@@ -102,7 +102,7 @@ const Version = () => {
         providerName,
         error: e.message,
       });
-      setMessage("Error deleting provider. Please try again.");
+      setMessage(t("provider.deleteError"));
       setMessageType("danger");
     }
   };
@@ -110,7 +110,7 @@ const Version = () => {
   const deleteVersion = () => {
     VersionDataService.deleteVersion(organization, name, version)
       .then(() => {
-        setMessage("The version was deleted successfully!");
+        setMessage(t("version.deleted"));
         setMessageType("success");
         navigate(`/${organization}/${name}`);
       })
@@ -241,7 +241,7 @@ const Version = () => {
           error: e.message,
         });
         setCurrentVersion(null);
-        setMessage("No Version Found");
+        setMessage(t("version.notFound"));
         setMessageType("danger");
       }
 
@@ -260,7 +260,7 @@ const Version = () => {
     };
 
     fetchData();
-  }, [organization, name, version, navigate]);
+  }, [organization, name, version, navigate, t]);
 
   const handleProviderInputChange = (event) => {
     const { name: fieldName, value } = event.target;
@@ -277,7 +277,7 @@ const Version = () => {
     event.preventDefault();
 
     if (required(newProvider.name) || validateName(newProvider.name)) {
-      setMessage("Please fix the errors in the form.");
+      setMessage(t("validation.fixErrors"));
       setMessageType("danger");
       return;
     }
@@ -286,9 +286,7 @@ const Version = () => {
       (provider) => provider.name === newProvider.name
     );
     if (providerExists) {
-      setMessage(
-        "A provider with this name already exists. Please choose a different name."
-      );
+      setMessage(t("provider.exists"));
       setMessageType("danger");
       return;
     }
@@ -300,7 +298,7 @@ const Version = () => {
         version,
         newProvider
       );
-      setMessage("The provider was created successfully!");
+      setMessage(t("provider.created"));
       setMessageType("success");
       setProviders([...providers, response.data]);
       setShowAddProviderForm(false);
@@ -309,7 +307,7 @@ const Version = () => {
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
-        setMessage("An error occurred while creating the provider.");
+        setMessage(t("provider.createError"));
       }
       setMessageType("danger");
     }
@@ -344,9 +342,7 @@ const Version = () => {
           v.id !== currentVersion.id
       );
       if (versionExists) {
-        setMessage(
-          "A version with this number already exists. Please choose a different version number."
-        );
+        setMessage(t("version.exists"));
         setMessageType("danger");
         return;
       }
@@ -359,7 +355,7 @@ const Version = () => {
 
     try {
       await VersionDataService.updateVersion(organization, name, version, data);
-      setMessage("The version was updated successfully!");
+      setMessage(t("version.updated"));
       setMessageType("success");
       setEditMode(false);
 
@@ -370,7 +366,7 @@ const Version = () => {
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
-        setMessage("An error occurred while updating the version.");
+        setMessage(t("version.updateError"));
       }
       setMessageType("danger");
     }
@@ -394,32 +390,32 @@ const Version = () => {
               <div>
                 <form onSubmit={saveVersion} ref={form}>
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h4>Edit Version</h4>
+                    <h4>{t("version.edit")}</h4>
                     <div>
                       <button
                         type="submit"
                         className="btn btn-success me-2"
                         disabled={!!validationErrors.versionNumber}
                       >
-                        Save
+                        {t("buttons.save")}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary me-2"
                         onClick={cancelEdit}
                       >
-                        Cancel
+                        {t("buttons.cancel")}
                       </button>
                       <Link
                         className="btn btn-dark me-2"
                         to={`/${organization}/${name}`}
                       >
-                        Back
+                        {t("actions.back")}
                       </Link>
                     </div>
                   </div>
                   <div className="form-group col-md-3">
-                    <label htmlFor="versionNumber">Version Number</label>
+                    <label htmlFor="versionNumber">{t("version.number")}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -436,7 +432,9 @@ const Version = () => {
                     ) : null}
                   </div>
                   <div className="form-group">
-                    <label htmlFor="description">Description</label>
+                    <label htmlFor="description">
+                      {t("provider.description")}
+                    </label>
                     <textarea
                       className="form-control"
                       id="description"
@@ -450,7 +448,7 @@ const Version = () => {
             ) : (
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4>Version Details</h4>
+                  <h4>{t("version.details")}</h4>
                   <div>
                     {isAuthorized ? (
                       <>
@@ -458,13 +456,13 @@ const Version = () => {
                           className="btn btn-primary me-2"
                           onClick={() => setEditMode(true)}
                         >
-                          Edit
+                          {t("buttons.edit")}
                         </button>
                         <button
                           className="btn btn-danger me-2"
                           onClick={handleVersionDeleteClick}
                         >
-                          Delete
+                          {t("buttons.delete")}
                         </button>
                       </>
                     ) : null}
@@ -472,20 +470,28 @@ const Version = () => {
                       className="btn btn-dark me-2"
                       to={`/${organization}/${name}`}
                     >
-                      Back
+                      {t("actions.backToFiles")}
                     </Link>
                   </div>
                 </div>
-                <p>Version Number: {currentVersion.versionNumber}</p>
-                <p>Description: {currentVersion.description}</p>
-                <p>Created At: {currentVersion.createdAt}</p>
-                <p>Updated At: {currentVersion.updatedAt}</p>
+                <p>
+                  {t("version.number")}: {currentVersion.versionNumber}
+                </p>
+                <p>
+                  {t("provider.description")}: {currentVersion.description}
+                </p>
+                <p>
+                  {t("version.createdAt")}: {currentVersion.createdAt}
+                </p>
+                <p>
+                  {t("version.updatedAt")}: {currentVersion.updatedAt}
+                </p>
               </div>
             )}
           </div>
           <div className="list-table">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h4>Providers for Version: {version}</h4>
+              <h4>{t("version.providers", { version })}</h4>
               <div>
                 {isAuthorized ? (
                   <>
@@ -495,7 +501,9 @@ const Version = () => {
                         setShowAddProviderForm(!showAddProviderForm)
                       }
                     >
-                      {showAddProviderForm ? "Cancel" : "Add Provider"}
+                      {showAddProviderForm
+                        ? t("buttons.cancel")
+                        : t("provider.add")}
                     </button>
                     {showAddProviderForm ? (
                       <button
@@ -506,7 +514,7 @@ const Version = () => {
                         }
                         onClick={addProvider}
                       >
-                        Submit
+                        {t("buttons.save")}
                       </button>
                     ) : null}
                   </>
@@ -517,7 +525,7 @@ const Version = () => {
               <form onSubmit={addProvider} ref={form}>
                 <div className="add-provider-form">
                   <div className="form-group col-md-3">
-                    <label htmlFor="providerName">Provider Name</label>
+                    <label htmlFor="providerName">{t("provider.name")}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -534,7 +542,9 @@ const Version = () => {
                     ) : null}
                   </div>
                   <div className="form-group">
-                    <label htmlFor="providerDescription">Description</label>
+                    <label htmlFor="providerDescription">
+                      {t("provider.description")}
+                    </label>
                     <textarea
                       className="form-control"
                       id="providerDescription"
@@ -549,10 +559,10 @@ const Version = () => {
             <Table striped className="table">
               <thead>
                 <tr>
-                  <th>Provider Name</th>
-                  <th>Description</th>
-                  <th>Download</th>
-                  {isAuthorized ? <th>Delete</th> : null}
+                  <th>{t("provider.name")}</th>
+                  <th>{t("provider.description")}</th>
+                  <th>{t("buttons.download")}</th>
+                  {isAuthorized ? <th>{t("buttons.delete")}</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -577,7 +587,7 @@ const Version = () => {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
-                                  Download {architecture.name}
+                                  {t("buttons.download")} {architecture.name}
                                 </a>
                               ) : null}
                             </div>
@@ -592,7 +602,7 @@ const Version = () => {
                             handleProviderDeleteClick(provider.name)
                           }
                         >
-                          Delete
+                          {t("buttons.delete")}
                         </button>
                       </td>
                     ) : null}
@@ -611,7 +621,7 @@ const Version = () => {
         <div>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <button className="btn btn-dark me-2" onClick={() => navigate(`/`)}>
-              Back
+              {t("actions.backToFiles")}
             </button>
           </div>
         </div>

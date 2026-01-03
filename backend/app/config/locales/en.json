@@ -251,7 +251,7 @@
     "verificationExpiry": "This verification link will expire on: {{expirationDate}}"
   },
   "about": {
-    "title": "BoxVault Project Synopsis",
+    "title": "BoxVault",
     "description": "BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates.",
     "components": {
       "backend": {

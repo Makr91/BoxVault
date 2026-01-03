@@ -10,6 +10,7 @@ import {
   FaGear,
   FaIdBadge,
   FaHouseLock,
+  FaGlobe,
   FaBridgeLock,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
@@ -67,19 +68,19 @@ const Navbar = ({
 
   // Get language display name
   const getLanguageDisplayName = (languageCode) => {
-    if (!languageCode) {
-      return "English";
-    }
+    const [langPrefix] = (languageCode || "en").split("-");
     const languageNames = {
       en: "English",
       es: "Español",
+      cimode: "CI/CD Mode",
     };
-    return languageNames[languageCode] || languageCode.toUpperCase();
+    return languageNames[langPrefix] || languageCode.toUpperCase();
   };
 
   // Get flag icon for language
   const getLanguageFlag = (languageCode) => {
-    const flagKey = `language.flagIcon.${languageCode}`;
+    const [langPrefix] = (languageCode || "en").split("-");
+    const flagKey = `language.flagIcon.${langPrefix}`;
     return t(flagKey, { ns: "common", defaultValue: "🌐" });
   };
 
@@ -520,7 +521,7 @@ const Navbar = ({
                     <li>
                       <Link to="/admin" className="dropdown-item">
                         <FaGear className="me-2" />
-                        Admin
+                        {t("navbar.admin")}
                       </Link>
                     </li>
                     <li>
@@ -554,7 +555,7 @@ const Navbar = ({
                       >
                         {renderOrgIcon()}
                       </span>
-                      Organization
+                      {t("navbar.organization")}
                     </Link>
                   </li>
                 )}
@@ -582,7 +583,7 @@ const Navbar = ({
                           <FaIdBadge className="me-2" />
                         )}
                       </span>
-                      Profile
+                      {t("navbar.profile")}
                     </Link>
                   ) : (
                     <a
@@ -609,14 +610,14 @@ const Navbar = ({
                           <FaIdBadge className="me-2" />
                         )}
                       </span>
-                      Profile
+                      {t("navbar.profile")}
                     </a>
                   )}
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">
                     <FaCircleInfo className="me-2" />
-                    About
+                    {t("navbar.about")}
                   </Link>
                 </li>
                 {favoriteApps && favoriteApps.length > 0 && (
@@ -624,7 +625,9 @@ const Navbar = ({
                     <li>
                       <hr className="dropdown-divider" />
                     </li>
-                    <li className="dropdown-header py-0">Favorites</li>
+                    <li className="dropdown-header py-0">
+                      {t("navbar.favorites")}
+                    </li>
                     {favoriteApps
                       .sort((a, b) => (a.order || 0) - (b.order || 0))
                       .map((app) => (
@@ -656,7 +659,7 @@ const Navbar = ({
                         className="dropdown-item"
                       >
                         <FaTicket className="me-2" />
-                        Help
+                        {t("navbar.help")}
                       </a>
                     </li>
                   </>
@@ -702,7 +705,7 @@ const Navbar = ({
                         title="Click to logout everywhere"
                       />
                     )}
-                    <span className="text-danger">Logout</span>
+                    <span className="text-danger">{t("navbar.logout")}</span>
                   </button>
                 </li>
               </ul>
@@ -721,18 +724,26 @@ const Navbar = ({
           <ul className="nav nav-pills ms-auto">
             <li className="nav-item">
               <Link to="/login" className="nav-link">
-                Login
+                {t("navbar.login")}
               </Link>
             </li>
             <li className="nav-item">
               <Link to="/register" className="nav-link">
-                Sign Up
+                {t("navbar.signup")}
               </Link>
             </li>
             <li className="nav-item">
               <Link to="/about" className="nav-link">
-                About
+                {t("navbar.about")}
               </Link>
+            </li>
+            <li className="nav-item">
+              <button
+                className="btn btn-link nav-link"
+                onClick={() => setShowLanguageModal(true)}
+              >
+                <FaGlobe />
+              </button>
             </li>
             <li className="nav-item">
               <button

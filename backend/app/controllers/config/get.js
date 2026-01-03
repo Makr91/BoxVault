@@ -1,5 +1,6 @@
 // get.js
 const { loadConfig } = require('../../utils/config-loader');
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
@@ -47,6 +48,7 @@ exports.getConfig = (req, res) => {
     const data = loadConfig(configName);
     return res.send(data);
   } catch (err) {
+    log.error.error('Error getting config:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

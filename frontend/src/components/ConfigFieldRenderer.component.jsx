@@ -1,11 +1,13 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
 /**
  * ConfigFieldRenderer - Renders individual configuration fields with appropriate input types
  */
 const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
+  const { t } = useTranslation();
   const [showPasswords, setShowPasswords] = useState({});
 
   const fieldProps = {
@@ -84,7 +86,7 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
             onChange={(e) =>
               onFieldChange(field.path, e.target.value.split(","))
             }
-            placeholder="Comma-separated values"
+            placeholder={t("configField.commaSeparated")}
           />
         );
       }

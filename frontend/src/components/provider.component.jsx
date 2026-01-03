@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Table from "react-bootstrap/Table";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 
 import ArchitectureService from "../services/architecture.service";
@@ -10,6 +11,7 @@ import { log } from "../utils/Logger";
 import ConfirmationModal from "./confirmation.component";
 
 const Provider = () => {
+  const { t } = useTranslation();
   const { organization, name, version, providerName } = useParams();
   const navigate = useNavigate();
   const [originalProviderName, setOriginalProviderName] = useState("");
@@ -33,14 +35,12 @@ const Provider = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const required = (value) => (value ? undefined : "This field is required!");
+  const required = (value) => (value ? undefined : t("validation.required"));
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
   const validateName = (value) =>
-    validCharsRegex.test(value)
-      ? undefined
-      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+    validCharsRegex.test(value) ? undefined : t("validation.invalidName");
 
   const validateChecksum = (checksumValue, type) => {
     const checksumPatterns = {
@@ -57,12 +57,12 @@ const Provider = () => {
 
     const pattern = checksumPatterns[type];
     if (!pattern) {
-      return "Unsupported checksum type!";
+      return t("validation.unsupportedChecksum");
     }
 
     return pattern.test(checksumValue)
       ? undefined
-      : `Invalid ${type} checksum format!`;
+      : t("validation.invalidChecksumFormat", { type });
   };
 
   const formatFileSize = (bytes) => {
@@ -77,7 +77,7 @@ const Provider = () => {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(
       () => {
-        setMessage("Checksum copied to clipboard!");
+        setMessage(t("architecture.checksumCopied"));
         setMessageType("success");
       },
       (err) => {
@@ -109,7 +109,7 @@ const Provider = () => {
   const deleteProvider = () => {
     ProviderService.deleteProvider(organization, name, version, providerName)
       .then(() => {
-        setMessage("The provider was deleted successfully!");
+        setMessage(t("provider.deleted"));
         setMessageType("success");
         navigate(`/${organization}/${name}/${version}`);
       })
@@ -130,7 +130,7 @@ const Provider = () => {
         providerName,
         architectureName
       );
-      setMessage("The architecture was deleted successfully!");
+      setMessage(t("architecture.deleted"));
       setMessageType("success");
       setArchitectures(
         architectures.filter((arch) => arch.name !== architectureName)
@@ -148,7 +148,7 @@ const Provider = () => {
         setMessage(error.response.data.message);
         setMessageType("danger");
       } else {
-        setMessage("Could not delete the architecture");
+        setMessage(t("architecture.deleteError"));
         setMessageType("danger");
       }
     }
@@ -205,7 +205,7 @@ const Provider = () => {
           error: e.message,
         });
         setCurrentProvider(null);
-        setMessage("No Provider Found");
+        setMessage(t("provider.notFound"));
         setMessageType("danger");
       }
 
@@ -271,7 +271,7 @@ const Provider = () => {
     };
 
     loadData();
-  }, [organization, name, version, providerName]);
+  }, [organization, name, version, providerName, t]);
 
   const handleInputChange = (event) => {
     const { name: fieldName, value } = event.target;
@@ -338,9 +338,7 @@ const Provider = () => {
         currentProvider.name
       );
       if (providerExists) {
-        setMessage(
-          "A provider with this name already exists. Please choose a different name."
-        );
+        setMessage(t("provider.exists"));
         setMessageType("danger");
         return;
       }
@@ -359,7 +357,7 @@ const Provider = () => {
         providerName,
         data
       );
-      setMessage("The provider was updated successfully!");
+      setMessage(t("provider.updated"));
       setMessageType("success");
       setEditMode(false);
       if (providerName !== currentProvider.name) {
@@ -373,7 +371,7 @@ const Provider = () => {
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
-        setMessage("Could not update the provider");
+        setMessage(t("provider.updateError"));
       }
       setMessageType("danger");
     }
@@ -382,16 +380,14 @@ const Provider = () => {
   const handleProgressUpdate = (progressEvent) => {
     if (progressEvent.status === "assembling") {
       setProgress(100);
-      setMessage(
-        "Assembling file chunks into final box file, this may take several minutes..."
-      );
+      setMessage(t("architecture.assembling"));
       setMessageType("info");
       return;
     }
 
     if (progressEvent.status === "complete") {
       setProgress(100);
-      setMessage("File upload and assembly completed successfully!");
+      setMessage(t("architecture.uploadComplete"));
       setMessageType("success");
       return;
     }
@@ -408,11 +404,11 @@ const Provider = () => {
 
     try {
       if (!selectedFiles || selectedFiles.length === 0) {
-        throw new Error("Please select a file before adding an architecture.");
+        throw new Error(t("architecture.selectFile"));
       }
 
       if (!newArchitecture.name) {
-        throw new Error("Please enter an architecture name.");
+        throw new Error(t("architecture.enterName"));
       }
 
       const [currentFile] = selectedFiles;
@@ -422,7 +418,7 @@ const Provider = () => {
         architectureName: newArchitecture.name,
       });
 
-      setMessage("Starting file upload...");
+      setMessage(t("architecture.uploadStarting"));
       setMessageType("info");
 
       const architectureData = {
@@ -459,11 +455,7 @@ const Provider = () => {
       });
 
       if (uploadResult.details?.status === "assembling") {
-        setMessage(
-          "File chunks uploaded successfully. Now assembling into final box file.\n" +
-            "This process may take several minutes depending on file size.\n" +
-            "Please keep this page open until assembly is complete."
-        );
+        setMessage(t("architecture.uploadAssembling"));
         setMessageType("info");
       }
 
@@ -486,7 +478,7 @@ const Provider = () => {
         error: error.message,
         stack: error.stack,
       });
-      setMessage(error.response?.data?.message || error.message);
+      setMessage(error.response?.data?.message || t(error.message));
       setMessageType("danger");
     }
   };
@@ -509,7 +501,7 @@ const Provider = () => {
   const renderProviderEditForm = () => (
     <form onSubmit={saveProvider}>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>Edit Provider</h4>
+        <h4>{t("provider.edit")}</h4>
         <div>
           {isAuthorized && (
             <>
@@ -518,14 +510,14 @@ const Provider = () => {
                 className="btn btn-success me-2"
                 disabled={!!validationErrors.name}
               >
-                Save
+                {t("buttons.save")}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary me-2"
                 onClick={cancelEdit}
               >
-                Cancel
+                {t("buttons.cancel")}
               </button>
             </>
           )}
@@ -533,12 +525,12 @@ const Provider = () => {
             className="btn btn-dark me-2"
             onClick={() => navigate(`/${organization}/${name}/${version}`)}
           >
-            Back
+            {t("actions.backToFiles")}
           </button>
         </div>
       </div>
       <div className="form-group col-md-3">
-        <label htmlFor="name">Provider Name</label>
+        <label htmlFor="name">{t("provider.name")}</label>
         <input
           type="text"
           className="form-control"
@@ -553,7 +545,7 @@ const Provider = () => {
         )}
       </div>
       <div className="form-group">
-        <label htmlFor="description">Description</label>
+        <label htmlFor="description">{t("provider.description")}</label>
         <textarea
           className="form-control"
           id="description"
@@ -568,7 +560,7 @@ const Provider = () => {
   const renderProviderDetails = () => (
     <>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>Provider Details</h4>
+        <h4>{t("provider.details")}</h4>
         <div>
           {isAuthorized && (
             <>
@@ -576,13 +568,13 @@ const Provider = () => {
                 className="btn btn-primary me-2"
                 onClick={() => setEditMode(true)}
               >
-                Edit
+                {t("buttons.edit")}
               </button>
               <button
                 className="btn btn-danger me-2"
                 onClick={handleProviderDeleteClick}
               >
-                Delete
+                {t("buttons.delete")}
               </button>
             </>
           )}
@@ -590,12 +582,16 @@ const Provider = () => {
             className="btn btn-dark me-2"
             onClick={() => navigate(`/${organization}/${name}/${version}`)}
           >
-            Back
+            {t("actions.backToFiles")}
           </button>
         </div>
       </div>
-      <p>Provider Name: {currentProvider.name}</p>
-      <p>Description: {currentProvider.description}</p>
+      <p>
+        {t("provider.name")}: {currentProvider.name}
+      </p>
+      <p>
+        {t("provider.description")}: {currentProvider.description}
+      </p>
     </>
   );
 
@@ -617,7 +613,7 @@ const Provider = () => {
             name="defaultBox"
           />
           <label className="form-check-label" htmlFor="defaultBoxSwitch">
-            Default Box
+            {t("architecture.defaultBox")}
           </label>
         </div>
         <div className="mb-3">
@@ -628,13 +624,15 @@ const Provider = () => {
               className="d-none"
               accept=".box,application/octet-stream"
             />
-            Choose Box File
+            {t("architecture.chooseFile")}
           </label>
           {selectedFiles && selectedFiles[0] && (
             <div className="mt-2">
               <small className="text-muted">
-                Selected: {selectedFiles[0].name} (
-                {formatFileSize(selectedFiles[0].size)})
+                {t("architecture.selected", {
+                  name: selectedFiles[0].name,
+                  size: formatFileSize(selectedFiles[0].size),
+                })}
               </small>
             </div>
           )}
@@ -657,18 +655,18 @@ const Provider = () => {
               {selectedFiles[0] && (
                 <div className="upload-stats d-flex justify-content-between">
                   <small>
-                    <strong>File Size:</strong>{" "}
+                    <strong>{t("architecture.fileSize")}:</strong>{" "}
                     {formatFileSize(selectedFiles[0].size)}
                   </small>
                   <small>
-                    <strong>Uploaded:</strong>{" "}
+                    <strong>{t("architecture.uploaded")}:</strong>{" "}
                     {formatFileSize(
                       Math.round((progress / 100) * selectedFiles[0].size)
                     )}{" "}
                     ({progress}%)
                   </small>
                   <small>
-                    <strong>Remaining:</strong>{" "}
+                    <strong>{t("architecture.remaining")}:</strong>{" "}
                     {formatFileSize(
                       Math.round(
                         ((100 - progress) / 100) * selectedFiles[0].size
@@ -681,7 +679,7 @@ const Provider = () => {
           </div>
         )}
         <div className="form-group col-md-3">
-          <label htmlFor="architectureName">Architecture Name</label>
+          <label htmlFor="architectureName">{t("architecture.name")}</label>
           <input
             type="text"
             className="form-control"
@@ -698,7 +696,7 @@ const Provider = () => {
           )}
         </div>
         <div className="form-group col-md-3">
-          <label htmlFor="checksumType">Checksum Type</label>
+          <label htmlFor="checksumType">{t("architecture.checksumType")}</label>
           <select
             className="form-control"
             id="checksumType"
@@ -715,7 +713,7 @@ const Provider = () => {
         </div>
         {checksumType !== "NULL" && (
           <div className="form-group">
-            <label htmlFor="checksum">Checksum</label>
+            <label htmlFor="checksum">{t("architecture.checksum")}</label>
             <input
               type="text"
               className="form-control"
@@ -752,7 +750,7 @@ const Provider = () => {
                 className="btn btn-dark me-2"
                 onClick={() => navigate(`/`)}
               >
-                Back
+                {t("actions.back")}
               </button>
             </div>
           </div>
@@ -761,7 +759,7 @@ const Provider = () => {
       {currentProvider && (
         <div className="list-table mt-4">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4>Architectures for Provider: {providerName}</h4>
+            <h4>{t("provider.architectures", { providerName })}</h4>
             {isAuthorized && (
               <div>
                 <button
@@ -770,7 +768,9 @@ const Provider = () => {
                     setShowAddArchitectureForm(!showAddArchitectureForm)
                   }
                 >
-                  {showAddArchitectureForm ? "Cancel" : "Add Architecture"}
+                  {showAddArchitectureForm
+                    ? t("buttons.cancel")
+                    : t("architecture.add")}
                 </button>
                 {showAddArchitectureForm && (
                   <button
@@ -783,7 +783,7 @@ const Provider = () => {
                       (checksumType !== "NULL" && !checksum)
                     }
                   >
-                    Submit
+                    {t("buttons.save")}
                   </button>
                 )}
               </div>
@@ -793,20 +793,20 @@ const Provider = () => {
           <Table striped className="table">
             <thead>
               <tr>
-                <th>Architecture Name</th>
-                <th>Default Box</th>
-                <th>File Size</th>
-                <th>Checksum</th>
-                <th>Checksum Type</th>
-                <th>Download</th>
-                {isAuthorized && <th>Actions</th>}
+                <th>{t("architecture.name")}</th>
+                <th>{t("architecture.defaultBox")}</th>
+                <th>{t("architecture.fileSize")}</th>
+                <th>{t("architecture.checksum")}</th>
+                <th>{t("architecture.checksumType")}</th>
+                <th>{t("buttons.download")}</th>
+                {isAuthorized && <th>{t("buttons.delete")}</th>}
               </tr>
             </thead>
             <tbody>
               {architectures.map((architecture) => (
                 <tr key={architecture.name}>
                   <td>{architecture.name}</td>
-                  <td>{architecture.defaultBox ? "Yes" : "No"}</td>
+                  <td>{architecture.defaultBox ? t("yes") : t("no")}</td>
                   <td>
                     {architecture.fileSize
                       ? formatFileSize(architecture.fileSize)
@@ -823,7 +823,7 @@ const Provider = () => {
                         }
                         role="button"
                         tabIndex={0}
-                        title="Click to copy checksum"
+                        title={t("architecture.clickToCopy")}
                         className="text-clickable"
                       >
                         {architecture.checksum.substring(0, 20)}...
@@ -844,7 +844,8 @@ const Provider = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Download ({architecture.downloadCount || 0})
+                        {t("buttons.download")} (
+                        {architecture.downloadCount || 0})
                       </a>
                     )}
                   </td>
@@ -856,7 +857,7 @@ const Provider = () => {
                           handleArchitectureDeleteClick(architecture.name)
                         }
                       >
-                        Delete
+                        {t("buttons.delete")}
                       </button>
                     </td>
                   )}

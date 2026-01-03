@@ -1,5 +1,6 @@
 // verification.js
 const db = require('../../models');
+const { log } = require('../../utils/Logger');
 
 const User = db.user;
 
@@ -77,6 +78,7 @@ exports.verifyMail = async (req, res) => {
       expirationTime: user.verificationTokenExpires,
     });
   } catch (err) {
+    log.error.error('Error verifying email:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

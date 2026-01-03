@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
@@ -16,9 +17,11 @@ const root = createRoot(container);
 
 // Render the app
 root.render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
+  <Suspense fallback="Loading...">
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </Suspense>
 );
 
 // Make content visible after a small delay to ensure styles are loaded

@@ -23,14 +23,14 @@ export const generateLabel = (fieldName) => {
  * @param {string} section - Section name
  * @returns {string} Icon class name
  */
-export const getSectionIcon = (section) => {
+export const getSectionIcon = (sectionKey) => {
   const iconMap = {
-    Authentication: "fas fa-shield-alt",
-    Database: "fas fa-database",
-    Mail: "fas fa-envelope",
-    Application: "fas fa-cogs",
+    authentication: "fas fa-shield-alt",
+    database: "fas fa-database",
+    mail: "fas fa-envelope",
+    application: "fas fa-cogs",
   };
-  return iconMap[section] || "fas fa-cog";
+  return iconMap[sectionKey] || "fas fa-cog";
 };
 
 /**
@@ -39,30 +39,30 @@ export const getSectionIcon = (section) => {
  * @param {string} configType - Type of config
  * @returns {string} Section name
  */
-export const inferSection = (path, configType) => {
+export const inferSectionKey = (path, configType) => {
   const sectionMaps = {
     auth: {
-      auth: "Authentication",
-      jwt: "Authentication",
-      local: "Authentication",
-      external: "Authentication",
-      oidc: "Authentication",
-      oidc_providers: "Authentication",
+      auth: "authentication",
+      jwt: "authentication",
+      local: "authentication",
+      external: "authentication",
+      oidc: "authentication",
+      oidc_providers: "authentication",
     },
     app: {
-      boxvault: "Application",
-      gravatar: "Application",
-      ssl: "Application",
+      boxvault: "application",
+      gravatar: "application",
+      ssl: "application",
     },
     db: {
-      sql: "Database",
-      mysql_pool: "Database",
-      database_type: "Database",
+      sql: "database",
+      mysql_pool: "database",
+      database_type: "database",
     },
     mail: {
-      smtp_connect: "Mail",
-      smtp_settings: "Mail",
-      smtp_auth: "Mail",
+      smtp_connect: "mail",
+      smtp_settings: "mail",
+      smtp_auth: "mail",
     },
   };
 
@@ -71,80 +71,46 @@ export const inferSection = (path, configType) => {
   return (
     sectionMap[pathParts[0]] ||
     sectionMap[pathParts[1]] ||
-    (configType
-      ? configType.charAt(0).toUpperCase() + configType.slice(1)
-      : "General")
+    configType ||
+    "general"
   );
 };
 
 /**
  * Infer subsection name from configuration path
  * @param {string} path - Configuration path
- * @param {string} section - Section name
+ * @param {string} sectionKey - Section key
  * @returns {string|null} Subsection name or null
  */
-export const inferSubsection = (path, section) => {
-  const pathParts = path.split(".");
+export const inferSubsectionKey = () =>
+  // We now rely on the 'subsection' field provided by the backend config
+  null;
 
-  if (section === "Authentication") {
-    if (pathParts.includes("jwt")) {
-      return "JWT Settings";
-    }
-    if (pathParts.includes("local")) {
-      return "Local Authentication";
-    }
-    if (pathParts.includes("external")) {
-      return "External Providers";
-    }
-    if (pathParts.includes("oidc_providers")) {
-      return "OIDC Providers";
-    }
+/**
+ * Normalize subsection key to match translation keys
+ * @param {string} key - Raw subsection key (e.g. "BoxVault Settings")
+ * @returns {string} Normalized key (e.g. "boxvaultSettings")
+ */
+const normalizeSubsectionKey = (key) => {
+  if (!key) {
+    return key;
   }
 
-  if (section === "Application") {
-    if (pathParts.includes("boxvault")) {
-      return "BoxVault Settings";
-    }
-    if (pathParts.includes("gravatar")) {
-      return "Gravatar Settings";
-    }
-    if (pathParts.includes("ssl")) {
-      return "SSL Settings";
-    }
-  }
-
-  if (section === "Database") {
-    if (pathParts.includes("sql")) {
-      return "Database Connection";
-    }
-    if (pathParts.includes("mysql_pool")) {
-      return "Connection Pool";
-    }
-  }
-
-  if (section === "Mail") {
-    if (pathParts.includes("smtp_connect")) {
-      return "SMTP Connection";
-    }
-    if (pathParts.includes("smtp_settings")) {
-      return "SMTP Settings";
-    }
-    if (pathParts.includes("smtp_auth")) {
-      return "SMTP Authentication";
-    }
-  }
-
-  return null;
+  return key
+    .toLowerCase()
+    .replace(/[^a-zA-Z0-9]+(?<chr>.)?/g, ([, chr]) =>
+      chr ? chr.toUpperCase() : ""
+    );
 };
 
 /**
  * Initialize section structure if it doesn't exist
  */
-const initializeSection = (organizedSections, section) => {
-  if (!organizedSections[section]) {
-    organizedSections[section] = {
-      title: section,
-      icon: getSectionIcon(section),
+const initializeSection = (organizedSections, sectionKey) => {
+  if (!organizedSections[sectionKey]) {
+    organizedSections[sectionKey] = {
+      key: sectionKey,
+      icon: getSectionIcon(sectionKey),
       description: "",
       fields: [],
       subsections: {},
@@ -155,10 +121,13 @@ const initializeSection = (organizedSections, section) => {
 /**
  * Initialize subsection structure if it doesn't exist
  */
-const initializeSubsection = (organizedSections, section, subsection) => {
-  if (subsection && !organizedSections[section].subsections[subsection]) {
-    organizedSections[section].subsections[subsection] = {
-      title: subsection,
+const initializeSubsection = (organizedSections, sectionKey, subsectionKey) => {
+  if (
+    subsectionKey &&
+    !organizedSections[sectionKey].subsections[subsectionKey]
+  ) {
+    organizedSections[sectionKey].subsections[subsectionKey] = {
+      key: subsectionKey,
       fields: [],
     };
   }
@@ -197,12 +166,12 @@ const processConfigValue = (options) => {
 
   extractedValues[fullPath] = value.value;
 
-  const section =
-    value.section || inferSection(fullPath, configType) || sectionName;
-  const subsection =
-    value.subsection || inferSubsection(fullPath, section, configType);
+  const sectionKey =
+    value.section || inferSectionKey(fullPath, configType) || sectionName;
+  const subsectionKey =
+    value.subsection_key || normalizeSubsectionKey(value.subsection);
 
-  initializeSection(organizedSections, section);
+  initializeSection(organizedSections, sectionKey);
 
   const fieldData = createFieldData(key, fullPath, value);
 
@@ -211,13 +180,15 @@ const processConfigValue = (options) => {
     value.value &&
     typeof value.value === "object"
   ) {
-    initializeSubsection(organizedSections, section, subsection);
-    processObject(value.value, fullPath, section);
-  } else if (subsection) {
-    initializeSubsection(organizedSections, section, subsection);
-    organizedSections[section].subsections[subsection].fields.push(fieldData);
+    initializeSubsection(organizedSections, sectionKey, subsectionKey);
+    processObject(value.value, fullPath, sectionKey);
+  } else if (subsectionKey) {
+    initializeSubsection(organizedSections, sectionKey, subsectionKey);
+    organizedSections[sectionKey].subsections[subsectionKey].fields.push(
+      fieldData
+    );
   } else {
-    organizedSections[section].fields.push(fieldData);
+    organizedSections[sectionKey].fields.push(fieldData);
   }
 };
 
@@ -232,16 +203,16 @@ const processProvidersObject = (
   organizedSections,
   processObject
 ) => {
-  const section =
-    value.section || inferSection(fullPath, configType) || sectionName;
-  const subsection =
-    value.subsection || inferSubsection(fullPath, section, configType);
+  const sectionKey =
+    value.section || inferSectionKey(fullPath, configType) || sectionName;
+  const subsectionKey =
+    value.subsection_key || normalizeSubsectionKey(value.subsection);
 
-  initializeSection(organizedSections, section);
-  initializeSubsection(organizedSections, section, subsection);
+  initializeSection(organizedSections, sectionKey);
+  initializeSubsection(organizedSections, sectionKey, subsectionKey);
 
   // Process the providers
-  processObject(value.providers, `${fullPath}.providers`, section);
+  processObject(value.providers, `${fullPath}.providers`, sectionKey);
 };
 
 /**
@@ -254,7 +225,7 @@ export const processConfig = (configData, configType) => {
   const extractedValues = {};
   const organizedSections = {};
 
-  const processObject = (obj, path = "", sectionName = "General") => {
+  const processObject = (obj, path = "", sectionName = "general") => {
     for (const [key, value] of Object.entries(obj || {})) {
       const fullPath = path ? `${path}.${key}` : key;
 
@@ -298,7 +269,7 @@ export const processConfig = (configData, configType) => {
         );
       } else if (isPlainObject) {
         const inferredSection =
-          inferSection(fullPath, configType) || sectionName;
+          inferSectionKey(fullPath, configType) || sectionName;
         processObject(value, fullPath, inferredSection);
       }
     }
@@ -321,16 +292,17 @@ export const processConfig = (configData, configType) => {
  * Validate configuration value based on type
  * @param {string} type - Field type
  * @param {*} value - Value to validate
+ * @param {Function} t - Translation function
  * @returns {string|null} Error message or null if valid
  */
-export const validateConfigValue = (type, value) => {
+export const validateConfigValue = (type, value, t) => {
   switch (type) {
     case "url": {
       try {
         new URL(value);
         return null;
       } catch {
-        return "Invalid URL format.";
+        return t("validation.invalidUrl");
       }
     }
     case "host": {
@@ -341,22 +313,22 @@ export const validateConfigValue = (type, value) => {
       if (ipRegex.test(value) || fqdnRegex.test(value)) {
         return null;
       }
-      return "Invalid host. Must be a valid IP address or FQDN.";
+      return t("validation.invalidHost");
     }
     case "integer":
       return Number.isInteger(Number(value))
         ? null
-        : "Value must be an integer.";
+        : t("validation.integerRequired");
     case "boolean":
-      return typeof value === "boolean" ? null : "Value must be a boolean.";
-    case "password":
-      return value.length >= 6
+      return typeof value === "boolean"
         ? null
-        : "Password must be at least 6 characters.";
+        : t("validation.booleanRequired");
+    case "password":
+      return value.length >= 6 ? null : t("validation.passwordLength");
     case "email": {
       const emailRegex =
         /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-      return emailRegex.test(value) ? null : "Invalid email address.";
+      return emailRegex.test(value) ? null : t("validation.invalidEmail");
     }
     default:
       return null;
@@ -366,12 +338,9 @@ export const validateConfigValue = (type, value) => {
 /**
  * Validate organization name format
  * @param {string} orgName - Organization name to validate
- * @returns {string|null} Error message or null if valid
+ * @returns {boolean} True if valid, false otherwise
  */
 export const validateOrgName = (orgName) => {
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-  if (!orgName || !validCharsRegex.test(orgName)) {
-    return "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
-  }
-  return null;
+  return orgName && validCharsRegex.test(orgName);
 };

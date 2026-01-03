@@ -46,7 +46,7 @@ exports.findAll = async (req, res) => {
     const { organization: organizationName } = req.params;
     const organization = await Organization.findOne({
       where: { name: organizationName },
-      include: ['users'],
+      include: ['members'],
     });
 
     if (!organization) {

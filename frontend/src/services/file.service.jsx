@@ -81,10 +81,7 @@ class FileService {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Chunk upload failed: ${response.statusText}. ${errorText}`
-      );
+      throw new Error("errors.upload.chunkFailed");
     }
 
     return response.json();
@@ -129,9 +126,7 @@ class FileService {
               difference: sizeDiff,
               maxAllowedDiff: maxDiff,
             });
-            throw new Error(
-              `File size mismatch after assembly: Expected ${fileSize} bytes but got ${assembledFileSize} bytes`
-            );
+            throw new Error("errors.upload.sizeMismatch");
           }
 
           log.file.info("Assembly completed successfully", {
@@ -184,9 +179,7 @@ class FileService {
       }
     }
 
-    throw new Error(
-      `Upload failed: Assembly timed out after ${Math.round((Date.now() - startTime) / 1000)} seconds`
-    );
+    throw new Error("errors.upload.assemblyTimeout");
   }
 
   async upload(file, uploadOptions, onUploadProgress) {
@@ -201,7 +194,7 @@ class FileService {
     } = uploadOptions;
 
     if (!file) {
-      throw new Error("No file provided");
+      throw new Error("errors.upload.noFile");
     }
 
     log.file.info("Starting file upload", {
@@ -298,9 +291,7 @@ class FileService {
       });
 
       if (error.name === "TypeError" && error.message.includes("locked")) {
-        throw new Error(
-          "Upload failed: Stream handling error. Please try again."
-        );
+        throw new Error("errors.upload.streamError");
       }
       throw error;
     }

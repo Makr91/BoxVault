@@ -7,6 +7,7 @@ database_type:
   description: Database type - MySQL for production, SQLite for simple deployments
   section: Database
   subsection: General
+  subsection_key: generalSettings
   required: true
   order: 1
 sql:
@@ -16,6 +17,7 @@ sql:
     description: Database host (MySQL only)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: false
     depends_on: database_type
     show_when: mysql
@@ -26,6 +28,7 @@ sql:
     description: Database port (MySQL only)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: false
     depends_on: database_type
     show_when: mysql
@@ -36,6 +39,7 @@ sql:
     description: Log SQL Queries to Backend Console
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: true
     order: 3
   user:
@@ -44,6 +48,7 @@ sql:
     description: Database user (MySQL only)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: false
     depends_on: database_type
     show_when: mysql
@@ -54,6 +59,7 @@ sql:
     description: Database password (MySQL only)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: false
     depends_on: database_type
     show_when: mysql
@@ -64,6 +70,7 @@ sql:
     description: Database name (MySQL only)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: false
     depends_on: database_type
     show_when: mysql
@@ -74,6 +81,7 @@ sql:
     description: SQLite database file path (SQLite only)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: false
     depends_on: database_type
     show_when: sqlite
@@ -84,6 +92,7 @@ sql:
     description: Database dialect (auto-set based on database type)
     section: Database
     subsection: Database Connection
+    subsection_key: databaseConnection
     required: true
     readonly: true
     order: 8
@@ -94,6 +103,7 @@ mysql_pool:
     description: Maximum number of connections in pool (MySQL only)
     section: Database
     subsection: Connection Pool
+    subsection_key: connectionPool
     required: false
     depends_on: database_type
     show_when: mysql
@@ -104,6 +114,7 @@ mysql_pool:
     description: Minimum number of connections in pool (MySQL only)
     section: Database
     subsection: Connection Pool
+    subsection_key: connectionPool
     required: false
     depends_on: database_type
     show_when: mysql
@@ -116,6 +127,7 @@ mysql_pool:
       throwing error (MySQL only)
     section: Database
     subsection: Connection Pool
+    subsection_key: connectionPool
     required: false
     depends_on: database_type
     show_when: mysql
@@ -128,6 +140,7 @@ mysql_pool:
       released (MySQL only)
     section: Database
     subsection: Connection Pool
+    subsection_key: connectionPool
     required: false
     depends_on: database_type
     show_when: mysql

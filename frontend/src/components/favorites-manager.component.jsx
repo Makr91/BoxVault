@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { FaStar, FaXmark, FaGripVertical, FaPlus } from "react-icons/fa6";
 
 import FavoritesService from "../services/favorites.service";
 import { log } from "../utils/Logger";
 
 const FavoritesManager = () => {
+  const { t } = useTranslation();
   const [favorites, setFavorites] = useState([]);
   const [enrichedFavorites, setEnrichedFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +16,7 @@ const FavoritesManager = () => {
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [draggedIndex, setDraggedIndex] = useState(null);
 
-  const loadFavorites = async () => {
+  const loadFavorites = useCallback(async () => {
     setLoading(true);
     try {
       const [rawResponse, enrichedResponse] = await Promise.all([
@@ -26,28 +28,28 @@ const FavoritesManager = () => {
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
       log.api.error("Error loading favorites", { error: error.message });
-      setMessage("Failed to load favorites");
+      setMessage(t("favorites.loadFailed"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadFavorites();
-  }, []);
+  }, [loadFavorites]);
 
   const saveFavorites = async (newFavorites) => {
     setSaving(true);
     setMessage("");
     try {
       await FavoritesService.saveFavorites(newFavorites);
-      setMessage("Favorites saved successfully!");
+      setMessage(t("favorites.saveSuccess"));
       setFavorites(newFavorites);
       const enrichedResponse = await FavoritesService.getUserInfoClaims();
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
       log.api.error("Error saving favorites", { error: error.message });
-      setMessage("Failed to save favorites");
+      setMessage(t("favorites.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -56,12 +58,12 @@ const FavoritesManager = () => {
   const handleAddFavorite = (e) => {
     e.preventDefault();
     if (!newClientId.trim()) {
-      setMessage("Please enter a client ID");
+      setMessage(t("favorites.clientIdRequired"));
       return;
     }
 
     if (favorites.some((f) => f.clientId === newClientId)) {
-      setMessage("This application is already in your favorites");
+      setMessage(t("favorites.alreadyFavorite"));
       return;
     }
 
@@ -163,10 +165,8 @@ const FavoritesManager = () => {
 
   return (
     <div>
-      <h3>Favorite Applications</h3>
-      <p className="text-muted">
-        Manage your favorite applications for quick access from the user menu.
-      </p>
+      <h3>{t("favorites.title")}</h3>
+      <p className="text-muted">{t("favorites.description")}</p>
 
       {message && (
         <div
@@ -178,15 +178,15 @@ const FavoritesManager = () => {
 
       <div className="card mb-4">
         <div className="card-header">
-          <FaPlus className="me-2" />
-          Add Favorite Application
+          <FaPlus className="me-2" /> {t("favorites.add.title")}
         </div>
         <div className="card-body">
           <form onSubmit={handleAddFavorite}>
             <div className="row">
               <div className="col-md-5 mb-3">
                 <label htmlFor="clientId" className="form-label">
-                  Client ID <span className="text-danger">*</span>
+                  {t("favorites.add.clientIdLabel")}{" "}
+                  <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -198,12 +198,12 @@ const FavoritesManager = () => {
                   required
                 />
                 <small className="form-text text-muted">
-                  The OAuth client ID of the application
+                  {t("favorites.add.clientIdHint")}
                 </small>
               </div>
               <div className="col-md-5 mb-3">
                 <label htmlFor="customLabel" className="form-label">
-                  Custom Label (Optional)
+                  {t("favorites.add.customLabelLabel")}
                 </label>
                 <input
                   type="text"
@@ -214,7 +214,7 @@ const FavoritesManager = () => {
                   placeholder="e.g., My App Name"
                 />
                 <small className="form-text text-muted">
-                  Override the default app name
+                  {t("favorites.add.customLabelHint")}
                 </small>
               </div>
               <div className="col-md-2 mb-3 d-flex align-items-end">
@@ -228,7 +228,7 @@ const FavoritesManager = () => {
                   ) : (
                     <FaPlus className="me-2" />
                   )}
-                  Add
+                  {t("buttons.add")}
                 </button>
               </div>
             </div>
@@ -238,18 +238,15 @@ const FavoritesManager = () => {
 
       <div className="card">
         <div className="card-header">
-          <FaStar className="me-2 text-warning" />
-          Your Favorites
+          <FaStar className="me-2 text-warning" />{" "}
+          {t("favorites.yourFavorites")}
           {favorites.length > 0 && (
             <span className="badge bg-primary ms-2">{favorites.length}</span>
           )}
         </div>
         <div className="card-body">
           {favorites.length === 0 ? (
-            <p className="text-muted">
-              No favorites yet. Add applications above to see them in your user
-              menu.
-            </p>
+            <p className="text-muted">{t("favorites.noFavorites")}</p>
           ) : (
             <div className="list-group">
               {favorites
@@ -309,7 +306,7 @@ const FavoritesManager = () => {
                           disabled={saving}
                         >
                           <FaXmark className="me-1" />
-                          Remove
+                          {t("buttons.remove")}
                         </button>
                       </div>
                     </div>
@@ -319,8 +316,7 @@ const FavoritesManager = () => {
           )}
           <div className="mt-3">
             <small className="text-muted">
-              <FaGripVertical className="me-1" />
-              Drag and drop to reorder favorites
+              <FaGripVertical className="me-1" /> {t("favorites.dragHint")}
             </small>
           </div>
         </div>
@@ -328,26 +324,23 @@ const FavoritesManager = () => {
 
       <div className="card mt-3">
         <div className="card-body">
-          <h6>Application Client IDs</h6>
+          <h6>{t("favorites.commonApps.title")}</h6>
           <p className="text-muted small mb-2">
-            Common applications you can add to favorites:
+            {t("favorites.commonApps.description")}
           </p>
           <ul className="list-unstyled small">
             <li>
-              <code>boxvault</code> - BoxVault (Vagrant Box Repository)
+              <code>boxvault</code> - {t("favorites.commonApps.boxvault")}
             </li>
             <li>
-              <code>armor</code> - ARMOR (File Server)
+              <code>armor</code> - {t("favorites.commonApps.armor")}
             </li>
             <li>
-              <code>web-terminal</code> - Web Terminal
+              <code>web-terminal</code> -{" "}
+              {t("favorites.commonApps.webTerminal")}
             </li>
           </ul>
-          <p className="text-muted small">
-            Note: Applications must be configured in the authorization server to
-            appear with names and icons. Contact your administrator if an
-            application doesn&apos;t display correctly.
-          </p>
+          <p className="text-muted small">{t("favorites.commonApps.note")}</p>
         </div>
       </div>
     </div>

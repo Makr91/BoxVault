@@ -1,5 +1,6 @@
 // gravatar.js
 const { loadConfig } = require('../../utils/config-loader');
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
@@ -45,6 +46,7 @@ exports.getGravatarConfig = (req, res) => {
     }
     return res.status(404).send({ message: req.__('config.gravatarNotFound') });
   } catch (err) {
+    log.error.error('Error getting gravatar config:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

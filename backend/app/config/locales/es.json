@@ -1,0 +1,335 @@
+{
+  "auth": {
+    "serviceAccountExpired": "La cuenta de servicio ha caducado.",
+    "userNotFound": "Usuario no encontrado.",
+    "invalidPassword": "¡Contraseña inválida!",
+    "signinError": "Error durante el proceso de inicio de sesión",
+    "invalidInvitationToken": "Token de invitación inválido.",
+    "invitationTokenExpired": "El token de invitación ha caducado.",
+    "usernameOrEmailInUse": "El nombre de usuario o correo electrónico ya está en uso.",
+    "userRegistered": "¡Usuario registrado exitosamente! Si está configurado, se enviará un correo de verificación a su dirección de correo electrónico.",
+    "signupError": "Ocurrió un error al registrar el usuario.",
+    "unauthorized": "¡No autorizado!",
+    "invalidVerificationToken": "Token de verificación inválido.",
+    "tokenExpired": "El token de verificación ha caducado.",
+    "emailVerified": "Correo electrónico verificado exitosamente.",
+    "userAlreadyVerified": "El usuario ya está verificado.",
+    "verificationEmailResent": "Correo de verificación reenviado exitosamente.",
+    "tokenRefreshNotAllowed": "La actualización del token solo se permite para sesiones con 'mantener sesión iniciada'",
+    "tokenRefreshError": "Error al actualizar el token"
+  },
+  "organizations": {
+    "organizationNotFoundWithName": "Organización no encontrada con el nombre: {{organization}}.",
+    "organizationNotFound": "Organización no encontrada.",
+    "invalidAccessMode": "Modo de acceso inválido. Debe ser privado, solo invitación o solicitud para unirse.",
+    "invalidDefaultRole": "Rol predeterminado inválido. Debe ser usuario o moderador.",
+    "accessModeUpdated": "¡Modo de acceso de la organización actualizado exitosamente!",
+    "updateAccessModeError": "Error al actualizar el modo de acceso de la organización",
+    "nameCannotBeEmpty": "¡La organización no puede estar vacía!",
+    "createError": "Ocurrió un error al crear la Organización.",
+    "deleted": "Organización y sus archivos eliminados exitosamente.",
+    "deleteError": "Ocurrió un error al eliminar la organización.",
+    "discoverError": "Error al obtener organizaciones descubribles",
+    "findAllError": "Ocurrió un error al recuperar las organizaciones.",
+    "findOneError": "Error al recuperar la Organización con nombre={{organization}}",
+    "findUsersError": "Ocurrió un error al recuperar los usuarios.",
+    "userNotMember": "¡El usuario no es miembro de esta organización!",
+    "cannotRemoveOnlyOrg": "¡No se puede eliminar al usuario de su única organización! El usuario debe pertenecer al menos a una organización.",
+    "userRemoved": "Usuario {{username}} eliminado de la organización",
+    "removeUserError": "Error al eliminar usuario de la organización",
+    "resumed": "¡Organización reanudada exitosamente!",
+    "resumeError": "Ocurrió un error al reanudar la organización.",
+    "suspended": "¡Organización suspendida exitosamente!",
+    "suspendError": "Ocurrió un error al suspender la organización.",
+    "invalidOrgCode": "Código de organización inválido. Debe tener exactamente 6 caracteres hexadecimales (0-9, A-F).",
+    "orgCodeInUse": "El código de organización {{org_code}} ya está en uso.",
+    "updated": "Organización actualizada exitosamente.",
+    "updateError": "Ocurrió un error al actualizar la organización.",
+    "invalidRole": "Rol inválido. Debe ser usuario, moderador o administrador.",
+    "userRoleUpdated": "Rol de usuario actualizado a {{role}}",
+    "updateUserRoleError": "Error al actualizar el rol del usuario",
+    "getUserRoleError": "Error al obtener el rol del usuario",
+    "cannotLeaveOnlyOrg": "¡No puedes dejar tu única organización! Debes pertenecer al menos a una organización.",
+    "leftOrganization": "Has dejado exitosamente la organización {{orgName}}",
+    "leaveError": "Error al dejar la organización"
+  },
+  "boxes": {
+    "boxNotFoundInOrg": "Caja {{boxId}} no encontrada en la organización {{organization}}.",
+    "boxNotFound": "Caja no encontrada.",
+    "boxNotFoundWithName": "Caja no encontrada con el nombre: {{name}}.",
+    "privateBoxAccessDenied": "Acceso denegado. La caja privada requiere autenticación.",
+    "nameCannotBeEmpty": "¡El nombre no puede estar vacío!",
+    "create": {
+      "error": "Ocurrió un error al crear la Caja."
+    },
+    "boxDeleted": "¡Caja eliminada exitosamente!",
+    "noBoxesFoundInOrg": "No se encontraron cajas bajo la organización {{organization}}.",
+    "deletedAllInOrg": "¡{{count}} Cajas fueron eliminadas exitosamente bajo la organización={{organization}}!",
+    "notFoundToDelete": "No se encontraron cajas para eliminar",
+    "deleteAll": {
+      "error": "Ocurrió un error al eliminar todas las cajas."
+    },
+    "discover": {
+      "error": "Ocurrió un error al recuperar las cajas."
+    },
+    "unauthorized": "Acceso no autorizado a caja privada.",
+    "download": {
+      "error": "Error al procesar la solicitud de descarga"
+    },
+    "findOne": {
+      "error": "Error al recuperar la caja con nombre={{name}}: {{error}}"
+    },
+    "update": {
+      "permissionDenied": "Solo puedes actualizar cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al actualizar la Caja."
+    },
+    "organizationDetails": {
+      "error": "Ocurrió un error al recuperar los detalles de la organización."
+    },
+    "delete": {
+      "permissionDenied": "Solo puedes eliminar cajas que posees, o necesitas rol de moderador/administrador."
+    }
+  },
+  "versions": {
+    "versionNotFoundInBox": "Versión {{versionNumber}} no encontrada para la caja {{boxId}} en la organización {{organization}}.",
+    "versionNotFoundForBox": "Versión {{versionNumber}} no encontrada para la caja {{boxId}}.",
+    "versionNotFound": "Versión no encontrada.",
+    "unauthorized": "Acceso no autorizado a versiones.",
+    "findAll": {
+      "error": "Ocurrió un error al recuperar las versiones."
+    },
+    "create": {
+      "permissionDenied": "Solo puedes crear versiones para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al crear la Versión."
+    },
+    "delete": {
+      "permissionDenied": "Solo puedes eliminar versiones de cajas que posees, o necesitas rol de moderador/administrador."
+    },
+    "versionDeleted": "¡Versión eliminada exitosamente!",
+    "deletedAll": "¡Todas las versiones eliminadas exitosamente!",
+    "notFoundToDelete": "No se encontraron versiones para eliminar.",
+    "deleteAll": {
+      "error": "Ocurrió un error al eliminar las versiones."
+    }
+  },
+  "providers": {
+    "providerNotFoundInVersion": "Proveedor {{providerName}} no encontrado para la versión {{versionNumber}} en la caja {{boxId}}.",
+    "providerNotFound": "Proveedor no encontrado.",
+    "create": {
+      "permissionDenied": "Solo puedes crear proveedores para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al crear el Proveedor."
+    },
+    "delete": {
+      "permissionDenied": "Solo puedes eliminar proveedores para cajas que posees, o necesitas rol de moderador/administrador."
+    },
+    "providerDeleted": "¡Proveedor y arquitecturas asociadas eliminados exitosamente!",
+    "deletedAll": "¡Todos los proveedores eliminados exitosamente!",
+    "notFoundToDelete": "No se encontraron proveedores para eliminar.",
+    "deleteAll": {
+      "error": "Ocurrió un error al eliminar los proveedores."
+    },
+    "unauthorized": "Acceso no autorizado a proveedores.",
+    "findAll": {
+      "error": "Ocurrió un error al recuperar los proveedores."
+    },
+    "findOne": {
+      "error": "Ocurrió un error al recuperar el Proveedor."
+    },
+    "update": {
+      "permissionDenied": "Solo puedes actualizar proveedores para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al actualizar el Proveedor."
+    },
+    "notFound": "Proveedor no encontrado"
+  },
+  "architectures": {
+    "delete": {
+      "permissionDenied": "Solo puedes eliminar arquitecturas para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al eliminar las arquitecturas."
+    },
+    "deletedAll": "¡Todas las arquitecturas eliminadas exitosamente!",
+    "notFoundToDelete": "No se encontraron arquitecturas para eliminar.",
+    "unauthorized": "Acceso no autorizado a la arquitectura.",
+    "findAll": {
+      "error": "Ocurrió un error al recuperar las arquitecturas."
+    },
+    "create": {
+      "permissionDenied": "Solo puedes crear arquitecturas para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al crear la Arquitectura."
+    },
+    "deleted": "¡Arquitectura eliminada exitosamente!",
+    "notFound": "Arquitectura no encontrada.",
+    "findOne": {
+      "error": "Ocurrió un error al recuperar la Arquitectura."
+    },
+    "update": {
+      "permissionDenied": "Solo puedes actualizar arquitecturas para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "Ocurrió un error al actualizar la Arquitectura."
+    }
+  },
+  "users": {
+    "deleted": "¡El usuario fue eliminado exitosamente!",
+    "cannotDelete": "No se puede eliminar el Usuario con id={{userId}}. ¡Quizás el Usuario no fue encontrado!",
+    "delete": {
+      "error": "No se pudo eliminar el Usuario con id={{userId}}"
+    },
+    "userNotFound": "Usuario no encontrado.",
+    "resumed": "¡Usuario reanudado exitosamente!",
+    "resume": {
+      "error": "Ocurrió un error al reanudar el usuario."
+    },
+    "suspended": "Usuario suspendido exitosamente.",
+    "suspend": {
+      "error": "Ocurrió un error al suspender el usuario."
+    },
+    "updated": "¡Usuario actualizado exitosamente!",
+    "emailChanged": "¡Correo electrónico cambiado exitosamente!",
+    "passwordChanged": "¡Contraseña cambiada exitosamente!",
+    "userDeleted": "Usuario eliminado exitosamente.",
+    "demotedToUser": "¡Degradado a usuario exitosamente!",
+    "promotedToModerator": "¡Promovido a moderador exitosamente!",
+    "adminBoard": "Panel de Administración.",
+    "findAll": {
+      "error": "Ocurrió un error al recuperar los usuarios."
+    },
+    "userNotFoundWithName": "Usuario {{username}} no encontrado.",
+    "findOne": {
+      "error": "Ocurrió un error al recuperar el usuario."
+    },
+    "profile": {
+      "error": "Error al recuperar el perfil del usuario"
+    },
+    "checkOrgUsers": {
+      "error": "Ocurrió un error al verificar los usuarios de la organización."
+    },
+    "organizationContent": "Contenido de la Organización.",
+    "fetchOrgsError": "Error al obtener tus organizaciones",
+    "noPrimaryOrg": "No se encontró organización principal. Por favor contacta soporte.",
+    "fetchPrimaryOrgError": "Error al obtener la organización principal",
+    "roles": {
+      "error": "Ocurrió un error al recuperar los roles de usuario."
+    },
+    "primaryOrgSet": "Organización principal establecida a {{orgName}}",
+    "setPrimaryOrgError": "Error al establecer la organización principal",
+    "update": {
+      "error": "Ocurrió un error al actualizar el usuario."
+    },
+    "userContent": "Contenido de Usuario."
+  },
+  "invitations": {
+    "notFound": "Invitación no encontrada.",
+    "deleted": "Invitación eliminada exitosamente.",
+    "delete": {
+      "error": "Ocurrió un error al eliminar la invitación."
+    },
+    "get": {
+      "error": "Ocurrió un error al recuperar las invitaciones activas."
+    },
+    "invalidRole": "Rol inválido. Las invitaciones solo pueden asignar roles de usuario o moderador.",
+    "sent": "¡Invitación enviada exitosamente!",
+    "send": {
+      "error": "Ocurrió un error al enviar la invitación."
+    },
+    "invalidOrExpired": "Token de invitación inválido o caducado.",
+    "validate": {
+      "error": "Ocurrió un error al validar el token de invitación."
+    }
+  },
+  "mail": {
+    "testEmailSent": "Correo de prueba enviado exitosamente",
+    "errorSendingEmail": "Error al enviar correo de prueba",
+    "testEmailSubject": "Correo de Prueba SMTP",
+    "testEmailBody": "Este es un correo de prueba para verificar la configuración SMTP.",
+    "invitationSubject": "Invitación a Organización BoxVault para {{organizationName}}",
+    "invitationTitle": "Invitación para unirse a la Organización BoxVault: {{organizationName}}",
+    "invitationBody": "Por favor haz clic en el enlace de abajo para unirte a la organización:",
+    "invitationButton": "Unirse a la Organización",
+    "invitationExpiry": "Este enlace de invitación caducará el: {{expirationDate}}",
+    "verificationSubject": "Verificación de Correo Electrónico BoxVault",
+    "verificationTitle": "Bienvenido a BoxVault",
+    "verificationBody": "Por favor haz clic en el enlace de abajo para verificar tu correo electrónico:",
+    "verificationButton": "Verificar Correo",
+    "verificationExpiry": "Este enlace de verificación caducará el: {{expirationDate}}"
+  },
+  "about": {
+    "title": "Sinopsis del Proyecto BoxVault",
+    "description": "BoxVault es una solución autoalojada diseñada para almacenar y gestionar plantillas de Máquinas Virtuales.",
+    "components": {
+      "backend": {
+        "title": "Backend"
+      },
+      "frontend": {
+        "title": "Frontend"
+      }
+    },
+    "features": {
+      "authentication": "Autenticación de Usuario",
+      "boxManagement": "Gestión de Cajas",
+      "versionControl": "Control de Versiones",
+      "organizationSupport": "Soporte de Organización",
+      "apiDocumentation": "Documentación de API",
+      "secureStorage": "Almacenamiento Seguro"
+    },
+    "goal": "Proporcionar una plataforma robusta y fácil de usar para gestionar cajas Vagrant."
+  },
+  "errors": {
+    "operationFailed": "Operación fallida."
+  },
+  "config": {
+    "gravatarNotFound": "Configuración de Gravatar no encontrada.",
+    "restartInitiated": "Reinicio del servidor iniciado",
+    "ticketSystemNotConfigured": "Sistema de tickets no configurado.",
+    "updated": "Configuración actualizada exitosamente.",
+    "updateError": "Error al actualizar la configuración"
+  },
+  "favorites": {
+    "oidcRequired": "Se requiere autenticación OIDC para gestionar favoritos",
+    "saved": "Favoritos guardados exitosamente",
+    "saveError": "Error al guardar favoritos"
+  },
+  "files": {
+    "invalidDownloadToken": "Token de descarga inválido.",
+    "noDownloadToken": "No se proporcionó token de descarga.",
+    "download": {
+      "error": "No se pudo descargar el archivo. {{error}}",
+      "streamError": "No se pudo crear el flujo de archivo: {{error}}",
+      "unauthorized": "Acceso no autorizado a la descarga de archivo.",
+      "genericError": "Ocurrió un error al descargar el archivo."
+    },
+    "notFound": "Archivo no encontrado.",
+    "info": {
+      "unauthorized": "Acceso no autorizado a la información del archivo.",
+      "error": "Ocurrió un error al recuperar la información del archivo."
+    },
+    "unauthorized": "Acceso no autorizado al archivo.",
+    "link": {
+      "error": "Ocurrió un error al generar el enlace de descarga."
+    },
+    "delete": {
+      "permissionDenied": "Solo puedes eliminar archivos de cajas que posees, o necesitas rol de moderador/administrador.",
+      "partialError": "Intento de eliminación de archivo, pero se encontraron problemas con la base de datos o limpieza de directorio.",
+      "error": "Ocurrió un error al eliminar el archivo."
+    },
+    "deleted": "Archivo y registro de base de datos eliminados, o archivo no encontrado pero limpieza intentada.",
+    "update": {
+      "permissionDenied": "Solo puedes actualizar archivos de cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "No se pudo actualizar el archivo: {{file}}"
+    },
+    "notFoundUploadFirst": "Archivo no encontrado. Por favor sube el archivo primero.",
+    "noFileUploaded": "No se subió ningún archivo",
+    "updated": "Archivo actualizado exitosamente",
+    "fileTooLarge": "¡El tamaño del archivo no puede ser mayor a {{size}}GB!",
+    "uploadTimeout": "Tiempo de espera de carga agotado - La solicitud tardó demasiado en completarse",
+    "noStorageSpace": "No hay suficiente espacio de almacenamiento disponible",
+    "upload": {
+      "permissionDenied": "Solo puedes subir archivos para cajas que posees, o necesitas rol de moderador/administrador.",
+      "error": "No se pudo subir el archivo"
+    }
+  },
+  "setup": {
+    "checkError": "Error al verificar el estado de configuración",
+    "readError": "Error al leer configuraciones",
+    "invalidToken": "Token de autorización inválido",
+    "sslUploadError": "Error al subir certificado SSL.",
+    "notAllowed": "La configuración no está permitida"
+  }
+}

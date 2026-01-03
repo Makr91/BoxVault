@@ -5,6 +5,7 @@ smtp_connect:
     description: SMTP server hostname
     section: Mail
     subsection: SMTP Connection
+    subsection_key: smtpConnection
     required: true
     order: 1
   port:
@@ -13,6 +14,7 @@ smtp_connect:
     description: SMTP server port
     section: Mail
     subsection: SMTP Connection
+    subsection_key: smtpConnection
     required: true
     order: 2
   secure:
@@ -21,6 +23,7 @@ smtp_connect:
     description: Use TLS for connection
     section: Mail
     subsection: SMTP Connection
+    subsection_key: smtpConnection
     required: true
     order: 3
   rejectUnauthorized:
@@ -29,6 +32,7 @@ smtp_connect:
     description: Reject unauthorized TLS connections
     section: Mail
     subsection: SMTP Connection
+    subsection_key: smtpConnection
     required: true
     order: 4
 smtp_settings:
@@ -38,6 +42,7 @@ smtp_settings:
     description: Default sender email address
     section: Mail
     subsection: SMTP Settings
+    subsection_key: smtpSettings
     required: true
     order: 1
   replyTo:
@@ -46,6 +51,7 @@ smtp_settings:
     description: Default reply-to email address
     section: Mail
     subsection: SMTP Settings
+    subsection_key: smtpSettings
     required: false
     order: 2
   rateLimit:
@@ -54,6 +60,7 @@ smtp_settings:
     description: Maximum emails to send per second
     section: Mail
     subsection: SMTP Settings
+    subsection_key: smtpSettings
     required: false
     order: 3
 smtp_auth:
@@ -63,6 +70,7 @@ smtp_auth:
     description: SMTP username
     section: Mail
     subsection: SMTP Authentication
+    subsection_key: smtpAuthentication
     required: true
     order: 1
   password:
@@ -71,5 +79,6 @@ smtp_auth:
     description: SMTP password
     section: Mail
     subsection: SMTP Authentication
+    subsection_key: smtpAuthentication
     required: true
     order: 2

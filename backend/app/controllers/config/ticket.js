@@ -1,5 +1,6 @@
 // ticket.js
 const { loadConfig } = require('../../utils/config-loader');
+const { log } = require('../../utils/Logger');
 
 /**
  * @swagger
@@ -41,6 +42,7 @@ exports.getTicketConfig = (req, res) => {
     }
     return res.status(404).send({ message: req.__('config.ticketSystemNotConfigured') });
   } catch (err) {
+    log.error.error('Error getting ticket config:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

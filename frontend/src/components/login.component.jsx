@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -18,12 +18,12 @@ const sanitizeProvider = (provider) => {
 };
 
 const Login = ({ theme }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(["auth", "common"]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "Login";
-  }, []);
+    document.title = t("login.pageTitle");
+  }, [t]);
   const location = useLocation();
 
   const [formValues, setFormValues] = useState({
@@ -38,19 +38,26 @@ const Login = ({ theme }) => {
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
 
-  const loadAuthMethods = async () => {
+  const enabledAuthMethods = useMemo(
+    () => authMethods.filter((method) => method.enabled),
+    [authMethods]
+  );
+
+  const loadAuthMethods = useCallback(async () => {
     try {
       setMethodsLoading(true);
       const result = await AuthService.getAuthMethods();
 
       if (result.methods && result.methods.length > 0) {
         setAuthMethods(result.methods);
-        const firstMethod = result.methods.find((m) => m.enabled);
+        const firstMethod = result.methods.find((m) => m.enabled); // Find first enabled method
         if (firstMethod) {
           setAuthMethod(firstMethod.id);
         }
       } else {
-        setAuthMethods([{ id: "local", name: "Local Account", enabled: true }]);
+        setAuthMethods([
+          { id: "local", name: t("login.localAccount"), enabled: true },
+        ]);
         setAuthMethod("local");
       }
     } catch (error) {
@@ -60,11 +67,11 @@ const Login = ({ theme }) => {
     } finally {
       setMethodsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadAuthMethods();
-  }, []);
+  }, [loadAuthMethods]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -95,19 +102,19 @@ const Login = ({ theme }) => {
         setMessage(t("errors.failedToProcess", { ns: "auth" }));
       }
     } else if (error) {
-      let errorMessage = t("errors.authenticationFailed", { ns: "auth" });
+      let errorMessage = t("errors.authenticationFailed");
       switch (error) {
         case "oidc_failed":
-          errorMessage = t("errors.oidcFailed", { ns: "auth" });
+          errorMessage = t("errors.oidcFailed");
           break;
         case "access_denied":
-          errorMessage = t("errors.accessDenied", { ns: "auth" });
+          errorMessage = t("errors.accessDenied");
           break;
         case "no_provider":
-          errorMessage = t("errors.noProvider", { ns: "auth" });
+          errorMessage = t("errors.noProvider");
           break;
         default:
-          errorMessage = t("errors.authError", { ns: "auth", error });
+          errorMessage = t("errors.authError", { error });
       }
       setMessage(errorMessage);
     }
@@ -131,7 +138,7 @@ const Login = ({ theme }) => {
     } catch (err) {
       log("Invalid OIDC provider selected", err);
       setLoading(false);
-      setMessage("Invalid authentication provider selected.");
+      setMessage(t("errors.invalidProvider"));
     }
   };
 
@@ -200,14 +207,12 @@ const Login = ({ theme }) => {
         ) : (
           <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
         )}
-        <h2 className="fs-1 text-center mt-4">BoxVault</h2>
+        <h2 className="fs-1 text-center mt-4">{t("login.title")}</h2>
 
         <form onSubmit={handleLogin} noValidate>
-          {!methodsLoading && authMethods.length > 1 && (
+          {!methodsLoading && enabledAuthMethods.length > 1 && (
             <div className="form-group">
-              <label htmlFor="authMethod">
-                {t("login.authMethod", { ns: "auth" })}
-              </label>
+              <label htmlFor="authMethod">{t("login.authMethod")}</label>
               <select
                 className="form-control"
                 name="authMethod"
@@ -215,7 +220,7 @@ const Login = ({ theme }) => {
                 onChange={(e) => handleAuthMethodChange(e.target.value)}
                 disabled={loading}
               >
-                {authMethods.map((method) => (
+                {enabledAuthMethods.map((method) => (
                   <option key={method.id} value={method.id}>
                     {method.name}
                   </option>
@@ -223,8 +228,8 @@ const Login = ({ theme }) => {
               </select>
               <small className="form-text text-muted">
                 {authMethod.startsWith("oidc-")
-                  ? t("login.oidcHint", { ns: "auth" })
-                  : t("login.localHint", { ns: "auth" })}
+                  ? t("login.oidcHint")
+                  : t("login.localHint")}
               </small>
             </div>
           )}
@@ -232,8 +237,8 @@ const Login = ({ theme }) => {
           {authMethod.startsWith("oidc-") && (
             <div className="form-group">
               <div className="alert alert-info text-center">
-                <i className="fas fa-external-link-alt" />
-                {t("login.redirectMessage", { ns: "auth" })}
+                <i className="fas fa-external-link-alt me-2" />
+                {t("login.redirectMessage")}
               </div>
             </div>
           )}
@@ -241,9 +246,7 @@ const Login = ({ theme }) => {
           {!authMethod.startsWith("oidc-") && (
             <>
               <div className="form-group">
-                <label htmlFor="username">
-                  {t("login.username", { ns: "auth" })}
-                </label>
+                <label htmlFor="username">{t("login.username")}</label>
                 <input
                   type="text"
                   className="form-control"
@@ -256,9 +259,7 @@ const Login = ({ theme }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password">
-                  {t("login.password", { ns: "auth" })}
-                </label>
+                <label htmlFor="password">{t("login.password")}</label>
                 <input
                   type="password"
                   className="form-control"
@@ -283,7 +284,7 @@ const Login = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="stayLoggedIn">
-                {t("login.stayLoggedIn", { ns: "auth" })}
+                {t("login.stayLoggedIn")}
               </label>
             </div>
           </div>
@@ -293,9 +294,9 @@ const Login = ({ theme }) => {
               {loading && <span className="spinner-border spinner-border-sm" />}
               <span>
                 {authMethod.startsWith("oidc-")
-                  ? authMethods.find((m) => m.id === authMethod)?.name ||
-                    t("login.continueWithOidc", { ns: "auth" })
-                  : t("login.loginButton", { ns: "auth" })}
+                  ? (enabledAuthMethods.find((m) => m.id === authMethod)
+                      ?.name ?? t("login.continueWithOidc"))
+                  : t("login.loginButton")}
               </span>
             </button>
           </div>

@@ -269,7 +269,13 @@ exports.findOne = async (req, res) => {
       // Always use the requested name from vagrantInfo
       // Use the requested name from vagrantInfo if available, otherwise construct it
       const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;
-      response = formatVagrantResponse(box, organizationData, baseUrl, requestedName, req.__.bind(req));
+      response = formatVagrantResponse(
+        box,
+        organizationData,
+        baseUrl,
+        requestedName,
+        req.__.bind(req)
+      );
     } else {
       // Format response for frontend
       response = {

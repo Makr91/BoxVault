@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { FaBuilding, FaUsers, FaBox } from "react-icons/fa6";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -14,6 +15,7 @@ import { log } from "../utils/Logger";
  * OrganizationDiscovery - Public page for discovering and joining organizations
  */
 const OrganizationDiscovery = ({ theme }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,17 +63,17 @@ const OrganizationDiscovery = ({ theme }) => {
       log.api.error("Error loading discoverable organizations", {
         error: error.message,
       });
-      setMessage("Error loading organizations");
+      setMessage(t("discovery.errors.load"));
       setMessageType("danger");
     } finally {
       setLoading(false);
     }
-  }, [fetchOrgGravatars]);
+  }, [fetchOrgGravatars, t]);
 
   useEffect(() => {
-    document.title = "Discover Organizations";
+    document.title = t("discovery.title");
     loadDiscoverableOrganizations();
-  }, [loadDiscoverableOrganizations]);
+  }, [loadDiscoverableOrganizations, t]);
 
   // Separate effect for checking join intent after organizations load
   useEffect(() => {
@@ -89,14 +91,14 @@ const OrganizationDiscovery = ({ theme }) => {
 
   const handleJoinRequest = async (orgName) => {
     if (!joinRequestMessage.trim()) {
-      setMessage("Please enter a message explaining why you want to join");
+      setMessage(t("discovery.errors.emptyMessage"));
       setMessageType("warning");
       return;
     }
 
     try {
       await RequestService.createJoinRequest(orgName, joinRequestMessage);
-      setMessage(`Join request sent to ${orgName} successfully!`);
+      setMessage(t("discovery.messages.requestSent", { orgName }));
       setMessageType("success");
       setJoinRequestMessage("");
       setRequestingOrg(null);
@@ -106,7 +108,8 @@ const OrganizationDiscovery = ({ theme }) => {
         error: error.message,
       });
       setMessage(
-        error.response?.data?.message || `Error requesting to join ${orgName}`
+        error.response?.data?.message ||
+          t("discovery.errors.requestFailed", { orgName })
       );
       setMessageType("danger");
     }
@@ -115,11 +118,11 @@ const OrganizationDiscovery = ({ theme }) => {
   const getAccessModeDisplay = (accessMode) => {
     switch (accessMode) {
       case "invite_only":
-        return "Invite Only";
+        return t("discovery.buttons.inviteOnly");
       case "request_to_join":
-        return "Request to Join";
+        return t("discovery.buttons.requestToJoin");
       default:
-        return "Private";
+        return t("discovery.buttons.private");
     }
   };
 
@@ -162,11 +165,9 @@ const OrganizationDiscovery = ({ theme }) => {
         <div className="col-12">
           <h2 className="mb-4">
             <FaBuilding className="me-2" />
-            Discover Organizations
+            {t("discovery.title")}
           </h2>
-          <p className="text-muted">
-            Browse public organizations and request to join them.
-          </p>
+          <p className="text-muted">{t("discovery.description")}</p>
 
           {message && (
             <div
@@ -191,7 +192,7 @@ const OrganizationDiscovery = ({ theme }) => {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Search organizations..."
+                  placeholder={t("discovery.searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -209,11 +210,11 @@ const OrganizationDiscovery = ({ theme }) => {
 
           {!loading && filteredOrganizations.length === 0 && (
             <div className="alert alert-info">
-              <h5>No Organizations Found</h5>
+              <h5>{t("discovery.noOrgsFoundTitle")}</h5>
               <p className="mb-0">
                 {searchTerm
-                  ? "No organizations match your search criteria."
-                  : "No public organizations are currently available for discovery."}
+                  ? t("discovery.noOrgsFoundSearch")
+                  : t("discovery.noOrgsFoundPublic")}
               </p>
             </div>
           )}
@@ -238,12 +239,12 @@ const OrganizationDiscovery = ({ theme }) => {
                     </div>
                     <div className="card-body">
                       <p className="card-text">
-                        {org.description || "No description available"}
+                        {org.description || t("discovery.noDescription")}
                       </p>
                       <div className="d-flex justify-content-between text-muted small">
                         <span>
                           <FaUsers className="me-1" />
-                          {org.memberCount} members
+                          {org.memberCount} {t("discovery.members")}
                         </span>
                         <div className="d-flex flex-column align-items-end">
                           <span>
@@ -252,12 +253,13 @@ const OrganizationDiscovery = ({ theme }) => {
                               to={`/${org.name}`}
                               className="text-decoration-none"
                             >
-                              {org.publicBoxCount} public
+                              {org.publicBoxCount} {t("discovery.public")}
                             </Link>
                           </span>
                           {org.totalBoxCount > org.publicBoxCount && (
                             <span className="text-muted">
-                              {org.totalBoxCount - org.publicBoxCount} private
+                              {org.totalBoxCount - org.publicBoxCount}{" "}
+                              {t("discovery.private")}
                             </span>
                           )}
                         </div>
@@ -269,7 +271,7 @@ const OrganizationDiscovery = ({ theme }) => {
                           className="btn btn-outline-secondary w-100"
                           disabled
                         >
-                          Invite Only
+                          {t("discovery.buttons.inviteOnly")}
                         </button>
                       )}
                       {org.accessMode === "request_to_join" && (
@@ -288,7 +290,7 @@ const OrganizationDiscovery = ({ theme }) => {
                             }
                           }}
                         >
-                          Request to Join
+                          {t("discovery.buttons.requestToJoin")}
                         </button>
                       )}
                       {org.accessMode !== "invite_only" &&
@@ -297,7 +299,7 @@ const OrganizationDiscovery = ({ theme }) => {
                             className="btn btn-outline-secondary w-100"
                             disabled
                           >
-                            Private
+                            {t("discovery.buttons.private")}
                           </button>
                         )}
                     </div>
@@ -316,7 +318,7 @@ const OrganizationDiscovery = ({ theme }) => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  Request to Join {requestingOrg.name}
+                  {t("discovery.modal.title", { orgName: requestingOrg.name })}
                 </h5>
                 <button
                   type="button"
@@ -329,27 +331,27 @@ const OrganizationDiscovery = ({ theme }) => {
               </div>
               <div className="modal-body">
                 <p>
-                  Please explain why you would like to join{" "}
-                  <strong>{requestingOrg.name}</strong>:
+                  <Trans
+                    i18nKey="discovery.modal.description"
+                    values={{ orgName: requestingOrg.name }}
+                    components={{ strong: <strong /> }}
+                  />
                 </p>
                 <textarea
                   className="form-control"
                   rows="4"
                   value={joinRequestMessage}
                   onChange={(e) => setJoinRequestMessage(e.target.value)}
-                  placeholder="Enter your reason for wanting to join this organization..."
+                  placeholder={t("discovery.modal.placeholder")}
                 />
               </div>
               <div className="modal-footer">
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => {
-                    setRequestingOrg(null);
-                    setJoinRequestMessage("");
-                  }}
+                  onClick={() => setRequestingOrg(null)}
                 >
-                  Cancel
+                  {t("buttons.cancel")}
                 </button>
                 <button
                   type="button"
@@ -357,7 +359,7 @@ const OrganizationDiscovery = ({ theme }) => {
                   onClick={() => handleJoinRequest(requestingOrg.name)}
                   disabled={!joinRequestMessage.trim()}
                 >
-                  Send Request
+                  {t("discovery.buttons.sendRequest")}
                 </button>
               </div>
             </div>

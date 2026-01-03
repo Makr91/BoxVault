@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
@@ -13,6 +14,7 @@ import ConfirmationModal from "./confirmation.component";
  * OrganizationUserManager - Manages organizations and their users
  */
 const OrganizationUserManager = () => {
+  const { t } = useTranslation();
   const [organizations, setOrganizations] = useState([]);
   const [editingOrgId, setEditingOrgId] = useState(null);
   const [newOrgName, setNewOrgName] = useState("");
@@ -174,24 +176,20 @@ const OrganizationUserManager = () => {
     // Reset message at start
     setRenameMessage("");
 
-    const validationError = validateOrgName(newOrgName);
-    if (validationError) {
-      setRenameMessage(validationError);
+    const isValid = validateOrgName(newOrgName);
+    if (!isValid) {
+      setRenameMessage(t("validation.invalidOrgName"));
       return;
     }
 
     if (newOrgName === oldName) {
-      setRenameMessage(
-        "New name is the same as the old name. Please enter a different name."
-      );
+      setRenameMessage(t("orgUserManager.rename.sameNameError"));
       return;
     }
 
     const organizationExists = await checkOrganizationExists(newOrgName);
     if (organizationExists) {
-      setRenameMessage(
-        "An organization with this name already exists. Please choose a different name."
-      );
+      setRenameMessage(t("orgUserManager.rename.orgExistsError"));
       return;
     }
 
@@ -221,9 +219,9 @@ const OrganizationUserManager = () => {
       setEditingOrgId(null);
       setNewOrgName("");
       setOldName("");
-      setRenameMessage("Organization renamed successfully!");
+      setRenameMessage(t("orgUserManager.rename.success"));
     } catch {
-      setRenameMessage("Error renaming organization. Please try again.");
+      setRenameMessage(t("orgUserManager.rename.error"));
     }
   };
 
@@ -244,7 +242,7 @@ const OrganizationUserManager = () => {
         <input
           type="text"
           className="form-control"
-          placeholder="Search organizations by name or code..."
+          placeholder={t("orgUserManager.searchPlaceholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -271,14 +269,14 @@ const OrganizationUserManager = () => {
                       className="btn btn-success btn-sm mt-2"
                       type="submit"
                     >
-                      Save
+                      {t("buttons.save")}
                     </button>
                     <button
                       className="btn btn-secondary btn-sm mt-2 ms-2"
                       type="button"
                       onClick={() => setEditingOrgId(null)}
                     >
-                      Cancel
+                      {t("buttons.cancel")}
                     </button>
                   </form>
                 ) : (
@@ -307,7 +305,7 @@ const OrganizationUserManager = () => {
                       setShowEditModal(true);
                     }}
                   >
-                    Edit
+                    {t("buttons.edit")}
                   </button>
                   <button
                     className="btn btn-primary btn-sm me-2"
@@ -317,7 +315,7 @@ const OrganizationUserManager = () => {
                       setOldName(org.name);
                     }}
                   >
-                    Rename
+                    {t("buttons.rename")}
                   </button>
                   <button
                     className={`btn btn-${org.suspended ? "success" : "warning"} btn-sm me-2`}
@@ -325,7 +323,7 @@ const OrganizationUserManager = () => {
                       handleSuspendOrResumeOrganization(org.name, org.suspended)
                     }
                   >
-                    {org.suspended ? "Resume" : "Suspend"}
+                    {org.suspended ? t("buttons.resume") : t("buttons.suspend")}
                   </button>
                   <button
                     className="btn btn-danger btn-sm"
@@ -336,12 +334,14 @@ const OrganizationUserManager = () => {
                       })
                     }
                   >
-                    Delete
+                    {t("buttons.delete")}
                   </button>
                 </div>
               </div>
               <div className="card-body">
-                <p>Total Boxes: {org.totalBoxes}</p>
+                <p>
+                  {t("orgUserManager.totalBoxes", { count: org.totalBoxes })}
+                </p>
               </div>
               <ul className="list-group list-group-flush">
                 {org.members.map((user) => (
@@ -352,12 +352,17 @@ const OrganizationUserManager = () => {
                     <div>
                       <strong>{user.username}</strong> <br />
                       <small>{user.email}</small> <br />
-                      <small>Boxes: {user.totalBoxes}</small> <br />
-                      <small>Roles:</small>
+                      <small>
+                        {t("orgUserManager.user.boxes", {
+                          count: user.totalBoxes,
+                        })}
+                      </small>{" "}
+                      <br />
+                      <small>{t("orgUserManager.user.roles")}:</small>
                       <ul>
                         {user.roles &&
                           user.roles.map((role) => (
-                            <li key={role.name}>{role.name}</li>
+                            <li key={role.name}>{t(`roles.${role.name}`)}</li>
                           ))}
                       </ul>
                     </div>
@@ -371,14 +376,14 @@ const OrganizationUserManager = () => {
                             className="btn btn-secondary btn-sm me-2"
                             onClick={() => handleDemoteUser(user.id)}
                           >
-                            Demote
+                            {t("buttons.demote")}
                           </button>
                         ) : (
                           <button
                             className="btn btn-primary btn-sm me-2"
                             onClick={() => handlePromoteUser(user.id)}
                           >
-                            Promote
+                            {t("buttons.promote")}
                           </button>
                         ))}
                       <button
@@ -387,25 +392,32 @@ const OrganizationUserManager = () => {
                           handleSuspendOrResumeUser(user.id, user.suspended)
                         }
                       >
-                        {user.suspended ? "Resume" : "Suspend"}
+                        {user.suspended
+                          ? t("buttons.resume")
+                          : t("buttons.suspend")}
                       </button>
                       <button
                         className="btn btn-warning btn-sm me-2"
                         onClick={() =>
                           handleRemoveUserFromOrg(org.name, user.id)
                         }
-                        title={`Remove ${user.username} from ${org.name}`}
+                        title={t("orgUserManager.user.removeFromOrgTitle", {
+                          username: user.username,
+                          orgName: org.name,
+                        })}
                       >
-                        Remove from Org
+                        {t("buttons.removeFromOrg")}
                       </button>
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() =>
                           handleDeleteClick({ type: "user", id: user.id })
                         }
-                        title={`Permanently delete ${user.username} from BoxVault`}
+                        title={t("orgUserManager.user.deleteUserTitle", {
+                          username: user.username,
+                        })}
                       >
-                        Delete User
+                        {t("buttons.deleteUser")}
                       </button>
                     </div>
                   </li>
@@ -428,7 +440,9 @@ const OrganizationUserManager = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  Edit Organization: {editingOrg.name}
+                  {t("orgUserManager.editModal.title", {
+                    orgName: editingOrg.name,
+                  })}
                 </h5>
                 <button
                   type="button"
@@ -445,7 +459,9 @@ const OrganizationUserManager = () => {
                   </div>
                 )}
                 <div className="form-group mb-3">
-                  <label htmlFor="editOrgCode">Organization Code</label>
+                  <label htmlFor="editOrgCode">
+                    {t("orgUserManager.editModal.orgCode")}
+                  </label>
                   <input
                     type="text"
                     className="form-control"
@@ -461,11 +477,13 @@ const OrganizationUserManager = () => {
                     pattern="[0-9A-F]{6}"
                   />
                   <small className="form-text text-muted">
-                    6-character hexadecimal identifier (0-9, A-F)
+                    {t("orgUserManager.editModal.orgCodeHint")}
                   </small>
                 </div>
                 <div className="form-group mb-3">
-                  <label htmlFor="editOrgEmail">Organization Email</label>
+                  <label htmlFor="editOrgEmail">
+                    {t("orgUserManager.editModal.orgEmail")}
+                  </label>
                   <input
                     type="email"
                     className="form-control"
@@ -474,11 +492,13 @@ const OrganizationUserManager = () => {
                     onChange={(e) => setEditOrgEmail(e.target.value)}
                   />
                   <small className="form-text text-muted">
-                    Used for organization contact and Gravatar
+                    {t("orgUserManager.editModal.orgEmailHint")}
                   </small>
                 </div>
                 <div className="form-group mb-3">
-                  <label htmlFor="editOrgDescription">Description</label>
+                  <label htmlFor="editOrgDescription">
+                    {t("orgUserManager.editModal.description")}
+                  </label>
                   <textarea
                     className="form-control"
                     id="editOrgDescription"
@@ -488,36 +508,44 @@ const OrganizationUserManager = () => {
                   />
                 </div>
                 <div className="form-group mb-3">
-                  <label htmlFor="editOrgAccessMode">Access Mode</label>
+                  <label htmlFor="editOrgAccessMode">
+                    {t("orgUserManager.editModal.accessMode")}
+                  </label>
                   <select
                     className="form-control"
                     id="editOrgAccessMode"
                     value={editOrgAccessMode}
                     onChange={(e) => setEditOrgAccessMode(e.target.value)}
                   >
-                    <option value="private">Private (Unlisted)</option>
-                    <option value="invite_only">Invite Only (Listed)</option>
+                    <option value="private">
+                      {t("orgUserManager.editModal.accessModes.private")}
+                    </option>
+                    <option value="invite_only">
+                      {t("orgUserManager.editModal.accessModes.inviteOnly")}
+                    </option>
                     <option value="request_to_join">
-                      Request to Join (Listed)
+                      {t("orgUserManager.editModal.accessModes.requestToJoin")}
                     </option>
                   </select>
                   <small className="form-text text-muted">
-                    Controls organization visibility and join methods
+                    {t("orgUserManager.editModal.accessModeHint")}
                   </small>
                 </div>
                 <div className="form-group mb-3">
-                  <label htmlFor="editOrgDefaultRole">Default Role</label>
+                  <label htmlFor="editOrgDefaultRole">
+                    {t("orgUserManager.editModal.defaultRole")}
+                  </label>
                   <select
                     className="form-control"
                     id="editOrgDefaultRole"
                     value={editOrgDefaultRole}
                     onChange={(e) => setEditOrgDefaultRole(e.target.value)}
                   >
-                    <option value="user">User</option>
-                    <option value="moderator">Moderator</option>
+                    <option value="user">{t("roles.user")}</option>
+                    <option value="moderator">{t("roles.moderator")}</option>
                   </select>
                   <small className="form-text text-muted">
-                    Default role for new members
+                    {t("orgUserManager.editModal.defaultRoleHint")}
                   </small>
                 </div>
               </div>
@@ -527,7 +555,7 @@ const OrganizationUserManager = () => {
                   className="btn btn-secondary"
                   onClick={() => setShowEditModal(false)}
                 >
-                  Cancel
+                  {t("buttons.cancel")}
                 </button>
                 <button
                   type="button"
@@ -550,7 +578,9 @@ const OrganizationUserManager = () => {
                         editOrgDefaultRole
                       );
 
-                      setEditMessage("Organization updated successfully!");
+                      setEditMessage(
+                        t("orgUserManager.editModal.updateSuccess")
+                      );
                       setTimeout(() => {
                         setShowEditModal(false);
                         setEditMessage("");
@@ -558,12 +588,12 @@ const OrganizationUserManager = () => {
                     } catch (error) {
                       setEditMessage(
                         error.response?.data?.message ||
-                          "Error updating organization"
+                          t("orgUserManager.editModal.updateError")
                       );
                     }
                   }}
                 >
-                  Save
+                  {t("buttons.save")}
                 </button>
               </div>
             </div>

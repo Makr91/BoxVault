@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { FaBuilding, FaCheck } from "react-icons/fa6";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
@@ -20,6 +21,7 @@ const OrganizationSwitcher = ({
   setShowModal,
   theme,
 }) => {
+  const { t } = useTranslation();
   const [userOrganizations, setUserOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [orgGravatars, setOrgGravatars] = useState({});
@@ -119,7 +121,7 @@ const OrganizationSwitcher = ({
           <div className="modal-header">
             <h5 className="modal-title">
               <FaBuilding className="me-2" />
-              Switch Organization
+              {t("orgSwitcher.title")}
             </h5>
             <button
               type="button"
@@ -132,14 +134,13 @@ const OrganizationSwitcher = ({
             {loading && (
               <div className="text-center">
                 <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
+                  <span className="visually-hidden">{t("loading")}</span>
                 </div>
               </div>
             )}
             {!loading && userOrganizations.length === 0 && (
               <div className="alert alert-info">
-                No organizations found. Contact your administrator if this is
-                unexpected.
+                {t("orgSwitcher.noOrgsFound")}
               </div>
             )}
             {!loading && userOrganizations.length > 0 && (
@@ -167,7 +168,7 @@ const OrganizationSwitcher = ({
                           )}
                           {org.isPrimary && (
                             <small className="text-primary d-block">
-                              Primary Organization
+                              {t("orgSwitcher.primaryOrg")}
                             </small>
                           )}
                         </div>
@@ -177,7 +178,7 @@ const OrganizationSwitcher = ({
                       <span
                         className={`badge ${getRoleBadgeClass(org.role)} me-2`}
                       >
-                        {org.role}
+                        {t(`roles.${org.role}`)}
                       </span>
                       {activeOrganization === org.name && (
                         <FaCheck className="text-success" />
@@ -194,7 +195,7 @@ const OrganizationSwitcher = ({
               className="btn btn-secondary"
               onClick={handleModalClose}
             >
-              Cancel
+              {t("buttons.cancel")}
             </button>
           </div>
         </div>

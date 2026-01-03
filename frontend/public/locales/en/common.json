@@ -26,6 +26,8 @@
   "buttons": {
     "create": "Create",
     "cancel": "Cancel",
+    "edit": "Edit",
+    "suspend": "Suspend",
     "delete": "Delete",
     "save": "Save",
     "close": "Close",
@@ -35,9 +37,64 @@
     "copy": "Copy",
     "move": "Move",
     "rename": "Rename",
-    "upload": "Upload",
+    "promote": "Promote",
+    "demote": "Demote",
+    "resume": "Resume",
     "download": "Download",
-    "search": "Search"
+    "search": "Search",
+    "back": "Back",
+    "removeFromOrg": "Remove from Org",
+    "deleteUser": "Delete User",
+    "upload": "Upload"
+  },
+  "configManager": {
+    "fixErrors": "Please fix the validation errors before submitting.",
+    "updateSuccess": "Configuration updated successfully.",
+    "updateError": "Error updating configuration.",
+    "restartInitiated": "Server restart initiated",
+    "restartFailed": "Failed to restart server",
+    "settingsCount": "{{count}} setting",
+    "settingsCount_plural": "{{count}} settings",
+    "tabs": {
+      "app": "App Config",
+      "auth": "Auth Config",
+      "db": "DB Config",
+      "mail": "Email Config"
+    },
+    "buttons": {
+      "update": "Update Configuration",
+      "restart": "Restart Server"
+    },
+    "sections": {
+      "authentication": "Authentication",
+      "application": "Application",
+      "database": "Database",
+      "mail": "Mail",
+      "general": "General"
+    },
+    "subsections": {
+      "generalSettings": "General",
+      "jwtSettings": "JWT Settings",
+      "localAuthentication": "Local Authentication",
+      "externalProviders": "External Providers",
+      "oidcProviders": "OIDC Providers",
+      "boxvaultSettings": "BoxVault Settings",
+      "gravatarSettings": "Gravatar Settings",
+      "sslSettings": "SSL Settings",
+      "databaseConnection": "Database Connection",
+      "connectionPool": "Connection Pool",
+      "smtpConnection": "SMTP Connection",
+      "smtpSettings": "SMTP Settings",
+      "smtpAuthentication": "SMTP Authentication",
+      "loggingSettings": "Logging Settings",
+      "loggingCategories": "Logging Categories",
+      "rateLimiting": "Rate Limiting",
+      "fileOperations": "File Operations",
+      "ticketSystem": "Ticket System",
+      "frontendLogging": "Frontend Logging",
+      "frontendLoggingCategories": "Frontend Logging Categories",
+      "oidcSettings": "OIDC Settings"
+    }
   },
   "status": {
     "loading": "Loading...",
@@ -53,7 +110,9 @@
     "backToFiles": "Back to Files",
     "clearSelection": "Clear selection",
     "selectAll": "Select All",
-    "retryUpload": "Retry upload"
+    "retryUpload": "Retry upload",
+    "search": "Search",
+    "back": "Back"
   },
   "messages": {
     "noResultsFound": "No Results Found",
@@ -76,7 +135,50 @@
     "removeFromFavorites": "Remove from Favorites",
     "supportOnPatreon": "Support on Patreon",
     "githubProfile": "GitHub Profile",
-    "projectRepository": "Project Repository"
+    "projectRepository": "Project Repository",
+    "documentation": {
+      "title": "Documentation",
+      "description": "Learn how to use BoxVault and integrate it with your workflow.",
+      "fullDocs": "Full Documentation",
+      "apiExplorer": "API Explorer (Swagger UI)",
+      "gettingStarted": "Getting Started Guide"
+    },
+    "support": {
+      "title": "Support and Community",
+      "description": "Support the project and stay connected with the community.",
+      "patreon": "Support on Patreon",
+      "githubProfile": "GitHub Profile",
+      "repository": "Project Repository"
+    },
+    "components": {
+      "title": "Components",
+      "backend": {
+        "details": {
+          "nodejs": "Node.js Environment",
+          "auth": "Authentication System",
+          "endpoints": "API Endpoints",
+          "database": "Database Integration"
+        }
+      },
+      "frontend": {
+        "details": {
+          "react": "React Framework",
+          "interface": "User Interface",
+          "features": "Frontend Features"
+        }
+      }
+    },
+    "fallbackTitle": "BoxVault Project",
+    "fallbackDescription": "A self-hosted solution for managing VM templates.",
+    "fallbackGoal": "Providing a robust platform for Vagrant boxes."
+  },
+  "admin": {
+    "pageTitle": "Admin",
+    "title": "Admin Panel",
+    "tabs": {
+      "orgsAndUsers": "Organizations and Users",
+      "configManagement": "Configuration Management"
+    }
   },
   "breadcrumbs": {
     "boxvault": "BoxVault",
@@ -88,5 +190,541 @@
     "refreshPage": "Refresh Page",
     "goHome": "Go Home",
     "errorDetailsDevelopment": "Error Details (Development)"
-  }
+  },
+  "errors": {
+    "upload": {
+      "noFile": "No file provided for upload.",
+      "chunkFailed": "A part of the file failed to upload. Please try again.",
+      "sizeMismatch": "File assembly failed due to a size mismatch. Please try uploading again.",
+      "assemblyTimeout": "File assembly timed out. Please try again.",
+      "streamError": "A stream handling error occurred during upload. Please try again."
+    }
+  },
+  "orgUserManager": {
+    "searchPlaceholder": "Search organizations by name or code...",
+    "totalBoxes": "Total Boxes: {{count}}",
+    "rename": {
+      "sameNameError": "New name is the same as the old name. Please enter a different name.",
+      "orgExistsError": "An organization with this name already exists. Please choose a different name.",
+      "success": "Organization renamed successfully!",
+      "error": "Error renaming organization. Please try again."
+    },
+    "user": {
+      "boxes": "Boxes: {{count}}",
+      "roles": "Roles",
+      "removeFromOrgTitle": "Remove {{username}} from {{orgName}}",
+      "deleteUserTitle": "Permanently delete {{username}} from BoxVault"
+    },
+    "editModal": {
+      "title": "Edit Organization: {{orgName}}",
+      "orgCode": "Organization Code",
+      "orgCodeHint": "6-character hexadecimal identifier (0-9, A-F)",
+      "orgEmail": "Organization Email",
+      "orgEmailHint": "Used for organization contact and Gravatar",
+      "description": "Description",
+      "accessMode": "Access Mode",
+      "accessModes": {
+        "private": "Private (Unlisted)",
+        "inviteOnly": "Invite Only (Listed)",
+        "requestToJoin": "Request to Join (Listed)"
+      },
+      "accessModeHint": "Controls organization visibility and join methods",
+      "defaultRole": "Default Role",
+      "defaultRoleHint": "Default role for new members",
+      "updateSuccess": "Organization updated successfully!",
+      "updateError": "Error updating organization"
+    }
+  },
+  "orgSwitcher": {
+    "title": "Switch Organization",
+    "noOrgsFound": "No organizations found. Contact your administrator if this is unexpected.",
+    "primaryOrg": "Primary Organization"
+  },
+  "profile": {
+    "pageTitle": "Profile",
+    "noJobTitle": "No Job Title",
+    "tabs": {
+      "profile": "Profile",
+      "organizations": "Organizations",
+      "security": "Security",
+      "serviceAccounts": "Service Accounts"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "location": "Location",
+      "email": "Email",
+      "organization": "Organization",
+      "roles": "Roles",
+      "profileUrl": "Profile URL",
+      "verifiedAccounts": "Verified Accounts",
+      "registrationDate": "Registration Date",
+      "emailHash": "Email Hash",
+      "userId": "User ID",
+      "accessToken": "Access Token"
+    },
+    "noLocation": "No Location",
+    "noRoles": "No roles assigned",
+    "security": {
+      "changePassword": {
+        "title": "Change Password",
+        "newPasswordPlaceholder": "New Password",
+        "confirmPasswordPlaceholder": "Confirm Password",
+        "button": "Change Password"
+      },
+      "changeEmail": {
+        "title": "Change Email",
+        "newEmailPlaceholder": "New Email",
+        "button": "Change Email"
+      },
+      "promoteToModerator": "Promote to Moderator",
+      "deleteAccount": {
+        "title": "Delete Account",
+        "warning": "Warning: This action cannot be undone.",
+        "button": "Delete My Account"
+      }
+    },
+    "organizations": {
+      "title": "My Organizations",
+      "belongToTitle": "Organizations You Belong To",
+      "noOrgs": "You don't belong to any organizations yet.",
+      "primary": "Primary",
+      "joined": "Joined",
+      "pendingRequestsTitle": "Pending Join Requests",
+      "requested": "Requested"
+    },
+    "serviceAccounts": {
+      "title": "Service Accounts",
+      "descriptionPlaceholder": "Description",
+      "expiration": {
+        "30": "30 days",
+        "60": "60 days",
+        "90": "90 days",
+        "365": "365 days"
+      },
+      "createButton": "Create Service Account",
+      "organization": "Organization",
+      "expires": "Expires",
+      "token": "Token"
+    },
+    "deleteModal": {
+      "title": "Delete Account",
+      "message": "Are you sure you want to delete your account? This action cannot be undone."
+    },
+    "messages": {
+      "leftOrganization": "Successfully left organization {{orgName}}",
+      "requestCancelled": "Join request cancelled successfully",
+      "serviceAccountCreated": "Service account created successfully!",
+      "passwordChanged": "Password changed successfully!",
+      "emailChanged": "Email changed successfully!",
+      "promotedToModerator": "Promoted to moderator successfully!",
+      "emailNotVerified": "Your email is not verified."
+    },
+    "errors": {
+      "passwordsDoNotMatch": "Passwords do not match!",
+      "deleteAccountFailed": "Failed to delete account. Please try again.",
+      "verificationFailed": "Failed to verify email. Please try again or contact support.",
+      "activeOrgNotFound": "Error: Could not find active organization",
+      "createServiceAccountFailed": "Error creating service account: {{error}}",
+      "resendVerificationFailed": "Error sending verification email: {{error}}",
+      "changePasswordFailed": "Error changing password: {{error}}",
+      "changeEmailFailed": "Error changing email: {{error}}",
+      "promoteToModeratorFailed": "Error promoting to moderator: {{error}}"
+    },
+    "buttons": {
+      "resendVerification": "Resend verification email"
+    }
+  },
+  "unknown": "Unknown",
+  "setup": {
+    "title": "BoxVault Setup",
+    "alreadyComplete": "Setup is already complete. You can now use BoxVault.",
+    "enterToken": "Enter Setup Token",
+    "tokenPlaceholder": "Setup Token",
+    "verifyToken": "Verify Token",
+    "submitAll": "Submit All Configurations",
+    "oidcNote": "OIDC provider configuration is managed via the Admin interface after setup is complete. Go to Admin → Configuration Management → Auth Config to add OIDC providers.",
+    "updateSuccess": "Configuration updated successfully. Redirecting to registration page in 5 seconds...",
+    "updateError": "Error updating configuration.",
+    "invalidToken": "Invalid setup token.",
+    "sqlitePath": "SQLite Database File Path"
+  },
+  "navbar": {
+    "logout": "Logout",
+    "login": "Login",
+    "signup": "Sign Up",
+    "about": "About",
+    "admin": "Admin",
+    "organization": "Organization",
+    "profile": "Profile",
+    "favorites": "Favorites",
+    "help": "Help"
+  },
+  "moderator": {
+    "pageTitle": "Moderator",
+    "title": "Moderator Panel",
+    "orgNameRequired": "Organization name is required.",
+    "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
+    "orgEmailRequired": "Organization email is required.",
+    "orgExists": "An organization with this name already exists. Please choose a different name.",
+    "orgUpdateSuccess": "Organization updated successfully!",
+    "orgUpdateError": "Error updating organization. Please try again.",
+    "tabs": {
+      "organization": "Organization",
+      "joinRequests": "Join Requests",
+      "invitations": "Invitations"
+    },
+    "organization": {
+      "title": "Organization Details",
+      "name": "Organization Name",
+      "email": "Organization Email",
+      "emailHash": "Organization Email Hash",
+      "emailHashHint": "Automatically generated from organization email",
+      "description": "Organization Description",
+      "accessMode": "Access Mode",
+      "accessModes": {
+        "private": "Private (Unlisted)",
+        "inviteOnly": "Invite Only (Listed)",
+        "requestToJoin": "Request to Join (Listed)"
+      },
+      "accessModeHint": "Controls organization visibility and join methods",
+      "defaultRole": "Default Role",
+      "defaultRoleHint": "Default role for new members",
+      "updateButton": "Update Organization"
+    },
+    "users": {
+      "title": "Users in {{organization}}",
+      "boxes": "Boxes",
+      "roles": "Roles",
+      "promote": "Promote",
+      "demote": "Demote"
+    },
+    "joinRequest": {
+      "title": "Pending Join Requests",
+      "noRequests": "No pending join requests.",
+      "email": "Email",
+      "message": "Message",
+      "requested": "Requested",
+      "actions": "Actions",
+      "noMessage": "No message",
+      "approveAsUser": "Approve as User",
+      "approveAsModerator": "Approve as Moderator",
+      "deny": "Deny",
+      "approved": "Join request approved successfully!",
+      "approveError": "Error approving request: {{error}}",
+      "denied": "Join request denied.",
+      "denyError": "Error denying request: {{error}}"
+    },
+    "invitation": {
+      "manageTitle": "Manage Invitations",
+      "sendTitle": "Send New Invitation",
+      "email": "Email Address",
+      "assignRole": "Assign Role",
+      "sendButton": "Send Invitation",
+      "activeTitle": "Active Invitations",
+      "noActive": "No active invitations.",
+      "expires": "Expires",
+      "accepted": "Accepted",
+      "expired": "Expired",
+      "link": "Invitation Link",
+      "linkText": "Invitation Link",
+      "actions": "Actions",
+      "token": "Token",
+      "orgId": "Organization ID",
+      "sendWarning": "Warning: Invitation created but email might not have been sent. You can copy the link below and send it manually."
+    }
+  },
+  "roles": {
+    "user": "User",
+    "moderator": "Moderator",
+    "admin": "Administrator"
+  },
+  "oidc": {
+    "title": "OIDC Providers",
+    "providerCount": "{{count}} provider",
+    "providerCount_plural": "{{count}} providers",
+    "description": "Manage OpenID Connect authentication providers for Single Sign-On integration. Click on a provider card to edit its configuration.",
+    "enabled": "Enabled",
+    "issuer": "Issuer",
+    "clientId": "Client ID",
+    "scope": "Scope",
+    "noProvidersConfigured": "No OIDC providers configured yet. Click \"Add OIDC Provider\" to set up authentication with providers like Google, Microsoft, GitHub, etc.",
+    "buttons": {
+      "add": "Add OIDC Provider",
+      "delete": "Delete Provider",
+      "update": "Update Provider",
+      "updating": "Updating...",
+      "adding": "Adding..."
+    },
+    "modal": {
+      "editTitle": "Edit OIDC Provider",
+      "addTitle": "Add OIDC Provider",
+      "description": "Configure a new OpenID Connect authentication provider. You will need to register your application with the provider first to obtain the Client ID and Client Secret."
+    },
+    "form": {
+      "name": {
+        "label": "Provider Name",
+        "hint": "Internal identifier (lowercase letters, numbers, and underscores only)"
+      },
+      "displayName": {
+        "label": "Display Name",
+        "hint": "Name shown to users on the login page"
+      },
+      "issuer": {
+        "label": "Issuer URL",
+        "hint": "The OIDC issuer URL (check your provider's documentation for the correct URL)"
+      },
+      "clientId": {
+        "label": "Client ID",
+        "hint": "Client ID from your OAuth application registration"
+      },
+      "clientSecret": {
+        "label": "Client Secret",
+        "hint": "Client Secret from your OAuth application registration"
+      },
+      "scope": {
+        "label": "Scope",
+        "hint": "OAuth scopes (space-separated). Default is usually sufficient."
+      },
+      "responseType": {
+        "label": "Response Type",
+        "options": {
+          "code": "Authorization Code (Recommended)",
+          "id_token": "ID Token",
+          "code_id_token": "Code + ID Token"
+        },
+        "hint": "OAuth flow type. Use \"code\" for most providers."
+      },
+      "enabled": {
+        "label": "Enable this provider for user authentication"
+      }
+    },
+    "instructions": {
+      "title": "Configuration Instructions",
+      "step1": "Register your application with your OIDC provider's developer console",
+      "step2": "Add",
+      "step2_cont": "as an allowed redirect URI",
+      "step3": "Copy the Client ID and Client Secret from your provider's console",
+      "step4": "Find your provider's Issuer URL in their documentation",
+      "step5": "Complete the form above and test the configuration"
+    },
+    "deleteModal": {
+      "title": "Delete OIDC Provider",
+      "message": "Are you sure you want to delete the OIDC provider '{{providerName}}'? This cannot be undone."
+    },
+    "errors": {
+      "requiredFields": "Provider name, display name, issuer, client ID, and client secret are required",
+      "invalidName": "Provider name must contain only letters, numbers, and underscores",
+      "providerExists": "OIDC provider '{{name}}' already exists",
+      "apiError": "Error {{action}} OIDC provider: {{error}}",
+      "deleteError": "Error deleting OIDC provider: {{error}}"
+    },
+    "messages": {
+      "updating": "Updating OIDC provider...",
+      "adding": "Adding OIDC provider...",
+      "deleting": "Deleting OIDC provider...",
+      "success": "OIDC provider '{{displayName}}' {{action}} successfully!",
+      "deleteSuccess": "OIDC provider '{{providerName}}' deleted successfully!"
+    },
+    "actions": {
+      "updated": "updated",
+      "added": "added",
+      "updating": "updating",
+      "adding": "adding"
+    }
+  },
+  "configField": {
+    "commaSeparated": "Comma-separated values"
+  },
+  "yes": "Yes",
+  "no": "No",
+  "loading": "Loading...",
+  "deleteKeyword": "delete",
+  "confirmation": {
+    "title": "Confirm Action",
+    "message": "Please type \"{{keyword}}\" to confirm.",
+    "placeholder": "Type '{{keyword}}' to confirm",
+    "typeDeleteToConfirm": "Please type 'delete' to confirm."
+  },
+  "provider": {
+    "deleted": "Provider deleted successfully!",
+    "deleteError": "Error deleting provider. Please try again.",
+    "created": "Provider created successfully!",
+    "createError": "An error occurred while creating the provider.",
+    "exists": "A provider with this name already exists. Please choose a different name.",
+    "updated": "Provider updated successfully!",
+    "updateError": "Could not update provider",
+    "notFound": "Provider Not Found",
+    "edit": "Edit Provider",
+    "details": "Provider Details",
+    "name": "Provider Name",
+    "description": "Description",
+    "architectures": "Architectures for Provider: {{providerName}}",
+    "add": "Add Provider"
+  },
+  "version": {
+    "deleted": "Version deleted successfully!",
+    "deleteError": "Error deleting version. Please try again.",
+    "notFound": "Version Not Found",
+    "exists": "A version with this number already exists. Please choose a different version number.",
+    "updated": "Version updated successfully!",
+    "updateError": "An error occurred while updating the version.",
+    "added": "Version added successfully!",
+    "addError": "An error occurred while adding the version.",
+    "edit": "Edit Version",
+    "details": "Version Details",
+    "number": "Version Number",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "providers": "Providers for Version: {{version}}",
+    "add": "Add Version"
+  },
+  "architecture": {
+    "deleted": "Architecture deleted successfully!",
+    "deleteError": "Could not delete architecture",
+    "notFound": "Architecture not found",
+    "name": "Architecture Name",
+    "add": "Add Architecture",
+    "selectFile": "Please select a file before adding an architecture.",
+    "enterName": "Please enter an architecture name.",
+    "uploadStarting": "Starting file upload...",
+    "uploadAssembling": "File chunks uploaded successfully. Now assembling into final box file.\nThis process may take several minutes depending on file size.\nPlease keep this page open until assembly is complete.",
+    "assembling": "Assembling file chunks into final box file, this may take several minutes...",
+    "uploadComplete": "File upload and assembly completed successfully!",
+    "defaultBox": "Default Box",
+    "chooseFile": "Choose Box File",
+    "selected": "Selected: {{name}} ({{size}})",
+    "fileSize": "File Size",
+    "uploaded": "Uploaded",
+    "remaining": "Remaining",
+    "checksumType": "Checksum Type",
+    "checksum": "Checksum",
+    "clickToCopy": "Click to copy checksum",
+    "checksumCopied": "Checksum copied to clipboard!"
+  },
+  "box": {
+    "notFound": "Box Not Found",
+    "exists": "A box with this name already exists. Please choose a different name.",
+    "updated": "Box updated successfully!",
+    "updateError": "An error occurred while updating the box.",
+    "deleted": "Box deleted successfully",
+    "deleteError": "An error occurred while deleting the box.",
+    "created": "Box created successfully.",
+    "createError": "An error occurred while creating the box.",
+    "details": "Box Details",
+    "name": "Box Name",
+    "status": "Status",
+    "visibility": "Visibility",
+    "description": "Description",
+    "optional": "(Optional)",
+    "shortDescription": "Short description is used to describe the box.",
+    "visibilityHint": "Making a box private prevents users from accessing it unless given permission.",
+    "cicd": {
+      "title": "CI/CD Integration",
+      "connect": "Connect your box to GitHub Actions for automated build status badges.",
+      "buildStatus": "Build Status",
+      "repository": "Repository",
+      "repositoryPlaceholder": "owner/repo-name",
+      "repositoryHint": "Format: owner/repo-name (e.g., myorg/my-vagrant-box)",
+      "workflow": "Workflow File",
+      "workflowPlaceholder": "build.yml",
+      "workflowHint": "Name of the GitHub Actions workflow file (e.g., build.yml, ci.yaml)",
+      "pipeline": "CI/CD Pipeline",
+      "pipelineUrl": "CI/CD URL",
+      "pipelinePlaceholder": "https://github.com/owner/repo/actions",
+      "pipelineHint": "Direct link to your CI/CD pipeline or GitHub Actions page",
+      "viewPipeline": "View Pipeline"
+    },
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "versions": "Versions for Box: {{name}}",
+    "create": "Create New Box",
+    "createButton": "Create Box",
+    "removeAll": "Remove All",
+    "removeAllSuccess": "All boxes removed successfully.",
+    "removeAllError": "Error removing all boxes.",
+    "filter": "Filter",
+    "templateList": "Template List",
+    "noBoxes": "No boxes found",
+    "organization": {
+      "errors": {
+        "retrievePublic": "Error retrieving public boxes.",
+        "retrieveOrg": "Error retrieving organization boxes.",
+        "removeAll": "Error removing all boxes.",
+        "filter": "Error filtering boxes.",
+        "boxCreate": "An error occurred while creating the box."
+      },
+      "messages": {
+        "removeAllSuccess": "All boxes removed successfully.",
+        "boxCreated": "Box created successfully."
+      },
+      "buttons": {
+        "createBox": "Create Box",
+        "createNewBox": "Create New Box",
+        "removeAll": "Remove All"
+      },
+      "headers": {
+        "createNewBox": "Create New Box",
+        "templateList": "Template List"
+      },
+      "table": {
+        "box": "Box",
+        "status": "Status",
+        "public": "Public",
+        "created": "Created",
+        "downloads": "Downloads",
+        "versions": "# Versions",
+        "providers": "Providers",
+        "architectures": "Architectures",
+        "noBoxes": "No boxes found"
+      },
+      "status": {
+        "published": "Published",
+        "pending": "Pending",
+        "completed": "Completed"
+      },
+      "visibility": {
+        "public": "Public",
+        "private": "Private"
+      }
+    }
+  },
+  "discovery": {
+    "title": "Discover Organizations",
+    "description": "Browse public organizations and request to join them.",
+    "searchPlaceholder": "Search organizations...",
+    "noOrgsFoundTitle": "No Organizations Found",
+    "noDescription": "No description available",
+    "noOrgsFoundSearch": "No organizations match your search criteria.",
+    "noOrgsFoundPublic": "There are no public organizations available for discovery at this time.",
+    "members": "members",
+    "public": "public",
+    "private": "private",
+    "buttons": {
+      "inviteOnly": "Invite Only",
+      "requestToJoin": "Request to Join",
+      "private": "Private",
+      "sendRequest": "Send Request"
+    },
+    "modal": {
+      "title": "Request to Join {{orgName}}",
+      "description": "Please explain why you would like to join <strong>{{orgName}}</strong>:",
+      "placeholder": "Enter your reason for wanting to join this organization..."
+    },
+    "errors": {
+      "load": "Error loading organizations",
+      "emptyMessage": "Please enter a message explaining why you want to join",
+      "requestFailed": "Failed to request to join {{orgName}}"
+    },
+    "messages": {
+      "requestSent": "Join request sent to {{orgName}} successfully!"
+    }
+  },
+  "User Authentication": "User Authentication",
+  "Box Management": "Box Management",
+  "Version Control": "Version Control",
+  "Organization Support": "Organization Support",
+  "API Documentation": "API Documentation",
+  "Secure Storage": "Secure Storage",
+  "Backend": "Backend",
+  "Frontend": "Frontend"
 }

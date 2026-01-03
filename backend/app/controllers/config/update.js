@@ -1,5 +1,6 @@
 // update.js
 const { getConfigPath } = require('../../utils/config-loader');
+const { log } = require('../../utils/Logger');
 const { writeConfig } = require('./helpers');
 
 /**
@@ -66,6 +67,7 @@ exports.updateConfig = async (req, res) => {
     await writeConfig(filePath, req.body);
     return res.send({ message: req.__('config.updated') });
   } catch (err) {
+    log.error.error('Error updating config:', err);
     return res.status(500).send({ message: req.__('config.updateError') });
   }
 };

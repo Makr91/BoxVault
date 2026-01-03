@@ -16,6 +16,16 @@ import UserService from "../services/user.service";
 import { log } from "../utils/Logger";
 import BoxVaultVersion from "../version.json";
 
+const toCamelCase = (str) => {
+  if (!str) {
+    return "";
+  }
+  return str
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) =>
+      index === 0 ? word.toLowerCase() : word.toUpperCase()
+    )
+    .replace(/\s+/g, "");
+};
 const About = () => {
   const { t } = useTranslation();
   const [projectData, setProjectData] = useState({
@@ -30,8 +40,8 @@ const About = () => {
   const [favoriteMessage, setFavoriteMessage] = useState("");
 
   useEffect(() => {
-    document.title = "About";
-  }, []);
+    document.title = t("about.pageTitle");
+  }, [t]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -101,9 +111,11 @@ const About = () => {
   return (
     <div className="container">
       <div className="text-center mb-5">
-        <h1 className="display-4 fw-bold">{projectData.title || "BoxVault"}</h1>
+        <h1 className="display-4 fw-bold">
+          {projectData.title || t("about.fallbackTitle")}
+        </h1>
         <p className="lead text-muted">
-          {projectData.description || "Self-hosted Vagrant Box Repository"}
+          {projectData.description || t("about.fallbackDescription")}
         </p>
         <span className="badge bg-primary fs-5">
           v{BoxVaultVersion.version}
@@ -117,8 +129,8 @@ const About = () => {
             >
               <FaStar className="me-2" />
               {isBoxVaultFavorited
-                ? t("about.removeFromFavorites", { ns: "common" })
-                : t("about.addToFavorites", { ns: "common" })}
+                ? t("about.removeFromFavorites")
+                : t("about.addToFavorites")}
             </button>
             {favoriteMessage && (
               <div className="alert alert-info mt-2">{favoriteMessage}</div>
@@ -133,13 +145,12 @@ const About = () => {
           <div className="card h-100 shadow-sm">
             <div className="card-header bg-primary text-white">
               <h5 className="mb-0">
-                <FaBook className="me-2" />
-                Documentation
+                <FaBook className="me-2" /> {t("about.documentation.title")}
               </h5>
             </div>
             <div className="card-body">
               <p className="card-text">
-                Learn how to use BoxVault and integrate it with your workflow.
+                {t("about.documentation.description")}
               </p>
               <ul className="list-unstyled">
                 <li className="mb-2">
@@ -150,7 +161,7 @@ const About = () => {
                     className="text-decoration-none"
                   >
                     <FaBook className="me-2" />
-                    Full Documentation
+                    {t("about.documentation.fullDocs")}
                   </a>
                 </li>
                 <li className="mb-2">
@@ -161,7 +172,7 @@ const About = () => {
                     className="text-decoration-none"
                   >
                     <FaCode className="me-2" />
-                    API Explorer (Swagger UI)
+                    {t("about.documentation.apiExplorer")}
                   </a>
                 </li>
                 <li className="mb-2">
@@ -172,7 +183,7 @@ const About = () => {
                     className="text-decoration-none"
                   >
                     <FaServer className="me-2" />
-                    Getting Started Guide
+                    {t("about.documentation.gettingStarted")}
                   </a>
                 </li>
               </ul>
@@ -186,17 +197,20 @@ const About = () => {
             <div className="card-header bg-success text-white">
               <h5 className="mb-0">
                 <FaRocket className="me-2" />
-                {t("about.keyFeatures", { ns: "common" })}
+                {t("about.keyFeatures")}
               </h5>
             </div>
             <div className="card-body">
               <ul className="list-unstyled">
-                {projectData.features.map((feature) => (
-                  <li key={feature} className="mb-2">
-                    <FaRocket className="me-2 text-success" />
-                    {feature}
-                  </li>
-                ))}
+                {projectData.features.map((feature) => {
+                  const featureKey = `about.features.${toCamelCase(feature)}`;
+                  return (
+                    <li key={feature} className="mb-2">
+                      <FaRocket className="me-2 text-success" />
+                      {t(featureKey, { defaultValue: feature })}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -207,14 +221,11 @@ const About = () => {
           <div className="card h-100 shadow-sm">
             <div className="card-header bg-danger text-white">
               <h5 className="mb-0">
-                <FaHeart className="me-2" />
-                {t("about.supportAndFollow", { ns: "common" })}
+                <FaHeart className="me-2" /> {t("about.support.title")}
               </h5>
             </div>
             <div className="card-body">
-              <p className="card-text">
-                Support the project and stay connected with the community.
-              </p>
+              <p className="card-text">{t("about.support.description")}</p>
               <ul className="list-unstyled">
                 <li className="mb-2">
                   <a
@@ -224,7 +235,7 @@ const About = () => {
                     className="text-decoration-none"
                   >
                     <FaHeart className="me-2 text-danger" />
-                    {t("about.supportOnPatreon", { ns: "common" })}
+                    {t("about.support.patreon")}
                   </a>
                 </li>
                 <li className="mb-2">
@@ -235,7 +246,7 @@ const About = () => {
                     className="text-decoration-none"
                   >
                     <FaGithub className="me-2" />
-                    {t("about.githubProfile", { ns: "common" })}
+                    {t("about.support.githubProfile")}
                   </a>
                 </li>
                 <li className="mb-2">
@@ -246,7 +257,7 @@ const About = () => {
                     className="text-decoration-none"
                   >
                     <FaCode className="me-2" />
-                    {t("about.projectRepository", { ns: "common" })}
+                    {t("about.support.repository")}
                   </a>
                 </li>
               </ul>
@@ -260,17 +271,17 @@ const About = () => {
             <div className="card-header bg-info text-white">
               <h5 className="mb-0">
                 <FaServer className="me-2" />
-                Components
+                {t("about.components.title")}
               </h5>
             </div>
             <div className="card-body">
               {projectData.components.map((component) => (
                 <div key={component.title} className="mb-3">
-                  <h6 className="fw-bold">{component.title}</h6>
+                  <h6 className="fw-bold">{t(component.title)}</h6>
                   <ul className="list-unstyled small">
                     {component.details.map((detail) => (
                       <li key={detail} className="mb-1">
-                        • {detail}
+                        • {t(detail)}
                       </li>
                     ))}
                   </ul>
@@ -286,7 +297,9 @@ const About = () => {
           <div className="col-12">
             <div className="card shadow-sm">
               <div className="card-body text-center">
-                <p className="mb-0 lead">{projectData.goal}</p>
+                <p className="mb-0 lead">
+                  {projectData.goal || t("about.fallbackGoal")}
+                </p>
               </div>
             </div>
           </div>

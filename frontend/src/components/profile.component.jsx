@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -12,9 +13,10 @@ import { log } from "../utils/Logger";
 import ConfirmationModal from "./confirmation.component";
 
 const Profile = ({ activeOrganization }) => {
+  const { t } = useTranslation();
   useEffect(() => {
-    document.title = "Profile";
-  }, []);
+    document.title = t("profile.pageTitle");
+  }, [t]);
 
   const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
   const [gravatarProfile, setGravatarProfile] = useState({});
@@ -45,7 +47,7 @@ const Profile = ({ activeOrganization }) => {
   const handleLeaveOrganization = async (orgName) => {
     try {
       await UserService.leaveOrganization(orgName);
-      setMessage(`Successfully left organization ${orgName}`);
+      setMessage(t("profile.messages.leftOrganization", { orgName }));
 
       // Refresh organizations list
       const response = await UserService.getUserOrganizations();
@@ -55,14 +57,16 @@ const Profile = ({ activeOrganization }) => {
         orgName,
         error: error.message,
       });
-      setMessage(`Error leaving organization: ${error.message}`);
+      setMessage(
+        t("profile.errors.leaveOrganization", { error: error.message })
+      );
     }
   };
 
   const handleCancelJoinRequest = async (requestId) => {
     try {
       await RequestService.cancelJoinRequest(requestId);
-      setMessage("Join request cancelled successfully");
+      setMessage(t("profile.messages.requestCancelled"));
 
       // Refresh join requests list
       const response = await RequestService.getUserJoinRequests();
@@ -72,7 +76,9 @@ const Profile = ({ activeOrganization }) => {
         requestId,
         error: error.message,
       });
-      setMessage(`Error cancelling request: ${error.message}`);
+      setMessage(
+        t("profile.messages.cancelRequestError", { error: error.message })
+      );
     }
   };
 
@@ -94,14 +100,14 @@ const Profile = ({ activeOrganization }) => {
   const validatePasswordForm = () => {
     const errors = {};
     if (!newPassword) {
-      errors.newPassword = "This field is required!";
+      errors.newPassword = t("errors.fieldRequired", { ns: "auth" });
     } else if (newPassword.length < 6 || newPassword.length > 40) {
-      errors.newPassword = "The password must be between 6 and 40 characters.";
+      errors.newPassword = t("errors.passwordLength", { ns: "auth" });
     }
     if (!confirmPassword) {
-      errors.confirmPassword = "This field is required!";
+      errors.confirmPassword = t("errors.fieldRequired", { ns: "auth" });
     } else if (confirmPassword !== newPassword) {
-      errors.confirmPassword = "Passwords do not match!";
+      errors.confirmPassword = t("profile.errors.passwordsDoNotMatch");
     }
     return errors;
   };
@@ -109,9 +115,9 @@ const Profile = ({ activeOrganization }) => {
   const validateEmailForm = () => {
     const errors = {};
     if (!newEmail) {
-      errors.newEmail = "This field is required!";
+      errors.newEmail = t("errors.fieldRequired", { ns: "auth" });
     } else if (!isValidEmail(newEmail)) {
-      errors.newEmail = "This is not a valid email.";
+      errors.newEmail = t("errors.invalidEmail", { ns: "auth" });
     }
     return errors;
   };
@@ -155,7 +161,7 @@ const Profile = ({ activeOrganization }) => {
         userId: currentUser.id,
         error: error.message,
       });
-      setMessage("Failed to delete account. Please try again.");
+      setMessage(t("profile.errors.deleteAccountFailed"));
     }
   };
 
@@ -183,14 +189,14 @@ const Profile = ({ activeOrganization }) => {
         .catch((error) => {
           setVerificationMessage(
             error.response?.data?.message ||
-              "Failed to verify email. Please try again or contact support."
+              t("profile.errors.verificationFailed")
           );
         })
         .finally(() => {
           navigate("/profile", { replace: true });
         });
     }
-  }, [location.search, navigate, refreshUserData]);
+  }, [location.search, navigate, refreshUserData, t]);
 
   useEffect(() => {
     checkEmailVerification();
@@ -343,7 +349,7 @@ const Profile = ({ activeOrganization }) => {
       );
 
       if (!activeOrg) {
-        setMessage("Error: Could not find active organization");
+        setMessage(t("profile.errors.activeOrgNotFound"));
         return;
       }
 
@@ -355,7 +361,7 @@ const Profile = ({ activeOrganization }) => {
       await loadServiceAccounts(controller.signal);
       setNewServiceAccountDescription("");
       setNewServiceAccountExpiration(30);
-      setMessage("Service account created successfully!");
+      setMessage(t("profile.messages.serviceAccountCreated"));
     } catch (error) {
       if (
         !error.message?.includes("aborted") &&
@@ -365,7 +371,9 @@ const Profile = ({ activeOrganization }) => {
           error: error.message,
         });
         setMessage(
-          `Error creating service account: ${error.response?.data?.message || error.message}`
+          t("profile.errors.createServiceAccountFailed", {
+            error: error.response?.data?.message || error.message,
+          })
         );
       }
     }
@@ -403,7 +411,7 @@ const Profile = ({ activeOrganization }) => {
     } catch (error) {
       if (!error.name?.includes("Cancel")) {
         setVerificationMessage(
-          `Error sending verification email: ${error.message}`
+          t("profile.errors.resendVerificationFailed", { error: error.message })
         );
       }
     }
@@ -423,10 +431,12 @@ const Profile = ({ activeOrganization }) => {
           newPassword,
           controller.signal
         );
-        setMessage("Password changed successfully!");
+        setMessage(t("profile.messages.passwordChanged"));
       } catch (error) {
         if (!error.name?.includes("Cancel")) {
-          setMessage(`Error changing password: ${error.message}`);
+          setMessage(
+            t("profile.errors.changePasswordFailed", { error: error.message })
+          );
         }
       }
     }
@@ -446,11 +456,13 @@ const Profile = ({ activeOrganization }) => {
           newEmail,
           controller.signal
         );
-        setEmailMessage("Email changed successfully!");
+        setEmailMessage(t("profile.messages.emailChanged"));
         await refreshUserData();
       } catch (error) {
         if (!error.name?.includes("Cancel")) {
-          setEmailMessage(`Error changing email: ${error.message}`);
+          setEmailMessage(
+            t("profile.errors.changeEmailFailed", { error: error.message })
+          );
         }
       }
     }
@@ -460,35 +472,41 @@ const Profile = ({ activeOrganization }) => {
   const handlePromoteToModerator = () => {
     UserService.promoteToModerator(currentUser.id)
       .then(() => {
-        setMessage("Promoted to moderator successfully!");
+        setMessage(t("profile.messages.promotedToModerator"));
         refreshUserData();
       })
       .catch((error) =>
-        setMessage(`Error promoting to moderator: ${error.message}`)
+        setMessage(
+          t("profile.errors.promoteToModeratorFailed", { error: error.message })
+        )
       );
   };
 
   const renderProfileTab = () => (
     <div className="tab-pane fade show active">
       <p>
-        <strong>Full Name:</strong> {gravatarProfile.first_name}{" "}
-        {gravatarProfile.last_name}
+        <strong>{t("profile.fields.fullName")}:</strong>{" "}
+        {gravatarProfile.first_name} {gravatarProfile.last_name}
       </p>
       <p>
-        <strong>Location:</strong> {gravatarProfile.location || "No Location"}
+        <strong>{t("profile.fields.location")}:</strong>{" "}
+        {gravatarProfile.location || t("profile.noLocation")}
       </p>
       <p>
-        <strong>Email:</strong> {currentUser.email}
+        <strong>{t("profile.fields.email")}:</strong> {currentUser.email}
       </p>
       <p>
-        <strong>Organization:</strong> {currentUser.organization}
+        <strong>{t("profile.fields.organization")}:</strong>{" "}
+        {currentUser.organization}
       </p>
       <p>
-        <strong>Roles:</strong>{" "}
-        {currentUser.roles ? currentUser.roles.join(", ") : "No roles assigned"}
+        <strong>{t("profile.fields.roles")}:</strong>{" "}
+        {currentUser.roles
+          ? currentUser.roles.join(", ")
+          : t("profile.noRoles")}
       </p>
       <p>
-        <strong>Profile URL:</strong>{" "}
+        <strong>{t("profile.fields.profileUrl")}:</strong>{" "}
         <a
           href={gravatarProfile.profile_url}
           target="_blank"
@@ -498,21 +516,22 @@ const Profile = ({ activeOrganization }) => {
         </a>
       </p>
       <p>
-        <strong>Verified Accounts:</strong>{" "}
+        <strong>{t("profile.fields.verifiedAccounts")}:</strong>{" "}
         {gravatarProfile.number_verified_accounts}
       </p>
       <p>
-        <strong>Registration Date:</strong>{" "}
+        <strong>{t("profile.fields.registrationDate")}:</strong>{" "}
         {new Date(gravatarProfile.registration_date).toLocaleDateString()}
       </p>
       <p>
-        <strong>Email Hash:</strong> {currentUser.emailHash}
+        <strong>{t("profile.fields.emailHash")}:</strong>{" "}
+        {currentUser.emailHash}
       </p>
       <p>
-        <strong>User ID:</strong> {currentUser.id}
+        <strong>{t("profile.fields.userId")}:</strong> {currentUser.id}
       </p>
       <p>
-        <strong>Access Token:</strong>{" "}
+        <strong>{t("profile.fields.accessToken")}:</strong>{" "}
         {currentUser.accessToken.substring(0, 20)}...
       </p>
     </div>
@@ -521,12 +540,14 @@ const Profile = ({ activeOrganization }) => {
   const renderSecurityTab = () => (
     <div className="tab-pane fade show active">
       <form onSubmit={handlePasswordChange}>
-        <h5>Change Password</h5>
+        <h5>{t("profile.security.changePassword.title")}</h5>
         <div className="form-group col-md-3 mb-3">
           <input
             type="password"
             className="form-control"
-            placeholder="New Password"
+            placeholder={t(
+              "profile.security.changePassword.newPasswordPlaceholder"
+            )}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
@@ -540,7 +561,9 @@ const Profile = ({ activeOrganization }) => {
           <input
             type="password"
             className="form-control"
-            placeholder="Confirm Password"
+            placeholder={t(
+              "profile.security.changePassword.confirmPasswordPlaceholder"
+            )}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
@@ -550,16 +573,18 @@ const Profile = ({ activeOrganization }) => {
             </div>
           )}
         </div>
-        <button className="btn btn-primary mb-3">Change Password</button>
+        <button className="btn btn-primary mb-3">
+          {t("profile.security.changePassword.button")}
+        </button>
         {message && <p className="mt-3">{message}</p>}
       </form>
       <form onSubmit={handleEmailChange} noValidate>
-        <h5>Change Email</h5>
+        <h5>{t("profile.security.changeEmail.title")}</h5>
         <div className="form-group col-md-3 mb-3">
           <input
             type="email"
             className="form-control"
-            placeholder="New Email"
+            placeholder={t("profile.security.changeEmail.newEmailPlaceholder")}
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
           />
@@ -567,7 +592,9 @@ const Profile = ({ activeOrganization }) => {
             <div className="alert alert-danger">{emailErrors.newEmail}</div>
           )}
         </div>
-        <button className="btn btn-primary mb-3">Change Email</button>
+        <button className="btn btn-primary mb-3">
+          {t("profile.security.changeEmail.button")}
+        </button>
         {emailMessage && <p className="mt-3">{emailMessage}</p>}
       </form>
       {currentUser.roles.includes("ROLE_USER") && isOnlyUserInOrg && (
@@ -576,15 +603,15 @@ const Profile = ({ activeOrganization }) => {
             className="btn btn-primary"
             onClick={handlePromoteToModerator}
           >
-            Promote to Moderator
+            {t("profile.security.promoteToModerator")}
           </button>
         </div>
       )}
       <div className="mt-3">
-        <h4>Delete Account</h4>
-        <p>Warning: This action cannot be undone.</p>
+        <h4>{t("profile.security.deleteAccount.title")}</h4>
+        <p>{t("profile.security.deleteAccount.warning")}</p>
         <button className="btn btn-danger" onClick={openDeleteModal}>
-          Delete My Account
+          {t("profile.security.deleteAccount.button")}
         </button>
       </div>
     </div>
@@ -592,7 +619,7 @@ const Profile = ({ activeOrganization }) => {
 
   const renderOrganizationsTab = () => (
     <div className="tab-pane fade show active">
-      <h3>My Organizations</h3>
+      <h3>{t("profile.organizations.title")}</h3>
 
       {organizationsLoading ? (
         <div className="text-center">
@@ -604,12 +631,12 @@ const Profile = ({ activeOrganization }) => {
         <>
           <div className="card mb-4">
             <div className="card-header">
-              <h5>Organizations You Belong To</h5>
+              <h5>{t("profile.organizations.belongToTitle")}</h5>
             </div>
             <div className="card-body">
               {userOrganizations.length === 0 ? (
                 <div className="alert alert-info">
-                  You don&apos;t belong to any organizations yet.
+                  {t("profile.organizations.noOrgs")}
                 </div>
               ) : (
                 <ul className="list-group">
@@ -622,7 +649,7 @@ const Profile = ({ activeOrganization }) => {
                               <strong>{org.name}</strong>
                               {org.isPrimary && (
                                 <span className="badge bg-primary ms-2">
-                                  Primary
+                                  {t("profile.organizations.primary")}
                                 </span>
                               )}
                               <br />
@@ -633,7 +660,7 @@ const Profile = ({ activeOrganization }) => {
                               )}
                               <br />
                               <small className="text-muted">
-                                Joined:{" "}
+                                {t("profile.organizations.joined")}:{" "}
                                 {new Date(org.joinedAt).toLocaleDateString()}
                               </small>
                             </div>
@@ -643,14 +670,14 @@ const Profile = ({ activeOrganization }) => {
                           <span
                             className={`badge ${getRoleBadgeClass(org.role)} me-3`}
                           >
-                            {org.role}
+                            {t(`roles.${org.role}`)}
                           </span>
                           {userOrganizations.length > 1 && (
                             <button
                               className="btn btn-outline-danger btn-sm"
                               onClick={() => handleLeaveOrganization(org.name)}
                             >
-                              Leave
+                              {t("buttons.leave")}
                             </button>
                           )}
                         </div>
@@ -665,7 +692,7 @@ const Profile = ({ activeOrganization }) => {
           {joinRequests.length > 0 && (
             <div className="card">
               <div className="card-header">
-                <h5>Pending Join Requests</h5>
+                <h5>{t("profile.organizations.pendingRequestsTitle")}</h5>
               </div>
               <div className="card-body">
                 <ul className="list-group">
@@ -682,17 +709,19 @@ const Profile = ({ activeOrganization }) => {
                           )}
                           <br />
                           <small className="text-muted">
-                            Requested:{" "}
+                            {t("profile.organizations.requested")}:{" "}
                             {new Date(request.created_at).toLocaleDateString()}
                           </small>
                         </div>
                         <div>
-                          <span className="badge bg-warning me-3">Pending</span>
+                          <span className="badge bg-warning me-3">
+                            {t("status.pending")}
+                          </span>
                           <button
                             className="btn btn-outline-secondary btn-sm"
                             onClick={() => handleCancelJoinRequest(request.id)}
                           >
-                            Cancel
+                            {t("buttons.cancel")}
                           </button>
                         </div>
                       </div>
@@ -709,13 +738,13 @@ const Profile = ({ activeOrganization }) => {
 
   const renderServiceAccountsTab = () => (
     <div className="tab-pane fade show active">
-      <h3>Service Accounts</h3>
+      <h3>{t("profile.serviceAccounts.title")}</h3>
       <form onSubmit={handleCreateServiceAccount}>
         <div className="form-group col-md-3 mb-3">
           <input
             type="text"
             className="form-control"
-            placeholder="Description"
+            placeholder={t("profile.serviceAccounts.descriptionPlaceholder")}
             value={newServiceAccountDescription}
             onChange={(e) => setNewServiceAccountDescription(e.target.value)}
             required
@@ -729,14 +758,22 @@ const Profile = ({ activeOrganization }) => {
               setNewServiceAccountExpiration(Number(e.target.value))
             }
           >
-            <option value={30}>30 days</option>
-            <option value={60}>60 days</option>
-            <option value={90}>90 days</option>
-            <option value={365}>365 days</option>
+            <option value={30}>
+              {t("profile.serviceAccounts.expiration.30")}
+            </option>
+            <option value={60}>
+              {t("profile.serviceAccounts.expiration.60")}
+            </option>
+            <option value={90}>
+              {t("profile.serviceAccounts.expiration.90")}
+            </option>
+            <option value={365}>
+              {t("profile.serviceAccounts.expiration.365")}
+            </option>
           </select>
         </div>
         <button className="btn btn-primary mb-3" type="submit">
-          Create Service Account
+          {t("profile.serviceAccounts.createButton")}
         </button>
       </form>
       <ul className="list-group">
@@ -747,11 +784,13 @@ const Profile = ({ activeOrganization }) => {
                 <strong>{account.username}</strong> - {account.description}
                 <br />
                 <small>
-                  Organization: {account.organization?.name || "Unknown"}
+                  {t("profile.serviceAccounts.organization")}:{" "}
+                  {account.organization?.name || t("unknown")}
                 </small>
                 <br />
                 <small>
-                  Expires: {new Date(account.expiresAt).toLocaleDateString()}
+                  {t("profile.serviceAccounts.expires")}:{" "}
+                  {new Date(account.expiresAt).toLocaleDateString()}
                 </small>
               </div>
               <div>
@@ -770,13 +809,14 @@ const Profile = ({ activeOrganization }) => {
                   className="btn btn-danger btn-sm"
                   onClick={() => handleDeleteServiceAccount(account.id)}
                 >
-                  Delete
+                  {t("buttons.delete")}
                 </button>
               </div>
             </div>
             {showPasswords[account.id] && (
               <div className="mt-2">
-                <strong>Token:</strong> {account.token}
+                <strong>{t("profile.serviceAccounts.token")}:</strong>{" "}
+                {account.token}
               </div>
             )}
           </li>
@@ -801,7 +841,7 @@ const Profile = ({ activeOrganization }) => {
               {gravatarProfile.display_name || currentUser.username}
             </h3>
             <p className="text-muted">
-              {gravatarProfile.job_title || "No Job Title"}
+              {gravatarProfile.job_title || t("profile.noJobTitle")}
             </p>
           </div>
           <div className="card-body">
@@ -812,12 +852,12 @@ const Profile = ({ activeOrganization }) => {
             )}
             {!currentUser.verified && (
               <div className="alert alert-warning" role="alert">
-                Your email is not verified.
+                {t("profile.messages.emailNotVerified")}
                 <button
                   className="btn btn-link"
                   onClick={handleResendVerificationMail}
                 >
-                  Resend verification email
+                  {t("profile.buttons.resendVerification")}
                 </button>
               </div>
             )}
@@ -827,7 +867,7 @@ const Profile = ({ activeOrganization }) => {
                   className={`nav-link ${activeTab === "profile" ? "active" : ""}`}
                   onClick={() => handleTabChange("profile")}
                 >
-                  Profile
+                  {t("profile.tabs.profile")}
                 </button>
               </li>
               <li className="nav-item">
@@ -835,7 +875,7 @@ const Profile = ({ activeOrganization }) => {
                   className={`nav-link ${activeTab === "organizations" ? "active" : ""}`}
                   onClick={() => handleTabChange("organizations")}
                 >
-                  Organizations
+                  {t("profile.tabs.organizations")}
                 </button>
               </li>
               <li className="nav-item">
@@ -843,7 +883,7 @@ const Profile = ({ activeOrganization }) => {
                   className={`nav-link ${activeTab === "security" ? "active" : ""}`}
                   onClick={() => handleTabChange("security")}
                 >
-                  Security
+                  {t("profile.tabs.security")}
                 </button>
               </li>
               <li className="nav-item">
@@ -851,7 +891,7 @@ const Profile = ({ activeOrganization }) => {
                   className={`nav-link ${activeTab === "serviceAccounts" ? "active" : ""}`}
                   onClick={() => handleTabChange("serviceAccounts")}
                 >
-                  Service Accounts
+                  {t("profile.tabs.serviceAccounts")}
                 </button>
               </li>
             </ul>
@@ -868,8 +908,8 @@ const Profile = ({ activeOrganization }) => {
         show={showDeleteModal}
         handleClose={closeDeleteModal}
         handleConfirm={handleDeleteAccount}
-        title="Delete Account"
-        message="Are you sure you want to delete your account? This action cannot be undone."
+        title={t("profile.deleteModal.title")}
+        message={t("profile.deleteModal.message")}
       />
     </div>
   );

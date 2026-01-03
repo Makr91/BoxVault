@@ -1,0 +1,748 @@
+{
+  "navigation": {
+    "dashboard": "Panel de Control",
+    "apiKeys": "Claves API",
+    "apiDocumentation": "Documentación API",
+    "logout": "Cerrar Sesión",
+    "logoutLocal": "Cerrar Sesión (Local)"
+  },
+  "language": {
+    "english": "Inglés",
+    "spanish": "Español",
+    "selectLanguage": "Seleccionar Idioma",
+    "changeLanguage": "Cambiar Idioma",
+    "flagIcon": {
+      "en": "🇺🇸",
+      "es": "🇪🇸"
+    }
+  },
+  "user": {
+    "unknownUser": "Usuario Desconocido",
+    "basicAuthUser": "Usuario Autenticación Básica",
+    "oidcUser": "Usuario OIDC",
+    "user": "Usuario",
+    "apiKey": "Clave API: {{keyName}}"
+  },
+  "buttons": {
+    "create": "Crear",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "suspend": "Suspender",
+    "delete": "Eliminar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "retry": "Reintentar",
+    "clear": "Limpiar",
+    "copy": "Copiar",
+    "move": "Mover",
+    "rename": "Renombrar",
+    "promote": "Promover",
+    "demote": "Degradar",
+    "resume": "Reanudar",
+    "download": "Descargar",
+    "search": "Buscar",
+    "back": "Atrás",
+    "removeFromOrg": "Eliminar de Org",
+    "deleteUser": "Eliminar Usuario",
+    "upload": "Subir"
+  },
+  "configManager": {
+    "fixErrors": "Por favor corrige los errores de validación antes de enviar.",
+    "updateSuccess": "Configuración actualizada exitosamente.",
+    "updateError": "Error al actualizar la configuración.",
+    "restartInitiated": "Reinicio del servidor iniciado",
+    "restartFailed": "Error al reiniciar el servidor",
+    "settingsCount": "{{count}} configuración",
+    "settingsCount_plural": "{{count}} configuraciones",
+    "tabs": {
+      "app": "Config App",
+      "auth": "Config Auth",
+      "db": "Config BD",
+      "mail": "Config Correo"
+    },
+    "buttons": {
+      "update": "Actualizar Configuración",
+      "restart": "Reiniciar Servidor"
+    },
+    "sections": {
+      "authentication": "Autenticación",
+      "application": "Aplicación",
+      "database": "Base de Datos",
+      "mail": "Correo",
+      "general": "General"
+    },
+    "subsections": {
+      "generalSettings": "General",
+      "jwtSettings": "Configuración JWT",
+      "localAuthentication": "Autenticación Local",
+      "externalProviders": "Proveedores Externos",
+      "oidcProviders": "Proveedores OIDC",
+      "boxvaultSettings": "Configuración BoxVault",
+      "gravatarSettings": "Configuración Gravatar",
+      "sslSettings": "Configuración SSL",
+      "databaseConnection": "Conexión Base de Datos",
+      "connectionPool": "Pool de Conexiones",
+      "smtpConnection": "Conexión SMTP",
+      "smtpSettings": "Configuración SMTP",
+      "smtpAuthentication": "Autenticación SMTP",
+      "loggingSettings": "Configuración de Registro",
+      "loggingCategories": "Categorías de Registro",
+      "rateLimiting": "Limitación de Velocidad",
+      "fileOperations": "Operaciones de Archivo",
+      "ticketSystem": "Sistema de Tickets",
+      "frontendLogging": "Registro Frontend",
+      "frontendLoggingCategories": "Categorías de Registro Frontend",
+      "oidcSettings": "Configuración OIDC"
+    }
+  },
+  "status": {
+    "loading": "Cargando...",
+    "success": "Éxito",
+    "error": "Error",
+    "pending": "Pendiente",
+    "completed": "Completado",
+    "failed": "Fallido"
+  },
+  "actions": {
+    "copyToClipboard": "Copiar al portapapeles",
+    "copyFullChecksum": "Copiar checksum completo",
+    "backToFiles": "Volver a Archivos",
+    "clearSelection": "Limpiar selección",
+    "selectAll": "Seleccionar Todo",
+    "retryUpload": "Reintentar subida",
+    "search": "Buscar",
+    "back": "Atrás"
+  },
+  "messages": {
+    "noResultsFound": "No se encontraron resultados",
+    "searchFailed": "Búsqueda fallida",
+    "uploadFailed": "Carga fallida",
+    "deleteFailed": "Eliminación fallida",
+    "operationSuccessful": "Operación completada exitosamente",
+    "operationFailed": "Operación fallida",
+    "confirmAction": "¿Estás seguro?",
+    "cannotUndoAction": "Esta acción no se puede deshacer.",
+    "addedToFavorites": "¡BoxVault añadido a favoritos!",
+    "removedFromFavorites": "BoxVault eliminado de favoritos",
+    "failedToUpdateFavorites": "Error al actualizar favoritos"
+  },
+  "about": {
+    "version": "Versión",
+    "keyFeatures": "Características Clave",
+    "features": {
+      "userAuthentication": "Autenticación de Usuario",
+      "boxManagement": "Gestión de Cajas",
+      "versionControl": "Control de Versiones",
+      "organizationSupport": "Soporte de Organización",
+      "apiDocumentation": "Documentación de API",
+      "secureStorage": "Almacenamiento Seguro"
+    },
+    "supportAndFollow": "Soporte y Seguimiento",
+    "addToFavorites": "Añadir a Favoritos",
+    "removeFromFavorites": "Eliminar de Favoritos",
+    "supportOnPatreon": "Soporte en Patreon",
+    "githubProfile": "Perfil de GitHub",
+    "projectRepository": "Repositorio del Proyecto",
+    "documentation": {
+      "title": "Documentación",
+      "description": "Aprende cómo usar BoxVault e integrarlo con tu flujo de trabajo.",
+      "fullDocs": "Documentación Completa",
+      "apiExplorer": "Explorador API (Swagger UI)",
+      "gettingStarted": "Guía de Inicio"
+    },
+    "support": {
+      "title": "Soporte y Comunidad",
+      "description": "Apoya el proyecto y mantente conectado con la comunidad.",
+      "patreon": "Apoyar en Patreon",
+      "githubProfile": "Perfil de GitHub",
+      "repository": "Repositorio del Proyecto"
+    },
+    "components": {
+      "title": "Componentes",
+      "backend": {
+        "details": {
+          "nodejs": "Entorno Node.js",
+          "auth": "Sistema de Autenticación",
+          "endpoints": "Endpoints de API",
+          "database": "Integración de Base de Datos"
+        }
+      },
+      "frontend": {
+        "details": {
+          "react": "Framework React",
+          "interface": "Interfaz de Usuario",
+          "features": "Características Frontend"
+        }
+      }
+    },
+    "fallbackTitle": "Proyecto BoxVault",
+    "fallbackDescription": "Una solución auto-alojada para gestionar plantillas de VM.",
+    "fallbackGoal": "Proporcionando una plataforma robusta para cajas Vagrant."
+  },
+  "admin": {
+    "pageTitle": "Admin",
+    "title": "Panel de Administración",
+    "tabs": {
+      "orgsAndUsers": "Organizaciones y Usuarios",
+      "configManagement": "Gestión de Configuración"
+    }
+  },
+  "breadcrumbs": {
+    "boxvault": "BoxVault",
+    "home": "Inicio"
+  },
+  "error": {
+    "somethingWentWrong": "Algo salió mal",
+    "unexpectedErrorOccurred": "Ocurrió un error inesperado. Por favor intenta refrescar la página o volver a la página de inicio.",
+    "refreshPage": "Refrescar Página",
+    "goHome": "Ir a Inicio",
+    "errorDetailsDevelopment": "Detalles del Error (Desarrollo)"
+  },
+  "errors": {
+    "upload": {
+      "noFile": "No se proporcionó archivo para subir.",
+      "chunkFailed": "Una parte del archivo falló al subir. Por favor intenta de nuevo.",
+      "sizeMismatch": "El ensamblaje del archivo falló debido a una discrepancia de tamaño. Por favor intenta subir de nuevo.",
+      "assemblyTimeout": "El tiempo de espera de ensamblaje del archivo se agotó. Por favor intenta de nuevo.",
+      "streamError": "Ocurrió un error de manejo de flujo durante la carga. Por favor intenta de nuevo."
+    }
+  },
+  "orgUserManager": {
+    "searchPlaceholder": "Buscar organizaciones por nombre o código...",
+    "totalBoxes": "Cajas Totales: {{count}}",
+    "rename": {
+      "sameNameError": "El nuevo nombre es el mismo que el anterior. Por favor ingresa un nombre diferente.",
+      "orgExistsError": "Ya existe una organización con este nombre. Por favor elige un nombre diferente.",
+      "success": "¡Organización renombrada exitosamente!",
+      "error": "Error al renombrar la organización. Por favor intenta de nuevo."
+    },
+    "user": {
+      "boxes": "Cajas: {{count}}",
+      "roles": "Roles",
+      "removeFromOrgTitle": "Eliminar {{username}} de {{orgName}}",
+      "deleteUserTitle": "Eliminar permanentemente {{username}} de BoxVault"
+    },
+    "editModal": {
+      "title": "Editar Organización: {{orgName}}",
+      "orgCode": "Código de Organización",
+      "orgCodeHint": "Identificador hexadecimal de 6 caracteres (0-9, A-F)",
+      "orgEmail": "Correo de Organización",
+      "orgEmailHint": "Usado para contacto de organización y Gravatar",
+      "description": "Descripción",
+      "accessMode": "Modo de Acceso",
+      "accessModes": {
+        "private": "Privado (No listado)",
+        "inviteOnly": "Solo Invitación (Listado)",
+        "requestToJoin": "Solicitud para Unirse (Listado)"
+      },
+      "accessModeHint": "Controla la visibilidad de la organización y métodos de unión",
+      "defaultRole": "Rol Predeterminado",
+      "defaultRoleHint": "Rol predeterminado para nuevos miembros",
+      "updateSuccess": "¡Organización actualizada exitosamente!",
+      "updateError": "Error al actualizar la organización"
+    }
+  },
+  "orgSwitcher": {
+    "title": "Cambiar Organización",
+    "noOrgsFound": "No se encontraron organizaciones. Contacta a tu administrador si esto es inesperado.",
+    "primaryOrg": "Organización Principal"
+  },
+  "profile": {
+    "pageTitle": "Perfil",
+    "noJobTitle": "Sin Título de Trabajo",
+    "tabs": {
+      "profile": "Perfil",
+      "organizations": "Organizaciones",
+      "security": "Seguridad",
+      "serviceAccounts": "Cuentas de Servicio"
+    },
+    "fields": {
+      "fullName": "Nombre Completo",
+      "location": "Ubicación",
+      "email": "Correo",
+      "organization": "Organización",
+      "roles": "Roles",
+      "profileUrl": "URL de Perfil",
+      "verifiedAccounts": "Cuentas Verificadas",
+      "registrationDate": "Fecha de Registro",
+      "emailHash": "Hash de Correo",
+      "userId": "ID de Usuario",
+      "accessToken": "Token de Acceso"
+    },
+    "noLocation": "Sin Ubicación",
+    "noRoles": "Sin roles asignados",
+    "security": {
+      "changePassword": {
+        "title": "Cambiar Contraseña",
+        "newPasswordPlaceholder": "Nueva Contraseña",
+        "confirmPasswordPlaceholder": "Confirmar Contraseña",
+        "button": "Cambiar Contraseña"
+      },
+      "changeEmail": {
+        "title": "Cambiar Correo",
+        "newEmailPlaceholder": "Nuevo Correo",
+        "button": "Cambiar Correo"
+      },
+      "promoteToModerator": "Promover a Moderador",
+      "deleteAccount": {
+        "title": "Eliminar Cuenta",
+        "warning": "Advertencia: Esta acción no se puede deshacer.",
+        "button": "Eliminar Mi Cuenta"
+      }
+    },
+    "organizations": {
+      "title": "Mis Organizaciones",
+      "belongToTitle": "Organizaciones a las que Perteneces",
+      "noOrgs": "Aún no perteneces a ninguna organización.",
+      "primary": "Principal",
+      "joined": "Unido",
+      "pendingRequestsTitle": "Solicitudes de Unión Pendientes",
+      "requested": "Solicitado"
+    },
+    "serviceAccounts": {
+      "title": "Cuentas de Servicio",
+      "descriptionPlaceholder": "Descripción",
+      "expiration": {
+        "30": "30 días",
+        "60": "60 días",
+        "90": "90 días",
+        "365": "365 días"
+      },
+      "createButton": "Crear Cuenta de Servicio",
+      "organization": "Organización",
+      "expires": "Expira",
+      "token": "Token"
+    },
+    "deleteModal": {
+      "title": "Eliminar Cuenta",
+      "message": "¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer."
+    },
+    "messages": {
+      "leftOrganization": "Has dejado exitosamente la organización {{orgName}}",
+      "requestCancelled": "Solicitud de unión cancelada exitosamente",
+      "serviceAccountCreated": "¡Cuenta de servicio creada exitosamente!",
+      "passwordChanged": "¡Contraseña cambiada exitosamente!",
+      "emailChanged": "¡Correo electrónico cambiado exitosamente!",
+      "promotedToModerator": "¡Promovido a moderador exitosamente!",
+      "emailNotVerified": "Tu correo electrónico no está verificado."
+    },
+    "errors": {
+      "passwordsDoNotMatch": "¡Las contraseñas no coinciden!",
+      "deleteAccountFailed": "Error al eliminar la cuenta. Por favor intenta de nuevo.",
+      "verificationFailed": "Error al verificar el correo. Por favor intenta de nuevo o contacta soporte.",
+      "activeOrgNotFound": "Error: No se pudo encontrar la organización activa",
+      "createServiceAccountFailed": "Error al crear cuenta de servicio: {{error}}",
+      "resendVerificationFailed": "Error al enviar correo de verificación: {{error}}",
+      "changePasswordFailed": "Error al cambiar contraseña: {{error}}",
+      "changeEmailFailed": "Error al cambiar correo: {{error}}",
+      "promoteToModeratorFailed": "Error al promover a moderador: {{error}}",
+      "leaveOrganization": "Error al dejar la organización: {{error}}"
+    },
+    "buttons": {
+      "resendVerification": "Reenviar correo de verificación"
+    }
+  },
+  "unknown": "Desconocido",
+  "validation": {
+    "required": "¡Este campo es obligatorio!",
+    "invalidName": "Nombre inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos.",
+    "invalidUrl": "Formato de URL inválido.",
+    "invalidHost": "Host inválido. Debe ser una dirección IP válida, FQDN o 'localhost'.",
+    "integerRequired": "El valor debe ser un entero.",
+    "booleanRequired": "El valor debe ser un booleano.",
+    "passwordLength": "La contraseña debe tener al menos 6 caracteres.",
+    "invalidEmail": "Dirección de correo electrónico inválida.",
+    "portRange": "El puerto debe estar entre 1 y 65535.",
+    "valueRequired": "El valor no puede estar vacío.",
+    "invalidFieldStructure": "Estructura de campo inválida",
+    "fixErrors": "Por favor corrige los errores en el formulario.",
+    "unsupportedChecksum": "¡Tipo de checksum no soportado!",
+    "invalidChecksumFormat": "¡Formato de checksum {{type}} inválido!",
+    "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos."
+  },
+  "provider": {
+    "deleted": "¡El proveedor fue eliminado exitosamente!",
+    "deleteError": "Error al eliminar proveedor. Por favor intenta de nuevo.",
+    "created": "¡El proveedor fue creado exitosamente!",
+    "createError": "Ocurrió un error al crear el proveedor.",
+    "exists": "Ya existe un proveedor con este nombre. Por favor elige un nombre diferente.",
+    "updated": "¡El proveedor fue actualizado exitosamente!",
+    "updateError": "No se pudo actualizar el proveedor",
+    "notFound": "Proveedor No Encontrado",
+    "edit": "Editar Proveedor",
+    "details": "Detalles del Proveedor",
+    "name": "Nombre del Proveedor",
+    "description": "Descripción",
+    "architectures": "Arquitecturas para Proveedor: {{providerName}}",
+    "add": "Añadir Proveedor"
+  },
+  "version": {
+    "deleted": "¡La versión fue eliminada exitosamente!",
+    "deleteError": "Error al eliminar versión. Por favor intenta de nuevo.",
+    "notFound": "Versión No Encontrada",
+    "exists": "Ya existe una versión con este número. Por favor elige un número de versión diferente.",
+    "updated": "¡La versión fue actualizada exitosamente!",
+    "updateError": "Ocurrió un error al actualizar la versión.",
+    "added": "¡La versión fue añadida exitosamente!",
+    "addError": "Ocurrió un error al añadir la versión.",
+    "edit": "Editar Versión",
+    "details": "Detalles de la Versión",
+    "number": "Número de Versión",
+    "createdAt": "Creado El",
+    "updatedAt": "Actualizado El",
+    "providers": "Proveedores para Versión: {{version}}",
+    "add": "Añadir Versión"
+  },
+  "architecture": {
+    "deleted": "¡La arquitectura fue eliminada exitosamente!",
+    "deleteError": "No se pudo eliminar la arquitectura",
+    "notFound": "Arquitectura no encontrada",
+    "name": "Nombre de Arquitectura",
+    "add": "Añadir Arquitectura",
+    "selectFile": "Por favor selecciona un archivo antes de añadir una arquitectura.",
+    "enterName": "Por favor ingresa un nombre de arquitectura.",
+    "uploadStarting": "Iniciando carga de archivo...",
+    "uploadAssembling": "Fragmentos de archivo subidos exitosamente. Ahora ensamblando en archivo final de caja.\nEste proceso puede tomar varios minutos dependiendo del tamaño del archivo.\nPor favor mantén esta página abierta hasta que el ensamblaje esté completo.",
+    "assembling": "Ensamblando fragmentos de archivo en archivo final de caja, esto puede tomar varios minutos...",
+    "uploadComplete": "¡Carga y ensamblaje de archivo completados exitosamente!",
+    "defaultBox": "Caja Predeterminada",
+    "chooseFile": "Elegir Archivo de Caja",
+    "selected": "Seleccionado: {{name}} ({{size}})",
+    "fileSize": "Tamaño de Archivo",
+    "uploaded": "Subido",
+    "remaining": "Restante",
+    "checksumType": "Tipo de Checksum",
+    "checksum": "Checksum",
+    "clickToCopy": "Clic para copiar checksum",
+    "checksumCopied": "¡Checksum copiado al portapapeles!"
+  },
+  "box": {
+    "notFound": "Caja No Encontrada",
+    "exists": "Ya existe una caja con este nombre. Por favor elige un nombre diferente.",
+    "updated": "¡La caja fue actualizada exitosamente!",
+    "updateError": "Ocurrió un error al actualizar la caja.",
+    "deleted": "Caja eliminada exitosamente",
+    "deleteError": "Ocurrió un error al eliminar la caja.",
+    "created": "Caja creada exitosamente.",
+    "createError": "Ocurrió un error al crear la caja.",
+    "details": "Detalles de la Caja",
+    "name": "Nombre de la caja",
+    "status": "Estado",
+    "visibility": "Visibilidad",
+    "description": "Descripción",
+    "optional": "(Opcional)",
+    "shortDescription": "La descripción corta se usa para describir la caja.",
+    "visibilityHint": "Hacer una caja privada evita que los usuarios accedan a ella a menos que se les dé permiso.",
+    "cicd": {
+      "title": "Integración CI/CD",
+      "connect": "Conecta tu caja a GitHub Actions para insignias de estado de construcción automatizadas.",
+      "buildStatus": "Estado de Construcción",
+      "repository": "Repositorio",
+      "repositoryPlaceholder": "propietario/nombre-repositorio",
+      "repositoryHint": "Formato: propietario/nombre-repositorio (ej., miorg/mi-caja-vagrant)",
+      "workflow": "Archivo de Flujo de Trabajo",
+      "workflowPlaceholder": "build.yml",
+      "workflowHint": "Nombre del archivo de flujo de trabajo de GitHub Actions (ej., build.yml, ci.yaml)",
+      "pipeline": "Tubería CI/CD",
+      "pipelineUrl": "URL CI/CD",
+      "pipelinePlaceholder": "https://github.com/propietario/repo/actions",
+      "pipelineHint": "Enlace directo a tu tubería CI/CD o página de GitHub Actions",
+      "viewPipeline": "Ver Tubería"
+    },
+    "publish": "Publicar",
+    "unpublish": "Despublicar",
+    "versions": "Versiones para Caja: {{name}}",
+    "create": "Crear Nueva Caja",
+    "createButton": "Crear Caja",
+    "removeAll": "Eliminar Todo",
+    "removeAllSuccess": "Todas las cajas eliminadas exitosamente.",
+    "removeAllError": "Error al eliminar todas las cajas.",
+    "filter": "Filtrar",
+    "templateList": "Lista de Plantillas",
+    "noBoxes": "No se encontraron cajas",
+    "organization": {
+      "errors": {
+        "retrievePublic": "Error al recuperar cajas públicas.",
+        "retrieveOrg": "Error al recuperar cajas de la organización.",
+        "removeAll": "Error al eliminar todas las cajas.",
+        "filter": "Error al filtrar cajas.",
+        "boxCreate": "Ocurrió un error al crear la caja."
+      },
+      "messages": {
+        "removeAllSuccess": "Todas las cajas eliminadas exitosamente.",
+        "boxCreated": "Caja creada exitosamente."
+      },
+      "buttons": {
+        "createBox": "Crear Caja",
+        "createNewBox": "Crear Nueva Caja",
+        "removeAll": "Eliminar Todo"
+      },
+      "headers": {
+        "createNewBox": "Crear Nueva Caja",
+        "templateList": "Lista de Plantillas"
+      },
+      "table": {
+        "box": "Caja",
+        "status": "Estado",
+        "public": "Público",
+        "created": "Creado",
+        "downloads": "Descargas",
+        "versions": "# Versiones",
+        "providers": "Proveedores",
+        "architectures": "Arquitecturas",
+        "noBoxes": "No se encontraron cajas"
+      },
+      "status": {
+        "published": "Publicado",
+        "pending": "Pendiente",
+        "completed": "Completado"
+      },
+      "visibility": {
+        "public": "Público",
+        "private": "Privado"
+      }
+    }
+  },
+  "discovery": {
+    "title": "Descubrir Organizaciones",
+    "description": "Explora organizaciones públicas y solicita unirte a ellas.",
+    "searchPlaceholder": "Buscar organizaciones...",
+    "noOrgsFoundTitle": "No se Encontraron Organizaciones",
+    "noDescription": "Sin descripción disponible",
+    "noOrgsFoundSearch": "Ninguna organización coincide con tus criterios de búsqueda.",
+    "noOrgsFoundPublic": "No hay organizaciones públicas disponibles actualmente para descubrimiento.",
+    "members": "miembros",
+    "public": "público",
+    "private": "privado",
+    "buttons": {
+      "inviteOnly": "Solo Invitación",
+      "requestToJoin": "Solicitar Unirse",
+      "private": "Privado",
+      "sendRequest": "Enviar Solicitud"
+    },
+    "modal": {
+      "title": "Solicitar Unirse a {{orgName}}",
+      "description": "Por favor explica por qué te gustaría unirte a <strong>{{orgName}}</strong>:",
+      "placeholder": "Ingresa tu razón para querer unirte a esta organización..."
+    },
+    "errors": {
+      "load": "Error al cargar organizaciones",
+      "emptyMessage": "Por favor ingresa un mensaje explicando por qué quieres unirte",
+      "requestFailed": "Error al solicitar unirse a {{orgName}}"
+    },
+    "messages": {
+      "requestSent": "¡Solicitud de unión enviada a {{orgName}} exitosamente!"
+    }
+  },
+  "setup": {
+    "title": "Configuración de BoxVault",
+    "alreadyComplete": "La configuración ya está completa. Ahora puedes usar BoxVault.",
+    "enterToken": "Ingresar Token de Configuración",
+    "tokenPlaceholder": "Token de Configuración",
+    "verifyToken": "Verificar Token",
+    "submitAll": "Enviar Todas las Configuraciones",
+    "oidcNote": "La configuración del proveedor OIDC se gestiona a través de la interfaz de Administración después de completar la configuración. Ve a Admin → Gestión de Configuración → Config Auth para añadir proveedores OIDC.",
+    "updateSuccess": "Configuración actualizada exitosamente. Redirigiendo a la página de registro en 5 segundos...",
+    "updateError": "Error al actualizar la configuración.",
+    "invalidToken": "Token de configuración inválido.",
+    "sqlitePath": "Ruta del Archivo de Base de Datos SQLite"
+  },
+  "navbar": {
+    "logout": "Cerrar Sesión",
+    "login": "Iniciar Sesión",
+    "signup": "Registrarse",
+    "about": "Acerca de",
+    "admin": "Admin",
+    "organization": "Organización",
+    "profile": "Perfil",
+    "favorites": "Favoritos",
+    "help": "Ayuda"
+  },
+  "moderator": {
+    "pageTitle": "Moderador",
+    "title": "Panel de Moderador",
+    "orgNameRequired": "El nombre de la organización es obligatorio.",
+    "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos.",
+    "orgEmailRequired": "El correo de la organización es obligatorio.",
+    "orgExists": "Ya existe una organización con este nombre. Por favor elige un nombre diferente.",
+    "orgUpdateSuccess": "¡Organización actualizada exitosamente!",
+    "orgUpdateError": "Error al actualizar la organización. Por favor intenta de nuevo.",
+    "tabs": {
+      "organization": "Organización",
+      "joinRequests": "Solicitudes de Unión",
+      "invitations": "Invitaciones"
+    },
+    "organization": {
+      "title": "Detalles de la Organización",
+      "name": "Nombre de la Organización",
+      "email": "Correo de la Organización",
+      "emailHash": "Hash de Correo de la Organización",
+      "emailHashHint": "Generado automáticamente desde el correo de la organización",
+      "description": "Descripción de la Organización",
+      "accessMode": "Modo de Acceso",
+      "accessModes": {
+        "private": "Privado (No listado)",
+        "inviteOnly": "Solo Invitación (Listado)",
+        "requestToJoin": "Solicitud para Unirse (Listado)"
+      },
+      "accessModeHint": "Controla la visibilidad de la organización y métodos de unión",
+      "defaultRole": "Rol Predeterminado",
+      "defaultRoleHint": "Rol predeterminado para nuevos miembros",
+      "updateButton": "Actualizar Organización"
+    },
+    "users": {
+      "title": "Usuarios en {{organization}}",
+      "boxes": "Cajas",
+      "roles": "Roles",
+      "promote": "Promover",
+      "demote": "Degradar"
+    },
+    "joinRequest": {
+      "title": "Solicitudes de Unión Pendientes",
+      "noRequests": "No hay solicitudes de unión pendientes.",
+      "email": "Correo",
+      "message": "Mensaje",
+      "requested": "Solicitado",
+      "actions": "Acciones",
+      "noMessage": "Sin mensaje",
+      "approveAsUser": "Aprobar como Usuario",
+      "approveAsModerator": "Aprobar como Moderador",
+      "deny": "Denegar",
+      "approved": "¡Solicitud de unión aprobada exitosamente!",
+      "approveError": "Error al aprobar solicitud: {{error}}",
+      "denied": "Solicitud de unión denegada.",
+      "denyError": "Error al denegar solicitud: {{error}}"
+    },
+    "invitation": {
+      "manageTitle": "Gestionar Invitaciones",
+      "sendTitle": "Enviar Nueva Invitación",
+      "email": "Dirección de Correo",
+      "assignRole": "Asignar Rol",
+      "sendButton": "Enviar Invitación",
+      "activeTitle": "Invitaciones Activas",
+      "noActive": "No hay invitaciones activas.",
+      "expires": "Expira",
+      "accepted": "Aceptado",
+      "expired": "Caducado",
+      "link": "Enlace de Invitación",
+      "linkText": "Enlace de Invitación",
+      "actions": "Acciones",
+      "token": "Token",
+      "orgId": "ID de Organización",
+      "sendWarning": "Advertencia: Invitación creada pero el correo puede no haberse enviado. Puedes copiar el enlace de abajo y enviarlo manualmente."
+    }
+  },
+  "roles": {
+    "user": "Usuario",
+    "moderator": "Moderador",
+    "admin": "Administrador"
+  },
+  "oidc": {
+    "title": "Proveedores OIDC",
+    "providerCount": "{{count}} proveedor",
+    "providerCount_plural": "{{count}} proveedores",
+    "description": "Gestiona proveedores de autenticación OpenID Connect para integración de inicio de sesión único. Haz clic en una tarjeta de proveedor para editar su configuración.",
+    "enabled": "Habilitado",
+    "issuer": "Emisor",
+    "clientId": "ID de Cliente",
+    "scope": "Alcance",
+    "noProvidersConfigured": "No hay proveedores OIDC configurados aún. Haz clic en \"Añadir Proveedor OIDC\" para configurar autenticación con proveedores como Google, Microsoft, GitHub, etc.",
+    "buttons": {
+      "add": "Añadir Proveedor OIDC",
+      "delete": "Eliminar Proveedor",
+      "update": "Actualizar Proveedor",
+      "updating": "Actualizando...",
+      "adding": "Añadiendo..."
+    },
+    "modal": {
+      "editTitle": "Editar Proveedor OIDC",
+      "addTitle": "Añadir Proveedor OIDC",
+      "description": "Configura un nuevo proveedor de autenticación OpenID Connect. Necesitarás registrar tu aplicación con el proveedor primero para obtener el ID de cliente y el secreto de cliente."
+    },
+    "form": {
+      "name": {
+        "label": "Nombre del Proveedor",
+        "hint": "Identificador interno (minúsculas, letras, números y guiones bajos solamente)"
+      },
+      "displayName": {
+        "label": "Nombre para Mostrar",
+        "hint": "Nombre mostrado a los usuarios en la página de inicio de sesión"
+      },
+      "issuer": {
+        "label": "URL del Emisor",
+        "hint": "La URL del emisor OIDC (consulta la documentación de tu proveedor para la URL correcta)"
+      },
+      "clientId": {
+        "label": "ID de Cliente",
+        "hint": "ID de Cliente del registro de tu aplicación OAuth"
+      },
+      "clientSecret": {
+        "label": "Secreto de Cliente",
+        "hint": "Secreto de cliente del registro de tu aplicación OAuth"
+      },
+      "scope": {
+        "label": "Alcance",
+        "hint": "Alcances OAuth (separados por espacios). El predeterminado suele ser suficiente."
+      },
+      "responseType": {
+        "label": "Tipo de Respuesta",
+        "options": {
+          "code": "Código de Autorización (Recomendado)",
+          "id_token": "Token ID",
+          "code_id_token": "Código + Token ID"
+        },
+        "hint": "Tipo de flujo OAuth. Usa \"code\" para la mayoría de los proveedores."
+      },
+      "enabled": {
+        "label": "Habilitar este proveedor para autenticación de usuarios"
+      }
+    },
+    "instructions": {
+      "title": "Instrucciones de Configuración",
+      "step1": "Registra tu aplicación con la consola de desarrollador de tu proveedor OIDC",
+      "step2": "Añade",
+      "step2_cont": "como una URI de redirección permitida",
+      "step3": "Copia el ID de Cliente y el Secreto de Cliente de la consola de tu proveedor",
+      "step4": "Encuentra la URL del emisor de tu proveedor en su documentación",
+      "step5": "Completa el formulario de arriba y prueba la configuración"
+    },
+    "deleteModal": {
+      "title": "Eliminar Proveedor OIDC",
+      "message": "¿Estás seguro de que quieres eliminar el proveedor OIDC '{{providerName}}'? Esto no se puede deshacer."
+    },
+    "errors": {
+      "requiredFields": "Nombre del proveedor, nombre para mostrar, emisor, ID de cliente y secreto de cliente son obligatorios",
+      "invalidName": "El nombre del proveedor debe contener solo letras, números y guiones bajos",
+      "providerExists": "El proveedor OIDC '{{name}}' ya existe",
+      "apiError": "Error {{action}} proveedor OIDC: {{error}}",
+      "deleteError": "Error al eliminar proveedor OIDC: {{error}}"
+    },
+    "messages": {
+      "updating": "Actualizando proveedor OIDC...",
+      "adding": "Añadiendo proveedor OIDC...",
+      "deleting": "Eliminando proveedor OIDC...",
+      "success": "¡Proveedor OIDC '{{displayName}}' {{action}} exitosamente!",
+      "deleteSuccess": "¡Proveedor OIDC '{{providerName}}' eliminado exitosamente!"
+    },
+    "actions": {
+      "updated": "actualizado",
+      "added": "añadido",
+      "updating": "actualizando",
+      "adding": "añadiendo"
+    }
+  },
+  "configField": {
+    "commaSeparated": "Valores separados por comas"
+  },
+  "yes": "Sí",
+  "no": "No",
+  "loading": "Cargando...",
+  "deleteKeyword": "eliminar",
+  "confirmation": {
+    "title": "Confirmar Acción",
+    "message": "Por favor escribe \"{{keyword}}\" para confirmar.",
+    "placeholder": "Escribe '{{keyword}}' para confirmar",
+    "typeDeleteToConfirm": "Por favor escribe 'eliminar' para confirmar."
+  }
+}

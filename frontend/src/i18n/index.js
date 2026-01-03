@@ -37,6 +37,12 @@ const detectAvailableLanguages = async () => {
 const initializeI18n = async () => {
   let supportedLanguages = await detectAvailableLanguages();
 
+  // Normalize en-US to en
+  supportedLanguages = supportedLanguages.map((lang) =>
+    lang === "en-US" ? "en" : lang
+  );
+  supportedLanguages = [...new Set(supportedLanguages)];
+
   // Add cimode in development for testing translation keys
   if (healthData && healthData.environment === "development") {
     if (!supportedLanguages.includes("cimode")) {
@@ -61,7 +67,10 @@ const initializeI18n = async () => {
 
   await i18nInstance.init({
     // Fallback language
-    fallbackLng: fallbackLanguage,
+    fallbackLng: "en",
+
+    // Load only language, not region-specific files
+    load: "languageOnly",
 
     // Dynamically detected supported languages
     supportedLngs: supportedLanguages,

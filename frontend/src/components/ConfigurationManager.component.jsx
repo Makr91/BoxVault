@@ -1,6 +1,8 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
+import AuthService from "../services/auth.service";
 import ConfigService from "../services/config.service";
 import {
   processConfig,
@@ -15,6 +17,7 @@ import OidcProviderManager from "./OidcProviderManager.component";
  * ConfigurationManager - Manages system configuration
  */
 const ConfigurationManager = ({ setMessage, setMessageType }) => {
+  const { t } = useTranslation();
   const [selectedConfig, setSelectedConfig] = useState("app");
   const [config, setConfig] = useState({});
   const [sections, setSections] = useState({});
@@ -71,14 +74,14 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   };
 
   const shouldShowSubsection = (subsection, subsectionName) => {
-    if (subsectionName === "OIDC Providers") {
+    if (subsectionName === "oidcProviders") {
       return true;
     }
     // Hide individual OIDC provider subsections
     if (
       subsectionName &&
-      subsectionName.includes("OIDC") &&
-      subsectionName !== "OIDC Providers"
+      subsectionName.toLowerCase().includes("oidc") &&
+      subsectionName !== "oidcProviders"
     ) {
       return false;
     }
@@ -96,7 +99,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
         "type" in value &&
         "value" in value
       ) {
-        const error = validateConfigValue(value.type, value.value);
+        const error = validateConfigValue(value.type, value.value, t);
         if (error) {
           newValidationErrors[key] = error;
           hasErrors = true;
@@ -105,7 +108,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
     });
 
     if (hasErrors) {
-      setSubmitError("Please fix the validation errors before submitting.");
+      setSubmitError(t("configManager.fixErrors"));
       setIsFormValid(false);
       return;
     }
@@ -114,7 +117,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
     ConfigService.updateConfig(selectedConfig, config).then(
       () => {
-        setMessage("Configuration updated successfully.");
+        setMessage(t("configManager.updateSuccess"));
         setMessageType("success");
         setSubmitError("");
       },
@@ -123,7 +126,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           configName: selectedConfig,
           error: error.message,
         });
-        setMessage("Error updating configuration.");
+        setMessage(t("configManager.updateError"));
         setMessageType("danger");
       }
     );
@@ -132,6 +135,46 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   const handleConfigUpdate = (newConfig) => {
     ConfigService.updateConfig("auth", newConfig);
     setConfig(newConfig);
+  };
+
+  const handleFileUpload = async (file, targetPath) => {
+    if (!file || !targetPath) {
+      return;
+    }
+
+    const user = AuthService.getCurrentUser();
+    if (!user || !user.accessToken) {
+      setMessage(t("error.unexpectedErrorOccurred"));
+      setMessageType("danger");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/config/ssl/upload?targetPath=${encodeURIComponent(targetPath)}`,
+        {
+          method: "POST",
+          headers: {
+            "x-access-token": user.accessToken,
+            "Content-Type": "application/octet-stream",
+          },
+          body: file,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      setMessage(
+        `${t("messages.operationSuccessful")}. ${t("configManager.restartInitiated")}`
+      );
+      setMessageType("success");
+    } catch (error) {
+      log.component.error("Error uploading file", { error: error.message });
+      setMessage(t("messages.uploadFailed"));
+      setMessageType("danger");
+    }
   };
 
   const renderConfigSections = () => {
@@ -145,11 +188,12 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                 <div className="card mb-4">
                   <div className="card-header">
                     <h5 className="mb-0">
-                      <i className={`${section.icon} me-2`} />
-                      {section.title} Settings
+                      <i className={`${section.icon} me-2`} />{" "}
+                      {t(`configManager.sections.${section.key}`)}
                       <span className="badge bg-light text-dark ms-2">
-                        {section.fields.length} setting
-                        {section.fields.length !== 1 ? "s" : ""}
+                        {t("configManager.settingsCount", {
+                          count: section.fields.length,
+                        })}
                       </span>
                     </h5>
                   </div>
@@ -190,7 +234,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                     return null;
                   }
 
-                  if (subsectionName === "OIDC Providers") {
+                  if (subsectionName === "oidcProviders") {
                     return (
                       <OidcProviderManager
                         key={subsectionName}
@@ -226,11 +270,12 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                           <i
                             className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}
                           />
-                          <i className={`${section.icon} me-2`} />
-                          {subsection.title}
+                          <i className={`${section.icon} me-2`} />{" "}
+                          {t(`configManager.subsections.${subsection.key}`)}
                           <span className="badge bg-light text-dark ms-2">
-                            {subsection.fields.length} setting
-                            {subsection.fields.length !== 1 ? "s" : ""}
+                            {t("configManager.settingsCount", {
+                              count: subsection.fields.length,
+                            })}
                           </span>
                         </h6>
                       </div>
@@ -242,6 +287,52 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                                 values[field.path] !== undefined
                                   ? values[field.path]
                                   : field.value;
+
+                              if (field.upload) {
+                                return (
+                                  <div key={field.path} className="col-md-6">
+                                    <div className="mb-3">
+                                      <label className="form-label">
+                                        {field.label}
+                                        {field.required && (
+                                          <span className="text-danger">*</span>
+                                        )}
+                                      </label>
+                                      <div className="input-group">
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={currentValue}
+                                          onChange={(e) =>
+                                            handleFieldChange(
+                                              field.path,
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder={field.placeholder}
+                                        />
+                                        <label className="btn btn-outline-secondary">
+                                          {t("buttons.upload")}
+                                          <input
+                                            type="file"
+                                            hidden
+                                            onChange={(e) =>
+                                              handleFileUpload(
+                                                e.target.files[0],
+                                                currentValue
+                                              )
+                                            }
+                                          />
+                                        </label>
+                                      </div>
+                                      <small className="form-text text-muted">
+                                        {field.description}
+                                      </small>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
                               return (
                                 <div
                                   key={field.path}
@@ -280,11 +371,12 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           <div className="card mb-4">
             <div className="card-header">
               <h5 className="mb-0">
-                <i className={`${section.icon} me-2`} />
-                {section.title} Settings
+                <i className={`${section.icon} me-2`} />{" "}
+                {t(`configManager.sections.${section.key}`)}
                 <span className="badge bg-light text-dark ms-2">
-                  {section.fields.length} setting
-                  {section.fields.length !== 1 ? "s" : ""}
+                  {t("configManager.settingsCount", {
+                    count: section.fields.length,
+                  })}
                 </span>
               </h5>
             </div>
@@ -345,11 +437,12 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                     <i
                       className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}
                     />
-                    <i className={`${section.icon} me-2`} />
-                    {subsection.title}
+                    <i className={`${section.icon} me-2`} />{" "}
+                    {t(`configManager.subsections.${subsection.key}`)}
                     <span className="badge bg-light text-dark ms-2">
-                      {subsection.fields.length} setting
-                      {subsection.fields.length !== 1 ? "s" : ""}
+                      {t("configManager.settingsCount", {
+                        count: subsection.fields.length,
+                      })}
                     </span>
                   </h6>
                 </div>
@@ -398,7 +491,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             className={`nav-link ${selectedConfig === "app" ? "active" : ""}`}
             onClick={() => setSelectedConfig("app")}
           >
-            App Config
+            {t("configManager.tabs.app")}
           </button>
         </li>
         <li className="nav-item">
@@ -406,7 +499,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             className={`nav-link ${selectedConfig === "auth" ? "active" : ""}`}
             onClick={() => setSelectedConfig("auth")}
           >
-            Auth Config
+            {t("configManager.tabs.auth")}
           </button>
         </li>
         <li className="nav-item">
@@ -414,7 +507,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             className={`nav-link ${selectedConfig === "db" ? "active" : ""}`}
             onClick={() => setSelectedConfig("db")}
           >
-            DB Config
+            {t("configManager.tabs.db")}
           </button>
         </li>
         <li className="nav-item">
@@ -422,7 +515,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             className={`nav-link ${selectedConfig === "mail" ? "active" : ""}`}
             onClick={() => setSelectedConfig("mail")}
           >
-            Email Config
+            {t("configManager.tabs.mail")}
           </button>
         </li>
         <li className="nav-item ms-auto">
@@ -432,7 +525,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             onClick={updateConfig}
             disabled={!isFormValid}
           >
-            Update Configuration
+            {t("configManager.buttons.update")}
           </button>
         </li>
         <li className="nav-item">
@@ -442,16 +535,16 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             onClick={() => {
               ConfigService.restartServer()
                 .then(() => {
-                  setMessage("Server restart initiated");
+                  setMessage(t("configManager.restartInitiated"));
                   setMessageType("success");
                 })
                 .catch(() => {
-                  setMessage("Failed to restart server");
+                  setMessage(t("configManager.restartFailed"));
                   setMessageType("danger");
                 });
             }}
           >
-            Restart Server
+            {t("configManager.buttons.restart")}
           </button>
         </li>
       </ul>

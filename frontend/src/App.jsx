@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import "./scss/styles.scss";
@@ -23,6 +24,7 @@ import SetupService from "./services/setup.service";
 import { log } from "./utils/Logger";
 
 const App = () => {
+  const { t } = useTranslation();
   const isDevelopment = import.meta.env.NODE_ENV === "development";
 
   // Initialize Bootstrap
@@ -64,7 +66,7 @@ const App = () => {
       const prefersDark = window.matchMedia(
         "(prefers-color-scheme: dark)"
       ).matches;
-      return prefersDark ? "dark" : "dark"; // Default to dark in all cases
+      return prefersDark ? "dark" : "light";
     }
 
     return "dark"; // Fallback to dark
@@ -306,7 +308,7 @@ const App = () => {
 
   if (setupComplete === null) {
     // Show a loading indicator while checking setup status
-    return <div>Loading...</div>;
+    return <div>{t("loading")}</div>;
   }
 
   return (

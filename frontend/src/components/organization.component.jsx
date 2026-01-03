@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Table from "react-bootstrap/Table";
+import { useTranslation } from "react-i18next";
 import { FaSortUp, FaSortDown, FaSort } from "react-icons/fa6";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
@@ -14,6 +15,7 @@ import { log } from "../utils/Logger";
 import ConfirmationModal from "./confirmation.component";
 
 const BoxesList = ({ showOnlyPublic, theme }) => {
+  const { t } = useTranslation();
   const isMountedRef = useRef(true);
   const { organization: routeOrganization } = useParams();
   const [boxes, setBoxes] = useState([]);
@@ -402,7 +404,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             log.api.error("Error retrieving public boxes", {
               error: e.message,
             });
-            setMessage("Error retrieving public boxes.");
+            setMessage(t("box.organization.errors.retrievePublic"));
             setMessageType("danger");
           }
         });
@@ -423,12 +425,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               organization,
               error: e.message,
             });
-            setMessage("Error retrieving organization boxes.");
+            setMessage(t("box.organization.errors.retrieveOrg"));
             setMessageType("danger");
           }
         });
     }
-  }, [showOnlyPublic, organization]);
+  }, [showOnlyPublic, organization, t]);
 
   useEffect(() => {
     // Set document title based on page type
@@ -499,7 +501,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           const errorMessage =
             e.response && e.response.data && e.response.data.message
               ? e.response.data.message
-              : "Error fetching boxes.";
+              : t("box.organization.errors.retrieveOrg");
           setMessage(errorMessage);
           setMessageType("danger");
         }
@@ -511,7 +513,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     return () => {
       isMountedRef.current = false;
     };
-  }, [showOnlyPublic, organization, fetchGravatarUrls]);
+  }, [showOnlyPublic, organization, fetchGravatarUrls, t]);
 
   const onChangeSearchName = (e) => {
     const searchValue = e.target.value;
@@ -528,7 +530,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       BoxDataService.removeAll(organization)
         .then(() => {
           refreshList();
-          setMessage("All boxes removed successfully.");
+          setMessage(t("box.organization.messages.removeAllSuccess"));
           setMessageType("success");
         })
         .catch((e) => {
@@ -536,7 +538,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             organization,
             error: e.message,
           });
-          setMessage("Error removing all boxes.");
+          setMessage(t("box.organization.errors.removeAll"));
           setMessageType("danger");
         });
     }
@@ -592,13 +594,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         if (isMountedRef.current) {
           setBoxes([]);
         }
-        setMessage("Error filtering boxes.");
+        setMessage(t("box.organization.errors.filter"));
         setMessageType("danger");
       }
     };
 
     fetchAndFilterBoxes();
-  }, [searchName, showOnlyPublic, organization, retrieveBoxes]);
+  }, [searchName, showOnlyPublic, organization, retrieveBoxes, t]);
 
   const handleInputChange = (event) => {
     const { name: fieldName, value } = event.target;
@@ -630,7 +632,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         setNewBox({ name: "", description: "", isPublic: false });
         refreshList();
         navigate(`/${currentUser.organization}/${newBox.name}`);
-        setMessage("Box created successfully.");
+        setMessage(t("box.organization.messages.boxCreated"));
         setMessageType("success");
       })
       .catch((e) => {
@@ -641,7 +643,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         const errorMessage =
           e.response && e.response.data && e.response.data.message
             ? e.response.data.message
-            : "An error occurred while creating the box.";
+            : t("box.organization.errors.boxCreate");
         setMessage(errorMessage);
         setMessageType("danger");
       });
@@ -702,14 +704,18 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           <span
             className={`badge ${box.published ? "bg-success" : "bg-warning"}`}
           >
-            {box.published ? "Published" : "Pending"}
+            {box.published
+              ? t("box.organization.status.published")
+              : t("box.organization.status.pending")}
           </span>
         </td>
         <td>
           <span
             className={`badge ${box.public || box.isPublic ? "bg-info" : "bg-secondary"}`}
           >
-            {box.public || box.isPublic ? "Public" : "Private"}
+            {box.public || box.isPublic
+              ? t("box.organization.visibility.public")
+              : t("box.organization.visibility.private")}
           </span>
         </td>
         <td>{new Date(box.createdAt).toLocaleDateString()}</td>
@@ -738,7 +744,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           <input
             type="text"
             className="form-control form-control-sm"
-            placeholder="Search by name"
+            placeholder={t("common:actions.search")}
             id="search"
             name="search"
             value={searchName}
@@ -749,7 +755,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             type="button"
             onClick={findByName}
           >
-            Search
+            {t("common:actions.search")}
           </button>
         </div>
 
@@ -757,7 +763,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         {(Object.keys(allProviders).length > 0 ||
           Object.keys(allArchitectures).length > 0) && (
           <div className="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
-            <small className="text-muted">Filter:</small>
+            <small className="text-muted">{t("box.filter")}:</small>
             {Object.entries(allProviders).map(([provider, count]) => (
               <span
                 key={provider}
@@ -810,7 +816,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               to="/organizations/discover"
               className="btn btn-sm btn-outline-primary"
             >
-              Organizations
+              {t("navbar.organization")}
             </Link>
           )}
           {!showOnlyPublic && canEditBoxes({ organization }) && (
@@ -820,7 +826,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 onClick={createBox}
                 disabled={!!validationErrors.name}
               >
-                {showCreateForm ? "Create Box" : "Create New Box"}
+                {showCreateForm
+                  ? t("box.organization.buttons.createBox")
+                  : t("box.organization.buttons.createNewBox")}
               </button>
               {showCreateForm && (
                 <button
@@ -831,14 +839,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     setValidationErrors({});
                   }}
                 >
-                  Cancel
+                  {t("buttons.cancel")}
                 </button>
               )}
               <button
                 className="btn btn-sm btn-danger"
                 onClick={handleDeleteClick}
               >
-                Remove All
+                {t("box.organization.buttons.removeAll")}
               </button>
               <ConfirmationModal
                 show={showModal}
@@ -852,7 +860,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               className="btn btn-sm btn-outline-primary"
               onClick={() => navigate("/")}
             >
-              Back
+              {t("actions.back")}
             </button>
           )}
         </div>
@@ -860,11 +868,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
       {showCreateForm && (
         <div className="create-form mt-2 mb-3">
-          <h4>Create New Box</h4>
+          <h4>{t("box.organization.headers.createNewBox")}</h4>
           <form>
             <div className="form-group">
               <label htmlFor="boxName">
-                <strong>Box name:</strong>
+                <strong>{t("box.name")}:</strong>
               </label>
               <div className="form-group row align-items-center">
                 <div className="col-auto pe-0">
@@ -897,13 +905,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 <div className="text-danger">{validationErrors.name}</div>
               )}
               <small className="form-text text-muted">
-                The name of your Vagrant box is used in tools, notifications,
-                routing, and this UI. Short and simple is best.
+                {t("box.shortDescription")}
               </small>
             </div>
             <div className="form-group mt-2">
               <label htmlFor="description">
-                <strong>Description:</strong>
+                <strong>{t("box.description")}:</strong>
               </label>
               <textarea
                 className="form-control"
@@ -916,7 +923,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             </div>
             <div className="form-group mt-2">
               <label htmlFor="visibility">
-                <strong>Visibility:</strong>
+                <strong>{t("box.visibility")}:</strong>
               </label>
               <div>
                 <div className="form-check">
@@ -933,7 +940,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     className="form-check-label"
                     htmlFor="visibilityPrivate"
                   >
-                    Private
+                    {t("box.organization.visibility.private")}
                   </label>
                 </div>
                 <div className="form-check">
@@ -950,13 +957,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     className="form-check-label"
                     htmlFor="visibilityPublic"
                   >
-                    Public
+                    {t("box.organization.visibility.public")}
                   </label>
                 </div>
               </div>
               <small className="form-text text-muted">
-                Making a box private prevents users from accessing it unless
-                given permission.
+                {t("box.visibilityHint")}
               </small>
             </div>
           </form>
@@ -964,7 +970,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       )}
 
       <div className="col-md-12">
-        <h4>Template List</h4>
+        <h4>{t("box.organization.headers.templateList")}</h4>
         <Table striped className="table">
           <thead>
             <tr>
@@ -972,30 +978,33 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 onClick={() => handleSort("name")}
                 className="sortable-header"
               >
-                Box {renderSortIcon("name")}
+                {t("box.organization.table.box")} {renderSortIcon("name")}
               </th>
-              <th>Status</th>
-              <th>Public</th>
+              <th>{t("box.organization.table.status")}</th>
+              <th>{t("box.organization.table.public")}</th>
               <th
                 onClick={() => handleSort("created")}
                 className="sortable-header"
               >
-                Created {renderSortIcon("created")}
+                {t("box.organization.table.created")}{" "}
+                {renderSortIcon("created")}
               </th>
               <th
                 onClick={() => handleSort("downloads")}
                 className="sortable-header"
               >
-                Downloads {renderSortIcon("downloads")}
+                {t("box.organization.table.downloads")}{" "}
+                {renderSortIcon("downloads")}
               </th>
               <th
                 onClick={() => handleSort("versions")}
                 className="sortable-header"
               >
-                # Versions {renderSortIcon("versions")}
+                {t("box.organization.table.versions")}{" "}
+                {renderSortIcon("versions")}
               </th>
-              <th>Providers</th>
-              <th>Architectures</th>
+              <th>{t("box.organization.table.providers")}</th>
+              <th>{t("box.organization.table.architectures")}</th>
             </tr>
           </thead>
           <tbody key="tbody">
@@ -1004,7 +1013,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             ) : (
               <tr>
                 <td colSpan="8" className="text-center">
-                  No boxes found
+                  {t("box.organization.table.noBoxes")}
                 </td>
               </tr>
             )}

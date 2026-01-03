@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -12,6 +13,7 @@ const OidcProviderManager = ({
   setMessage,
   setMessageType,
 }) => {
+  const { t } = useTranslation();
   const [showOidcProviderModal, setShowOidcProviderModal] = useState(false);
   const [oidcProviderForm, setOidcProviderForm] = useState({
     name: "",
@@ -71,15 +73,15 @@ const OidcProviderManager = ({
     const { name, displayName, issuer, clientId, clientSecret } = formData;
 
     if (!name || !displayName || !issuer || !clientId || !clientSecret) {
-      return "Provider name, display name, issuer, client ID, and client secret are required";
+      return t("oidc.errors.requiredFields");
     }
 
     if (!/^[a-z0-9_]+$/i.test(name)) {
-      return "Provider name must contain only letters, numbers, and underscores";
+      return t("oidc.errors.invalidName");
     }
 
     if (config.auth?.oidc?.providers?.[name] && !editingProvider) {
-      return `OIDC provider &apos;${name}&apos; already exists`;
+      return t("oidc.errors.providerExists", { name });
     }
 
     return null;
@@ -110,8 +112,8 @@ const OidcProviderManager = ({
       setOidcProviderLoading(true);
       setMessage(
         editingProvider
-          ? "Updating OIDC provider..."
-          : "Adding OIDC provider..."
+          ? t("oidc.messages.updating")
+          : t("oidc.messages.adding")
       );
       setMessageType("info");
 
@@ -172,15 +174,26 @@ const OidcProviderManager = ({
 
       await onConfigUpdate(newConfig);
       setMessage(
-        `OIDC provider &apos;${displayName}&apos; ${editingProvider ? "updated" : "added"} successfully!`
+        t("oidc.messages.success", {
+          displayName,
+          action: editingProvider
+            ? t("oidc.actions.updated")
+            : t("oidc.actions.added"),
+        })
       );
       setMessageType("success");
       setShowOidcProviderModal(false);
       setEditingProvider(null);
       resetOidcProviderForm();
     } catch (error) {
+      const action = editingProvider
+        ? t("oidc.actions.updating")
+        : t("oidc.actions.adding");
       setMessage(
-        `Error ${editingProvider ? "updating" : "adding"} OIDC provider: ${error.response?.data?.message || error.message}`
+        t("oidc.errors.apiError", {
+          action,
+          error: error.response?.data?.message || error.message,
+        })
       );
       setMessageType("danger");
     } finally {
@@ -204,7 +217,7 @@ const OidcProviderManager = ({
     }
 
     try {
-      setMessage("Deleting OIDC provider...");
+      setMessage(t("oidc.messages.deleting"));
       setMessageType("info");
 
       const newConfig = { ...config };
@@ -214,12 +227,14 @@ const OidcProviderManager = ({
 
       await onConfigUpdate(newConfig);
       setMessage(
-        `OIDC provider &apos;${providerToDelete}&apos; deleted successfully!`
+        t("oidc.messages.deleteSuccess", { providerName: providerToDelete })
       );
       setMessageType("success");
     } catch (error) {
       setMessage(
-        `Error deleting OIDC provider: ${error.response?.data?.message || error.message}`
+        t("oidc.errors.deleteError", {
+          error: error.response?.data?.message || error.message,
+        })
       );
       setMessageType("danger");
     } finally {
@@ -247,10 +262,11 @@ const OidcProviderManager = ({
         >
           <h6 className="mb-0">
             <i className="fas fa-shield-alt me-2" />
-            OIDC Providers
+            {t("oidc.title")}
             <span className="badge bg-light text-dark ms-2">
-              {Object.keys(providers).length} provider
-              {Object.keys(providers).length !== 1 ? "s" : ""}
+              {t("oidc.providerCount", {
+                count: Object.keys(providers).length,
+              })}
             </span>
           </h6>
           <button
@@ -263,14 +279,11 @@ const OidcProviderManager = ({
             }}
           >
             <i className="fas fa-plus me-1" />
-            Add OIDC Provider
+            {t("oidc.buttons.add")}
           </button>
         </div>
         <div className="card-body">
-          <p className="text-muted mb-3">
-            Manage OpenID Connect authentication providers for single sign-on
-            integration. Click on a provider card to edit its settings.
-          </p>
+          <p className="text-muted mb-3">{t("oidc.description")}</p>
 
           {Object.keys(providers).length > 0 ? (
             <div className="row">
@@ -296,20 +309,21 @@ const OidcProviderManager = ({
                           {providerConfig.display_name?.value || providerName}
                           {providerConfig.enabled?.value && (
                             <span className="badge bg-success ms-2">
-                              Enabled
+                              {t("oidc.enabled")}
                             </span>
                           )}
                         </h6>
                       </div>
                       <div className="card-body">
                         <small className="text-muted">
-                          <strong>Issuer:</strong>{" "}
+                          <strong>{t("oidc.issuer")}:</strong>{" "}
                           {providerConfig.issuer?.value}
                           <br />
-                          <strong>Client ID:</strong>{" "}
+                          <strong>{t("oidc.clientId")}:</strong>{" "}
                           {providerConfig.client_id?.value}
                           <br />
-                          <strong>Scope:</strong> {providerConfig.scope?.value}
+                          <strong>{t("oidc.scope")}:</strong>{" "}
+                          {providerConfig.scope?.value}
                         </small>
                       </div>
                     </div>
@@ -320,9 +334,7 @@ const OidcProviderManager = ({
           ) : (
             <div className="alert alert-info">
               <i className="fas fa-info-circle me-2" />
-              No OIDC providers configured yet. Click &quot;Add OIDC
-              Provider&quot; to set up authentication with providers like
-              Google, Microsoft, GitHub, etc.
+              {t("oidc.noProvidersConfigured")}
             </div>
           )}
         </div>
@@ -336,7 +348,9 @@ const OidcProviderManager = ({
               <div className="modal-header">
                 <h5 className="modal-title">
                   <i className="fab fa-openid me-2" />
-                  {editingProvider ? "Edit OIDC Provider" : "Add OIDC Provider"}
+                  {editingProvider
+                    ? t("oidc.modal.editTitle")
+                    : t("oidc.modal.addTitle")}
                 </h5>
                 <button
                   type="button"
@@ -350,16 +364,15 @@ const OidcProviderManager = ({
               <form onSubmit={addOidcProvider}>
                 <div className="modal-body">
                   <p className="text-muted mb-4">
-                    Configure a new OpenID Connect authentication provider.
-                    You&apos;ll need to register your application with the
-                    provider first to get the client ID and client secret.
+                    {t("oidc.modal.description")}
                   </p>
 
                   <div className="row">
                     <div className="col-md-6">
                       <div className="form-group mb-3">
                         <label htmlFor="providerName">
-                          Provider Name <span className="text-danger">*</span>
+                          {t("oidc.form.name.label")}{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <input
                           type="text"
@@ -377,8 +390,7 @@ const OidcProviderManager = ({
                           required
                         />
                         <small className="form-text text-muted">
-                          Internal identifier (lowercase, letters, numbers, and
-                          underscores only)
+                          {t("oidc.form.name.hint")}
                         </small>
                       </div>
                     </div>
@@ -386,7 +398,8 @@ const OidcProviderManager = ({
                     <div className="col-md-6">
                       <div className="form-group mb-3">
                         <label htmlFor="displayName">
-                          Display Name <span className="text-danger">*</span>
+                          {t("oidc.form.displayName.label")}{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <input
                           type="text"
@@ -404,7 +417,7 @@ const OidcProviderManager = ({
                           required
                         />
                         <small className="form-text text-muted">
-                          Name shown to users on the login page
+                          {t("oidc.form.displayName.hint")}
                         </small>
                       </div>
                     </div>
@@ -412,7 +425,8 @@ const OidcProviderManager = ({
                     <div className="col-md-12">
                       <div className="form-group mb-3">
                         <label htmlFor="issuer">
-                          Issuer URL <span className="text-danger">*</span>
+                          {t("oidc.form.issuer.label")}{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <input
                           type="url"
@@ -430,8 +444,7 @@ const OidcProviderManager = ({
                           required
                         />
                         <small className="form-text text-muted">
-                          The OIDC issuer URL (check your provider&apos;s
-                          documentation for the correct URL)
+                          {t("oidc.form.issuer.hint")}
                         </small>
                       </div>
                     </div>
@@ -439,7 +452,8 @@ const OidcProviderManager = ({
                     <div className="col-md-6">
                       <div className="form-group mb-3">
                         <label htmlFor="clientId">
-                          Client ID <span className="text-danger">*</span>
+                          {t("oidc.form.clientId.label")}{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <input
                           type="text"
@@ -457,7 +471,7 @@ const OidcProviderManager = ({
                           required
                         />
                         <small className="form-text text-muted">
-                          Client ID from your OAuth application registration
+                          {t("oidc.form.clientId.hint")}
                         </small>
                       </div>
                     </div>
@@ -465,7 +479,8 @@ const OidcProviderManager = ({
                     <div className="col-md-6">
                       <div className="form-group mb-3">
                         <label htmlFor="clientSecret">
-                          Client Secret <span className="text-danger">*</span>
+                          {t("oidc.form.clientSecret.label")}{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <input
                           type="password"
@@ -483,14 +498,16 @@ const OidcProviderManager = ({
                           required
                         />
                         <small className="form-text text-muted">
-                          Client secret from your OAuth application registration
+                          {t("oidc.form.clientSecret.hint")}
                         </small>
                       </div>
                     </div>
 
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="scope">Scope</label>
+                        <label htmlFor="scope">
+                          {t("oidc.form.scope.label")}
+                        </label>
                         <input
                           type="text"
                           className="form-control"
@@ -505,15 +522,16 @@ const OidcProviderManager = ({
                           disabled={oidcProviderLoading}
                         />
                         <small className="form-text text-muted">
-                          OAuth scopes (space-separated). Default is usually
-                          sufficient.
+                          {t("oidc.form.scope.hint")}
                         </small>
                       </div>
                     </div>
 
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="responseType">Response Type</label>
+                        <label htmlFor="responseType">
+                          {t("oidc.form.responseType.label")}
+                        </label>
                         <select
                           className="form-control"
                           id="responseType"
@@ -527,14 +545,17 @@ const OidcProviderManager = ({
                           disabled={oidcProviderLoading}
                         >
                           <option value="code">
-                            Authorization Code (Recommended)
+                            {t("oidc.form.responseType.options.code")}
                           </option>
-                          <option value="id_token">ID Token</option>
-                          <option value="code id_token">Code + ID Token</option>
+                          <option value="id_token">
+                            {t("oidc.form.responseType.options.id_token")}
+                          </option>
+                          <option value="code id_token">
+                            {t("oidc.form.responseType.options.code_id_token")}
+                          </option>
                         </select>
                         <small className="form-text text-muted">
-                          OAuth flow type. Use &quot;code&quot; for most
-                          providers.
+                          {t("oidc.form.responseType.hint")}
                         </small>
                       </div>
                     </div>
@@ -555,37 +576,26 @@ const OidcProviderManager = ({
                           disabled={oidcProviderLoading}
                         />
                         <label className="form-check-label" htmlFor="enabled">
-                          Enable this provider for user authentication
+                          {t("oidc.form.enabled.label")}
                         </label>
                       </div>
                     </div>
                   </div>
 
                   <div className="alert alert-info mt-3">
-                    <h6>Configuration Instructions</h6>
+                    <h6>{t("oidc.instructions.title")}</h6>
                     <ol className="mb-0">
+                      <li>{t("oidc.instructions.step1")}</li>
                       <li>
-                        Register your application with your OIDC provider&apos;s
-                        developer console
-                      </li>
-                      <li>
-                        Add{" "}
+                        {t("oidc.instructions.step2")}{" "}
                         <code>
                           https://your-domain.com/api/auth/oidc/callback
                         </code>{" "}
-                        as an allowed redirect URI
+                        {t("oidc.instructions.step2_cont")}
                       </li>
-                      <li>
-                        Copy the Client ID and Client Secret from your
-                        provider&apos;s console
-                      </li>
-                      <li>
-                        Find your provider&apos;s issuer URL in their
-                        documentation
-                      </li>
-                      <li>
-                        Fill out the form above and test the configuration
-                      </li>
+                      <li>{t("oidc.instructions.step3")}</li>
+                      <li>{t("oidc.instructions.step4")}</li>
+                      <li>{t("oidc.instructions.step5")}</li>
                     </ol>
                   </div>
                 </div>
@@ -602,7 +612,7 @@ const OidcProviderManager = ({
                       disabled={oidcProviderLoading}
                     >
                       <i className="fas fa-trash me-1" />
-                      Delete Provider
+                      {t("oidc.buttons.delete")}
                     </button>
                   )}
                   <button
@@ -614,7 +624,7 @@ const OidcProviderManager = ({
                     }}
                     disabled={oidcProviderLoading}
                   >
-                    Cancel
+                    {t("buttons.cancel")}
                   </button>
                   <button
                     type="submit"
@@ -624,10 +634,16 @@ const OidcProviderManager = ({
                     {oidcProviderLoading && (
                       <span className="spinner-border spinner-border-sm me-2" />
                     )}
-                    {oidcProviderLoading &&
-                      (editingProvider ? "Updating..." : "Adding...")}
-                    {!oidcProviderLoading &&
-                      (editingProvider ? "Update Provider" : "Add Provider")}
+                    {(() => {
+                      if (oidcProviderLoading) {
+                        return editingProvider
+                          ? t("oidc.buttons.updating")
+                          : t("oidc.buttons.adding");
+                      }
+                      return editingProvider
+                        ? t("oidc.buttons.update")
+                        : t("oidc.buttons.add");
+                    })()}
                   </button>
                 </div>
               </form>
@@ -641,8 +657,10 @@ const OidcProviderManager = ({
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}
-        title="Delete OIDC Provider"
-        message={`Are you sure you want to delete the OIDC provider '${providerToDelete}'? This cannot be undone.`}
+        title={t("oidc.deleteModal.title")}
+        message={t("oidc.deleteModal.message", {
+          providerName: providerToDelete,
+        })}
       />
     </>
   );

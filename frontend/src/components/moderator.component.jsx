@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
@@ -12,9 +13,10 @@ import { log } from "../utils/Logger";
 import ConfirmationModal from "./confirmation.component";
 
 const Moderator = ({ currentOrganization }) => {
+  const { t } = useTranslation();
   useEffect(() => {
-    document.title = "Moderator";
-  }, []);
+    document.title = t("moderator.pageTitle");
+  }, [t]);
 
   const [users, setUsers] = useState([]);
   const [newOrgName, setNewOrgName] = useState("");
@@ -98,29 +100,24 @@ const Moderator = ({ currentOrganization }) => {
 
   const handleUpdateOrganization = async (e) => {
     e.preventDefault();
-
     // Validation
     if (!newOrgName.trim()) {
-      setUpdateMessage("Organization name is required.");
+      setUpdateMessage(t("moderator.orgNameRequired"));
       return;
     }
     if (!validateOrgName(newOrgName)) {
-      setUpdateMessage(
-        "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed."
-      );
+      setUpdateMessage(t("moderator.invalidOrgName"));
       return;
     }
     if (!orgEmail.trim()) {
-      setUpdateMessage("Organization email is required.");
+      setUpdateMessage(t("moderator.orgEmailRequired"));
       return;
     }
 
     if (newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
-        setUpdateMessage(
-          "An organization with this name already exists. Please choose a different name."
-        );
+        setUpdateMessage(t("moderator.orgExists"));
         return;
       }
     }
@@ -155,13 +152,13 @@ const Moderator = ({ currentOrganization }) => {
         });
       }
 
-      setUpdateMessage("Organization updated successfully!");
+      setUpdateMessage(t("moderator.orgUpdateSuccess"));
     } catch (error) {
       log.component.error("Error updating organization", {
         organization: currentOrganization,
         error: error.message,
       });
-      setUpdateMessage("Error updating organization. Please try again.");
+      setUpdateMessage(t("moderator.orgUpdateError"));
     }
   };
 
@@ -193,10 +190,10 @@ const Moderator = ({ currentOrganization }) => {
         currentOrganization
       );
       const invitationDetails = `Invitation sent! 
-        Token: ${response.data.invitationToken}
-        Expires: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
-        Organization ID: ${response.data.organizationId}
-        Invitation Link: ${response.data.invitationLink}`;
+        ${t("moderator.invitation.token")}: ${response.data.invitationToken}
+        ${t("moderator.invitation.expires")}: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
+        ${t("moderator.invitation.orgId")}: ${response.data.organizationId}
+        ${t("moderator.invitation.link")}: ${response.data.invitationLink}`;
       setInvitationMessage(invitationDetails);
       setEmail("");
     } catch (error) {
@@ -205,9 +202,7 @@ const Moderator = ({ currentOrganization }) => {
         organization: currentOrganization,
         error: error.message,
       });
-      setInvitationMessage(
-        "Warning: Invitation created but email may not have been sent. You can copy the link below and send it manually."
-      );
+      setInvitationMessage(t("moderator.invitation.sendWarning"));
     } finally {
       // Always refresh invitations list (even if email failed)
       try {
@@ -260,7 +255,7 @@ const Moderator = ({ currentOrganization }) => {
         requestId,
         assignedRole
       );
-      setUpdateMessage("Join request approved successfully!");
+      setUpdateMessage(t("moderator.joinRequest.approved"));
 
       // Refresh join requests list
       const response =
@@ -271,14 +266,16 @@ const Moderator = ({ currentOrganization }) => {
         requestId,
         error: error.message,
       });
-      setUpdateMessage(`Error approving request: ${error.message}`);
+      setUpdateMessage(
+        t("moderator.joinRequest.approveError", { error: error.message })
+      );
     }
   };
 
   const handleDenyJoinRequest = async (requestId) => {
     try {
       await RequestService.denyJoinRequest(currentOrganization, requestId);
-      setUpdateMessage("Join request denied.");
+      setUpdateMessage(t("moderator.joinRequest.denied"));
 
       // Refresh join requests list
       const response =
@@ -289,14 +286,16 @@ const Moderator = ({ currentOrganization }) => {
         requestId,
         error: error.message,
       });
-      setUpdateMessage(`Error denying request: ${error.message}`);
+      setUpdateMessage(
+        t("moderator.joinRequest.denyError", { error: error.message })
+      );
     }
   };
 
   return (
     <div className="list row">
       <header>
-        <h3 className="text-center">Moderator Panel</h3>
+        <h3 className="text-center">{t("moderator.title")}</h3>
       </header>
 
       {/* Navigation Tabs */}
@@ -306,7 +305,7 @@ const Moderator = ({ currentOrganization }) => {
             className={`nav-link ${activeTab === "organization" ? "active" : ""}`}
             onClick={() => setActiveTab("organization")}
           >
-            Organization
+            {t("moderator.tabs.organization")}
           </button>
         </li>
         <li className="nav-item">
@@ -314,7 +313,7 @@ const Moderator = ({ currentOrganization }) => {
             className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
             onClick={() => setActiveTab("joinRequests")}
           >
-            Join Requests
+            {t("moderator.tabs.joinRequests")}
             {joinRequests.length > 0 && (
               <span className="badge bg-warning ms-2">
                 {joinRequests.length}
@@ -327,13 +326,13 @@ const Moderator = ({ currentOrganization }) => {
             className={`nav-link ${activeTab === "invitations" ? "active" : ""}`}
             onClick={() => setActiveTab("invitations")}
           >
-            Invitations
+            {t("moderator.tabs.invitations")}
           </button>
         </li>
       </ul>
 
       {loading ? (
-        <p>Loading...</p>
+        <p>{t("loading")}</p>
       ) : (
         <div className="tab-content mt-3">
           {activeTab === "organization" && (
@@ -341,12 +340,14 @@ const Moderator = ({ currentOrganization }) => {
               <div className="col-md-12 mb-4">
                 <div className="card mt-2 mb-2">
                   <div className="card-header">
-                    <h4>Organization Details</h4>
+                    <h4>{t("moderator.organization.title")}</h4>
                   </div>
                   <div className="card-body">
                     <form onSubmit={handleUpdateOrganization}>
                       <div className="form-group">
-                        <label htmlFor="orgName">Organization Name</label>
+                        <label htmlFor="orgName">
+                          {t("moderator.organization.name")}
+                        </label>
                         <input
                           type="text"
                           className="form-control"
@@ -356,7 +357,9 @@ const Moderator = ({ currentOrganization }) => {
                         />
                       </div>
                       <div className="form-group">
-                        <label htmlFor="orgEmail">Organization Email</label>
+                        <label htmlFor="orgEmail">
+                          {t("moderator.organization.email")}
+                        </label>
                         <input
                           type="email"
                           className="form-control"
@@ -367,7 +370,7 @@ const Moderator = ({ currentOrganization }) => {
                       </div>
                       <div className="form-group">
                         <label htmlFor="orgEmailHash">
-                          Organization EmailHash
+                          {t("moderator.organization.emailHash")}
                         </label>
                         <input
                           type="text"
@@ -377,12 +380,12 @@ const Moderator = ({ currentOrganization }) => {
                           readOnly
                         />
                         <small className="form-text text-muted">
-                          Auto-generated from organization email
+                          {t("moderator.organization.emailHashHint")}
                         </small>
                       </div>
                       <div className="form-group">
                         <label htmlFor="orgDescription">
-                          Organization Description
+                          {t("moderator.organization.description")}
                         </label>
                         <textarea
                           className="form-control"
@@ -395,7 +398,9 @@ const Moderator = ({ currentOrganization }) => {
                       <div className="row">
                         <div className="col-md-6">
                           <div className="form-group">
-                            <label htmlFor="orgAccessMode">Access Mode</label>
+                            <label htmlFor="orgAccessMode">
+                              {t("moderator.organization.accessMode")}
+                            </label>
                             <select
                               className="form-control"
                               id="orgAccessMode"
@@ -403,23 +408,31 @@ const Moderator = ({ currentOrganization }) => {
                               onChange={(e) => setOrgAccessMode(e.target.value)}
                             >
                               <option value="private">
-                                Private (Unlisted)
+                                {t(
+                                  "moderator.organization.accessModes.private"
+                                )}
                               </option>
                               <option value="invite_only">
-                                Invite Only (Listed)
+                                {t(
+                                  "moderator.organization.accessModes.inviteOnly"
+                                )}
                               </option>
                               <option value="request_to_join">
-                                Request to Join (Listed)
+                                {t(
+                                  "moderator.organization.accessModes.requestToJoin"
+                                )}
                               </option>
                             </select>
                             <small className="form-text text-muted">
-                              Controls organization visibility and join methods
+                              {t("moderator.organization.accessModeHint")}
                             </small>
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="form-group">
-                            <label htmlFor="orgDefaultRole">Default Role</label>
+                            <label htmlFor="orgDefaultRole">
+                              {t("moderator.organization.defaultRole")}
+                            </label>
                             <select
                               className="form-control"
                               id="orgDefaultRole"
@@ -428,18 +441,20 @@ const Moderator = ({ currentOrganization }) => {
                                 setOrgDefaultRole(e.target.value)
                               }
                             >
-                              <option value="user">User</option>
-                              <option value="moderator">Moderator</option>
+                              <option value="user">{t("roles.user")}</option>
+                              <option value="moderator">
+                                {t("roles.moderator")}
+                              </option>
                             </select>
                             <small className="form-text text-muted">
-                              Default role for new members
+                              {t("moderator.organization.defaultRoleHint")}
                             </small>
                           </div>
                         </div>
                       </div>
 
                       <button type="submit" className="btn btn-primary mt-2">
-                        Update Organization
+                        {t("moderator.organization.updateButton")}
                       </button>
                     </form>
                     {updateMessage && (
@@ -453,7 +468,11 @@ const Moderator = ({ currentOrganization }) => {
               <div className="col-md-12 mb-4">
                 <div className="card mt-2 mb-2">
                   <div className="card-header">
-                    <h4>Users in {currentOrganization}</h4>
+                    <h4>
+                      {t("moderator.users.title", {
+                        organization: currentOrganization,
+                      })}
+                    </h4>
                   </div>
                   <ul className="list-group list-group-flush">
                     {users.map((user) => (
@@ -464,12 +483,15 @@ const Moderator = ({ currentOrganization }) => {
                         <div>
                           <strong>{user.username}</strong> <br />
                           <small>{user.email}</small> <br />
-                          <small>Boxes: {user.totalBoxes || 0}</small> <br />
-                          <small>Roles:</small>
+                          <small>
+                            {t("moderator.users.boxes")}: {user.totalBoxes || 0}
+                          </small>{" "}
+                          <br />
+                          <small>{t("moderator.users.roles")}:</small>
                           <ul>
                             {user.roles &&
                               user.roles.map((role) => (
-                                <li key={role}>{role}</li>
+                                <li key={role}>{t(`roles.${role}`)}</li>
                               ))}
                           </ul>
                         </div>
@@ -481,14 +503,14 @@ const Moderator = ({ currentOrganization }) => {
                                 className="btn btn-secondary btn-sm me-2"
                                 onClick={() => handleDemoteUser(user.id)}
                               >
-                                Demote
+                                {t("moderator.users.demote")}
                               </button>
                             ) : (
                               <button
                                 className="btn btn-primary btn-sm me-2"
                                 onClick={() => handlePromoteUser(user.id)}
                               >
-                                Promote
+                                {t("moderator.users.promote")}
                               </button>
                             ))}
                         </div>
@@ -503,12 +525,12 @@ const Moderator = ({ currentOrganization }) => {
           {activeTab === "joinRequests" && (
             <div className="card">
               <div className="card-header">
-                <h4>Pending Join Requests</h4>
+                <h4>{t("moderator.joinRequest.title")}</h4>
               </div>
               <div className="card-body">
                 {joinRequests.length === 0 ? (
                   <div className="alert alert-info">
-                    No pending join requests.
+                    {t("moderator.joinRequest.noRequests")}
                   </div>
                 ) : (
                   <div className="table-responsive">
@@ -516,10 +538,10 @@ const Moderator = ({ currentOrganization }) => {
                       <thead>
                         <tr>
                           <th>User</th>
-                          <th>Email</th>
-                          <th>Message</th>
-                          <th>Requested</th>
-                          <th>Actions</th>
+                          <th>{t("moderator.joinRequest.email")}</th>
+                          <th>{t("moderator.joinRequest.message")}</th>
+                          <th>{t("moderator.joinRequest.requested")}</th>
+                          <th>{t("moderator.joinRequest.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -529,7 +551,10 @@ const Moderator = ({ currentOrganization }) => {
                               <strong>{request.user.username}</strong>
                             </td>
                             <td>{request.user.email}</td>
-                            <td>{request.message || "No message"}</td>
+                            <td>
+                              {request.message ||
+                                t("moderator.joinRequest.noMessage")}
+                            </td>
                             <td>
                               {new Date(
                                 request.created_at
@@ -543,7 +568,7 @@ const Moderator = ({ currentOrganization }) => {
                                     handleApproveJoinRequest(request.id, "user")
                                   }
                                 >
-                                  Approve as User
+                                  {t("moderator.joinRequest.approveAsUser")}
                                 </button>
                                 <button
                                   className="btn btn-warning btn-sm"
@@ -554,7 +579,9 @@ const Moderator = ({ currentOrganization }) => {
                                     )
                                   }
                                 >
-                                  Approve as Moderator
+                                  {t(
+                                    "moderator.joinRequest.approveAsModerator"
+                                  )}
                                 </button>
                                 <button
                                   className="btn btn-danger btn-sm"
@@ -562,7 +589,7 @@ const Moderator = ({ currentOrganization }) => {
                                     handleDenyJoinRequest(request.id)
                                   }
                                 >
-                                  Deny
+                                  {t("moderator.joinRequest.deny")}
                                 </button>
                               </div>
                             </td>
@@ -580,17 +607,19 @@ const Moderator = ({ currentOrganization }) => {
             <div className="card">
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h4>Manage Invitations</h4>
+                  <h4>{t("moderator.invitation.manageTitle")}</h4>
                 </div>
               </div>
               <div className="card-body">
                 <div className="mb-4">
-                  <h5>Send New Invitation</h5>
+                  <h5>{t("moderator.invitation.sendTitle")}</h5>
                   <form onSubmit={handleSendInvitation}>
                     <div className="row">
                       <div className="col-md-8">
                         <div className="form-group">
-                          <label htmlFor="email">Email Address</label>
+                          <label htmlFor="email">
+                            {t("moderator.invitation.email")}
+                          </label>
                           <input
                             type="email"
                             className="form-control"
@@ -603,22 +632,26 @@ const Moderator = ({ currentOrganization }) => {
                       </div>
                       <div className="col-md-4">
                         <div className="form-group">
-                          <label htmlFor="inviteRole">Assign Role</label>
+                          <label htmlFor="inviteRole">
+                            {t("moderator.invitation.assignRole")}
+                          </label>
                           <select
                             className="form-control"
                             id="inviteRole"
                             value={inviteRole}
                             onChange={(e) => setInviteRole(e.target.value)}
                           >
-                            <option value="user">User</option>
-                            <option value="moderator">Moderator</option>
-                            <option value="admin">Admin</option>
+                            <option value="user">{t("roles.user")}</option>
+                            <option value="moderator">
+                              {t("roles.moderator")}
+                            </option>
+                            <option value="admin">{t("roles.admin")}</option>
                           </select>
                         </div>
                       </div>
                     </div>
                     <button type="submit" className="btn btn-primary mt-2">
-                      Send Invitation
+                      {t("moderator.invitation.sendButton")}
                     </button>
                   </form>
                   {invitationMessage && (
@@ -628,20 +661,22 @@ const Moderator = ({ currentOrganization }) => {
                   )}
                 </div>
 
-                <h5>Active Invitations</h5>
+                <h5>{t("moderator.invitation.activeTitle")}</h5>
                 {activeInvitations.length === 0 ? (
-                  <div className="alert alert-info">No active invitations.</div>
+                  <div className="alert alert-info">
+                    {t("moderator.invitation.noActive")}
+                  </div>
                 ) : (
                   <div className="table-responsive">
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>Email</th>
-                          <th>Expires</th>
-                          <th>Accepted</th>
-                          <th>Expired</th>
-                          <th>Invitation Link</th>
-                          <th>Actions</th>
+                          <th>{t("moderator.invitation.email")}</th>
+                          <th>{t("moderator.invitation.expires")}</th>
+                          <th>{t("moderator.invitation.accepted")}</th>
+                          <th>{t("moderator.invitation.expired")}</th>
+                          <th>{t("moderator.invitation.link")}</th>
+                          <th>{t("moderator.invitation.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -651,15 +686,15 @@ const Moderator = ({ currentOrganization }) => {
                             <td>
                               {new Date(invitation.expires).toLocaleString()}
                             </td>
-                            <td>{invitation.accepted ? "Yes" : "No"}</td>
-                            <td>{invitation.expired ? "Yes" : "No"}</td>
+                            <td>{invitation.accepted ? t("yes") : t("no")}</td>
+                            <td>{invitation.expired ? t("yes") : t("no")}</td>
                             <td>
                               <a
                                 href={`${window.location.origin}/register?token=${encodeURIComponent(invitation.token)}&organization=${encodeURIComponent(currentOrganization)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                Invitation Link
+                                {t("moderator.invitation.linkText")}
                               </a>
                             </td>
                             <td>
@@ -667,7 +702,7 @@ const Moderator = ({ currentOrganization }) => {
                                 className="btn btn-danger btn-sm"
                                 onClick={() => handleDeleteClick(invitation)}
                               >
-                                Delete
+                                {t("buttons.delete")}
                               </button>
                             </td>
                           </tr>
