@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/Makr91/BoxVault/compare/v0.29.0...v0.30.0) (2026-01-03)
+
+
+### Features
+
+* fix some documentation to trigger build that added true multi org support ([756cb3d](https://github.com/Makr91/BoxVault/commit/756cb3d585c98a7f0e2b3c8e7bc6b6109baada98))
+
 ## [0.29.0](https://github.com/Makr91/BoxVault/compare/v0.28.0...v0.29.0) (2026-01-03)
 
 
