@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.31.0](https://github.com/Makr91/BoxVault/compare/v0.30.0...v0.31.0) (2026-01-03)
+
+
+### Features
+
+* add footer component with health status and powered by information ([4692daa](https://github.com/Makr91/BoxVault/commit/4692daab3d16fa593180ee0b1f55f236f5cfdc71))
+* add SSL upload functionality and SMTP test feature ([1aadb1a](https://github.com/Makr91/BoxVault/commit/1aadb1a608d541c65cd5f6f6eac8bcedae21398a))
+* **i18n:** Normalize language codes and improve fallback settings ([eac5ef8](https://github.com/Makr91/BoxVault/commit/eac5ef89c8d455440bccd9b511c01d8e0f1bed63))
+* **react:** Wrap application in Suspense for better loading handling ([eac5ef8](https://github.com/Makr91/BoxVault/commit/eac5ef89c8d455440bccd9b511c01d8e0f1bed63))
+
+
+### Bug Fixes
+
+* **auth.config:** Add subsection keys for authentication settings ([eac5ef8](https://github.com/Makr91/BoxVault/commit/eac5ef89c8d455440bccd9b511c01d8e0f1bed63))
+* **db.config:** Include subsection keys for database configuration ([eac5ef8](https://github.com/Makr91/BoxVault/commit/eac5ef89c8d455440bccd9b511c01d8e0f1bed63))
+* **file.service:** Simplify error handling for file upload and assembly processes ([eac5ef8](https://github.com/Makr91/BoxVault/commit/eac5ef89c8d455440bccd9b511c01d8e0f1bed63))
+* **mail.config:** Add subsection keys for mail configuration ([eac5ef8](https://github.com/Makr91/BoxVault/commit/eac5ef89c8d455440bccd9b511c01d8e0f1bed63))
+* translate backend ([f15a412](https://github.com/Makr91/BoxVault/commit/f15a412be1f57b18214e38b9ba6881d0d4b47796))
+
 ## [0.30.0](https://github.com/Makr91/BoxVault/compare/v0.29.0...v0.30.0) (2026-01-03)
 
 
