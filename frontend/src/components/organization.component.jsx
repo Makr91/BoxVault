@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Table from "react-bootstrap/Table";
+import { FaSortUp, FaSortDown, FaSort } from "react-icons/fa6";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
@@ -41,12 +42,290 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
+  // Sort and filter state - load initial values from localStorage
+  const [sortColumn, setSortColumn] = useState(() => {
+    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved);
+        return prefs.sortColumn || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [sortDirection, setSortDirection] = useState(() => {
+    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved);
+        return prefs.sortDirection || "asc";
+      } catch {
+        return "asc";
+      }
+    }
+    return "asc";
+  });
+
+  const [activeProviders, setActiveProviders] = useState(() => {
+    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved);
+        return new Set(prefs.providers || []);
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
+
+  const [activeArchitectures, setActiveArchitectures] = useState(() => {
+    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved);
+        return new Set(prefs.architectures || []);
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
+
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
   const validateName = (value) =>
     validCharsRegex.test(value)
       ? undefined
       : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+
+  // Helper functions - defined before use
+  const calculatePublicDownloads = useCallback((box) => {
+    if (!box.versions) {
+      return 0;
+    }
+    return box.versions.reduce((versionTotal, version) => {
+      if (!version.providers) {
+        return versionTotal;
+      }
+      return (
+        versionTotal +
+        version.providers.reduce((providerTotal, provider) => {
+          if (!provider.architectures) {
+            return providerTotal;
+          }
+          return (
+            providerTotal +
+            provider.architectures.reduce((archTotal, architecture) => {
+              if (!architecture.files) {
+                return archTotal;
+              }
+              return (
+                archTotal +
+                architecture.files.reduce(
+                  (fileTotal, file) => fileTotal + file.downloadCount,
+                  0
+                )
+              );
+            }, 0)
+          );
+        }, 0)
+      );
+    }, 0);
+  }, []);
+
+  const getProviderNames = useCallback((box) => {
+    if (box.versions) {
+      return [
+        ...new Set(
+          box.versions.flatMap((version) =>
+            version.providers
+              ? version.providers.map((provider) => provider.name)
+              : []
+          )
+        ),
+      ];
+    }
+    if (box.providers) {
+      return [...new Set(box.providers.map((provider) => provider.name))];
+    }
+    return [];
+  }, []);
+
+  const getArchitectureNames = useCallback((box) => {
+    if (box.versions) {
+      return [
+        ...new Set(
+          box.versions.flatMap((version) =>
+            version.providers
+              ? version.providers.flatMap((provider) =>
+                  provider.architectures
+                    ? provider.architectures.map((arch) => arch.name)
+                    : []
+                )
+              : []
+          )
+        ),
+      ];
+    }
+    if (box.providers) {
+      return [
+        ...new Set(
+          box.providers.flatMap((provider) =>
+            provider.architectures
+              ? provider.architectures.map((arch) => arch.name)
+              : []
+          )
+        ),
+      ];
+    }
+    return [];
+  }, []);
+
+  // Extract unique providers and architectures with counts
+  const allProviders = useMemo(() => {
+    const providerCounts = {};
+    boxes.forEach((box) => {
+      getProviderNames(box).forEach((provider) => {
+        providerCounts[provider] = (providerCounts[provider] || 0) + 1;
+      });
+    });
+    return providerCounts;
+  }, [boxes, getProviderNames]);
+
+  const allArchitectures = useMemo(() => {
+    const archCounts = {};
+    boxes.forEach((box) => {
+      getArchitectureNames(box).forEach((arch) => {
+        archCounts[arch] = (archCounts[arch] || 0) + 1;
+      });
+    });
+    return archCounts;
+  }, [boxes, getArchitectureNames]);
+
+  // Toggle tag filter
+  const toggleProviderFilter = (provider) => {
+    setActiveProviders((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(provider)) {
+        newSet.delete(provider);
+      } else {
+        newSet.add(provider);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleArchitectureFilter = (arch) => {
+    setActiveArchitectures((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(arch)) {
+        newSet.delete(arch);
+      } else {
+        newSet.add(arch);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle column sort
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortColumn(null);
+        setSortDirection("asc");
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  // Filter and sort boxes
+  const processedBoxes = useMemo(() => {
+    let filtered = [...boxes];
+
+    // Apply provider filter
+    if (activeProviders.size > 0) {
+      filtered = filtered.filter((box) => {
+        const providers = getProviderNames(box);
+        return providers.some((p) => activeProviders.has(p));
+      });
+    }
+
+    // Apply architecture filter
+    if (activeArchitectures.size > 0) {
+      filtered = filtered.filter((box) => {
+        const archs = getArchitectureNames(box);
+        return archs.some((a) => activeArchitectures.has(a));
+      });
+    }
+
+    // Apply search filter
+    if (searchName.trim()) {
+      filtered = filtered.filter((box) =>
+        box.name.toLowerCase().includes(searchName.toLowerCase())
+      );
+    }
+
+    // Apply sort
+    if (sortColumn) {
+      filtered.sort((a, b) => {
+        let aVal;
+        let bVal;
+
+        switch (sortColumn) {
+          case "name":
+            aVal = a.name.toLowerCase();
+            bVal = b.name.toLowerCase();
+            break;
+          case "created":
+            aVal = new Date(a.createdAt).getTime();
+            bVal = new Date(b.createdAt).getTime();
+            break;
+          case "downloads":
+            aVal = calculatePublicDownloads(a);
+            bVal = calculatePublicDownloads(b);
+            break;
+          case "versions":
+            aVal = a.versions ? a.versions.length : 0;
+            bVal = b.versions ? b.versions.length : 0;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aVal < bVal) {
+          return sortDirection === "asc" ? -1 : 1;
+        }
+        if (aVal > bVal) {
+          return sortDirection === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [
+    boxes,
+    activeProviders,
+    activeArchitectures,
+    searchName,
+    sortColumn,
+    sortDirection,
+    calculatePublicDownloads,
+    getProviderNames,
+    getArchitectureNames,
+  ]);
 
   const fetchGravatarUrl = useCallback(async (emailHash) => {
     try {
@@ -106,90 +385,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     [fetchGravatarUrl]
   );
 
-  const calculatePublicDownloads = (box) => {
-    if (!box.versions) {
-      return 0;
-    }
-    return box.versions.reduce((versionTotal, version) => {
-      if (!version.providers) {
-        return versionTotal;
-      }
-      const versionDownloads = version.providers.reduce(
-        (providerTotal, provider) => {
-          if (!provider.architectures) {
-            return providerTotal;
-          }
-          const providerDownloads = provider.architectures.reduce(
-            (archTotal, architecture) => {
-              if (!architecture.files) {
-                return archTotal;
-              }
-              const archDownloads = architecture.files.reduce(
-                (fileTotal, file) => fileTotal + file.downloadCount,
-                0
-              );
-              return archTotal + archDownloads;
-            },
-            0
-          );
-          return providerTotal + providerDownloads;
-        },
-        0
-      );
-      return versionTotal + versionDownloads;
-    }, 0);
-  };
-
-  const getProviderNames = (box) => {
-    if (box.versions) {
-      return [
-        ...new Set(
-          box.versions.flatMap((version) =>
-            version.providers
-              ? version.providers.map((provider) => provider.name)
-              : []
-          )
-        ),
-      ];
-    }
-    if (box.providers) {
-      return [...new Set(box.providers.map((provider) => provider.name))];
-    }
-    return [];
-  };
-
-  const getArchitectureNames = (box) => {
-    if (box.versions) {
-      return [
-        ...new Set(
-          box.versions.flatMap((version) =>
-            version.providers
-              ? version.providers.flatMap((provider) =>
-                  provider.architectures
-                    ? provider.architectures.map(
-                        (architecture) => architecture.name
-                      )
-                    : []
-                )
-              : []
-          )
-        ),
-      ];
-    }
-    if (box.providers) {
-      return [
-        ...new Set(
-          box.providers.flatMap((provider) =>
-            provider.architectures
-              ? provider.architectures.map((architecture) => architecture.name)
-              : []
-          )
-        ),
-      ];
-    }
-    return [];
-  };
-
   const retrieveBoxes = useCallback(() => {
     if (showOnlyPublic) {
       BoxDataService.discoverAll()
@@ -247,6 +442,24 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       document.title = "BoxVault";
     }
   }, [organization, showOnlyPublic]);
+
+  // Save preferences to localStorage when they change (loading done in initial state)
+  useEffect(() => {
+    const key = `boxvault_table_prefs_${organization || "home"}`;
+    const prefs = {
+      sortColumn,
+      sortDirection,
+      providers: Array.from(activeProviders),
+      architectures: Array.from(activeArchitectures),
+    };
+    localStorage.setItem(key, JSON.stringify(prefs));
+  }, [
+    sortColumn,
+    sortDirection,
+    activeProviders,
+    activeArchitectures,
+    organization,
+  ]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -437,6 +650,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const canEditBoxes = (box) =>
     currentUser && currentUser.organization === box.organization;
 
+  const renderSortIcon = (column) => {
+    if (sortColumn !== column) {
+      return <FaSort />;
+    }
+    return sortDirection === "asc" ? <FaSortUp /> : <FaSortDown />;
+  };
+
   const renderOrgLogo = (box) => {
     const orgName =
       box.user?.organization?.name || box.user?.primaryOrganization?.name;
@@ -492,8 +712,20 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             {organizationName}/{box.name}
           </Link>
         </td>
-        <td className="px-2">{box.published ? "Published" : "Pending"}</td>
-        <td>{box.public || box.isPublic ? "Public" : "Private"}</td>
+        <td className="px-2">
+          <span
+            className={`badge ${box.published ? "bg-success" : "bg-warning"}`}
+          >
+            {box.published ? "Published" : "Pending"}
+          </span>
+        </td>
+        <td>
+          <span
+            className={`badge ${box.public || box.isPublic ? "bg-info" : "bg-secondary"}`}
+          >
+            {box.public || box.isPublic ? "Public" : "Private"}
+          </span>
+        </td>
         <td>{new Date(box.createdAt).toLocaleDateString()}</td>
         <td>{totalDownloads}</td>
         <td>
@@ -698,24 +930,81 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         </div>
       )}
 
+      {/* Tag Cloud Filters */}
+      {(Object.keys(allProviders).length > 0 ||
+        Object.keys(allArchitectures).length > 0) && (
+        <div className="card mb-3">
+          <div className="card-body">
+            {Object.keys(allProviders).length > 0 && (
+              <div className="mb-2">
+                <strong className="me-2">Providers:</strong>
+                {Object.entries(allProviders).map(([provider, count]) => (
+                  <button
+                    key={provider}
+                    className={`btn btn-sm me-2 mb-1 ${activeProviders.has(provider) ? "btn-primary" : "btn-outline-secondary"}`}
+                    onClick={() => toggleProviderFilter(provider)}
+                  >
+                    {provider} ({count})
+                  </button>
+                ))}
+              </div>
+            )}
+            {Object.keys(allArchitectures).length > 0 && (
+              <div>
+                <strong className="me-2">Architectures:</strong>
+                {Object.entries(allArchitectures).map(([arch, count]) => (
+                  <button
+                    key={arch}
+                    className={`btn btn-sm me-2 mb-1 ${activeArchitectures.has(arch) ? "btn-primary" : "btn-outline-secondary"}`}
+                    onClick={() => toggleArchitectureFilter(arch)}
+                  >
+                    {arch} ({count})
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="col-md-12">
         <h4>Template List</h4>
         <Table striped className="table">
           <thead>
             <tr>
-              <th>Box</th>
+              <th
+                onClick={() => handleSort("name")}
+                style={{ cursor: "pointer" }}
+              >
+                Box {renderSortIcon("name")}
+              </th>
               <th>Status</th>
               <th>Public</th>
-              <th>Created</th>
-              <th>Downloads</th>
-              <th># Versions</th>
+              <th
+                onClick={() => handleSort("created")}
+                style={{ cursor: "pointer" }}
+              >
+                Created {renderSortIcon("created")}
+              </th>
+              <th
+                onClick={() => handleSort("downloads")}
+                style={{ cursor: "pointer" }}
+              >
+                Downloads {renderSortIcon("downloads")}
+              </th>
+              <th
+                onClick={() => handleSort("versions")}
+                style={{ cursor: "pointer" }}
+              >
+                # Versions {renderSortIcon("versions")}
+              </th>
               <th>Providers</th>
               <th>Architectures</th>
             </tr>
           </thead>
           <tbody key="tbody">
-            {boxes.length > 0 ? (
-              boxes.map((box, index) => renderTableRow(box, index))
+            {processedBoxes.length > 0 ? (
+              processedBoxes.map((box, index) => renderTableRow(box, index))
             ) : (
               <tr>
                 <td colSpan="8" className="text-center">
