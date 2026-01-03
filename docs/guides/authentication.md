@@ -108,13 +108,26 @@ curl -X POST http://localhost:3000/api/auth/signout \
 
 ### Permission Matrix
 
-| Action              | Admin | Moderator    | User | Service Account |
-| ------------------- | ----- | ------------ | ---- | --------------- |
-| Create Organization | ✓     | ✓            | ✗    | ✗               |
-| Manage Users        | ✓     | ✓ (org only) | ✗    | ✗               |
-| Upload Boxes        | ✓     | ✓            | ✓    | ✓               |
-| Download Boxes      | ✓     | ✓            | ✓    | ✓               |
-| System Settings     | ✓     | ✗            | ✗    | ✗               |
+| Action                     | Admin | Moderator (org)    | User (org member)      | Service Account    |
+| -------------------------- | ----- | ------------------ | ---------------------- | ------------------ |
+| Create Organization        | ✓     | ✓                  | ✗                      | ✗                  |
+| Manage Users               | ✓     | ✓ (org only)       | ✗                      | ✗                  |
+| Create Boxes               | ✓     | ✓                  | ✓ (in any member org)  | ✓ (scoped to org)  |
+| Update Own Boxes           | ✓     | ✓                  | ✓                      | ✓                  |
+| Update Others' Boxes       | ✓     | ✓ (org only)       | ✗                      | ✗                  |
+| Delete Own Boxes           | ✓     | ✓                  | ✓                      | ✓                  |
+| Delete Others' Boxes       | ✓     | ✓ (org only)       | ✗                      | ✗                  |
+| Download Public Boxes      | ✓     | ✓                  | ✓                      | ✓                  |
+| Download Private Boxes     | ✓     | ✓ (member orgs)    | ✓ (member orgs)        | ✓ (scoped org)     |
+| Delete All Boxes (org)     | ✓     | ✓ (org only)       | ✗                      | ✗                  |
+| System Settings            | ✓     | ✗                  | ✗                      | ✗                  |
+
+**Notes:**
+
+- Users can create boxes in ANY organization they belong to (not just their primary organization)
+- Users can only modify/delete boxes they created
+- Moderators and admins can modify/delete ANY box within their organizations
+- Service accounts are scoped to a specific organization at creation time
 
 ## Service Accounts
 

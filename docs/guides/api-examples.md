@@ -122,7 +122,10 @@ curl -X POST https://boxvault.example.com/api/auth/invite \
 
 ### Create Box
 
+You can create boxes in ANY organization you're a member of:
+
 ```bash
+# Create box in organization "myorg"
 curl -X POST https://boxvault.example.com/api/organization/myorg/box \
   -H "x-access-token: YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
@@ -131,7 +134,23 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box \
     "description": "Debian 12 Server",
     "isPublic": false
   }'
+
+# Create box in a different organization "otherorg" (if you're a member)
+curl -X POST https://boxvault.example.com/api/organization/otherorg/box \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ubuntu22",
+    "description": "Ubuntu 22.04 Server",
+    "isPublic": true
+  }'
 ```
+
+**Permission Notes:**
+
+- Any organization member can create boxes
+- You can only update/delete boxes you created
+- Moderators and admins can update/delete any box in their organizations
 
 ### Create Box Version
 

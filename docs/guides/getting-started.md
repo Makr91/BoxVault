@@ -91,6 +91,13 @@ Open your browser and navigate to: [http://localhost:3000](http://localhost:3000
    - **Description**: Brief description
    - **Visibility**: Public or Private
 
+**Multi-Organization Support:**
+
+- Users can belong to multiple organizations
+- Create boxes in ANY organization you're a member of
+- Use the organization switcher to select which org you're working with
+- Service accounts are scoped to specific organizations
+
 ### 4. Upload Your First Box
 
 1. Navigate to your organization

@@ -68,9 +68,10 @@ The BoxVault API is organized into the following categories:
 #### Organization Management
 
 - Organization creation and configuration
-- Multi-tenant organization support
-- User-organization relationships
+- Multi-tenant organization support (users can belong to multiple organizations)
+- User-organization relationships with role-based permissions
 - Invitation management
+- Box creation in any organization where user is a member
 
 #### Box Management
 
