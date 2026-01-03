@@ -72,9 +72,7 @@ const updateUserOrgRole = (organizationName, userId, role) =>
 const removeUserFromOrg = (organizationName, userId) =>
   axios.delete(
     `${baseURL}/api/organization/${organizationName}/users/${userId}`,
-    {
-      headers: authHeader(),
-    }
+    { headers: authHeader() }
   );
 
 const OrganizationService = {

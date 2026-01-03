@@ -679,8 +679,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     const providerNames = getProviderNames(box);
     const architectureNames = getArchitectureNames(box);
     const organizationName =
-      box.user?.primaryOrganization?.name ||
       routeOrganization ||
+      box.user?.primaryOrganization?.name ||
       currentUser?.organization ||
       "Unknown";
 

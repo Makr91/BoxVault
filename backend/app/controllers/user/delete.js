@@ -2,30 +2,24 @@
 const db = require('../../models');
 
 const User = db.user;
-const Organization = db.organization;
 
 /**
  * @swagger
- * /api/organization/{organizationName}/users/{username}:
+ * /api/users/{userId}:
  *   delete:
- *     summary: Delete a user from an organization
- *     description: Remove a user from a specific organization (Admin only)
+ *     summary: Delete a user completely from BoxVault
+ *     description: Permanently delete a user and all their data from the entire system (Admin only)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: organizationName
+ *         name: userId
  *         required: true
  *         schema:
- *           type: string
- *         description: Organization name
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *         description: Username to delete
+ *           type: integer
+ *         description: User ID to delete
+ *         example: 1
  *     responses:
  *       200:
  *         description: User deleted successfully
@@ -36,9 +30,9 @@ const Organization = db.organization;
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "User john deleted successfully."
+ *                   example: "User deleted successfully."
  *       404:
- *         description: User or organization not found
+ *         description: User not found
  *         content:
  *           application/json:
  *             schema:
@@ -51,25 +45,10 @@ const Organization = db.organization;
  *               $ref: '#/components/schemas/Error'
  */
 exports.delete = async (req, res) => {
-  const { organization: organizationName, userName } = req.params;
+  const { userId } = req.params;
 
   try {
-    const organization = await Organization.findOne({
-      where: { name: organizationName },
-    });
-
-    if (!organization) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFound'),
-      });
-    }
-
-    const user = await User.findOne({
-      where: {
-        username: userName,
-        organizationId: organization.id,
-      },
-    });
+    const user = await User.findByPk(userId);
 
     if (!user) {
       return res.status(404).send({

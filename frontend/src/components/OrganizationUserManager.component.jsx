@@ -71,6 +71,21 @@ const OrganizationUserManager = () => {
     });
   };
 
+  const handleRemoveUserFromOrg = (organizationName, userId) => {
+    OrganizationService.removeUserFromOrg(organizationName, userId).then(() => {
+      setOrganizations((prev) =>
+        prev.map((org) =>
+          org.name === organizationName
+            ? {
+                ...org,
+                members: org.members.filter((user) => user.id !== userId),
+              }
+            : org
+        )
+      );
+    });
+  };
+
   const handleDeleteClick = (item) => {
     setItemToDelete(item);
     setShowDeleteModal(true);
@@ -375,12 +390,22 @@ const OrganizationUserManager = () => {
                         {user.suspended ? "Resume" : "Suspend"}
                       </button>
                       <button
+                        className="btn btn-warning btn-sm me-2"
+                        onClick={() =>
+                          handleRemoveUserFromOrg(org.name, user.id)
+                        }
+                        title={`Remove ${user.username} from ${org.name}`}
+                      >
+                        Remove from Org
+                      </button>
+                      <button
                         className="btn btn-danger btn-sm"
                         onClick={() =>
                           handleDeleteClick({ type: "user", id: user.id })
                         }
+                        title={`Permanently delete ${user.username} from BoxVault`}
                       >
-                        Delete
+                        Delete User
                       </button>
                     </div>
                   </li>
