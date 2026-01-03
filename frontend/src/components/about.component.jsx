@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { FaStar } from "react-icons/fa6";
+import {
+  FaStar,
+  FaBook,
+  FaRocket,
+  FaHeart,
+  FaGithub,
+  FaCode,
+  FaServer,
+} from "react-icons/fa6";
 
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
@@ -91,14 +99,18 @@ const About = () => {
   };
 
   return (
-    <div className="list row">
-      <header className="header">
-        <h1 className="title">{projectData.title}</h1>
-        <p className="description">{projectData.description}</p>
-        <h2 className="title">Version: {BoxVaultVersion.version}</h2>
+    <div className="container mt-4">
+      <div className="text-center mb-5">
+        <h1 className="display-4 fw-bold">{projectData.title || "BoxVault"}</h1>
+        <p className="lead text-muted">
+          {projectData.description || "Self-hosted Vagrant Box Repository"}
+        </p>
+        <span className="badge bg-primary fs-5">
+          v{BoxVaultVersion.version}
+        </span>
 
         {currentUser?.provider?.startsWith("oidc-") && (
-          <div className="mb-4">
+          <div className="mt-3">
             <button
               className={`btn ${isBoxVaultFavorited ? "btn-warning" : "btn-outline-warning"}`}
               onClick={handleToggleFavorite}
@@ -113,71 +125,173 @@ const About = () => {
             )}
           </div>
         )}
+      </div>
 
-        {projectData.components.map((component) => (
-          <section key={component.title} className="section">
-            <h2 className="section-title">{component.title}</h2>
-            <ul className="list">
-              {component.details.map((detail) => (
-                <li key={detail} className="list-item">
-                  {detail}
+      <div className="row g-4">
+        {/* Documentation Card */}
+        <div className="col-md-6">
+          <div className="card h-100 shadow-sm">
+            <div className="card-header bg-primary text-white">
+              <h5 className="mb-0">
+                <FaBook className="me-2" />
+                Documentation
+              </h5>
+            </div>
+            <div className="card-body">
+              <p className="card-text">
+                Learn how to use BoxVault and integrate it with your workflow.
+              </p>
+              <ul className="list-unstyled">
+                <li className="mb-2">
+                  <a
+                    href="https://docs.boxvault.startcloud.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none"
+                  >
+                    <FaBook className="me-2" />
+                    Full Documentation
+                  </a>
                 </li>
+                <li className="mb-2">
+                  <a
+                    href="/api-docs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none"
+                  >
+                    <FaCode className="me-2" />
+                    API Explorer (Swagger UI)
+                  </a>
+                </li>
+                <li className="mb-2">
+                  <a
+                    href="https://docs.boxvault.startcloud.com/guides"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none"
+                  >
+                    <FaServer className="me-2" />
+                    Getting Started Guide
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Features Card */}
+        <div className="col-md-6">
+          <div className="card h-100 shadow-sm">
+            <div className="card-header bg-success text-white">
+              <h5 className="mb-0">
+                <FaRocket className="me-2" />
+                {t("about.keyFeatures", { ns: "common" })}
+              </h5>
+            </div>
+            <div className="card-body">
+              <ul className="list-unstyled">
+                {projectData.features.map((feature) => (
+                  <li key={feature} className="mb-2">
+                    <FaRocket className="me-2 text-success" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Support & Community Card */}
+        <div className="col-md-6">
+          <div className="card h-100 shadow-sm">
+            <div className="card-header bg-danger text-white">
+              <h5 className="mb-0">
+                <FaHeart className="me-2" />
+                {t("about.supportAndFollow", { ns: "common" })}
+              </h5>
+            </div>
+            <div className="card-body">
+              <p className="card-text">
+                Support the project and stay connected with the community.
+              </p>
+              <ul className="list-unstyled">
+                <li className="mb-2">
+                  <a
+                    href="https://www.patreon.com/Philotic"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none"
+                  >
+                    <FaHeart className="me-2 text-danger" />
+                    {t("about.supportOnPatreon", { ns: "common" })}
+                  </a>
+                </li>
+                <li className="mb-2">
+                  <a
+                    href="https://github.com/makr91"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none"
+                  >
+                    <FaGithub className="me-2" />
+                    {t("about.githubProfile", { ns: "common" })}
+                  </a>
+                </li>
+                <li className="mb-2">
+                  <a
+                    href="https://github.com/makr91/BoxVault"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none"
+                  >
+                    <FaCode className="me-2" />
+                    {t("about.projectRepository", { ns: "common" })}
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Components Card */}
+        <div className="col-md-6">
+          <div className="card h-100 shadow-sm">
+            <div className="card-header bg-info text-white">
+              <h5 className="mb-0">
+                <FaServer className="me-2" />
+                Components
+              </h5>
+            </div>
+            <div className="card-body">
+              {projectData.components.map((component) => (
+                <div key={component.title} className="mb-3">
+                  <h6 className="fw-bold">{component.title}</h6>
+                  <ul className="list-unstyled small">
+                    {component.details.map((detail) => (
+                      <li key={detail} className="mb-1">
+                        • {detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
-          </section>
-        ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <h2 className="section-title">
-          {t("about.keyFeatures", { ns: "common" })}
-        </h2>
-        <ul className="list">
-          {projectData.features.map((feature) => (
-            <li key={feature} className="list-item">
-              {feature}
-            </li>
-          ))}
-        </ul>
-
-        <p className="goal">{projectData.goal}</p>
-
-        <section className="support-section">
-          <h2 className="section-title">
-            {t("about.supportAndFollow", { ns: "common" })}
-          </h2>
-          <ul className="list">
-            <li className="list-item">
-              <a
-                href="https://www.patreon.com/Philotic"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link"
-              >
-                {t("about.supportOnPatreon", { ns: "common" })}
-              </a>
-            </li>
-            <li className="list-item">
-              <a
-                href="https://github.com/makr91"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link"
-              >
-                {t("about.githubProfile", { ns: "common" })}
-              </a>
-            </li>
-            <li className="list-item">
-              <a
-                href="https://github.com/makr91/BoxVault"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link"
-              >
-                {t("about.projectRepository", { ns: "common" })}
-              </a>
-            </li>
-          </ul>
-        </section>
-      </header>
+      {projectData.goal && (
+        <div className="row mt-4">
+          <div className="col-12">
+            <div className="card shadow-sm">
+              <div className="card-body text-center">
+                <p className="mb-0 lead">{projectData.goal}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

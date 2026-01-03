@@ -402,18 +402,31 @@ const initializeApp = async () => {
 
     log.app.info('All routes loaded successfully');
 
-    // Swagger API documentation
+    // Swagger API documentation with dynamic server URL
     try {
       const { specs, swaggerUi } = require('./app/config/swagger');
-      app.use(
-        '/api-docs',
-        swaggerUi.serve,
-        swaggerUi.setup(specs, {
+
+      app.use('/api-docs', swaggerUi.serve, (req, res, next) => {
+        const { protocol } = req;
+        const host = req.get('host');
+        const dynamicSpecs = {
+          ...specs,
+          servers: [
+            {
+              url: `${protocol}://${host}`,
+              description: 'Current server (auto-detected)',
+            },
+            ...specs.servers,
+          ],
+        };
+
+        swaggerUi.setup(dynamicSpecs, {
           explorer: true,
           customCss: '.swagger-ui .topbar { display: none }',
           customSiteTitle: 'BoxVault API Documentation',
-        })
-      );
+        })(req, res, next);
+      });
+
       log.app.info('Swagger UI available at /api-docs');
     } catch (error) {
       log.app.warn('Swagger configuration not available:', error.message);

@@ -8,7 +8,6 @@ import {
   FaUser,
   FaCircleInfo,
   FaGear,
-  FaUserShield,
   FaIdBadge,
   FaHouseLock,
   FaBridgeLock,
@@ -448,95 +447,19 @@ const Navbar = ({
       return (
         <img
           src={activeOrgGravatar}
-          alt={`${activeOrganization} icon`}
+          alt=""
           className="rounded-circle me-2"
-          width="20"
-          height="20"
+          width="16"
+          height="16"
         />
       );
     }
     const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
     return (
       <LogoComponent
-        style={{
-          width: "20px",
-          height: "20px",
-          marginRight: "8px",
-        }}
+        className="me-2"
+        style={{ width: "16px", height: "16px" }}
       />
-    );
-  };
-
-  const renderProfileMenuItem = () => {
-    const isOidcUser = currentUser?.provider?.startsWith("oidc-");
-    const hasValidAuthServer =
-      authServerUrl && authServerUrl.startsWith("https://");
-
-    // For non-OIDC users (local accounts), show simple profile link without toggle
-    if (!isOidcUser) {
-      return (
-        <>
-          <FaUser className="me-2" />
-          <Link to="/profile" className="text-decoration-none text-reset">
-            Profile
-          </Link>
-        </>
-      );
-    }
-
-    // Determine profile link destination for OIDC users
-    let profileLink;
-    if (profileIsLocal) {
-      profileLink = (
-        <Link to="/profile" className="text-decoration-none text-reset">
-          Profile
-        </Link>
-      );
-    } else if (hasValidAuthServer) {
-      profileLink = (
-        <a
-          href={`${authServerUrl}/user/profile`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-decoration-none text-reset"
-        >
-          Profile
-        </a>
-      );
-    } else {
-      profileLink = (
-        <Link to="/profile" className="text-decoration-none text-reset">
-          Profile
-        </Link>
-      );
-    }
-
-    // For OIDC users, ALWAYS show the toggle (even if auth server URL isn't loaded yet)
-    return (
-      <>
-        {profileIsLocal ? (
-          <FaUser
-            className="me-2"
-            onClick={handleProfileToggle}
-            onKeyPress={handleProfileToggleKeyPress}
-            role="button"
-            tabIndex={0}
-            title="Switch to auth server profile"
-            style={{ cursor: "pointer" }}
-          />
-        ) : (
-          <FaIdBadge
-            className="me-2"
-            onClick={handleProfileToggle}
-            onKeyPress={handleProfileToggleKeyPress}
-            role="button"
-            tabIndex={0}
-            title="Switch to local profile"
-            style={{ cursor: "pointer" }}
-          />
-        )}
-        {profileLink}
-      </>
     );
   };
 
@@ -596,44 +519,94 @@ const Navbar = ({
                 )}
                 {showModeratorBoard && (
                   <li>
-                    <Link to="/moderator" className="dropdown-item">
-                      <FaUserShield className="me-2" />
-                      Moderator
+                    <Link
+                      to="/moderator"
+                      className="dropdown-item d-flex align-items-center"
+                    >
+                      <span
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowOrgModal(true);
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowOrgModal(true);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        title="Switch organization"
+                        style={{ cursor: "pointer" }}
+                      >
+                        {renderOrgIcon()}
+                      </span>
+                      Organization
                     </Link>
                   </li>
                 )}
                 <li>
-                  <Link
-                    to={profileIsLocal || !authServerUrl ? "/profile" : "#"}
-                    onClick={(e) => {
-                      if (!profileIsLocal && authServerUrl) {
-                        e.preventDefault();
-                        window.open(
-                          `${authServerUrl}/user/profile`,
-                          "_blank",
-                          "noopener,noreferrer"
-                        );
-                      }
-                    }}
-                    className="dropdown-item d-flex align-items-center"
-                  >
-                    {renderProfileMenuItem()}
-                  </Link>
+                  {profileIsLocal || !authServerUrl ? (
+                    <Link
+                      to="/profile"
+                      className="dropdown-item d-flex align-items-center"
+                    >
+                      <span
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleProfileToggle(e);
+                        }}
+                        onKeyPress={handleProfileToggleKeyPress}
+                        role="button"
+                        tabIndex={0}
+                        title="Switch profile mode"
+                        style={{ cursor: "pointer" }}
+                      >
+                        {profileIsLocal ? (
+                          <FaUser className="me-2" />
+                        ) : (
+                          <FaIdBadge className="me-2" />
+                        )}
+                      </span>
+                      Profile
+                    </Link>
+                  ) : (
+                    <a
+                      href={`${authServerUrl}/user/profile`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="dropdown-item d-flex align-items-center"
+                    >
+                      <span
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleProfileToggle(e);
+                        }}
+                        onKeyPress={handleProfileToggleKeyPress}
+                        role="button"
+                        tabIndex={0}
+                        title="Switch profile mode"
+                        style={{ cursor: "pointer" }}
+                      >
+                        {profileIsLocal ? (
+                          <FaUser className="me-2" />
+                        ) : (
+                          <FaIdBadge className="me-2" />
+                        )}
+                      </span>
+                      Profile
+                    </a>
+                  )}
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">
                     <FaCircleInfo className="me-2" />
                     About
                   </Link>
-                </li>
-                <li>
-                  <button
-                    className="dropdown-item d-flex align-items-center"
-                    onClick={() => setShowOrgModal(true)}
-                  >
-                    {renderOrgIcon()}
-                    <span>{activeOrganization}</span>
-                  </button>
                 </li>
                 {favoriteApps && favoriteApps.length > 0 && (
                   <>
