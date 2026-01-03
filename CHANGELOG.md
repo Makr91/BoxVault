@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.5](https://github.com/Makr91/BoxVault/compare/v0.27.4...v0.27.5) (2026-01-03)
+
+
+### Bug Fixes
+
+* add Swagger documentation for Vagrant box metadata endpoint ([32e184f](https://github.com/Makr91/BoxVault/commit/32e184f4eb8fa78da8281ef45b63312f8bd11c5f))
+* improve response handling for Vagrant file downloads ([02ebf18](https://github.com/Makr91/BoxVault/commit/02ebf187cd6b3d639fd8554efab60694c06970fe))
+
 ## [0.27.4](https://github.com/Makr91/BoxVault/compare/v0.27.3...v0.27.4) (2026-01-03)
 
 
