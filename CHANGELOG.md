@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.27.4](https://github.com/Makr91/BoxVault/compare/v0.27.3...v0.27.4) (2026-01-03)
+
+
+### Bug Fixes
+
+* inline styles to scss ([7d16d09](https://github.com/Makr91/BoxVault/commit/7d16d091f55a02038f66c09ffe044b33dcbe4cf0))
+* inline styles to scss ([9f61f5d](https://github.com/Makr91/BoxVault/commit/9f61f5d98ef5460857fde609d0974085a0156b40))
+* missing documentation and swagger configs and upating navbar dropdowns ([03f2151](https://github.com/Makr91/BoxVault/commit/03f2151d668893c16224b233d10491ca2dea1ba5))
+* missing documentation and swagger configs and upating navbar dropdowns ([1fb10d5](https://github.com/Makr91/BoxVault/commit/1fb10d5bfbfcdfdae964906e5c1497b01fa7866d))
+
 ## [0.27.3](https://github.com/Makr91/BoxVault/compare/v0.27.2...v0.27.3) (2026-01-03)
 
 
