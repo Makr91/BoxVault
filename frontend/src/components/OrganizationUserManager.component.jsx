@@ -22,6 +22,10 @@ const OrganizationUserManager = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingOrg, setEditingOrg] = useState(null);
   const [editOrgCode, setEditOrgCode] = useState("");
+  const [editOrgEmail, setEditOrgEmail] = useState("");
+  const [editOrgDescription, setEditOrgDescription] = useState("");
+  const [editOrgAccessMode, setEditOrgAccessMode] = useState("private");
+  const [editOrgDefaultRole, setEditOrgDefaultRole] = useState("user");
   const [editMessage, setEditMessage] = useState("");
   const [itemToDelete, setItemToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -277,6 +281,14 @@ const OrganizationUserManager = () => {
                         );
                       setEditingOrg(response.data);
                       setEditOrgCode(response.data.org_code || "");
+                      setEditOrgEmail(response.data.email || "");
+                      setEditOrgDescription(response.data.description || "");
+                      setEditOrgAccessMode(
+                        response.data.access_mode || "private"
+                      );
+                      setEditOrgDefaultRole(
+                        response.data.default_role || "user"
+                      );
                       setShowEditModal(true);
                     }}
                   >
@@ -411,7 +423,7 @@ const OrganizationUserManager = () => {
                     {editMessage}
                   </div>
                 )}
-                <div className="form-group">
+                <div className="form-group mb-3">
                   <label htmlFor="editOrgCode">Organization Code</label>
                   <input
                     type="text"
@@ -431,6 +443,62 @@ const OrganizationUserManager = () => {
                     6-character hexadecimal identifier (0-9, A-F)
                   </small>
                 </div>
+                <div className="form-group mb-3">
+                  <label htmlFor="editOrgEmail">Organization Email</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    id="editOrgEmail"
+                    value={editOrgEmail}
+                    onChange={(e) => setEditOrgEmail(e.target.value)}
+                  />
+                  <small className="form-text text-muted">
+                    Used for organization contact and Gravatar
+                  </small>
+                </div>
+                <div className="form-group mb-3">
+                  <label htmlFor="editOrgDescription">Description</label>
+                  <textarea
+                    className="form-control"
+                    id="editOrgDescription"
+                    value={editOrgDescription}
+                    onChange={(e) => setEditOrgDescription(e.target.value)}
+                    rows="3"
+                  />
+                </div>
+                <div className="form-group mb-3">
+                  <label htmlFor="editOrgAccessMode">Access Mode</label>
+                  <select
+                    className="form-control"
+                    id="editOrgAccessMode"
+                    value={editOrgAccessMode}
+                    onChange={(e) => setEditOrgAccessMode(e.target.value)}
+                  >
+                    <option value="private">Private (Unlisted)</option>
+                    <option value="invite_only">Invite Only (Listed)</option>
+                    <option value="request_to_join">
+                      Request to Join (Listed)
+                    </option>
+                  </select>
+                  <small className="form-text text-muted">
+                    Controls organization visibility and join methods
+                  </small>
+                </div>
+                <div className="form-group mb-3">
+                  <label htmlFor="editOrgDefaultRole">Default Role</label>
+                  <select
+                    className="form-control"
+                    id="editOrgDefaultRole"
+                    value={editOrgDefaultRole}
+                    onChange={(e) => setEditOrgDefaultRole(e.target.value)}
+                  >
+                    <option value="user">User</option>
+                    <option value="moderator">Moderator</option>
+                  </select>
+                  <small className="form-text text-muted">
+                    Default role for new members
+                  </small>
+                </div>
               </div>
               <div className="modal-footer">
                 <button
@@ -448,10 +516,20 @@ const OrganizationUserManager = () => {
                       await OrganizationService.updateOrganization(
                         editingOrg.name,
                         {
+                          organization: editingOrg.name,
                           org_code: editOrgCode,
+                          email: editOrgEmail,
+                          description: editOrgDescription,
                         }
                       );
-                      setEditMessage("Organization code updated successfully!");
+
+                      await OrganizationService.updateAccessMode(
+                        editingOrg.name,
+                        editOrgAccessMode,
+                        editOrgDefaultRole
+                      );
+
+                      setEditMessage("Organization updated successfully!");
                       setTimeout(() => {
                         setShowEditModal(false);
                         setEditMessage("");
@@ -459,7 +537,7 @@ const OrganizationUserManager = () => {
                     } catch (error) {
                       setEditMessage(
                         error.response?.data?.message ||
-                          "Error updating organization code"
+                          "Error updating organization"
                       );
                     }
                   }}
