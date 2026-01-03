@@ -74,7 +74,7 @@ const Provider = db.providers;
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   post:
  *     summary: Create a new provider for a version
  *     tags: [Providers]

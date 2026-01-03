@@ -38,3 +38,19 @@ button::-moz-focus-inner {
   border: 0;
   padding: 0;
 }
+
+// Navbar dropdown icon alignment
+.navbar .dropdown-item {
+  display: flex !important;
+  align-items: center;
+
+  svg,
+  img {
+    flex-shrink: 0; // Prevent icons from shrinking
+    line-height: 1; // Remove extra spacing
+  }
+
+  span {
+    line-height: 1; // Match text line-height to icon height
+  }
+}

@@ -4,7 +4,67 @@ const { UserOrg } = db;
 const Organization = db.organization;
 
 /**
- * Set user's primary organization
+ * @swagger
+ * /api/user/primary-organization/{orgName}:
+ *   put:
+ *     summary: Set primary organization
+ *     description: Set a specific organization as the user's primary/default organization
+ *     tags: [Users]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orgName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name to set as primary
+ *         example: acme-corp
+ *     responses:
+ *       200:
+ *         description: Primary organization set successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Primary organization set to acme-corp"
+ *                 primaryOrganization:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                       enum: [user, moderator, admin]
+ *       400:
+ *         description: User is not a member of this organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const setPrimaryOrganization = async (req, res) => {
   try {

@@ -8,7 +8,7 @@ const Box = db.box;
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}:
  *   put:
  *     summary: Update a specific version of a box
  *     tags: [Versions]

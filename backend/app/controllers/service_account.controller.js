@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 /**
  * @swagger
- * /api/service-account:
+ * /api/service-accounts:
  *   post:
  *     summary: Create a new service account
  *     description: Create a service account with an authentication token for automated access
@@ -84,7 +84,7 @@ exports.create = async (req, res) => {
 
 /**
  * @swagger
- * /api/service-account:
+ * /api/service-accounts:
  *   get:
  *     summary: Get all service accounts for the authenticated user
  *     description: Retrieve all service accounts created by the authenticated user
@@ -124,7 +124,49 @@ exports.findAll = async (req, res) => {
 };
 
 /**
- * Get organizations where user can create service accounts
+ * @swagger
+ * /api/service-accounts/organizations:
+ *   get:
+ *     summary: Get organizations where user can create service accounts
+ *     description: Retrieve all organizations where the authenticated user has moderator or admin role (required to create service accounts)
+ *     tags: [Service Accounts]
+ *     security:
+ *       - JwtAuth: []
+ *     responses:
+ *       200:
+ *         description: List of organizations where user can create service accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     description: Organization ID
+ *                   name:
+ *                     type: string
+ *                     description: Organization name
+ *                   description:
+ *                     type: string
+ *                     description: Organization description
+ *                   role:
+ *                     type: string
+ *                     enum: [moderator, admin]
+ *                     description: User's role in this organization
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 exports.getAvailableOrganizations = async (req, res) => {
   try {
@@ -161,7 +203,7 @@ exports.getAvailableOrganizations = async (req, res) => {
 
 /**
  * @swagger
- * /api/service-account/{id}:
+ * /api/service-accounts/{id}:
  *   delete:
  *     summary: Delete a service account
  *     description: Delete a service account by ID (only the owner can delete their service accounts)

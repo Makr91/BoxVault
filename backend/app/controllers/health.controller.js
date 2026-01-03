@@ -4,6 +4,94 @@ const fs = require('fs');
 const path = require('path');
 const { getSupportedLocales, getDefaultLocale } = require('../config/i18n');
 
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Get system health status including database connectivity, storage availability, supported languages, and logging configuration
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: System health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Current server timestamp
+ *                 version:
+ *                   type: string
+ *                   description: BoxVault version
+ *                   example: "0.7.2"
+ *                 environment:
+ *                   type: string
+ *                   description: Current environment
+ *                   example: "production"
+ *                 supported_languages:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of supported language codes
+ *                   example: ["en", "es", "fr"]
+ *                 default_language:
+ *                   type: string
+ *                   description: Default language code
+ *                   example: "en"
+ *                 frontend_logging:
+ *                   type: object
+ *                   properties:
+ *                     enabled:
+ *                       type: boolean
+ *                     level:
+ *                       type: string
+ *                     categories:
+ *                       type: object
+ *                       properties:
+ *                         app:
+ *                           type: string
+ *                         auth:
+ *                           type: string
+ *                         api:
+ *                           type: string
+ *                         file:
+ *                           type: string
+ *                         component:
+ *                           type: string
+ *                 services:
+ *                   type: object
+ *                   properties:
+ *                     database:
+ *                       type: string
+ *                       example: "ok"
+ *                     storage:
+ *                       type: string
+ *                       example: "ok"
+ *       500:
+ *         description: Health check failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 message:
+ *                   type: string
+ *                   example: "Health check failed"
+ *                 error:
+ *                   type: string
+ */
 const getHealth = async (req, res) => {
   void req;
   try {

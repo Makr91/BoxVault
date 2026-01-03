@@ -76,7 +76,7 @@ const Architecture = db.architectures;
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers/{providerName}:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   delete:
  *     summary: Delete a specific provider
  *     description: Delete a specific provider and all its associated architectures and files from the system

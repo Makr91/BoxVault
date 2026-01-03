@@ -5,7 +5,81 @@ const { UserOrg } = db;
 const Organization = db.organization;
 
 /**
- * Create a join request for an organization
+ * @swagger
+ * /api/organization/{organization}/requests:
+ *   post:
+ *     summary: Create a join request for an organization
+ *     description: Submit a request to join an organization that has 'request_to_join' access mode
+ *     tags: [Join Requests]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name to request to join
+ *         example: acme-corp
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Optional message explaining why you want to join
+ *                 example: "I would like to contribute to this organization's boxes"
+ *     responses:
+ *       201:
+ *         description: Join request created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Join request submitted successfully!"
+ *                 request:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     organizationName:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: "pending"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Invalid request - already a member or already has pending request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Organization does not allow join requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const createJoinRequest = async (req, res) => {
   try {
@@ -71,7 +145,73 @@ const createJoinRequest = async (req, res) => {
 };
 
 /**
- * Get pending join requests for organization (moderator/admin only)
+ * @swagger
+ * /api/organization/{organization}/requests:
+ *   get:
+ *     summary: Get pending join requests for an organization
+ *     description: Retrieve all pending join requests for the organization (moderator/admin only)
+ *     tags: [Join Requests]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: acme-corp
+ *     responses:
+ *       200:
+ *         description: List of pending join requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   user_id:
+ *                     type: integer
+ *                   organization_id:
+ *                     type: integer
+ *                   status:
+ *                     type: string
+ *                     example: "pending"
+ *                   message:
+ *                     type: string
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                   user:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Requires moderator or admin role in organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const getOrgJoinRequests = async (req, res) => {
   try {
@@ -90,7 +230,59 @@ const getOrgJoinRequests = async (req, res) => {
 };
 
 /**
- * Get user's pending join requests
+ * @swagger
+ * /api/user/requests:
+ *   get:
+ *     summary: Get current user's pending join requests
+ *     description: Retrieve all pending join requests submitted by the authenticated user
+ *     tags: [Join Requests]
+ *     security:
+ *       - JwtAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user's pending join requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   user_id:
+ *                     type: integer
+ *                   organization_id:
+ *                     type: integer
+ *                   status:
+ *                     type: string
+ *                     example: "pending"
+ *                   message:
+ *                     type: string
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                   organization:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const getUserJoinRequests = async (req, res) => {
   try {
@@ -109,7 +301,85 @@ const getUserJoinRequests = async (req, res) => {
 };
 
 /**
- * Approve a join request (moderator/admin only)
+ * @swagger
+ * /api/organization/{organization}/requests/{requestId}/approve:
+ *   post:
+ *     summary: Approve a join request
+ *     description: Approve a pending join request and add the user to the organization (moderator/admin only)
+ *     tags: [Join Requests]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: acme-corp
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Join request ID to approve
+ *         example: 1
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               assignedRole:
+ *                 type: string
+ *                 enum: [user, moderator]
+ *                 description: Role to assign to the user (defaults to 'user')
+ *                 example: "user"
+ *     responses:
+ *       200:
+ *         description: Join request approved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Join request approved successfully!"
+ *                 assignedRole:
+ *                   type: string
+ *                   example: "user"
+ *       400:
+ *         description: Invalid role or request already processed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Requires moderator or admin role in organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Join request not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const approveJoinRequest = async (req, res) => {
   try {
@@ -160,7 +430,70 @@ const approveJoinRequest = async (req, res) => {
 };
 
 /**
- * Deny a join request (moderator/admin only)
+ * @swagger
+ * /api/organization/{organization}/requests/{requestId}/deny:
+ *   post:
+ *     summary: Deny a join request
+ *     description: Deny a pending join request (moderator/admin only)
+ *     tags: [Join Requests]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: acme-corp
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Join request ID to deny
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Join request denied successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Join request denied."
+ *       400:
+ *         description: Request already processed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Requires moderator or admin role in organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Join request not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const denyJoinRequest = async (req, res) => {
   try {
@@ -198,7 +531,51 @@ const denyJoinRequest = async (req, res) => {
 };
 
 /**
- * Cancel user's own join request
+ * @swagger
+ * /api/user/requests/{requestId}:
+ *   delete:
+ *     summary: Cancel a join request
+ *     description: Cancel the user's own pending join request
+ *     tags: [Join Requests]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Join request ID to cancel
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Join request cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Join request cancelled successfully!"
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Join request not found or not owned by user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const cancelJoinRequest = async (req, res) => {
   try {

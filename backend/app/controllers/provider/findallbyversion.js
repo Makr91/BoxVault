@@ -82,7 +82,7 @@ try {
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   get:
  *     summary: Get all providers for a version
  *     tags: [Providers]

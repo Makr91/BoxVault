@@ -4,7 +4,90 @@ const { UserOrg } = db;
 const User = db.user;
 
 /**
- * Update user's role in organization (admin only)
+ * @swagger
+ * /api/organization/{organization}/users/{userId}/role:
+ *   put:
+ *     summary: Update user's role in organization
+ *     description: Change a user's role within an organization (admin only)
+ *     tags: [Organizations]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: acme-corp
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to update role for
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [user, moderator, admin]
+ *                 description: New role to assign
+ *                 example: "moderator"
+ *     responses:
+ *       200:
+ *         description: User role updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User role updated to moderator"
+ *                 userId:
+ *                   type: integer
+ *                 username:
+ *                   type: string
+ *                 newRole:
+ *                   type: string
+ *       400:
+ *         description: Invalid role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Requires admin role in organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User or organization not found, or user not a member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const updateUserOrgRole = async (req, res) => {
   try {

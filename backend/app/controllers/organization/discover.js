@@ -3,8 +3,59 @@ const { log } = require('../../utils/Logger');
 const Organization = db.organization;
 
 /**
- * Get discoverable organizations (public directory)
- * Shows organizations that allow discovery with public boxes
+ * @swagger
+ * /api/organizations/discover:
+ *   get:
+ *     summary: Discover public organizations
+ *     description: Retrieve organizations that are discoverable (have access_mode of 'invite_only' or 'request_to_join'). Admins see all organizations.
+ *     tags: [Organizations]
+ *     parameters:
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token (admins see all orgs, others see only discoverable)
+ *     responses:
+ *       200:
+ *         description: List of discoverable organizations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     description: Organization ID
+ *                   name:
+ *                     type: string
+ *                     description: Organization name
+ *                   description:
+ *                     type: string
+ *                     description: Organization description
+ *                   accessMode:
+ *                     type: string
+ *                     enum: [private, invite_only, request_to_join]
+ *                     description: Organization access mode
+ *                   emailHash:
+ *                     type: string
+ *                     description: Email hash for Gravatar
+ *                   memberCount:
+ *                     type: integer
+ *                     description: Number of members in organization
+ *                   publicBoxCount:
+ *                     type: integer
+ *                     description: Number of public boxes
+ *                   totalBoxCount:
+ *                     type: integer
+ *                     description: Total number of boxes
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const discoverOrganizations = async (req, res) => {
   try {

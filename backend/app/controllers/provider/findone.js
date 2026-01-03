@@ -82,7 +82,7 @@ try {
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers/{providerName}:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   get:
  *     summary: Get a specific provider by name
  *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication.

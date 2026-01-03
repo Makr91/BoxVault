@@ -9,7 +9,7 @@ const Box = db.box;
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions:
+ * /api/organization/{organization}/box/{boxId}/version:
  *   delete:
  *     summary: Delete all versions for a specific box
  *     tags: [Versions]

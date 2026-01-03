@@ -16,7 +16,7 @@ try {
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions:
+ * /api/organization/{organization}/box/{boxId}/version:
  *   get:
  *     summary: Get all versions for a box
  *     tags: [Versions]

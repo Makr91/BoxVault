@@ -4,7 +4,57 @@ const { UserOrg } = db;
 const Organization = db.organization;
 
 /**
- * Leave an organization (user removes themselves)
+ * @swagger
+ * /api/user/leave/{orgName}:
+ *   post:
+ *     summary: Leave an organization
+ *     description: Remove yourself from an organization. Cannot leave if it's your only organization.
+ *     tags: [Users]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orgName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name to leave
+ *         example: acme-corp
+ *     responses:
+ *       200:
+ *         description: Successfully left organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully left organization acme-corp"
+ *       400:
+ *         description: Cannot leave - not a member or only organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const leaveOrganization = async (req, res) => {
   try {

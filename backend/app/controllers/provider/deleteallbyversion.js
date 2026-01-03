@@ -72,7 +72,7 @@ const Provider = db.providers;
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   delete:
  *     summary: Delete all providers for a version
  *     description: Delete all providers associated with a specific box version

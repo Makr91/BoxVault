@@ -74,7 +74,7 @@ const Provider = db.providers;
 
 /**
  * @swagger
- * /api/organizations/{organization}/boxes/{boxId}/versions/{versionNumber}/providers/{providerName}:
+ * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   put:
  *     summary: Update a provider by name
  *     description: Update a provider's properties including name and description. Also handles file system directory renaming when provider name changes.

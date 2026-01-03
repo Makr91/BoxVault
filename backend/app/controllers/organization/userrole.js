@@ -4,7 +4,76 @@ const { UserOrg } = db;
 const User = db.user;
 
 /**
- * Get user's role in specific organization (moderator+ only)
+ * @swagger
+ * /api/organization/{organization}/users/{userId}/role:
+ *   get:
+ *     summary: Get user's role in organization
+ *     description: Retrieve a user's role and membership information for a specific organization (moderator/admin only)
+ *     tags: [Organizations]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *         example: acme-corp
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to get role for
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: User role retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: integer
+ *                 username:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 role:
+ *                   type: string
+ *                   enum: [user, moderator, admin]
+ *                 isPrimary:
+ *                   type: boolean
+ *                   description: Whether this is user's primary organization
+ *                 joinedAt:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Requires moderator or admin role in organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User or organization not found, or user not a member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 const getUserOrgRole = async (req, res) => {
   try {

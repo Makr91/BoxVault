@@ -55,7 +55,7 @@ exports.allAccess = (req, res) => {
           'Built using Node.js and Express.js',
           'Handles user authentication and authorization',
           'Provides endpoints for uploading, storing, and retrieving Vagrant boxes',
-          'Uses MariaDB for database operations',
+          'Uses MariaDB, SQLite, or Postgres for database operations via Sequelize ORM',
         ],
       },
       {
