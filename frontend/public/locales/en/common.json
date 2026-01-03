@@ -7,7 +7,6 @@
     "logoutLocal": "Logout (Local)"
   },
   "language": {
-    "changeLanguage": "Change Language",
     "changeLanguage": "Change Language"
   },
   "user": {
@@ -528,6 +527,15 @@
       "added": "added",
       "updating": "updating",
       "adding": "adding"
+    }
+  },
+  "footer": {
+    "health": {
+      "status": "System Status",
+      "ok": "All systems operational",
+      "error": "A system has an issue",
+      "database": "Database",
+      "storage": "Storage"
     }
   },
   "configField": {

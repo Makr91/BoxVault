@@ -9,6 +9,7 @@ import About from "./components/about.component";
 import Admin from "./components/admin.component";
 import AuthCallback from "./components/AuthCallback";
 import Box from "./components/box.component";
+import Footer from "./components/Footer.component";
 import Login from "./components/login.component";
 import Moderator from "./components/moderator.component";
 import Navbar from "./components/navbar.component";
@@ -313,7 +314,7 @@ const App = () => {
 
   return (
     <ErrorBoundary showErrorDetails={isDevelopment}>
-      <div className="App">
+      <div className="App d-flex flex-column min-vh-100">
         <Navbar
           currentUser={currentUser}
           userOrganization={userOrganization}
@@ -327,7 +328,7 @@ const App = () => {
           logOut={logOut}
           logOutLocal={logOutLocal}
         />
-        <div className="container-fluid mt-3">
+        <div className="container-fluid mt-3 flex-grow-1">
           <Routes>
             <Route
               path="/setup"
@@ -385,6 +386,7 @@ const App = () => {
             )}
           </Routes>
         </div>
+        <Footer />
       </div>
     </ErrorBoundary>
   );
