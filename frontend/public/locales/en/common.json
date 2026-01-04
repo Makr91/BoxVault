@@ -176,7 +176,18 @@
     "title": "Admin Panel",
     "tabs": {
       "orgsAndUsers": "Organizations and Users",
-      "configManagement": "Configuration Management"
+      "configManagement": "Configuration Management",
+      "system": "System"
+    },
+    "storage": {
+      "title": "Storage Usage",
+      "boxStorage": "Box Storage",
+      "isoStorage": "ISO Storage",
+      "pathNotConfigured": "{{path}} path is not configured or accessible.",
+      "used": "Used: {{percent}}%",
+      "free": "Free: {{space}}",
+      "total": "Total: {{space}}",
+      "fetchError": "Failed to fetch storage information."
     }
   },
   "breadcrumbs": {

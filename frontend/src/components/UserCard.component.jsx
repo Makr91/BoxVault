@@ -122,8 +122,9 @@ const UserCard = ({
     if (user.emailHash) {
       AuthService.getGravatarProfile(user.emailHash)
         .then((profile) => {
-          if (mounted && profile?.avatar_url) {
-            setGravatarUrl(profile.avatar_url);
+          if (mounted && profile?.thumbnailUrl) {
+            // Request a 50px image for consistency with the placeholder
+            setGravatarUrl(`${profile.thumbnailUrl}?s=50`);
           }
         })
         .catch((err) => {
@@ -175,9 +176,8 @@ const UserCard = ({
               <img
                 src={gravatarUrl}
                 alt={user.username}
-                className="rounded-circle avatar-md me-3"
-                width="50"
-                height="50"
+                className="rounded-circle me-3"
+                style={{ width: 50, height: 50, objectFit: "cover" }}
               />
             ) : (
               <div

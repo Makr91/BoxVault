@@ -63,6 +63,15 @@ smtp_settings:
     subsection_key: smtpSettings
     required: false
     order: 3
+  alert_email:
+    type: email
+    value: ""
+    description: Email address to receive system alerts (e.g. low disk space)
+    section: Mail
+    subsection: SMTP Settings
+    subsection_key: smtpSettings
+    required: false
+    order: 4
 smtp_auth:
   user:
     type: string

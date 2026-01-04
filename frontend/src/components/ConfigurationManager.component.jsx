@@ -4,10 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import AuthService from "../services/auth.service";
 import ConfigService from "../services/config.service";
-import {
-  processConfig,
-  validateConfigValue,
-} from "../utils/ConfigProcessorUtils";
+import { processConfig } from "../utils/ConfigProcessorUtils";
 import { log } from "../utils/Logger";
 
 import ConfigFieldRenderer from "./ConfigFieldRenderer.component";
@@ -24,7 +21,6 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   const [values, setValues] = useState({});
   const [collapsedSubsections, setCollapsedSubsections] = useState({});
   const [submitError, setSubmitError] = useState("");
-  const [isFormValid, setIsFormValid] = useState(true);
   const [testEmail, setTestEmail] = useState("");
 
   const fetchConfig = useCallback(
@@ -90,37 +86,45 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   };
 
   const updateConfig = () => {
-    const newValidationErrors = {};
-    let hasErrors = false;
+    // Create a deep copy to avoid mutating the original state directly
+    const newConfig = JSON.parse(JSON.stringify(config));
 
-    Object.entries(config).forEach(([key, value]) => {
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        "type" in value &&
-        "value" in value
-      ) {
-        const error = validateConfigValue(value.type, value.value, t);
-        if (error) {
-          newValidationErrors[key] = error;
-          hasErrors = true;
+    // Helper function to recursively update the 'value' property in the config object
+    const updateValueInObject = (obj, path, newValue) => {
+      const keys = path.split(".");
+      let current = obj;
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        if (i === keys.length - 1) {
+          if (
+            current &&
+            typeof current[key] === "object" &&
+            current[key] !== null
+          ) {
+            current[key].value = newValue;
+          }
+        } else {
+          current = current[key];
+          if (current === undefined) {
+            // Path does not exist, stop.
+            return;
+          }
         }
       }
+    };
+
+    // Apply all the changed values from the `values` state to our new config object
+    Object.entries(values).forEach(([path, value]) => {
+      updateValueInObject(newConfig, path, value);
     });
 
-    if (hasErrors) {
-      setSubmitError(t("configManager.fixErrors"));
-      setIsFormValid(false);
-      return;
-    }
-
-    setIsFormValid(true);
-
-    ConfigService.updateConfig(selectedConfig, config).then(
+    ConfigService.updateConfig(selectedConfig, newConfig).then(
       () => {
         setMessage(t("configManager.updateSuccess"));
         setMessageType("success");
         setSubmitError("");
+        // Re-fetch config to ensure UI is in sync with the saved state
+        fetchConfig(selectedConfig);
       },
       (error) => {
         log.component.error("Error updating config", {
@@ -683,9 +687,8 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
         <li className="nav-item ms-auto">
           <button
             type="button"
-            className={`nav-link ${!isFormValid ? "disabled" : "cursor-pointer"}`}
+            className="nav-link cursor-pointer"
             onClick={updateConfig}
-            disabled={!isFormValid}
           >
             {t("configManager.buttons.update")}
           </button>

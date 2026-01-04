@@ -28,20 +28,39 @@ const Footer = () => {
   }, []);
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "ok":
-        return "text-success";
-      case "error":
-        return "text-danger";
-      default:
-        return "text-warning";
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus.startsWith("ok")) {
+      return "text-success";
     }
+    if (lowerStatus.startsWith("warning") || lowerStatus.includes("critical")) {
+      return "text-warning";
+    }
+    return "text-danger";
+  };
+
+  const formatServiceName = (key) => {
+    if (key === "database") {
+      return t("footer.health.database");
+    }
+    if (key === "storage_boxes") {
+      return "Storage (Boxes)";
+    }
+    if (key === "storage_isos") {
+      return "Storage (ISOs)";
+    }
+    if (key.startsWith("oidc_")) {
+      const providerName = key.replace("oidc_", "");
+      return `OIDC (${providerName.charAt(0).toUpperCase() + providerName.slice(1)})`;
+    }
+    return key.charAt(0).toUpperCase() + key.slice(1);
   };
 
   const renderPopover = (props) => {
     const overallStatus =
       health.status === "ok" &&
-      Object.values(health.services).every((s) => s === "ok")
+      Object.values(health.services).every(
+        (s) => typeof s === "string" && s.toLowerCase().startsWith("ok")
+      )
         ? "ok"
         : "error";
 
@@ -56,7 +75,7 @@ const Footer = () => {
           {Object.entries(health.services).map(([service, status]) => (
             <div key={service} className="mb-1">
               <FaCircle className={`me-2 ${getStatusColor(status)}`} />
-              {t(`footer.health.${service}`)}: {status}
+              {formatServiceName(service)}: {status}
             </div>
           ))}
         </Popover.Body>
@@ -70,7 +89,9 @@ const Footer = () => {
     }
     if (
       health.status !== "ok" ||
-      Object.values(health.services).some((s) => s !== "ok")
+      Object.values(health.services).some(
+        (s) => typeof s === "string" && !s.toLowerCase().startsWith("ok")
+      )
     ) {
       return "text-danger";
     }

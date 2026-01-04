@@ -184,7 +184,18 @@
     "title": "Panel de Administración",
     "tabs": {
       "orgsAndUsers": "Organizaciones y Usuarios",
-      "configManagement": "Gestión de Configuración"
+      "configManagement": "Gestión de Configuración",
+      "system": "Sistema"
+    },
+    "storage": {
+      "title": "Uso de Almacenamiento",
+      "boxStorage": "Almacenamiento de Cajas",
+      "isoStorage": "Almacenamiento de ISOs",
+      "pathNotConfigured": "La ruta {{path}} no está configurada o accesible.",
+      "used": "Usado: {{percent}}%",
+      "free": "Libre: {{space}}",
+      "total": "Total: {{space}}",
+      "fetchError": "Error al obtener información de almacenamiento."
     }
   },
   "breadcrumbs": {
