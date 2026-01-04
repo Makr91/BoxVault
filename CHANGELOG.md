@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/Makr91/BoxVault/compare/v0.37.0...v0.38.0) (2026-01-04)
+
+
+### Features
+
+* implement configurable iso storage location and space usage ([cd50cd1](https://github.com/Makr91/BoxVault/commit/cd50cd1a688d00cc8c8d81d9833723188637a222))
+
 ## [0.37.0](https://github.com/Makr91/BoxVault/compare/v0.36.0...v0.37.0) (2026-01-04)
 
 
