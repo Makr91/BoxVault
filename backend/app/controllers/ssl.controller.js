@@ -48,6 +48,19 @@ exports.uploadSSL = (req, res) => {
 
   // Ensure the directory exists
   const dir = path.dirname(resolvedPath);
+
+  // Re-validate directory path against allowed roots before creating it
+  const isDirAllowed = allowedRoots.some(root => {
+    const relative = path.relative(root, dir);
+    return !relative.startsWith('..') && !path.isAbsolute(relative);
+  });
+
+  if (!isDirAllowed) {
+    log.app.warn('Blocked SSL directory creation at unauthorized path', { targetPath, dir });
+    res.status(403).send({ message: 'Invalid target path.' });
+    return;
+  }
+
   if (!fs.existsSync(dir)) {
     try {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
