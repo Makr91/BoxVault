@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.32.0](https://github.com/Makr91/BoxVault/compare/v0.31.0...v0.32.0) (2026-01-04)
+
+
+### Features
+
+* implement ISO management features including upload, download, delete, and listing ([1be8068](https://github.com/Makr91/BoxVault/commit/1be8068db53b8c890b52984d0580c53756c88a16))
+* implement ISO management features including upload, download, delete, and listing ([9eca54c](https://github.com/Makr91/BoxVault/commit/9eca54c65358adbd57df180080bed41753ed670c))
+
+
+### Bug Fixes
+
+* enhance SSL upload path validation to prevent traversal attacks ([d2c8c7f](https://github.com/Makr91/BoxVault/commit/d2c8c7f6a66d4fa0b52a256d7b9a55397d359408))
+
 ## [0.31.0](https://github.com/Makr91/BoxVault/compare/v0.30.0...v0.31.0) (2026-01-03)
 
 
