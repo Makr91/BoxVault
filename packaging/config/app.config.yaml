@@ -88,6 +88,17 @@ boxvault:
     subsection_key: boxvaultSettings
     required: false
     order: 7
+  repository_packages_url:
+    type: url
+    value: ""
+    description: >-
+      Direct URL to the 'Packages' file of your Debian repository for accurate update checks.
+      Example: https://public.debian.packages.startcloud.com/debian/dists/stable/main/binary-amd64/Packages
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: false
+    order: 8
 gravatar:
   base_url:
     type: url
@@ -415,18 +426,6 @@ frontend_logging:
       subsection_key: frontendLoggingCategories
       required: false
       order: 5
-monitoring:
-  alert_frequency_hours:
-    type: integer
-    value: 24
-    min: 1
-    max: 168
-    description: Minimum hours between sending system alerts (e.g., for low disk space).
-    section: Application
-    subsection: Monitoring
-    subsection_key: monitoring
-    required: true
-    order: 1
 monitoring:
   disk_space_warning_threshold:
     type: integer

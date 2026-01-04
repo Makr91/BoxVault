@@ -3,10 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
+import SystemService from "../services/system.service";
+import { log } from "../utils/Logger";
 
 import ConfigurationManager from "./ConfigurationManager.component";
 import OrganizationUserManager from "./OrganizationUserManager.component";
 import StorageInfo from "./StorageInfo.component";
+import UpdateNotification from "./UpdateNotification.component";
 
 /**
  * Admin - Main admin panel component
@@ -22,6 +25,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState("organizations");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   // Authentication guard - redirect if not authenticated or not admin
   useEffect(() => {
@@ -37,6 +41,17 @@ const Admin = () => {
       // Authenticated but not admin, redirect to home
       navigate("/");
     }
+
+    // Check for updates
+    SystemService.getUpdateStatus()
+      .then((response) => {
+        if (response.data.isAptManaged && response.data.updateAvailable) {
+          setUpdateInfo(response.data);
+        }
+      })
+      .catch((error) => {
+        log.api.error("Failed to check for updates", { error: error.message });
+      });
   }, [navigate]);
 
   return (
@@ -44,6 +59,7 @@ const Admin = () => {
       <header>
         <h3 className="text-center">{t("admin.title")}</h3>
       </header>
+      {updateInfo && <UpdateNotification updateInfo={updateInfo} />}
       <ul className="nav nav-tabs">
         <li className="nav-item">
           <button

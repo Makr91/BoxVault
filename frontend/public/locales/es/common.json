@@ -198,6 +198,13 @@
       "fetchError": "Error al obtener información de almacenamiento."
     }
   },
+  "update": {
+    "available": {
+      "title": "Actualización Disponible",
+      "message": "Una nueva versión de BoxVault (v{{latestVersion}}) está disponible. Actualmente estás ejecutando v{{currentVersion}}.",
+      "instructions": "Para actualizar, ejecuta el siguiente comando en tu servidor:"
+    }
+  },
   "breadcrumbs": {
     "boxvault": "BoxVault",
     "home": "Inicio"

@@ -190,6 +190,13 @@
       "fetchError": "Failed to fetch storage information."
     }
   },
+  "update": {
+    "available": {
+      "title": "Update Available",
+      "message": "A new version of BoxVault (v{{latestVersion}}) is available. You are currently running v{{currentVersion}}.",
+      "instructions": "To update, run the following command on your server:"
+    }
+  },
   "breadcrumbs": {
     "boxvault": "BoxVault",
     "home": "Home"

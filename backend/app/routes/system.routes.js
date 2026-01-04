@@ -20,4 +20,10 @@ router.get(
   systemController.getStorageInfo
 );
 
+router.get(
+  '/system/update-check',
+  [authJwt.verifyToken, authJwt.isAdmin],
+  systemController.getUpdateStatus
+);
+
 module.exports = router;
