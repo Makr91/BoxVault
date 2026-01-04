@@ -375,7 +375,7 @@ const upload = async (req, res) => {
 
     // Generic error response with more details
     return res.status(500).json({
-      error: req.__('files.upload.error'),
+      error: 'UPLOAD_ERROR',
       message: req.__('files.upload.error'),
       details: {
         error: err.message,

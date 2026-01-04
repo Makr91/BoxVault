@@ -39,7 +39,7 @@ const deleteISO = (organizationName, isoId) =>
 
 const getDownloadLink = (organizationName, isoId) =>
   axios.get(
-    `${baseURL}/api/organization/${organizationName}/iso/${isoId}/download`,
+    `${baseURL}/api/organization/${organizationName}/iso/${isoId}/download-link`,
     { headers: authHeader() }
   );
 

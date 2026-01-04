@@ -91,14 +91,53 @@ const download = async (req, res) => {
     }
 
     const fullPath = path.join(getIsoStorageRoot(), iso.storagePath);
-    if (!fs.existsSync(fullPath)) {
+
+    // Check if file exists and is readable
+    try {
+      await fs.promises.access(fullPath, fs.constants.R_OK);
+    } catch (e) {
+      log.error.error(`ISO file not found or not readable: ${fullPath}`, e);
       return res.status(404).send({ message: req.__('files.notFound') });
     }
 
-    return res.download(fullPath, iso.filename);
+    const stat = fs.statSync(fullPath);
+    const fileSize = stat.size;
+    const fileName = iso.filename;
+
+    // Handle Range requests (Resumable downloads)
+    const { range } = req.headers;
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+
+      const fileStream = fs.createReadStream(fullPath, { start, end });
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+      });
+      fileStream.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+      });
+      const fileStream = fs.createReadStream(fullPath);
+      fileStream.pipe(res);
+    }
+
+    return null;
   } catch (err) {
     log.error.error('Error downloading ISO', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    if (!res.headersSent) {
+      return res.status(500).send({ message: req.__('errors.operationFailed') });
+    }
+    return null;
   }
 };
 
