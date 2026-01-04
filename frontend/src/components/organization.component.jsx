@@ -402,7 +402,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             EventBus.dispatch("logout", null);
             setBoxes([]);
           } else {
-            log.api.error("Error retrieving public boxes", {
+            log.api.error(t("box.organization.errors.retrievePublic"), {
               error: e.message,
             });
             setMessage(t("box.organization.errors.retrievePublic"));
@@ -422,7 +422,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             EventBus.dispatch("logout", null);
             setBoxes([]);
           } else {
-            log.api.error("Error retrieving organization boxes", {
+            log.api.error(t("box.organization.errors.retrieveOrg"), {
               organization,
               error: e.message,
             });

@@ -11,9 +11,24 @@ let supportedLngs = ["en", "es"];
 // Export getSupportedLanguages for Navbar
 export const getSupportedLanguages = () => supportedLngs;
 
-const i18n = createInstance();
+const i18n = createInstance({
+  // Static config: define namespaces and fallback language here
+  fallbackLng: "en",
+  ns: ["common", "auth"],
+  defaultNS: "common",
+  debug: true,
+  interpolation: {
+    escapeValue: false, // React already safes from xss
+  },
+  react: {
+    useSuspense: true,
+  },
+});
 
-const initializeI18n = async () => {
+// Register plugins immediately to avoid NO_I18NEXT_INSTANCE error
+i18n.use(HttpApi).use(LanguageDetector).use(initReactI18next);
+
+const initI18n = async () => {
   try {
     const response = await fetch("/api/health");
     if (response.ok) {
@@ -30,26 +45,19 @@ const initializeI18n = async () => {
     log.app.error("Failed to fetch supported languages", { error });
   }
 
-  i18n
-    .use(HttpApi)
-    .use(LanguageDetector)
-    .use(initReactI18next)
-    .init({
-      supportedLngs,
-      fallbackLng: "en",
-      detection: {
-        order: ["localStorage", "navigator"],
-        caches: ["localStorage"],
-      },
-      backend: {
-        loadPath: "/locales/{{lng}}/{{ns}}.json",
-      },
-      react: {
-        useSuspense: true,
-      },
-    });
+  await i18n.init({
+    // Dynamic config: only things that depend on async data
+    supportedLngs,
+    detection: {
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+    },
+    backend: {
+      loadPath: "/locales/{{lng}}/{{ns}}.json",
+    },
+  });
 };
 
-initializeI18n();
+export const i18nPromise = initI18n();
 
 export default i18n;

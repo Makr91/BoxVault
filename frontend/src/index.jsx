@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import { I18nextProvider } from "react-i18next";
 import { BrowserRouter } from "react-router-dom";
 
-import "./i18n";
 import App from "./App";
+import i18n, { i18nPromise } from "./i18n";
 import { log } from "./utils/Logger";
 import version from "./version.json";
 
@@ -15,11 +16,15 @@ log.app.info("BoxVault application starting", {
 const container = document.getElementById("root");
 const root = createRoot(container);
 
-// Render the app
-root.render(
-  <Suspense fallback="Loading...">
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </Suspense>
-);
+// Wait for i18n to initialize before rendering
+i18nPromise.then(() => {
+  root.render(
+    <I18nextProvider i18n={i18n}>
+      <Suspense fallback="Loading...">
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </Suspense>
+    </I18nextProvider>
+  );
+});

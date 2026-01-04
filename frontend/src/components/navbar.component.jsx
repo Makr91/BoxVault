@@ -11,7 +11,6 @@ import {
   FaGear,
   FaIdBadge,
   FaHouseLock,
-  FaGlobe,
   FaBridgeLock,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
@@ -788,7 +787,7 @@ const Navbar = ({
                 className="btn btn-link nav-link"
                 onClick={() => setShowLanguageModal(true)}
               >
-                <FaGlobe />
+                {getLanguageFlag(i18n.language)}
               </button>
             </li>
             <li className="nav-item">
