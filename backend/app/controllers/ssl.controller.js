@@ -12,20 +12,18 @@ exports.uploadSSL = (req, res) => {
 
   // SECURITY: Validate target path to prevent traversal and unauthorized writes
   const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
-  let allowedRoots;
+  let configRoot;
   try {
-    // Normalize allowed roots and resolve symlinks
-    const configRoot = fs.realpathSync(path.resolve(configDir));
-    const appRoot = fs.realpathSync(path.resolve(__dirname, '../../'));
-    allowedRoots = [configRoot, appRoot];
+    // Normalize allowed root and resolve symlinks
+    configRoot = fs.realpathSync(path.resolve(configDir));
   } catch (err) {
-    log.app.error('Failed to resolve allowed SSL roots', { error: err.message });
+    log.app.error('Failed to resolve allowed SSL root', { error: err.message });
     res.status(500).send({ message: 'Server configuration error.' });
     return;
   }
 
-  // Resolve the requested path relative to the primary config root
-  const candidatePath = path.resolve(allowedRoots[0], targetPath);
+  // Resolve the requested path relative to the config root
+  const candidatePath = path.resolve(configRoot, targetPath);
   let resolvedPath;
   try {
     resolvedPath = fs.realpathSync(candidatePath);
@@ -35,10 +33,8 @@ exports.uploadSSL = (req, res) => {
     return;
   }
 
-  const isAllowed = allowedRoots.some(root => {
-    const relative = path.relative(root, resolvedPath);
-    return !relative.startsWith('..') && !path.isAbsolute(relative);
-  });
+  const relativeToRoot = path.relative(configRoot, resolvedPath);
+  const isAllowed = !relativeToRoot.startsWith('..') && !path.isAbsolute(relativeToRoot);
 
   if (!isAllowed) {
     log.app.warn('Blocked SSL upload to unauthorized path', { targetPath, resolvedPath });
@@ -49,11 +45,9 @@ exports.uploadSSL = (req, res) => {
   // Ensure the directory exists
   const dir = path.dirname(resolvedPath);
 
-  // Re-validate directory path against allowed roots before creating it
-  const isDirAllowed = allowedRoots.some(root => {
-    const relative = path.relative(root, dir);
-    return !relative.startsWith('..') && !path.isAbsolute(relative);
-  });
+  // Re-validate directory path against allowed root before creating it
+  const dirRelativeToRoot = path.relative(configRoot, dir);
+  const isDirAllowed = !dirRelativeToRoot.startsWith('..') && !path.isAbsolute(dirRelativeToRoot);
 
   if (!isDirAllowed) {
     log.app.warn('Blocked SSL directory creation at unauthorized path', { targetPath, dir });
