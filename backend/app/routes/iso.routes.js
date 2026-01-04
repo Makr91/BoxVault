@@ -2,6 +2,8 @@ const express = require('express');
 const { authJwt, verifyOrgAccess, downloadAuth, sessionAuth } = require('../middleware');
 const controller = require('../controllers/iso.controller');
 const router = express.Router();
+const { discoverAll } = require('../controllers/iso/discover');
+const { getPublic } = require('../controllers/iso/getpublic');
 
 router.use(express.json());
 
@@ -10,6 +12,12 @@ router.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
   next();
 });
+
+// Discover all public ISOs (public)
+router.get('/isos/discover', discoverAll);
+
+// Get public ISOs for an organization (public)
+router.get('/organization/:organization/public-isos', getPublic);
 
 // Upload an ISO
 router.post(

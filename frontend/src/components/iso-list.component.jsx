@@ -23,9 +23,14 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
 
   useEffect(() => {
     let mounted = true;
-    const fetchIsos = showOnlyPublic
-      ? IsoService.discoverAll()
-      : IsoService.getAll(organization);
+    let fetchIsos;
+    if (showOnlyPublic) {
+      fetchIsos = IsoService.discoverAll();
+    } else if (isAuthorized) {
+      fetchIsos = IsoService.getAll(organization);
+    } else {
+      fetchIsos = IsoService.getPublic(organization);
+    }
 
     fetchIsos
       .then((response) => {
@@ -44,7 +49,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
     return () => {
       mounted = false;
     };
-  }, [organization, showOnlyPublic]);
+  }, [organization, showOnlyPublic, isAuthorized]);
 
   const handleFileUpload = (event) => {
     const [file] = event.target.files;
