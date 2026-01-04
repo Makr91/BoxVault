@@ -1,0 +1,497 @@
+boxvault:
+  origin:
+    type: url
+    value: http://localhost:5000
+    description: The origin URL for BoxVault
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 1
+  upload_timeout_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 72
+    description: Maximum hours allowed for file uploads before timeout
+    section: Application
+    subsection: File Operations
+    subsection_key: fileOperations
+    required: false
+    order: 2
+  download_timeout_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 72
+    description: Maximum hours allowed for file downloads before timeout
+    section: Application
+    subsection: File Operations
+    subsection_key: fileOperations
+    required: false
+    order: 3
+  api_url:
+    type: url
+    value: https://your-domain.com/api
+    description: The API URL for BoxVault
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 2
+  api_listen_port_unencrypted:
+    type: integer
+    value: 80
+    description: >-
+      The Port that BoxVault API listens on for HTTP(may not be the proxied
+      port)
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 3
+  api_listen_port_encrypted:
+    type: integer
+    value: 443
+    description: >-
+      The Port that BoxVault API listens on for HTTPS(may not be the proxied
+      port)
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 4
+  box_storage_directory:
+    type: string
+    value: /var/lib/boxvault/storage
+    description: The Directory on the OS in which the boxes are stored.
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 5
+  box_max_file_size:
+    type: integer
+    value: 10
+    description: The file size in GBs as to how large a upload box can be.
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 6
+  iso_storage_directory:
+    type: string
+    value: ''
+    description: The Directory on the OS in which the ISOs are stored. Leave empty to use default (box_storage_directory/iso).
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: false
+    order: 7
+gravatar:
+  base_url:
+    type: url
+    value: https://api.gravatar.com/v3/profiles/
+    description: The base URL for Gravatar API
+    section: Application
+    subsection: Gravatar Settings
+    subsection_key: gravatarSettings
+    required: false
+    order: 1
+  api_key:
+    type: password
+    value: dfasfdfsdfdsafsa
+    description: API key for Gravatar
+    section: Application
+    subsection: Gravatar Settings
+    subsection_key: gravatarSettings
+    required: false
+    order: 2
+ticket_system:
+  enabled:
+    type: boolean
+    value: true
+    description: Enable ticket/support request system integration
+    section: Application
+    subsection: Ticket System
+    subsection_key: ticketSystem
+    required: false
+    order: 1
+  base_url:
+    type: url
+    value: https://xd.prominic.net/app/apprequest.nsf/router?openagent
+    description: Base URL for ticket system
+    section: Application
+    subsection: Ticket System
+    subsection_key: ticketSystem
+    required: false
+    order: 2
+  req_type:
+    type: string
+    value: sso
+    description: Default request type parameter
+    section: Application
+    subsection: Ticket System
+    subsection_key: ticketSystem
+    required: false
+    order: 3
+  context:
+    type: url
+    value: https://github.com/Makr91/BoxVault
+    description: Context URL for ticket system (usually repository URL)
+    section: Application
+    subsection: Ticket System
+    subsection_key: ticketSystem
+    required: false
+    order: 4
+ssl:
+  generate_ssl:
+    type: boolean
+    value: true
+    description: Automatically generate SSL certificates if they don't exist
+    section: Application
+    subsection: SSL Settings
+    subsection_key: sslSettings
+    required: true
+    order: 1
+  cert_path:
+    type: string
+    value: /etc/boxvault/ssl/public.crt
+    description: Path to the SSL certificate file
+    section: Application
+    subsection: SSL Settings
+    subsection_key: sslSettings
+    required: false
+    upload: true
+    order: 2
+  key_path:
+    type: string
+    value: /etc/boxvault/ssl/private.key
+    description: Path to the SSL private key file
+    section: Application
+    subsection: SSL Settings
+    subsection_key: sslSettings
+    required: false
+    upload: true
+    order: 3
+logging:
+  level:
+    type: select
+    value: info
+    options:
+      - error
+      - warn
+      - info
+      - debug
+    description: Default logging level for all categories
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 1
+  console_enabled:
+    type: boolean
+    value: true
+    description: Enable console output for development (disabled in production)
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 2
+  log_directory:
+    type: string
+    value: /var/log/boxvault
+    description: Directory where log files will be stored
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 3
+  performance_threshold_ms:
+    type: integer
+    value: 1000
+    description: Threshold in milliseconds for logging slow operations
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 4
+  enable_compression:
+    type: boolean
+    value: true
+    description: Enable gzip compression of archived log files
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 5
+  compression_age_days:
+    type: integer
+    value: 7
+    description: Number of days before archived logs are compressed
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 6
+  max_files:
+    type: integer
+    value: 30
+    description: Maximum number of archived log files to keep
+    section: Application
+    subsection: Logging Settings
+    subsection_key: loggingSettings
+    required: true
+    order: 7
+  categories:
+    app:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for application events
+      section: Application
+      subsection: Logging Categories
+      subsection_key: loggingCategories
+      required: false
+      order: 1
+    api:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for API requests and responses
+      section: Application
+      subsection: Logging Categories
+      subsection_key: loggingCategories
+      required: false
+      order: 2
+    database:
+      type: select
+      value: warn
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for database operations
+      section: Application
+      subsection: Logging Categories
+      subsection_key: loggingCategories
+      required: false
+      order: 3
+    auth:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for authentication events
+      section: Application
+      subsection: Logging Categories
+      subsection_key: loggingCategories
+      required: false
+      order: 4
+    file:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+      description: Log level for file operations
+      section: Application
+      subsection: Logging Categories
+      subsection_key: loggingCategories
+      required: false
+      order: 5
+frontend_logging:
+  enabled:
+    type: boolean
+    value: true
+    description: Enable frontend browser logging
+    section: Application
+    subsection: Frontend Logging
+    subsection_key: frontendLogging
+    required: true
+    order: 1
+  level:
+    type: select
+    value: info
+    options:
+      - error
+      - warn
+      - info
+      - debug
+      - trace
+    description: Default frontend logging level
+    section: Application
+    subsection: Frontend Logging
+    subsection_key: frontendLogging
+    required: true
+    order: 2
+  categories:
+    app:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend app-level logs
+      section: Application
+      subsection: Frontend Logging Categories
+      subsection_key: frontendLoggingCategories
+      required: false
+      order: 1
+    auth:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend authentication logs
+      section: Application
+      subsection: Frontend Logging Categories
+      subsection_key: frontendLoggingCategories
+      required: false
+      order: 2
+    api:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend API call logs
+      section: Application
+      subsection: Frontend Logging Categories
+      subsection_key: frontendLoggingCategories
+      required: false
+      order: 3
+    file:
+      type: select
+      value: info
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend file operation logs
+      section: Application
+      subsection: Frontend Logging Categories
+      subsection_key: frontendLoggingCategories
+      required: false
+      order: 4
+    component:
+      type: select
+      value: debug
+      options:
+        - error
+        - warn
+        - info
+        - debug
+        - trace
+      description: Frontend component logs
+      section: Application
+      subsection: Frontend Logging Categories
+      subsection_key: frontendLoggingCategories
+      required: false
+    order: 5
+rate_limiting:
+  window_minutes:
+    type: integer
+    value: 15
+    description: Time window in minutes for rate limiting
+    section: Application
+    subsection: Rate Limiting
+    subsection_key: rateLimiting
+    required: true
+    order: 1
+  max_requests:
+    type: integer
+    value: 100
+    description: Maximum requests allowed per time window
+    section: Application
+    subsection: Rate Limiting
+    subsection_key: rateLimiting
+    required: true
+    order: 2
+  message:
+    type: string
+    value: 'Too many requests from this IP, please try again later.'
+    description: Error message shown to rate-limited users
+    section: Application
+    subsection: Rate Limiting
+    subsection_key: rateLimiting
+    required: true
+    order: 3
+  skip_successful_requests:
+    type: boolean
+    value: false
+    description: Whether to skip counting successful requests
+    section: Application
+    subsection: Rate Limiting
+    subsection_key: rateLimiting
+    required: false
+    order: 4
+  skip_failed_requests:
+    type: boolean
+    value: false
+    description: Whether to skip counting failed requests
+    section: Application
+    subsection: Rate Limiting
+    subsection_key: rateLimiting
+    required: false
+    order: 5
+monitoring:
+  disk_space_warning_threshold:
+    type: integer
+    value: 90
+    min: 1
+    max: 99
+    description: Disk usage percentage to trigger a warning alert.
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 1
+  disk_space_critical_threshold:
+    type: integer
+    value: 95
+    min: 1
+    max: 99
+    description: Disk usage percentage to trigger a critical alert.
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 2
+  alert_frequency_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 168
+    description: Minimum hours between sending system alerts (e.g., for low disk space).
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 3

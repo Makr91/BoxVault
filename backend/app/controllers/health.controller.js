@@ -239,7 +239,9 @@ const getHealth = async (req, res) => {
           // Placeholder for email sending logic
           // In a real implementation, you would loop through alertEmails and call mailController.sendAlert()
           console.warn(
-            `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(', ')}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
+            `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(
+              ', '
+            )}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
           );
           lastAlertTime = now;
         }

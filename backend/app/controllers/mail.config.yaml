@@ -1,0 +1,95 @@
+smtp_connect:
+  host:
+    type: host
+    value: smtp.example.com
+    description: SMTP server hostname
+    section: Mail
+    subsection: SMTP Connection
+    subsection_key: smtpConnection
+    required: true
+    order: 1
+  port:
+    type: integer
+    value: '587'
+    description: SMTP server port
+    section: Mail
+    subsection: SMTP Connection
+    subsection_key: smtpConnection
+    required: true
+    order: 2
+  secure:
+    type: boolean
+    value: true
+    description: Use TLS for connection
+    section: Mail
+    subsection: SMTP Connection
+    subsection_key: smtpConnection
+    required: true
+    order: 3
+  rejectUnauthorized:
+    type: boolean
+    value: true
+    description: Reject unauthorized TLS connections
+    section: Mail
+    subsection: SMTP Connection
+    subsection_key: smtpConnection
+    required: true
+    order: 4
+smtp_settings:
+  from:
+    type: email
+    value: noreply@your-domain.com
+    description: Default sender email address
+    section: Mail
+    subsection: SMTP Settings
+    subsection_key: smtpSettings
+    required: true
+    order: 1
+  replyTo:
+    type: email
+    value: support@your-domain.com
+    description: Default reply-to email address
+    section: Mail
+    subsection: SMTP Settings
+    subsection_key: smtpSettings
+    required: false
+    order: 2
+  rateLimit:
+    type: integer
+    value: '10'
+    description: Maximum emails to send per second
+    section: Mail
+    subsection: SMTP Settings
+    subsection_key: smtpSettings
+    required: false
+    order: 3
+  alert_emails:
+    type: array
+    value:
+      - 'mark.gilbert@prominic.net'
+      - 'testemail@prominic.net'
+    description: Comma-separated list of email addresses to receive system alerts (e.g. low disk space)
+    section: Mail
+    subsection: SMTP Settings
+    subsection_key: smtpSettings
+    required: false
+    order: 5
+smtp_auth:
+  user:
+    type: string
+    value: your-smtp-username
+    description: SMTP username
+    section: Mail
+    subsection: SMTP Authentication
+    subsection_key: smtpAuthentication
+    required: true
+    order: 1
+  password:
+    type: password
+    value: CHANGE_THIS_SMTP_PASSWORD
+    description: SMTP password
+    section: Mail
+    subsection: SMTP Authentication
+    subsection_key: smtpAuthentication
+    required: true
+    order: 2
