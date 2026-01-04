@@ -1052,12 +1052,8 @@ const Organization = ({ showOnlyPublic, theme }) => {
       : currentUser.organization === organization;
   }, [currentUser, organization]);
 
-  if (showOnlyPublic) {
-    return <BoxesList showOnlyPublic theme={theme} />;
-  }
-
   return (
-    <div className="container">
+    <div className="list row">
       <ul className="nav nav-tabs mb-3">
         <li className="nav-item">
           <button
@@ -1078,13 +1074,14 @@ const Organization = ({ showOnlyPublic, theme }) => {
       </ul>
 
       {activeTab === "boxes" && (
-        <BoxesList showOnlyPublic={false} theme={theme} />
+        <BoxesList showOnlyPublic={showOnlyPublic} theme={theme} />
       )}
       {activeTab === "isos" && (
         <IsoList
-          key={organization}
+          key={organization || "public"}
           organization={organization}
           isAuthorized={isAuthorized}
+          showOnlyPublic={showOnlyPublic}
         />
       )}
     </div>

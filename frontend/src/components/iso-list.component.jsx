@@ -9,7 +9,7 @@ import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
-const IsoList = ({ organization, isAuthorized }) => {
+const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
   const { t } = useTranslation();
   const [isos, setIsos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,11 @@ const IsoList = ({ organization, isAuthorized }) => {
 
   useEffect(() => {
     let mounted = true;
-    IsoService.getAll(organization)
+    const fetchIsos = showOnlyPublic
+      ? IsoService.discoverAll()
+      : IsoService.getAll(organization);
+
+    fetchIsos
       .then((response) => {
         if (mounted) {
           setIsos(response.data);
@@ -40,7 +44,7 @@ const IsoList = ({ organization, isAuthorized }) => {
     return () => {
       mounted = false;
     };
-  }, [organization]);
+  }, [organization, showOnlyPublic]);
 
   const handleFileUpload = (event) => {
     const [file] = event.target.files;
@@ -98,7 +102,8 @@ const IsoList = ({ organization, isAuthorized }) => {
     e.preventDefault();
     try {
       // If public, we can try direct download, but getting a link is safer/consistent
-      const response = await IsoService.getDownloadLink(organization, iso.id);
+      const orgName = iso.organization?.name || organization;
+      const response = await IsoService.getDownloadLink(orgName, iso.id);
       window.location.assign(response.data.downloadUrl);
     } catch (error) {
       log.api.error("Error getting download link", { error: error.message });
@@ -159,28 +164,32 @@ const IsoList = ({ organization, isAuthorized }) => {
     return isos.map((iso) => (
       <tr key={iso.id}>
         <td>{iso.name}</td>
-        <td>
-          {isAuthorized ? (
-            <button
-              type="button"
-              className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"} border-0 cursor-pointer`}
-              onClick={() => handleVisibilityToggle(iso)}
-              title="Click to toggle visibility"
-            >
-              {iso.isPublic
-                ? t("box.organization.visibility.public")
-                : t("box.organization.visibility.private")}
-            </button>
-          ) : (
-            <span
-              className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"}`}
-            >
-              {iso.isPublic
-                ? t("box.organization.visibility.public")
-                : t("box.organization.visibility.private")}
-            </span>
-          )}
-        </td>
+        {showOnlyPublic ? (
+          <td>{iso.organization?.name || "Unknown"}</td>
+        ) : (
+          <td>
+            {isAuthorized ? (
+              <button
+                type="button"
+                className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"} border-0 cursor-pointer`}
+                onClick={() => handleVisibilityToggle(iso)}
+                title="Click to toggle visibility"
+              >
+                {iso.isPublic
+                  ? t("box.organization.visibility.public")
+                  : t("box.organization.visibility.private")}
+              </button>
+            ) : (
+              <span
+                className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"}`}
+              >
+                {iso.isPublic
+                  ? t("box.organization.visibility.public")
+                  : t("box.organization.visibility.private")}
+              </span>
+            )}
+          </td>
+        )}
         <td>{formatFileSize(iso.size)}</td>
         <td>
           <code title={iso.checksum}>{iso.checksum.substring(0, 12)}...</code>
@@ -269,7 +278,7 @@ const IsoList = ({ organization, isAuthorized }) => {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Visibility</th>
+            <th>{showOnlyPublic ? "Organization" : "Visibility"}</th>
             <th>Size</th>
             <th>Checksum (SHA256)</th>
             <th>Uploaded</th>
@@ -291,8 +300,9 @@ const IsoList = ({ organization, isAuthorized }) => {
 };
 
 IsoList.propTypes = {
-  organization: PropTypes.string.isRequired,
+  organization: PropTypes.string,
   isAuthorized: PropTypes.bool.isRequired,
+  showOnlyPublic: PropTypes.bool,
 };
 
 export default IsoList;
