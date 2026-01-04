@@ -47,10 +47,10 @@ router.get(
   controller.download
 );
 
-// Get Download Link (Authenticated)
+// Get Download Link (Public/Authenticated)
 router.post(
   '/organization/:organization/iso/:isoId/download-link',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
+  [sessionAuth],
   controller.getDownloadLink
 );
 
