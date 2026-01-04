@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.36.0](https://github.com/Makr91/BoxVault/compare/v0.35.0...v0.36.0) (2026-01-04)
+
+
+### Features
+
+* add checksum copy functionality to ISO list component ([38c19ef](https://github.com/Makr91/BoxVault/commit/38c19ef4731a0c2623699a157fd378408b2a19d3))
+* add editing functionality for ISO names in the ISO list component ([6f2e65d](https://github.com/Makr91/BoxVault/commit/6f2e65df02aa90892faf8100f539fdfd39a6eea2))
+* enhance ISO upload functionality with configurable timeout and improved error handling ([5253242](https://github.com/Makr91/BoxVault/commit/5253242600b1707f9237706b5560f323321faa78))
+* enhance ISO upload security by normalizing file paths and preventing traversal attacks ([a97e733](https://github.com/Makr91/BoxVault/commit/a97e73334143a3f98b7a18ad99a262537492caed))
+
+
+### Bug Fixes
+
+* correct file path reference in upload cleanup logic ([f8a055e](https://github.com/Makr91/BoxVault/commit/f8a055ee51aeb6d08e30abb3c2a605ac809c2fa8))
+
 ## [0.35.0](https://github.com/Makr91/BoxVault/compare/v0.34.0...v0.35.0) (2026-01-04)
 
 
