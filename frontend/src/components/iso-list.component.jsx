@@ -9,6 +9,7 @@ import {
   FaPen,
   FaCheck,
   FaXmark,
+  FaCopy,
 } from "react-icons/fa6";
 
 import IsoService from "../services/iso.service";
@@ -29,6 +30,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
   const [isPublicUpload, setIsPublicUpload] = useState(false);
   const [editingIsoId, setEditingIsoId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [copiedChecksum, setCopiedChecksum] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -144,6 +146,20 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
       });
   };
 
+  const handleCopyChecksum = (checksum, isoId) => {
+    navigator.clipboard
+      .writeText(checksum)
+      .then(() => {
+        setCopiedChecksum(isoId);
+        setTimeout(() => setCopiedChecksum(null), 2000); // Reset after 2 seconds
+      })
+      .catch((err) => {
+        log.app.error("Failed to copy checksum", { error: err });
+        setMessage(t("messages.copyFailed"));
+        setMessageType("danger");
+      });
+  };
+
   const handleEditClick = (iso) => {
     setEditingIsoId(iso.id);
     setEditName(iso.name);
@@ -247,7 +263,21 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
         )}
         <td>{formatFileSize(iso.size)}</td>
         <td>
-          <code title={iso.checksum}>{iso.checksum.substring(0, 12)}...</code>
+          <div className="d-flex align-items-center">
+            <code title={iso.checksum}>{iso.checksum.substring(0, 12)}...</code>
+            <button
+              type="button"
+              className="btn btn-sm btn-link text-secondary p-0 ms-2"
+              onClick={() => handleCopyChecksum(iso.checksum, iso.id)}
+              title={t("buttons.copy")}
+            >
+              {copiedChecksum === iso.id ? (
+                <FaCheck className="text-success" />
+              ) : (
+                <FaCopy />
+              )}
+            </button>
+          </div>
         </td>
         <td>{new Date(iso.createdAt).toLocaleDateString()}</td>
         <td>

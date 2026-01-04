@@ -93,10 +93,6 @@ const upload = async (req, res) => {
         resolvedPath: tempPath,
         tmpDir,
       });
-      // Attempt to clean up the original file path if it exists
-      if (fs.existsSync(tempPath)) {
-        fs.unlinkSync(tempPath);
-      }
       return res.status(400).send({ message: 'Invalid file path detected.' });
     }
 
