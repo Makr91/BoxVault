@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.41.0](https://github.com/Makr91/BoxVault/compare/v0.40.0...v0.41.0) (2026-01-04)
+
+
+### Features
+
+* fix health controller and languages ([704d2e8](https://github.com/Makr91/BoxVault/commit/704d2e8892f1d661a170cfc8ed1ce3fc346a052c))
+* fix translations and FOUC ([f7727c3](https://github.com/Makr91/BoxVault/commit/f7727c388573c4745f113ef3dc877ad6214ef581))
+
 ## [0.40.0](https://github.com/Makr91/BoxVault/compare/v0.39.0...v0.40.0) (2026-01-04)
 
 
