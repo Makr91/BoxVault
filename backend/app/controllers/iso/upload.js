@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 const db = require('../../models');
 const { log } = require('../../utils/Logger');
 const { getIsoStorageRoot } = require('./helpers');
@@ -82,7 +83,23 @@ const upload = async (req, res) => {
     });
 
     const { file } = req;
-    const tempPath = file.path;
+    const tempPath = path.resolve(file.path); // Normalize path to prevent traversal
+
+    // Security: Ensure the temporary path is within the OS's temp directory.
+    const tmpDir = os.tmpdir();
+    if (!tempPath.startsWith(tmpDir + path.sep)) {
+      log.error.error('Path traversal attempt detected in ISO upload', {
+        originalPath: file.path,
+        resolvedPath: tempPath,
+        tmpDir,
+      });
+      // Attempt to clean up the original file path if it exists
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      return res.status(400).send({ message: 'Invalid file path detected.' });
+    }
+
     const filename = file.originalname || 'uploaded.iso';
     const isPublic = req.body.isPublic === 'true';
 
