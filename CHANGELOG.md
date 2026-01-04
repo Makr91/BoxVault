@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.0](https://github.com/Makr91/BoxVault/compare/v0.33.0...v0.34.0) (2026-01-04)
+
+
+### Features
+
+* add Swagger documentation for ISO and provider endpoints ([6e40790](https://github.com/Makr91/BoxVault/commit/6e407903b307bf2092bbe519394e757c191b47e2))
+* enhance ISO download functionality with token verification and scoped JWT ([31f221e](https://github.com/Makr91/BoxVault/commit/31f221eb8e6adbb91cfa60b8aeefa1158b2eec48))
+
 ## [0.33.0](https://github.com/Makr91/BoxVault/compare/v0.32.2...v0.33.0) (2026-01-04)
 
 
