@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const db = require('../../models');
+const { loadConfig } = require('../../utils/config-loader');
 const { getIsoStorageRoot } = require('./helpers');
 const { log } = require('../../utils/Logger');
 
@@ -44,6 +46,7 @@ const { UserOrg } = db;
  */
 const download = async (req, res) => {
   const { isoId } = req.params;
+  const { token } = req.query;
 
   try {
     const iso = await ISO.findByPk(isoId);
@@ -53,12 +56,33 @@ const download = async (req, res) => {
 
     // Check permissions: Allow if public, otherwise require org membership
     if (!iso.isPublic) {
-      if (!req.userId) {
+      let { userId } = req;
+
+      // If no userId from session, try to verify the query token
+      if (!userId && token) {
+        try {
+          const authConfig = loadConfig('auth');
+          const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+          ({ userId } = decoded);
+
+          // Security Check: Ensure token was issued for THIS specific ISO
+          if (decoded.isoId !== parseInt(isoId, 10)) {
+            log.app.warn(
+              `Invalid download token scope. Token ISO: ${decoded.isoId}, Requested: ${isoId}`
+            );
+            return res.status(403).send({ message: req.__('auth.invalidToken') });
+          }
+        } catch {
+          log.app.warn('Invalid download token provided');
+        }
+      }
+
+      if (!userId) {
         return res.status(401).send({ message: req.__('auth.unauthorized') });
       }
 
       const isMember = await UserOrg.findOne({
-        where: { user_id: req.userId, organization_id: iso.organizationId },
+        where: { user_id: userId, organization_id: iso.organizationId },
       });
 
       if (!isMember) {

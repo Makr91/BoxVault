@@ -67,7 +67,12 @@ const getDownloadLink = async (req, res) => {
     const authConfig = loadConfig('auth');
     // Generate a short-lived token for the download
     const token = jwt.sign(
-      { userId, isServiceAccount: req.isServiceAccount },
+      {
+        userId,
+        isServiceAccount: req.isServiceAccount,
+        isoId: parseInt(isoId, 10), // Scope token to this specific ISO
+        organization: req.params.organization,
+      },
       authConfig.auth.jwt.jwt_secret.value,
       { expiresIn: '1h' }
     );
