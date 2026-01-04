@@ -76,7 +76,7 @@ const generateEmailHash = email =>
 // Update the 'update' function
 exports.update = async (req, res) => {
   const { organization: organizationName } = req.params;
-  const { organization, description, email, website, org_code } = req.body;
+  const { organization, description, email, org_code } = req.body;
   const oldFilePath = getSecureBoxPath(organizationName);
   const newFilePath = getSecureBoxPath(organization || organizationName);
 
@@ -141,12 +141,11 @@ exports.update = async (req, res) => {
     }
 
     await org.update({
-      name: organization || org.name,
-      description: description || org.description,
-      email: email || org.email,
+      name: organization !== undefined ? organization : org.name,
+      description: description !== undefined ? description : org.description,
+      email: email !== undefined ? email : org.email,
       emailHash: emailHash || org.emailHash,
       org_code: org_code !== undefined ? org_code : org.org_code,
-      website: website || org.website,
     });
 
     return res.status(200).send({

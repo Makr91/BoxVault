@@ -25,6 +25,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   const [collapsedSubsections, setCollapsedSubsections] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [isFormValid, setIsFormValid] = useState(true);
+  const [testEmail, setTestEmail] = useState("");
 
   const fetchConfig = useCallback(
     (configName) => {
@@ -138,9 +139,15 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   };
 
   const handleTestSmtp = () => {
+    if (!testEmail) {
+      setMessage("Please provide an email address for the test.");
+      setMessageType("warning");
+      return;
+    }
+
     setMessage(t("configManager.testingSmtp"));
     setMessageType("info");
-    ConfigService.testSmtp()
+    ConfigService.testSmtp(testEmail)
       .then((response) => {
         setMessage(response.data.message || t("configManager.testSmtpSuccess"));
         setMessageType("success");
@@ -673,13 +680,6 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             {t("configManager.tabs.mail")}
           </button>
         </li>
-        {selectedConfig === "mail" && (
-          <li className="nav-item">
-            <button type="button" className="nav-link" onClick={handleTestSmtp}>
-              {t("configManager.buttons.testSmtp")}
-            </button>
-          </li>
-        )}
         <li className="nav-item ms-auto">
           <button
             type="button"
@@ -717,6 +717,43 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
       )}
       <div className="config-container mt-3">
         <div>{renderConfigSections()}</div>
+        {selectedConfig === "mail" && (
+          <div className="card mb-4">
+            <div className="card-header">
+              <h5 className="mb-0">
+                <i className="fas fa-envelope-open-text me-2" />
+                Test SMTP Configuration
+              </h5>
+            </div>
+            <div className="card-body">
+              <div className="mb-3">
+                <label htmlFor="testEmail" className="form-label">
+                  Recipient Email
+                </label>
+                <div className="input-group">
+                  <input
+                    type="email"
+                    className="form-control"
+                    id="testEmail"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    placeholder="Enter email address"
+                  />
+                  <button
+                    className="btn btn-outline-primary"
+                    type="button"
+                    onClick={handleTestSmtp}
+                  >
+                    Send Test Email
+                  </button>
+                </div>
+                <small className="form-text text-muted">
+                  Sends a test email to verify your SMTP settings are correct.
+                </small>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

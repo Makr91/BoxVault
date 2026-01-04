@@ -15,8 +15,12 @@ const updateConfig = (configName, configData) =>
 const restartServer = () =>
   axios.post(`${baseURL}/api/config/restart`, {}, { headers: authHeader() });
 
-const testSmtp = () =>
-  axios.post(`${baseURL}/api/mail/test-smtp`, {}, { headers: authHeader() });
+const testSmtp = (email) =>
+  axios.post(
+    `${baseURL}/api/mail/test-smtp`,
+    { testEmail: email },
+    { headers: authHeader() }
+  );
 
 const ConfigService = {
   getConfig,

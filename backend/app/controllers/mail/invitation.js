@@ -11,13 +11,7 @@ try {
   log.error.error(`Failed to load app configuration: ${e.message}`);
 }
 
-const sendInvitationMail = async (
-  email,
-  token,
-  organizationName,
-  expirationTime,
-  locale = 'en'
-) => {
+const sendInvitationMail = (email, token, organizationName, expirationTime, locale = 'en') => {
   try {
     const transporter = createTransporter();
 
@@ -37,11 +31,14 @@ const sendInvitationMail = async (
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-    return invitationLink;
+    transporter.sendMail(mailOptions).catch(error => {
+      log.error.error('Error sending invitation email:', error);
+    });
+
+    return Promise.resolve(invitationLink);
   } catch (error) {
-    log.error.error('Error sending invitation email:', error);
-    throw error;
+    log.error.error('Error preparing invitation email:', error);
+    return Promise.reject(error);
   }
 };
 
