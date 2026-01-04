@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const db = require('../../models');
 const { log } = require('../../utils/Logger');
 const { getIsoStorageRoot } = require('./helpers');
+const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
+const { loadConfig } = require('../../utils/config-loader');
 
 const ISO = db.iso;
 const Organization = db.organization;
@@ -50,8 +52,10 @@ const Organization = db.organization;
  */
 const upload = async (req, res) => {
   const { organization } = req.params;
-  const filename = req.headers['x-file-name'] || 'uploaded.iso';
-  const isPublic = req.headers['x-is-public'] === 'true';
+  const appConfig = loadConfig('app');
+  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
+  const uploadTimeoutMs = uploadTimeoutHours * 60 * 60 * 1000;
+  req.setTimeout(uploadTimeoutMs);
 
   try {
     const org = await Organization.findOne({ where: { name: organization } });
@@ -64,44 +68,51 @@ const upload = async (req, res) => {
       fs.mkdirSync(isoRoot, { recursive: true });
     }
 
-    // Stream to a temporary file first
-    const tempPath = path.join(
-      isoRoot,
-      `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`
-    );
-    const writeStream = fs.createWriteStream(tempPath);
+    // Use middleware to handle multipart upload (streams to temp file)
+    await new Promise((resolve, reject) => {
+      uploadFileMiddleware(req, res, err => {
+        if (err) {
+          reject(err);
+        } else if (!req.file) {
+          reject(new Error(req.__('files.noFileUploaded')));
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    const { file } = req;
+    const tempPath = file.path;
+    const filename = file.originalname || 'uploaded.iso';
+    const isPublic = req.body.isPublic === 'true';
+
+    // Calculate hash of the uploaded temp file
     const hash = crypto.createHash('sha256');
+    const fileStream = fs.createReadStream(tempPath);
 
     await new Promise((resolve, reject) => {
-      req.pipe(writeStream);
-      req.on('data', chunk => hash.update(chunk));
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
-      req.on('error', reject);
+      fileStream.on('data', chunk => hash.update(chunk));
+      fileStream.on('end', resolve);
+      fileStream.on('error', reject);
     });
 
     try {
       const calculatedChecksum = hash.digest('hex');
       const finalFilename = `${calculatedChecksum}.iso`;
       const finalPath = path.join(isoRoot, finalFilename);
-      const stats = fs.statSync(tempPath);
 
       // Deduplication Check
       if (fs.existsSync(finalPath)) {
-        log.file.info(
-          `ISO Deduplication: File with hash ${calculatedChecksum} already exists. Linking to it.`
-        );
-        fs.unlinkSync(tempPath); // Remove temp file, use existing
+        fs.unlinkSync(tempPath); // Remove temp file, use existing one
       } else {
         fs.renameSync(tempPath, finalPath);
-        log.file.info(`ISO Upload: New file stored at ${finalPath}`);
       }
 
       // Create DB Record
       const iso = await ISO.create({
         name: filename,
         filename,
-        size: stats.size,
+        size: file.size,
         checksum: calculatedChecksum,
         checksumType: 'sha256',
         storagePath: finalFilename,
@@ -111,7 +122,6 @@ const upload = async (req, res) => {
 
       return res.status(201).send(iso);
     } catch (err) {
-      log.error.error('Error finalizing ISO upload', err);
       if (fs.existsSync(tempPath)) {
         try {
           fs.unlinkSync(tempPath);
@@ -119,9 +129,16 @@ const upload = async (req, res) => {
           void e;
         }
       }
-      return res.status(500).send({ message: req.__('errors.operationFailed') });
+      throw err;
     }
   } catch (err) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).send({
+        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
+        error: 'FILE_TOO_LARGE',
+      });
+    }
+
     log.error.error('ISO Upload Controller Error', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });
   }

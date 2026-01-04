@@ -16,7 +16,7 @@ const discoverAll = () => axios.get(`${baseURL}/api/isos/discover`);
 
 const upload = (organizationName, file, isPublic, onUploadProgress) => {
   const formData = new FormData();
-  formData.append("iso", file);
+  formData.append("file", file);
   formData.append("isPublic", String(isPublic));
 
   return axios.post(
