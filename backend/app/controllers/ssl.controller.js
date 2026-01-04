@@ -10,6 +10,13 @@ exports.uploadSSL = (req, res) => {
     return;
   }
 
+  // Validate target path to prevent traversal characters
+  if (typeof targetPath !== 'string' || targetPath.includes('..') || targetPath.includes('\0')) {
+    log.app.warn('Rejected SSL upload due to invalid path characters', { targetPath });
+    res.status(400).send({ message: 'Invalid target path.' });
+    return;
+  }
+
   // SECURITY: Validate target path to prevent traversal and unauthorized writes
   const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
   let configRoot;
@@ -26,15 +33,7 @@ exports.uploadSSL = (req, res) => {
   const configRootWithSep = configRoot.endsWith(path.sep) ? configRoot : configRoot + path.sep;
 
   // Resolve the requested path relative to the config root
-  const candidatePath = path.resolve(configRoot, targetPath);
-  let resolvedPath;
-  try {
-    resolvedPath = fs.realpathSync(candidatePath);
-  } catch (err) {
-    log.app.warn('Rejected SSL upload due to invalid path', { targetPath, error: err.message });
-    res.status(400).send({ message: 'Invalid target path.' });
-    return;
-  }
+  const resolvedPath = path.join(configRoot, targetPath);
 
   // Allow only paths that are exactly the root or under the root directory
   const isAllowed = resolvedPath === configRoot || resolvedPath.startsWith(configRootWithSep);
