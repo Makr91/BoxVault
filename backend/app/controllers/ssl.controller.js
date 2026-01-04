@@ -23,8 +23,7 @@ exports.uploadSSL = (req, res) => {
   }
 
   // Ensure we have a consistent trailing separator for prefix checks
-  const configRootWithSep =
-    configRoot.endsWith(path.sep) ? configRoot : configRoot + path.sep;
+  const configRootWithSep = configRoot.endsWith(path.sep) ? configRoot : configRoot + path.sep;
 
   // Resolve the requested path relative to the config root
   const candidatePath = path.resolve(configRoot, targetPath);
@@ -38,9 +37,7 @@ exports.uploadSSL = (req, res) => {
   }
 
   // Allow only paths that are exactly the root or under the root directory
-  const isAllowed =
-    resolvedPath === configRoot ||
-    resolvedPath.startsWith(configRootWithSep);
+  const isAllowed = resolvedPath === configRoot || resolvedPath.startsWith(configRootWithSep);
 
   if (!isAllowed) {
     log.app.warn('Blocked SSL upload to unauthorized path', { targetPath, resolvedPath });
@@ -52,8 +49,7 @@ exports.uploadSSL = (req, res) => {
   const dir = path.dirname(resolvedPath);
 
   // Re-validate directory path against allowed root before creating it
-  const isDirAllowed =
-    dir === configRoot || dir.startsWith(configRootWithSep);
+  const isDirAllowed = dir === configRoot || dir.startsWith(configRootWithSep);
 
   if (!isDirAllowed) {
     log.app.warn('Blocked SSL directory creation at unauthorized path', { targetPath, dir });
