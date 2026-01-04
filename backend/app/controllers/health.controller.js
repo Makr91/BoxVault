@@ -129,11 +129,14 @@ const checkDiskUsage = async dirPath => {
     const used = total - free;
     const percent = (used / total) * 100;
     const percentStr = percent.toFixed(1);
+    const appConfig = loadConfig('app');
+    const criticalThreshold = appConfig.monitoring?.disk_space_critical_threshold?.value || 95;
+    const warningThreshold = appConfig.monitoring?.disk_space_warning_threshold?.value || 90;
 
-    if (percent > 95) {
+    if (percent > criticalThreshold) {
       return { status: 'warning', message: `CRITICAL: ${percentStr}% used` };
     }
-    if (percent > 90) {
+    if (percent > warningThreshold) {
       return { status: 'warning', message: `Warning: ${percentStr}% used` };
     }
     return { status: 'ok', message: `ok (${percentStr}%)` };
@@ -227,15 +230,16 @@ const getHealth = async (req, res) => {
 
     // Alerting Logic
     if (boxDisk.status === 'warning' || isoDisk.status === 'warning') {
+      const alertFrequencyHours = appConfig.monitoring?.alert_frequency_hours?.value || 24;
       const now = Date.now();
-      // Alert at most once every 24 hours
-      if (now - lastAlertTime > 24 * 60 * 60 * 1000) {
-        const alertEmail = loadConfig('mail')?.smtp_settings?.alert_email?.value;
-        if (alertEmail) {
+      // Alert at most once every X hours
+      if (now - lastAlertTime > alertFrequencyHours * 60 * 60 * 1000) {
+        const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails?.value;
+        if (alertEmails && alertEmails.length > 0) {
           // Placeholder for email sending logic
-          // In a real implementation, you would call mailController.sendAlert(alertEmail, ...)
+          // In a real implementation, you would loop through alertEmails and call mailController.sendAlert()
           console.warn(
-            `[ALERT] High disk usage detected! Sending alert email to ${alertEmail}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
+            `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(', ')}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
           );
           lastAlertTime = now;
         }

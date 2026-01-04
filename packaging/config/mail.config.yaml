@@ -63,10 +63,10 @@ smtp_settings:
     subsection_key: smtpSettings
     required: false
     order: 3
-  alert_email:
-    type: email
-    value: ""
-    description: Email address to receive system alerts (e.g. low disk space)
+  alert_emails:
+    type: array
+    value: []
+    description: Comma-separated list of email addresses to receive system alerts (e.g. low disk space)
     section: Mail
     subsection: SMTP Settings
     subsection_key: smtpSettings

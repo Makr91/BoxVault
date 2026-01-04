@@ -415,6 +415,52 @@ frontend_logging:
       subsection_key: frontendLoggingCategories
       required: false
       order: 5
+monitoring:
+  alert_frequency_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 168
+    description: Minimum hours between sending system alerts (e.g., for low disk space).
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 1
+monitoring:
+  disk_space_warning_threshold:
+    type: integer
+    value: 90
+    min: 1
+    max: 99
+    description: Disk usage percentage to trigger a warning alert.
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 1
+  disk_space_critical_threshold:
+    type: integer
+    value: 95
+    min: 1
+    max: 99
+    description: Disk usage percentage to trigger a critical alert.
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 2
+  alert_frequency_hours:
+    type: integer
+    value: 24
+    min: 1
+    max: 168
+    description: Minimum hours between sending system alerts (e.g., for low disk space).
+    section: Application
+    subsection: Monitoring
+    subsection_key: monitoring
+    required: true
+    order: 3
 rate_limiting:
   window_minutes:
     type: integer
