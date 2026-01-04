@@ -11,9 +11,29 @@ exports.uploadSSL = (req, res) => {
   }
 
   // SECURITY: Validate target path to prevent traversal and unauthorized writes
-  const resolvedPath = path.resolve(targetPath);
   const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
-  const allowedRoots = [path.resolve(configDir), path.resolve(__dirname, '../../')];
+  let allowedRoots;
+  try {
+    // Normalize allowed roots and resolve symlinks
+    const configRoot = fs.realpathSync(path.resolve(configDir));
+    const appRoot = fs.realpathSync(path.resolve(__dirname, '../../'));
+    allowedRoots = [configRoot, appRoot];
+  } catch (err) {
+    log.app.error('Failed to resolve allowed SSL roots', { error: err.message });
+    res.status(500).send({ message: 'Server configuration error.' });
+    return;
+  }
+
+  // Resolve the requested path relative to the primary config root
+  const candidatePath = path.resolve(allowedRoots[0], targetPath);
+  let resolvedPath;
+  try {
+    resolvedPath = fs.realpathSync(candidatePath);
+  } catch (err) {
+    log.app.warn('Rejected SSL upload due to invalid path', { targetPath, error: err.message });
+    res.status(400).send({ message: 'Invalid target path.' });
+    return;
+  }
 
   const isAllowed = allowedRoots.some(root => {
     const relative = path.relative(root, resolvedPath);
