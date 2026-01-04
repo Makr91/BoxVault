@@ -2,7 +2,14 @@ import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { Table } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
-import { FaTrash, FaDownload, FaCompactDisc } from "react-icons/fa6";
+import {
+  FaTrash,
+  FaDownload,
+  FaCompactDisc,
+  FaPen,
+  FaCheck,
+  FaXmark,
+} from "react-icons/fa6";
 
 import IsoService from "../services/iso.service";
 import { log } from "../utils/Logger";
@@ -20,6 +27,8 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isoToDelete, setIsoToDelete] = useState(null);
   const [isPublicUpload, setIsPublicUpload] = useState(false);
+  const [editingIsoId, setEditingIsoId] = useState(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -135,6 +144,36 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
       });
   };
 
+  const handleEditClick = (iso) => {
+    setEditingIsoId(iso.id);
+    setEditName(iso.name);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIsoId(null);
+    setEditName("");
+  };
+
+  const handleSaveEdit = (iso) => {
+    if (!editName.trim()) {
+      return;
+    }
+
+    IsoService.update(organization, iso.id, { name: editName })
+      .then((response) => {
+        setIsos(isos.map((i) => (i.id === iso.id ? response.data : i)));
+        setEditingIsoId(null);
+        setEditName("");
+        setMessage(t("messages.operationSuccessful"));
+        setMessageType("success");
+      })
+      .catch((error) => {
+        log.api.error("Error updating ISO name", { error: error.message });
+        setMessage(t("messages.operationFailed"));
+        setMessageType("danger");
+      });
+  };
+
   const formatFileSize = (bytes) => {
     if (bytes === 0) {
       return "0 Bytes";
@@ -168,7 +207,18 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
 
     return isos.map((iso) => (
       <tr key={iso.id}>
-        <td>{iso.name}</td>
+        <td>
+          {editingIsoId === iso.id ? (
+            <input
+              type="text"
+              className="form-control form-control-sm"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+            />
+          ) : (
+            iso.name
+          )}
+        </td>
         {showOnlyPublic ? (
           <td>{iso.organization?.name || "Unknown"}</td>
         ) : (
@@ -202,20 +252,50 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
         <td>{new Date(iso.createdAt).toLocaleDateString()}</td>
         <td>
           <div className="btn-group">
-            <button
-              type="button"
-              onClick={(e) => handleDownloadClick(e, iso)}
-              className="btn btn-sm btn-outline-primary"
-            >
-              <FaDownload />
-            </button>
-            {isAuthorized && (
-              <button
-                className="btn btn-sm btn-outline-danger"
-                onClick={() => handleDeleteClick(iso)}
-              >
-                <FaTrash />
-              </button>
+            {editingIsoId === iso.id ? (
+              <>
+                <button
+                  className="btn btn-sm btn-success"
+                  onClick={() => handleSaveEdit(iso)}
+                  title={t("buttons.save")}
+                >
+                  <FaCheck />
+                </button>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={handleCancelEdit}
+                  title={t("buttons.cancel")}
+                >
+                  <FaXmark />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => handleDownloadClick(e, iso)}
+                  className="btn btn-sm btn-outline-primary"
+                >
+                  <FaDownload />
+                </button>
+                {isAuthorized && (
+                  <>
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => handleEditClick(iso)}
+                      title={t("buttons.edit")}
+                    >
+                      <FaPen />
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDeleteClick(iso)}
+                    >
+                      <FaTrash />
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </div>
         </td>

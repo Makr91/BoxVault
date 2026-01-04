@@ -33,6 +33,8 @@ const ISO = db.iso;
  *             properties:
  *               isPublic:
  *                 type: boolean
+ *               name:
+ *                 type: string
  *     responses:
  *       200:
  *         description: ISO updated successfully
@@ -43,7 +45,7 @@ const ISO = db.iso;
  */
 const update = async (req, res) => {
   const { isoId } = req.params;
-  const { isPublic } = req.body || {};
+  const { isPublic, name } = req.body || {};
 
   try {
     const iso = await ISO.findByPk(isoId);
@@ -53,6 +55,10 @@ const update = async (req, res) => {
 
     if (isPublic !== undefined) {
       iso.isPublic = isPublic;
+    }
+
+    if (name !== undefined && name.trim() !== '') {
+      iso.name = name.trim();
     }
 
     await iso.save();
