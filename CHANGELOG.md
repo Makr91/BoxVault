@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.32.1](https://github.com/Makr91/BoxVault/compare/v0.32.0...v0.32.1) (2026-01-04)
+
+
+### Bug Fixes
+
+* leave button ([8e11da1](https://github.com/Makr91/BoxVault/commit/8e11da16a0284af02be2a35ba6bdd6409f605509))
+* refactor organization handling in BoxesList and authorization logic ([5249627](https://github.com/Makr91/BoxVault/commit/524962749056f92781c779c5b9f0f5f72c5d29db))
+* update invitation email handling and organization update logic ([04dcae0](https://github.com/Makr91/BoxVault/commit/04dcae0cec5ca918ea3149bfcc10ab4054cbdbe7))
+
 ## [0.32.0](https://github.com/Makr91/BoxVault/compare/v0.31.0...v0.32.0) (2026-01-04)
 
 

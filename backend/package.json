@@ -1,6 +1,6 @@
 {
   "name": "boxvault-backend",
-  "version": "0.32.0",
+  "version": "0.32.1",
   "description": "BoxVault Backend - Vagrant box repository management system",
   "main": "server.js",
   "scripts": {
