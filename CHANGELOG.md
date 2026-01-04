@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/Makr91/BoxVault/compare/v0.32.2...v0.33.0) (2026-01-04)
+
+
+### Features
+
+* add discover and get public ISOs endpoints with corresponding service methods ([134b26c](https://github.com/Makr91/BoxVault/commit/134b26cb048bae56daf9e5e7e744ddbbc1a07281))
+
 ## [0.32.2](https://github.com/Makr91/BoxVault/compare/v0.32.1...v0.32.2) (2026-01-04)
 
 
