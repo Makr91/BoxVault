@@ -622,17 +622,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       return;
     }
 
-    const boxData = {
-      ...newBox,
-      organization: currentUser.organization,
-    };
+    const boxData = { ...newBox, organization };
 
-    BoxDataService.create(currentUser.organization, boxData)
+    BoxDataService.create(organization, boxData)
       .then(() => {
         setShowCreateForm(false);
         setNewBox({ name: "", description: "", isPublic: false });
         refreshList();
-        navigate(`/${currentUser.organization}/${newBox.name}`);
+        navigate(`/${organization}/${newBox.name}`);
         setMessage(t("box.organization.messages.boxCreated"));
         setMessageType("success");
       })
@@ -650,8 +647,17 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       });
   };
 
-  const canEditBoxes = (box) =>
-    currentUser && currentUser.organization === box.organization;
+  const canEditBoxes = (box) => {
+    if (!currentUser) {
+      return false;
+    }
+    if (currentUser.organizations) {
+      return currentUser.organizations.some(
+        (org) => org.name === box.organization
+      );
+    }
+    return currentUser.organization === box.organization;
+  };
 
   const renderSortIcon = (column) => {
     if (sortColumn !== column) {
@@ -1037,7 +1043,14 @@ const Organization = ({ showOnlyPublic, theme }) => {
     routeOrganization || (currentUser ? currentUser.organization : null);
   const [activeTab, setActiveTab] = useState("boxes");
 
-  const isAuthorized = currentUser && currentUser.organization === organization;
+  const isAuthorized = useMemo(() => {
+    if (!currentUser || !organization) {
+      return false;
+    }
+    return currentUser.organizations
+      ? currentUser.organizations.some((org) => org.name === organization)
+      : currentUser.organization === organization;
+  }, [currentUser, organization]);
 
   if (showOnlyPublic) {
     return <BoxesList showOnlyPublic theme={theme} />;
