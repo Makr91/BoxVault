@@ -47,6 +47,13 @@ router.get(
   controller.download
 );
 
+// Download ISO by name
+router.get(
+  '/organization/:organization/iso/name/:name/download',
+  [downloadAuth, sessionAuth],
+  controller.downloadByName
+);
+
 // Get Download Link (Public/Authenticated)
 router.post(
   '/organization/:organization/iso/:isoId/download-link',

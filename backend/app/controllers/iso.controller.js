@@ -12,6 +12,7 @@ module.exports = {
   findOne: findOneController.findOne,
   delete: deleteController.delete,
   download: downloadController.download,
+  downloadByName: downloadController.downloadByName,
   update: updateController.update,
   getDownloadLink: linkController.getDownloadLink,
 };

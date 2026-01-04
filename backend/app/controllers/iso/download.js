@@ -7,6 +7,7 @@ const { getIsoStorageRoot } = require('./helpers');
 const { log } = require('../../utils/Logger');
 
 const ISO = db.iso;
+const Organization = db.organization;
 const { UserOrg } = db;
 
 /**
@@ -44,15 +45,9 @@ const { UserOrg } = db;
  *       404:
  *         description: ISO or file not found
  */
-const download = async (req, res) => {
-  const { isoId } = req.params;
-  const { token } = req.query;
-
+const serveIso = async (req, res, iso, token) => {
   try {
-    const iso = await ISO.findByPk(isoId);
-    if (!iso) {
-      return res.status(404).send({ message: req.__('isos.notFound') });
-    }
+    const fullPath = path.join(getIsoStorageRoot(), iso.storagePath);
 
     // Check permissions: Allow if public, otherwise require org membership
     if (!iso.isPublic) {
@@ -60,20 +55,25 @@ const download = async (req, res) => {
 
       // If no userId from session, try to verify the query token
       if (!userId && token) {
+        // This block handles cases where downloadAuth middleware might not be used or failed to set userId
         try {
           const authConfig = loadConfig('auth');
           const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
           ({ userId } = decoded);
-
-          // Security Check: Ensure token was issued for THIS specific ISO
-          if (decoded.isoId !== parseInt(isoId, 10)) {
-            log.app.warn(
-              `Invalid download token scope. Token ISO: ${decoded.isoId}, Requested: ${isoId}`
-            );
-            return res.status(403).send({ message: req.__('auth.invalidToken') });
-          }
+          req.downloadTokenDecoded = decoded;
         } catch {
           log.app.warn('Invalid download token provided');
+        }
+      }
+
+      // Security Check: Ensure token was issued for THIS specific ISO
+      if (req.downloadTokenDecoded) {
+        const decoded = req.downloadTokenDecoded;
+        if (decoded.isoId !== iso.id) {
+          log.app.warn(
+            `Invalid download token scope. Token ISO: ${decoded.isoId}, Requested: ${iso.id}`
+          );
+          return res.status(403).send({ message: req.__('auth.invalidToken') });
         }
       }
 
@@ -89,8 +89,6 @@ const download = async (req, res) => {
         return res.status(403).send({ message: req.__('auth.forbidden') });
       }
     }
-
-    const fullPath = path.join(getIsoStorageRoot(), iso.storagePath);
 
     // Check if file exists and is readable
     try {
@@ -141,4 +139,48 @@ const download = async (req, res) => {
   }
 };
 
-module.exports = { download };
+const download = async (req, res) => {
+  const { isoId } = req.params;
+  const { token } = req.query;
+
+  try {
+    const iso = await ISO.findByPk(isoId);
+    if (!iso) {
+      return res.status(404).send({ message: req.__('isos.notFound') });
+    }
+    return await serveIso(req, res, iso, token);
+  } catch (err) {
+    log.error.error('Error downloading ISO', err);
+    if (!res.headersSent) {
+      return res.status(500).send({ message: req.__('errors.operationFailed') });
+    }
+    return null;
+  }
+};
+
+const downloadByName = async (req, res) => {
+  const { organization, name } = req.params;
+  const { token } = req.query;
+
+  try {
+    const org = await Organization.findOne({ where: { name: organization } });
+    if (!org) {
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+    }
+
+    const iso = await ISO.findOne({ where: { name, organizationId: org.id } });
+    if (!iso) {
+      return res.status(404).send({ message: req.__('isos.notFound') });
+    }
+
+    return await serveIso(req, res, iso, token);
+  } catch (err) {
+    log.error.error('Error downloading ISO by name', err);
+    if (!res.headersSent) {
+      return res.status(500).send({ message: req.__('errors.operationFailed') });
+    }
+    return null;
+  }
+};
+
+module.exports = { download, downloadByName };
