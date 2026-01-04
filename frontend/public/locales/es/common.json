@@ -17,6 +17,7 @@
     "apiKey": "Clave API: {{keyName}}"
   },
   "buttons": {
+    "leave": "Dejar Organización",
     "create": "Crear",
     "cancel": "Cancelar",
     "edit": "Editar",
@@ -58,6 +59,7 @@
       "mail": "Config Correo"
     },
     "buttons": {
+      "leave": "Dejar Organización",
       "update": "Actualizar Configuración",
       "restart": "Reiniciar Servidor",
       "testSmtp": "Probar SMTP"
@@ -337,6 +339,7 @@
       "leaveOrganization": "Error al dejar la organización: {{error}}"
     },
     "buttons": {
+      "leave": "Dejar Organización",
       "resendVerification": "Reenviar correo de verificación"
     }
   },
@@ -471,6 +474,7 @@
         "boxCreated": "Caja creada exitosamente."
       },
       "buttons": {
+        "leave": "Dejar Organización",
         "createBox": "Crear Caja",
         "createNewBox": "Crear Nueva Caja",
         "removeAll": "Eliminar Todo"
@@ -513,6 +517,7 @@
     "public": "público",
     "private": "privado",
     "buttons": {
+      "leave": "Dejar Organización",
       "inviteOnly": "Solo Invitación",
       "requestToJoin": "Solicitar Unirse",
       "private": "Privado",
@@ -646,6 +651,7 @@
     "scope": "Alcance",
     "noProvidersConfigured": "No hay proveedores OIDC configurados aún. Haz clic en \"Añadir Proveedor OIDC\" para configurar autenticación con proveedores como Google, Microsoft, GitHub, etc.",
     "buttons": {
+      "leave": "Dejar Organización",
       "add": "Añadir Proveedor OIDC",
       "delete": "Eliminar Proveedor",
       "update": "Actualizar Proveedor",

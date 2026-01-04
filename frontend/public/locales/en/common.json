@@ -17,6 +17,7 @@
     "apiKey": "API Key: {{keyName}}"
   },
   "buttons": {
+    "leave": "Leave Organization",
     "create": "Create",
     "cancel": "Cancel",
     "edit": "Edit",
@@ -58,6 +59,7 @@
       "mail": "Email Config"
     },
     "buttons": {
+      "leave": "Leave Organization",
       "update": "Update Configuration",
       "restart": "Restart Server",
       "testSmtp": "Test SMTP"
@@ -328,6 +330,7 @@
       "promoteToModeratorFailed": "Error promoting to moderator: {{error}}"
     },
     "buttons": {
+      "leave": "Leave Organization",
       "resendVerification": "Resend verification email"
     }
   },
@@ -446,6 +449,7 @@
     "scope": "Scope",
     "noProvidersConfigured": "No OIDC providers configured yet. Click \"Add OIDC Provider\" to set up authentication with providers like Google, Microsoft, GitHub, etc.",
     "buttons": {
+      "leave": "Leave Organization",
       "add": "Add OIDC Provider",
       "delete": "Delete Provider",
       "update": "Update Provider",
@@ -664,6 +668,7 @@
         "boxCreated": "Box created successfully."
       },
       "buttons": {
+        "leave": "Leave Organization",
         "createBox": "Create Box",
         "createNewBox": "Create New Box",
         "removeAll": "Remove All"
@@ -706,6 +711,7 @@
     "public": "public",
     "private": "private",
     "buttons": {
+      "leave": "Leave Organization",
       "inviteOnly": "Invite Only",
       "requestToJoin": "Request to Join",
       "private": "Private",
