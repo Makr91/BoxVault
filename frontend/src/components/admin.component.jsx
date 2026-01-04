@@ -6,6 +6,7 @@ import AuthService from "../services/auth.service";
 
 import ConfigurationManager from "./ConfigurationManager.component";
 import OrganizationUserManager from "./OrganizationUserManager.component";
+import StorageInfo from "./StorageInfo.component";
 
 /**
  * Admin - Main admin panel component
@@ -60,6 +61,14 @@ const Admin = () => {
             {t("admin.tabs.configManagement")}
           </button>
         </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "system" ? "active" : ""}`}
+            onClick={() => setActiveTab("system")}
+          >
+            {t("admin.tabs.system")}
+          </button>
+        </li>
       </ul>
       <div className="tab-content mt-2">
         {message && (
@@ -79,6 +88,7 @@ const Admin = () => {
             setMessageType={setMessageType}
           />
         )}
+        {activeTab === "system" && <StorageInfo />}
       </div>
     </div>
   );

@@ -405,6 +405,7 @@ const initializeApp = async () => {
     app.use('/api', require('./app/routes/setup.routes'));
     app.use('/api', require('./app/routes/ssl.routes'));
     app.use('/api', require('./app/routes/iso.routes'));
+    app.use('/api', require('./app/routes/system.routes'));
 
     log.app.info('All routes loaded successfully');
 

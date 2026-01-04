@@ -79,6 +79,15 @@ boxvault:
     subsection_key: boxvaultSettings
     required: true
     order: 6
+  iso_storage_directory:
+    type: string
+    value: ""
+    description: The Directory on the OS in which the ISOs are stored. Leave empty to use default (box_storage_directory/iso).
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: false
+    order: 7
 gravatar:
   base_url:
     type: url

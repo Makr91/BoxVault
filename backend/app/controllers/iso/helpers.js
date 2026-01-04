@@ -4,6 +4,11 @@ const { loadConfig } = require('../../utils/config-loader');
 
 const getIsoStorageRoot = () => {
   const appConfig = loadConfig('app');
+
+  if (appConfig.boxvault?.iso_storage_directory?.value) {
+    return appConfig.boxvault.iso_storage_directory.value;
+  }
+
   const storageDir = appConfig.boxvault.box_storage_directory.value;
   return path.join(storageDir, 'iso');
 };
