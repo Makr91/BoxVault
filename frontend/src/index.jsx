@@ -23,10 +23,3 @@ root.render(
     </BrowserRouter>
   </Suspense>
 );
-
-// Make content visible after a small delay to ensure styles are loaded
-window.addEventListener("load", () => {
-  requestAnimationFrame(() => {
-    document.documentElement.style.visibility = "visible";
-  });
-});

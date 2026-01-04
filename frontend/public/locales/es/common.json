@@ -758,6 +758,7 @@
       "status": "Estado del Sistema",
       "ok": "Todos los sistemas operativos",
       "error": "Un sistema tiene un problema",
+      "warning": "Uno o más sistemas tienen advertencias",
       "database": "Base de Datos",
       "storage": "Almacenamiento"
     }

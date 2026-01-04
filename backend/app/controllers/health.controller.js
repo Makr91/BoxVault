@@ -145,6 +145,16 @@ const checkDiskUsage = async dirPath => {
   }
 };
 
+const mapStatus = status => {
+  if (status === 'ok') {
+    return 'Good';
+  }
+  if (status === 'warning') {
+    return 'Warning';
+  }
+  return 'Error';
+};
+
 const checkOidcProviders = async () => {
   const services = {};
   try {
@@ -164,6 +174,88 @@ const checkOidcProviders = async () => {
   return services;
 };
 
+const getVersionInfo = () => {
+  try {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
+    );
+    return packageJson.version || '0.0.0';
+  } catch (err) {
+    void err;
+    return '0.0.0';
+  }
+};
+
+const getLoggingConfig = appConfig => {
+  const frontendLogging = appConfig.frontend_logging || {
+    enabled: { value: true },
+    level: { value: 'info' },
+    categories: {
+      app: { value: 'info' },
+      auth: { value: 'info' },
+      api: { value: 'info' },
+      file: { value: 'info' },
+      component: { value: 'debug' },
+    },
+  };
+
+  return {
+    enabled: frontendLogging.enabled.value,
+    level: frontendLogging.level.value,
+    categories: {
+      app: frontendLogging.categories.app?.value || 'info',
+      auth: frontendLogging.categories.auth?.value || 'info',
+      api: frontendLogging.categories.api?.value || 'info',
+      file: frontendLogging.categories.file?.value || 'info',
+      component: frontendLogging.categories.component?.value || 'debug',
+    },
+  };
+};
+
+const getDbStatus = async () => {
+  try {
+    await db.sequelize.authenticate();
+    return 'ok';
+  } catch (error) {
+    void error;
+    return 'error';
+  }
+};
+
+const handleDiskAlerting = (boxDisk, isoDisk, appConfig) => {
+  if (boxDisk.status !== 'warning' && isoDisk.status !== 'warning') {
+    return;
+  }
+
+  const alertFrequencyHours = appConfig.monitoring?.alert_frequency_hours?.value || 24;
+  const now = Date.now();
+  // Alert at most once every X hours
+  if (now - lastAlertTime > alertFrequencyHours * 60 * 60 * 1000) {
+    const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails?.value;
+    if (alertEmails && alertEmails.length > 0) {
+      // Placeholder for email sending logic
+      // In a real implementation, you would loop through alertEmails and call mailController.sendAlert()
+      console.warn(
+        `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(
+          ', '
+        )}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
+      );
+      lastAlertTime = now;
+    }
+  }
+};
+
+const calculateOverallStatus = services => {
+  const allStatuses = Object.values(services);
+  if (allStatuses.some(s => String(s).includes('Error') || String(s).includes('Bad'))) {
+    return 'error';
+  }
+  if (allStatuses.some(s => String(s).includes('Warning') || String(s).includes('Warn'))) {
+    return 'warning';
+  }
+  return 'ok';
+};
+
 const getHealth = async (req, res) => {
   void req;
   try {
@@ -171,90 +263,46 @@ const getHealth = async (req, res) => {
 
     const environment = process.env.NODE_ENV || 'development';
 
-    let version = '0.0.0';
-    try {
-      const packageJson = JSON.parse(
-        fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
-      );
-      const { version: pkgVersion } = packageJson;
-      version = pkgVersion;
-    } catch (err) {
-      void err;
-    }
-
-    const frontendLogging = appConfig.frontend_logging || {
-      enabled: { value: true },
-      level: { value: 'info' },
-      categories: {
-        app: { value: 'info' },
-        auth: { value: 'info' },
-        api: { value: 'info' },
-        file: { value: 'info' },
-        component: { value: 'debug' },
-      },
-    };
-
-    const loggingConfig = {
-      enabled: frontendLogging.enabled.value,
-      level: frontendLogging.level.value,
-      categories: {
-        app: frontendLogging.categories.app?.value || 'info',
-        auth: frontendLogging.categories.auth?.value || 'info',
-        api: frontendLogging.categories.api?.value || 'info',
-        file: frontendLogging.categories.file?.value || 'info',
-        component: frontendLogging.categories.component?.value || 'debug',
-      },
-    };
-
-    let dbStatus = 'ok';
-    try {
-      await db.sequelize.authenticate();
-    } catch (error) {
-      void error;
-      dbStatus = 'error';
-    }
+    const version = getVersionInfo();
+    const loggingConfig = getLoggingConfig(appConfig);
 
     const services = {
-      database: dbStatus,
+      database: await getDbStatus(),
     };
 
     // Check Storage
     const boxStorageDir = appConfig.boxvault?.box_storage_directory?.value;
     const isoStorageDir = getIsoStorageRoot();
-
     const boxDisk = await checkDiskUsage(boxStorageDir);
-    services.storage_boxes = boxDisk.message;
-
-    const isoDisk = await checkDiskUsage(isoStorageDir, 'ISO Storage');
-    services.storage_isos = isoDisk.message;
+    const isoDisk = await checkDiskUsage(isoStorageDir);
+    services.storage_boxes = mapStatus(boxDisk.status);
+    services.storage_isos = mapStatus(isoDisk.status);
 
     // Alerting Logic
-    if (boxDisk.status === 'warning' || isoDisk.status === 'warning') {
-      const alertFrequencyHours = appConfig.monitoring?.alert_frequency_hours?.value || 24;
-      const now = Date.now();
-      // Alert at most once every X hours
-      if (now - lastAlertTime > alertFrequencyHours * 60 * 60 * 1000) {
-        const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails?.value;
-        if (alertEmails && alertEmails.length > 0) {
-          // Placeholder for email sending logic
-          // In a real implementation, you would loop through alertEmails and call mailController.sendAlert()
-          console.warn(
-            `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(
-              ', '
-            )}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
-          );
-          lastAlertTime = now;
-        }
-      }
-    }
+    handleDiskAlerting(boxDisk, isoDisk, appConfig);
 
     // Check OIDC Providers
     const oidcServices = await checkOidcProviders();
-    Object.assign(services, oidcServices);
+    const oidcStatuses = Object.values(oidcServices);
+    if (oidcStatuses.length > 0) {
+      const okCount = oidcStatuses.filter(s => String(s).startsWith('ok')).length;
+      const warnCount = oidcStatuses.filter(s => String(s).startsWith('warning')).length;
+      const errorCount = oidcStatuses.length - okCount - warnCount;
 
-    const overallStatus = Object.values(services).some(s => String(s).startsWith('error'))
-      ? 'error'
-      : 'ok';
+      const summaryParts = [];
+      if (okCount > 0) {
+        summaryParts.push(`${okCount} Good`);
+      }
+      if (warnCount > 0) {
+        summaryParts.push(`${warnCount} Warn`);
+      }
+      if (errorCount > 0) {
+        summaryParts.push(`${errorCount} Bad`);
+      }
+      services.oidc_providers = summaryParts.join(', ');
+    }
+
+    const overallStatus = calculateOverallStatus(services);
 
     return res.status(200).json({
       status: overallStatus,

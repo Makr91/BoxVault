@@ -28,41 +28,36 @@ const Footer = () => {
   }, []);
 
   const getStatusColor = (status) => {
-    const lowerStatus = status.toLowerCase();
-    if (lowerStatus.startsWith("ok")) {
+    const lowerStatus = String(status).toLowerCase();
+    if (lowerStatus === "good" || lowerStatus.startsWith("ok")) {
       return "text-success";
     }
-    if (lowerStatus.startsWith("warning") || lowerStatus.includes("critical")) {
+    if (lowerStatus.includes("warn")) {
       return "text-warning";
     }
-    return "text-danger";
+    if (lowerStatus.includes("error") || lowerStatus.includes("bad")) {
+      return "text-danger";
+    }
+    return "text-success"; // Default to success for summaries with no issues
   };
 
   const formatServiceName = (key) => {
-    if (key === "database") {
-      return t("footer.health.database");
+    switch (key) {
+      case "database":
+        return t("footer.health.database");
+      case "storage_boxes":
+        return "Storage (Boxes)";
+      case "storage_isos":
+        return "Storage (ISOs)";
+      case "oidc_providers":
+        return "OIDC Providers";
+      default:
+        return key.charAt(0).toUpperCase() + key.slice(1);
     }
-    if (key === "storage_boxes") {
-      return "Storage (Boxes)";
-    }
-    if (key === "storage_isos") {
-      return "Storage (ISOs)";
-    }
-    if (key.startsWith("oidc_")) {
-      const providerName = key.replace("oidc_", "");
-      return `OIDC (${providerName.charAt(0).toUpperCase() + providerName.slice(1)})`;
-    }
-    return key.charAt(0).toUpperCase() + key.slice(1);
   };
 
   const renderPopover = (props) => {
-    const overallStatus =
-      health.status === "ok" &&
-      Object.values(health.services).every(
-        (s) => typeof s === "string" && s.toLowerCase().startsWith("ok")
-      )
-        ? "ok"
-        : "error";
+    const overallStatus = health.status || "error";
 
     return (
       <Popover id="health-popover" {...props}>
@@ -84,18 +79,16 @@ const Footer = () => {
   };
 
   const getOverallStatusColor = () => {
-    if (health.status === "loading") {
-      return "text-muted";
+    switch (health.status) {
+      case "ok":
+        return "text-success";
+      case "warning":
+        return "text-warning";
+      case "error":
+        return "text-danger";
+      default:
+        return "text-muted"; // for 'loading'
     }
-    if (
-      health.status !== "ok" ||
-      Object.values(health.services).some(
-        (s) => typeof s === "string" && !s.toLowerCase().startsWith("ok")
-      )
-    ) {
-      return "text-danger";
-    }
-    return "text-success";
   };
 
   return (

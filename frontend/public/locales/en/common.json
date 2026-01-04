@@ -556,6 +556,7 @@
       "status": "System Status",
       "ok": "All systems operational",
       "error": "A system has an issue",
+      "warning": "One or more systems have warnings",
       "database": "Database",
       "storage": "Storage"
     }
