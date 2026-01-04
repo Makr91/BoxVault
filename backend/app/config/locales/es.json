@@ -331,5 +331,9 @@
     "invalidToken": "Token de autorización inválido",
     "sslUploadError": "Error al subir certificado SSL.",
     "notAllowed": "La configuración no está permitida"
+  },
+  "isos": {
+    "notFound": "ISO no encontrada.",
+    "deleted": "ISO eliminada exitosamente."
   }
 }

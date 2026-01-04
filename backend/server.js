@@ -234,7 +234,11 @@ const maxSize = boxConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
 // Configure body parsers with appropriate limits, but exclude file upload route
 app.use((req, res, next) => {
   // Skip body parsing for file uploads
-  if (req.url.includes('/file/upload') || req.url.includes('/config/ssl/upload')) {
+  if (
+    req.url.includes('/file/upload') ||
+    req.url.includes('/config/ssl/upload') ||
+    req.url.includes('/iso')
+  ) {
     // Set upload-specific headers
     res.setHeader('Cache-Control', 'no-transform');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -400,6 +404,7 @@ const initializeApp = async () => {
     app.use('/api', require('./app/routes/favorites.routes'));
     app.use('/api', require('./app/routes/setup.routes'));
     app.use('/api', require('./app/routes/ssl.routes'));
+    app.use('/api', require('./app/routes/iso.routes'));
 
     log.app.info('All routes loaded successfully');
 

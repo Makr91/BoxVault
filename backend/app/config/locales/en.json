@@ -331,5 +331,9 @@
     "invalidToken": "Invalid authorization token",
     "sslUploadError": "Failed to upload SSL certificate.",
     "notAllowed": "Setup is not allowed"
+  },
+  "isos": {
+    "notFound": "ISO not found.",
+    "deleted": "ISO deleted successfully."
   }
 }

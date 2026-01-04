@@ -65,6 +65,7 @@ db.service_account = require('../models/service_account.model.js')(sequelize, Se
 db.credential = require('../models/credential.model.js')(sequelize, Sequelize);
 db.UserOrg = require('../models/user-org.model.js')(sequelize, Sequelize);
 db.Request = require('../models/request.model.js')(sequelize, Sequelize);
+db.iso = require('../models/iso.model.js')(sequelize, Sequelize);
 
 // Define associations for new models
 db.UserOrg.associate = function (models) {
@@ -92,6 +93,12 @@ db.Request.associate = function (models) {
     as: 'reviewer',
   });
 };
+
+db.organization.hasMany(db.iso, { as: 'isos' });
+db.iso.belongsTo(db.organization, {
+  foreignKey: 'organizationId',
+  as: 'organization',
+});
 
 // DEPRECATED: Keep global roles for backward compatibility during migration
 // These will be removed in a future version

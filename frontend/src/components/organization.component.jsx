@@ -13,6 +13,7 @@ import BoxDataService from "../services/box.service";
 import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
+import IsoList from "./iso-list.component";
 
 const BoxesList = ({ showOnlyPublic, theme }) => {
   const { t } = useTranslation();
@@ -1029,4 +1030,57 @@ BoxesList.propTypes = {
   theme: PropTypes.string.isRequired,
 };
 
-export default BoxesList;
+const Organization = ({ showOnlyPublic, theme }) => {
+  const { organization: routeOrganization } = useParams();
+  const currentUser = AuthService.getCurrentUser();
+  const organization =
+    routeOrganization || (currentUser ? currentUser.organization : null);
+  const [activeTab, setActiveTab] = useState("boxes");
+
+  const isAuthorized = currentUser && currentUser.organization === organization;
+
+  if (showOnlyPublic) {
+    return <BoxesList showOnlyPublic theme={theme} />;
+  }
+
+  return (
+    <div className="container">
+      <ul className="nav nav-tabs mb-3">
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "boxes" ? "active" : ""}`}
+            onClick={() => setActiveTab("boxes")}
+          >
+            Boxes
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "isos" ? "active" : ""}`}
+            onClick={() => setActiveTab("isos")}
+          >
+            ISOs
+          </button>
+        </li>
+      </ul>
+
+      {activeTab === "boxes" && (
+        <BoxesList showOnlyPublic={false} theme={theme} />
+      )}
+      {activeTab === "isos" && (
+        <IsoList
+          key={organization}
+          organization={organization}
+          isAuthorized={isAuthorized}
+        />
+      )}
+    </div>
+  );
+};
+
+Organization.propTypes = {
+  showOnlyPublic: PropTypes.bool.isRequired,
+  theme: PropTypes.string.isRequired,
+};
+
+export default Organization;
