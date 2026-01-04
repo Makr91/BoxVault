@@ -6,6 +6,36 @@ const { getIsoStorageRoot } = require('./helpers');
 
 const ISO = db.iso;
 
+/**
+ * @swagger
+ * /api/organization/{organization}/iso/{isoId}:
+ *   delete:
+ *     summary: Delete an ISO
+ *     description: Delete an ISO file and its database record. Physical file is only deleted if no other records reference it (deduplication).
+ *     tags: [ISOs]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: isoId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the ISO to delete
+ *     responses:
+ *       200:
+ *         description: ISO deleted successfully
+ *       404:
+ *         description: ISO not found
+ *       500:
+ *         description: Internal server error
+ */
 const deleteIso = async (req, res) => {
   const { isoId } = req.params;
 

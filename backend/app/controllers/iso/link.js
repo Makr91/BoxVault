@@ -6,6 +6,43 @@ const { log } = require('../../utils/Logger');
 const ISO = db.iso;
 const { UserOrg } = db;
 
+/**
+ * @swagger
+ * /api/organization/{organization}/iso/{isoId}/download-link:
+ *   get:
+ *     summary: Generate ISO download link
+ *     description: Generate a temporary, secure download link for an ISO file
+ *     tags: [ISOs]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: isoId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the ISO
+ *     responses:
+ *       200:
+ *         description: Download URL generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 downloadUrl:
+ *                   type: string
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: ISO not found
+ */
 const getDownloadLink = async (req, res) => {
   const { isoId } = req.params;
   const { userId } = req;

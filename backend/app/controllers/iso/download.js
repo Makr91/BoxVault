@@ -7,6 +7,41 @@ const { log } = require('../../utils/Logger');
 const ISO = db.iso;
 const { UserOrg } = db;
 
+/**
+ * @swagger
+ * /api/organization/{organization}/iso/{isoId}/download:
+ *   get:
+ *     summary: Download an ISO file
+ *     description: Download the physical ISO file. Public ISOs can be downloaded by anyone; private ISOs require organization membership.
+ *     tags: [ISOs]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: isoId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the ISO to download
+ *       - in: query
+ *         name: token
+ *         schema:
+ *           type: string
+ *         description: Optional short-lived download token
+ *     responses:
+ *       200:
+ *         description: File download stream
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: ISO or file not found
+ */
 const download = async (req, res) => {
   const { isoId } = req.params;
 

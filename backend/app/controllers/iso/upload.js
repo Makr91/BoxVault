@@ -8,6 +8,46 @@ const { getIsoStorageRoot } = require('./helpers');
 const ISO = db.iso;
 const Organization = db.organization;
 
+/**
+ * @swagger
+ * /api/organization/{organization}/iso:
+ *   post:
+ *     summary: Upload an ISO
+ *     description: Upload a new ISO file to an organization. Supports deduplication via checksum.
+ *     tags: [ISOs]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: header
+ *         name: x-file-name
+ *         schema:
+ *           type: string
+ *         description: Original filename
+ *       - in: header
+ *         name: x-is-public
+ *         schema:
+ *           type: boolean
+ *         description: Whether the ISO should be public
+ *     requestBody:
+ *       content:
+ *         application/octet-stream:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       201:
+ *         description: ISO uploaded successfully
+ *       404:
+ *         description: Organization not found
+ *       500:
+ *         description: Internal server error
+ */
 const upload = async (req, res) => {
   const { organization } = req.params;
   const filename = req.headers['x-file-name'] || 'uploaded.iso';
