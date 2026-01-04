@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.35.0](https://github.com/Makr91/BoxVault/compare/v0.34.0...v0.35.0) (2026-01-04)
+
+
+### Features
+
+* update download endpoint to return download link and improve error handling in ISO download ([6ee2565](https://github.com/Makr91/BoxVault/commit/6ee25659363e195196206d1acc7ec416158de546))
+* update download link endpoint to support public access and change request method to POST ([77c4ffa](https://github.com/Makr91/BoxVault/commit/77c4ffa453a4bc24b0f9670f90a429ee027319cc))
+
 ## [0.34.0](https://github.com/Makr91/BoxVault/compare/v0.33.0...v0.34.0) (2026-01-04)
 
 
