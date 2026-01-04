@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.39.0](https://github.com/Makr91/BoxVault/compare/v0.38.0...v0.39.0) (2026-01-04)
+
+
+### Features
+
+* updating health status, updating locales, updating mail for alerts ([65df40e](https://github.com/Makr91/BoxVault/commit/65df40e6a5a96614c3c69d27a57d4a42a6a62be0))
+
+
+### Bug Fixes
+
+* allow multiple people to be emailed in case of server low on disk space ([d6c6b2c](https://github.com/Makr91/BoxVault/commit/d6c6b2c57e2e5955c81042f054267100994d4796))
+
 ## [0.38.0](https://github.com/Makr91/BoxVault/compare/v0.37.0...v0.38.0) (2026-01-04)
 
 
