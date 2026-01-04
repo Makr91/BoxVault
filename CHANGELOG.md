@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.0](https://github.com/Makr91/BoxVault/compare/v0.39.0...v0.40.0) (2026-01-04)
+
+
+### Features
+
+* add update checker ([415348d](https://github.com/Makr91/BoxVault/commit/415348dbc410bf804b785360b08956e562bdf0fa))
+
+
+### Bug Fixes
+
+* email alert configuration ([fa1a7bb](https://github.com/Makr91/BoxVault/commit/fa1a7bb8c4922fe741c4ba5a01685df628bd5e88))
+
 ## [0.39.0](https://github.com/Makr91/BoxVault/compare/v0.38.0...v0.39.0) (2026-01-04)
 
 
