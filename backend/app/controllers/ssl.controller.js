@@ -2,6 +2,22 @@ const fs = require('fs');
 const path = require('path');
 const { log } = require('../utils/Logger');
 
+/**
+ * Check that a target path is contained within at least one of the allowed roots.
+ * Both the root and target are resolved to absolute paths before comparison.
+ */
+function isPathUnderRoots(targetPath, allowedRoots) {
+  if (!Array.isArray(allowedRoots) || allowedRoots.length === 0) {
+    return false;
+  }
+  return allowedRoots.some(root => {
+    const normalizedRoot = path.resolve(root);
+    const normalizedTarget = path.resolve(targetPath);
+    const relative = path.relative(normalizedRoot, normalizedTarget);
+    return !relative.startsWith('..') && !path.isAbsolute(relative);
+  });
+}
+
 exports.uploadSSL = (req, res) => {
   const { targetPath } = req.query;
 
@@ -35,10 +51,7 @@ exports.uploadSSL = (req, res) => {
     return;
   }
 
-  const isAllowed = allowedRoots.some(root => {
-    const relative = path.relative(root, resolvedPath);
-    return !relative.startsWith('..') && !path.isAbsolute(relative);
-  });
+  const isAllowed = isPathUnderRoots(resolvedPath, allowedRoots);
 
   if (!isAllowed) {
     log.app.warn('Blocked SSL upload to unauthorized path', { targetPath, resolvedPath });
@@ -50,13 +63,21 @@ exports.uploadSSL = (req, res) => {
   const dir = path.dirname(resolvedPath);
 
   // Re-validate directory path against allowed roots before creating it
-  const isDirAllowed = allowedRoots.some(root => {
-    const relative = path.relative(root, dir);
-    return !relative.startsWith('..') && !path.isAbsolute(relative);
-  });
+  const isDirAllowed = isPathUnderRoots(dir, allowedRoots);
 
   if (!isDirAllowed) {
     log.app.warn('Blocked SSL directory creation at unauthorized path', { targetPath, dir });
+    res.status(403).send({ message: 'Invalid target path.' });
+    return;
+  }
+
+  // Final safety check before performing any filesystem operations
+  if (!isPathUnderRoots(resolvedPath, allowedRoots) || !isPathUnderRoots(dir, allowedRoots)) {
+    log.app.warn('Blocked SSL upload due to unsafe resolved path before file operations', {
+      targetPath,
+      resolvedPath,
+      dir,
+    });
     res.status(403).send({ message: 'Invalid target path.' });
     return;
   }
