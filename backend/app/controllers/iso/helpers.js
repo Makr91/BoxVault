@@ -8,4 +8,16 @@ const getIsoStorageRoot = () => {
   return path.join(storageDir, 'iso');
 };
 
-module.exports = { getIsoStorageRoot };
+const getSecureIsoPath = (...pathSegments) => {
+  const root = getIsoStorageRoot();
+  const fullPath = path.join(root, ...pathSegments);
+
+  // Validate that the joined path is still within the root directory
+  if (!fullPath.startsWith(root)) {
+    throw new Error('Path traversal attempt detected');
+  }
+
+  return fullPath;
+};
+
+module.exports = { getIsoStorageRoot, getSecureIsoPath };

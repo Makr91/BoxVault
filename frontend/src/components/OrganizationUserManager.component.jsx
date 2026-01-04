@@ -9,6 +9,7 @@ import UserService from "../services/user.service";
 import { validateOrgName } from "../utils/ConfigProcessorUtils";
 
 import ConfirmationModal from "./confirmation.component";
+import UserCard from "./UserCard.component";
 
 /**
  * OrganizationUserManager - Manages organizations and their users
@@ -31,6 +32,7 @@ const OrganizationUserManager = () => {
   const [editMessage, setEditMessage] = useState("");
   const [itemToDelete, setItemToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const currentUser = AuthService.getCurrentUser();
 
   useEffect(() => {
     OrganizationService.getOrganizationsWithUsers().then(
@@ -74,18 +76,12 @@ const OrganizationUserManager = () => {
   };
 
   const handleRemoveUserFromOrg = (organizationName, userId) => {
-    OrganizationService.removeUserFromOrg(organizationName, userId).then(() => {
-      setOrganizations((prev) =>
-        prev.map((org) =>
-          org.name === organizationName
-            ? {
-                ...org,
-                members: org.members.filter((user) => user.id !== userId),
-              }
-            : org
-        )
-      );
+    setItemToDelete({
+      type: "user_remove",
+      id: userId,
+      orgName: organizationName,
     });
+    setShowDeleteModal(true);
   };
 
   const handleDeleteClick = (item) => {
@@ -104,6 +100,24 @@ const OrganizationUserManager = () => {
         handleDeleteUser(itemToDelete.id);
       } else if (itemToDelete.type === "organization") {
         handleDeleteOrganization(itemToDelete.name);
+      } else if (itemToDelete.type === "user_remove") {
+        OrganizationService.removeUserFromOrg(
+          itemToDelete.orgName,
+          itemToDelete.id
+        ).then(() => {
+          setOrganizations((prev) =>
+            prev.map((org) =>
+              org.name === itemToDelete.orgName
+                ? {
+                    ...org,
+                    members: org.members.filter(
+                      (user) => user.id !== itemToDelete.id
+                    ),
+                  }
+                : org
+            )
+          );
+        });
       }
       handleCloseDeleteModal();
     }
@@ -198,8 +212,6 @@ const OrganizationUserManager = () => {
         organization: newOrgName,
       });
 
-      // Update the user's organization in localStorage if they renamed their own org
-      const currentUser = AuthService.getCurrentUser();
       if (currentUser && currentUser.organization === oldName) {
         currentUser.organization = newOrgName;
         localStorage.setItem("user", JSON.stringify(currentUser));
@@ -342,87 +354,28 @@ const OrganizationUserManager = () => {
                 <p>
                   {t("orgUserManager.totalBoxes", { count: org.totalBoxes })}
                 </p>
+                <div className="row">
+                  {org.members.map((user) => (
+                    <UserCard
+                      key={user.id}
+                      user={user}
+                      currentUser={currentUser}
+                      onPromote={() => handlePromoteUser(user.id)}
+                      onDemote={() => handleDemoteUser(user.id)}
+                      onSuspend={() =>
+                        handleSuspendOrResumeUser(user.id, false)
+                      }
+                      onResume={() => handleSuspendOrResumeUser(user.id, true)}
+                      onRemoveFromOrg={() =>
+                        handleRemoveUserFromOrg(org.name, user.id)
+                      }
+                      onDelete={() =>
+                        handleDeleteClick({ type: "user", id: user.id })
+                      }
+                    />
+                  ))}
+                </div>
               </div>
-              <ul className="list-group list-group-flush">
-                {org.members.map((user) => (
-                  <li
-                    className="list-group-item d-flex justify-content-between align-items-center"
-                    key={user.id}
-                  >
-                    <div>
-                      <strong>{user.username}</strong> <br />
-                      <small>{user.email}</small> <br />
-                      <small>
-                        {t("orgUserManager.user.boxes", {
-                          count: user.totalBoxes,
-                        })}
-                      </small>{" "}
-                      <br />
-                      <small>{t("orgUserManager.user.roles")}:</small>
-                      <ul>
-                        {user.roles &&
-                          user.roles.map((role) => (
-                            <li key={role.name}>{t(`roles.${role.name}`)}</li>
-                          ))}
-                      </ul>
-                    </div>
-                    <div>
-                      {user.roles &&
-                        !user.roles.some((role) => role.name === "admin") &&
-                        (user.roles.some(
-                          (role) => role.name === "moderator"
-                        ) ? (
-                          <button
-                            className="btn btn-secondary btn-sm me-2"
-                            onClick={() => handleDemoteUser(user.id)}
-                          >
-                            {t("buttons.demote")}
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-primary btn-sm me-2"
-                            onClick={() => handlePromoteUser(user.id)}
-                          >
-                            {t("buttons.promote")}
-                          </button>
-                        ))}
-                      <button
-                        className={`btn btn-${user.suspended ? "success" : "warning"} btn-sm me-2`}
-                        onClick={() =>
-                          handleSuspendOrResumeUser(user.id, user.suspended)
-                        }
-                      >
-                        {user.suspended
-                          ? t("buttons.resume")
-                          : t("buttons.suspend")}
-                      </button>
-                      <button
-                        className="btn btn-warning btn-sm me-2"
-                        onClick={() =>
-                          handleRemoveUserFromOrg(org.name, user.id)
-                        }
-                        title={t("orgUserManager.user.removeFromOrgTitle", {
-                          username: user.username,
-                          orgName: org.name,
-                        })}
-                      >
-                        {t("buttons.removeFromOrg")}
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() =>
-                          handleDeleteClick({ type: "user", id: user.id })
-                        }
-                        title={t("orgUserManager.user.deleteUserTitle", {
-                          username: user.username,
-                        })}
-                      >
-                        {t("buttons.deleteUser")}
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
         ))}

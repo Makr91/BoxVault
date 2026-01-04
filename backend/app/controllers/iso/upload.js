@@ -1,11 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const os = require('os');
 const db = require('../../models');
 const { log } = require('../../utils/Logger');
-const { getIsoStorageRoot } = require('./helpers');
-const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
+const { getIsoStorageRoot, getSecureIsoPath } = require('./helpers');
 const { loadConfig } = require('../../utils/config-loader');
 
 const ISO = db.iso;
@@ -69,44 +67,35 @@ const upload = async (req, res) => {
       fs.mkdirSync(isoRoot, { recursive: true });
     }
 
-    // Use middleware to handle multipart upload (streams to temp file)
-    await new Promise((resolve, reject) => {
-      uploadFileMiddleware(req, res, err => {
-        if (err) {
-          reject(err);
-        } else if (!req.file) {
-          reject(new Error(req.__('files.noFileUploaded')));
-        } else {
-          resolve();
-        }
-      });
-    });
+    const filename = req.headers['x-file-name'] || 'uploaded.iso';
+    const isPublic = req.headers['x-is-public'] === 'true';
+    const fileSize = parseInt(req.headers['content-length'], 10);
 
-    const { file } = req;
-    const tempPath = path.resolve(file.path); // Normalize path to prevent traversal
+    // Create a temporary file path
+    const tempFilename = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}.iso`;
+    const tempPath = getSecureIsoPath(tempFilename);
 
     // Security: Ensure the temporary path is within the OS's temp directory.
-    const tmpDir = os.tmpdir();
-    if (!tempPath.startsWith(tmpDir + path.sep)) {
-      log.error.error('Path traversal attempt detected in ISO upload', {
-        originalPath: file.path,
-        resolvedPath: tempPath,
-        tmpDir,
-      });
+    // Note: For ISOs we use the ISO storage root for temp files to ensure they are on the same volume for atomic renames
+    if (!tempPath.startsWith(isoRoot)) {
       return res.status(400).send({ message: 'Invalid file path detected.' });
     }
 
-    const filename = file.originalname || 'uploaded.iso';
-    const isPublic = req.body.isPublic === 'true';
-
-    // Calculate hash of the uploaded temp file
+    // Stream request to file and calculate hash
+    const writeStream = fs.createWriteStream(tempPath);
     const hash = crypto.createHash('sha256');
-    const fileStream = fs.createReadStream(tempPath);
 
     await new Promise((resolve, reject) => {
-      fileStream.on('data', chunk => hash.update(chunk));
-      fileStream.on('end', resolve);
-      fileStream.on('error', reject);
+      req.on('data', chunk => {
+        hash.update(chunk);
+        writeStream.write(chunk);
+      });
+      req.on('end', () => {
+        writeStream.end();
+        resolve();
+      });
+      req.on('error', reject);
+      writeStream.on('error', reject);
     });
 
     try {
@@ -125,7 +114,7 @@ const upload = async (req, res) => {
       const iso = await ISO.create({
         name: filename,
         filename,
-        size: file.size,
+        size: fileSize,
         checksum: calculatedChecksum,
         checksumType: 'sha256',
         storagePath: finalFilename,
@@ -145,7 +134,7 @@ const upload = async (req, res) => {
       throw err;
     }
   } catch (err) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
+    if (err.code === 'LIMIT_FILE_SIZE' || err.message.includes('File too large')) {
       return res.status(413).send({
         message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
         error: 'FILE_TOO_LARGE',

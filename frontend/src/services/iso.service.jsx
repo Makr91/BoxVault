@@ -14,23 +14,16 @@ const getPublic = (organizationName) =>
 
 const discoverAll = () => axios.get(`${baseURL}/api/isos/discover`);
 
-const upload = (organizationName, file, isPublic, onUploadProgress) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("isPublic", String(isPublic));
-
-  return axios.post(
-    `${baseURL}/api/organization/${organizationName}/iso`,
-    formData,
-    {
-      headers: {
-        ...authHeader(),
-        "Content-Type": "multipart/form-data",
-      },
-      onUploadProgress,
-    }
-  );
-};
+const upload = (organizationName, file, isPublic, onUploadProgress) =>
+  axios.post(`${baseURL}/api/organization/${organizationName}/iso`, file, {
+    headers: {
+      ...authHeader(),
+      "Content-Type": "application/octet-stream",
+      "x-file-name": file.name,
+      "x-is-public": String(isPublic),
+    },
+    onUploadProgress,
+  });
 
 const deleteISO = (organizationName, isoId) =>
   axios.delete(`${baseURL}/api/organization/${organizationName}/iso/${isoId}`, {

@@ -11,6 +11,7 @@ import UserService from "../services/user.service";
 import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
+import UserCard from "./UserCard.component";
 
 const Moderator = ({ currentOrganization }) => {
   const { t } = useTranslation();
@@ -35,6 +36,8 @@ const Moderator = ({ currentOrganization }) => {
   const [orgDefaultRole, setOrgDefaultRole] = useState("user");
   const [inviteRole, setInviteRole] = useState("user");
   const [activeTab, setActiveTab] = useState("organization");
+  const currentUser = AuthService.getCurrentUser();
+  const [searchTerm, setSearchTerm] = useState("");
 
   const validateOrgName = (orgName) => {
     const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
@@ -130,16 +133,8 @@ const Moderator = ({ currentOrganization }) => {
         description: orgDescription,
       });
 
-      // Update access mode separately if changed
-      await OrganizationService.updateAccessMode(
-        currentOrganization,
-        orgAccessMode,
-        orgDefaultRole
-      );
-
       // Update the user's organization in localStorage if name changed
       if (newOrgName !== currentOrganization) {
-        const currentUser = AuthService.getCurrentUser();
         if (currentUser) {
           currentUser.organization = newOrgName;
           localStorage.setItem("user", JSON.stringify(currentUser));
@@ -180,6 +175,11 @@ const Moderator = ({ currentOrganization }) => {
         )
       );
     });
+  };
+
+  const handleRemoveUserFromOrg = (userId) => {
+    setItemToDelete({ type: "user_remove", id: userId });
+    setShowDeleteModal(true);
   };
 
   const handleSendInvitation = async (e) => {
@@ -246,6 +246,29 @@ const Moderator = ({ currentOrganization }) => {
           handleCloseDeleteModal();
         });
     }
+
+    if (itemToDelete && itemToDelete.type === "user_remove") {
+      OrganizationService.removeUserFromOrg(
+        currentOrganization,
+        itemToDelete.id
+      )
+        .then(() => {
+          setUsers((prevUsers) =>
+            prevUsers.filter((user) => user.id !== itemToDelete.id)
+          );
+          setUpdateMessage(t("moderator.users.removeSuccess"));
+          handleCloseDeleteModal();
+        })
+        .catch((error) => {
+          log.component.error("Error removing user from org", {
+            userId: itemToDelete.id,
+            organization: currentOrganization,
+            error: error.message,
+          });
+          setUpdateMessage(t("moderator.users.removeError"));
+          handleCloseDeleteModal();
+        });
+    }
   };
 
   const handleApproveJoinRequest = async (requestId, assignedRole = "user") => {
@@ -291,6 +314,12 @@ const Moderator = ({ currentOrganization }) => {
       );
     }
   };
+
+  const filteredUsers = users.filter(
+    (user) =>
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="list row">
@@ -474,49 +503,31 @@ const Moderator = ({ currentOrganization }) => {
                       })}
                     </h4>
                   </div>
-                  <ul className="list-group list-group-flush">
-                    {users.map((user) => (
-                      <li
-                        className="list-group-item d-flex justify-content-between align-items-center"
-                        key={user.id}
-                      >
-                        <div>
-                          <strong>{user.username}</strong> <br />
-                          <small>{user.email}</small> <br />
-                          <small>
-                            {t("moderator.users.boxes")}: {user.totalBoxes || 0}
-                          </small>{" "}
-                          <br />
-                          <small>{t("moderator.users.roles")}:</small>
-                          <ul>
-                            {user.roles &&
-                              user.roles.map((role) => (
-                                <li key={role}>{t(`roles.${role}`)}</li>
-                              ))}
-                          </ul>
-                        </div>
-                        <div>
-                          {user.roles &&
-                            !user.roles.some((role) => role === "admin") &&
-                            (user.roles.some((role) => role === "moderator") ? (
-                              <button
-                                className="btn btn-secondary btn-sm me-2"
-                                onClick={() => handleDemoteUser(user.id)}
-                              >
-                                {t("moderator.users.demote")}
-                              </button>
-                            ) : (
-                              <button
-                                className="btn btn-primary btn-sm me-2"
-                                onClick={() => handlePromoteUser(user.id)}
-                              >
-                                {t("moderator.users.promote")}
-                              </button>
-                            ))}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="card-body">
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder={t("common:actions.search")}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <div className="row">
+                      {filteredUsers.map((user) => (
+                        <UserCard
+                          key={user.id}
+                          user={user}
+                          currentUser={currentUser}
+                          onPromote={() => handlePromoteUser(user.id)}
+                          onDemote={() => handleDemoteUser(user.id)}
+                          onRemoveFromOrg={() =>
+                            handleRemoveUserFromOrg(user.id)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -721,6 +732,16 @@ const Moderator = ({ currentOrganization }) => {
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}
+        title={
+          itemToDelete?.type === "user_remove"
+            ? t("buttons.removeFromOrg")
+            : undefined
+        }
+        message={
+          itemToDelete?.type === "user_remove"
+            ? t("confirmation.message", { keyword: t("deleteKeyword") })
+            : undefined
+        }
       />
     </div>
   );
