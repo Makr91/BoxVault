@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.37.0](https://github.com/Makr91/BoxVault/compare/v0.36.0...v0.37.0) (2026-01-04)
+
+
+### Features
+
+* implement download file by name for curl ([6f81305](https://github.com/Makr91/BoxVault/commit/6f813052d40511a07d462c518f6c24f156d63071))
+* implement secure path handling for ISO uploads and add user management UI components ([9faa4ac](https://github.com/Makr91/BoxVault/commit/9faa4ac960e8f790790a5082cfd1ea2cb5ff41ec))
+
 ## [0.36.0](https://github.com/Makr91/BoxVault/compare/v0.35.0...v0.36.0) (2026-01-04)
 
 
