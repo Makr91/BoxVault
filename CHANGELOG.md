@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.2](https://github.com/Makr91/BoxVault/compare/v0.32.1...v0.32.2) (2026-01-04)
+
+
+### Bug Fixes
+
+* add showOnlyPublic prop to IsoList and update organization handling in Organization component ([4d85c29](https://github.com/Makr91/BoxVault/commit/4d85c2961d8d06b4a1b888e25e9531485ba2fc20))
+
 ## [0.32.1](https://github.com/Makr91/BoxVault/compare/v0.32.0...v0.32.1) (2026-01-04)
 
 
