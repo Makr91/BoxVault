@@ -159,6 +159,20 @@ describe('Organization API', () => {
       const found = discoverable.find(o => o.id === organization.id);
       expect(found).toBeDefined();
     });
+
+    it('should handle missing associations in getDiscoverable (coverage)', async () => {
+      const mockOrg = {
+        toJSON: () => ({ id: 1 }),
+        box: null, // Force default []
+        members: null, // Force default 0
+      };
+      jest.spyOn(db.organization, 'findAll').mockResolvedValue([mockOrg]);
+
+      const result = await db.organization.getDiscoverable(false);
+      expect(result).toHaveLength(1);
+      expect(result[0].memberCount).toBe(0);
+      expect(result[0].totalBoxCount).toBe(0);
+    });
   });
 
   describe('GET /api/organization/:organization', () => {

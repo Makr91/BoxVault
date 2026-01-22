@@ -243,6 +243,20 @@ describe('Setup API', () => {
 
       expect(res.statusCode).toBe(200);
     });
+
+    it('should succeed even if setup token is already deleted', async () => {
+      // Ensure the token file is deleted before the test
+      if (fs.existsSync(setupTokenPath)) {
+        fs.unlinkSync(setupTokenPath);
+      }
+
+      const res = await request(app)
+        .put('/api/setup')
+        .set('Authorization', `Bearer ${authorizedToken}`)
+        .send({ configs: {} });
+
+      expect(res.statusCode).toBe(200);
+    });
   });
 
   describe('Setup Controller Coverage', () => {
@@ -258,6 +272,25 @@ describe('Setup API', () => {
         .send({ configs: { unknown_config: { value: 'test' } } });
 
       expect(res.statusCode).toBe(200);
+    });
+
+    it('should log warning if setup token deletion fails (coverage)', async () => {
+      // Ensure token exists so we attempt to delete it
+      if (!fs.existsSync(setupTokenPath)) {
+        fs.writeFileSync(setupTokenPath, 'token');
+      }
+
+      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
+        throw new Error('Unlink Error');
+      });
+
+      const res = await request(app)
+        .put('/api/setup')
+        .set('Authorization', `Bearer ${authorizedToken}`)
+        .send({ configs: {} });
+
+      expect(res.statusCode).toBe(200);
+      unlinkSpy.mockRestore();
     });
   });
 

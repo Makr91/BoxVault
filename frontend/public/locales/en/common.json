@@ -617,6 +617,7 @@
     "number": "Version Number",
     "createdAt": "Created At",
     "updatedAt": "Updated At",
+    "actions": "Actions",
     "providers": "Providers for Version: {{version}}",
     "add": "Add Version"
   },

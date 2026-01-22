@@ -85,6 +85,11 @@ export default (sequelize, Sequelize) => {
       foreignKey: 'organization_id',
       as: 'serviceAccounts',
     });
+
+    Organization.hasMany(models.box, {
+      foreignKey: 'organizationId',
+      as: 'box',
+    });
   };
 
   /**
@@ -96,52 +101,41 @@ export default (sequelize, Sequelize) => {
     const { default: db } = await import('./index.js');
 
     // Build where clause - admins see all orgs, others only see public access modes
-    const whereClause = { suspended: false };
+    const whereClause = {};
     if (!isAdmin) {
       whereClause.access_mode = {
         [sequelize.Sequelize.Op.in]: ['invite_only', 'request_to_join'],
       };
     }
 
-    const orgs = await this.findAll({
+    const organizations = await this.findAll({
       where: whereClause,
-      attributes: ['id', 'name', 'description', 'access_mode', 'emailHash'],
+      include: [
+        {
+          model: db.box,
+          as: 'box',
+          attributes: ['id', 'isPublic'],
+        },
+        {
+          model: db.user,
+          as: 'members',
+          attributes: ['id'],
+          through: { attributes: [] },
+        },
+      ],
     });
 
-    // Load member and box counts for each org in parallel
-    const results = await Promise.all(
-      orgs.map(async org => {
-        const members = await db.UserOrg.findAll({
-          where: { organization_id: org.id },
-        });
+    return organizations.map(org => {
+      const boxes = org.box || [];
+      const publicBoxes = boxes.filter(b => b.isPublic);
+      const orgData = org.toJSON();
 
-        // Count boxes for all members in parallel
-        const boxCounts = await Promise.all(
-          members.map(async membership => {
-            const boxes = await db.box.findAll({
-              where: { userId: membership.user_id },
-            });
-            return {
-              total: boxes.length,
-              public: boxes.filter(box => box.isPublic).length,
-            };
-          })
-        );
+      orgData.memberCount = org.members ? org.members.length : 0;
+      orgData.publicBoxCount = publicBoxes.length;
+      orgData.totalBoxCount = boxes.length;
 
-        const totalBoxCount = boxCounts.reduce((sum, count) => sum + count.total, 0);
-        const publicBoxCount = boxCounts.reduce((sum, count) => sum + count.public, 0);
-
-        // Return org with counts
-        org.members = [];
-        org.memberCount = members.length;
-        org.publicBoxCount = publicBoxCount;
-        org.totalBoxCount = totalBoxCount;
-
-        return org;
-      })
-    );
-
-    return results;
+      return orgData;
+    });
   };
 
   return Organization;

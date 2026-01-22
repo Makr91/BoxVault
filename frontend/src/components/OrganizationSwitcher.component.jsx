@@ -153,10 +153,11 @@ const OrganizationSwitcher = ({
                   const orgDesc =
                     org.description || org.organization?.description;
                   const isPrimary = !!org.isPrimary;
+                  const orgId = org.id || org.organization?.id;
 
                   return (
                     <button
-                      key={orgName}
+                      key={orgId}
                       type="button"
                       className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
                         activeOrganization === orgName
