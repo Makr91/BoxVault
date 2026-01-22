@@ -229,6 +229,20 @@ describe('Setup API', () => {
 
       expect(res.statusCode).toBe(500);
     });
+
+    it('should succeed even if setup token is already deleted', async () => {
+      // Ensure the token file is deleted before the test
+      if (fs.existsSync(setupTokenPath)) {
+        fs.unlinkSync(setupTokenPath);
+      }
+
+      const res = await request(app)
+        .put('/api/setup')
+        .set('Authorization', `Bearer ${authorizedToken}`)
+        .send({ configs: {} });
+
+      expect(res.statusCode).toBe(200);
+    });
   });
 
   describe('Setup Controller Coverage', () => {

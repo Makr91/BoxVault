@@ -27,7 +27,7 @@ const safeRm = (path, options) => {
 
 const safeRmdirSync = (path, options) => {
   if (fs.existsSync(path)) {
-    fs.rmSync(path, { ...options, force: true });
+    fs.rmSync(path, { recursive: true, ...options, force: true });
   }
 };
 

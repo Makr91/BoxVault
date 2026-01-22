@@ -338,7 +338,7 @@ describe('Atomic File Writer', () => {
     it('safeRmdirSync should remove dir if exists', () => {
       mockFs.existsSync.mockReturnValue(true);
       safeRmdirSync('dir');
-      expect(mockFs.rmSync).toHaveBeenCalledWith('dir', { force: true });
+      expect(mockFs.rmSync).toHaveBeenCalledWith('dir', { recursive: true, force: true });
     });
 
     it('safeRmdirSync should skip if not exists', () => {
