@@ -641,21 +641,21 @@ const Profile = ({ activeOrganization }) => {
               ) : (
                 <ul className="list-group">
                   {userOrganizations.map((org) => (
-                    <li key={org.id} className="list-group-item">
+                    <li key={org.organization?.id} className="list-group-item">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
                           <div className="d-flex align-items-center">
                             <div>
-                              <strong>{org.name}</strong>
+                              <strong>{org.organization?.name}</strong>
                               {org.isPrimary && (
                                 <span className="badge bg-primary ms-2">
                                   {t("profile.organizations.primary")}
                                 </span>
                               )}
                               <br />
-                              {org.description && (
+                              {org.organization?.description && (
                                 <small className="text-muted">
-                                  {org.description}
+                                  {org.organization.description}
                                 </small>
                               )}
                               <br />
@@ -675,7 +675,9 @@ const Profile = ({ activeOrganization }) => {
                           {userOrganizations.length > 1 && (
                             <button
                               className="btn btn-outline-danger btn-sm"
-                              onClick={() => handleLeaveOrganization(org.name)}
+                              onClick={() =>
+                                handleLeaveOrganization(org.organization?.name)
+                              }
                             >
                               {t("buttons.leave")}
                             </button>

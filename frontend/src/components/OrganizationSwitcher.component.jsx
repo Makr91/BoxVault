@@ -35,17 +35,19 @@ const OrganizationSwitcher = ({
 
       // Fetch gravatars for all orgs in parallel
       const gravatarPromises = orgs
-        .filter((org) => org.emailHash)
+        .filter((org) => org.organization?.emailHash)
         .map(async (org) => {
           try {
-            const profile = await AuthService.getGravatarProfile(org.emailHash);
-            return { name: org.name, url: profile?.avatar_url };
+            const profile = await AuthService.getGravatarProfile(
+              org.organization.emailHash
+            );
+            return { name: org.organization.name, url: profile?.avatar_url };
           } catch (error) {
             log.api.error("Error fetching org gravatar", {
-              orgName: org.name,
+              orgName: org.organization?.name,
               error: error.message,
             });
-            return { name: org.name, url: null };
+            return { name: org.organization?.name, url: null };
           }
         });
 
@@ -147,23 +149,27 @@ const OrganizationSwitcher = ({
               <div className="list-group">
                 {userOrganizations.map((org) => (
                   <button
-                    key={org.name}
+                    key={org.organization?.name}
                     type="button"
                     className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                      activeOrganization === org.name
+                      activeOrganization === org.organization?.name
                         ? "border-primary border-2"
                         : ""
                     }`}
-                    onClick={() => handleOrganizationClick(org.name)}
+                    onClick={() =>
+                      handleOrganizationClick(org.organization?.name)
+                    }
                   >
                     <div>
                       <div className="d-flex align-items-center">
-                        {renderOrgIcon(org.name)}
+                        {renderOrgIcon(org.organization?.name)}
                         <div>
-                          <div className="fw-bold">{org.name}</div>
-                          {org.description && (
+                          <div className="fw-bold">
+                            {org.organization?.name}
+                          </div>
+                          {org.organization?.description && (
                             <small className="text-muted">
-                              {org.description}
+                              {org.organization.description}
                             </small>
                           )}
                           {org.isPrimary && (
@@ -180,7 +186,7 @@ const OrganizationSwitcher = ({
                       >
                         {t(`roles.${org.role}`)}
                       </span>
-                      {activeOrganization === org.name && (
+                      {activeOrganization === org.organization?.name && (
                         <FaCheck className="text-success" />
                       )}
                     </div>

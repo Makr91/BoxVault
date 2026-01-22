@@ -20,7 +20,7 @@ Environment=CONFIG_DIR=/etc/boxvault
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/lib/boxvault /var/log/boxvault /etc/boxvault
+ReadWritePaths=/var/lib/boxvault /var/log/boxvault /etc/boxvault /local
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
