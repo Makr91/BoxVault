@@ -348,6 +348,13 @@ const initializeApp = async () => {
     // Add Vagrant request handler
     app.use(vagrantHandler);
 
+    // Ensure database is initialized before creating session store
+    if (!db.sequelize) {
+      throw new Error(
+        'Database not initialized. Please check if setup.token exists or database configuration is invalid.'
+      );
+    }
+
     // Configure session middleware for OIDC
     const sessionStore = new SequelizeStore({
       db: db.sequelize,
@@ -380,8 +387,16 @@ const initializeApp = async () => {
     );
 
     // Wait for database sync
-    await db.sequelize.sync();
-    log.app.info('Database synced');
+    try {
+      await db.sequelize.sync({ alter: true });
+      log.app.info('Database synced');
+    } catch (error) {
+      log.app.warn('Database sync with alter failed, falling back to standard sync', {
+        error: error.message,
+      });
+      await db.sequelize.sync();
+      log.app.info('Database synced (fallback)');
+    }
 
     // Sync session store
     await sessionStore.sync();

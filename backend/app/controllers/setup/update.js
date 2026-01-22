@@ -46,7 +46,9 @@ export const updateConfigs = [
 
       // Remove the setup token file to prevent further setup
       const setupTokenPath = getSetupTokenPath();
-      fs.unlinkSync(setupTokenPath);
+      if (fs.existsSync(setupTokenPath)) {
+        fs.unlinkSync(setupTokenPath);
+      }
 
       return res.send(req.__('config.updated'));
     } catch (error) {
