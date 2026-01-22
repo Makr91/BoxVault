@@ -77,5 +77,8 @@
     "nodemon": "^3.1.7",
     "prettier": "^3.7.4",
     "supertest": "^6.3.4"
+  },
+  "overrides": {
+    "tar": "^7.4.3"
   }
 }
