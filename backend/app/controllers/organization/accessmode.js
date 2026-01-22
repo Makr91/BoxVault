@@ -1,6 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const Organization = db.organization;
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { organization: Organization } = db;
 
 /**
  * @swagger
@@ -109,9 +109,6 @@ const updateAccessMode = async (req, res) => {
 
     // Find the organization
     const organization = await Organization.findOne({ where: { name: organizationName } });
-    if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
-    }
 
     // Update access mode
     const updateData = { access_mode: accessMode };
@@ -142,4 +139,4 @@ const updateAccessMode = async (req, res) => {
   }
 };
 
-module.exports = { updateAccessMode };
+export { updateAccessMode };

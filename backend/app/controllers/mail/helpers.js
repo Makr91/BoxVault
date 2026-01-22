@@ -1,21 +1,29 @@
 // helpers.js
-const nodemailer = require('nodemailer');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
+import { createTransport } from 'nodemailer';
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
 
-let smtpConfig;
-try {
-  smtpConfig = loadConfig('mail');
-} catch (e) {
-  log.error.error(`Failed to load SMTP configuration: ${e.message}`);
-}
+const getSmtpConfig = () => {
+  try {
+    return loadConfig('mail');
+  } catch (e) {
+    log.error.error(`Failed to load SMTP configuration: ${e.message}`);
+    throw new Error(`Failed to load SMTP configuration: ${e.message}`);
+  }
+};
 
 /**
  * Create a nodemailer transporter with SMTP configuration
  * @returns {Object} Nodemailer transporter
  */
-const createTransporter = () =>
-  nodemailer.createTransport({
+const createTransporter = () => {
+  const smtpConfig = getSmtpConfig();
+
+  if (!smtpConfig || !smtpConfig.smtp_connect || !smtpConfig.smtp_auth) {
+    throw new Error('SMTP configuration is missing or invalid.');
+  }
+
+  return createTransport({
     host: smtpConfig.smtp_connect.host.value,
     port: smtpConfig.smtp_connect.port.value,
     secure: smtpConfig.smtp_connect.secure.value,
@@ -26,8 +34,6 @@ const createTransporter = () =>
     debug: true,
     logger: true,
   });
-
-module.exports = {
-  createTransporter,
-  smtpConfig,
 };
+
+export { createTransporter, getSmtpConfig };

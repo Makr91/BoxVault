@@ -1,10 +1,13 @@
 import axios from "axios";
 
+import i18n from "../i18n";
+
 import authHeader from "./auth-header";
 
 const baseURL = window.location.origin;
 
-const getPublicContent = () => axios.get(`${baseURL}/api/users/all`);
+const getPublicContent = () =>
+  axios.get(`${baseURL}/api/users/all`, { params: { lang: i18n.language } });
 
 const getUserBoard = () =>
   axios.get(`${baseURL}/api/users/user`, { headers: authHeader() });

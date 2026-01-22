@@ -1,15 +1,8 @@
-const jwt = require('jsonwebtoken');
-const axios = require('axios');
-const { loadConfig } = require('../utils/config-loader');
-const { log } = require('../utils/Logger');
-const { getOidcConfiguration } = require('../auth/passport');
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import jwt from 'jsonwebtoken';
+import axios from 'axios';
+import { loadConfig } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
+import { getOidcConfiguration } from '../auth/passport.js';
 
 /**
  * Middleware to automatically refresh OIDC access tokens before they expire
@@ -23,6 +16,7 @@ const oidcTokenRefresh = async (req, res, next) => {
   }
 
   try {
+    const authConfig = loadConfig('auth');
     // Decode JWT to check OIDC token expiration
     const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
 
@@ -196,4 +190,4 @@ const oidcTokenRefresh = async (req, res, next) => {
   }
 };
 
-module.exports = { oidcTokenRefresh };
+export { oidcTokenRefresh };

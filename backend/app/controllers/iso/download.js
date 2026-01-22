@@ -1,14 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-const { loadConfig } = require('../../utils/config-loader');
-const { getIsoStorageRoot } = require('./helpers');
-const { log } = require('../../utils/Logger');
+import fs from 'fs';
+import { join } from 'path';
+import db from '../../models/index.js';
+import { getIsoStorageRoot } from './helpers.js';
+import { log } from '../../utils/Logger.js';
 
-const ISO = db.iso;
-const Organization = db.organization;
-const { UserOrg } = db;
+const { iso: ISO, organization: Organization, UserOrg } = db;
 
 /**
  * @swagger
@@ -46,25 +42,13 @@ const { UserOrg } = db;
  *         description: ISO or file not found
  */
 const serveIso = async (req, res, iso, token) => {
+  void token;
   try {
-    const fullPath = path.join(getIsoStorageRoot(), iso.storagePath);
+    const fullPath = join(getIsoStorageRoot(), iso.storagePath);
 
     // Check permissions: Allow if public, otherwise require org membership
     if (!iso.isPublic) {
-      let { userId } = req;
-
-      // If no userId from session, try to verify the query token
-      if (!userId && token) {
-        // This block handles cases where downloadAuth middleware might not be used or failed to set userId
-        try {
-          const authConfig = loadConfig('auth');
-          const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-          ({ userId } = decoded);
-          req.downloadTokenDecoded = decoded;
-        } catch {
-          log.app.warn('Invalid download token provided');
-        }
-      }
+      const { userId } = req;
 
       // Security Check: Ensure token was issued for THIS specific ISO
       if (req.downloadTokenDecoded) {
@@ -73,12 +57,14 @@ const serveIso = async (req, res, iso, token) => {
           log.app.warn(
             `Invalid download token scope. Token ISO: ${decoded.isoId}, Requested: ${iso.id}`
           );
-          return res.status(403).send({ message: req.__('auth.invalidToken') });
+          res.status(403).send({ message: req.__('auth.invalidToken') });
+          return;
         }
       }
 
       if (!userId) {
-        return res.status(401).send({ message: req.__('auth.unauthorized') });
+        res.status(401).send({ message: req.__('auth.unauthorized') });
+        return;
       }
 
       const isMember = await UserOrg.findOne({
@@ -86,7 +72,8 @@ const serveIso = async (req, res, iso, token) => {
       });
 
       if (!isMember) {
-        return res.status(403).send({ message: req.__('auth.forbidden') });
+        res.status(403).send({ message: req.__('auth.forbidden') });
+        return;
       }
     }
 
@@ -95,7 +82,8 @@ const serveIso = async (req, res, iso, token) => {
       await fs.promises.access(fullPath, fs.constants.R_OK);
     } catch (e) {
       log.error.error(`ISO file not found or not readable: ${fullPath}`, e);
-      return res.status(404).send({ message: req.__('files.notFound') });
+      res.status(404).send({ message: req.__('files.notFound') });
+      return;
     }
 
     const stat = fs.statSync(fullPath);
@@ -128,14 +116,13 @@ const serveIso = async (req, res, iso, token) => {
       const fileStream = fs.createReadStream(fullPath);
       fileStream.pipe(res);
     }
-
-    return null;
   } catch (err) {
     log.error.error('Error downloading ISO', err);
     if (!res.headersSent) {
-      return res.status(500).send({ message: req.__('errors.operationFailed') });
+      res.status(500).send({ message: req.__('errors.operationFailed') });
+      return;
     }
-    return null;
+    res.end();
   }
 };
 
@@ -151,10 +138,7 @@ const download = async (req, res) => {
     return await serveIso(req, res, iso, token);
   } catch (err) {
     log.error.error('Error downloading ISO', err);
-    if (!res.headersSent) {
-      return res.status(500).send({ message: req.__('errors.operationFailed') });
-    }
-    return null;
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };
 
@@ -176,11 +160,8 @@ const downloadByName = async (req, res) => {
     return await serveIso(req, res, iso, token);
   } catch (err) {
     log.error.error('Error downloading ISO by name', err);
-    if (!res.headersSent) {
-      return res.status(500).send({ message: req.__('errors.operationFailed') });
-    }
-    return null;
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };
 
-module.exports = { download, downloadByName };
+export { download, downloadByName };

@@ -1,10 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const { getIsoStorageRoot } = require('./helpers');
-
-const ISO = db.iso;
+import fs from 'fs';
+import { join } from 'path';
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+import { getIsoStorageRoot } from './helpers.js';
+const { iso: ISO } = db;
 
 /**
  * @swagger
@@ -58,7 +57,7 @@ const deleteIso = async (req, res) => {
 
     if (count === 0) {
       // No other records reference this file, safe to delete physical file
-      const fullPath = path.join(getIsoStorageRoot(), storagePath);
+      const fullPath = join(getIsoStorageRoot(), storagePath);
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
         log.file.info(`ISO Physical Delete: Removed ${fullPath} as no references remain.`);
@@ -76,4 +75,4 @@ const deleteIso = async (req, res) => {
   }
 };
 
-module.exports = { delete: deleteIso };
+export { deleteIso as delete };

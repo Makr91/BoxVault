@@ -1,30 +1,19 @@
 // findone.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-
-const Organization = db.organization;
-const Users = db.user;
-const Box = db.box;
-const Architecture = db.architectures;
-const Version = db.versions;
-const Provider = db.providers;
-const File = db.files;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
-
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load App configuration: ${e.message}`);
-}
+import configLoader from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import jwt from 'jsonwebtoken';
+import db from '../../models/index.js';
+const {
+  organization: Organization,
+  user: Users,
+  box: Box,
+  architectures: Architecture,
+  versions: Version,
+  providers: Provider,
+  files: File,
+  service_account,
+  UserOrg,
+} = db;
 
 const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => {
   // Format response exactly as Vagrant expects based on box_metadata.rb
@@ -68,14 +57,6 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
     },
     body: JSON.stringify(response, null, 2),
   });
-
-  // Verify the name matches exactly what Vagrant requested
-  if (response.name !== requestedName) {
-    log.error.error('Name mismatch:', {
-      requested: requestedName,
-      actual: response.name,
-    });
-  }
 
   return response;
 };
@@ -178,9 +159,19 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.findOne = async (req, res) => {
+export const findOne = async (req, res) => {
   const { organization, name } = req.params;
   // Get auth info either from vagrantHandler or x-access-token
+  let authConfig;
+  let appConfig;
+  try {
+    authConfig = configLoader.loadConfig('auth');
+    appConfig = configLoader.loadConfig('app');
+  } catch (e) {
+    log.error.error(`Failed to load configuration: ${e.message}`);
+    return res.status(500).send({ message: 'Configuration error' });
+  }
+
   let { userId } = req; // Set by vagrantHandler for Vagrant requests
   let { isServiceAccount } = req; // Set by vagrantHandler for Vagrant requests
 
@@ -308,7 +299,7 @@ exports.findOne = async (req, res) => {
     }
 
     // Check if this box was created by a service account
-    const serviceAccount = await db.service_account.findOne({
+    const serviceAccount = await service_account.findOne({
       where: { id: box.userId },
       include: [
         {
@@ -319,12 +310,12 @@ exports.findOne = async (req, res) => {
     });
 
     // Check if the requesting user owns any service accounts
-    const requestingUserServiceAccounts = await db.service_account.findAll({
+    await service_account.findAll({
       where: { userId },
     });
 
     // Check if user is member of the organization
-    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     const isMember = !!membership;
 
     // Allow access if:
@@ -332,11 +323,7 @@ exports.findOne = async (req, res) => {
     // 2. The user is the owner of the service account that created the box
     // 3. The box was created by a service account owned by the requesting user
     // 4. The requester is a service account
-    const hasAccess =
-      isMember ||
-      serviceAccount?.user?.id === userId ||
-      requestingUserServiceAccounts.some(sa => sa.id === box.userId) ||
-      isServiceAccount;
+    const hasAccess = isMember || serviceAccount?.user?.id === userId || isServiceAccount;
 
     if (hasAccess) {
       return res.json(response);

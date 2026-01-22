@@ -1,18 +1,17 @@
 // auth.controller.js
-const { signup } = require('./auth/signup');
-const { signin } = require('./auth/signin');
-const { refreshToken } = require('./auth/token');
-const { verifyMail } = require('./auth/verification');
-const { sendInvitation } = require('./auth/invitation/send');
-const { getActiveInvitations } = require('./auth/invitation/get');
-const { deleteInvitation } = require('./auth/invitation/delete');
-const { validateInvitationToken } = require('./auth/invitation/validate');
-const { deleteUser } = require('./auth/user/delete');
-const { suspendUser } = require('./auth/user/suspend');
-const { resumeUser } = require('./auth/user/resume');
-const { updateUser } = require('./auth/user/update');
+import { signup } from './auth/signup.js';
+import { signin } from './auth/signin.js';
+import { refreshToken } from './auth/token.js';
+import { verifyMail } from './auth/verification.js';
+import { sendInvitation } from './auth/invitation/send.js';
+import { getActiveInvitations } from './auth/invitation/get.js';
+import { deleteInvitation } from './auth/invitation/delete.js';
+import { validateInvitationToken } from './auth/invitation/validate.js';
+import { deleteUser } from './auth/user/delete.js';
+import { suspendUser } from './auth/user/suspend.js';
+import { resumeUser } from './auth/user/resume.js';
 
-module.exports = {
+export {
   signup,
   signin,
   refreshToken,
@@ -24,5 +23,4 @@ module.exports = {
   deleteUser,
   suspendUser,
   resumeUser,
-  updateUser,
 };

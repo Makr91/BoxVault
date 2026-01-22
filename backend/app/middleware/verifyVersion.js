@@ -1,7 +1,7 @@
 // verifyVersion.js
-const db = require('../models');
-const { log } = require('../utils/Logger');
-const Version = db.versions;
+import db from '../models/index.js';
+import { log } from '../utils/Logger.js';
+const { versions: Version, organization: Organization, box: Box } = db;
 
 const validateVersion = (req, res, next) => {
   log.app.info('Full request body:', req.body);
@@ -44,22 +44,11 @@ const validateVersion = (req, res, next) => {
   return next();
 };
 
-const checkVersionDuplicate = async (req, res, next) => {
-  const { organization, boxId, versionNumber: currentVersionNumber } = req.params; // Get currentVersionNumber from params
-  const { versionNumber } = req.body; // Get the new versionNumber from the request body
-
-  // If versionNumber is not null and matches the currentVersionNumber in req.params, allow changes
-  if (versionNumber && versionNumber === currentVersionNumber) {
-    return next();
-  }
-
-  // If versionNumber is not provided, skip duplicate check
-  if (!versionNumber) {
-    return next();
-  }
+const attachEntities = async (req, res, next) => {
+  const { organization, boxId } = req.params;
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await Organization.findOne({
       where: { name: organization },
     });
 
@@ -69,7 +58,7 @@ const checkVersionDuplicate = async (req, res, next) => {
       });
     }
 
-    const box = await db.box.findOne({
+    const box = await Box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
     });
 
@@ -79,6 +68,29 @@ const checkVersionDuplicate = async (req, res, next) => {
       });
     }
 
+    // Attach found entities to request
+    req.organizationData = organizationData;
+    req.boxData = box;
+
+    return next();
+  } catch (err) {
+    return res.status(500).send({
+      message: err.message || 'Some error occurred while checking the version.',
+    });
+  }
+};
+
+const checkVersionDuplicate = async (req, res, next) => {
+  const { versionNumber: currentVersionNumber } = req.params;
+  const versionNumber = req.body.versionNumber || req.body.version;
+  const { organizationData, boxData: box } = req;
+
+  // If versionNumber is not provided or matches current, skip duplicate check
+  if (!versionNumber || (currentVersionNumber && versionNumber === currentVersionNumber)) {
+    return next();
+  }
+
+  try {
     const existingVersion = await Version.findOne({
       where: {
         versionNumber,
@@ -87,8 +99,8 @@ const checkVersionDuplicate = async (req, res, next) => {
     });
 
     if (existingVersion) {
-      return res.status(400).send({
-        message: `A version with the number ${versionNumber} already exists for box ${boxId} in organization ${organization}.`,
+      return res.status(409).send({
+        message: `A version with the number ${versionNumber} already exists for box ${box.id} in organization ${organizationData.name}.`,
       });
     }
 
@@ -100,9 +112,4 @@ const checkVersionDuplicate = async (req, res, next) => {
   }
 };
 
-const verifyVersion = {
-  validateVersion,
-  checkVersionDuplicate,
-};
-
-module.exports = verifyVersion;
+export { validateVersion, checkVersionDuplicate, attachEntities };

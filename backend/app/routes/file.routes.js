@@ -1,10 +1,16 @@
-const express = require('express');
-const { rateLimit } = require('express-rate-limit');
-const { authJwt, sessionAuth, downloadAuth } = require('../middleware');
-const { log } = require('../utils/Logger');
-const file = require('../controllers/file.controller');
+import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
+import { authJwt, sessionAuth, downloadAuth, verifyBoxFilePath } from '../middleware/index.js';
+import {
+  update,
+  upload,
+  info,
+  download,
+  getDownloadLink,
+  remove,
+} from '../controllers/file.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
@@ -30,44 +36,6 @@ const downloadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Error handling middleware for file operations
-const handleFileError = (err, req, res, next) => {
-  void next;
-  log.error.error('File operation error:', {
-    error: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-    params: req.params,
-  });
-
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({
-      error: 'FILE_TOO_LARGE',
-      message: `File size exceeds the limit`,
-    });
-  }
-
-  if (err.code === 'ENOSPC') {
-    return res.status(507).json({
-      error: 'NO_STORAGE_SPACE',
-      message: 'Not enough storage space available',
-    });
-  }
-
-  if (err.message.includes('timeout')) {
-    return res.status(408).json({
-      error: 'UPLOAD_TIMEOUT',
-      message: 'Upload timed out',
-    });
-  }
-
-  return res.status(500).json({
-    error: 'UPLOAD_FAILED',
-    message: 'File operation failed',
-  });
-};
-
 router.use((req, res, next) => {
   void req;
   res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
@@ -79,8 +47,8 @@ router.put(
   fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
-  file.update,
-  handleFileError
+  verifyBoxFilePath,
+  update
 );
 
 router.post(
@@ -88,40 +56,44 @@ router.post(
   fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
-  file.upload,
-  handleFileError
+  verifyBoxFilePath,
+  upload
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
   fileOperationLimiter,
+  verifyBoxFilePath,
   sessionAuth,
-  file.info
+  info
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
   downloadLimiter,
   fileOperationLimiter,
+  verifyBoxFilePath,
   downloadAuth,
   sessionAuth,
-  file.download
+  download
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
   getDownloadLinkLimiter,
   fileOperationLimiter,
+  verifyBoxFilePath,
   sessionAuth,
-  file.getDownloadLink
+  getDownloadLink
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
   fileOperationLimiter,
   authJwt.verifyToken,
+  verifyBoxFilePath,
   authJwt.isUserOrServiceAccount,
-  file.remove
+  remove
 );
 
-module.exports = router;
+export default router;

@@ -1,9 +1,12 @@
 // architecture.model.js
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const Architecture = sequelize.define('architectures', {
     name: {
       type: Sequelize.STRING,
       allowNull: false,
+    },
+    description: {
+      type: Sequelize.STRING,
     },
     defaultBox: {
       type: Sequelize.BOOLEAN,

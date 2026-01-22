@@ -1,7 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const { UserOrg } = db;
-const Organization = db.organization;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { organization: Organization, user: User, UserOrg } = db;
 
 /**
  * @swagger
@@ -89,7 +88,7 @@ const setPrimaryOrganization = async (req, res) => {
     await UserOrg.setPrimaryOrganization(userId, organization.id);
 
     // Update user's primary_organization_id field (denormalized)
-    await db.user.update({ primary_organization_id: organization.id }, { where: { id: userId } });
+    await User.update({ primary_organization_id: organization.id }, { where: { id: userId } });
 
     log.api.info('Primary organization updated', {
       userId,
@@ -115,4 +114,4 @@ const setPrimaryOrganization = async (req, res) => {
   }
 };
 
-module.exports = { setPrimaryOrganization };
+export { setPrimaryOrganization };

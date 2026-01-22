@@ -1,4 +1,4 @@
-const fs = require('fs');
+import { writeFile, unlink, rename, writeFileSync, renameSync, unlinkSync } from 'fs';
 
 /**
  * Atomically write content to a file using a temporary file approach
@@ -15,19 +15,19 @@ const atomicWriteFile = (filePath, content, encoding = 'utf8') =>
     const tempPath = `${filePath}.tmp`;
 
     // Write to temporary file first
-    fs.writeFile(tempPath, content, encoding, writeErr => {
+    writeFile(tempPath, content, encoding, writeErr => {
       if (writeErr) {
         // Clean up temp file if write failed
-        fs.unlink(tempPath, () => undefined); // Ignore cleanup errors
+        unlink(tempPath, () => undefined); // Ignore cleanup errors
         return reject(writeErr);
       }
 
       // Atomically rename temp file to final destination
       // This operation is atomic at the filesystem level
-      fs.rename(tempPath, filePath, renameErr => {
+      rename(tempPath, filePath, renameErr => {
         if (renameErr) {
           // Clean up temp file if rename failed
-          fs.unlink(tempPath, () => undefined); // Ignore cleanup errors
+          unlink(tempPath, () => undefined); // Ignore cleanup errors
           return reject(renameErr);
         }
 
@@ -49,14 +49,14 @@ const atomicWriteFileSync = (filePath, content, encoding = 'utf8') => {
 
   try {
     // Write to temporary file first
-    fs.writeFileSync(tempPath, content, encoding);
+    writeFileSync(tempPath, content, encoding);
 
     // Atomically rename temp file to final destination
-    fs.renameSync(tempPath, filePath);
+    renameSync(tempPath, filePath);
   } catch (error) {
     // Clean up temp file if operation failed
     try {
-      fs.unlinkSync(tempPath);
+      unlinkSync(tempPath);
     } catch (cleanupError) {
       void cleanupError;
       // Ignore cleanup errors
@@ -65,7 +65,4 @@ const atomicWriteFileSync = (filePath, content, encoding = 'utf8') => {
   }
 };
 
-module.exports = {
-  atomicWriteFile,
-  atomicWriteFileSync,
-};
+export { atomicWriteFile, atomicWriteFileSync };

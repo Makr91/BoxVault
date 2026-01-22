@@ -1,16 +1,16 @@
 // architecture.controller.js
-const { create } = require('./architecture/create');
-const { findAllByProvider } = require('./architecture/provider/findall');
-const { findOne } = require('./architecture/findone');
-const { update } = require('./architecture/update');
-const { delete: deleteArchitecture } = require('./architecture/delete');
-const { deleteAllByProvider } = require('./architecture/provider/deleteall');
+import { create } from './architecture/create.js';
+import { findAllByProvider } from './architecture/provider/findall.js';
+import { findOne } from './architecture/findone.js';
+import { update } from './architecture/update.js';
+import { delete as deleteArchitecture } from './architecture/delete.js';
+import { deleteAllByProvider } from './architecture/provider/deleteall.js';
 
-module.exports = {
+export {
   create,
   findAllByProvider,
   findOne,
   update,
-  delete: deleteArchitecture,
+  deleteArchitecture as delete,
   deleteAllByProvider,
 };

@@ -1,10 +1,9 @@
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-
-const ISO = db.iso;
-const { UserOrg } = db;
+import jwt from 'jsonwebtoken';
+const { sign } = jwt;
+import db from '../../models/index.js';
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+const { iso: ISO, UserOrg } = db;
 
 /**
  * @swagger
@@ -55,6 +54,10 @@ const getDownloadLink = async (req, res) => {
 
     // Check permissions if private
     if (!iso.isPublic) {
+      if (!userId) {
+        return res.status(403).send({ message: req.__('auth.forbidden') });
+      }
+
       const isMember = await UserOrg.findOne({
         where: { user_id: userId, organization_id: iso.organizationId },
       });
@@ -66,7 +69,7 @@ const getDownloadLink = async (req, res) => {
 
     const authConfig = loadConfig('auth');
     // Generate a short-lived token for the download
-    const token = jwt.sign(
+    const token = sign(
       {
         userId,
         isServiceAccount: req.isServiceAccount,
@@ -85,4 +88,4 @@ const getDownloadLink = async (req, res) => {
   }
 };
 
-module.exports = { getDownloadLink };
+export { getDownloadLink };

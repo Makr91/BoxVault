@@ -1,4 +1,4 @@
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const ISO = sequelize.define('iso', {
     name: {
       type: Sequelize.STRING,

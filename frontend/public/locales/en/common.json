@@ -113,6 +113,15 @@
     "search": "Search",
     "back": "Back"
   },
+  "table": {
+    "name": "Name",
+    "organization": "Organization",
+    "visibility": "Visibility",
+    "size": "Size",
+    "checksum": "Checksum",
+    "uploaded": "Uploaded",
+    "actions": "Actions"
+  },
   "messages": {
     "noResultsFound": "No Results Found",
     "searchFailed": "Search Failed",
@@ -127,6 +136,7 @@
     "failedToUpdateFavorites": "Failed to update favorites"
   },
   "about": {
+    "pageTitle": "About",
     "version": "Version",
     "keyFeatures": "Key Features",
     "supportAndFollow": "Support and Follow",
@@ -558,7 +568,10 @@
       "error": "A system has an issue",
       "warning": "One or more systems have warnings",
       "database": "Database",
-      "storage": "Storage"
+      "storage": "Storage",
+      "storageBoxes": "Storage (Boxes)",
+      "storageIsos": "Storage (ISOs)",
+      "oidcProviders": "OIDC Providers"
     }
   },
   "configField": {
@@ -672,7 +685,6 @@
     "removeAllSuccess": "All boxes removed successfully.",
     "removeAllError": "Error removing all boxes.",
     "filter": "Filter",
-    "templateList": "Template List",
     "noBoxes": "No boxes found",
     "organization": {
       "errors": {
@@ -705,7 +717,14 @@
         "versions": "# Versions",
         "providers": "Providers",
         "architectures": "Architectures",
-        "noBoxes": "No boxes found"
+        "noBoxes": "No boxes found",
+        "name": "Name",
+        "organization": "Organization",
+        "visibility": "Visibility",
+        "size": "Size",
+        "checksum": "Checksum",
+        "uploaded": "Uploaded",
+        "actions": "Actions"
       },
       "status": {
         "published": "Published",

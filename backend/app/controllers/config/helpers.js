@@ -1,7 +1,11 @@
 // helpers.js
-const fs = require('fs');
-const yaml = require('js-yaml');
-const path = require('path');
+import fs from 'fs';
+import { dump } from 'js-yaml';
+import { join, resolve as _resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Validate that file path is within allowed config directories
@@ -9,13 +13,10 @@ const path = require('path');
  * @returns {boolean} True if path is safe
  */
 const isValidConfigPath = filePath => {
-  const allowedDirs = [
-    process.env.CONFIG_DIR || '/etc/boxvault',
-    path.join(__dirname, '../config'),
-  ];
+  const allowedDirs = [process.env.CONFIG_DIR || '/etc/boxvault', join(__dirname, '../../config')];
 
-  const resolvedPath = path.resolve(filePath);
-  return allowedDirs.some(dir => resolvedPath.startsWith(path.resolve(dir)));
+  const resolvedPath = _resolve(filePath);
+  return allowedDirs.some(dir => resolvedPath.startsWith(_resolve(dir)));
 };
 
 const writeConfig = (filePath, data) =>
@@ -26,7 +27,7 @@ const writeConfig = (filePath, data) =>
       return;
     }
 
-    const yamlData = yaml.dump(data);
+    const yamlData = dump(data);
     fs.writeFile(filePath, yamlData, 'utf8', err => {
       if (err) {
         reject(err);
@@ -36,6 +37,4 @@ const writeConfig = (filePath, data) =>
     });
   });
 
-module.exports = {
-  writeConfig,
-};
+export { writeConfig };

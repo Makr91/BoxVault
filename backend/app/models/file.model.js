@@ -1,5 +1,5 @@
 // file.model.js
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const File = sequelize.define('files', {
     fileName: {
       type: Sequelize.STRING,

@@ -1,11 +1,10 @@
 // deleteall.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../../utils/paths');
-const { log } = require('../../../utils/Logger');
-const db = require('../../../models');
+import fs from 'fs';
+import { getSecureBoxPath } from '../../../utils/paths.js';
+import { log } from '../../../utils/Logger.js';
+import db from '../../../models/index.js';
 
-const Version = db.versions;
-const Box = db.box;
+const { versions: Version, UserOrg } = db;
 
 /**
  * @swagger
@@ -60,32 +59,15 @@ const Box = db.box;
  *                   type: string
  *                   example: "Some error occurred while deleting the versions."
  */
-exports.deleteAllByBox = async (req, res) => {
+export const deleteAllByBox = async (req, res) => {
   const { organization, boxId } = req.params;
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await Box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    // Organization and Box are already verified and attached by verifyVersion middleware
+    const { organizationData, boxData: box } = req;
 
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 

@@ -1,7 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const Iso = db.iso;
-const Organization = db.organization;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { iso: Iso, organization: Organization } = db;
 
 /**
  * @swagger
@@ -16,7 +15,7 @@ const Organization = db.organization;
  *       500:
  *         description: Internal server error.
  */
-exports.discoverAll = async (req, res) => {
+export const discoverAll = async (req, res) => {
   try {
     const isos = await Iso.findAll({
       where: { isPublic: true },

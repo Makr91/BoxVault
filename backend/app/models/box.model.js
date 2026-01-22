@@ -1,4 +1,4 @@
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const Box = sequelize.define('box', {
     name: {
       type: Sequelize.STRING,

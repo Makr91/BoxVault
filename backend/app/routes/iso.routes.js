@@ -1,11 +1,20 @@
-const express = require('express');
-const { authJwt, verifyOrgAccess, downloadAuth, sessionAuth } = require('../middleware');
-const controller = require('../controllers/iso.controller');
-const router = express.Router();
-const { discoverAll } = require('../controllers/iso/discover');
-const { getPublic } = require('../controllers/iso/getpublic');
+import { Router, json } from 'express';
+import { authJwt, verifyOrgAccess, downloadAuth, sessionAuth } from '../middleware/index.js';
+import {
+  upload,
+  findAll,
+  findOne,
+  download,
+  downloadByName,
+  getDownloadLink,
+  update,
+  delete as deleteIso,
+} from '../controllers/iso.controller.js';
+const router = Router();
+import { discoverAll } from '../controllers/iso/discover.js';
+import { getPublic } from '../controllers/iso/getpublic.js';
 
-router.use(express.json());
+router.use(json());
 
 router.use((req, res, next) => {
   void req;
@@ -23,56 +32,52 @@ router.get('/organization/:organization/public-isos', getPublic);
 router.post(
   '/organization/:organization/iso',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
-  controller.upload
+  upload
 );
 
 // List ISOs for an organization
 router.get(
   '/organization/:organization/iso',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
-  controller.findAll
+  findAll
 );
 
 // Get specific ISO details
 router.get(
   '/organization/:organization/iso/:isoId',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
-  controller.findOne
+  findOne
 );
 
 // Download ISO
 router.get(
   '/organization/:organization/iso/:isoId/download',
   [downloadAuth, sessionAuth],
-  controller.download
+  download
 );
 
 // Download ISO by name
 router.get(
   '/organization/:organization/iso/name/:name/download',
   [downloadAuth, sessionAuth],
-  controller.downloadByName
+  downloadByName
 );
 
 // Get Download Link (Public/Authenticated)
-router.post(
-  '/organization/:organization/iso/:isoId/download-link',
-  [sessionAuth],
-  controller.getDownloadLink
-);
+router.post('/organization/:organization/iso/:isoId/download-link', [sessionAuth], getDownloadLink);
 
 // Update ISO
 router.put(
   '/organization/:organization/iso/:isoId',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
-  controller.update
+  update
 );
 
 // Delete an ISO
 router.delete(
   '/organization/:organization/iso/:isoId',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
-  controller.delete
+  deleteIso
 );
 
-module.exports = router;
+export default router;

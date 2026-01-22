@@ -1,6 +1,6 @@
-const { rateLimit } = require('express-rate-limit');
-const { getRateLimitConfig } = require('../utils/config-loader');
-const { log } = require('../utils/Logger');
+import { rateLimit } from 'express-rate-limit';
+import { getRateLimitConfig } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
 
 /**
  * Rate limiter middleware instance (not factory)
@@ -52,8 +52,4 @@ const architectureOperationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = {
-  rateLimiter,
-  fileOperationLimiter,
-  architectureOperationLimiter,
-};
+export { rateLimiter, fileOperationLimiter, architectureOperationLimiter };

@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { log } = require('../app/utils/Logger');
+const { log } = require('../app/utils/Logger.js');
 
 // Load swagger configuration - now works correctly since we're in backend context
 const { specs } = require('../app/config/swagger.js');

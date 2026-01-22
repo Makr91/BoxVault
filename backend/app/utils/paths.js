@@ -1,5 +1,5 @@
-const path = require('path');
-const { loadConfig } = require('./config-loader');
+import { join } from 'path';
+import { loadConfig } from './config-loader.js';
 
 let STORAGE_ROOT;
 
@@ -29,7 +29,7 @@ const getStorageRoot = () => {
  */
 const getSecureBoxPath = (...pathSegments) => {
   const root = getStorageRoot();
-  const fullPath = path.join(root, ...pathSegments);
+  const fullPath = join(root, ...pathSegments);
 
   // Validate that the joined path is still within the root directory
   if (!fullPath.startsWith(root)) {
@@ -39,7 +39,4 @@ const getSecureBoxPath = (...pathSegments) => {
   return fullPath;
 };
 
-module.exports = {
-  getStorageRoot,
-  getSecureBoxPath,
-};
+export { getStorageRoot, getSecureBoxPath };

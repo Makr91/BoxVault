@@ -1,8 +1,7 @@
 // changepassword.js
-const bcrypt = require('bcryptjs');
-const db = require('../../models');
-
-const User = db.user;
+import { hashSync } from 'bcryptjs';
+import db from '../../models/index.js';
+const { user: User } = db;
 
 /**
  * @swagger
@@ -57,7 +56,7 @@ const User = db.user;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.changePassword = async (req, res) => {
+export const changePassword = async (req, res) => {
   const { userId } = req.params;
   const { newPassword } = req.body;
 
@@ -67,7 +66,7 @@ exports.changePassword = async (req, res) => {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    user.password = bcrypt.hashSync(newPassword, 8);
+    user.password = hashSync(newPassword, 8);
     await user.save();
 
     return res.status(200).send({ message: req.__('users.passwordChanged') });

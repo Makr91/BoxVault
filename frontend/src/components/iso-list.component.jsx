@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import {
   FaTrash,
   FaDownload,
-  FaCompactDisc,
   FaPen,
   FaCheck,
   FaXmark,
@@ -31,6 +30,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
   const [editingIsoId, setEditingIsoId] = useState(null);
   const [editName, setEditName] = useState("");
   const [copiedChecksum, setCopiedChecksum] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -200,6 +200,10 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
     return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
+  const filteredIsos = isos.filter((iso) =>
+    iso.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const renderTableBody = () => {
     if (loading) {
       return (
@@ -211,7 +215,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
       );
     }
 
-    if (isos.length === 0) {
+    if (filteredIsos.length === 0) {
       return (
         <tr>
           <td colSpan="6" className="text-center">
@@ -221,7 +225,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
       );
     }
 
-    return isos.map((iso) => (
+    return filteredIsos.map((iso) => (
       <tr key={iso.id}>
         <td>
           {editingIsoId === iso.id ? (
@@ -334,38 +338,58 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
   };
 
   return (
-    <div className="mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>
-          <FaCompactDisc className="me-2" />
-          ISO Images
-        </h4>
-        {isAuthorized && (
-          <div className="d-flex align-items-center gap-3">
-            <div className="form-check mb-0">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="publicUploadCheck"
-                checked={isPublicUpload}
-                onChange={(e) => setIsPublicUpload(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="publicUploadCheck">
-                Public
+    <div className="list row">
+      <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+        {/* Left: Search */}
+        <div
+          className="input-group input-group-sm"
+          style={{ maxWidth: "300px" }}
+        >
+          <input
+            type="text"
+            className="form-control"
+            placeholder={t("actions.search")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <button className="btn btn-outline-secondary" type="button">
+            {t("actions.search")}
+          </button>
+        </div>
+
+        {/* Right: Action Buttons */}
+        <div className="d-flex gap-2 align-items-center">
+          {isAuthorized && (
+            <div className="d-flex align-items-center gap-2">
+              <div className="form-check mb-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="publicUploadCheck"
+                  checked={isPublicUpload}
+                  onChange={(e) => setIsPublicUpload(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="publicUploadCheck">
+                  Public
+                </label>
+              </div>
+              <label
+                className={`btn btn-sm btn-primary ${uploading ? "disabled" : ""}`}
+              >
+                {uploading
+                  ? `Uploading ${uploadProgress}%`
+                  : t("buttons.upload")}
+                <input
+                  type="file"
+                  hidden
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  accept=".iso"
+                />
               </label>
             </div>
-            <label className={`btn btn-primary ${uploading ? "disabled" : ""}`}>
-              {uploading ? `Uploading ${uploadProgress}%` : t("buttons.upload")}
-              <input
-                type="file"
-                hidden
-                onChange={handleFileUpload}
-                disabled={uploading}
-                accept=".iso"
-              />
-            </label>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {message && (
@@ -392,12 +416,14 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
       <Table striped hover responsive>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>{showOnlyPublic ? "Organization" : "Visibility"}</th>
-            <th>Size</th>
-            <th>Checksum (SHA256)</th>
-            <th>Uploaded</th>
-            <th>Actions</th>
+            <th>{t("table.name")}</th>
+            <th>
+              {showOnlyPublic ? t("table.organization") : t("table.visibility")}
+            </th>
+            <th>{t("table.size")}</th>
+            <th>{t("table.checksum")} (SHA256)</th>
+            <th>{t("table.uploaded")}</th>
+            <th>{t("table.actions")}</th>
           </tr>
         </thead>
         <tbody>{renderTableBody()}</tbody>

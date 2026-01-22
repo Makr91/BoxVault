@@ -1,12 +1,12 @@
-const express = require('express');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const healthController = require('../controllers/health.controller');
+import { Router } from 'express';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import { getHealth } from '../controllers/health.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
 
-router.get('/health', healthController.getHealth);
+router.get('/health', getHealth);
 
-module.exports = router;
+export default router;

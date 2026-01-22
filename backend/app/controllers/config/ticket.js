@@ -1,6 +1,6 @@
 // ticket.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
 
 /**
  * @swagger
@@ -33,7 +33,7 @@ const { log } = require('../../utils/Logger');
  *       500:
  *         description: Internal server error
  */
-exports.getTicketConfig = (req, res) => {
+export const getTicketConfig = (req, res) => {
   void req;
   try {
     const data = loadConfig('app');

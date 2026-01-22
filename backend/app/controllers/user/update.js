@@ -1,8 +1,7 @@
 // update.js
-const db = require('../../models');
-
-const User = db.user;
-const Organization = db.organization;
+import db from '../../models/index.js';
+import { generateEmailHash } from '../auth/helpers.js';
+const { user: User } = db;
 
 /**
  * @swagger
@@ -72,55 +71,28 @@ const Organization = db.organization;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.update = async (req, res) => {
-  const { organization: organizationName, userName } = req.params;
-  const { username, email, password, roles, organization } = req.body;
+export const update = async (req, res) => {
+  const { userName } = req.params;
+  const { email } = req.body;
 
   try {
-    const old_organization = await Organization.findOne({
-      where: { name: organizationName },
-    });
-
-    const new_organization = await Organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organization) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', {
-          organization: organizationName,
-        }),
-      });
-    }
-
-    if (!new_organization) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
     const user = await User.findOne({
-      where: {
-        username: userName,
-        organizationId: new_organization.id || old_organization.id,
-      },
+      where: { username: userName },
     });
 
     if (!user) {
       return res.status(404).send({
-        message: req.__('users.userNotFoundWithName', { username: userName }),
+        message: req.__('users.userNotFound'),
       });
     }
 
-    await user.update({
-      username: username || user.username,
-      email: email || user.email,
-      password: password || user.password,
-      roles: roles || user.roles,
-      organizationId: new_organization || organization.id,
-    });
+    if (email) {
+      user.email = email;
+      user.emailHash = generateEmailHash(email);
+    }
 
-    return res.status(200).send(user);
+    await user.save();
+    return res.status(200).send({ message: 'User was updated successfully.' });
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('users.update.error'),

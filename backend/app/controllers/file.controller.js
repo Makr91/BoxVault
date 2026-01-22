@@ -1,16 +1,9 @@
 // file.controller.js
-const { upload } = require('./file/upload');
-const { download } = require('./file/download');
-const { info } = require('./file/info');
-const { remove } = require('./file/remove');
-const { update } = require('./file/update');
-const { getDownloadLink } = require('./file/link');
+import { upload } from './file/upload.js';
+import { download } from './file/download.js';
+import { info } from './file/info.js';
+import { remove } from './file/remove.js';
+import { update } from './file/update.js';
+import { getDownloadLink } from './file/link.js';
 
-module.exports = {
-  upload,
-  download,
-  remove,
-  update,
-  info,
-  getDownloadLink,
-};
+export { upload, download, remove, update, info, getDownloadLink };

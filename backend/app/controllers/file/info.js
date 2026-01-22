@@ -1,19 +1,10 @@
 // info.file.controller.js
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-let appConfig;
-let authConfig;
-try {
-  appConfig = loadConfig('app');
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load configuration: ${e.message}`);
-}
-
-const File = db.files;
+import jwt from 'jsonwebtoken';
+const { sign } = jwt;
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { files: File, UserOrg } = db;
 
 /**
  * @swagger
@@ -123,60 +114,24 @@ const info = async (req, res) => {
   });
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
+    const appConfig = loadConfig('app');
+    const authConfig = loadConfig('auth');
 
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await db.box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic'],
-      include: [
-        {
-          model: db.versions,
-          as: 'versions',
-          where: { versionNumber },
-          include: [
-            {
-              model: db.providers,
-              as: 'providers',
-              where: { name: providerName },
-              include: [
-                {
-                  model: db.architectures,
-                  as: 'architectures',
-                  where: { name: architectureName },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    // Entities are pre-loaded by verifyBoxFilePath middleware
+    const { organization: organizationData, box, architecture } = req.entities;
 
     // If the box is public or the requester is a service account, allow access
     if (box.isPublic || isServiceAccount) {
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
-          architectureId: box.versions[0].providers[0].architectures[0].id,
+          architectureId: architecture.id,
         },
       });
 
       if (fileRecord) {
         // Generate a secure download token
-        const downloadToken = jwt.sign(
+        const downloadToken = sign(
           {
             userId,
             isServiceAccount,
@@ -210,7 +165,7 @@ const info = async (req, res) => {
       return res.status(403).send({ message: req.__('files.info.unauthorized') });
     }
 
-    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('files.info.unauthorized') });
     }
@@ -219,13 +174,13 @@ const info = async (req, res) => {
     const fileRecord = await File.findOne({
       where: {
         fileName: 'vagrant.box',
-        architectureId: box.versions[0].providers[0].architectures[0].id,
+        architectureId: architecture.id,
       },
     });
 
     if (fileRecord) {
       // Generate a secure download token
-      const downloadToken = jwt.sign(
+      const downloadToken = sign(
         {
           userId,
           isServiceAccount,
@@ -259,4 +214,4 @@ const info = async (req, res) => {
   }
 };
 
-module.exports = { info };
+export { info };

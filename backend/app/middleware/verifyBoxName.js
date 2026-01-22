@@ -1,11 +1,16 @@
 // verifyBoxName.js
-const db = require('../models');
-const Box = db.box;
+import db from '../models/index.js';
+const { box: Box, organization: Organization } = db;
 
 // Function to check the format of the box name
 const validateBoxName = (req, res, next) => {
   const { name } = req.body;
   const boxNameRegex = /^[A-Za-z0-9.-]+$/;
+
+  // For PUT requests, the name is optional. Only validate if provided.
+  if (req.method === 'PUT' && typeof name === 'undefined') {
+    return next();
+  }
 
   if (!name || !boxNameRegex.test(name)) {
     return res.status(400).send({
@@ -30,13 +35,13 @@ const checkBoxDuplicate = async (req, res, next) => {
     return next();
   }
 
-  if (!newName) {
+  if (!newName && req.method === 'PUT') {
     return next();
   }
 
   // Check if box name exists in this organization
   try {
-    const org = await db.organization.findOne({ where: { name: organization } });
+    const org = await Organization.findOne({ where: { name: organization } });
     if (!org) {
       return res.status(404).send({
         message: `Organization not found with name: ${organization}.`,
@@ -65,9 +70,4 @@ const checkBoxDuplicate = async (req, res, next) => {
   }
 };
 
-const verifyBoxName = {
-  validateBoxName,
-  checkBoxDuplicate,
-};
-
-module.exports = verifyBoxName;
+export { validateBoxName, checkBoxDuplicate };

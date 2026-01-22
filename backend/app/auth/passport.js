@@ -1,17 +1,20 @@
-const passport = require('passport');
-const { Strategy: JwtStrategy, ExtractJwt } = require('passport-jwt');
-const client = require('openid-client');
-const { loadConfig } = require('../utils/config-loader');
-const { log } = require('../utils/Logger');
-const db = require('../models');
-const { handleExternalUser } = require('./external-user-handler');
+import passportLib from 'passport';
+import {
+  calculatePKCECodeChallenge,
+  buildAuthorizationUrl as _buildAuthorizationUrl,
+  authorizationCodeGrant,
+  buildEndSessionUrl as _buildEndSessionUrl,
+  ClientSecretBasic,
+  ClientSecretPost,
+  None,
+  discovery,
+} from 'openid-client';
+import { loadConfig } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
+import db from '../models/index.js'; // This is correct
+import externalUserHandler from './external-user-handler.js';
 
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load configuration: ${e.message}`);
-}
+const { user: User } = db;
 
 /**
  * Passport.js configuration for BoxVault
@@ -21,43 +24,14 @@ try {
 // Store OIDC configurations globally (ARMOR pattern)
 const oidcConfigurations = new Map();
 
-passport.use(
-  'jwt',
-  new JwtStrategy(
-    {
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: authConfig.auth.jwt.jwt_secret.value,
-    },
-    async (payload, done) => {
-      try {
-        const user = await db.user.findByPk(payload.id);
-
-        if (!user || user.suspended) {
-          return done(null, false, { message: 'Invalid token - user not found' });
-        }
-
-        return done(null, {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          isServiceAccount: payload.isServiceAccount || false,
-        });
-      } catch (error) {
-        log.error.error('JWT Strategy error:', error.message);
-        return done(error, false);
-      }
-    }
-  )
-);
-
 // Serialize/deserialize functions (required by passport but not used for JWT)
-passport.serializeUser((user, done) => {
+passportLib.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-passport.deserializeUser(async (userId, done) => {
+passportLib.deserializeUser(async (userId, done) => {
   try {
-    const user = await db.user.findByPk(userId);
+    const user = await User.findByPk(userId);
     done(null, user);
   } catch (error) {
     done(error, null);
@@ -80,13 +54,14 @@ const getOidcConfiguration = providerName => oidcConfigurations.get(providerName
  * @returns {Promise<URL>} Authorization URL
  */
 const buildAuthorizationUrl = async (providerName, redirectUri, state, codeVerifier) => {
+  const authConfig = loadConfig('auth');
   const config = oidcConfigurations.get(providerName);
   if (!config) {
     throw new Error(`OIDC configuration not found for provider: ${providerName}`);
   }
 
   const providerConfig = authConfig.auth.oidc.providers[providerName];
-  const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+  const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
 
   const authParams = {
     redirect_uri: redirectUri,
@@ -101,7 +76,7 @@ const buildAuthorizationUrl = async (providerName, redirectUri, state, codeVerif
     redirectUri,
   });
 
-  return client.buildAuthorizationUrl(config, authParams);
+  return _buildAuthorizationUrl(config, authParams);
 };
 
 /**
@@ -113,6 +88,7 @@ const buildAuthorizationUrl = async (providerName, redirectUri, state, codeVerif
  * @returns {Promise<Object>} User and tokens
  */
 const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier) => {
+  const authConfig = loadConfig('auth');
   const config = oidcConfigurations.get(providerName);
   if (!config) {
     throw new Error(`OIDC configuration not found for provider: ${providerName}`);
@@ -136,7 +112,7 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
 
     let tokens;
     try {
-      tokens = await client.authorizationCodeGrant(config, currentUrl, {
+      tokens = await authorizationCodeGrant(config, currentUrl, {
         expectedState: state,
         pkceCodeVerifier: codeVerifier,
       });
@@ -179,12 +155,19 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
       email: userinfo.email,
     });
 
-    const user = await handleExternalUser(`oidc-${providerName}`, userinfo, db, authConfig);
+    const user = await externalUserHandler.handleExternalUser(
+      `oidc-${providerName}`,
+      userinfo,
+      db,
+      authConfig
+    );
 
-    log.auth.info('OIDC authentication successful', {
-      provider: providerName,
-      username: user.username,
-    });
+    if (user) {
+      log.auth.info('OIDC authentication successful', {
+        provider: providerName,
+        username: user.username,
+      });
+    }
 
     return { user, tokens };
   } catch (error) {
@@ -227,16 +210,16 @@ const buildEndSessionUrl = (providerName, postLogoutRedirectUri, state, idToken)
     endpoint: endSessionEndpoint,
   });
 
-  return client.buildEndSessionUrl(config, endSessionParams);
+  return _buildEndSessionUrl(config, endSessionParams);
 };
 
 /**
  * OIDC Provider Setup - Following ARMOR pattern
  * No passport strategies - uses openid-client API directly
  */
-const setupOidcProviders = async () => {
+const setupOidcProviders = async authConfig => {
   try {
-    await db.user.findOne({ limit: 1 });
+    await User.findOne({ limit: 1 });
   } catch {
     log.app.info('Database not ready yet, waiting for migrations to complete');
     await new Promise(resolve => {
@@ -289,25 +272,20 @@ const setupOidcProviders = async () => {
         let clientAuth;
         switch (authMethod) {
           case 'client_secret_basic':
-            clientAuth = client.ClientSecretBasic(clientSecret);
+            clientAuth = ClientSecretBasic(clientSecret);
             break;
           case 'client_secret_post':
-            clientAuth = client.ClientSecretPost(clientSecret);
+            clientAuth = ClientSecretPost(clientSecret);
             break;
           case 'none':
-            clientAuth = client.None();
+            clientAuth = None();
             break;
           default:
-            clientAuth = client.ClientSecretBasic(clientSecret);
+            clientAuth = ClientSecretBasic(clientSecret);
         }
 
         // Discover OIDC configuration with proper client authentication
-        const oidcConfig = await client.discovery(
-          new URL(issuer),
-          clientId,
-          clientSecret,
-          clientAuth
-        );
+        const oidcConfig = await discovery(new URL(issuer), clientId, clientSecret, clientAuth);
 
         // Store configuration for later use by helper functions
         oidcConfigurations.set(providerName, oidcConfig);
@@ -346,19 +324,21 @@ const setupOidcProviders = async () => {
  * Initialize passport strategies
  */
 const initializeStrategies = async () => {
+  const authConfig = loadConfig('auth');
+
   const enabledStrategies = authConfig.auth?.enabled_strategies?.value || [];
 
   log.app.info('Initializing authentication strategies', { enabledStrategies });
 
   if (enabledStrategies.includes('oidc')) {
-    await setupOidcProviders();
+    await setupOidcProviders(authConfig);
   }
 
   log.app.info('Passport strategies initialized');
 };
 
-module.exports = {
-  passport,
+export {
+  passportLib as passport,
   initializeStrategies,
   getOidcConfiguration,
   buildAuthorizationUrl,

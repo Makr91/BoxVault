@@ -1,9 +1,14 @@
-const express = require('express');
-const { authJwt } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const serviceAccount = require('../controllers/service_account.controller');
+import { Router } from 'express';
+import { authJwt } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  create,
+  findAll,
+  getAvailableOrganizations,
+  delete as deleteServiceAccount,
+} from '../controllers/service_account.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -14,17 +19,13 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post('/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.create);
-router.get('/service-accounts', [authJwt.verifyToken, authJwt.isUser], serviceAccount.findAll);
+router.post('/service-accounts', [authJwt.verifyToken, authJwt.isUser], create);
+router.get('/service-accounts', [authJwt.verifyToken, authJwt.isUser], findAll);
 router.get(
   '/service-accounts/organizations',
   [authJwt.verifyToken, authJwt.isUser],
-  serviceAccount.getAvailableOrganizations
+  getAvailableOrganizations
 );
-router.delete(
-  '/service-accounts/:id',
-  [authJwt.verifyToken, authJwt.isUser],
-  serviceAccount.delete
-);
+router.delete('/service-accounts/:id', [authJwt.verifyToken, authJwt.isUser], deleteServiceAccount);
 
-module.exports = router;
+export default router;

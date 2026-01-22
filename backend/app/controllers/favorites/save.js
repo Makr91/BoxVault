@@ -1,7 +1,7 @@
 // save.js
-const axios = require('axios');
-const { log } = require('../../utils/Logger');
-const { getAuthServerUrl, extractOidcAccessToken } = require('./helpers');
+import axios from 'axios';
+import { log } from '../../utils/Logger.js';
+import { getAuthServerUrl, extractOidcAccessToken } from './helpers.js';
 
 /**
  * @swagger
@@ -35,7 +35,7 @@ const { getAuthServerUrl, extractOidcAccessToken } = require('./helpers');
  *       500:
  *         description: Failed to save favorites to auth server
  */
-exports.saveFavorites = async (req, res) => {
+export const saveFavorites = async (req, res) => {
   try {
     const oidcAccessToken = extractOidcAccessToken(req);
 
@@ -46,7 +46,7 @@ exports.saveFavorites = async (req, res) => {
     }
 
     const authServerUrl = getAuthServerUrl(req);
-    const favoritesJson = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    const favoritesJson = JSON.stringify(req.body);
 
     log.auth.debug('Saving favorites to auth server', {
       authServerUrl,

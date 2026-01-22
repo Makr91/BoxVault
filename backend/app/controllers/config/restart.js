@@ -1,5 +1,5 @@
 // restart.js
-const { log } = require('../../utils/Logger');
+import { log } from '../../utils/Logger.js';
 
 /**
  * @swagger
@@ -51,7 +51,7 @@ const { log } = require('../../utils/Logger');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.restartServer = (req, res) => {
+export const restartServer = (req, res) => {
   void req;
   log.app.info('Initiating server restart via process exit...');
 
@@ -61,10 +61,6 @@ exports.restartServer = (req, res) => {
   // Close the response to ensure it's sent
   res.end();
 
-  // Give a brief moment for the response to be sent
-  setTimeout(() => {
-    log.app.info('Exiting process to trigger SystemD restart...');
-    process.exitCode = 1; // EXIT_FAILURE - triggers SystemD Restart=on-failure
-    // Process will exit naturally after event loop empties
-  }, 100);
+  log.app.info('Exiting process to trigger SystemD restart...');
+  process.exit(1); // eslint-disable-line no-process-exit
 };

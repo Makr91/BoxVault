@@ -1,18 +1,7 @@
 // findall.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-
-const Organization = db.organization;
-const { Op } = db.Sequelize;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import db from '../../models/index.js'; // Keep this for Sequelize
+const { organization: Organization, user: User, box: Box, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -58,24 +47,30 @@ try {
  *               $ref: '#/components/schemas/Error'
  */
 // Retrieve all Organizations from the database.
-exports.findAll = async (req, res) => {
+export const findAll = async (req, res) => {
   const { organization } = req.query;
-  const token = req.headers['x-access-token'];
-  let userId = null;
-
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-      userId = decoded.id;
-    } catch {
-      return res.status(401).send({ message: req.__('auth.unauthorized') });
-    }
-  }
+  const { userId } = req;
 
   try {
     const condition = organization ? { name: { [Op.like]: `%${organization}%` } } : null;
-    const organizations = await Organization.findAll({ where: condition });
+    const organizations = await Organization.findAll({
+      where: condition,
+      include: [
+        {
+          model: User,
+          as: 'members',
+          attributes: ['id'],
+          include: [
+            {
+              model: Box,
+              as: 'box',
+              attributes: ['isPublic', 'userId'],
+              required: false,
+            },
+          ],
+        },
+      ],
+    });
 
     const result = organizations.map(org => ({
       ...org.toJSON(),

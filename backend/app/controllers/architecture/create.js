@@ -1,8 +1,13 @@
 // create.js
-const db = require('../../models');
-
-const Architecture = db.architectures;
-const Provider = db.providers;
+import db from '../../models/index.js';
+const {
+  architectures: Architecture,
+  providers: Provider,
+  organization: _organization,
+  box: _box,
+  UserOrg,
+  versions,
+} = db;
 
 /**
  * @swagger
@@ -85,33 +90,22 @@ const Provider = db.providers;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
-  const { name, defaultBox } = req.body;
+  const { name, description, defaultBox } = req.body;
 
   try {
-    const organizationData = await db.organization.findOne({
+    // Get entities for permission check and provider ID
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
     });
 
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
-
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canCreate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
@@ -121,29 +115,14 @@ exports.create = async (req, res) => {
       });
     }
 
-    const version = await db.versions.findOne({
+    // Get version and provider (already validated by middleware)
+    const version = await versions.findOne({
       where: { versionNumber, boxId: box.id },
     });
-
-    if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
-      });
-    }
 
     const provider = await Provider.findOne({
       where: { name: providerName, versionId: version.id },
     });
-
-    if (!provider) {
-      return res.status(404).send({
-        message: req.__('providers.providerNotFoundInVersion', {
-          providerName,
-          versionNumber,
-          boxId,
-        }),
-      });
-    }
 
     if (defaultBox) {
       // Set all other architectures' defaultBox to false
@@ -152,11 +131,12 @@ exports.create = async (req, res) => {
 
     const architecture = await Architecture.create({
       name,
+      description,
       defaultBox: defaultBox || false,
       providerId: provider.id,
     });
 
-    return res.send(architecture);
+    return res.status(201).send(architecture);
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('architectures.create.error'),

@@ -1,9 +1,24 @@
-const express = require('express');
-const { authJwt, verifyOrganization, verifyOrgAccess, sessionAuth } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const organization = require('../controllers/organization.controller');
+import { Router } from 'express';
+import { authJwt, verifyOrganization, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  discoverOrganizations,
+  findAllWithUsers,
+  findOneWithUsers,
+  findAll,
+  findOne,
+  create,
+  update,
+  delete as deleteOrg,
+  suspendOrganization,
+  resumeOrganization,
+  updateAccessMode,
+  getUserOrgRole,
+  updateUserOrgRole,
+  removeUserFromOrg,
+} from '../controllers/organization.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -15,28 +30,24 @@ router.use((req, res, next) => {
 });
 
 // Public organization discovery (uses sessionAuth to check if admin)
-router.get('/organizations/discover', sessionAuth, organization.discoverOrganizations);
+router.get('/organizations/discover', sessionAuth, discoverOrganizations);
 
 // Admin-only organization management (global)
 router.get(
   '/organizations-with-users',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  organization.findAllWithUsers
+  findAllWithUsers
 );
 
 router.get(
   '/organization/:organization/users',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
-  organization.findOneWithUsers
+  findOneWithUsers
 );
 
-router.get('/organization', [authJwt.verifyToken, authJwt.isUser], organization.findAll);
+router.get('/organization', [authJwt.verifyToken, authJwt.isUser], findAll);
 
-router.get(
-  '/organization/:organization',
-  [authJwt.verifyToken, authJwt.isUser],
-  organization.findOne
-);
+router.get('/organization/:organization', [authJwt.verifyToken, authJwt.isUser], findOne);
 
 router.post(
   '/organization',
@@ -46,7 +57,7 @@ router.post(
     verifyOrganization.validateOrganization,
     verifyOrganization.checkOrganizationDuplicate,
   ],
-  organization.create
+  create
 );
 
 router.put(
@@ -57,50 +68,50 @@ router.put(
     verifyOrgAccess.isOrgModeratorOrAdmin,
     verifyOrganization.validateOrganization,
   ],
-  organization.update
+  update
 );
 
 router.delete(
   '/organization/:organization',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  organization.delete
+  deleteOrg
 );
 
 router.put(
   '/organization/:organization/suspend',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  organization.suspendOrganization
+  suspendOrganization
 );
 
 router.put(
   '/organization/:organization/resume',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  organization.resumeOrganization
+  resumeOrganization
 );
 
 // Organization-specific user management
 router.put(
   '/organization/:organization/access-mode',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
-  organization.updateAccessMode
+  updateAccessMode
 );
 
 router.get(
   '/organization/:organization/users/:userId/role',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModerator],
-  organization.getUserOrgRole
+  getUserOrgRole
 );
 
 router.put(
   '/organization/:organization/users/:userId/role',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
-  organization.updateUserOrgRole
+  updateUserOrgRole
 );
 
 router.delete(
-  '/organization/:organization/users/:userId',
+  '/organization/:organization/members/:userId',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
-  organization.removeUserFromOrg
+  removeUserFromOrg
 );
 
-module.exports = router;
+export default router;

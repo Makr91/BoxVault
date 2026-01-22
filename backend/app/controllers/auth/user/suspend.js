@@ -1,7 +1,6 @@
 // suspend.js
-const db = require('../../../models');
-
-const User = db.user;
+import db from '../../../models/index.js';
+const { user: User } = db;
 
 /**
  * @swagger
@@ -43,7 +42,7 @@ const User = db.user;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.suspendUser = async (req, res) => {
+export const suspendUser = async (req, res) => {
   const { userId } = req.params;
   try {
     const user = await User.findByPk(userId);

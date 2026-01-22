@@ -3,7 +3,7 @@
  * Junction table for many-to-many relationship between Users and Organizations
  * Stores per-organization roles for users
  */
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const UserOrg = sequelize.define(
     'UserOrg',
     {
@@ -119,27 +119,17 @@ module.exports = (sequelize, Sequelize) => {
    * @param {number} userId - User ID
    * @returns {Promise<UserOrg[]>}
    */
-  UserOrg.getUserOrganizations = async function (userId) {
-    // Use raw query approach to avoid association issues
-    const results = await this.findAll({
+  UserOrg.getUserOrganizations = function (userId) {
+    return this.findAll({
       where: { user_id: userId },
+      include: [{ model: sequelize.models.organizations, as: 'organization' }],
       order: [
         ['is_primary', 'DESC'],
         ['joined_at', 'ASC'],
       ],
+      raw: true,
+      nest: true,
     });
-
-    // Load organizations in parallel
-    const db = require('./index');
-    await Promise.all(
-      results.map(async result => {
-        result.organization = await db.organization.findByPk(result.organization_id, {
-          attributes: ['id', 'name', 'description', 'access_mode', 'emailHash'],
-        });
-      })
-    );
-
-    return results;
   };
 
   /**
@@ -150,12 +140,9 @@ module.exports = (sequelize, Sequelize) => {
   UserOrg.getPrimaryOrganization = function (userId) {
     return this.findOne({
       where: { user_id: userId, is_primary: true },
-      include: [
-        {
-          model: sequelize.models.organization,
-          as: 'organization',
-        },
-      ],
+      include: [{ model: sequelize.models.organizations, as: 'organization' }],
+      raw: true,
+      nest: true,
     });
   };
 
@@ -221,7 +208,7 @@ module.exports = (sequelize, Sequelize) => {
       where: { organization_id: organizationId },
       include: [
         {
-          model: sequelize.models.user,
+          model: sequelize.models.users,
           as: 'user',
           attributes: ['id', 'username', 'email', 'verified', 'suspended'],
         },

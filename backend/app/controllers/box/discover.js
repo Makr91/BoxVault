@@ -1,7 +1,6 @@
 // discover.js
-const db = require('../../models');
-
-const Box = db.box;
+import db from '../../models/index.js';
+const { box: Box, versions, providers, architectures, files, user, organization } = db;
 
 /**
  * @swagger
@@ -28,7 +27,7 @@ const Box = db.box;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.discoverAll = async (req, res) => {
+export const discoverAll = async (req, res) => {
   void req;
   try {
     // Home page only shows published AND public boxes (for everyone)
@@ -36,19 +35,19 @@ exports.discoverAll = async (req, res) => {
       where: { published: true, isPublic: true },
       include: [
         {
-          model: db.versions,
+          model: versions,
           as: 'versions',
           include: [
             {
-              model: db.providers,
+              model: providers,
               as: 'providers',
               include: [
                 {
-                  model: db.architectures,
+                  model: architectures,
                   as: 'architectures',
                   include: [
                     {
-                      model: db.files,
+                      model: files,
                       as: 'files',
                     },
                   ],
@@ -58,11 +57,11 @@ exports.discoverAll = async (req, res) => {
           ],
         },
         {
-          model: db.user,
+          model: user,
           as: 'user',
           include: [
             {
-              model: db.organization,
+              model: organization,
               as: 'primaryOrganization',
               attributes: ['id', 'name', 'emailHash'],
             },

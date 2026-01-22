@@ -1,8 +1,8 @@
 // helpers.js
-const fs = require('fs');
-const yaml = require('js-yaml');
-const { getConfigPath } = require('../../utils/config-loader');
-const { atomicWriteFile } = require('../../utils/atomic-file-writer');
+import fs from 'fs';
+import { load, dump } from 'js-yaml';
+import { getConfigPath } from '../../utils/config-loader.js';
+import { atomicWriteFile } from '../../utils/atomic-file-writer.js';
 
 const configPaths = {
   app: getConfigPath('app'),
@@ -20,7 +20,7 @@ const readConfig = filePath =>
         return reject(err);
       }
       try {
-        const yamlData = yaml.load(data);
+        const yamlData = load(data);
         return resolve(yamlData);
       } catch (parseErr) {
         return reject(parseErr);
@@ -29,7 +29,7 @@ const readConfig = filePath =>
   });
 
 const writeConfig = (filePath, data) => {
-  const yamlData = yaml.dump(data);
+  const yamlData = dump(data);
   return atomicWriteFile(filePath, yamlData, 'utf8');
 };
 
@@ -39,10 +39,4 @@ const setAuthorizedSetupToken = token => {
   authorizedSetupToken = token;
 };
 
-module.exports = {
-  configPaths,
-  readConfig,
-  writeConfig,
-  getAuthorizedSetupToken,
-  setAuthorizedSetupToken,
-};
+export { configPaths, readConfig, writeConfig, getAuthorizedSetupToken, setAuthorizedSetupToken };

@@ -7,18 +7,11 @@ export default [
   // Ignore patterns
   {
     ignores: [
-      'web/**/*', // Frontend has its own ESLint config
       'node_modules/**/*', // Dependencies
       'app/views/**/*', // Backend views (generated frontend files)
       'scripts/**/*', // Build/utility scripts
-      'dist/**/*', // Build output
-      'build/**/*', // Build output
       'coverage/**/*', // Test coverage
       '*.min.js', // Minified files
-      'packaging/**/*', // Packaging files
-      'docs/**/*', // Documentation
-      '_sass/**/*', // Jekyll sass files
-      'logs/**/*', // Log files
       '**/*.log', // Log files
     ],
   },
@@ -187,7 +180,6 @@ export default [
       },
     },
     rules: {
-      // Relax rules for test files
       'no-console': 'off',
       'no-unused-expressions': 'off',
       'max-lines': 'off',

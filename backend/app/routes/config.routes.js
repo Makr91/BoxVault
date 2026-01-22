@@ -1,10 +1,16 @@
 // config.routes.js
-const express = require('express');
-const { authJwt } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const configController = require('../controllers/config.controller');
+import { Router } from 'express';
+import { authJwt } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  getGravatarConfig,
+  getTicketConfig,
+  getConfig,
+  updateConfig,
+  restartServer,
+} from '../controllers/config.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -15,22 +21,22 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/config/gravatar', configController.getGravatarConfig);
-router.get('/config/ticket', configController.getTicketConfig);
+router.get('/config/gravatar', getGravatarConfig);
+router.get('/config/ticket', getTicketConfig);
 router.get(
   '/config/:configName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  configController.getConfig
+  getConfig
 );
 router.put(
   '/config/:configName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  configController.updateConfig
+  updateConfig
 );
 router.post(
   '/config/restart',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  configController.restartServer
+  restartServer
 );
 
-module.exports = router;
+export default router;

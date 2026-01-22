@@ -1,6 +1,6 @@
 // get.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
 
 /**
  * @swagger
@@ -42,7 +42,7 @@ const { log } = require('../../utils/Logger');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.getConfig = (req, res) => {
+export const getConfig = (req, res) => {
   const { configName } = req.params;
   try {
     const data = loadConfig(configName);

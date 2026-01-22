@@ -113,6 +113,15 @@
     "search": "Buscar",
     "back": "Atrás"
   },
+  "table": {
+    "name": "Nombre",
+    "organization": "Organización",
+    "visibility": "Visibilidad",
+    "size": "Tamaño",
+    "checksum": "Suma de comprobación",
+    "uploaded": "Subido",
+    "actions": "Acciones"
+  },
   "messages": {
     "noResultsFound": "No se encontraron resultados",
     "searchFailed": "Búsqueda fallida",
@@ -127,11 +136,12 @@
     "failedToUpdateFavorites": "Error al actualizar favoritos"
   },
   "about": {
+    "pageTitle": "Acerca de",
     "version": "Versión",
     "keyFeatures": "Características Clave",
     "features": {
       "userAuthentication": "Autenticación de Usuario",
-      "boxManagement": "Gestión de Cajas",
+      "boxManagement": "Gestión de Boxes",
       "versionControl": "Control de Versiones",
       "organizationSupport": "Soporte de Organización",
       "apiDocumentation": "Documentación de API",
@@ -177,7 +187,7 @@
     },
     "fallbackTitle": "Proyecto BoxVault",
     "fallbackDescription": "Una solución auto-alojada para gestionar plantillas de VM.",
-    "fallbackGoal": "Proporcionando una plataforma robusta para cajas Vagrant."
+    "fallbackGoal": "Proporcionando una plataforma robusta para Boxes Vagrant."
   },
   "admin": {
     "pageTitle": "Admin",
@@ -189,7 +199,7 @@
     },
     "storage": {
       "title": "Uso de Almacenamiento",
-      "boxStorage": "Almacenamiento de Cajas",
+      "boxStorage": "Almacenamiento de Boxes",
       "isoStorage": "Almacenamiento de ISOs",
       "pathNotConfigured": "La ruta {{path}} no está configurada o accesible.",
       "used": "Usado: {{percent}}%",
@@ -227,7 +237,7 @@
   },
   "orgUserManager": {
     "searchPlaceholder": "Buscar organizaciones por nombre o código...",
-    "totalBoxes": "Cajas Totales: {{count}}",
+    "totalBoxes": "Boxes Totales: {{count}}",
     "rename": {
       "sameNameError": "El nuevo nombre es el mismo que el anterior. Por favor ingresa un nombre diferente.",
       "orgExistsError": "Ya existe una organización con este nombre. Por favor elige un nombre diferente.",
@@ -235,7 +245,7 @@
       "error": "Error al renombrar la organización. Por favor intenta de nuevo."
     },
     "user": {
-      "boxes": "Cajas: {{count}}",
+      "boxes": "Boxes: {{count}}",
       "roles": "Roles",
       "removeFromOrgTitle": "Eliminar {{username}} de {{orgName}}",
       "deleteUserTitle": "Eliminar permanentemente {{username}} de BoxVault"
@@ -421,11 +431,11 @@
     "selectFile": "Por favor selecciona un archivo antes de añadir una arquitectura.",
     "enterName": "Por favor ingresa un nombre de arquitectura.",
     "uploadStarting": "Iniciando carga de archivo...",
-    "uploadAssembling": "Fragmentos de archivo subidos exitosamente. Ahora ensamblando en archivo final de caja.\nEste proceso puede tomar varios minutos dependiendo del tamaño del archivo.\nPor favor mantén esta página abierta hasta que el ensamblaje esté completo.",
-    "assembling": "Ensamblando fragmentos de archivo en archivo final de caja, esto puede tomar varios minutos...",
+    "uploadAssembling": "Fragmentos de archivo subidos exitosamente. Ahora ensamblando en archivo final de box.\nEste proceso puede tomar varios minutos dependiendo del tamaño del archivo.\nPor favor mantén esta página abierta hasta que el ensamblaje esté completo.",
+    "assembling": "Ensamblando fragmentos de archivo en archivo final de box, esto puede tomar varios minutos...",
     "uploadComplete": "¡Carga y ensamblaje de archivo completados exitosamente!",
-    "defaultBox": "Caja Predeterminada",
-    "chooseFile": "Elegir Archivo de Caja",
+    "defaultBox": "Box Predeterminada",
+    "chooseFile": "Elegir Archivo de Box",
     "selected": "Seleccionado: {{name}} ({{size}})",
     "fileSize": "Tamaño de Archivo",
     "uploaded": "Subido",
@@ -436,29 +446,29 @@
     "checksumCopied": "¡Checksum copiado al portapapeles!"
   },
   "box": {
-    "notFound": "Caja No Encontrada",
-    "exists": "Ya existe una caja con este nombre. Por favor elige un nombre diferente.",
-    "updated": "¡La caja fue actualizada exitosamente!",
-    "updateError": "Ocurrió un error al actualizar la caja.",
-    "deleted": "Caja eliminada exitosamente",
-    "deleteError": "Ocurrió un error al eliminar la caja.",
-    "created": "Caja creada exitosamente.",
-    "createError": "Ocurrió un error al crear la caja.",
-    "details": "Detalles de la Caja",
-    "name": "Nombre de la caja",
+    "notFound": "Box No Encontrada",
+    "exists": "Ya existe una box con este nombre. Por favor elige un nombre diferente.",
+    "updated": "¡La box fue actualizada exitosamente!",
+    "updateError": "Ocurrió un error al actualizar la box.",
+    "deleted": "Box eliminada exitosamente",
+    "deleteError": "Ocurrió un error al eliminar la box.",
+    "created": "Box creada exitosamente.",
+    "createError": "Ocurrió un error al crear la box.",
+    "details": "Detalles de la Box",
+    "name": "Nombre de la box",
     "status": "Estado",
     "visibility": "Visibilidad",
     "description": "Descripción",
     "optional": "(Opcional)",
-    "shortDescription": "La descripción corta se usa para describir la caja.",
-    "visibilityHint": "Hacer una caja privada evita que los usuarios accedan a ella a menos que se les dé permiso.",
+    "shortDescription": "La descripción corta se usa para describir la box.",
+    "visibilityHint": "Hacer una box privada evita que los usuarios accedan a ella a menos que se les dé permiso.",
     "cicd": {
       "title": "Integración CI/CD",
-      "connect": "Conecta tu caja a GitHub Actions para insignias de estado de construcción automatizadas.",
+      "connect": "Conecta tu box a GitHub Actions para insignias de estado de construcción automatizadas.",
       "buildStatus": "Estado de Construcción",
       "repository": "Repositorio",
       "repositoryPlaceholder": "propietario/nombre-repositorio",
-      "repositoryHint": "Formato: propietario/nombre-repositorio (ej., miorg/mi-caja-vagrant)",
+      "repositoryHint": "Formato: propietario/nombre-repositorio (ej., miorg/mi-box-vagrant)",
       "workflow": "Archivo de Flujo de Trabajo",
       "workflowPlaceholder": "build.yml",
       "workflowHint": "Nombre del archivo de flujo de trabajo de GitHub Actions (ej., build.yml, ci.yaml)",
@@ -470,39 +480,39 @@
     },
     "publish": "Publicar",
     "unpublish": "Despublicar",
-    "versions": "Versiones para Caja: {{name}}",
-    "create": "Crear Nueva Caja",
-    "createButton": "Crear Caja",
+    "versions": "Versiones para Box: {{name}}",
+    "create": "Crear Nueva Box",
+    "createButton": "Crear Box",
     "removeAll": "Eliminar Todo",
-    "removeAllSuccess": "Todas las cajas eliminadas exitosamente.",
-    "removeAllError": "Error al eliminar todas las cajas.",
+    "removeAllSuccess": "Todas las Boxes eliminadas exitosamente.",
+    "removeAllError": "Error al eliminar todas las Boxes.",
     "filter": "Filtrar",
     "templateList": "Lista de Plantillas",
-    "noBoxes": "No se encontraron cajas",
+    "noBoxes": "No se encontraron Boxes",
     "organization": {
       "errors": {
-        "retrievePublic": "Error al recuperar cajas públicas.",
-        "retrieveOrg": "Error al recuperar cajas de la organización.",
-        "removeAll": "Error al eliminar todas las cajas.",
-        "filter": "Error al filtrar cajas.",
-        "boxCreate": "Ocurrió un error al crear la caja."
+        "retrievePublic": "Error al recuperar Boxes públicas.",
+        "retrieveOrg": "Error al recuperar Boxes de la organización.",
+        "removeAll": "Error al eliminar todas las Boxes.",
+        "filter": "Error al filtrar Boxes.",
+        "boxCreate": "Ocurrió un error al crear la box."
       },
       "messages": {
-        "removeAllSuccess": "Todas las cajas eliminadas exitosamente.",
-        "boxCreated": "Caja creada exitosamente."
+        "removeAllSuccess": "Todas las Boxes eliminadas exitosamente.",
+        "boxCreated": "Box creada exitosamente."
       },
       "buttons": {
         "leave": "Dejar Organización",
-        "createBox": "Crear Caja",
-        "createNewBox": "Crear Nueva Caja",
+        "createBox": "Crear Box",
+        "createNewBox": "Crear Nueva Box",
         "removeAll": "Eliminar Todo"
       },
       "headers": {
-        "createNewBox": "Crear Nueva Caja",
+        "createNewBox": "Crear Nueva Box",
         "templateList": "Lista de Plantillas"
       },
       "table": {
-        "box": "Caja",
+        "box": "Box",
         "status": "Estado",
         "public": "Público",
         "created": "Creado",
@@ -510,7 +520,14 @@
         "versions": "# Versiones",
         "providers": "Proveedores",
         "architectures": "Arquitecturas",
-        "noBoxes": "No se encontraron cajas"
+        "noBoxes": "No se encontraron Boxes",
+        "name": "Nombre",
+        "organization": "Organización",
+        "visibility": "Visibilidad",
+        "size": "Tamaño",
+        "checksum": "Suma de comprobación",
+        "uploaded": "Subido",
+        "actions": "Acciones"
       },
       "status": {
         "published": "Publicado",
@@ -613,7 +630,7 @@
     },
     "users": {
       "title": "Usuarios en {{organization}}",
-      "boxes": "Cajas",
+      "boxes": "Boxes",
       "roles": "Roles",
       "promote": "Promover",
       "demote": "Degradar"
@@ -760,7 +777,10 @@
       "error": "Un sistema tiene un problema",
       "warning": "Uno o más sistemas tienen advertencias",
       "database": "Base de Datos",
-      "storage": "Almacenamiento"
+      "storage": "Almacenamiento",
+      "storageBoxes": "Almacenamiento (Boxes)",
+      "storageIsos": "Almacenamiento (ISOs)",
+      "oidcProviders": "Proveedores OIDC"
     }
   },
   "configField": {

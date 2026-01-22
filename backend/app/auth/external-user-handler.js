@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const { log } = require('../utils/Logger');
+import { createHash } from 'crypto';
+import { log } from '../utils/Logger.js';
 
 /**
  * Generate a random organization code
@@ -66,9 +66,9 @@ const determineUserOrganization = async (email, db, authConfig) => {
 
       // Find matching domain first, then do single await lookup
       let matchedOrgName = null;
-      for (const [, domains] of Object.entries(mappings)) {
+      for (const [orgName, domains] of Object.entries(mappings)) {
         if (Array.isArray(domains) && domains.includes(domain)) {
-          matchedOrgName = domain;
+          matchedOrgName = orgName;
           break;
         }
       }
@@ -221,7 +221,7 @@ const createNewExternalUser = async (
     username: profile.displayName || profile.cn || email.split('@')[0],
     email,
     password: 'external',
-    emailHash: crypto.createHash('sha256').update(email.toLowerCase()).digest('hex'),
+    emailHash: createHash('sha256').update(email.toLowerCase()).digest('hex'),
     verified: true,
     primary_organization_id: organizationId,
     authProvider: baseProvider,
@@ -317,7 +317,7 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
   }
 };
 
-module.exports = {
+export default {
   handleExternalUser,
   determineUserOrganization,
   generateOrgCode,

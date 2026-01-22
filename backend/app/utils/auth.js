@@ -1,15 +1,11 @@
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('./config-loader');
-const { log } = require('./Logger');
+import jwt from 'jsonwebtoken';
+import { loadConfig } from './config-loader.js';
+import { log } from './Logger.js';
 
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+const { verify, sign } = jwt;
 
 const checkSessionAuth = async req => {
+  const authConfig = loadConfig('auth');
   const token = req.headers['x-access-token'];
 
   if (!token) {
@@ -18,7 +14,7 @@ const checkSessionAuth = async req => {
 
   try {
     const decoded = await new Promise((resolve, reject) => {
-      jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
+      verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
         if (err) {
           reject(err);
         } else {
@@ -36,9 +32,10 @@ const checkSessionAuth = async req => {
 };
 
 const verifyDownloadToken = async token => {
+  const authConfig = loadConfig('auth');
   try {
     return await new Promise((resolve, reject) => {
-      jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
+      verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
         if (err) {
           reject(err);
         } else {
@@ -52,7 +49,9 @@ const verifyDownloadToken = async token => {
   }
 };
 
-const generateDownloadToken = (payload, expiresIn = '1h') =>
-  jwt.sign(payload, authConfig.auth.jwt.jwt_secret.value, { expiresIn });
+const generateDownloadToken = (payload, expiresIn = '1h') => {
+  const authConfig = loadConfig('auth');
+  return sign(payload, authConfig.auth.jwt.jwt_secret.value, { expiresIn });
+};
 
-module.exports = { checkSessionAuth, verifyDownloadToken, generateDownloadToken };
+export { checkSessionAuth, verifyDownloadToken, generateDownloadToken };

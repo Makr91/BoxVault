@@ -2,7 +2,7 @@
  * Request Model
  * Handles organization join requests from users
  */
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const Request = sequelize.define(
     'Request',
     {
@@ -140,7 +140,7 @@ module.exports = (sequelize, Sequelize) => {
    * @returns {Promise<Request[]>}
    */
   Request.getPendingRequests = async function (organizationId) {
-    const db = require('./index');
+    const { default: db } = await import('./index.js');
     const results = await this.findAll({
       where: { organization_id: organizationId, status: 'pending' },
       include: [
@@ -162,7 +162,7 @@ module.exports = (sequelize, Sequelize) => {
    * @returns {Promise<Request[]>}
    */
   Request.getUserPendingRequests = async function (userId) {
-    const db = require('./index');
+    const { default: db } = await import('./index.js');
     const results = await this.findAll({
       where: { user_id: userId, status: 'pending' },
       order: [['created_at', 'DESC']],

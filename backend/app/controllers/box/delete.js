@@ -1,10 +1,9 @@
 // delete.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
 
-const Organization = db.organization;
 const Box = db.box;
 
 /**
@@ -53,33 +52,22 @@ const Box = db.box;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.delete = async (req, res) => {
+const deleteBox = async (req, res) => {
   const { organization, name } = req.params;
 
   try {
-    const organizationData = await Organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFound'),
-      });
-    }
-
     // Find the box first to check ownership
     const box = await Box.findOne({
-      where: { name, organizationId: organizationData.id },
+      where: { name, organizationId: req.organizationId },
     });
 
     if (!box) {
-      throw new Error(req.__('boxes.boxNotFound'));
+      return res.status(404).send({ message: req.__('boxes.boxNotFound') });
     }
 
     // Check if user is owner OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canDelete = isOwner || ['moderator', 'admin'].includes(req.userOrgRole);
 
     if (!canDelete) {
       return res.status(403).send({
@@ -94,19 +82,21 @@ exports.delete = async (req, res) => {
     if (deleted) {
       // Delete the box's directory
       const boxPath = getSecureBoxPath(organization, name);
-      fs.rm(boxPath, { recursive: true, force: true }, err => {
-        if (err) {
-          log.app.info(`Could not delete the box directory: ${err}`);
-        }
-      });
+      try {
+        await fs.promises.rm(boxPath, { recursive: true, force: true });
+      } catch (err) {
+        log.app.info(`Could not delete the box directory: ${err}`);
+      }
 
       return res.send({ message: req.__('boxes.boxDeleted') });
     }
 
-    throw new Error(req.__('boxes.boxNotFound'));
+    return res.status(404).send({ message: req.__('boxes.boxNotFound') });
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('errors.operationFailed'),
     });
   }
 };
+
+export { deleteBox as delete };

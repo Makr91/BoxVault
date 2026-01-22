@@ -46,11 +46,11 @@ const Footer = () => {
       case "database":
         return t("footer.health.database");
       case "storage_boxes":
-        return "Storage (Boxes)";
+        return t("footer.health.storageBoxes");
       case "storage_isos":
-        return "Storage (ISOs)";
+        return t("footer.health.storageIsos");
       case "oidc_providers":
-        return "OIDC Providers";
+        return t("footer.health.oidcProviders");
       default:
         return key.charAt(0).toUpperCase() + key.slice(1);
     }

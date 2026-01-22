@@ -1,26 +1,75 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const responseTime = require('response-time');
-const { loadConfig, getConfigPath, getSetupTokenPath } = require('./app/utils/config-loader');
-const { log, morganMiddleware } = require('./app/utils/Logger');
-const crypto = require('crypto');
-const http = require('http');
-const https = require('https');
-const session = require('express-session');
-const SequelizeStore = require('connect-session-sequelize')(session.Store);
-const { passport, initializeStrategies } = require('./app/auth/passport');
-const lusca = require('lusca');
-const { rateLimit } = require('express-rate-limit');
+import express from 'express';
+import cors from 'cors';
+import { existsSync, mkdirSync, chmodSync, readFileSync, writeFileSync, watch } from 'fs';
+import { isAbsolute, join, dirname, basename } from 'path';
+import { fileURLToPath } from 'url';
+import responseTime from 'response-time';
+import { loadConfig, getConfigPath, getSetupTokenPath } from './app/utils/config-loader.js';
+import { log, morganMiddleware } from './app/utils/Logger.js';
+import { randomBytes, constants } from 'crypto';
+import { createServer } from 'http';
+import { createServer as _createServer } from 'https';
+import session from 'express-session';
+import connectSessionSequelize from 'connect-session-sequelize';
+import { passport, initializeStrategies } from './app/auth/passport.js';
+import lusca from 'lusca';
+import { rateLimit } from 'express-rate-limit';
+import { execSync } from 'child_process';
+
+// Import routes and middleware
+import {
+  vagrantHandler,
+  i18nMiddleware,
+  rateLimiter,
+  errorHandler,
+} from './app/middleware/index.js';
+import db from './app/models/index.js';
+import healthRoutes from './app/routes/health.routes.js';
+import authRoutes from './app/routes/auth.routes.js';
+import mailRoutes from './app/routes/mail.routes.js';
+import configRoutes from './app/routes/config.routes.js';
+import userRoutes from './app/routes/user.routes.js';
+import requestRoutes from './app/routes/request.routes.js';
+import boxRouter from './app/routes/box.routes.js';
+import fileRoutes from './app/routes/file.routes.js';
+import versionRoutes from './app/routes/version.routes.js';
+import organizationRoutes from './app/routes/organization.routes.js';
+import providerRoutes from './app/routes/provider.routes.js';
+import architectureRoutes from './app/routes/architecture.routes.js';
+import serviceAccountRoutes from './app/routes/service_account.routes.js';
+import favoritesRoutes from './app/routes/favorites.routes.js';
+import setupRoutes from './app/routes/setup.routes.js';
+import sslRoutes from './app/routes/ssl.routes.js';
+import isoRoutes from './app/routes/iso.routes.js';
+import systemRoutes from './app/routes/system.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 global.__basedir = __dirname;
+
+const { json, urlencoded } = express;
+const SequelizeStore = connectSessionSequelize(session.Store);
+const { csrf } = lusca;
 
 let boxConfig;
 try {
   boxConfig = loadConfig('app');
 } catch (e) {
   log.app.error('Failed to load box configuration', { error: e.message });
+  // Fallback defaults to prevent crash during tests or misconfiguration
+  boxConfig = {
+    boxvault: {
+      origin: { value: 'http://localhost:3000' },
+      box_max_file_size: { value: 1 },
+      api_listen_port_unencrypted: { value: 5000 },
+      api_listen_port_encrypted: { value: 5001 },
+    },
+    ssl: {
+      cert_path: { value: '' },
+      key_path: { value: '' },
+    },
+  };
 }
 
 const dbConfigPath = getConfigPath('db');
@@ -40,10 +89,10 @@ const resolveSSLPath = filePath => {
   if (!filePath) {
     return null;
   }
-  if (path.isAbsolute(filePath)) {
+  if (isAbsolute(filePath)) {
     return filePath;
   }
-  return path.join(__dirname, 'app', 'config', 'ssl', filePath);
+  return join(__dirname, 'app', 'config', 'ssl', filePath);
 };
 
 const isSSLConfigured = () => {
@@ -53,7 +102,7 @@ const isSSLConfigured = () => {
 
   const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
   const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
-  return fs.existsSync(certPath) && fs.existsSync(keyPath);
+  return existsSync(certPath) && existsSync(keyPath);
 };
 
 /**
@@ -68,7 +117,7 @@ const generateSSLCertificatesIfNeeded = () => {
   const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
 
   // Check if certificates already exist
-  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+  if (existsSync(keyPath) && existsSync(certPath)) {
     log.app.info('SSL certificates already exist, skipping generation', { keyPath, certPath });
     return false; // Certificates exist, no need to generate
   }
@@ -76,13 +125,10 @@ const generateSSLCertificatesIfNeeded = () => {
   try {
     log.app.info('Generating SSL certificates...', { keyPath, certPath });
 
-    // Import child_process for running openssl
-    const { execSync } = require('child_process');
-
     // Ensure SSL directory exists
-    const sslDir = path.dirname(keyPath);
-    if (!fs.existsSync(sslDir)) {
-      fs.mkdirSync(sslDir, { recursive: true, mode: 0o700 });
+    const sslDir = dirname(keyPath);
+    if (!existsSync(sslDir)) {
+      mkdirSync(sslDir, { recursive: true, mode: 0o700 });
     }
 
     // Generate SSL certificate using OpenSSL
@@ -91,8 +137,8 @@ const generateSSLCertificatesIfNeeded = () => {
     execSync(opensslCmd, { stdio: 'pipe' });
 
     // Set proper permissions (readable by current user only)
-    fs.chmodSync(keyPath, 0o600);
-    fs.chmodSync(certPath, 0o600);
+    chmodSync(keyPath, 0o600);
+    chmodSync(certPath, 0o600);
 
     log.app.info('SSL certificates generated successfully', { keyPath, certPath });
 
@@ -112,9 +158,9 @@ const getOrGenerateSetupToken = () => {
   const setupTokenPath = getSetupTokenPath();
 
   // Check if setup token already exists (from package installation)
-  if (fs.existsSync(setupTokenPath)) {
+  if (existsSync(setupTokenPath)) {
     try {
-      const existingToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
+      const existingToken = readFileSync(setupTokenPath, 'utf8').trim();
       if (existingToken && existingToken.length === 64) {
         // Valid hex token
         log.app.info('Using existing setup token from installation');
@@ -126,15 +172,15 @@ const getOrGenerateSetupToken = () => {
   }
 
   // Generate new token if none exists or existing one is invalid
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = randomBytes(32).toString('hex');
 
   // Ensure the directory exists before writing the token
-  const tokenDir = path.dirname(setupTokenPath);
-  if (!fs.existsSync(tokenDir)) {
-    fs.mkdirSync(tokenDir, { recursive: true, mode: 0o755 });
+  const tokenDir = dirname(setupTokenPath);
+  if (!existsSync(tokenDir)) {
+    mkdirSync(tokenDir, { recursive: true, mode: 0o755 });
   }
 
-  fs.writeFileSync(setupTokenPath, token);
+  writeFileSync(setupTokenPath, token);
   return token;
 };
 
@@ -147,7 +193,7 @@ const checkCertbotIntegration = () => {
   const sourceHook = '/opt/boxvault/scripts/certbot-deploy-hook.sh';
 
   // Check if Certbot is installed but hook is missing
-  if (fs.existsSync(hookDir) && !fs.existsSync(hookPath) && fs.existsSync(sourceHook)) {
+  if (existsSync(hookDir) && !existsSync(hookPath) && existsSync(sourceHook)) {
     log.app.info('');
     log.app.info('='.repeat(60));
     log.app.info('BoxVault Certbot Integration Available');
@@ -249,12 +295,12 @@ app.use((req, res, next) => {
     next();
   } else {
     // Apply body parsing for non-upload routes
-    express.json({ limit: maxSize })(req, res, err => {
+    json({ limit: maxSize })(req, res, err => {
       if (err) {
         log.error.error('JSON parsing error:', err);
         return res.status(413).json({ error: 'Request too large' });
       }
-      return express.urlencoded({ extended: true, limit: maxSize })(req, res, next);
+      return urlencoded({ extended: true, limit: maxSize })(req, res, next);
     });
   }
 });
@@ -270,14 +316,12 @@ app.use((req, res, next) => {
 app.use(morganMiddleware);
 
 // Rate limiting middleware (applied at top level for CodeQL detection)
-const { rateLimiter, errorHandler } = require('./app/middleware');
 app.use(rateLimiter);
 log.app.info('Rate limiting middleware applied globally');
 
 // Initialize roles in database (must be defined before initializeApp uses it)
 const initial = async () => {
   try {
-    const db = require('./app/models');
     const { role: Role } = db;
     const roles = [
       { id: 1, name: 'user' },
@@ -302,10 +346,7 @@ const initial = async () => {
 const initializeApp = async () => {
   try {
     // Add Vagrant request handler
-    const { vagrantHandler } = require('./app/middleware');
     app.use(vagrantHandler);
-
-    const db = require('./app/models');
 
     // Configure session middleware for OIDC
     const sessionStore = new SequelizeStore({
@@ -348,7 +389,14 @@ const initializeApp = async () => {
 
     // Initialize Passport middleware
     app.use(passport.initialize());
-    app.use(passport.session());
+    const passportSession = passport.session();
+    app.use((req, res, next) => {
+      if (req.session) {
+        passportSession(req, res, next);
+      } else {
+        next();
+      }
+    });
 
     // Wait for OIDC strategies to register (CRITICAL - must happen before routes load)
     await initializeStrategies();
@@ -368,50 +416,53 @@ const initializeApp = async () => {
       }
 
       // Apply CSRF protection for traditional form submissions
-      return lusca.csrf()(req, res, next);
+      return csrf()(req, res, next);
     };
 
     app.use(selectiveCSRF);
     log.app.info('Selective CSRF protection middleware applied');
 
     // i18n internationalization middleware
-    const { i18nMiddleware } = require('./app/middleware');
     app.use(i18nMiddleware);
     log.app.info('i18n internationalization middleware applied');
 
-    // Initialize roles
-    await initial();
+    // Initialize roles, but not in test environment as setup.js handles it
+    if (process.env.NODE_ENV !== 'test') {
+      await initial();
+    } else {
+      // Log that we're skipping for clarity during testing
+      log.app.info('Skipping role initialization in test environment.');
+    }
 
     // NOW load all routes - strategies are guaranteed to exist
     log.app.info('Loading application routes...');
 
-    app.use('/api', require('./app/routes/health.routes'));
-    app.use('/api', require('./app/routes/auth.routes'));
-    app.use('/api', require('./app/routes/oidc.routes'));
-    app.use('/api', require('./app/routes/mail.routes'));
-    app.use('/api', require('./app/routes/config.routes'));
-    app.use('/api', require('./app/routes/user.routes'));
-    app.use('/api', require('./app/routes/request.routes'));
-    const boxRouter = require('./app/routes/box.routes');
+    app.use('/api', healthRoutes);
+    app.use('/api', authRoutes);
+    app.use('/api', mailRoutes);
+    app.use('/api', configRoutes);
+    app.use('/api', userRoutes);
+    app.use('/api', requestRoutes);
     app.use('/api', boxRouter);
     app.use('/', boxRouter); // Also mount at root for Vagrant download route
-    app.use('/api', require('./app/routes/file.routes'));
-    app.use('/api', require('./app/routes/version.routes'));
-    app.use('/api', require('./app/routes/organization.routes'));
-    app.use('/api', require('./app/routes/provider.routes'));
-    app.use('/api', require('./app/routes/architecture.routes'));
-    app.use('/api', require('./app/routes/service_account.routes'));
-    app.use('/api', require('./app/routes/favorites.routes'));
-    app.use('/api', require('./app/routes/setup.routes'));
-    app.use('/api', require('./app/routes/ssl.routes'));
-    app.use('/api', require('./app/routes/iso.routes'));
-    app.use('/api', require('./app/routes/system.routes'));
+    app.use('/api', fileRoutes);
+    app.use('/api', versionRoutes);
+    app.use('/api', organizationRoutes);
+    app.use('/api', providerRoutes);
+    app.use('/api', architectureRoutes);
+    app.use('/api', serviceAccountRoutes);
+    app.use('/api', favoritesRoutes);
+    app.use('/api', setupRoutes);
+    app.use('/api', sslRoutes);
+    app.use('/api', isoRoutes);
+    app.use('/api', systemRoutes);
 
     log.app.info('All routes loaded successfully');
 
     // Swagger API documentation with dynamic server URL
     try {
-      const { specs, swaggerUi } = require('./app/config/swagger');
+      const swaggerModule = await import('./app/config/swagger.js');
+      const { specs, swaggerUi } = swaggerModule.default;
 
       app.use('/api-docs', swaggerUi.serve, (req, res, next) => {
         const { protocol } = req;
@@ -450,7 +501,7 @@ const initializeApp = async () => {
     // SPA catch-all route
     app.get('*splat', spaLimiter, (req, res) => {
       void req;
-      res.sendFile(path.join(static_path, 'index.html'));
+      res.sendFile(join(static_path, 'index.html'));
     });
 
     // Error handler middleware (MUST be last)
@@ -476,37 +527,55 @@ if (isConfigured) {
   const setupToken = getOrGenerateSetupToken();
   log.app.info(`Setup token: ${setupToken}`);
 
+  // Apply i18n middleware for setup routes
+  app.use(i18nMiddleware);
+
   // Load only the setup route
-  app.use('/api', require('./app/routes/setup.routes'));
+  app.use('/api', setupRoutes);
 
   app.get('/', (req, res) => {
     void req;
-    res.sendFile(path.join(static_path, 'index.html'));
+    res.sendFile(join(static_path, 'index.html'));
   });
 
   // Watch for changes in the db.config.yaml file
-  fs.watch(dbConfigPath, (eventType, filename) => {
-    if (eventType === 'change') {
-      // Ignore temporary files created during atomic writes
-      if (filename && filename.endsWith('.tmp')) {
-        return;
-      }
+  if (process.env.NODE_ENV !== 'test') {
+    const watchTarget = existsSync(dbConfigPath) ? dbConfigPath : dirname(dbConfigPath);
+    const dbConfigFileName = basename(dbConfigPath);
 
-      isConfigured = isDialectConfigured();
-      if (isConfigured) {
-        log.app.info('Configuration updated. Initializing application...');
-        initializeApp();
-      }
+    try {
+      watch(watchTarget, (eventType, filename) => {
+        // If watching directory, ensure we only react to the specific config file
+        if (watchTarget !== dbConfigPath && filename && filename !== dbConfigFileName) {
+          return;
+        }
+
+        if (eventType === 'change' || eventType === 'rename') {
+          // Ignore temporary files created during atomic writes
+          if (filename && filename.endsWith('.tmp')) {
+            return;
+          }
+
+          const newConfiguredState = isDialectConfigured();
+          if (!isConfigured && newConfiguredState) {
+            isConfigured = true;
+            log.app.info('Configuration updated. Initializing application...');
+            initializeApp();
+          }
+        }
+      });
+    } catch (error) {
+      log.app.warn('Failed to setup file watcher for config:', error.message);
     }
-  });
+  }
 }
 
 const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted.value || 5000;
 const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
 
 // HTTP Server starter function (must be defined before IIFE uses it)
-const startHTTPServer = () => {
-  const httpServer = http.createServer(
+const startHTTPServer = (port = HTTP_PORT) => {
+  const httpServer = createServer(
     {
       requestTimeout: 0,
       headersTimeout: 0,
@@ -519,9 +588,6 @@ const startHTTPServer = () => {
     socket.setNoDelay(true);
     socket.setKeepAlive(true, 60000); // 60 seconds
 
-    // Set buffer size using the correct Node.js method
-    socket.bufferSize = 64 * 1024 * 1024; // 64MB
-
     // Optimize socket for large transfers
     socket.on('error', err => {
       log.error.error('Socket error:', err);
@@ -532,13 +598,15 @@ const startHTTPServer = () => {
   httpServer.timeout = 0;
   httpServer.keepAliveTimeout = 0;
 
-  httpServer.listen(HTTP_PORT, () => {
-    log.app.info(`HTTP Server is running on port ${HTTP_PORT}.`);
+  httpServer.listen(port, () => {
+    log.app.info(`HTTP Server is running on port ${port}.`);
   });
+
+  return httpServer;
 };
 
-// SSL/HTTPS Configuration with auto-generation - MOVED TO HAPPEN BEFORE SETUP
-(() => {
+// SSL/HTTPS Configuration with auto-generation
+const startServer = () => {
   // Generate SSL certificates BEFORE setup wizard (synchronous operation)
   generateSSLCertificatesIfNeeded();
 
@@ -550,8 +618,8 @@ const startHTTPServer = () => {
       const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
       const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
 
-      const privateKey = fs.readFileSync(keyPath, 'utf8');
-      const certificate = fs.readFileSync(certPath, 'utf8');
+      const privateKey = readFileSync(keyPath, 'utf8');
+      const certificate = readFileSync(certPath, 'utf8');
       const credentials = {
         key: privateKey,
         cert: certificate,
@@ -562,10 +630,10 @@ const startHTTPServer = () => {
           'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384',
         honorCipherOrder: true,
         // Increase SSL buffer size
-        secureOptions: crypto.constants.SSL_OP_NO_COMPRESSION,
+        secureOptions: constants.SSL_OP_NO_COMPRESSION,
       };
 
-      const httpsServer = https.createServer(
+      const httpsServer = _createServer(
         {
           ...credentials,
           requestTimeout: 0,
@@ -579,9 +647,6 @@ const startHTTPServer = () => {
       httpsServer.on('connection', socket => {
         socket.setNoDelay(true);
         socket.setKeepAlive(true, 60000); // 60 seconds
-
-        // Set buffer size using the correct Node.js method
-        socket.bufferSize = 64 * 1024 * 1024; // 64MB
 
         // Optimize socket for large transfers
         socket.on('error', err => {
@@ -598,7 +663,7 @@ const startHTTPServer = () => {
       });
 
       // Create HTTP server to redirect to HTTPS
-      const httpServer = http.createServer((req, res) => {
+      const httpServer = createServer((req, res) => {
         void req;
         res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
         res.end();
@@ -615,4 +680,12 @@ const startHTTPServer = () => {
   } else {
     startHTTPServer();
   }
-})();
+};
+
+// Export app for testing
+export default app;
+
+// Only start the server if this file is run directly (not required as a module)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  startServer();
+}

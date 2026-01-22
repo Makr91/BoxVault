@@ -1,23 +1,20 @@
 // details.js
-const { loadConfig } = require('../../../utils/config-loader');
-const { log } = require('../../../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../../../models');
-
-const Organization = db.organization;
-const Users = db.user;
-const Box = db.box;
-const Architecture = db.architectures;
-const Version = db.versions;
-const Provider = db.providers;
-const File = db.files;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import configLoader from '../../../utils/config-loader.js';
+import { log } from '../../../utils/Logger.js';
+import jwt from 'jsonwebtoken';
+import db from '../../../models/index.js';
+const {
+  organization: Organization,
+  user: Users,
+  box: Box,
+  architectures: Architecture,
+  versions: Version,
+  providers: Provider,
+  files: File,
+  UserOrg,
+  service_account,
+} = db;
+const { verify } = jwt;
 
 /**
  * @swagger
@@ -60,18 +57,26 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.getOrganizationBoxDetails = async (req, res) => {
+export const getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
   const token = req.headers['x-access-token'];
   let userId = null;
   let userOrganizationId = null;
   let isServiceAccount = false;
 
+  let authConfig;
+  try {
+    authConfig = configLoader.loadConfig('auth');
+  } catch (e) {
+    log.error.error(`Failed to load auth configuration: ${e.message}`);
+    return res.status(500).send({ message: 'Configuration error' });
+  }
+
   try {
     // If a token is provided, verify it and extract the user ID
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+        const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
 
@@ -82,7 +87,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
           });
 
           if (orgData) {
-            const membership = await db.UserOrg.findUserOrgRole(userId, orgData.id);
+            const membership = await UserOrg.findUserOrgRole(userId, orgData.id);
             userOrganizationId = membership ? orgData.id : null;
           }
         }
@@ -131,7 +136,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
           as: 'user',
           include: [
             {
-              model: db.organization,
+              model: Organization,
               as: 'primaryOrganization',
               attributes: ['id', 'name', 'emailHash'],
             },
@@ -143,7 +148,7 @@ exports.getOrganizationBoxDetails = async (req, res) => {
     // For each box, check if it was created by a service account
     const serviceAccountBoxes = await Promise.all(
       boxes.map(async box => {
-        const serviceAccount = await db.service_account.findOne({
+        const serviceAccount = await service_account.findOne({
           where: { id: box.userId },
           include: [
             {

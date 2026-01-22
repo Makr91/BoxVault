@@ -1,12 +1,7 @@
 // mail.controller.js
-const { sendVerificationMail } = require('./mail/verification');
-const { resendVerificationMail } = require('./mail/resend');
-const { sendInvitationMail } = require('./mail/invitation');
-const { testSmtp } = require('./mail/test');
+import { sendVerificationMail } from './mail/verification.js';
+import { resendVerificationMail } from './mail/resend.js';
+import { sendInvitationMail } from './mail/invitation.js';
+import { testSmtp } from './mail/test.js';
 
-module.exports = {
-  sendVerificationMail,
-  resendVerificationMail,
-  sendInvitationMail,
-  testSmtp,
-};
+export { sendVerificationMail, resendVerificationMail, sendInvitationMail, testSmtp };

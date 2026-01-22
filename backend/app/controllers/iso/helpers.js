@@ -1,6 +1,8 @@
 // g:\Projects\BoxVault\backend\app\controllers\iso\helpers.js
-const path = require('path');
-const { loadConfig } = require('../../utils/config-loader');
+import fs from 'fs';
+import { join } from 'path';
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
 
 const getIsoStorageRoot = () => {
   const appConfig = loadConfig('app');
@@ -10,12 +12,12 @@ const getIsoStorageRoot = () => {
   }
 
   const storageDir = appConfig.boxvault.box_storage_directory.value;
-  return path.join(storageDir, 'iso');
+  return join(storageDir, 'iso');
 };
 
 const getSecureIsoPath = (...pathSegments) => {
   const root = getIsoStorageRoot();
-  const fullPath = path.join(root, ...pathSegments);
+  const fullPath = join(root, ...pathSegments);
 
   // Validate that the joined path is still within the root directory
   if (!fullPath.startsWith(root)) {
@@ -25,4 +27,14 @@ const getSecureIsoPath = (...pathSegments) => {
   return fullPath;
 };
 
-module.exports = { getIsoStorageRoot, getSecureIsoPath };
+const cleanupTempFile = tempPath => {
+  if (fs.existsSync(tempPath)) {
+    try {
+      fs.unlinkSync(tempPath);
+    } catch (e) {
+      log.app.warn('Failed to cleanup temp file:', e.message);
+    }
+  }
+};
+
+export { getIsoStorageRoot, getSecureIsoPath, cleanupTempFile };

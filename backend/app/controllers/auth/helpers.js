@@ -1,9 +1,5 @@
 // helpers.js
-const crypto = require('crypto');
+import { createHash } from 'crypto';
 
-const generateEmailHash = email =>
-  crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
-
-module.exports = {
-  generateEmailHash,
-};
+export const generateEmailHash = email =>
+  createHash('sha256').update(email.toLowerCase()).digest('hex');

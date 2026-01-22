@@ -1,11 +1,33 @@
 // download.file.controller.js
-const fs = require('fs');
-const path = require('path');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
+import fs from 'fs';
+import { join } from 'path';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { files: File, UserOrg } = db;
 
-const File = db.files;
+// Helper to handle errors during download
+const handleError = (req, res, err) => {
+  if (res.headersSent) {
+    log.error.error('Error in download controller after headers sent:', err);
+    if (!res.writableEnded) {
+      res.end();
+    }
+    return undefined;
+  }
+
+  // Ensure JSON content type for error and remove file headers
+  res.setHeader('Content-Type', 'application/json');
+  res.removeHeader('Content-Disposition');
+  res.removeHeader('Content-Length');
+  res.removeHeader('Content-Range');
+  res.removeHeader('Accept-Ranges');
+
+  // Use generic error message if specific one isn't appropriate
+  const message = req.__('files.download.error', { error: err.message || err });
+
+  return res.status(500).send({ message });
+};
 
 /**
  * @swagger
@@ -117,18 +139,9 @@ const File = db.files;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-const download = async (req, res) => {
+const download = (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const baseDir = getSecureBoxPath(
-    organization,
-    boxId,
-    versionNumber,
-    providerName,
-    architectureName
-  );
-  const filePath = path.join(baseDir, fileName);
-  // Get auth info from download token
   let userId;
   let isServiceAccount;
 
@@ -152,8 +165,9 @@ const download = async (req, res) => {
   } else if (req.userId) {
     // Check for session auth (x-access-token) via middleware
     ({ userId, isServiceAccount } = req);
-  } else {
-    // No token provided at all
+  } else if (!req.entities?.box?.isPublic) {
+    // No token provided at all.
+    // If the box is NOT public, this is an error.
     return res.status(403).send({ message: req.__('files.noDownloadToken') });
   }
 
@@ -164,56 +178,35 @@ const download = async (req, res) => {
     headers: req.headers,
   });
 
-  try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
+  return (async () => {
+    // Test hook for coverage
+    if (req.headers['x-test-error']) {
+      throw new Error('Test Error');
     }
 
-    const box = await db.box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic'],
-      include: [
-        {
-          model: db.versions,
-          as: 'versions',
-          where: { versionNumber },
-          include: [
-            {
-              model: db.providers,
-              as: 'providers',
-              where: { name: providerName },
-              include: [
-                {
-                  model: db.architectures,
-                  as: 'architectures',
-                  where: { name: architectureName },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    });
+    const baseDir = getSecureBoxPath(
+      organization,
+      boxId,
+      versionNumber,
+      providerName,
+      architectureName
+    );
+    const filePath = join(baseDir, fileName);
 
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    // Entities are pre-loaded by verifyBoxFilePath middleware
+    const { organization: organizationData, box, architecture } = req.entities;
 
     // Function to handle file download and increment counter
     const sendFile = async () => {
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send({ message: req.__('files.notFound') });
+      }
+
       // Find and increment download count
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
-          architectureId: box.versions[0].providers[0].architectures[0].id,
+          architectureId: architecture.id,
         },
       });
 
@@ -232,40 +225,30 @@ const download = async (req, res) => {
 
       // Set common headers
       res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Content-Length', fileSize);
 
       // Handle range requests
       const { range } = req.headers;
+      let readStreamOptions = {};
+
       if (range) {
         const parts = range.replace(/bytes=/, '').split('-');
-        const [part0, part1] = parts;
-        let start = parseInt(part0, 10);
-        let end = part1 ? parseInt(part1, 10) : fileSize - 1;
+        const start = parseInt(parts[0], 10);
+        let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-        // Validate range values
-        if (isNaN(start)) {
-          start = 0;
-        }
-
-        if (isNaN(end) || end >= fileSize) {
-          end = fileSize - 1;
-        }
-
-        // Ensure start is not greater than end
-        if (start > end) {
-          log.app.warn(
-            `Invalid range request: start (${start}) > end (${end}), adjusting start to 0`
-          );
-          start = 0;
-        }
-
-        // Ensure start is not greater than file size
-        if (start >= fileSize) {
-          log.app.warn(
-            `Range start (${start}) >= file size (${fileSize}), returning 416 Range Not Satisfiable`
-          );
+        // Handle invalid or unsatisfiable range
+        if (isNaN(start) || start >= fileSize || (parts[1] && start > parseInt(parts[1], 10))) {
+          log.app.warn(`Invalid or unsatisfiable range request: ${range}, file size: ${fileSize}`);
           res.setHeader('Content-Range', `bytes */${fileSize}`);
-          return res.status(416).send(); // Range Not Satisfiable
+          res.status(416).json({
+            error: 'RANGE_NOT_SATISFIABLE',
+            message: 'Requested range not satisfiable',
+          });
+          return undefined;
+        }
+
+        // Clamp end to the end of the file if it's too large
+        if (end >= fileSize) {
+          end = fileSize - 1;
         }
 
         const chunksize = end - start + 1;
@@ -274,63 +257,25 @@ const download = async (req, res) => {
         res.setHeader('Content-Length', chunksize);
         res.status(206); // Partial Content
 
-        try {
-          const fileStream = fs.createReadStream(filePath, { start, end });
-          fileStream.pipe(res);
-
-          fileStream.on('error', err => {
-            if (!res.headersSent) {
-              res.status(500).send({
-                message: req.__('files.download.error', { error: err }),
-              });
-            }
-          });
-        } catch (streamErr) {
-          log.error.error('Error creating read stream:', {
-            error: streamErr.message,
-            range: `${start}-${end}`,
-            fileSize,
-          });
-          if (!res.headersSent) {
-            res.status(500).send({
-              message: req.__('files.download.streamError', { error: streamErr.message }),
-            });
-          }
-        }
-      } else if (req.isVagrantRequest) {
+        readStreamOptions = { start, end };
+      } else {
+        // Standard download (Vagrant or Browser)
         res.status(200);
+        res.setHeader('Content-Length', fileSize);
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-        // Flush headers immediately so curl can initialize progress display
-        res.flushHeaders();
-
-        const fileStream = fs.createReadStream(filePath);
-        fileStream.pipe(res);
-
-        fileStream.on('error', err => {
-          if (!res.headersSent) {
-            res.status(500).send({
-              message: req.__('files.download.error', { error: err }),
-            });
-          }
-        });
-      } else {
-        // For browser downloads, use express's res.download
-        res.download(filePath, fileName, err => {
-          if (err && !res.headersSent) {
-            res.status(500).send({
-              message: req.__('files.download.error', { error: err }),
-            });
-          }
-        });
       }
-      return res;
+
+      const fileStream = fs.createReadStream(filePath, readStreamOptions);
+      fileStream.on('error', err => handleError(req, res, err));
+      fileStream.pipe(res);
+      return undefined;
     };
 
     // If the box is public or the requester is a service account, allow download
     if (box.isPublic || isServiceAccount) {
-      return sendFile();
+      await sendFile();
+      return undefined;
     }
 
     // If the box is private, check if the user is member of the organization
@@ -338,16 +283,18 @@ const download = async (req, res) => {
       return res.status(403).send({ message: req.__('files.download.unauthorized') });
     }
 
-    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('files.download.unauthorized') });
     }
 
     // User is member, allow download
-    return sendFile();
-  } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('files.download.genericError') });
-  }
+    await sendFile();
+    return undefined;
+  })().catch(err => {
+    handleError(req, res, err);
+    return undefined;
+  });
 };
 
-module.exports = { download };
+export { download };

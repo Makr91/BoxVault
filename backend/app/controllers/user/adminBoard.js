@@ -1,5 +1,5 @@
 // adminBoard.js
-const { log } = require('../../utils/Logger');
+import { log } from '../../utils/Logger.js';
 
 /**
  * @swagger
@@ -19,7 +19,7 @@ const { log } = require('../../utils/Logger');
  *               type: string
  *               example: "Admin Board."
  */
-exports.adminBoard = (req, res) => {
+export const adminBoard = (req, res) => {
   log.app.debug('Admin board accessed', { method: req.method });
   res.status(200).send(req.__('users.adminBoard'));
 };

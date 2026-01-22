@@ -1,13 +1,12 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const { getIsoStorageRoot, getSecureIsoPath } = require('./helpers');
-const { loadConfig } = require('../../utils/config-loader');
+import fs from 'fs';
+import { join } from 'path';
+import { createHash } from 'crypto';
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+import { getIsoStorageRoot, getSecureIsoPath, cleanupTempFile } from './helpers.js';
+import { loadConfig } from '../../utils/config-loader.js';
 
-const ISO = db.iso;
-const Organization = db.organization;
+const { iso: ISO } = db;
 
 /**
  * @swagger
@@ -50,18 +49,12 @@ const Organization = db.organization;
  *         description: Internal server error
  */
 const upload = async (req, res) => {
-  const { organization } = req.params;
   const appConfig = loadConfig('app');
   const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
   const uploadTimeoutMs = uploadTimeoutHours * 60 * 60 * 1000;
   req.setTimeout(uploadTimeoutMs);
 
   try {
-    const org = await Organization.findOne({ where: { name: organization } });
-    if (!org) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
-    }
-
     const isoRoot = getIsoStorageRoot();
     if (!fs.existsSync(isoRoot)) {
       fs.mkdirSync(isoRoot, { recursive: true });
@@ -71,19 +64,21 @@ const upload = async (req, res) => {
     const isPublic = req.headers['x-is-public'] === 'true';
     const fileSize = parseInt(req.headers['content-length'], 10);
 
+    // Check file size limit before streaming
+    const maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
+    if (fileSize > maxFileSize) {
+      const error = new Error('File too large');
+      error.code = 'LIMIT_FILE_SIZE';
+      throw error;
+    }
+
     // Create a temporary file path
     const tempFilename = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}.iso`;
     const tempPath = getSecureIsoPath(tempFilename);
 
-    // Security: Ensure the temporary path is within the OS's temp directory.
-    // Note: For ISOs we use the ISO storage root for temp files to ensure they are on the same volume for atomic renames
-    if (!tempPath.startsWith(isoRoot)) {
-      return res.status(400).send({ message: 'Invalid file path detected.' });
-    }
-
     // Stream request to file and calculate hash
     const writeStream = fs.createWriteStream(tempPath);
-    const hash = crypto.createHash('sha256');
+    const hash = createHash('sha256');
 
     await new Promise((resolve, reject) => {
       req.on('data', chunk => {
@@ -92,8 +87,8 @@ const upload = async (req, res) => {
       });
       req.on('end', () => {
         writeStream.end();
-        resolve();
       });
+      writeStream.on('finish', resolve);
       req.on('error', reject);
       writeStream.on('error', reject);
     });
@@ -101,7 +96,7 @@ const upload = async (req, res) => {
     try {
       const calculatedChecksum = hash.digest('hex');
       const finalFilename = `${calculatedChecksum}.iso`;
-      const finalPath = path.join(isoRoot, finalFilename);
+      const finalPath = join(isoRoot, finalFilename);
 
       // Deduplication Check
       if (fs.existsSync(finalPath)) {
@@ -118,19 +113,13 @@ const upload = async (req, res) => {
         checksum: calculatedChecksum,
         checksumType: 'sha256',
         storagePath: finalFilename,
-        organizationId: org.id,
+        organizationId: req.organizationId,
         isPublic,
       });
 
       return res.status(201).send(iso);
     } catch (err) {
-      if (fs.existsSync(tempPath)) {
-        try {
-          fs.unlinkSync(tempPath);
-        } catch (e) {
-          void e;
-        }
-      }
+      cleanupTempFile(tempPath);
       throw err;
     }
   } catch (err) {
@@ -146,4 +135,4 @@ const upload = async (req, res) => {
   }
 };
 
-module.exports = { upload };
+export { upload };

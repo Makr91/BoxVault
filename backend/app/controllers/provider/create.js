@@ -66,12 +66,10 @@
  */
 
 // create.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const db = require('../../models');
-
-const Provider = db.providers;
-
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import db from '../../models/index.js';
+const { providers: Provider, organization: _organization, box: _box, UserOrg, versions } = db;
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
@@ -133,34 +131,22 @@ const Provider = db.providers;
  *                   type: string
  *                   example: "Some error occurred while creating the Provider."
  */
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
   const { name, description } = req.body;
   const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, name);
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
-    if (!organizationData) {
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
-    }
-
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
     });
 
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
-
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canCreate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
@@ -170,15 +156,9 @@ exports.create = async (req, res) => {
       });
     }
 
-    const version = await db.versions.findOne({
+    const version = await versions.findOne({
       where: { versionNumber, boxId: box.id },
     });
-
-    if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
-      });
-    }
 
     // Create the new directory if it doesn't exist
     if (!fs.existsSync(newFilePath)) {
@@ -192,7 +172,7 @@ exports.create = async (req, res) => {
       versionId: version.id,
     });
 
-    return res.send(provider);
+    return res.status(201).send(provider);
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('providers.create.error'),

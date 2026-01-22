@@ -1,8 +1,7 @@
 // verification.js
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-
-const User = db.user;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { user: User } = db;
 
 /**
  * @swagger
@@ -52,7 +51,7 @@ const User = db.user;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.verifyMail = async (req, res) => {
+export const verifyMail = async (req, res) => {
   try {
     const { token } = req.params;
     const user = await User.findOne({ where: { verificationToken: token } });

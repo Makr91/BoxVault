@@ -1,8 +1,6 @@
 // delete.js
-const db = require('../../models');
-
-const Architecture = db.architectures;
-const Provider = db.providers;
+import db from '../../models/index.js';
+const { architectures: Architecture, providers: Provider } = db;
 
 /**
  * @swagger
@@ -75,7 +73,7 @@ const Provider = db.providers;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.delete = async (req, res) => {
+const _delete = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
   try {
@@ -151,3 +149,5 @@ exports.delete = async (req, res) => {
     });
   }
 };
+
+export { _delete as delete };

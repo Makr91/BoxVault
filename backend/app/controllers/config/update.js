@@ -1,7 +1,36 @@
 // update.js
-const { getConfigPath } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const { writeConfig } = require('./helpers');
+import { loadConfig, getConfigPath } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import { writeConfig } from './helpers.js';
+
+/**
+ * Helper function for deep merging objects.
+ * @param {object} item - The item to check.
+ * @returns {boolean} - True if the item is a non-array object.
+ */
+const isObject = item => item && typeof item === 'object' && !Array.isArray(item);
+
+const mergeDeep = (target, ...sources) => {
+  if (!sources.length) {
+    return target;
+  }
+  const source = sources.shift();
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!target[key]) {
+          Object.assign(target, { [key]: {} });
+        }
+        mergeDeep(target[key], source[key]);
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return mergeDeep(target, ...sources);
+};
 
 /**
  * @swagger
@@ -59,12 +88,16 @@ const { writeConfig } = require('./helpers');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.updateConfig = async (req, res) => {
+export const updateConfig = async (req, res) => {
   const { configName } = req.params;
   try {
-    // For updates, we still need to write to the actual file path
     const filePath = getConfigPath(configName);
-    await writeConfig(filePath, req.body);
+    const currentConfig = loadConfig(configName);
+
+    // Deep merge the request body into the current configuration
+    const updatedConfig = mergeDeep({}, currentConfig, req.body);
+
+    await writeConfig(filePath, updatedConfig);
     return res.send({ message: req.__('config.updated') });
   } catch (err) {
     log.error.error('Error updating config:', err);

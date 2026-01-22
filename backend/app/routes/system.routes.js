@@ -1,9 +1,9 @@
-const express = require('express');
-const { authJwt } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const systemController = require('../controllers/system.controller');
+import { Router } from 'express';
+import { authJwt } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import { getStorageInfo, getUpdateStatus } from '../controllers/system.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -14,16 +14,8 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get(
-  '/system/storage',
-  [authJwt.verifyToken, authJwt.isAdmin],
-  systemController.getStorageInfo
-);
+router.get('/system/storage', [authJwt.verifyToken, authJwt.isAdmin], getStorageInfo);
 
-router.get(
-  '/system/update-check',
-  [authJwt.verifyToken, authJwt.isAdmin],
-  systemController.getUpdateStatus
-);
+router.get('/system/update-check', [authJwt.verifyToken, authJwt.isAdmin], getUpdateStatus);
 
-module.exports = router;
+export default router;

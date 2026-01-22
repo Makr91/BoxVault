@@ -1,5 +1,5 @@
 // provider.model.js
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const Provider = sequelize.define('providers', {
     name: {
       type: Sequelize.STRING,

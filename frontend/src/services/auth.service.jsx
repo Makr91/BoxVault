@@ -72,6 +72,43 @@ const refreshTokenIfNeeded = async () => {
   return null;
 };
 
+// Function to force token refresh (e.g. after org rename)
+const forceTokenRefresh = async () => {
+  const user = getCurrentUser();
+  if (!user) {
+    return null;
+  }
+
+  try {
+    const response = await axios.post(
+      `${baseURL}/api/auth/refresh-token`,
+      { stayLoggedIn: user.stayLoggedIn },
+      {
+        headers: {
+          ...authHeader(),
+          "Content-Type": "application/json",
+        },
+        skipAuthRefresh: true,
+      }
+    );
+
+    if (response.data.accessToken) {
+      const userData = {
+        ...user,
+        ...response.data,
+        tokenRefreshTime: Date.now(),
+        stayLoggedIn: response.data.stayLoggedIn,
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      return userData;
+    }
+  } catch (error) {
+    log.auth.error("Forced token refresh failed", { error: error.message });
+    return null;
+  }
+  return null;
+};
+
 // Add request interceptor to refresh token before requests
 axios.interceptors.request.use(
   async (config) => {
@@ -347,6 +384,7 @@ const AuthService = {
   validateInvitationToken,
   getGravatarConfig,
   refreshTokenIfNeeded,
+  forceTokenRefresh,
   getAuthMethods,
 };
 

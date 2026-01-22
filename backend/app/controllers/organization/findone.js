@@ -1,19 +1,7 @@
 // findone.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-
-const Organization = db.organization;
-const User = db.user;
-const Box = db.box;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { organization: Organization, user: User, box: Box } = db;
 
 /**
  * @swagger
@@ -63,20 +51,9 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.findOne = async (req, res) => {
+export const findOne = async (req, res) => {
   const { organization: organizationName } = req.params;
-  const token = req.headers['x-access-token'];
-  let userId = null;
-
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-      userId = decoded.id;
-    } catch {
-      return res.status(401).send({ message: req.__('auth.unauthorized') });
-    }
-  }
+  const { userId } = req;
 
   try {
     const organization = await Organization.findOne({
@@ -96,8 +73,6 @@ exports.findOne = async (req, res) => {
       ],
     });
 
-    log.app.info('Organization found:', JSON.stringify(organization, null, 2));
-
     if (!organization) {
       return res.status(404).send({
         message: req.__('organizations.organizationNotFoundWithName', {
@@ -105,8 +80,6 @@ exports.findOne = async (req, res) => {
         }),
       });
     }
-
-    log.app.info('Org Detected!');
 
     let totalBoxes = 0;
     if (organization.members && Array.isArray(organization.members)) {
@@ -119,8 +92,6 @@ exports.findOne = async (req, res) => {
         return acc;
       }, 0);
     }
-
-    log.app.info('Total Boxes calculated:', totalBoxes);
 
     return res.send({ ...organization.toJSON(), totalBoxes });
   } catch (err) {

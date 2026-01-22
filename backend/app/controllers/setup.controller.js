@@ -1,14 +1,8 @@
 // setup.controller.js
-const { verifySetupToken } = require('./setup/verify');
-const { uploadSSL } = require('./setup/upload');
-const { updateConfigs } = require('./setup/update');
-const { getConfigs } = require('./setup/get');
-const { isSetupComplete } = require('./setup/check');
+import { verifySetupToken } from './setup/verify.js';
+import { uploadSSL } from './setup/upload.js';
+import { updateConfigs } from './setup/update.js';
+import { getConfigs } from './setup/get.js';
+import { isSetupComplete } from './setup/check.js';
 
-module.exports = {
-  verifySetupToken,
-  uploadSSL,
-  updateConfigs,
-  getConfigs,
-  isSetupComplete,
-};
+export { verifySetupToken, uploadSSL, updateConfigs, getConfigs, isSetupComplete };

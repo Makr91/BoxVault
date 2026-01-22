@@ -1,6 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const Organization = db.organization;
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { organization: Organization, user: User, role: Role } = db;
 
 /**
  * @swagger
@@ -62,8 +62,8 @@ const discoverOrganizations = async (req, res) => {
     // Check if user is authenticated and is admin
     let isAdmin = false;
     if (req.userId) {
-      const user = await db.user.findByPk(req.userId, {
-        include: [{ model: db.role, as: 'roles', through: { attributes: [] } }],
+      const user = await User.findByPk(req.userId, {
+        include: [{ model: Role, as: 'roles', through: { attributes: [] } }],
       });
       isAdmin = user?.roles?.some(role => role.name === 'admin');
     }
@@ -96,4 +96,4 @@ const discoverOrganizations = async (req, res) => {
   }
 };
 
-module.exports = { discoverOrganizations };
+export { discoverOrganizations };

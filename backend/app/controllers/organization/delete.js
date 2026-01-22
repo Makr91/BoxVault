@@ -1,7 +1,7 @@
 // delete.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const db = require('../../models');
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import db from '../../models/index.js';
 
 const Organization = db.organization;
 
@@ -46,7 +46,7 @@ const Organization = db.organization;
  *               $ref: '#/components/schemas/Error'
  */
 // Delete a Organization with the specified id in the request
-exports.delete = async (req, res) => {
+const _delete = async (req, res) => {
   const { organization: organizationName } = req.params;
 
   try {
@@ -67,7 +67,7 @@ exports.delete = async (req, res) => {
     // Delete the directory
     const dirPath = getSecureBoxPath(organizationName);
     if (fs.existsSync(dirPath)) {
-      fs.rmdirSync(dirPath, { recursive: true });
+      fs.rmSync(dirPath, { recursive: true, force: true });
     }
 
     return res.status(200).send({
@@ -79,3 +79,5 @@ exports.delete = async (req, res) => {
     });
   }
 };
+
+export { _delete as delete };

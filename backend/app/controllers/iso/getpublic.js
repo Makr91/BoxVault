@@ -1,7 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const Iso = db.iso;
-const Organization = db.organization;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { iso: Iso, organization: Organization } = db;
 
 /**
  * @swagger
@@ -22,7 +21,7 @@ const Organization = db.organization;
  *       500:
  *         description: Internal server error.
  */
-exports.getPublic = async (req, res) => {
+export const getPublic = async (req, res) => {
   const { organization: organizationName } = req.params;
   try {
     const organization = await Organization.findOne({ where: { name: organizationName } });

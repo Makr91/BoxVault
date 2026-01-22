@@ -1,7 +1,7 @@
 // verify.js
-const fs = require('fs');
-const { getSetupTokenPath } = require('../../utils/config-loader');
-const { setAuthorizedSetupToken } = require('./helpers');
+import fs from 'fs';
+import { getSetupTokenPath } from '../../utils/config-loader.js';
+import { setAuthorizedSetupToken } from './helpers.js';
 
 /**
  * @swagger
@@ -37,7 +37,7 @@ const { setAuthorizedSetupToken } = require('./helpers');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.verifySetupToken = (req, res) => {
+export const verifySetupToken = (req, res) => {
   const { token } = req.body;
   const setupTokenPath = getSetupTokenPath();
 

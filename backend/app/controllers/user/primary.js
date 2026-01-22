@@ -1,5 +1,5 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
 const { UserOrg } = db;
 
 /**
@@ -68,9 +68,11 @@ const getPrimaryOrganization = async (req, res) => {
     }
 
     const response = {
-      id: primaryOrg.organization.id,
-      name: primaryOrg.organization.name,
-      description: primaryOrg.organization.description,
+      organization: {
+        id: primaryOrg.organization.id,
+        name: primaryOrg.organization.name,
+        description: primaryOrg.organization.description,
+      },
       role: primaryOrg.role,
       joinedAt: primaryOrg.joined_at,
     };
@@ -90,4 +92,4 @@ const getPrimaryOrganization = async (req, res) => {
   }
 };
 
-module.exports = { getPrimaryOrganization };
+export { getPrimaryOrganization };

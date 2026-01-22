@@ -208,30 +208,35 @@ const OrganizationUserManager = () => {
     }
 
     try {
-      await OrganizationService.updateOrganization(oldName, {
+      const response = await OrganizationService.updateOrganization(oldName, {
         organization: newOrgName,
       });
 
-      if (currentUser && currentUser.organization === oldName) {
-        currentUser.organization = newOrgName;
-        localStorage.setItem("user", JSON.stringify(currentUser));
+      if (response.status === 200) {
+        if (currentUser && currentUser.organization === oldName) {
+          currentUser.organization = newOrgName;
+          localStorage.setItem("user", JSON.stringify(currentUser));
 
-        // Trigger an EventBus event to update App.jsx state
-        EventBus.dispatch("organizationUpdated", {
-          oldName,
-          newName: newOrgName,
-        });
+          // Force token refresh to update claims with new org name
+          await AuthService.forceTokenRefresh();
+
+          // Trigger an EventBus event to update App.jsx state
+          EventBus.dispatch("organizationUpdated", {
+            oldName,
+            newName: newOrgName,
+          });
+        }
+
+        setOrganizations((prevOrgs) =>
+          prevOrgs.map((org) =>
+            org.name === oldName ? { ...org, name: newOrgName } : org
+          )
+        );
+        setEditingOrgId(null);
+        setNewOrgName("");
+        setOldName("");
+        setRenameMessage(t("orgUserManager.rename.success"));
       }
-
-      setOrganizations((prevOrgs) =>
-        prevOrgs.map((org) =>
-          org.name === oldName ? { ...org, name: newOrgName } : org
-        )
-      );
-      setEditingOrgId(null);
-      setNewOrgName("");
-      setOldName("");
-      setRenameMessage(t("orgUserManager.rename.success"));
     } catch {
       setRenameMessage(t("orgUserManager.rename.error"));
     }

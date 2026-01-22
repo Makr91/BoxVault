@@ -1,7 +1,6 @@
 // create.js
-const db = require('../../models');
-
-const Organization = db.organization;
+import db from '../../models/index.js';
+const { organization: Organization } = db;
 
 /**
  * @swagger
@@ -48,14 +47,7 @@ const Organization = db.organization;
  *               $ref: '#/components/schemas/Error'
  */
 // Create and Save a new Organization
-exports.create = async (req, res) => {
-  // Validate request
-  if (!req.body.organization) {
-    return res.status(400).send({
-      message: req.__('organizations.nameCannotBeEmpty'),
-    });
-  }
-
+export const create = async (req, res) => {
   // Create a Organization
   const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
   const organization = {
@@ -68,7 +60,7 @@ exports.create = async (req, res) => {
   // Save Organization in the database
   try {
     const data = await Organization.create(organization);
-    return res.send(data);
+    return res.status(201).send(data);
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('organizations.createError'),

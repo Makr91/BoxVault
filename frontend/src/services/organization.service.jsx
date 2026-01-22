@@ -17,10 +17,14 @@ const getOrganizationWithUsers = (organizationName) =>
     headers: authHeader(),
   });
 
-const updateOrganization = (organizationName, newData) =>
-  axios.put(`${baseURL}/api/organization/${organizationName}`, newData, {
-    headers: authHeader(),
-  });
+const updateOrganization = async (organizationName, newData) => {
+  const response = await axios.put(
+    `${baseURL}/api/organization/${organizationName}`,
+    newData,
+    { headers: authHeader() }
+  );
+  return response;
+};
 
 const suspendOrganization = (organizationName) =>
   axios.put(
@@ -71,7 +75,7 @@ const updateUserOrgRole = (organizationName, userId, role) =>
 
 const removeUserFromOrg = (organizationName, userId) =>
   axios.delete(
-    `${baseURL}/api/organization/${organizationName}/users/${userId}`,
+    `${baseURL}/api/organization/${organizationName}/members/${userId}`,
     { headers: authHeader() }
   );
 

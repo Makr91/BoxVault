@@ -1,21 +1,16 @@
 // signin.js
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-const User = db.user;
-const Role = db.role;
-const Organization = db.organization;
-const ServiceAccount = db.service_account;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import { compareSync } from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const {
+  user: User,
+  role: Role,
+  organization: Organization,
+  service_account: ServiceAccount,
+  UserOrg,
+} = db;
 
 /**
  * @swagger
@@ -112,9 +107,10 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.signin = async (req, res) => {
+export const signin = async (req, res) => {
   try {
-    const { username, password, stayLoggedIn } = req.body;
+    const authConfig = loadConfig('auth');
+    const { username, password, stayLoggedIn } = req.body || {};
 
     // First, try to find a regular user
     let user = await User.findOne({
@@ -125,6 +121,11 @@ exports.signin = async (req, res) => {
           as: 'roles',
           attributes: ['name'],
           through: { attributes: [] },
+        },
+        {
+          model: Organization,
+          as: 'primaryOrganization',
+          attributes: ['name'],
         },
       ],
     });
@@ -156,7 +157,7 @@ exports.signin = async (req, res) => {
     }
 
     if (!isServiceAccount) {
-      const passwordIsValid = bcrypt.compareSync(password, user.password);
+      const passwordIsValid = compareSync(password, user.password);
       if (!passwordIsValid) {
         return res.status(401).send({ accessToken: null, message: req.__('auth.invalidPassword') });
       }
@@ -171,7 +172,7 @@ exports.signin = async (req, res) => {
       primaryOrgName = user.organization?.name || null;
     } else {
       // Get all user's organizations with roles
-      const userOrgs = await db.UserOrg.getUserOrganizations(user.id);
+      const userOrgs = await UserOrg.getUserOrganizations(user.id);
       userOrganizations = userOrgs.map(userOrg => ({
         name: userOrg.organization.name,
         role: userOrg.role,
@@ -186,12 +187,21 @@ exports.signin = async (req, res) => {
     // Use longer expiry for stayLoggedIn
     const tokenExpiry = stayLoggedIn ? '24h' : authConfig.auth.jwt.jwt_expiration.value || '24h';
 
+    let provider = user.authProvider;
+    if (!provider) {
+      provider = 'local';
+    }
+
+    if (isServiceAccount) {
+      provider = 'service_account';
+    }
+
     const token = jwt.sign(
       {
         id: user.id,
         isServiceAccount,
         stayLoggedIn,
-        provider: isServiceAccount ? 'service_account' : user.authProvider || 'local',
+        provider,
         organizations: userOrganizations, // Multi-org data for frontend
         serviceAccountOrgId: isServiceAccount ? user.organization_id : null,
       },
@@ -218,7 +228,8 @@ exports.signin = async (req, res) => {
       organizations: userOrganizations, // All orgs for frontend
       accessToken: token,
       isServiceAccount,
-      provider: isServiceAccount ? 'service_account' : user.authProvider || 'local',
+      provider,
+      stayLoggedIn: !!stayLoggedIn,
       gravatarUrl: isServiceAccount ? null : user.gravatarUrl,
     });
   } catch (err) {

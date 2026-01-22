@@ -1,8 +1,6 @@
 // promote.js
-const db = require('../../models');
-
-const User = db.user;
-const Role = db.role;
+import db from '../../models/index.js';
+const { user: User, role: Role } = db;
 
 /**
  * @swagger
@@ -44,7 +42,7 @@ const Role = db.role;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.promoteToModerator = async (req, res) => {
+export const promoteToModerator = async (req, res) => {
   const { userId } = req.params;
 
   try {

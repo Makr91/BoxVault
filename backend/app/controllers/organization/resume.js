@@ -1,7 +1,6 @@
 // resume.js
-const db = require('../../models');
-
-const Organization = db.organization;
+import db from '../../models/index.js';
+const { organization: Organization } = db;
 
 /**
  * @swagger
@@ -43,7 +42,7 @@ const Organization = db.organization;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.resumeOrganization = async (req, res) => {
+export const resumeOrganization = async (req, res) => {
   const { organization: organizationName } = req.params;
 
   try {

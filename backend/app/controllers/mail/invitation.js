@@ -1,21 +1,36 @@
 // invitation.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const { createTransporter, smtpConfig } = require('./helpers');
-const { t } = require('../../config/i18n');
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import { createTransporter, getSmtpConfig } from './helpers.js';
+import { t } from '../../config/i18n.js';
 
-let appConfig;
-try {
-  appConfig = loadConfig('app');
-} catch (e) {
-  log.error.error(`Failed to load app configuration: ${e.message}`);
-}
+export const sendInvitationMail = async (
+  email,
+  token,
+  organizationName,
+  expirationTime,
+  locale = 'en'
+) => {
+  let appConfig;
+  // Ensure config is loaded
+  try {
+    appConfig = loadConfig('app');
+  } catch (e) {
+    log.error.error('Failed to load app config:', e);
+    throw e; // Re-throw to be caught by the outer try-catch
+  }
 
-const sendInvitationMail = (email, token, organizationName, expirationTime, locale = 'en') => {
+  const smtpConfig = getSmtpConfig();
+
+  if (!smtpConfig || !smtpConfig.smtp_settings || !smtpConfig.smtp_settings.from) {
+    const err = new Error('SMTP configuration is missing or invalid.');
+    log.error.error('Error preparing invitation email:', err);
+    throw err;
+  }
+
   try {
     const transporter = createTransporter();
-
-    const frontendUrl = appConfig.boxvault.origin.value;
+    const frontendUrl = appConfig?.boxvault?.origin?.value || 'http://localhost:3000';
     const invitationLink = `${frontendUrl}/register?token=${token}&organization=${organizationName}`;
     const expirationDate = new Date(expirationTime).toLocaleString();
 
@@ -31,17 +46,11 @@ const sendInvitationMail = (email, token, organizationName, expirationTime, loca
       `,
     };
 
-    transporter.sendMail(mailOptions).catch(error => {
-      log.error.error('Error sending invitation email:', error);
-    });
-
-    return Promise.resolve(invitationLink);
+    const info = await transporter.sendMail(mailOptions);
+    log.app.info('Invitation email sent: %s', info.messageId);
+    return invitationLink;
   } catch (error) {
-    log.error.error('Error preparing invitation email:', error);
-    return Promise.reject(error);
+    log.error.error('Error sending invitation email:', error);
+    throw error; // Re-throw the error to be handled by the caller
   }
-};
-
-module.exports = {
-  sendInvitationMail,
 };

@@ -1,5 +1,5 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
 const { UserOrg } = db;
 
 /**
@@ -69,14 +69,16 @@ const getUserOrganizations = async (req, res) => {
 
     // Format response for frontend
     const organizations = userOrganizations.map(userOrg => ({
-      id: userOrg.organization.id,
-      name: userOrg.organization.name,
-      description: userOrg.organization.description,
-      emailHash: userOrg.organization.emailHash,
+      organization: {
+        id: userOrg.organization.id,
+        name: userOrg.organization.name,
+        description: userOrg.organization.description,
+        emailHash: userOrg.organization.emailHash,
+        accessMode: userOrg.organization.access_mode,
+      },
       role: userOrg.role,
       isPrimary: userOrg.is_primary,
       joinedAt: userOrg.joined_at,
-      accessMode: userOrg.organization.access_mode,
     }));
 
     log.api.info('User organizations retrieved', {
@@ -94,4 +96,4 @@ const getUserOrganizations = async (req, res) => {
   }
 };
 
-module.exports = { getUserOrganizations };
+export { getUserOrganizations };

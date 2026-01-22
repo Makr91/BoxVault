@@ -1,11 +1,16 @@
 // verifyOrganization.js
-const db = require('../models');
-const Organization = db.organization;
+import db from '../models/index.js';
+const { organization: Organization } = db;
 
 // Function to check the format of the organization name
 const validateOrganization = (req, res, next) => {
   const { organization } = req.body;
   const organizationRegex = /^[A-Za-z0-9.-]+$/;
+
+  // For PUT requests, the name is optional. Only validate if provided.
+  if (req.method === 'PUT' && typeof organization === 'undefined') {
+    return next();
+  }
 
   if (!organization || !organizationRegex.test(organization)) {
     return res.status(400).send({
@@ -45,4 +50,4 @@ const verifyOrganization = {
   checkOrganizationDuplicate,
 };
 
-module.exports = verifyOrganization;
+export default verifyOrganization;

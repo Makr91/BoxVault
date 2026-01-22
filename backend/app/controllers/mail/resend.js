@@ -1,19 +1,10 @@
 // resend.js
-const crypto = require('crypto');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-const { sendVerificationMail } = require('./verification');
-const { loadConfig } = require('../../utils/config-loader');
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch {
-  // Config will be loaded when needed
-}
-
-const User = db.user;
-const Organization = db.organization;
+import { randomBytes } from 'crypto';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { user: User } = db;
+import { sendVerificationMail } from './verification.js';
+import { loadConfig } from '../../utils/config-loader.js';
 
 /**
  * @swagger
@@ -68,27 +59,19 @@ const Organization = db.organization;
  *                   type: string
  *                   example: "SMTP connection failed"
  */
-exports.resendVerificationMail = async (req, res) => {
+export const resendVerificationMail = async (req, res) => {
   try {
-    const user = await User.findByPk(req.userId, {
-      include: [{ model: Organization, as: 'primaryOrganization' }],
-    });
-
-    if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
-    }
-
-    if (!user.primaryOrganization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
-    }
+    const user = await User.findByPk(req.userId);
 
     if (user.verified) {
       return res.status(400).send({ message: req.__('auth.userAlreadyVerified') });
     }
 
-    user.verificationToken = crypto.randomBytes(20).toString('hex');
+    // Auth config is pre-loaded and validated by middleware, so no need for try-catch here.
+    const authConfig = loadConfig('auth');
+    user.verificationToken = randomBytes(20).toString('hex');
     const verificationExpiryHours =
-      authConfig.auth?.jwt?.verification_token_expiry_hours?.value || 24;
+      authConfig?.auth?.jwt?.verification_token_expiry_hours?.value || 24;
     user.verificationTokenExpires = Date.now() + verificationExpiryHours * 60 * 60 * 1000;
 
     await user.save();

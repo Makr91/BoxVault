@@ -1,27 +1,27 @@
 // organization.controller.js
-const { create } = require('./organization/create');
-const { findAllWithUsers } = require('./organization/findallwithusers');
-const { findOneWithUsers } = require('./organization/findonewithusers');
-const { findAll } = require('./organization/findall');
-const { findOne } = require('./organization/findone');
-const { update } = require('./organization/update');
-const { delete: deleteOrganization } = require('./organization/delete');
-const { suspendOrganization } = require('./organization/suspend');
-const { resumeOrganization } = require('./organization/resume');
-const { discoverOrganizations } = require('./organization/discover');
-const { updateAccessMode } = require('./organization/accessmode');
-const { getUserOrgRole } = require('./organization/userrole');
-const { updateUserOrgRole } = require('./organization/updateuserrole');
-const { removeUserFromOrg } = require('./organization/removeuser');
+import { create } from './organization/create.js';
+import { findAllWithUsers } from './organization/findallwithusers.js';
+import { findOneWithUsers } from './organization/findonewithusers.js';
+import { findAll } from './organization/findall.js';
+import { findOne } from './organization/findone.js';
+import { update } from './organization/update.js';
+import { delete as deleteOrganization } from './organization/delete.js';
+import { suspendOrganization } from './organization/suspend.js';
+import { resumeOrganization } from './organization/resume.js';
+import { discoverOrganizations } from './organization/discover.js';
+import { updateAccessMode } from './organization/accessmode.js';
+import { getUserOrgRole } from './organization/userrole.js';
+import { updateUserOrgRole } from './organization/updateuserrole.js';
+import { removeUserFromOrg } from './organization/removeuser.js';
 
-module.exports = {
+export {
   create,
   findAllWithUsers,
   findOneWithUsers,
   findAll,
   findOne,
   update,
-  delete: deleteOrganization,
+  deleteOrganization as delete,
   suspendOrganization,
   resumeOrganization,
   discoverOrganizations,

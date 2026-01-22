@@ -1,10 +1,8 @@
 // update.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const db = require('../../models');
-
-const Version = db.versions;
-const Box = db.box;
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import db from '../../models/index.js';
+const { versions: Version, UserOrg } = db;
 
 /**
  * @swagger
@@ -67,35 +65,19 @@ const Box = db.box;
  *                   type: string
  *                   example: "Some error occurred while updating the Version."
  */
-exports.update = async (req, res) => {
+export const update = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
-  const { versionNumber: version, description } = req.body;
+  const { versionNumber: newVersionNumber, description } = req.body;
   const oldFilePath = getSecureBoxPath(organization, boxId, versionNumber);
-  const newFilePath = getSecureBoxPath(organization, boxId, version);
+  // Use the new version number for the path if it's provided, otherwise use the old one.
+  const newFilePath = getSecureBoxPath(organization, boxId, newVersionNumber || versionNumber);
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
-      });
-    }
-
-    const box = await Box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: `Box ${boxId} not found in organization ${organization}.`,
-      });
-    }
+    // Organization and Box are already verified and attached by verifyVersion middleware
+    const { organizationData, boxData: box } = req;
 
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
@@ -105,29 +87,41 @@ exports.update = async (req, res) => {
       });
     }
 
-    const [updated] = await Version.update(
-      { versionNumber: version, description },
-      { where: { versionNumber, boxId: box.id } }
-    );
+    const version = await Version.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
+
+    if (!version) {
+      return res.status(404).send({
+        message: req.__('versions.versionNotFound'),
+      });
+    }
+
+    // Build the update payload carefully to avoid setting fields to null
+    const updatePayload = {};
+    if (newVersionNumber) {
+      updatePayload.versionNumber = newVersionNumber;
+    }
+    if (typeof description !== 'undefined') {
+      updatePayload.description = description;
+    }
+
+    const updated = await version.update(updatePayload);
 
     if (updated) {
-      // Create the new directory if it doesn't exist
-      if (!fs.existsSync(newFilePath)) {
-        fs.mkdirSync(newFilePath, { recursive: true });
-      }
-
       // Rename the directory if necessary
-      if (oldFilePath !== newFilePath) {
-        fs.renameSync(oldFilePath, newFilePath);
-
-        // Clean up the old directory if it still exists
-        if (fs.existsSync(oldFilePath)) {
-          fs.rmdirSync(oldFilePath, { recursive: true });
+      if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
+        // If the target directory already exists (e.g. from a previous failed run),
+        // remove it so we can rename the old one to this location.
+        if (fs.existsSync(newFilePath)) {
+          fs.rmSync(newFilePath, { recursive: true, force: true });
         }
+
+        fs.renameSync(oldFilePath, newFilePath);
       }
 
       const updatedVersion = await Version.findOne({
-        where: { versionNumber: version, boxId: box.id },
+        where: { versionNumber: newVersionNumber || versionNumber, boxId: box.id },
       });
       return res.send(updatedVersion);
     }

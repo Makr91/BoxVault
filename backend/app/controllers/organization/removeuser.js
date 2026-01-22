@@ -1,7 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const { UserOrg } = db;
-const User = db.user;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { user: User, Sequelize, UserOrg } = db;
 
 /**
  * @swagger
@@ -98,7 +97,7 @@ const removeUserFromOrg = async (req, res) => {
       const otherOrgs = await UserOrg.findAll({
         where: {
           user_id: userId,
-          organization_id: { [db.Sequelize.Op.ne]: organizationId },
+          organization_id: { [Sequelize.Op.ne]: organizationId },
         },
       });
 
@@ -144,4 +143,4 @@ const removeUserFromOrg = async (req, res) => {
   }
 };
 
-module.exports = { removeUserFromOrg };
+export { removeUserFromOrg };

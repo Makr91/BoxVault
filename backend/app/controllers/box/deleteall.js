@@ -1,11 +1,9 @@
 // deleteall.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-const Organization = db.organization;
-const Box = db.box;
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { box: Box } = db;
 
 /**
  * @swagger
@@ -48,22 +46,12 @@ const Box = db.box;
  *               $ref: '#/components/schemas/Error'
  */
 // Delete all Boxes under an organization
-exports.deleteAll = async (req, res) => {
+export const deleteAll = async (req, res) => {
   const { organization } = req.params;
 
   try {
-    const organizationData = await Organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
     const boxes = await Box.findAll({
-      where: { organizationId: organizationData.id },
+      where: { organizationId: req.organizationId },
     });
 
     if (boxes.length === 0) {
@@ -74,20 +62,22 @@ exports.deleteAll = async (req, res) => {
 
     // Delete all boxes from the database
     const deleted = await Box.destroy({
-      where: { organizationId: organizationData.id },
+      where: { organizationId: req.organizationId },
       truncate: false,
     });
 
     if (deleted) {
       // Delete each box's directory
-      boxes.forEach(b => {
-        const boxPath = getSecureBoxPath(organization, b.name);
-        fs.rm(boxPath, { recursive: true, force: true }, err => {
-          if (err) {
+      await Promise.all(
+        boxes.map(async b => {
+          const boxPath = getSecureBoxPath(organization, b.name);
+          try {
+            await fs.promises.rm(boxPath, { recursive: true, force: true });
+          } catch (err) {
             log.app.info(`Could not delete the box directory for ${b.name}: ${err}`);
           }
-        });
-      });
+        })
+      );
 
       return res.send({
         message: req.__('boxes.deletedAllInOrg', { count: deleted, organization }),

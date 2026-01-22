@@ -1,11 +1,9 @@
 // update.file.controller.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
-
-const Architecture = db.architectures;
-const File = db.files;
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { files: File, UserOrg } = db;
+import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
 
 /**
  * @swagger
@@ -187,8 +185,13 @@ const File = db.files;
  *                     duration:
  *                       type: number
  */
-const update = async (req, res) => {
+const update = (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  void organization;
+  void boxId;
+  void versionNumber;
+  void providerName;
+  void architectureName;
   const fileName = `vagrant.box`;
   const uploadStartTime = Date.now();
 
@@ -199,65 +202,18 @@ const update = async (req, res) => {
   req.setTimeout(uploadTimeoutMs);
   res.setTimeout(uploadTimeoutMs);
 
-  try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await db.box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+  return (async () => {
+    // Entities are pre-loaded by verifyBoxFilePath middleware
+    const { organization: organizationData, box, architecture } = req.entities;
 
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
     if (!canUpdate) {
       return res.status(403).send({
         message: req.__('files.update.permissionDenied'),
-      });
-    }
-
-    const version = await db.versions.findOne({
-      where: { versionNumber, boxId: box.id },
-    });
-
-    if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFound'),
-      });
-    }
-
-    const provider = await db.providers.findOne({
-      where: { name: providerName, versionId: version.id },
-    });
-
-    if (!provider) {
-      return res.status(404).send({
-        message: req.__('providers.providerNotFound'),
-      });
-    }
-
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName, providerId: provider.id },
-    });
-
-    if (!architecture) {
-      return res.status(404).send({
-        message: req.__('architectures.notFound'),
       });
     }
 
@@ -274,113 +230,21 @@ const update = async (req, res) => {
       });
     }
 
-    // Process the upload using Promise-based middleware
-    await new Promise((resolve, reject) => {
-      uploadFileMiddleware(req, res, err => {
-        if (err) {
-          reject(err);
-        } else if (!req.file) {
-          reject(new Error(req.__('files.noFileUploaded')));
-        } else {
-          resolve(req.file);
-        }
-      });
-    });
-
-    // If headers are already sent by middleware, return
-    if (res.headersSent) {
-      log.app.info('Headers already sent by middleware');
-      return res;
-    }
-
-    // Log successful file upload
-    log.app.info('File updated successfully:', {
-      filename: req.file.filename,
-      originalname: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype,
-      path: req.file.path,
-    });
-
-    const { checksum: bodyChecksum, checksumType: bodyChecksumType } = req.body;
-    let checksum = bodyChecksum;
-    let checksumType = bodyChecksumType;
-
-    if (!checksumType || checksumType.toUpperCase() === 'NULL') {
-      checksum = null;
-      checksumType = null;
-    }
-
-    // Update the file record with new information
-    await fileRecord.update({
-      fileName,
-      checksum,
-      checksumType,
-      fileSize: req.file.size,
-    });
-
-    // Log successful update
-    log.app.info('File record updated:', {
-      fileName,
-      checksum,
-      checksumType,
-      architectureId: architecture.id,
-      fileSize: req.file.size,
-      path: req.file.path,
-    });
-
-    return res.status(200).send({
-      message: req.__('files.updated'),
-      fileName,
-      fileSize: req.file.size,
-      path: req.file.path,
-    });
-  } catch (err) {
+    // Call the upload middleware directly (it handles the response and DB updates)
+    await uploadFileMiddleware(req, res);
+    return undefined;
+  })().catch(err => {
     log.app.info(err);
 
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({
-        error: 'FILE_TOO_LARGE',
-        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
-        details: {
-          maxSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
-          duration: (Date.now() - uploadStartTime) / 1000,
-        },
-      });
-    }
-
-    if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
-      const uploadDuration = (Date.now() - uploadStartTime) / 1000;
-      return res.status(408).json({
-        error: 'UPLOAD_TIMEOUT',
-        message: req.__('files.uploadTimeout'),
-        details: {
-          duration: uploadDuration,
-          maxFileSize: appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024,
-        },
-      });
-    }
-
-    // Handle disk space errors
-    if (err.code === 'ENOSPC') {
-      return res.status(507).json({
-        error: 'NO_STORAGE_SPACE',
-        message: req.__('files.noStorageSpace'),
-        details: {
-          duration: (Date.now() - uploadStartTime) / 1000,
-        },
-      });
-    }
-
     return res.status(500).send({
-      message: req.__('files.update.error', { file: req.file ? req.file.originalname : '' }),
+      message: req.__('files.update.error', { file: '' }),
       error: err.message,
       code: err.code || 'UNKNOWN_ERROR',
       details: {
         duration: (Date.now() - uploadStartTime) / 1000,
       },
     });
-  }
+  });
 };
 
-module.exports = { update };
+export { update };

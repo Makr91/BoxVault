@@ -1,7 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-
-const ISO = db.iso;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { iso: ISO } = db;
 
 /**
  * @swagger
@@ -45,7 +44,7 @@ const ISO = db.iso;
  */
 const update = async (req, res) => {
   const { isoId } = req.params;
-  const { isPublic, name } = req.body || {};
+  const { isPublic, name, description } = req.body || {};
 
   try {
     const iso = await ISO.findByPk(isoId);
@@ -61,6 +60,10 @@ const update = async (req, res) => {
       iso.name = name.trim();
     }
 
+    if (description !== undefined) {
+      iso.description = description;
+    }
+
     await iso.save();
     return res.send(iso);
   } catch (err) {
@@ -69,4 +72,4 @@ const update = async (req, res) => {
   }
 };
 
-module.exports = { update };
+export { update };

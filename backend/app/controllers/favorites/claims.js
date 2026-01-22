@@ -1,7 +1,7 @@
 // claims.js
-const axios = require('axios');
-const { log } = require('../../utils/Logger');
-const { getAuthServerUrl, extractOidcAccessToken } = require('./helpers');
+import axios from 'axios';
+import { log } from '../../utils/Logger.js';
+import { getAuthServerUrl, extractOidcAccessToken } from './helpers.js';
 
 /**
  * @swagger
@@ -50,7 +50,7 @@ const { getAuthServerUrl, extractOidcAccessToken } = require('./helpers');
  *       500:
  *         description: Failed to fetch claims from auth server
  */
-exports.getUserInfoClaims = async (req, res) => {
+export const getUserInfoClaims = async (req, res) => {
   try {
     const oidcAccessToken = extractOidcAccessToken(req);
 

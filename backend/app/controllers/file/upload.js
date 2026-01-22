@@ -1,13 +1,12 @@
 // upload.file.controller.js
-const path = require('path');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-const { uploadFile: uploadFileMiddleware } = require('../../middleware/upload');
-const { safeMkdirSync, safeExistsSync } = require('../../utils/fsHelper');
-
-const Architecture = db.architectures;
+import { join, dirname } from 'path';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { UserOrg } = db;
+import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
+import { safeMkdirSync, safeExistsSync } from '../../utils/fsHelper.js';
 
 /**
  * @swagger
@@ -187,7 +186,7 @@ const Architecture = db.architectures;
  *                     duration:
  *                       type: number
  */
-const upload = async (req, res) => {
+const upload = (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
   const baseDir = getSecureBoxPath(
@@ -197,7 +196,7 @@ const upload = async (req, res) => {
     providerName,
     architectureName
   );
-  const filePath = path.join(baseDir, fileName);
+  const filePath = join(baseDir, fileName);
   const uploadStartTime = Date.now();
 
   log.app.info('=== FILE UPLOAD STARTED ===', {
@@ -227,11 +226,13 @@ const upload = async (req, res) => {
   req.setTimeout(uploadTimeoutMs);
   res.setTimeout(uploadTimeoutMs);
 
-  try {
-    log.app.info('Creating upload directory if needed:', { filePath });
+  return (async () => {
+    // The verifyBoxFilePath middleware has already validated the path and attached entities.
+    const { box: boxData, architecture: architectureData } = req.entities;
 
     // Create directory if it doesn't exist
-    const dir = path.dirname(filePath);
+    const dir = dirname(filePath);
+    log.app.info('Ensuring upload directory exists:', { dir });
     if (!safeExistsSync(dir)) {
       safeMkdirSync(dir, { recursive: true });
       log.app.info('Created upload directory:', { dir });
@@ -239,98 +240,31 @@ const upload = async (req, res) => {
       log.app.info('Upload directory already exists:', { dir });
     }
 
-    log.app.info('Looking up box, version, provider, architecture...');
-
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      log.app.error('Organization not found', { organization });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await db.box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      log.app.error('Box not found', { boxId, organization });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
-
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
+    const membership = await UserOrg.findUserOrgRole(req.userId, boxData.organizationId);
+    const isOwner = boxData.userId === req.userId;
     const canUpload = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
     if (!canUpload) {
-      log.app.error('Permission denied', { userId: req.userId, boxUserId: box.userId });
+      log.app.error('Permission denied for upload', {
+        userId: req.userId,
+        boxOwnerId: boxData.userId,
+      });
       return res.status(403).json({
         error: 'PERMISSION_DENIED',
         message: req.__('files.upload.permissionDenied'),
       });
     }
 
-    const version = await db.versions.findOne({
-      where: { versionNumber, boxId: box.id },
-    });
-
-    if (!version) {
-      log.app.error('Version not found', { versionNumber, boxId });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('versions.versionNotFound'),
-      });
-    }
-
-    const provider = await db.providers.findOne({
-      where: { name: providerName, versionId: version.id },
-    });
-
-    if (!provider) {
-      log.app.error('Provider not found', { providerName, versionNumber });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('providers.providerNotFound'),
-      });
-    }
-
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName, providerId: provider.id },
-    });
-
-    if (!architecture) {
-      log.app.error('Architecture not found in database', {
-        architectureName,
-        providerName,
-        versionNumber,
-        boxId,
-        organization,
-      });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('architectures.notFound'),
-      });
-    }
-
     log.app.info('Architecture found, calling upload middleware...', {
-      architectureId: architecture.id,
-      architectureName: architecture.name,
+      architectureId: architectureData.id,
+      architectureName: architectureData.name,
     });
 
     // Call the upload middleware directly (it handles the response)
     await uploadFileMiddleware(req, res);
-
-    log.app.info('Upload middleware completed successfully');
-    return res;
-  } catch (err) {
+    return undefined;
+  })().catch(err => {
     // Log detailed error information
     log.error.error('File upload error:', {
       error: err.message,
@@ -345,34 +279,6 @@ const upload = async (req, res) => {
       },
     });
 
-    // Handle specific error types
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).send({
-        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
-        error: 'FILE_TOO_LARGE',
-      });
-    }
-
-    if (err.message.includes('Upload timeout') || err.code === 'ETIMEDOUT') {
-      const uploadDuration = (Date.now() - uploadStartTime) / 1000;
-      return res.status(408).send({
-        message: req.__('files.uploadTimeout'),
-        error: 'UPLOAD_TIMEOUT',
-        details: {
-          duration: `${uploadDuration} seconds`,
-          maxFileSize: `${appConfig.boxvault.box_max_file_size.value}GB`,
-        },
-      });
-    }
-
-    // Handle disk space errors
-    if (err.code === 'ENOSPC') {
-      return res.status(507).send({
-        message: req.__('files.noStorageSpace'),
-        error: 'NO_STORAGE_SPACE',
-      });
-    }
-
     // Generic error response with more details
     return res.status(500).json({
       error: 'UPLOAD_ERROR',
@@ -383,7 +289,7 @@ const upload = async (req, res) => {
         duration: (Date.now() - uploadStartTime) / 1000,
       },
     });
-  }
+  });
 };
 
-module.exports = { upload };
+export { upload };

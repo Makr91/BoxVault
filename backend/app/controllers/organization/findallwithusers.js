@@ -1,20 +1,6 @@
 // findallwithusers.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-
-const Organization = db.organization;
-const User = db.user;
-const Role = db.role;
-const Box = db.box;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import db from '../../models/index.js';
+const { organization: Organization, user: User, role: Role, box: Box } = db;
 
 /**
  * @swagger
@@ -63,20 +49,8 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.findAllWithUsers = async (req, res) => {
-  const token = req.headers['x-access-token'];
-  let userId = null;
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-      userId = decoded.id;
-      log.app.info('Decoded user ID:', userId);
-    } catch (err) {
-      log.error.error('JWT verification error:', err.message);
-      return res.status(401).send({ message: req.__('auth.unauthorized') });
-    }
-  }
+export const findAllWithUsers = async (req, res) => {
+  const { userId } = req;
 
   try {
     const organizations = await Organization.findAll({
@@ -104,10 +78,14 @@ exports.findAllWithUsers = async (req, res) => {
 
     const result = organizations.map(org => ({
       ...org.toJSON(),
-      members: org.members.map(user => ({
-        ...user.toJSON(),
-        totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
-      })),
+      members: org.members.map(user => {
+        const { password, ...userWithoutPassword } = user.toJSON();
+        void password;
+        return {
+          ...userWithoutPassword,
+          totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
+        };
+      }),
       totalBoxes: org.members.reduce(
         (acc, user) =>
           acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,

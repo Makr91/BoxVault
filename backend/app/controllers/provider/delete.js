@@ -1,11 +1,10 @@
 // delete.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
 
-const Provider = db.providers;
-const Architecture = db.architectures;
+const { providers: Provider, architectures: Architecture } = db;
 
 /**
  * @swagger
@@ -87,7 +86,7 @@ const Architecture = db.architectures;
  *                   type: string
  *                   example: "Some error occurred while deleting the Provider."
  */
-exports.delete = async (req, res) => {
+const _delete = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
 
   try {
@@ -97,7 +96,7 @@ exports.delete = async (req, res) => {
 
     if (!organizationData) {
       return res.status(404).send({
-        message: req.__('organizations.organizationNotFound'),
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
       });
     }
 
@@ -107,7 +106,7 @@ exports.delete = async (req, res) => {
 
     if (!box) {
       return res.status(404).send({
-        message: req.__('boxes.boxNotFound'),
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
       });
     }
 
@@ -117,7 +116,7 @@ exports.delete = async (req, res) => {
 
     if (!version) {
       return res.status(404).send({
-        message: req.__('versions.versionNotFound'),
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
       });
     }
 
@@ -189,3 +188,5 @@ exports.delete = async (req, res) => {
     });
   }
 };
+
+export { _delete as delete };

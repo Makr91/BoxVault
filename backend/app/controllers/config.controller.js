@@ -1,14 +1,8 @@
 // config.controller.js
-const { getConfig } = require('./config/get');
-const { updateConfig } = require('./config/update');
-const { getGravatarConfig } = require('./config/gravatar');
-const { getTicketConfig } = require('./config/ticket');
-const { restartServer } = require('./config/restart');
+import { getConfig } from './config/get.js';
+import { updateConfig } from './config/update.js';
+import { getGravatarConfig } from './config/gravatar.js';
+import { getTicketConfig } from './config/ticket.js';
+import { restartServer } from './config/restart.js';
 
-module.exports = {
-  getConfig,
-  updateConfig,
-  getGravatarConfig,
-  getTicketConfig,
-  restartServer,
-};
+export { getConfig, updateConfig, getGravatarConfig, getTicketConfig, restartServer };

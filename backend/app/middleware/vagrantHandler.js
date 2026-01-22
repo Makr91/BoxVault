@@ -1,7 +1,6 @@
-const db = require('../models');
-const { log } = require('../utils/Logger');
-const ServiceAccount = db.service_account;
-const User = db.user;
+import db from '../models/index.js';
+import { log } from '../utils/Logger.js';
+const { service_account: ServiceAccount, user: User, Sequelize } = db;
 
 const isVagrantRequest = req => {
   const userAgent = req.headers['user-agent'] || '';
@@ -17,20 +16,15 @@ const extractBearerToken = req => {
 };
 
 const validateVagrantToken = async token => {
-  if (!token) {
-    log.app.info('No token provided for validation');
-    return null;
-  }
-
   try {
     log.app.info('Attempting to validate token:', `${token.substring(0, 8)}...`);
     const serviceAccount = await ServiceAccount.findOne({
       where: {
         token,
         expiresAt: {
-          [db.Sequelize.Op.or]: {
-            [db.Sequelize.Op.gt]: new Date(),
-            [db.Sequelize.Op.eq]: null,
+          [Sequelize.Op.or]: {
+            [Sequelize.Op.gt]: new Date(),
+            [Sequelize.Op.eq]: null,
           },
         },
       },
@@ -168,6 +162,19 @@ const vagrantHandler = async (req, res, next) => {
     return next();
   }
 
+  // Store parsed URL info for the controller
+  req.vagrantInfo = {
+    originalUrl: req.originalUrl,
+    organization: parsedUrl.organization,
+    boxName: parsedUrl.boxName,
+    // Store the full requested name for Vagrant metadata
+    requestedName: `${parsedUrl.organization}/${parsedUrl.boxName}`,
+    isDownload: parsedUrl.isDownload,
+    version: parsedUrl.version,
+    provider: parsedUrl.provider,
+    architecture: parsedUrl.architecture,
+  };
+
   // For HEAD requests, handle metadata detection
   if (req.method === 'HEAD') {
     // Only set Content-Type to indicate this is metadata
@@ -183,40 +190,31 @@ const vagrantHandler = async (req, res, next) => {
 
     // Don't set Content-Type for downloads
     // Let the download endpoint handle streaming the file
+
+    log.app.info('Vagrant Download Request:', {
+      ...req.vagrantInfo,
+      userAgent: req.headers['user-agent'],
+    });
+
     next();
     return undefined;
   }
 
   // For GET requests to metadata endpoint
-  if (!parsedUrl.isDownload) {
-    // Set headers for JSON metadata response
-    res.set({
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-      Vary: 'Accept',
-    });
+  // Set headers for JSON metadata response
+  res.set({
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    Vary: 'Accept',
+  });
 
-    // Ensure Accept header is set for Vagrant
-    if (!req.headers.accept) {
-      req.headers.accept = 'application/json';
-    }
+  // Ensure Accept header is set for Vagrant
+  if (!req.headers.accept) {
+    req.headers.accept = 'application/json';
   }
 
   // Rewrite the URL to our API format
   req.url = `/api/organization/${parsedUrl.organization}/box/${parsedUrl.boxName}/metadata`;
-
-  // Store parsed URL info for the controller
-  req.vagrantInfo = {
-    originalUrl: req.originalUrl,
-    organization: parsedUrl.organization,
-    boxName: parsedUrl.boxName,
-    // Store the full requested name for Vagrant metadata
-    requestedName: `${parsedUrl.organization}/${parsedUrl.boxName}`,
-    isDownload: parsedUrl.isDownload,
-    version: parsedUrl.version,
-    provider: parsedUrl.provider,
-    architecture: parsedUrl.architecture,
-  };
 
   // Log request details for debugging
   log.app.info('Vagrant Request:', {
@@ -228,4 +226,4 @@ const vagrantHandler = async (req, res, next) => {
   return next();
 };
 
-module.exports = vagrantHandler;
+export default vagrantHandler;

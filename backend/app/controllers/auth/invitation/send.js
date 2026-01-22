@@ -1,18 +1,10 @@
 // send.js
-const crypto = require('crypto');
-const db = require('../../../models');
-const mailController = require('../../mail.controller');
-const { loadConfig } = require('../../../utils/config-loader');
-
-const Organization = db.organization;
-const Invitation = db.invitation;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch {
-  // Config will be loaded when needed
-}
+import { randomBytes } from 'crypto';
+import db from '../../../models/index.js';
+const { organization: Organization, invitation: Invitation } = db;
+import { log } from '../../../utils/Logger.js';
+import { sendInvitationMail } from '../../mail.controller.js';
+import { loadConfig } from '../../../utils/config-loader.js';
 
 /**
  * @swagger
@@ -76,10 +68,12 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.sendInvitation = async (req, res) => {
-  const { email, organizationName, inviteRole } = req.body;
+export const sendInvitation = async (req, res) => {
+  const { email, organizationName, inviteRole } = req.body || {};
 
   try {
+    const authConfig = loadConfig('auth');
+
     const organization = await Organization.findOne({ where: { name: organizationName } });
 
     if (!organization) {
@@ -95,7 +89,7 @@ exports.sendInvitation = async (req, res) => {
       });
     }
 
-    const invitationToken = crypto.randomBytes(20).toString('hex');
+    const invitationToken = randomBytes(20).toString('hex');
     const invitationExpiryHours = authConfig.auth?.jwt?.invitation_token_expiry_hours?.value || 24;
     const invitationTokenExpires = Date.now() + invitationExpiryHours * 60 * 60 * 1000;
 
@@ -109,7 +103,7 @@ exports.sendInvitation = async (req, res) => {
     });
 
     // Send the invitation email and get the invitation link
-    const invitationLink = await mailController.sendInvitationMail(
+    const invitationLink = await sendInvitationMail(
       email,
       invitationToken,
       organizationName,
@@ -125,6 +119,7 @@ exports.sendInvitation = async (req, res) => {
       invitationLink,
     });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('invitations.send.error') });
+    log.error.error('Failed to send invitation:', err);
+    return res.status(500).send({ message: req.__('invitations.send.error') });
   }
 };

@@ -1,24 +1,21 @@
 // signup.js
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-const mailController = require('../mail.controller');
-const { generateEmailHash } = require('./helpers');
-const { loadConfig } = require('../../utils/config-loader');
+import { hashSync } from 'bcryptjs';
+import { randomBytes } from 'crypto';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const {
+  user: User,
+  role: Role,
+  organization: Organization,
+  invitation: Invitation,
+  Sequelize,
+  UserOrg,
+} = db;
+import { sendVerificationMail } from '../mail.controller.js';
+import { generateEmailHash } from './helpers.js';
+import { loadConfig } from '../../utils/config-loader.js';
 
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch {
-  // Config will be loaded when needed
-}
-
-const User = db.user;
-const Role = db.role;
-const Organization = db.organization;
-const Invitation = db.invitation;
-const { Op } = db.Sequelize;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -80,10 +77,11 @@ const { Op } = db.Sequelize;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.signup = async (req, res) => {
-  const { username, email, password, invitationToken } = req.body;
+export const signup = async (req, res) => {
+  const { username, email, password, invitationToken } = req.body || {};
 
   try {
+    const authConfig = loadConfig('auth');
     let organization;
     let invitation;
 
@@ -131,10 +129,10 @@ exports.signup = async (req, res) => {
     const user = await User.create({
       username,
       email,
-      password: bcrypt.hashSync(password, 8),
+      password: hashSync(password, 8),
       emailHash,
       primary_organization_id: organization.id,
-      verificationToken: crypto.randomBytes(20).toString('hex'),
+      verificationToken: randomBytes(20).toString('hex'),
       verificationTokenExpires:
         Date.now() +
         (authConfig.auth?.jwt?.verification_token_expiry_hours?.value || 24) * 60 * 60 * 1000,
@@ -157,7 +155,7 @@ exports.signup = async (req, res) => {
     }
 
     // Create user-organization relationship
-    await db.UserOrg.create({
+    await UserOrg.create({
       user_id: user.id,
       organization_id: organization.id,
       role: assignedRole,
@@ -170,13 +168,12 @@ exports.signup = async (req, res) => {
     }
 
     // Send verification email asynchronously
-    mailController
-      .sendVerificationMail(
-        user,
-        user.verificationToken,
-        user.verificationTokenExpires,
-        req.getLocale()
-      )
+    sendVerificationMail(
+      user,
+      user.verificationToken,
+      user.verificationTokenExpires,
+      req.getLocale()
+    )
       .then(() => {
         log.app.info(`Verification email sent successfully to ${user.email}`);
       })

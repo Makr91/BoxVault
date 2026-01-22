@@ -1,8 +1,7 @@
 // delete.js
-const { log } = require('../../../utils/Logger');
-const db = require('../../../models');
-
-const Invitation = db.invitation;
+import { log } from '../../../utils/Logger.js';
+import db from '../../../models/index.js';
+const { invitation: Invitation } = db;
 
 /**
  * @swagger
@@ -44,7 +43,7 @@ const Invitation = db.invitation;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.deleteInvitation = async (req, res) => {
+export const deleteInvitation = async (req, res) => {
   const { invitationId } = req.params;
 
   try {

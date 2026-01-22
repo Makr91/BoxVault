@@ -1,17 +1,8 @@
 // download.link.file.controller.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-const { generateDownloadToken } = require('../../utils/auth');
-
-let appConfig;
-let authConfig;
-try {
-  appConfig = loadConfig('app');
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load configuration: ${e.message}`);
-}
+import { loadConfig } from '../../utils/config-loader.js';
+import db from '../../models/index.js';
+const { UserOrg } = db;
+import { generateDownloadToken } from '../../utils/auth.js';
 
 /**
  * @swagger
@@ -100,47 +91,11 @@ const getDownloadLink = async (req, res) => {
   // No need to manually check here as the middleware handles it
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
+    const appConfig = loadConfig('app');
+    const authConfig = loadConfig('auth');
 
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await db.box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic'],
-      include: [
-        {
-          model: db.versions,
-          as: 'versions',
-          where: { versionNumber },
-          include: [
-            {
-              model: db.providers,
-              as: 'providers',
-              where: { name: providerName },
-              include: [
-                {
-                  model: db.architectures,
-                  as: 'architectures',
-                  where: { name: architectureName },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    // Entities are pre-loaded by verifyBoxFilePath middleware
+    const { organization: organizationData, box } = req.entities;
 
     // Check authorization
     if (!box.isPublic && !isServiceAccount) {
@@ -148,7 +103,7 @@ const getDownloadLink = async (req, res) => {
         return res.status(403).send({ message: req.__('files.unauthorized') });
       }
 
-      const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+      const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
       if (!membership) {
         return res.status(403).send({ message: req.__('files.unauthorized') });
       }
@@ -181,4 +136,4 @@ const getDownloadLink = async (req, res) => {
   }
 };
 
-module.exports = { getDownloadLink };
+export { getDownloadLink };

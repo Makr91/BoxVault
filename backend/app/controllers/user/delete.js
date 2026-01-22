@@ -1,25 +1,17 @@
 // delete.js
-const db = require('../../models');
-
-const User = db.user;
+import db from '../../models/index.js';
+const { user: User, organization: Organization, UserOrg } = db;
 
 /**
  * @swagger
- * /api/users/{userId}:
+ * /api/organization/{organization}/users/{username}:
  *   delete:
- *     summary: Delete a user completely from BoxVault
- *     description: Permanently delete a user and all their data from the entire system (Admin only)
+ *     summary: Remove a user from the system
+ *     description: Permanently delete a user account (Admin only)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: integer
- *         description: User ID to delete
- *         example: 1
  *     responses:
  *       200:
  *         description: User deleted successfully
@@ -44,11 +36,27 @@ const User = db.user;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.delete = async (req, res) => {
-  const { userId } = req.params;
+const _delete = async (req, res) => {
+  const { username, organization: orgName } = req.params;
 
   try {
-    const user = await User.findByPk(userId);
+    let user;
+
+    // Find user within the organization context
+    const organization = await Organization.findOne({ where: { name: orgName } });
+    if (!organization) {
+      return res.status(404).send({ message: `Organization not found: ${orgName}` });
+    }
+    user = await User.findOne({ where: { username } });
+    if (user) {
+      const membership = await UserOrg.findOne({
+        where: { user_id: user.id, organization_id: organization.id },
+      });
+      if (!membership) {
+        // User exists but not in this org, so treat as not found for this request
+        user = null;
+      }
+    }
 
     if (!user) {
       return res.status(404).send({
@@ -57,10 +65,11 @@ exports.delete = async (req, res) => {
     }
 
     await user.destroy();
-    return res.status(200).send({ message: req.__('users.userDeleted') });
+    return res.status(200).send({ message: 'User was deleted successfully!' });
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('errors.operationFailed'),
     });
   }
 };
+export { _delete as delete };

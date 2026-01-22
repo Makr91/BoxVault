@@ -2,7 +2,7 @@
  * Credential Model
  * Stores external authentication provider credentials linked to users
  */
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const Credential = sequelize.define(
     'Credential',
     {
@@ -107,6 +107,16 @@ module.exports = (sequelize, Sequelize) => {
   );
 
   /**
+   * Associations
+   */
+  Credential.associate = function (models) {
+    Credential.belongsTo(models.user, {
+      foreignKey: 'user_id',
+      as: 'user',
+    });
+  };
+
+  /**
    * Class methods
    */
 
@@ -144,7 +154,7 @@ module.exports = (sequelize, Sequelize) => {
       where: { external_email: email },
       include: [
         {
-          model: sequelize.models.User,
+          model: sequelize.models.users,
           as: 'user',
         },
       ],

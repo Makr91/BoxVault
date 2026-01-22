@@ -1,18 +1,9 @@
 // findone.js
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-const Version = db.versions;
-const Box = db.box;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import jwt from 'jsonwebtoken';
+const { verify } = jwt;
+import { loadConfig } from '../../utils/config-loader.js';
+import db from '../../models/index.js';
+const { versions: Version, UserOrg } = db;
 
 /**
  * @swagger
@@ -92,15 +83,16 @@ try {
  *                   type: string
  *                   example: "Some error occurred while retrieving the Version."
  */
-exports.findOne = async (req, res) => {
+export const findOne = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
+  const authConfig = loadConfig('auth');
   const token = req.headers['x-access-token'];
   let userId = null;
 
   if (token) {
     try {
       // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+      const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
       userId = decoded.id;
     } catch {
       return res.status(401).send({ message: 'Unauthorized!' });
@@ -108,25 +100,8 @@ exports.findOne = async (req, res) => {
   }
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: `Organization not found with name: ${organization}.`,
-      });
-    }
-
-    const box = await Box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: `Box not found in organization ${organization}.`,
-      });
-    }
+    // Organization and Box are already verified and attached by verifyVersion middleware
+    const { organizationData, boxData: box } = req;
 
     const version = await Version.findOne({
       where: { versionNumber, boxId: box.id },
@@ -147,7 +122,7 @@ exports.findOne = async (req, res) => {
       return res.status(403).send({ message: 'Unauthorized access to version.' });
     }
 
-    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: 'Unauthorized access to version.' });
     }

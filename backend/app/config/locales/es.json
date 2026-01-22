@@ -54,56 +54,56 @@
     "leaveError": "Error al dejar la organización"
   },
   "boxes": {
-    "boxNotFoundInOrg": "Caja {{boxId}} no encontrada en la organización {{organization}}.",
-    "boxNotFound": "Caja no encontrada.",
-    "boxNotFoundWithName": "Caja no encontrada con el nombre: {{name}}.",
-    "privateBoxAccessDenied": "Acceso denegado. La caja privada requiere autenticación.",
+    "boxNotFoundInOrg": "Box {{boxId}} no encontrada en la organización {{organization}}.",
+    "boxNotFound": "Box no encontrada.",
+    "boxNotFoundWithName": "Box no encontrada con el nombre: {{name}}.",
+    "privateBoxAccessDenied": "Acceso denegado. La Box privada requiere autenticación.",
     "nameCannotBeEmpty": "¡El nombre no puede estar vacío!",
     "create": {
       "error": "Ocurrió un error al crear la Caja."
     },
-    "boxDeleted": "¡Caja eliminada exitosamente!",
-    "noBoxesFoundInOrg": "No se encontraron cajas bajo la organización {{organization}}.",
-    "deletedAllInOrg": "¡{{count}} Cajas fueron eliminadas exitosamente bajo la organización={{organization}}!",
-    "notFoundToDelete": "No se encontraron cajas para eliminar",
+    "boxDeleted": "¡Box eliminada exitosamente!",
+    "noBoxesFoundInOrg": "No se encontraron Boxes bajo la organización {{organization}}.",
+    "deletedAllInOrg": "¡{{count}} Boxes fueron eliminadas exitosamente bajo la organización={{organization}}!",
+    "notFoundToDelete": "No se encontraron Boxes para eliminar",
     "deleteAll": {
       "error": "Ocurrió un error al eliminar todas las cajas."
     },
     "discover": {
       "error": "Ocurrió un error al recuperar las cajas."
     },
-    "unauthorized": "Acceso no autorizado a caja privada.",
+    "unauthorized": "Acceso no autorizado a Box privada.",
     "download": {
       "error": "Error al procesar la solicitud de descarga"
     },
     "findOne": {
-      "error": "Error al recuperar la caja con nombre={{name}}: {{error}}"
+      "error": "Error al recuperar la Box con nombre={{name}}: {{error}}"
     },
     "update": {
-      "permissionDenied": "Solo puedes actualizar cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes actualizar Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al actualizar la Caja."
     },
     "organizationDetails": {
       "error": "Ocurrió un error al recuperar los detalles de la organización."
     },
     "delete": {
-      "permissionDenied": "Solo puedes eliminar cajas que posees, o necesitas rol de moderador/administrador."
+      "permissionDenied": "Solo puedes eliminar Boxes que posees, o necesitas rol de moderador/administrador."
     }
   },
   "versions": {
-    "versionNotFoundInBox": "Versión {{versionNumber}} no encontrada para la caja {{boxId}} en la organización {{organization}}.",
-    "versionNotFoundForBox": "Versión {{versionNumber}} no encontrada para la caja {{boxId}}.",
+    "versionNotFoundInBox": "Versión {{versionNumber}} no encontrada para la Box {{boxId}} en la organización {{organization}}.",
+    "versionNotFoundForBox": "Versión {{versionNumber}} no encontrada para la Box {{boxId}}.",
     "versionNotFound": "Versión no encontrada.",
     "unauthorized": "Acceso no autorizado a versiones.",
     "findAll": {
       "error": "Ocurrió un error al recuperar las versiones."
     },
     "create": {
-      "permissionDenied": "Solo puedes crear versiones para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes crear versiones para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al crear la Versión."
     },
     "delete": {
-      "permissionDenied": "Solo puedes eliminar versiones de cajas que posees, o necesitas rol de moderador/administrador."
+      "permissionDenied": "Solo puedes eliminar versiones de Boxes que posees, o necesitas rol de moderador/administrador."
     },
     "versionDeleted": "¡Versión eliminada exitosamente!",
     "deletedAll": "¡Todas las versiones eliminadas exitosamente!",
@@ -113,14 +113,14 @@
     }
   },
   "providers": {
-    "providerNotFoundInVersion": "Proveedor {{providerName}} no encontrado para la versión {{versionNumber}} en la caja {{boxId}}.",
+    "providerNotFoundInVersion": "Proveedor {{providerName}} no encontrado para la versión {{versionNumber}} en la Box {{boxId}}.",
     "providerNotFound": "Proveedor no encontrado.",
     "create": {
-      "permissionDenied": "Solo puedes crear proveedores para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes crear proveedores para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al crear el Proveedor."
     },
     "delete": {
-      "permissionDenied": "Solo puedes eliminar proveedores para cajas que posees, o necesitas rol de moderador/administrador."
+      "permissionDenied": "Solo puedes eliminar proveedores para Boxes que posees, o necesitas rol de moderador/administrador."
     },
     "providerDeleted": "¡Proveedor y arquitecturas asociadas eliminados exitosamente!",
     "deletedAll": "¡Todos los proveedores eliminados exitosamente!",
@@ -136,14 +136,14 @@
       "error": "Ocurrió un error al recuperar el Proveedor."
     },
     "update": {
-      "permissionDenied": "Solo puedes actualizar proveedores para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes actualizar proveedores para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al actualizar el Proveedor."
     },
     "notFound": "Proveedor no encontrado"
   },
   "architectures": {
     "delete": {
-      "permissionDenied": "Solo puedes eliminar arquitecturas para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes eliminar arquitecturas para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al eliminar las arquitecturas."
     },
     "deletedAll": "¡Todas las arquitecturas eliminadas exitosamente!",
@@ -153,7 +153,7 @@
       "error": "Ocurrió un error al recuperar las arquitecturas."
     },
     "create": {
-      "permissionDenied": "Solo puedes crear arquitecturas para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes crear arquitecturas para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al crear la Arquitectura."
     },
     "deleted": "¡Arquitectura eliminada exitosamente!",
@@ -162,7 +162,7 @@
       "error": "Ocurrió un error al recuperar la Arquitectura."
     },
     "update": {
-      "permissionDenied": "Solo puedes actualizar arquitecturas para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes actualizar arquitecturas para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "Ocurrió un error al actualizar la Arquitectura."
     }
   },
@@ -269,7 +269,7 @@
       "apiDocumentation": "Documentación de API",
       "secureStorage": "Almacenamiento Seguro"
     },
-    "goal": "Proporcionar una plataforma robusta y fácil de usar para gestionar cajas Vagrant."
+    "goal": "Proporcionar una plataforma robusta y fácil de usar para gestionar Boxes Vagrant."
   },
   "errors": {
     "operationFailed": "Operación fallida."
@@ -305,13 +305,13 @@
       "error": "Ocurrió un error al generar el enlace de descarga."
     },
     "delete": {
-      "permissionDenied": "Solo puedes eliminar archivos de cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes eliminar archivos de Boxes que posees, o necesitas rol de moderador/administrador.",
       "partialError": "Intento de eliminación de archivo, pero se encontraron problemas con la base de datos o limpieza de directorio.",
       "error": "Ocurrió un error al eliminar el archivo."
     },
     "deleted": "Archivo y registro de base de datos eliminados, o archivo no encontrado pero limpieza intentada.",
     "update": {
-      "permissionDenied": "Solo puedes actualizar archivos de cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes actualizar archivos de Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "No se pudo actualizar el archivo: {{file}}"
     },
     "notFoundUploadFirst": "Archivo no encontrado. Por favor sube el archivo primero.",
@@ -321,7 +321,7 @@
     "uploadTimeout": "Tiempo de espera de carga agotado - La solicitud tardó demasiado en completarse",
     "noStorageSpace": "No hay suficiente espacio de almacenamiento disponible",
     "upload": {
-      "permissionDenied": "Solo puedes subir archivos para cajas que posees, o necesitas rol de moderador/administrador.",
+      "permissionDenied": "Solo puedes subir archivos para Boxes que posees, o necesitas rol de moderador/administrador.",
       "error": "No se pudo subir el archivo"
     }
   },

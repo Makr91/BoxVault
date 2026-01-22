@@ -1,18 +1,9 @@
 // findall.js
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../../../utils/config-loader');
-const { log } = require('../../../utils/Logger');
-const db = require('../../../models');
+import jwt from 'jsonwebtoken';
+import { loadConfig } from '../../../utils/config-loader.js';
+import db from '../../../models/index.js';
 
-const Version = db.versions;
-const Box = db.box;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+const { versions: Version, UserOrg } = db;
 
 /**
  * @swagger
@@ -88,8 +79,11 @@ try {
  *                   type: string
  *                   example: "Some error occurred while retrieving versions."
  */
-exports.findAllByBox = async (req, res) => {
+export const findAllByBox = async (req, res) => {
   const { organization, boxId } = req.params;
+  void organization;
+  void boxId;
+  const authConfig = loadConfig('auth');
   const token = req.headers['x-access-token'];
   let userId = null;
 
@@ -104,25 +98,8 @@ exports.findAllByBox = async (req, res) => {
   }
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
-    }
-
-    const box = await Box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res
-        .status(404)
-        .send({ message: req.__('boxes.boxNotFoundWithName', { name: boxId }) });
-    }
+    // Organization and Box are already verified and attached by verifyVersion middleware
+    const { organizationData, boxData: box } = req;
 
     // If the box is public, allow access
     if (box.isPublic) {
@@ -135,7 +112,7 @@ exports.findAllByBox = async (req, res) => {
       return res.status(403).send({ message: req.__('versions.unauthorized') });
     }
 
-    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('versions.unauthorized') });
     }

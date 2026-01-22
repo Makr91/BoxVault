@@ -1,11 +1,7 @@
 // findonewithusers.js
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-const Organization = db.organization;
-const User = db.user;
-const Role = db.role;
-const Box = db.box;
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { organization: Organization, user: User, role: Role, box: Box } = db;
 
 /**
  * @swagger
@@ -70,7 +66,7 @@ const Box = db.box;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.findOneWithUsers = async (req, res) => {
+export const findOneWithUsers = async (req, res) => {
   const { organization: organizationName } = req.params;
   const { userId } = req;
 
@@ -96,10 +92,6 @@ exports.findOneWithUsers = async (req, res) => {
         },
       ],
     });
-
-    if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
-    }
 
     const users = organization.members.map(user => ({
       id: user.id,

@@ -1,15 +1,9 @@
 // token.js
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import jwt from 'jsonwebtoken';
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { UserOrg } = db;
 
 /**
  * @swagger
@@ -57,19 +51,15 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.refreshToken = async (req, res) => {
+export const refreshToken = async (req, res) => {
   try {
+    const authConfig = loadConfig('auth');
     // Get user from request (set by authJwt middleware)
     const { user } = req;
-    const { stayLoggedIn } = req.body;
-
-    // Check if either the current token or the request wants stayLoggedIn
-    if (!user.stayLoggedIn && !stayLoggedIn) {
-      return res.status(403).send({ message: req.__('auth.tokenRefreshNotAllowed') });
-    }
+    const { stayLoggedIn } = req.body || {};
 
     // Get user's organizations for multi-org JWT
-    const userOrgs = await db.UserOrg.getUserOrganizations(user.id);
+    const userOrgs = await UserOrg.getUserOrganizations(user.id);
     const userOrganizations = userOrgs.map(userOrg => ({
       name: userOrg.organization.name,
       role: userOrg.role,
@@ -80,13 +70,20 @@ exports.refreshToken = async (req, res) => {
     const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
     const primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
 
+    let provider = user.authProvider;
+    if (!provider) {
+      provider = 'local';
+    }
+
+    const finalStayLoggedIn = stayLoggedIn || req.stayLoggedIn;
+
     // Generate new token with multi-org data
     const token = jwt.sign(
       {
         id: user.id,
         isServiceAccount: false,
-        stayLoggedIn: stayLoggedIn || user.stayLoggedIn,
-        provider: user.authProvider || 'local',
+        stayLoggedIn: finalStayLoggedIn,
+        provider,
         organizations: userOrganizations,
       },
       authConfig.auth.jwt.jwt_secret.value,
@@ -110,8 +107,8 @@ exports.refreshToken = async (req, res) => {
       organizations: userOrganizations,
       accessToken: token,
       isServiceAccount: false,
-      provider: user.authProvider || 'local',
-      stayLoggedIn: stayLoggedIn || user.stayLoggedIn,
+      provider,
+      stayLoggedIn: finalStayLoggedIn,
     });
   } catch (err) {
     log.error.error('Error in refreshToken:', err);

@@ -1,5 +1,5 @@
 // userBoard.js
-const { log } = require('../../utils/Logger');
+import { log } from '../../utils/Logger.js';
 
 /**
  * @swagger
@@ -19,7 +19,7 @@ const { log } = require('../../utils/Logger');
  *               type: string
  *               example: "User Content."
  */
-exports.userBoard = (req, res) => {
+export const userBoard = (req, res) => {
   log.app.debug('User board accessed', { method: req.method });
   res.status(200).send(req.__('users.userContent'));
 };

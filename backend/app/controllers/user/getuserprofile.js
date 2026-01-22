@@ -1,20 +1,11 @@
 // getuserprofile.js
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
+const { sign } = jwt;
 
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-
-const User = db.user;
-const Role = db.role;
-const Organization = db.organization;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { user: User, role: Role, organization: Organization } = db;
 
 /**
  * @swagger
@@ -76,8 +67,10 @@ try {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.getUserProfile = async (req, res) => {
+export const getUserProfile = async (req, res) => {
   try {
+    const authConfig = loadConfig('auth');
+
     const user = await User.findByPk(req.userId, {
       include: [
         {
@@ -98,7 +91,7 @@ exports.getUserProfile = async (req, res) => {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    const token = jwt.sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
+    const token = sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
       expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
     });
 

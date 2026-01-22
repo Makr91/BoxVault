@@ -1,10 +1,8 @@
 // update.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const db = require('../../models');
-
-const Organization = db.organization;
-const Box = db.box;
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import db from '../../models/index.js';
+const { box: Box } = db;
 
 /**
  * @swagger
@@ -67,7 +65,7 @@ const Box = db.box;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.update = async (req, res) => {
+export const update = async (req, res) => {
   const { organization, name } = req.params;
   const {
     name: updatedName,
@@ -82,30 +80,25 @@ exports.update = async (req, res) => {
   const newFilePath = getSecureBoxPath(organization, updatedName || name);
 
   try {
-    const organizationData = await Organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
+    if (!req.organizationId) {
+      return res.status(500).send({
+        message: 'Organization context missing',
       });
     }
 
     const box = await Box.findOne({
-      where: { name, organizationId: organizationData.id },
+      where: { name, organizationId: req.organizationId },
     });
 
     if (!box) {
       return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId: name, organization }),
+        message: req.__('boxes.boxNotFound'),
       });
     }
 
     // Check if user is owner OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canUpdate = isOwner || ['moderator', 'admin'].includes(req.userOrgRole);
 
     if (!canUpdate) {
       return res.status(403).send({
@@ -119,15 +112,11 @@ exports.update = async (req, res) => {
     }
 
     // Rename the directory if necessary
-    if (oldFilePath !== newFilePath) {
-      fs.mkdirSync(oldFilePath, { recursive: true });
-      fs.mkdirSync(newFilePath, { recursive: true });
-      fs.renameSync(oldFilePath, newFilePath);
-
-      // Clean up the old directory if it still exists
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmdirSync(oldFilePath, { recursive: true });
+    if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
+      if (fs.existsSync(newFilePath)) {
+        fs.rmSync(newFilePath, { recursive: true, force: true });
       }
+      fs.renameSync(oldFilePath, newFilePath);
     }
 
     const updatedBox = await box.update({

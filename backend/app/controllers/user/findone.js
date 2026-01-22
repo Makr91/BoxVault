@@ -1,8 +1,6 @@
 // findone.js
-const db = require('../../models');
-
-const User = db.user;
-const Organization = db.organization;
+import db from '../../models/index.js';
+const { user: User, organization: Organization, UserOrg } = db;
 
 /**
  * @swagger
@@ -46,7 +44,7 @@ const Organization = db.organization;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.findOne = async (req, res) => {
+export const findOne = async (req, res) => {
   const { organization: organizationName, userName } = req.params;
 
   try {
@@ -62,11 +60,9 @@ exports.findOne = async (req, res) => {
       });
     }
 
+    // Find user by username first
     const user = await User.findOne({
-      where: {
-        username: userName,
-        organizationId: organization.id,
-      },
+      where: { username: userName },
     });
 
     if (!user) {
@@ -75,7 +71,18 @@ exports.findOne = async (req, res) => {
       });
     }
 
-    return res.status(200).send(user);
+    // Check if user is a member of the organization
+    const membership = await UserOrg.findUserOrgRole(user.id, organization.id);
+
+    if (!membership) {
+      return res.status(404).send({
+        message: req.__('users.userNotFoundWithName', { username: userName }),
+      });
+    }
+
+    const { password, ...userWithoutPassword } = user.toJSON();
+    void password;
+    return res.status(200).send(userWithoutPassword);
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('users.findOne.error'),

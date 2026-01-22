@@ -1,12 +1,10 @@
 // remove.file.controller.js
-const path = require('path');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { log } = require('../../utils/Logger');
-const db = require('../../models');
-const { safeUnlink, safeRm } = require('../../utils/fsHelper');
-
-const Architecture = db.architectures;
-const File = db.files;
+import { join } from 'path';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
+import db from '../../models/index.js';
+const { files: File, UserOrg } = db;
+import { safeUnlink, safeRm } from '../../utils/fsHelper.js';
 
 /**
  * @swagger
@@ -82,33 +80,14 @@ const remove = async (req, res) => {
     providerName,
     architectureName
   );
-  const filePath = path.join(basefilePath, fileName);
+  const filePath = join(basefilePath, fileName);
 
   try {
-    const organizationData = await db.organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await db.box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    // Entities are pre-loaded by verifyBoxFilePath middleware
+    const { organization: organizationData, box, architecture } = req.entities;
 
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
@@ -116,39 +95,6 @@ const remove = async (req, res) => {
       return res.status(403).json({
         error: 'PERMISSION_DENIED',
         message: req.__('files.delete.permissionDenied'),
-      });
-    }
-
-    const version = await db.versions.findOne({
-      where: { versionNumber, boxId: box.id },
-    });
-
-    if (!version) {
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('versions.versionNotFound'),
-      });
-    }
-
-    const provider = await db.providers.findOne({
-      where: { name: providerName, versionId: version.id },
-    });
-
-    if (!provider) {
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('providers.providerNotFound'),
-      });
-    }
-
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName, providerId: provider.id },
-    });
-
-    if (!architecture) {
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('architectures.notFound'),
       });
     }
 
@@ -190,4 +136,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { remove };
+export { remove };

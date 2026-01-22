@@ -1,11 +1,22 @@
 // verifyArchitecture.js
-const db = require('../models');
-const { log } = require('../utils/Logger');
-const Architecture = db.architectures;
+import db from '../models/index.js';
+import { log } from '../utils/Logger.js';
+const {
+  architectures: Architecture,
+  organization: Organization,
+  box: Box,
+  versions,
+  providers,
+} = db;
 
 const validateArchitecture = (req, res, next) => {
   const { name } = req.body;
   log.app.info('Validating architecture name:', name);
+
+  // For PUT requests, the name is optional. Only validate if provided.
+  if (req.method === 'PUT' && typeof name === 'undefined') {
+    return next();
+  }
 
   // This regex allows only alphanumeric characters, hyphens, underscores, and periods
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
@@ -31,7 +42,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
   const { name } = req.body;
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await Organization.findOne({
       where: { name: organization },
     });
 
@@ -41,7 +52,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
       });
     }
 
-    const box = await db.box.findOne({
+    const box = await Box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
     });
 
@@ -51,7 +62,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
       });
     }
 
-    const version = await db.versions.findOne({
+    const version = await versions.findOne({
       where: { versionNumber, boxId: box.id },
     });
 
@@ -61,7 +72,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
       });
     }
 
-    const provider = await db.providers.findOne({
+    const provider = await providers.findOne({
       where: { name: providerName, versionId: version.id },
     });
 
@@ -79,7 +90,7 @@ const checkArchitectureDuplicate = async (req, res, next) => {
     });
 
     if (existingArchitecture) {
-      return res.status(400).send({
+      return res.status(409).send({
         message: `An architecture with the name ${name} already exists for provider ${providerName} in version ${versionNumber} of box ${boxId} in organization ${organization}.`,
       });
     }
@@ -92,9 +103,4 @@ const checkArchitectureDuplicate = async (req, res, next) => {
   }
 };
 
-const verifyArchitecture = {
-  validateArchitecture,
-  checkArchitectureDuplicate,
-};
-
-module.exports = verifyArchitecture;
+export { validateArchitecture, checkArchitectureDuplicate };

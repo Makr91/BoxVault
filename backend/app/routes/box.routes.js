@@ -1,10 +1,18 @@
 // box.routes.js
-const express = require('express');
-const { authJwt, verifyBoxName, verifyOrgAccess } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const box = require('../controllers/box.controller');
+import { Router } from 'express';
+import { authJwt, verifyBoxName, verifyOrgAccess } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  discoverAll,
+  getOrganizationBoxDetails,
+  findOne,
+  create,
+  update,
+  delete as deleteBox,
+  deleteAll,
+} from '../controllers/box.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -15,11 +23,11 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/discover', box.discoverAll);
-router.get('/discover/:name', box.discoverAll);
-router.get('/organization/:organization/box', box.getOrganizationBoxDetails);
-router.get('/organization/:organization/box/:name', box.findOne);
-router.get('/organization/:organization/box/:name/metadata', box.findOne);
+router.get('/discover', discoverAll);
+router.get('/discover/:name', discoverAll);
+router.get('/organization/:organization/box', getOrganizationBoxDetails);
+router.get('/organization/:organization/box/:name', findOne);
+router.get('/organization/:organization/box/:name/metadata', findOne);
 
 // Administrative Actions - Now require organization membership
 router.post(
@@ -31,7 +39,7 @@ router.post(
     verifyBoxName.validateBoxName,
     verifyBoxName.checkBoxDuplicate,
   ],
-  box.create
+  create
 );
 
 router.put(
@@ -43,19 +51,19 @@ router.put(
     verifyBoxName.validateBoxName,
     verifyBoxName.checkBoxDuplicate,
   ],
-  box.update
+  update
 );
 
 router.delete(
   '/organization/:organization/box/:name',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
-  box.delete
+  deleteBox
 );
 
 router.delete(
   '/organization/:organization/box',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgModeratorOrAdmin],
-  box.deleteAll
+  deleteAll
 );
 
-module.exports = router;
+export default router;

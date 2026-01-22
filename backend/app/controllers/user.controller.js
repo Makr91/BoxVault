@@ -1,34 +1,30 @@
 // user.controller.js
-const { allAccess } = require('./user/allaccess');
-const { adminBoard } = require('./user/adminBoard');
-const { userBoard } = require('./user/userBoard');
-const { organization } = require('./user/organization');
-const { isOnlyUserInOrg } = require('./user/isonlyuserinorg');
-const { findAll } = require('./user/findall');
-const { findOne } = require('./user/findone');
-const { update } = require('./user/update');
-const { delete: deleteUser } = require('./user/delete');
-const { changePassword } = require('./user/changepassword');
-const { changeEmail } = require('./user/changeemail');
-const { promoteToModerator } = require('./user/promote');
-const { demoteToUser } = require('./user/demote');
-const { getUserRoles } = require('./user/roles');
-const { getUserProfile } = require('./user/getuserprofile');
-const { getUserOrganizations } = require('./user/organizations');
-const { leaveOrganization } = require('./user/leave');
-const { getPrimaryOrganization } = require('./user/primary');
-const { setPrimaryOrganization } = require('./user/setprimary');
+import { allAccess } from './user/allaccess.js';
+import { adminBoard } from './user/adminBoard.js';
+import { userBoard } from './user/userBoard.js';
+import { isOnlyUserInOrg } from './user/isonlyuserinorg.js';
+import { findOne } from './user/findone.js';
+import { update } from './user/update.js';
+import { delete as deleteUser } from './user/delete.js';
+import { changePassword } from './user/changepassword.js';
+import { changeEmail } from './user/changeemail.js';
+import { promoteToModerator } from './user/promote.js';
+import { demoteToUser } from './user/demote.js';
+import { getUserRoles } from './user/roles.js';
+import { getUserProfile } from './user/getuserprofile.js';
+import { getUserOrganizations } from './user/organizations.js';
+import { leaveOrganization } from './user/leave.js';
+import { getPrimaryOrganization } from './user/primary.js';
+import { setPrimaryOrganization } from './user/setprimary.js';
 
-module.exports = {
+export {
   allAccess,
   adminBoard,
   userBoard,
-  organization,
   isOnlyUserInOrg,
-  findAll,
   findOne,
   update,
-  delete: deleteUser,
+  deleteUser as delete,
   changePassword,
   changeEmail,
   promoteToModerator,

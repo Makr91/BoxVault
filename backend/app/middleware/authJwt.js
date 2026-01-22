@@ -1,18 +1,12 @@
-const { loadConfig } = require('../utils/config-loader');
-const { log } = require('../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../models');
-const User = db.user;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import { loadConfig } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
+import jwt from 'jsonwebtoken';
+import db from '../models/index.js';
+const { user: User, role: Role, organization } = db;
 
 const verifyToken = async (req, res, next) => {
   try {
+    const authConfig = loadConfig('auth');
     const token = req.headers['x-access-token'];
 
     if (!token) {
@@ -35,17 +29,22 @@ const verifyToken = async (req, res, next) => {
       req.stayLoggedIn = decoded.stayLoggedIn;
 
       // If this is a refresh token request, attach the full user object
-      if (req.path === '/api/auth/refresh-token') {
+      // Check path instead of originalUrl to handle query parameters correctly
+      if (req.path.endsWith('/auth/refresh-token')) {
+        if (decoded.isServiceAccount) {
+          return res.status(403).send({ message: 'Service accounts cannot refresh tokens' });
+        }
+
         const user = await User.findByPk(decoded.id, {
           include: [
             {
-              model: db.role,
+              model: Role,
               as: 'roles',
               attributes: ['name'],
               through: { attributes: [] },
             },
             {
-              model: db.organization,
+              model: organization,
               as: 'primaryOrganization',
               attributes: ['name'],
             },
@@ -73,7 +72,7 @@ const verifyToken = async (req, res, next) => {
     } catch (jwtError) {
       log.error.error('JWT verification error:', {
         error: jwtError.message,
-        token: token ? '(token present)' : '(no token)',
+        token: '(token present)',
       });
       return res.status(401).send({
         message: 'Unauthorized!',
@@ -149,7 +148,8 @@ const isSelfOrAdmin = async (req, res, next) => {
     const roles = await user.getRoles();
     const isAdminRole = roles.some(role => role.name === 'admin');
 
-    if (isAdminRole || req.userId === req.params.userId) {
+    // Use loose equality to handle string/number mismatch for userId
+    if (isAdminRole || String(req.userId) === String(req.params.userId)) {
       return next();
     }
 
@@ -307,4 +307,4 @@ const authJwt = {
   isSelfOrAdmin,
 };
 
-module.exports = authJwt;
+export default authJwt;

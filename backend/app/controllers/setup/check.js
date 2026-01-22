@@ -1,6 +1,6 @@
 // check.js
-const { log } = require('../../utils/Logger');
-const { configPaths, readConfig } = require('./helpers');
+import { log } from '../../utils/Logger.js';
+import { configPaths, readConfig } from './helpers.js';
 
 /**
  * @swagger
@@ -29,7 +29,7 @@ const { configPaths, readConfig } = require('./helpers');
  *               type: string
  *               example: "Failed to check setup status"
  */
-exports.isSetupComplete = async (req, res) => {
+export const isSetupComplete = async (req, res) => {
   log.app.debug('Check setup complete', { method: req.method });
 
   try {

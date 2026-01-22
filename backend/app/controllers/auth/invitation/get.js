@@ -1,9 +1,7 @@
 // get.js
-const { log } = require('../../../utils/Logger');
-const db = require('../../../models');
-
-const Organization = db.organization;
-const Invitation = db.invitation;
+import { log } from '../../../utils/Logger.js';
+import db from '../../../models/index.js';
+const { organization: Organization, invitation: Invitation } = db;
 
 /**
  * @swagger
@@ -68,7 +66,7 @@ const Invitation = db.invitation;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.getActiveInvitations = async (req, res) => {
+export const getActiveInvitations = async (req, res) => {
   const { organization: organizationName } = req.params;
 
   try {

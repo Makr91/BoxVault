@@ -1,8 +1,6 @@
 // isonlyuserinorg.js
-const db = require('../../models');
-
-const User = db.user;
-const Organization = db.organization;
+import db from '../../models/index.js';
+const { organization: Organization } = db;
 
 /**
  * @swagger
@@ -44,7 +42,7 @@ const Organization = db.organization;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.isOnlyUserInOrg = async (req, res) => {
+export const isOnlyUserInOrg = async (req, res) => {
   const { organization: organizationName } = req.params;
 
   try {
@@ -60,11 +58,9 @@ exports.isOnlyUserInOrg = async (req, res) => {
       });
     }
 
-    const users = await User.findAll({
-      where: { organizationId: organization.id },
-    });
+    const userCount = await organization.countMembers();
 
-    if (users.length === 1) {
+    if (userCount === 1) {
       return res.status(200).send({ isOnlyUser: true });
     }
     return res.status(200).send({ isOnlyUser: false });

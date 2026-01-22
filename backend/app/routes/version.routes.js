@@ -1,10 +1,17 @@
 // version.routes.js
-const express = require('express');
-const { authJwt, verifyVersion } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const version = require('../controllers/version.controller');
+import { Router } from 'express';
+import { authJwt, verifyVersion } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  create,
+  update,
+  findAllByBox,
+  findOne,
+  delete as deleteVersion,
+  deleteAllByBox,
+} from '../controllers/version.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -21,9 +28,10 @@ router.post(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyVersion.validateVersion,
+    verifyVersion.attachEntities,
     verifyVersion.checkVersionDuplicate,
   ],
-  version.create
+  create
 );
 
 router.put(
@@ -32,24 +40,34 @@ router.put(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyVersion.validateVersion,
+    verifyVersion.attachEntities,
     verifyVersion.checkVersionDuplicate,
   ],
-  version.update
+  update
 );
 
-router.get('/organization/:organization/box/:boxId/version', version.findAllByBox);
-router.get('/organization/:organization/box/:boxId/version/:versionNumber', version.findOne);
+router.get(
+  '/organization/:organization/box/:boxId/version',
+  [verifyVersion.attachEntities],
+  findAllByBox
+);
+
+router.get(
+  '/organization/:organization/box/:boxId/version/:versionNumber',
+  [verifyVersion.attachEntities],
+  findOne
+);
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-  version.delete
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyVersion.attachEntities],
+  deleteVersion
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-  version.deleteAllByBox
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyVersion.attachEntities],
+  deleteAllByBox
 );
 
-module.exports = router;
+export default router;

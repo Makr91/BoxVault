@@ -272,6 +272,15 @@ const App = () => {
         setUserOrganization(data.newName);
         // Use functional update to avoid stale closure
         setCurrentUser((c) => (c ? { ...c, organization: data.newName } : c));
+
+        // Update activeOrganization if it matches the renamed organization
+        setActiveOrganization((currentActive) => {
+          if (currentActive === data.oldName) {
+            localStorage.setItem("activeOrganization", data.newName);
+            return data.newName;
+          }
+          return currentActive;
+        });
       }
     );
 

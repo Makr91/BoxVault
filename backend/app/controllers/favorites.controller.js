@@ -1,12 +1,7 @@
 // favorites.controller.js
-const { getFavorites } = require('./favorites/get');
-const { saveFavorites } = require('./favorites/save');
-const { getUserInfoClaims } = require('./favorites/claims');
-const { getEnrichedFavorites } = require('./favorites/enriched');
+import { getFavorites } from './favorites/get.js';
+import { saveFavorites } from './favorites/save.js';
+import { getUserInfoClaims } from './favorites/claims.js';
+import { getEnrichedFavorites } from './favorites/enriched.js';
 
-module.exports = {
-  getFavorites,
-  saveFavorites,
-  getUserInfoClaims,
-  getEnrichedFavorites,
-};
+export { getFavorites, saveFavorites, getUserInfoClaims, getEnrichedFavorites };

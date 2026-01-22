@@ -1,7 +1,6 @@
 // deleteallbyversion.js
-const db = require('../../models');
-
-const Provider = db.providers;
+import db from '../../models/index.js';
+const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
 
 /**
  * @swagger
@@ -76,11 +75,11 @@ const Provider = db.providers;
  *                   type: string
  *                   example: "Some error occurred while deleting the providers."
  */
-exports.deleteAllByVersion = async (req, res) => {
+export const deleteAllByVersion = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
@@ -90,7 +89,7 @@ exports.deleteAllByVersion = async (req, res) => {
       });
     }
 
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
     });
 
@@ -100,7 +99,7 @@ exports.deleteAllByVersion = async (req, res) => {
       });
     }
 
-    const version = await db.versions.findOne({
+    const version = await versions.findOne({
       where: { versionNumber, boxId: box.id },
     });
 
@@ -111,7 +110,7 @@ exports.deleteAllByVersion = async (req, res) => {
     }
 
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 

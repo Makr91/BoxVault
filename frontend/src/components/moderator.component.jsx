@@ -127,27 +127,34 @@ const Moderator = ({ currentOrganization }) => {
 
     try {
       // Update organization details
-      await OrganizationService.updateOrganization(currentOrganization, {
-        organization: newOrgName,
-        email: orgEmail,
-        description: orgDescription,
-      });
-
-      // Update the user's organization in localStorage if name changed
-      if (newOrgName !== currentOrganization) {
-        if (currentUser) {
-          currentUser.organization = newOrgName;
-          localStorage.setItem("user", JSON.stringify(currentUser));
+      const response = await OrganizationService.updateOrganization(
+        currentOrganization,
+        {
+          organization: newOrgName,
+          email: orgEmail,
+          description: orgDescription,
         }
+      );
 
-        // Trigger an EventBus event to update App.jsx state
-        EventBus.dispatch("organizationUpdated", {
-          oldName: currentOrganization,
-          newName: newOrgName,
-        });
+      if (response.status === 200) {
+        // Update the user's organization in localStorage if name changed
+        if (newOrgName !== currentOrganization) {
+          if (currentUser) {
+            currentUser.organization = newOrgName;
+            localStorage.setItem("user", JSON.stringify(currentUser));
+          }
+
+          // Force token refresh to update claims with new org name
+          await AuthService.forceTokenRefresh();
+
+          // Trigger an EventBus event to update App.jsx state
+          EventBus.dispatch("organizationUpdated", {
+            oldName: currentOrganization,
+            newName: newOrgName,
+          });
+        }
+        setUpdateMessage(t("moderator.orgUpdateSuccess"));
       }
-
-      setUpdateMessage(t("moderator.orgUpdateSuccess"));
     } catch (error) {
       log.component.error("Error updating organization", {
         organization: currentOrganization,

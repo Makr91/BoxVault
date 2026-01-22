@@ -1,49 +1,11 @@
 // update.js
-const fs = require('fs');
-const { getSetupTokenPath } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const { verifyAuthorizedToken } = require('./middleware');
-const { configPaths, readConfig, writeConfig } = require('./helpers');
+import fs from 'fs';
+import { getSetupTokenPath } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import { verifyAuthorizedToken } from './middleware.js';
+import { configPaths, readConfig, writeConfig } from './helpers.js';
 
-/**
- * @swagger
- * /api/setup/update-configs:
- *   post:
- *     summary: Update system configurations
- *     description: Update BoxVault system configurations (database, app, mail, auth). This endpoint removes the setup token after successful update, preventing further setup operations.
- *     tags: [Setup]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/ConfigUpdateRequest'
- *     responses:
- *       200:
- *         description: Configuration updated successfully
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- *               example: "Configuration updated successfully"
- *       403:
- *         description: Invalid authorization token
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- *               example: "Invalid authorization token"
- *       500:
- *         description: Failed to update configuration
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- *               example: "Failed to update configuration"
- */
-exports.updateConfigs = [
+export const updateConfigs = [
   verifyAuthorizedToken,
   async (req, res) => {
     const { configs } = req.body;

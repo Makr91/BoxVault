@@ -1,14 +1,13 @@
 // update.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const { log } = require('../../utils/Logger');
-const crypto = require('crypto');
-const db = require('../../models');
-
-const Organization = db.organization;
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
+import { createHash } from 'crypto';
+import db from '../../models/index.js';
+const { organization: Organization } = db;
 
 const generateEmailHash = email =>
-  crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
+  createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 
 /**
  * @swagger
@@ -74,9 +73,21 @@ const generateEmailHash = email =>
  *               $ref: '#/components/schemas/Error'
  */
 // Update the 'update' function
-exports.update = async (req, res) => {
+export const update = async (req, res) => {
   const { organization: organizationName } = req.params;
-  const { organization, description, email, org_code } = req.body;
+  const { description } = req.body;
+  let { organization, email, org_code } = req.body;
+
+  // Trim inputs to prevent whitespace issues
+  if (organization) {
+    organization = organization.trim();
+  }
+  if (email) {
+    email = email.trim();
+  }
+  if (org_code) {
+    org_code = org_code.trim();
+  }
   const oldFilePath = getSecureBoxPath(organizationName);
   const newFilePath = getSecureBoxPath(organization || organizationName);
 
@@ -84,12 +95,6 @@ exports.update = async (req, res) => {
     const org = await Organization.findOne({
       where: { name: organizationName },
     });
-
-    if (!org) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFound'),
-      });
-    }
 
     // Handle directory operations only if directories actually exist and names are different
     try {
@@ -104,7 +109,7 @@ exports.update = async (req, res) => {
 
         // Clean up the old directory if it still exists
         if (fs.existsSync(oldFilePath)) {
-          fs.rmdirSync(oldFilePath, { recursive: true });
+          fs.rmSync(oldFilePath, { recursive: true, force: true });
         }
       }
       // If no directories exist, that's fine - they'll be created when boxes are uploaded
@@ -147,6 +152,9 @@ exports.update = async (req, res) => {
       emailHash: emailHash || org.emailHash,
       org_code: org_code !== undefined ? org_code : org.org_code,
     });
+
+    // Reload to ensure persistence and get fresh data
+    await org.reload();
 
     return res.status(200).send({
       message: req.__('organizations.updated'),

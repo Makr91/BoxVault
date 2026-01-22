@@ -1,52 +1,58 @@
-module.exports = (sequelize, Sequelize) => {
-  const Organization = sequelize.define('organizations', {
-    id: {
-      type: Sequelize.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
+export default (sequelize, Sequelize) => {
+  const Organization = sequelize.define(
+    'organizations',
+    {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      name: {
+        type: Sequelize.STRING,
+        unique: true,
+      },
+      email: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      emailHash: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      description: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      org_code: {
+        type: Sequelize.STRING(10),
+        unique: true,
+        allowNull: true,
+        comment: 'Organization code/identifier (e.g., A55D94)',
+        field: 'org_code',
+      },
+      suspended: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      access_mode: {
+        type: Sequelize.ENUM('private', 'invite_only', 'request_to_join'),
+        allowNull: false,
+        defaultValue: 'private',
+        comment: 'Organization visibility and access mode',
+        field: 'access_mode',
+      },
+      default_role: {
+        type: Sequelize.ENUM('user', 'moderator'),
+        allowNull: false,
+        defaultValue: 'user',
+        comment: 'Default role for new members',
+        field: 'default_role',
+      },
     },
-    name: {
-      type: Sequelize.STRING,
-      unique: true,
-    },
-    email: {
-      type: Sequelize.STRING,
-      defaultValue: '',
-    },
-    emailHash: {
-      type: Sequelize.STRING,
-      defaultValue: '',
-    },
-    description: {
-      type: Sequelize.STRING,
-      defaultValue: '',
-    },
-    org_code: {
-      type: Sequelize.STRING(10),
-      unique: true,
-      allowNull: true,
-      comment: 'Organization code/identifier (e.g., A55D94)',
-      field: 'org_code',
-    },
-    suspended: {
-      type: Sequelize.BOOLEAN,
-      defaultValue: false,
-    },
-    access_mode: {
-      type: Sequelize.ENUM('private', 'invite_only', 'request_to_join'),
-      allowNull: false,
-      defaultValue: 'private',
-      comment: 'Organization visibility and access mode',
-      field: 'access_mode',
-    },
-    default_role: {
-      type: Sequelize.ENUM('user', 'moderator'),
-      allowNull: false,
-      defaultValue: 'user',
-      comment: 'Default role for new members',
-      field: 'default_role',
-    },
-  });
+    {
+      defaultScope: {},
+    }
+  );
 
   Organization.associate = function (models) {
     // Multi-user relationship through junction table
@@ -87,7 +93,7 @@ module.exports = (sequelize, Sequelize) => {
    * @returns {Promise<Organization[]>}
    */
   Organization.getDiscoverable = async function (isAdmin = false) {
-    const db = require('./index');
+    const { default: db } = await import('./index.js');
 
     // Build where clause - admins see all orgs, others only see public access modes
     const whereClause = { suspended: false };
@@ -136,30 +142,6 @@ module.exports = (sequelize, Sequelize) => {
     );
 
     return results;
-  };
-
-  /**
-   * Get organization with member count and access info
-   * @param {string} organizationName - Organization name
-   * @returns {Promise<Organization|null>}
-   */
-  Organization.getWithMemberInfo = function (organizationName) {
-    return this.findOne({
-      where: { name: organizationName },
-      include: [
-        {
-          model: sequelize.models.UserOrg,
-          as: 'userOrganizations',
-          include: [
-            {
-              model: sequelize.models.user,
-              as: 'user',
-              attributes: ['id', 'username', 'email'],
-            },
-          ],
-        },
-      ],
-    });
   };
 
   return Organization;

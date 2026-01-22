@@ -1,7 +1,6 @@
-const db = require('../models');
-const { log } = require('../utils/Logger');
-const User = db.user;
-const { UserOrg } = db;
+import db from '../models/index.js';
+import { log } from '../utils/Logger.js';
+const { user: User, service_account, organization: Organization, UserOrg } = db;
 
 /**
  * Middleware to verify user has membership in the organization specified in route
@@ -16,11 +15,11 @@ const isOrgMember = async (req, res, next) => {
 
     // Service accounts use organization-scoped tokens
     if (req.isServiceAccount) {
-      const serviceAccount = await db.service_account.findOne({
+      const serviceAccount = await service_account.findOne({
         where: { userId: req.userId },
         include: [
           {
-            model: db.organization,
+            model: Organization,
             as: 'organization',
             where: { name: orgName },
           },
@@ -42,7 +41,7 @@ const isOrgMember = async (req, res, next) => {
       return res.status(401).send({ message: 'User not found!' });
     }
 
-    const organization = await db.organization.findOne({ where: { name: orgName } });
+    const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return res.status(404).send({ message: 'Organization not found!' });
     }
@@ -90,7 +89,7 @@ const isOrgModerator = async (req, res, next) => {
     const globalRoles = await user.getRoles();
     const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
 
-    const organization = await db.organization.findOne({ where: { name: orgName } });
+    const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return res.status(404).send({ message: 'Organization not found!' });
     }
@@ -144,7 +143,7 @@ const isOrgAdmin = async (req, res, next) => {
     const globalRoles = await user.getRoles();
     const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
 
-    const organization = await db.organization.findOne({ where: { name: orgName } });
+    const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return res.status(404).send({ message: 'Organization not found!' });
     }
@@ -198,7 +197,7 @@ const isOrgModeratorOrAdmin = async (req, res, next) => {
     const globalRoles = await user.getRoles();
     const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
 
-    const organization = await db.organization.findOne({ where: { name: orgName } });
+    const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return res.status(404).send({ message: 'Organization not found!' });
     }
@@ -241,7 +240,7 @@ const isOrgModeratorOrAdmin = async (req, res, next) => {
  */
 const getUserOrgContext = async (userId, orgName) => {
   try {
-    const organization = await db.organization.findOne({ where: { name: orgName } });
+    const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return null;
     }
@@ -262,12 +261,4 @@ const getUserOrgContext = async (userId, orgName) => {
   }
 };
 
-const verifyOrgAccess = {
-  isOrgMember,
-  isOrgModerator,
-  isOrgAdmin,
-  isOrgModeratorOrAdmin,
-  getUserOrgContext,
-};
-
-module.exports = verifyOrgAccess;
+export { isOrgMember, isOrgModerator, isOrgAdmin, isOrgModeratorOrAdmin, getUserOrgContext };

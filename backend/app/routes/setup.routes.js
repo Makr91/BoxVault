@@ -1,17 +1,23 @@
 // setup.routes.js
-const express = require('express');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const setupController = require('../controllers/setup.controller');
+import { Router } from 'express';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  verifySetupToken,
+  updateConfigs,
+  getConfigs,
+  isSetupComplete,
+  uploadSSL,
+} from '../controllers/setup.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
 
-router.post('/setup/verify-token', setupController.verifySetupToken);
-router.put('/setup', setupController.updateConfigs);
-router.get('/setup', setupController.getConfigs);
-router.get('/setup/status', setupController.isSetupComplete);
-router.post('/setup/upload-ssl', setupController.uploadSSL);
+router.post('/setup/verify-token', verifySetupToken);
+router.put('/setup', updateConfigs);
+router.get('/setup', getConfigs);
+router.get('/setup/status', isSetupComplete);
+router.post('/setup/upload-ssl', uploadSSL);
 
-module.exports = router;
+export default router;

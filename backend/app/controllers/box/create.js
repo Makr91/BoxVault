@@ -1,9 +1,8 @@
 // create.js
-const fs = require('fs');
-const { getSecureBoxPath } = require('../../utils/paths');
-const db = require('../../models');
-
-const Box = db.box;
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import db from '../../models/index.js';
+const { box: Box } = db;
 
 /**
  * @swagger
@@ -64,25 +63,11 @@ const Box = db.box;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   const { organization } = req.params;
   const { name, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
 
-  if (!req.body.name) {
-    return res.status(400).send({
-      message: req.__('boxes.nameCannotBeEmpty'),
-    });
-  }
-
-  // Look up organization ID
   try {
-    const org = await db.organization.findOne({ where: { name: organization } });
-    if (!org) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
     const newFilePath = getSecureBoxPath(organization, name);
 
     // Create the new directory if it doesn't exist
@@ -97,7 +82,7 @@ exports.create = async (req, res) => {
       published: published || false,
       isPublic: isPublic || false,
       userId: req.userId,
-      organizationId: org.id,
+      organizationId: req.organizationId,
       githubRepo: githubRepo || null,
       workflowFile: workflowFile || null,
       cicdUrl: cicdUrl || null,
@@ -105,7 +90,7 @@ exports.create = async (req, res) => {
 
     // Save Box in the database
     const data = await Box.create(box);
-    return res.send(data);
+    return res.status(201).send(data);
   } catch (err) {
     return res.status(500).send({
       message: err.message || req.__('boxes.create.error'),

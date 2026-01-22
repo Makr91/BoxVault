@@ -1,7 +1,7 @@
 // changeemail.js
-const db = require('../../models');
-
-const User = db.user;
+import db from '../../models/index.js';
+import { generateEmailHash } from '../auth/helpers.js';
+const { user: User } = db;
 
 /**
  * @swagger
@@ -56,7 +56,7 @@ const User = db.user;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.changeEmail = async (req, res) => {
+export const changeEmail = async (req, res) => {
   const { userId } = req.params;
   const { newEmail } = req.body;
 
@@ -67,6 +67,7 @@ exports.changeEmail = async (req, res) => {
     }
 
     user.email = newEmail;
+    user.emailHash = generateEmailHash(newEmail);
     await user.save();
 
     return res.status(200).send({ message: req.__('users.emailChanged') });

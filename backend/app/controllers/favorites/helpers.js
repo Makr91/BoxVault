@@ -1,14 +1,18 @@
 // helpers.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
+import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
+import jwt from 'jsonwebtoken';
 
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load configuration: ${e.message}`);
-}
+const { decode } = jwt;
+
+const getAuthConfig = () => {
+  try {
+    return loadConfig('auth');
+  } catch (e) {
+    log.error.error(`Failed to load configuration: ${e.message}`);
+    return {};
+  }
+};
 
 /**
  * Get authentication server base URL from OIDC provider config
@@ -17,19 +21,16 @@ try {
  */
 const getAuthServerUrl = req => {
   const token = req.headers['x-access-token'];
-  if (!token) {
-    throw new Error('No access token provided');
-  }
 
   try {
-    // Decode JWT to get the provider user logged in with
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-    const provider = decoded.provider?.replace('oidc-', ''); // e.g., "oidc-startcloud" -> "startcloud"
+    const decoded = decode(token);
+    const provider = decoded?.provider?.replace('oidc-', ''); // e.g., "oidc-startcloud" -> "startcloud"
 
     if (!provider) {
       throw new Error('No provider in JWT');
     }
 
+    const authConfig = getAuthConfig();
     const oidcProviders = authConfig.auth?.oidc?.providers || {};
     const providerConfig = oidcProviders[provider];
 
@@ -58,20 +59,9 @@ const extractOidcAccessToken = req => {
   }
 
   const token = req.headers['x-access-token'];
-  if (!token) {
-    return null;
-  }
 
-  try {
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-    return decoded.oidc_access_token || null;
-  } catch (error) {
-    log.error.error('Failed to decode JWT for OIDC token extraction:', error.message);
-    return null;
-  }
+  const decoded = decode(token);
+  return decoded?.oidc_access_token || null;
 };
 
-module.exports = {
-  getAuthServerUrl,
-  extractOidcAccessToken,
-};
+export { getAuthServerUrl, extractOidcAccessToken };

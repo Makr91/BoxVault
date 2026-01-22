@@ -101,18 +101,11 @@
  */
 
 // version.controller.js
-const { create } = require('./version/create');
-const { findAllByBox } = require('./version/box/findall');
-const { findOne } = require('./version/findone');
-const { update } = require('./version/update');
-const { delete: deleteVersion } = require('./version/delete');
-const { deleteAllByBox } = require('./version/box/deleteall');
+import { create } from './version/create.js';
+import { findAllByBox } from './version/box/findall.js';
+import { findOne } from './version/findone.js';
+import { update } from './version/update.js';
+import { delete as deleteVersion } from './version/delete.js';
+import { deleteAllByBox } from './version/box/deleteall.js';
 
-module.exports = {
-  create,
-  findAllByBox,
-  findOne,
-  update,
-  delete: deleteVersion,
-  deleteAllByBox,
-};
+export { create, findAllByBox, findOne, update, deleteVersion as delete, deleteAllByBox };

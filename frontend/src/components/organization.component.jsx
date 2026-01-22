@@ -747,10 +747,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       )}
       <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
         {/* Left: Search */}
-        <div className="d-flex align-items-center gap-2">
+        <div
+          className="input-group input-group-sm"
+          style={{ maxWidth: "300px" }}
+        >
           <input
             type="text"
-            className="form-control form-control-sm"
+            className="form-control"
             placeholder={t("common:actions.search")}
             id="search"
             name="search"
@@ -758,7 +761,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             onChange={onChangeSearchName}
           />
           <button
-            className="btn btn-sm btn-outline-secondary"
+            className="btn btn-outline-secondary"
             type="button"
             onClick={findByName}
           >
@@ -977,7 +980,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       )}
 
       <div className="col-md-12">
-        <h4>{t("box.organization.headers.templateList")}</h4>
         <Table striped className="table">
           <thead>
             <tr>

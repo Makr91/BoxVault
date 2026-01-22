@@ -1,6 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const ISO = db.iso;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { iso: ISO } = db;
 
 /**
  * @swagger
@@ -36,7 +36,12 @@ const findOne = async (req, res) => {
   const { isoId } = req.params;
 
   try {
-    const iso = await ISO.findByPk(isoId);
+    const iso = await ISO.findOne({
+      where: {
+        id: isoId,
+        organizationId: req.organizationId,
+      },
+    });
     if (!iso) {
       return res.status(404).send({ message: req.__('isos.notFound') });
     }
@@ -47,4 +52,4 @@ const findOne = async (req, res) => {
   }
 };
 
-module.exports = { findOne };
+export { findOne };

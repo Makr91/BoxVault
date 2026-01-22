@@ -1,4 +1,4 @@
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const Invitation = sequelize.define('invitations', {
     email: {
       type: Sequelize.STRING,

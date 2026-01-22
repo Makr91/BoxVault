@@ -1,13 +1,13 @@
-const express = require('express');
-const { authJwt } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const sslController = require('../controllers/ssl.controller');
+import { Router } from 'express';
+import { authJwt } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import { uploadSSL } from '../controllers/ssl.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
 
-router.post('/config/ssl/upload', [authJwt.verifyToken, authJwt.isAdmin], sslController.uploadSSL);
+router.post('/config/ssl/upload', [authJwt.verifyToken, authJwt.isAdmin], uploadSSL);
 
-module.exports = router;
+export default router;

@@ -1,14 +1,18 @@
-const { existsSync } = require('fs');
-const path = require('path');
-const { log } = require('../utils/Logger');
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { log } from '../utils/Logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const errorHandler = (err, req, res, next) => {
   // Log the error with full details
   log.error.error('Express error handler', {
     error: err.message,
     stack: err.stack,
-    path: req.path,
-    method: req.method,
+    path: req?.path,
+    method: req?.method,
   });
 
   // Log request details for debugging
@@ -29,7 +33,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Return JSON for API routes
-  if (req.path.startsWith('/api/')) {
+  if (req?.path?.startsWith('/api/')) {
     log.app.debug('Returning JSON error for API route', {
       path: req.path,
       error: err.message,
@@ -41,7 +45,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Serve React app with error state for non-API routes
-  const staticPath = path.join(__dirname, '..', 'views', 'index.html');
+  const staticPath = join(__dirname, '..', 'views', 'index.html');
   if (existsSync(staticPath)) {
     res.status(500);
     return res.sendFile(staticPath);
@@ -51,4 +55,4 @@ const errorHandler = (err, req, res, next) => {
   return res.status(500).send('Internal server error');
 };
 
-module.exports = { errorHandler };
+export { errorHandler };

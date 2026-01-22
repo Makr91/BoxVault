@@ -6,7 +6,7 @@ cd /opt/boxvault/api
 
 function startup
 {
-        nodemon index &
+        node server.js &
 }
 
 function shutdown

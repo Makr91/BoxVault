@@ -27,7 +27,7 @@ const toCamelCase = (str) => {
     .replace(/\s+/g, "");
 };
 const About = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [projectData, setProjectData] = useState({
     title: "",
     description: "",
@@ -75,7 +75,7 @@ const About = () => {
     };
 
     loadData();
-  }, []);
+  }, [i18n.language]);
 
   const handleToggleFavorite = async () => {
     try {
@@ -293,7 +293,7 @@ const About = () => {
       </div>
 
       {projectData.goal && (
-        <div className="row mt-4">
+        <div className="row mt-4 mb-5">
           <div className="col-12">
             <div className="card shadow-sm">
               <div className="card-body text-center">

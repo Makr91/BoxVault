@@ -1,23 +1,33 @@
 // version.model.js
-module.exports = (sequelize, Sequelize) => {
-  const Version = sequelize.define('versions', {
-    versionNumber: {
-      type: Sequelize.STRING,
-      allowNull: false,
-    },
-    description: {
-      type: Sequelize.STRING,
-    },
-    boxId: {
-      type: Sequelize.INTEGER,
-      references: {
-        model: 'boxes',
-        key: 'id',
+export default (sequelize, Sequelize) => {
+  const Version = sequelize.define(
+    'versions',
+    {
+      versionNumber: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      description: {
+        type: Sequelize.STRING,
+      },
+      boxId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'boxes',
+          key: 'id',
+        },
       },
     },
-  });
+    {
+      indexes: [
+        {
+          unique: true,
+          fields: ['boxId', 'versionNumber'],
+        },
+      ],
+    }
+  );
 
-  // version.model.js
   Version.associate = function (models) {
     Version.belongsTo(models.box, {
       foreignKey: 'boxId',

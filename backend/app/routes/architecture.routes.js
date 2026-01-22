@@ -1,10 +1,17 @@
 // architecture.routes.js
-const express = require('express');
-const { rateLimit } = require('express-rate-limit');
-const { authJwt, verifyArchitecture, sessionAuth } = require('../middleware');
-const architecture = require('../controllers/architecture.controller');
+import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
+import { authJwt, verifyArchitecture, sessionAuth } from '../middleware/index.js';
+import {
+  findAllByProvider,
+  findOne,
+  create,
+  update,
+  delete as deleteArchitecture,
+  deleteAllByProvider,
+} from '../controllers/architecture.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Explicit rate limiter for architecture operations (CodeQL requirement)
 const architectureOperationLimiter = rateLimit({
@@ -26,14 +33,14 @@ router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
   architectureOperationLimiter,
   sessionAuth,
-  architecture.findAllByProvider
+  findAllByProvider
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
   architectureOperationLimiter,
   sessionAuth,
-  architecture.findOne
+  findOne
 );
 
 router.post(
@@ -43,7 +50,7 @@ router.post(
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
   verifyArchitecture.checkArchitectureDuplicate,
-  architecture.create
+  create
 );
 
 router.put(
@@ -52,7 +59,7 @@ router.put(
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyArchitecture.validateArchitecture,
-  architecture.update
+  update
 );
 
 router.delete(
@@ -60,7 +67,7 @@ router.delete(
   architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
-  architecture.delete
+  deleteArchitecture
 );
 
 router.delete(
@@ -68,7 +75,7 @@ router.delete(
   architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
-  architecture.deleteAllByProvider
+  deleteAllByProvider
 );
 
-module.exports = router;
+export default router;

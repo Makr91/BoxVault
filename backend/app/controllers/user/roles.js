@@ -1,8 +1,6 @@
 // roles.js
-const db = require('../../models');
-
-const User = db.user;
-const Role = db.role;
+import db from '../../models/index.js';
+const { user: User, role: Role } = db;
 
 /**
  * @swagger
@@ -36,7 +34,7 @@ const Role = db.role;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-exports.getUserRoles = async (req, res) => {
+export const getUserRoles = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId, {
       include: [

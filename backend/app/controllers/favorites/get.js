@@ -1,7 +1,7 @@
 // get.js
-const axios = require('axios');
-const { log } = require('../../utils/Logger');
-const { getAuthServerUrl, extractOidcAccessToken } = require('./helpers');
+import axios from 'axios';
+import { log } from '../../utils/Logger.js';
+import { getAuthServerUrl, extractOidcAccessToken } from './helpers.js';
 
 /**
  * @swagger
@@ -33,7 +33,7 @@ const { getAuthServerUrl, extractOidcAccessToken } = require('./helpers');
  *       500:
  *         description: Failed to fetch favorites from auth server
  */
-exports.getFavorites = async (req, res) => {
+export const getFavorites = async (req, res) => {
   try {
     const oidcAccessToken = extractOidcAccessToken(req);
 

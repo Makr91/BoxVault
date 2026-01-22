@@ -1,6 +1,6 @@
 // test.js
-const { log } = require('../../utils/Logger');
-const { createTransporter, smtpConfig } = require('./helpers');
+import { log } from '../../utils/Logger.js';
+import { createTransporter, getSmtpConfig } from './helpers.js';
 
 /**
  * @swagger
@@ -47,9 +47,15 @@ const { createTransporter, smtpConfig } = require('./helpers');
  *                   type: string
  *                   description: "Error stack trace (for debugging)"
  */
-exports.testSmtp = async (req, res) => {
+export const testSmtp = async (req, res) => {
   log.app.info('Testing SMTP connection...');
   try {
+    const smtpConfig = getSmtpConfig();
+
+    if (!smtpConfig || !smtpConfig.smtp_settings || !smtpConfig.smtp_settings.from) {
+      throw new Error('SMTP configuration is missing or invalid.');
+    }
+
     const transporter = createTransporter();
 
     log.app.info('Transporter created, verifying connection...');

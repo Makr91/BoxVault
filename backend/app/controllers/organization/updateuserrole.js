@@ -1,7 +1,6 @@
-const db = require('../../models');
-const { log } = require('../../utils/Logger');
-const { UserOrg } = db;
-const User = db.user;
+import db from '../../models/index.js';
+import { log } from '../../utils/Logger.js';
+const { user: User, UserOrg } = db;
 
 /**
  * @swagger
@@ -145,4 +144,4 @@ const updateUserOrgRole = async (req, res) => {
   }
 };
 
-module.exports = { updateUserOrgRole };
+export { updateUserOrgRole };

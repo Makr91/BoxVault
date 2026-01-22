@@ -1,15 +1,15 @@
 // update.js
-const { getSecureBoxPath } = require('../../utils/paths');
-const db = require('../../models');
+import fs from 'fs';
+import { getSecureBoxPath } from '../../utils/paths.js';
+import db from '../../models/index.js';
 const {
-  safeRmdirSync,
-  safeMkdirSync,
-  safeRenameSync,
-  safeExistsSync,
-} = require('../../utils/fsHelper');
-
-const Architecture = db.architectures;
-const Provider = db.providers;
+  architectures: Architecture,
+  providers: Provider,
+  organization: _organization,
+  box: _box,
+  UserOrg,
+  versions,
+} = db;
 
 /**
  * @swagger
@@ -97,9 +97,9 @@ const Provider = db.providers;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.update = async (req, res) => {
+export const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const { name, defaultBox } = req.body;
+  const { name, description, defaultBox } = req.body;
 
   const oldFilePath = getSecureBoxPath(
     organization,
@@ -108,10 +108,16 @@ exports.update = async (req, res) => {
     providerName,
     architectureName
   );
-  const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, providerName, name);
+  const newFilePath = getSecureBoxPath(
+    organization,
+    boxId,
+    versionNumber,
+    providerName,
+    name || architectureName
+  );
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
@@ -121,7 +127,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
     });
 
@@ -132,7 +138,7 @@ exports.update = async (req, res) => {
     }
 
     // Check if user owns the box OR has moderator/admin role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
     const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
 
@@ -142,7 +148,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    const version = await db.versions.findOne({
+    const version = await versions.findOne({
       where: { versionNumber, boxId: box.id },
     });
 
@@ -167,26 +173,42 @@ exports.update = async (req, res) => {
     }
 
     // Create the new directory if it doesn't exist
-    if (!safeExistsSync(newFilePath)) {
-      safeMkdirSync(newFilePath, { recursive: true });
+    if (!fs.existsSync(newFilePath)) {
+      fs.mkdirSync(newFilePath, { recursive: true });
     }
 
     // Rename the directory if necessary
-    if (oldFilePath !== newFilePath) {
-      safeRenameSync(oldFilePath, newFilePath);
+    if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
+      // If the target directory already exists, remove it first
+      if (fs.existsSync(newFilePath)) {
+        fs.rmSync(newFilePath, { recursive: true, force: true });
+      }
+      fs.renameSync(oldFilePath, newFilePath);
 
-      // Clean up the old directory if it still exists
-      safeRmdirSync(oldFilePath, { recursive: true });
+      // Clean up the old directory if it still exists after rename
+      if (fs.existsSync(oldFilePath)) {
+        fs.rmdirSync(oldFilePath, { recursive: true });
+      }
     }
 
-    const [updated] = await Architecture.update(
-      { name, defaultBox },
-      { where: { name: architectureName, providerId: provider.id } }
-    );
+    const updatePayload = {};
+    if (name) {
+      updatePayload.name = name;
+    }
+    if (typeof description !== 'undefined') {
+      updatePayload.description = description;
+    }
+    if (typeof defaultBox !== 'undefined') {
+      updatePayload.defaultBox = defaultBox;
+    }
+
+    const [updated] = await Architecture.update(updatePayload, {
+      where: { name: architectureName, providerId: provider.id },
+    });
 
     if (updated) {
       const updatedArchitecture = await Architecture.findOne({
-        where: { name, providerId: provider.id },
+        where: { name: name || architectureName, providerId: provider.id },
       });
       return res.send(updatedArchitecture);
     }

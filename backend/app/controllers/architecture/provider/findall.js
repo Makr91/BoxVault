@@ -1,7 +1,13 @@
 // findall.js
-const db = require('../../../models');
-
-const Architecture = db.architectures;
+import db from '../../../models/index.js';
+const {
+  architectures: Architecture,
+  organization: _organization,
+  box: _box,
+  versions,
+  providers,
+  UserOrg,
+} = db;
 
 /**
  * @swagger
@@ -72,13 +78,13 @@ const Architecture = db.architectures;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.findAllByProvider = async (req, res) => {
+export const findAllByProvider = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
   const token = req.headers['x-access-token'];
-  const userId = null;
+  const { userId } = req;
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
@@ -89,17 +95,17 @@ exports.findAllByProvider = async (req, res) => {
     }
 
     // Find the box by organizationId
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
       attributes: ['id', 'name', 'isPublic'],
       include: [
         {
-          model: db.versions,
+          model: versions,
           as: 'versions',
           where: { versionNumber },
           include: [
             {
-              model: db.providers,
+              model: providers,
               as: 'providers',
               where: { name: providerName },
             },
@@ -140,7 +146,7 @@ exports.findAllByProvider = async (req, res) => {
 
       // If the box is private and authenticated, check if the user is member of the organization
       if (!box.isPublic && userId) {
-        const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+        const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
         if (!membership) {
           return res.status(403).send({ message: req.__('architectures.unauthorized') });
         }

@@ -1,4 +1,4 @@
-module.exports = (sequelize, Sequelize) => {
+export default (sequelize, Sequelize) => {
   const ServiceAccount = sequelize.define('service_accounts', {
     username: {
       type: Sequelize.STRING,
@@ -45,15 +45,12 @@ module.exports = (sequelize, Sequelize) => {
    * @returns {Promise<ServiceAccount[]>}
    */
   ServiceAccount.getForUser = async function (userId) {
-    const db = require('./index');
+    const { default: db } = await import('./index.js');
 
     // Get organizations where user has moderator or admin role
     const userOrgs = await db.UserOrg.findAll({
       where: {
         user_id: userId,
-        role: {
-          [Sequelize.Op.in]: ['moderator', 'admin'],
-        },
       },
     });
 

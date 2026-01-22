@@ -1,22 +1,18 @@
-const jwt = require('jsonwebtoken');
-const { loadConfig } = require('../utils/config-loader');
-const { log } = require('../utils/Logger');
+import jwt from 'jsonwebtoken';
+import { loadConfig } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
 
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+const { verify } = jwt;
 
 const sessionAuth = async (req, res, next) => {
   void res;
+  const authConfig = loadConfig('auth');
   const token = req.headers['x-access-token'];
 
   if (token) {
     try {
       const decoded = await new Promise((resolve, reject) => {
-        jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
+        verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
           if (err) {
             reject(err);
           } else {
@@ -33,4 +29,4 @@ const sessionAuth = async (req, res, next) => {
   next();
 };
 
-module.exports = { sessionAuth };
+export { sessionAuth };

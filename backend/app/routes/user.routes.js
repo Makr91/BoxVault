@@ -1,12 +1,34 @@
 // user.routes.js
-const express = require('express');
-const { authJwt } = require('../middleware');
-const { verifySignUp } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const user = require('../controllers/user.controller');
-const auth = require('../controllers/auth.controller');
+import { Router } from 'express';
+import { authJwt, verifySignUp } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  allAccess,
+  userBoard,
+  adminBoard,
+  getUserRoles,
+  changePassword,
+  changeEmail,
+  promoteToModerator,
+  demoteToUser,
+  getUserProfile,
+  getUserOrganizations,
+  leaveOrganization,
+  getPrimaryOrganization,
+  setPrimaryOrganization,
+  isOnlyUserInOrg,
+  findOne,
+  update,
+  delete as deleteUser,
+} from '../controllers/user.controller.js';
+import {
+  suspendUser,
+  resumeUser,
+  deleteUser as deleteUserAuth,
+  signup,
+} from '../controllers/auth.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -17,77 +39,58 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/users/all', user.allAccess);
-router.get('/users/user', [authJwt.verifyToken, authJwt.isUser], user.userBoard);
-router.get('/users/admin', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], user.adminBoard);
-router.get(
-  '/users/roles',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  user.getUserRoles
-);
+router.get('/users/all', allAccess);
+router.get('/users/user', [authJwt.verifyToken, authJwt.isUser], userBoard);
+router.get('/users/admin', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], adminBoard);
+router.get('/users/roles', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], getUserRoles);
 
-router.put(
-  '/users/:userId/change-password',
-  [authJwt.verifyToken],
-  authJwt.isUser,
-  user.changePassword
-);
-router.put('/users/:userId/change-email', [authJwt.verifyToken], authJwt.isUser, user.changeEmail);
-router.put(
-  '/users/:userId/promote',
-  [authJwt.verifyToken],
-  authJwt.isUser,
-  user.promoteToModerator
-);
+router.put('/users/:userId/change-password', [authJwt.verifyToken], authJwt.isUser, changePassword);
+router.put('/users/:userId/change-email', [authJwt.verifyToken], authJwt.isUser, changeEmail);
+router.put('/users/:userId/promote', [authJwt.verifyToken], authJwt.isUser, promoteToModerator);
 router.put(
   '/users/:userId/demote',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isModeratorOrAdmin],
-  user.demoteToUser
+  demoteToUser
 );
 router.put(
   '/users/:userId/suspend',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  auth.suspendUser
+  suspendUser
 );
 router.put(
   '/users/:userId/resume',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  auth.resumeUser
+  resumeUser
 );
 router.delete(
   '/users/:userId',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
-  auth.deleteUser
+  deleteUserAuth
 );
-router.get('/user', [authJwt.verifyToken, authJwt.isUser], user.getUserProfile);
+router.get('/user', [authJwt.verifyToken, authJwt.isUser], getUserProfile);
 
 // Multi-organization user management
-router.get('/user/organizations', [authJwt.verifyToken, authJwt.isUser], user.getUserOrganizations);
+router.get('/user/organizations', [authJwt.verifyToken, authJwt.isUser], getUserOrganizations);
 
-router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], user.leaveOrganization);
+router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], leaveOrganization);
 
 router.get(
   '/user/primary-organization',
   [authJwt.verifyToken, authJwt.isUser],
-  user.getPrimaryOrganization
+  getPrimaryOrganization
 );
 
 router.put(
   '/user/primary-organization/:orgName',
   [authJwt.verifyToken, authJwt.isUser],
-  user.setPrimaryOrganization
+  setPrimaryOrganization
 );
 
-router.get(
-  '/organizations',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-  user.organization
-);
 router.get(
   '/organizations/:organization/only-user',
   [authJwt.verifyToken],
   authJwt.isUser,
-  user.isOnlyUserInOrg
+  isOnlyUserInOrg
 );
 router.post(
   '/organization/:organization/users',
@@ -97,22 +100,22 @@ router.post(
     verifySignUp.checkDuplicateUsernameOrEmail,
     verifySignUp.checkRolesExisted,
   ],
-  auth.signup
+  signup
 );
 router.get(
   '/organization/:organization/users/:userName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  user.findOne
+  findOne
 );
 router.put(
   '/organization/:organization/users/:userName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  user.update
+  update
 );
 router.delete(
   '/organization/:organization/users/:username',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  user.delete
+  deleteUser
 );
 
-module.exports = router;
+export default router;

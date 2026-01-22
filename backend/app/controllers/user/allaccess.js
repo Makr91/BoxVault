@@ -1,5 +1,5 @@
 // allaccess.js
-const { log } = require('../../utils/Logger');
+import { log } from '../../utils/Logger.js';
 
 /**
  * @swagger
@@ -40,7 +40,7 @@ const { log } = require('../../utils/Logger');
  *                 goal:
  *                   type: string
  */
-exports.allAccess = (req, res) => {
+export const allAccess = (req, res) => {
   // Log request for audit purposes
   log.app.debug('All access endpoint called', { method: req.method, locale: req.getLocale() });
 

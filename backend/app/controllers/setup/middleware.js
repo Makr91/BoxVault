@@ -1,5 +1,5 @@
 // middleware.js
-const { getAuthorizedSetupToken } = require('./helpers');
+import { getAuthorizedSetupToken } from './helpers.js';
 
 const verifyAuthorizedToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -11,6 +11,4 @@ const verifyAuthorizedToken = (req, res, next) => {
   return next();
 };
 
-module.exports = {
-  verifyAuthorizedToken,
-};
+export { verifyAuthorizedToken };

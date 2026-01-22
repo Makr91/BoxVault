@@ -1,10 +1,17 @@
 // provider.routes.js
-const express = require('express');
-const { authJwt, verifyProvider } = require('../middleware');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const provider = require('../controllers/provider.controller');
+import { Router } from 'express';
+import { authJwt, verifyProvider, sessionAuth } from '../middleware/index.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import {
+  create,
+  findAllByVersion,
+  findOne,
+  update,
+  delete as deleteProvider,
+  deleteAllByVersion,
+} from '../controllers/provider.controller.js';
 
-const router = express.Router();
+const router = Router();
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -23,35 +30,37 @@ router.post(
     verifyProvider.validateProvider,
     verifyProvider.checkProviderDuplicate,
   ],
-  provider.create
+  create
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider',
-  provider.findAllByVersion
+  sessionAuth,
+  findAllByVersion
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
-  provider.findOne
+  sessionAuth,
+  findOne
 );
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyProvider.validateProvider],
-  provider.update
+  update
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-  provider.delete
+  deleteProvider
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
-  provider.deleteAllByVersion
+  deleteAllByVersion
 );
 
-module.exports = router;
+export default router;

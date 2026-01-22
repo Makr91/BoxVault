@@ -1,6 +1,5 @@
 // delete.js
-const db = require('../../../models');
-
+import db from '../../../models/index.js';
 const User = db.user;
 
 /**
@@ -41,7 +40,7 @@ const User = db.user;
  *                   type: string
  *                   example: "Could not delete User with id=1"
  */
-exports.deleteUser = (req, res) => {
+export const deleteUser = (req, res) => {
   const { userId } = req.params;
 
   User.destroy({

@@ -1,16 +1,9 @@
 // provider.controller.js
-const { create } = require('./provider/create');
-const { findAllByVersion } = require('./provider/findallbyversion');
-const { findOne } = require('./provider/findone');
-const { update } = require('./provider/update');
-const { delete: deleteProvider } = require('./provider/delete');
-const { deleteAllByVersion } = require('./provider/deleteallbyversion');
+import { create } from './provider/create.js';
+import { findAllByVersion } from './provider/findallbyversion.js';
+import { findOne } from './provider/findone.js';
+import { update } from './provider/update.js';
+import { delete as deleteProvider } from './provider/delete.js';
+import { deleteAllByVersion } from './provider/deleteallbyversion.js';
 
-module.exports = {
-  create,
-  findAllByVersion,
-  findOne,
-  update,
-  delete: deleteProvider,
-  deleteAllByVersion,
-};
+export { create, findAllByVersion, findOne, update, deleteProvider as delete, deleteAllByVersion };

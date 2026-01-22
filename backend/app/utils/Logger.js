@@ -1,88 +1,118 @@
-const winston = require('winston');
-const morgan = require('morgan');
-const fsPromises = require('fs').promises;
-const path = require('path');
-const { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync } = require('fs');
-const { createGzip } = require('zlib');
-const { loadConfig } = require('./config-loader');
+import winston from 'winston';
+import morgan from 'morgan';
+import fs from 'fs';
+import { join, dirname, basename } from 'path';
+import zlib from 'zlib';
+import { loadConfig } from './config-loader.js';
 
-let loggingConfig;
-try {
-  const appConfig = loadConfig('app');
-  loggingConfig = appConfig.logging || {};
-} catch (e) {
-  void e;
-  loggingConfig = {};
-}
-
-const extractedConfig = {
-  level: loggingConfig.level?.value || 'info',
-  console_enabled: loggingConfig.console_enabled?.value !== false,
-  log_directory: loggingConfig.log_directory?.value || '/var/log/boxvault',
-  performance_threshold_ms: loggingConfig.performance_threshold_ms?.value || 1000,
-  enable_compression: loggingConfig.enable_compression?.value !== false,
-  compression_age_days: loggingConfig.compression_age_days?.value || 7,
-  max_files: loggingConfig.max_files?.value || 30,
-  categories: {},
+export const getLoggingConfig = () => {
+  try {
+    const appConfig = loadConfig('app');
+    return appConfig.logging || {};
+  } catch {
+    return {};
+  }
 };
 
-if (loggingConfig.categories) {
-  for (const [category, config] of Object.entries(loggingConfig.categories)) {
-    extractedConfig.categories[category] = config?.value || extractedConfig.level;
+const loggingConfig = getLoggingConfig();
+
+export const extractLoggerConfig = config => ({
+  level: config.level?.value || 'info',
+  console_enabled: config.console_enabled?.value !== false,
+  log_directory: config.log_directory?.value || '/var/log/boxvault',
+  performance_threshold_ms: config.performance_threshold_ms?.value || 1000,
+  enable_compression: config.enable_compression?.value !== false,
+  compression_age_days: config.compression_age_days?.value || 7,
+  max_files: config.max_files?.value || 30,
+  categories: {},
+});
+
+const extractedConfig = extractLoggerConfig(loggingConfig);
+
+export const processCategories = (categories, defaultLevel) => {
+  const result = {};
+  if (categories) {
+    for (const [category, config] of Object.entries(categories)) {
+      result[category] = config?.value || defaultLevel;
+    }
   }
-}
+  return result;
+};
+
+const applyConfigCategories = config => {
+  if (config.categories) {
+    Object.assign(
+      extractedConfig.categories,
+      processCategories(config.categories, extractedConfig.level)
+    );
+  }
+};
+
+applyConfigCategories(loggingConfig);
 
 const logDir = extractedConfig.log_directory;
-if (!existsSync(logDir)) {
-  mkdirSync(logDir, { recursive: true, mode: 0o755 });
-}
+const ensureLogDirectory = dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+  }
+};
+
+ensureLogDirectory(logDir);
+
+const reloadLoggerConfig = () => {
+  const newConfig = getLoggingConfig();
+  const newValues = extractLoggerConfig(newConfig);
+  Object.assign(extractedConfig, newValues);
+  applyConfigCategories(newConfig);
+  ensureLogDirectory(extractedConfig.log_directory);
+};
 
 const compressFile = async filePath => {
   try {
     const compressedPath = `${filePath}.gz`;
 
-    if (existsSync(compressedPath)) {
+    if (fs.existsSync(compressedPath)) {
       return;
     }
 
-    const readStream = createReadStream(filePath);
-    const writeStream = createWriteStream(compressedPath);
-    const gzip = createGzip();
+    const readStream = fs.createReadStream(filePath);
+    const writeStream = fs.createWriteStream(compressedPath);
+    const gzip = zlib.createGzip();
 
     await new Promise((resolve, reject) => {
       readStream.pipe(gzip).pipe(writeStream).on('finish', resolve).on('error', reject);
     });
 
-    await fsPromises.unlink(filePath);
+    await fs.promises.unlink(filePath);
   } catch {
     void 0;
   }
 };
 
-const rotateLogFile = async (filePath, maxFiles) => {
+const rotateLogFile = async (filePath, maxFiles, config = extractedConfig) => {
   try {
-    const archiveDir = path.join(path.dirname(filePath), 'archive');
+    const archiveDir = join(dirname(filePath), 'archive');
 
     try {
-      await fsPromises.mkdir(archiveDir, { recursive: true });
+      await fs.promises.mkdir(archiveDir, { recursive: true });
     } catch {
       return;
     }
 
-    const baseName = path.basename(filePath);
+    const baseName = basename(filePath);
     const [today] = new Date().toISOString().split('T');
     const archiveName = `${baseName}.${today}`;
 
-    if (existsSync(filePath)) {
-      await fsPromises.rename(filePath, path.join(archiveDir, archiveName));
+    if (fs.existsSync(filePath)) {
+      await fs.promises.rename(filePath, join(archiveDir, archiveName));
     }
 
-    if (extractedConfig.enable_compression) {
-      const compressionAgeDays = extractedConfig.compression_age_days;
+    if (config.enable_compression) {
+      const compressionAgeDays = config.compression_age_days;
       const compressionThreshold = new Date();
       compressionThreshold.setDate(compressionThreshold.getDate() - compressionAgeDays);
 
-      const archiveFiles = await fsPromises.readdir(archiveDir);
+      const archiveFiles = await fs.promises.readdir(archiveDir);
       const uncompressedArchives = archiveFiles
         .filter(file => file.startsWith(baseName) && !file.endsWith('.gz'))
         .filter(file => {
@@ -94,12 +124,10 @@ const rotateLogFile = async (filePath, maxFiles) => {
           return false;
         });
 
-      await Promise.all(
-        uncompressedArchives.map(file => compressFile(path.join(archiveDir, file)))
-      );
+      await Promise.all(uncompressedArchives.map(file => compressFile(join(archiveDir, file))));
     }
 
-    const archiveFiles = await fsPromises.readdir(archiveDir);
+    const archiveFiles = await fs.promises.readdir(archiveDir);
     const logArchives = archiveFiles
       .filter(file => file.startsWith(baseName))
       .sort()
@@ -107,7 +135,7 @@ const rotateLogFile = async (filePath, maxFiles) => {
 
     if (logArchives.length > maxFiles) {
       const filesToDelete = logArchives.slice(maxFiles);
-      await Promise.all(filesToDelete.map(file => fsPromises.unlink(path.join(archiveDir, file))));
+      await Promise.all(filesToDelete.map(file => fs.promises.unlink(join(archiveDir, file))));
     }
   } catch {
     void 0;
@@ -125,7 +153,7 @@ class DailyRotatingFileTransport extends winston.transports.File {
     try {
       const [currentDate] = new Date().toISOString().split('T');
 
-      if (this.lastRotateDate !== currentDate && existsSync(this.filename)) {
+      if (this.lastRotateDate !== currentDate && fs.existsSync(this.filename)) {
         await rotateLogFile(this.filename, this.maxFiles);
         this.lastRotateDate = currentDate;
       }
@@ -143,64 +171,69 @@ const transports = [
   }),
 ];
 
-try {
-  if (!existsSync(logDir)) {
-    mkdirSync(logDir, { recursive: true });
-  }
+export const initializeLogDirectory = () => {
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
 
-  const logFiles = [
-    'application.log',
-    'access.log',
-    'database.log',
-    'errors.log',
-    'auth.log',
-    'api-requests.log',
-    'file-operations.log',
-  ];
+    const logFiles = [
+      'application.log',
+      'access.log',
+      'database.log',
+      'errors.log',
+      'auth.log',
+      'api-requests.log',
+      'file-operations.log',
+    ];
 
-  for (const logFile of logFiles) {
-    const logPath = path.join(logDir, logFile);
-    if (existsSync(logPath)) {
-      try {
-        const archiveDir = path.join(logDir, 'archive');
-        if (!existsSync(archiveDir)) {
-          mkdirSync(archiveDir, { recursive: true });
+    for (const logFile of logFiles) {
+      const logPath = join(logDir, logFile);
+      if (fs.existsSync(logPath)) {
+        try {
+          const archiveDir = join(logDir, 'archive');
+          if (!fs.existsSync(archiveDir)) {
+            fs.mkdirSync(archiveDir, { recursive: true });
+          }
+
+          const [today] = new Date().toISOString().split('T');
+          let archiveName = `${logFile}.${today}`;
+          let archivePath = join(archiveDir, archiveName);
+
+          let counter = 1;
+          // Add safety limit to prevent infinite loops during tests if fs.existsSync is mocked to always return true
+          while (fs.existsSync(archivePath) && counter < 1000) {
+            archiveName = `${logFile}.${today}.${counter}`;
+            archivePath = join(archiveDir, archiveName);
+            counter++;
+          }
+
+          fs.renameSync(logPath, archivePath);
+        } catch {
+          void 0;
         }
-
-        const [today] = new Date().toISOString().split('T');
-        let archiveName = `${logFile}.${today}`;
-        let archivePath = path.join(archiveDir, archiveName);
-
-        let counter = 1;
-        while (existsSync(archivePath)) {
-          archiveName = `${logFile}.${today}.${counter}`;
-          archivePath = path.join(archiveDir, archiveName);
-          counter++;
-        }
-
-        renameSync(logPath, archivePath);
-      } catch {
-        void 0;
       }
     }
+  } catch {
+    void 0;
   }
+};
 
-  transports.push(
-    new DailyRotatingFileTransport({
-      filename: path.join(logDir, 'application.log'),
-      format: winston.format.json(),
-      maxFiles: extractedConfig.max_files,
-    }),
-    new DailyRotatingFileTransport({
-      filename: path.join(logDir, 'errors.log'),
-      format: winston.format.json(),
-      level: 'error',
-      maxFiles: extractedConfig.max_files,
-    })
-  );
-} catch {
-  void 0;
-}
+initializeLogDirectory();
+
+transports.push(
+  new DailyRotatingFileTransport({
+    filename: join(logDir, 'application.log'),
+    format: winston.format.json(),
+    maxFiles: extractedConfig.max_files,
+  }),
+  new DailyRotatingFileTransport({
+    filename: join(logDir, 'errors.log'),
+    format: winston.format.json(),
+    level: 'error',
+    maxFiles: extractedConfig.max_files,
+  })
+);
 
 const logger = winston.createLogger({
   level: extractedConfig.level,
@@ -213,7 +246,7 @@ const accessLogger = winston.createLogger({
   format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
   transports: [
     new DailyRotatingFileTransport({
-      filename: path.join(logDir, 'access.log'),
+      filename: join(logDir, 'access.log'),
       format: winston.format.json(),
       level: 'info',
       maxFiles: extractedConfig.max_files,
@@ -221,13 +254,21 @@ const accessLogger = winston.createLogger({
   ],
 });
 
-const createCategoryLogger = (category, filename) => {
+const consoleFormatTemplate = ({ level, message, timestamp, category: cat, ...meta }) => {
+  const categoryStr = cat ? `[${cat}]` : '';
+  const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta, null, 0)}` : '';
+  return `${timestamp} ${categoryStr} ${level}: ${message}${metaStr}`;
+};
+
+const consoleFormatter = winston.format.printf(consoleFormatTemplate);
+
+export const createCategoryLogger = (category, filename) => {
   const categoryLevel = extractedConfig.categories[category] || extractedConfig.level;
   const categoryTransports = [];
 
   categoryTransports.push(
     new DailyRotatingFileTransport({
-      filename: path.join(logDir, `${filename}.log`),
+      filename: join(logDir, `${filename}.log`),
       level: categoryLevel,
       format: winston.format.json(),
       maxFiles: extractedConfig.max_files,
@@ -241,11 +282,7 @@ const createCategoryLogger = (category, filename) => {
         format: winston.format.combine(
           winston.format.timestamp({ format: 'HH:mm:ss' }),
           winston.format.colorize({ all: true }),
-          winston.format.printf(({ level, message, timestamp, category: cat, ...meta }) => {
-            const categoryStr = cat ? `[${cat}]` : '';
-            const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta, null, 0)}` : '';
-            return `${timestamp} ${categoryStr} ${level}: ${message}${metaStr}`;
-          })
+          consoleFormatter
         ),
       })
     );
@@ -269,11 +306,15 @@ const fileLogger = createCategoryLogger('file', 'file-operations');
 const errorLogger = createCategoryLogger('error', 'errors');
 
 const safeLog = (loggerInstance, level, message, meta = {}) => {
+  let logMeta = meta;
   try {
-    loggerInstance[level](message, meta);
+    if (typeof logMeta !== 'object' && logMeta !== null) {
+      logMeta = { data: logMeta };
+    }
+    loggerInstance[level](message, logMeta);
   } catch (error) {
     const timestamp = new Date().toISOString();
-    const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
+    const metaStr = logMeta && Object.keys(logMeta).length > 0 ? ` ${JSON.stringify(logMeta)}` : '';
     process.stderr.write(
       `${timestamp} [${level.toUpperCase()}] ${message}${metaStr} (Winston error: ${error.message})\n`
     );
@@ -331,7 +372,7 @@ const createTimer = operation => {
       const end = process.hrtime.bigint();
       const duration = Number(end - start) / 500000;
 
-      const thresholdMs = extractedConfig.performance_threshold_ms || 1000;
+      const thresholdMs = extractedConfig.performance_threshold_ms;
       if (duration >= thresholdMs) {
         log.app.warn(`Slow operation detected: ${operation}`, {
           operation,
@@ -386,10 +427,12 @@ const createRequestLogger = (requestId, req) => {
   };
 };
 
+const morganStream = {
+  write: message => accessLogger.info(message.trim()),
+};
+
 const morganMiddleware = morgan('combined', {
-  stream: {
-    write: message => accessLogger.info(message.trim()),
-  },
+  stream: morganStream,
 });
 
 logger.info('Application logger initialized');
@@ -399,10 +442,11 @@ authLogger.info('Auth logger initialized');
 fileLogger.info('File logger initialized');
 errorLogger.info('Error logger initialized');
 
-module.exports = {
+export {
   log,
   createTimer,
   createRequestLogger,
+  morganStream,
   morganMiddleware,
   logger,
   accessLogger,
@@ -412,4 +456,11 @@ module.exports = {
   errorLogger,
   appLogger,
   apiLogger,
+  DailyRotatingFileTransport,
+  rotateLogFile,
+  compressFile,
+  consoleFormatTemplate,
+  applyConfigCategories,
+  ensureLogDirectory,
+  reloadLoggerConfig,
 };

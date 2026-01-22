@@ -1,5 +1,5 @@
-const fs = require('fs');
-const { log } = require('./Logger');
+import fs from 'fs';
+import { log } from './Logger.js';
 
 const safeUnlink = filePath => {
   try {
@@ -27,7 +27,7 @@ const safeRm = (path, options) => {
 
 const safeRmdirSync = (path, options) => {
   if (fs.existsSync(path)) {
-    fs.rmdirSync(path, options);
+    fs.rmSync(path, { ...options, force: true });
   }
 };
 
@@ -41,11 +41,4 @@ const safeRenameSync = (oldPath, newPath) => {
 
 const safeExistsSync = path => fs.existsSync(path);
 
-module.exports = {
-  safeUnlink,
-  safeRm,
-  safeRmdirSync,
-  safeMkdirSync,
-  safeRenameSync,
-  safeExistsSync,
-};
+export { safeUnlink, safeRm, safeRmdirSync, safeMkdirSync, safeRenameSync, safeExistsSync };

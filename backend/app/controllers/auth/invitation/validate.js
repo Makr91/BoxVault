@@ -1,15 +1,12 @@
-// validate.js
-const db = require('../../../models');
-
-const Organization = db.organization;
-const Invitation = db.invitation;
+import db from '../../../models/index.js';
+const { invitation: Invitation, organization: Organization } = db;
 
 /**
  * @swagger
  * /api/auth/validate-invitation/{token}:
  *   get:
  *     summary: Validate an invitation token
- *     description: Check if an invitation token is valid and get organization information
+ *     description: Check if an invitation token is valid and return invitation details
  *     tags: [Authentication]
  *     parameters:
  *       - in: path
@@ -17,47 +14,55 @@ const Invitation = db.invitation;
  *         required: true
  *         schema:
  *           type: string
- *         description: Invitation token to validate
+ *         description: The invitation token
  *     responses:
  *       200:
- *         description: Valid invitation token
+ *         description: Invitation is valid
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invitation token is valid."
+ *                 email:
+ *                   type: string
+ *                   example: "invitee@example.com"
  *                 organizationName:
  *                   type: string
- *                   description: Name of the organization
- *       400:
- *         description: Invalid or expired invitation token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                   example: "MyOrg"
+ *       404:
+ *         description: Invitation not found or expired
  */
-exports.validateInvitationToken = async (req, res) => {
+export const validateInvitationToken = async (req, res) => {
   const { token } = req.params;
 
-  try {
-    const invitation = await Invitation.findOne({ where: { token } });
+  if (!token) {
+    return res.status(400).send({ message: 'Invitation token is required.' });
+  }
 
-    if (!invitation || invitation.expires < Date.now()) {
-      return res.status(400).send({ message: req.__('invitations.invalidOrExpired') });
+  try {
+    const invitation = await Invitation.findOne({
+      where: {
+        token,
+        accepted: false,
+        expired: false,
+        expires: { [db.Sequelize.Op.gt]: new Date() },
+      },
+      include: [{ model: Organization, as: 'organization' }],
+    });
+
+    if (!invitation) {
+      return res.status(404).send({ message: 'Invitation not found or has expired.' });
     }
 
-    const organization = await Organization.findByPk(invitation.organizationId);
-
-    return res.status(200).send({ organizationName: organization.name });
-  } catch (err) {
-    return res.status(500).send({
-      message: err.message || req.__('invitations.validate.error'),
+    return res.status(200).send({
+      message: 'Invitation token is valid.',
+      email: invitation.email,
+      organizationName: invitation.organization.name,
     });
+  } catch (err) {
+    return res.status(500).send({ message: err.message || 'Error validating invitation.' });
   }
 };

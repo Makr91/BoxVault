@@ -1,7 +1,13 @@
 // findone.js
-const db = require('../../models');
-
-const Architecture = db.architectures;
+import db from '../../models/index.js';
+const {
+  architectures: Architecture,
+  organization: _organization,
+  box: _box,
+  versions,
+  providers,
+  UserOrg,
+} = db;
 
 /**
  * @swagger
@@ -86,13 +92,13 @@ const Architecture = db.architectures;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.findOne = async (req, res) => {
+export const findOne = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
   // req.userId and req.isServiceAccount are set by sessionAuth middleware or vagrantHandler
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
@@ -103,17 +109,17 @@ exports.findOne = async (req, res) => {
     }
 
     // Find the box by organizationId
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
       attributes: ['id', 'name', 'isPublic'],
       include: [
         {
-          model: db.versions,
+          model: versions,
           as: 'versions',
           where: { versionNumber },
           include: [
             {
-              model: db.providers,
+              model: providers,
               as: 'providers',
               where: { name: providerName },
             },
@@ -150,13 +156,15 @@ exports.findOne = async (req, res) => {
     if (box.isPublic || req.isServiceAccount) {
       const architecture = await Architecture.findOne({
         where: { name: architectureName, providerId: provider.id },
-        attributes: ['name'], // Specify limited fields
       });
+      if (!architecture) {
+        return res.status(404).send({ message: req.__('architectures.notFound') });
+      }
       return res.send(architecture);
     }
 
     // If the box is private and it's not a service account, check if the user is member of the organization
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('architectures.unauthorized') });
     }
@@ -165,6 +173,9 @@ exports.findOne = async (req, res) => {
     const architecture = await Architecture.findOne({
       where: { name: architectureName, providerId: provider.id },
     });
+    if (!architecture) {
+      return res.status(404).send({ message: req.__('architectures.notFound') });
+    }
     return res.send(architecture);
   } catch (err) {
     return res.status(500).send({ message: err.message || req.__('architectures.findOne.error') });

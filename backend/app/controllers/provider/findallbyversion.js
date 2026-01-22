@@ -1,17 +1,6 @@
 // findallbyversion.js
-const { loadConfig } = require('../../utils/config-loader');
-const { log } = require('../../utils/Logger');
-const jwt = require('jsonwebtoken');
-const db = require('../../models');
-
-const Provider = db.providers;
-
-let authConfig;
-try {
-  authConfig = loadConfig('auth');
-} catch (e) {
-  log.error.error(`Failed to load auth configuration: ${e.message}`);
-}
+import db from '../../models/index.js';
+const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
 
 /**
  * @swagger
@@ -93,23 +82,12 @@ try {
  *                   type: string
  *                   example: "Some error occurred while retrieving providers."
  */
-exports.findAllByVersion = async (req, res) => {
+export const findAllByVersion = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
-  const token = req.headers['x-access-token'];
-  let userId = null;
-
-  if (token) {
-    try {
-      // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
-      userId = decoded.id;
-    } catch {
-      return res.status(401).send({ message: req.__('auth.unauthorized') });
-    }
-  }
+  const { userId } = req;
 
   try {
-    const organizationData = await db.organization.findOne({
+    const organizationData = await _organization.findOne({
       where: { name: organization },
     });
 
@@ -119,7 +97,7 @@ exports.findAllByVersion = async (req, res) => {
       });
     }
 
-    const box = await db.box.findOne({
+    const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
       attributes: ['id', 'name', 'isPublic'],
     });
@@ -130,7 +108,7 @@ exports.findAllByVersion = async (req, res) => {
       });
     }
 
-    const version = await db.versions.findOne({
+    const version = await versions.findOne({
       where: { versionNumber, boxId: box.id },
     });
 
@@ -151,7 +129,7 @@ exports.findAllByVersion = async (req, res) => {
       return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
-    const membership = await db.UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('providers.unauthorized') });
     }

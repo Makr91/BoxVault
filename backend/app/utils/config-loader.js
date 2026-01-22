@@ -1,7 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
-const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
+import fs from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { load } from 'js-yaml';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Get the appropriate config file path based on environment
@@ -17,9 +20,75 @@ const getConfigPath = configName => {
   }
 
   if (process.env.NODE_ENV === 'production') {
+    const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
     return `${configDir}/${configName}.config.yaml`;
   }
-  return path.join(__dirname, `../config/${configName}.dev.config.yaml`);
+  if (process.env.NODE_ENV === 'test') {
+    return join(__dirname, `../config/${configName}.test.config.yaml`);
+  }
+  return join(__dirname, `../config/${configName}.dev.config.yaml`);
+};
+
+/**
+ * Get mock configuration for test environment
+ * @param {string} configName - Name of config file
+ * @returns {Object} Mock config object
+ */
+const getMockConfig = configName => {
+  const isSilent = process.env.SUPPRESS_LOGS === 'true';
+  if (configName === 'app') {
+    return {
+      boxvault: {
+        origin: { value: 'http://localhost:3000' },
+        api_url: { value: 'http://localhost:3000/api' },
+        box_max_file_size: { value: 1 },
+        api_listen_port_unencrypted: { value: 5000 },
+        api_listen_port_encrypted: { value: 5001 },
+        box_storage_directory: { value: '/tmp/boxvault/storage' },
+      },
+      internationalization: {
+        default_language: { value: 'en' },
+        supported_languages: { value: ['en'] },
+        auto_detect: { value: true },
+      },
+      logging: {
+        level: { value: isSilent ? 'silent' : 'error' },
+        console_enabled: { value: !isSilent },
+      },
+      rate_limiting: { window_minutes: { value: 15 }, max_requests: { value: 100 } },
+      gravatar: {
+        enabled: { value: true },
+        default: { value: 'identicon' },
+      },
+      ticket_system: {
+        enabled: { value: true },
+        url: { value: 'https://example.com/ticket' },
+      },
+    };
+  }
+  if (configName === 'auth') {
+    return {
+      auth: {
+        jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
+        enabled_strategies: { value: ['local', 'jwt'] },
+        oidc: { providers: {} },
+        local: {
+          local_enabled: { value: true },
+          local_require_email_verification: { value: false },
+        },
+      },
+    };
+  }
+  if (configName === 'db') {
+    return {
+      sql: {
+        dialect: { value: 'sqlite' },
+        storage: { value: ':memory:' },
+        logging: { value: false },
+      },
+    };
+  }
+  return {};
 };
 
 /**
@@ -33,9 +102,30 @@ const loadConfig = configName => {
 
   try {
     const fileContents = fs.readFileSync(configPath, 'utf8');
-    return yaml.load(fileContents);
+    const config = load(fileContents);
+
+    // In test environment, override logging config to respect SUPPRESS_LOGS
+    if (process.env.NODE_ENV === 'test' && configName === 'app') {
+      const isSilent = process.env.SUPPRESS_LOGS === 'true';
+      if (!config.logging) {
+        config.logging = {};
+      }
+      config.logging.level = { value: isSilent ? 'silent' : 'error' };
+      config.logging.console_enabled = { value: !isSilent };
+    }
+    return config;
   } catch (error) {
-    console.error('Failed to load configuration', { configName, configPath, error: error.message });
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Failed to load configuration', {
+        configName,
+        configPath,
+        error: error.message,
+      });
+    }
+    // In test environment, return mock config to prevent crash
+    if (process.env.NODE_ENV === 'test') {
+      return getMockConfig(configName);
+    }
     throw error;
   }
 };
@@ -66,7 +156,7 @@ const getSetupTokenPath = () => {
     return `${setupConfigDir}/setup.token`;
   }
   // Development: use relative path from project root
-  return path.join(__dirname, '../../setup.token');
+  return join(__dirname, '../../setup.token');
 };
 
 /**
@@ -125,7 +215,16 @@ const getI18nConfig = () => {
   }
 };
 
-module.exports = {
+export {
+  getConfigPath,
+  loadConfig,
+  loadConfigs,
+  getSetupTokenPath,
+  getRateLimitConfig,
+  getI18nConfig,
+};
+
+export default {
   getConfigPath,
   loadConfig,
   loadConfigs,

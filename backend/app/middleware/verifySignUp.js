@@ -1,37 +1,40 @@
-const db = require('../models');
-const { ROLES } = db;
-const User = db.user;
+import db from '../models/index.js';
+const { ROLES, user: User } = db;
 
-const checkDuplicateUsernameOrEmail = (req, res, next) => {
-  // Username
-  User.findOne({
-    where: {
-      username: req.body.username,
-    },
-  }).then(user => {
+const checkDuplicateUsernameOrEmail = async (req, res, next) => {
+  try {
+    // Username
+    const user = await User.findOne({
+      where: {
+        username: req.body.username,
+      },
+    });
+
     if (user) {
-      res.status(400).send({
+      return res.status(400).send({
         message: 'Failed! Username is already in use!',
       });
-      return;
     }
 
     // Email
-    User.findOne({
+    const emailUser = await User.findOne({
       where: {
         email: req.body.email,
       },
-    }).then(emailUser => {
-      if (emailUser) {
-        res.status(400).send({
-          message: 'Failed! Email is already in use!',
-        });
-        return;
-      }
-
-      next();
     });
-  });
+
+    if (emailUser) {
+      return res.status(400).send({
+        message: 'Failed! Email is already in use!',
+      });
+    }
+
+    return next();
+  } catch (err) {
+    return res.status(500).send({
+      message: err.message || 'Some error occurred while checking for duplicate username/email.',
+    });
+  }
 };
 
 const checkRolesExisted = async (req, res, next) => {
@@ -65,4 +68,4 @@ const verifySignUp = {
   checkRolesExisted,
 };
 
-module.exports = verifySignUp;
+export default verifySignUp;
