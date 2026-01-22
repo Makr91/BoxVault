@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.42.2](https://github.com/Makr91/BoxVault/compare/v0.42.1...v0.42.2) (2026-01-22)
+
+
+### Bug Fixes
+
+* docs ([5f31eed](https://github.com/Makr91/BoxVault/commit/5f31eed4b5d43122fbd8b9fcd9125ef4e24a5d2e))
+* ensure setup token file is removed only if it exists ([46d60f9](https://github.com/Makr91/BoxVault/commit/46d60f964efebe28ff31b0fe8cad3f37386af7ee))
+* navbar and org switcher ([792eadb](https://github.com/Makr91/BoxVault/commit/792eadbc99430ed08b829478a61011cdd35bbaf9))
+* Organization Profile section ([f908b87](https://github.com/Makr91/BoxVault/commit/f908b872f8c025f2d7b6bb2efb17ce53613bb168))
+
 ## [0.42.1](https://github.com/Makr91/BoxVault/compare/v0.42.0...v0.42.1) (2026-01-22)
 
 
