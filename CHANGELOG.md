@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.42.1](https://github.com/Makr91/BoxVault/compare/v0.42.0...v0.42.1) (2026-01-22)
+
+
+### Bug Fixes
+
+* Description ([f113c1c](https://github.com/Makr91/BoxVault/commit/f113c1c70d6ce18368e21c7ac81b775c5b6103ca))
+* versions ([5637437](https://github.com/Makr91/BoxVault/commit/5637437fbd6e72db96c9da37f15e8bb1f61942ef))
+
 ## [0.42.0](https://github.com/Makr91/BoxVault/compare/v0.41.0...v0.42.0) (2026-01-22)
 
 
