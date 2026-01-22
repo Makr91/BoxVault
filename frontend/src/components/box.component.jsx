@@ -853,7 +853,7 @@ const Box = ({ theme }) => {
                 <th>
                   {t("version.providers", { version: "" }).replace(":", "")}
                 </th>
-                {isAuthorized && <th>{t("provider.actions")}</th>}
+                {isAuthorized && <th>{t("version.actions")}</th>}
               </tr>
             </thead>
             <tbody>

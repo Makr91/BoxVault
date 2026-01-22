@@ -420,6 +420,7 @@
     "createdAt": "Creado El",
     "updatedAt": "Actualizado El",
     "providers": "Proveedores para Versión: {{version}}",
+    "actions": "Acciones",
     "add": "Añadir Versión"
   },
   "architecture": {

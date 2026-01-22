@@ -266,7 +266,10 @@ const download = (req, res) => {
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       }
 
-      const fileStream = fs.createReadStream(filePath, readStreamOptions);
+      const fileStream = fs.createReadStream(filePath, {
+        ...readStreamOptions,
+        highWaterMark: 5 * 1024 * 1024, // 5MB buffer for smoother streaming
+      });
       fileStream.on('error', err => handleError(req, res, err));
       fileStream.pipe(res);
       return undefined;
