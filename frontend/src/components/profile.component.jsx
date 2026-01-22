@@ -640,52 +640,58 @@ const Profile = ({ activeOrganization }) => {
                 </div>
               ) : (
                 <ul className="list-group">
-                  {userOrganizations.map((org) => (
-                    <li key={org.organization?.id} className="list-group-item">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <div className="d-flex align-items-center">
-                            <div>
-                              <strong>{org.organization?.name}</strong>
-                              {org.isPrimary && (
-                                <span className="badge bg-primary ms-2">
-                                  {t("profile.organizations.primary")}
-                                </span>
-                              )}
-                              <br />
-                              {org.organization?.description && (
+                  {userOrganizations.map((org) => {
+                    const orgName = org.name || org.organization?.name;
+                    const orgDesc =
+                      org.description || org.organization?.description;
+                    const isPrimary = !!org.isPrimary;
+                    const orgId = org.id || org.organization?.id;
+
+                    return (
+                      <li key={orgId} className="list-group-item">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <div>
+                            <div className="d-flex align-items-center">
+                              <div>
+                                <strong>{orgName}</strong>
+                                {isPrimary && (
+                                  <span className="badge bg-primary ms-2">
+                                    {t("profile.organizations.primary")}
+                                  </span>
+                                )}
+                                <br />
+                                {orgDesc && (
+                                  <small className="text-muted">
+                                    {orgDesc}
+                                  </small>
+                                )}
+                                <br />
                                 <small className="text-muted">
-                                  {org.organization.description}
+                                  {t("profile.organizations.joined")}:{" "}
+                                  {new Date(org.joinedAt).toLocaleDateString()}
                                 </small>
-                              )}
-                              <br />
-                              <small className="text-muted">
-                                {t("profile.organizations.joined")}:{" "}
-                                {new Date(org.joinedAt).toLocaleDateString()}
-                              </small>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="d-flex align-items-center">
-                          <span
-                            className={`badge ${getRoleBadgeClass(org.role)} me-3`}
-                          >
-                            {t(`roles.${org.role}`)}
-                          </span>
-                          {userOrganizations.length > 1 && (
-                            <button
-                              className="btn btn-outline-danger btn-sm"
-                              onClick={() =>
-                                handleLeaveOrganization(org.organization?.name)
-                              }
+                          <div className="d-flex align-items-center">
+                            <span
+                              className={`badge ${getRoleBadgeClass(org.role)} me-3`}
                             >
-                              {t("buttons.leave")}
-                            </button>
-                          )}
+                              {t(`roles.${org.role}`)}
+                            </span>
+                            {userOrganizations.length > 1 && (
+                              <button
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={() => handleLeaveOrganization(orgName)}
+                              >
+                                {t("buttons.leave")}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

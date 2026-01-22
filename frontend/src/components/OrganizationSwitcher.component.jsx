@@ -35,19 +35,20 @@ const OrganizationSwitcher = ({
 
       // Fetch gravatars for all orgs in parallel
       const gravatarPromises = orgs
-        .filter((org) => org.organization?.emailHash)
+        .filter((org) => org.emailHash || org.organization?.emailHash)
         .map(async (org) => {
           try {
-            const profile = await AuthService.getGravatarProfile(
-              org.organization.emailHash
-            );
-            return { name: org.organization.name, url: profile?.avatar_url };
+            const emailHash = org.emailHash || org.organization?.emailHash;
+            const name = org.name || org.organization?.name;
+            const profile = await AuthService.getGravatarProfile(emailHash);
+            return { name, url: profile?.avatar_url };
           } catch (error) {
+            const name = org.name || org.organization?.name;
             log.api.error("Error fetching org gravatar", {
-              orgName: org.organization?.name,
+              orgName: name,
               error: error.message,
             });
-            return { name: org.organization?.name, url: null };
+            return { name, url: null };
           }
         });
 
@@ -147,51 +148,52 @@ const OrganizationSwitcher = ({
             )}
             {!loading && userOrganizations.length > 0 && (
               <div className="list-group">
-                {userOrganizations.map((org) => (
-                  <button
-                    key={org.organization?.name}
-                    type="button"
-                    className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                      activeOrganization === org.organization?.name
-                        ? "border-primary border-2"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      handleOrganizationClick(org.organization?.name)
-                    }
-                  >
-                    <div>
-                      <div className="d-flex align-items-center">
-                        {renderOrgIcon(org.organization?.name)}
-                        <div>
-                          <div className="fw-bold">
-                            {org.organization?.name}
+                {userOrganizations.map((org) => {
+                  const orgName = org.name || org.organization?.name;
+                  const orgDesc =
+                    org.description || org.organization?.description;
+                  const isPrimary = !!org.isPrimary;
+
+                  return (
+                    <button
+                      key={orgName}
+                      type="button"
+                      className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                        activeOrganization === orgName
+                          ? "border-primary border-2"
+                          : ""
+                      }`}
+                      onClick={() => handleOrganizationClick(orgName)}
+                    >
+                      <div>
+                        <div className="d-flex align-items-center">
+                          {renderOrgIcon(orgName)}
+                          <div>
+                            <div className="fw-bold">{orgName}</div>
+                            {orgDesc && (
+                              <small className="text-muted">{orgDesc}</small>
+                            )}
+                            {isPrimary && (
+                              <small className="text-primary d-block">
+                                {t("orgSwitcher.primaryOrg")}
+                              </small>
+                            )}
                           </div>
-                          {org.organization?.description && (
-                            <small className="text-muted">
-                              {org.organization.description}
-                            </small>
-                          )}
-                          {org.isPrimary && (
-                            <small className="text-primary d-block">
-                              {t("orgSwitcher.primaryOrg")}
-                            </small>
-                          )}
                         </div>
                       </div>
-                    </div>
-                    <div className="d-flex align-items-center">
-                      <span
-                        className={`badge ${getRoleBadgeClass(org.role)} me-2`}
-                      >
-                        {t(`roles.${org.role}`)}
-                      </span>
-                      {activeOrganization === org.organization?.name && (
-                        <FaCheck className="text-success" />
-                      )}
-                    </div>
-                  </button>
-                ))}
+                      <div className="d-flex align-items-center">
+                        <span
+                          className={`badge ${getRoleBadgeClass(org.role)} me-2`}
+                        >
+                          {t(`roles.${org.role}`)}
+                        </span>
+                        {activeOrganization === orgName && (
+                          <FaCheck className="text-success" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
