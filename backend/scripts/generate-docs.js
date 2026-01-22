@@ -5,12 +5,16 @@
  * @description Extracts OpenAPI spec and generates static Swagger UI documentation
  */
 
-const fs = require('fs');
-const path = require('path');
-const { log } = require('../app/utils/Logger.js');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { log } from '../app/utils/Logger.js';
+import swaggerConfig from '../app/config/swagger.js';
 
-// Load swagger configuration - now works correctly since we're in backend context
-const { specs } = require('../app/config/swagger.js');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const { specs } = swaggerConfig;
 
 /**
  * Generate pure HTML Swagger UI page (no Jekyll processing)
