@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.42.3](https://github.com/Makr91/BoxVault/compare/v0.42.2...v0.42.3) (2026-01-22)
+
+
+### Bug Fixes
+
+* handle setup token deletion errors and improve organization model associations ([84e26c1](https://github.com/Makr91/BoxVault/commit/84e26c142cb37732c4bb3f143124ef1c32bcd244))
+* update chunk size to 5MB for smoother file upload progress ([a3b5f63](https://github.com/Makr91/BoxVault/commit/a3b5f63364a6d09b15c05a987303f32c2aea86c7))
+* update safeRmdirSync to use recursive option for directory removal ([b5c34f8](https://github.com/Makr91/BoxVault/commit/b5c34f89306dc9abd7a87525b6a17ecedd72c7f5))
+
 ## [0.42.2](https://github.com/Makr91/BoxVault/compare/v0.42.1...v0.42.2) (2026-01-22)
 
 
