@@ -1,6 +1,6 @@
 import { dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { loadConfig, getSetupTokenPath } from '../utils/config-loader.js';
+import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 
 let dbConfig;
@@ -36,8 +36,7 @@ const db = {};
 db.Sequelize = Sequelize;
 
 // Check if setup is required (setup token exists) or if dialect is missing
-const setupTokenPath = getSetupTokenPath();
-const shouldSkipInitialization = existsSync(setupTokenPath) || !dbConfig?.sql?.dialect?.value;
+const shouldSkipInitialization = !dbConfig?.sql?.dialect?.value;
 
 if (shouldSkipInitialization) {
   log.database.info(

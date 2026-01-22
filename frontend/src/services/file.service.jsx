@@ -205,7 +205,7 @@ class FileService {
     });
 
     try {
-      const CHUNK_SIZE = 100 * 1024 * 1024;
+      const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for smoother progress
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
       let uploadedBytes = 0;
       let currentChunk = 0;

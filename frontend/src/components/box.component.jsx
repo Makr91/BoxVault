@@ -596,7 +596,7 @@ const Box = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="visibilityPrivate">
-                {t("moderator.organization.accessModes.private")}
+                {t("box.organization.visibility.private")}
               </label>
             </div>
             <div className="form-check">
@@ -610,7 +610,7 @@ const Box = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="visibilityPublic">
-                {t("moderator.organization.accessModes.public")}
+                {t("box.organization.visibility.public")}
               </label>
             </div>
           </div>
@@ -767,8 +767,8 @@ const Box = ({ theme }) => {
                 <p>
                   <strong>{t("box.visibility")}:</strong>{" "}
                   {currentBox.isPublic
-                    ? t("moderator.organization.accessModes.public")
-                    : t("moderator.organization.accessModes.private")}
+                    ? t("box.organization.visibility.public")
+                    : t("box.organization.visibility.private")}
                 </p>
                 <p>
                   <strong>{t("box.description")}:</strong>{" "}
