@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.5](https://github.com/Makr91/BoxVault/compare/v0.42.4...v0.42.5) (2026-01-22)
+
+
+### Bug Fixes
+
+* optimize file download handling and improve HEAD request metadata detection ([83db42b](https://github.com/Makr91/BoxVault/commit/83db42b76f3bc2074a97bf7b4cb164634f4ac715))
+
 ## [0.42.4](https://github.com/Makr91/BoxVault/compare/v0.42.3...v0.42.4) (2026-01-22)
 
 
