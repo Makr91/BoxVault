@@ -219,59 +219,15 @@ const download = (req, res) => {
         });
       }
 
-      // Get file stats for content-length
-      const stat = fs.statSync(filePath);
-      const fileSize = stat.size;
-
       // Set common headers
       res.setHeader('Accept-Ranges', 'bytes');
 
-      // Handle range requests
-      const { range } = req.headers;
-      let readStreamOptions = {};
-
-      if (range) {
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-        // Handle invalid or unsatisfiable range
-        if (isNaN(start) || start >= fileSize || (parts[1] && start > parseInt(parts[1], 10))) {
-          log.app.warn(`Invalid or unsatisfiable range request: ${range}, file size: ${fileSize}`);
-          res.setHeader('Content-Range', `bytes */${fileSize}`);
-          res.status(416).json({
-            error: 'RANGE_NOT_SATISFIABLE',
-            message: 'Requested range not satisfiable',
-          });
-          return undefined;
+      // Use res.download for optimized streaming, range support, and headers
+      res.download(filePath, fileName, err => {
+        if (err) {
+          handleError(req, res, err);
         }
-
-        // Clamp end to the end of the file if it's too large
-        if (end >= fileSize) {
-          end = fileSize - 1;
-        }
-
-        const chunksize = end - start + 1;
-
-        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
-        res.setHeader('Content-Length', chunksize);
-        res.status(206); // Partial Content
-
-        readStreamOptions = { start, end };
-      } else {
-        // Standard download (Vagrant or Browser)
-        res.status(200);
-        res.setHeader('Content-Length', fileSize);
-        res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      }
-
-      const fileStream = fs.createReadStream(filePath, {
-        ...readStreamOptions,
-        highWaterMark: 5 * 1024 * 1024, // 5MB buffer for smoother streaming
       });
-      fileStream.on('error', err => handleError(req, res, err));
-      fileStream.pipe(res);
       return undefined;
     };
 
