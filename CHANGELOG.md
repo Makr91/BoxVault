@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.4](https://github.com/Makr91/BoxVault/compare/v0.42.3...v0.42.4) (2026-01-22)
+
+
+### Bug Fixes
+
+* improve file streaming buffer size and update translation keys for version actions ([c59f1ec](https://github.com/Makr91/BoxVault/commit/c59f1ec0fc9ad7555564cf49a05ccab935d78829))
+
 ## [0.42.3](https://github.com/Makr91/BoxVault/compare/v0.42.2...v0.42.3) (2026-01-22)
 
 
