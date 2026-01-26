@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
-    "@rollup/wasm-node": "^4.55.0",
+    "@rollup/wasm-node": "^4.56.0",
     "@vitejs/plugin-react": "^5.1.2",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
