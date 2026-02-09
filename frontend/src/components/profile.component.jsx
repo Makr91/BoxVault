@@ -343,7 +343,8 @@ const Profile = ({ activeOrganization }) => {
     const controller = new AbortController();
     try {
       // Get organizations where user can create service accounts
-      const orgsResponse = await ServiceAccountService.getAvailableOrganizations();
+      const orgsResponse =
+        await ServiceAccountService.getAvailableOrganizations();
       const activeOrg = orgsResponse.data?.find(
         (org) => org.name === activeOrganization
       );
