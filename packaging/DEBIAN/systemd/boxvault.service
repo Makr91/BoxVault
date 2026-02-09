@@ -30,8 +30,8 @@ StandardError=journal
 SyslogIdentifier=boxvault
 
 # Resource limits
-MemoryMax=1G
-TasksMax=200
+MemoryMax=12G
+TasksMax=600
 
 [Install]
 WantedBy=multi-user.target

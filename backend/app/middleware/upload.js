@@ -122,8 +122,14 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
       );
     }
 
-    writeStream.write(chunkContent);
+    const canContinue = writeStream.write(chunkContent);
     assembledSize += chunkContent.length;
+
+    // If write buffer is full, wait for it to drain before continuing
+    if (!canContinue) {
+      await new Promise(resolve => writeStream.once('drain', resolve));
+    }
+
     safeUnlink(chunk.path); // Delete chunk after merging
   }
 
