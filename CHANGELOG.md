@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.42.6](https://github.com/Makr91/BoxVault/compare/v0.42.5...v0.42.6) (2026-02-09)
+
+
+### Bug Fixes
+
+* format code for better readability in Profile component ([2b928c9](https://github.com/Makr91/BoxVault/commit/2b928c9dbfa38d9080592bd4e53955ad2dcdde0a))
+* update dependencies to latest versions ([69490f8](https://github.com/Makr91/BoxVault/commit/69490f8fe8528ba0377a8c72b70766c74c6fedba))
+* update organization retrieval for service account creation ([1e82a3b](https://github.com/Makr91/BoxVault/commit/1e82a3b8a9d0ee4aed4cf53e9719c30395e360dc))
+
 ## [0.42.5](https://github.com/Makr91/BoxVault/compare/v0.42.4...v0.42.5) (2026-01-22)
 
 
