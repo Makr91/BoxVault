@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.42.7](https://github.com/Makr91/BoxVault/compare/v0.42.6...v0.42.7) (2026-02-09)
+
+
+### Bug Fixes
+
+* enhance service account handling and organization verification in authentication middleware ([c8ddf85](https://github.com/Makr91/BoxVault/commit/c8ddf85327caac924f1ab55df22fe27228466b26))
+* ensure proper handling of write stream drain event in chunk merging ([05dd1f8](https://github.com/Makr91/BoxVault/commit/05dd1f884fdd4278b61060b6089264293676bf23))
+* improve chunked upload handling and increase resource limits in service configuration ([b33868d](https://github.com/Makr91/BoxVault/commit/b33868d2a31c0497bb5220186f78fcec6c2f6128))
+* refactor chunk merging to use recursion for improved performance and readability ([7f13507](https://github.com/Makr91/BoxVault/commit/7f13507f389eec9de14ff918cafbeee065363ed7))
+
 ## [0.42.6](https://github.com/Makr91/BoxVault/compare/v0.42.5...v0.42.6) (2026-02-09)
 
 
