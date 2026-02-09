@@ -342,8 +342,8 @@ const Profile = ({ activeOrganization }) => {
     e.preventDefault();
     const controller = new AbortController();
     try {
-      // Get active organization's ID
-      const orgsResponse = await UserService.getUserOrganizations();
+      // Get organizations where user can create service accounts
+      const orgsResponse = await ServiceAccountService.getAvailableOrganizations();
       const activeOrg = orgsResponse.data?.find(
         (org) => org.name === activeOrganization
       );
