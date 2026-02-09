@@ -127,7 +127,10 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
 
     // If write buffer is full, wait for it to drain before continuing
     if (!canContinue) {
-      await new Promise(resolve => writeStream.once('drain', resolve));
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(resolve => {
+        writeStream.once('drain', resolve);
+      });
     }
 
     safeUnlink(chunk.path); // Delete chunk after merging
