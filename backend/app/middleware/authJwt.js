@@ -58,9 +58,14 @@ const verifyToken = async (req, res, next) => {
         req.user = user;
       }
 
-      // Attach JWT organization context for service accounts
-      if (decoded.isServiceAccount && decoded.serviceAccountOrgId) {
-        req.serviceAccountOrgId = decoded.serviceAccountOrgId;
+      // Attach JWT context for service accounts
+      if (decoded.isServiceAccount) {
+        if (decoded.serviceAccountOrgId) {
+          req.serviceAccountOrgId = decoded.serviceAccountOrgId;
+        }
+        if (decoded.serviceAccountId) {
+          req.serviceAccountId = decoded.serviceAccountId;
+        }
       }
 
       // Attach user's organizations from JWT for frontend

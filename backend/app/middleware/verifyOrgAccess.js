@@ -1,6 +1,6 @@
 import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
-const { user: User, service_account, organization: Organization, UserOrg } = db;
+const { user: User, organization: Organization, UserOrg } = db;
 
 /**
  * Middleware to verify user has membership in the organization specified in route
@@ -15,22 +15,22 @@ const isOrgMember = async (req, res, next) => {
 
     // Service accounts use organization-scoped tokens
     if (req.isServiceAccount) {
-      const serviceAccount = await service_account.findOne({
-        where: { userId: req.userId },
-        include: [
-          {
-            model: Organization,
-            as: 'organization',
-            where: { name: orgName },
-          },
-        ],
-      });
+      // Look up the organization by name
+      const organization = await Organization.findOne({ where: { name: orgName } });
 
-      if (!serviceAccount) {
+      if (!organization) {
+        return res.status(404).send({ message: 'Organization not found!' });
+      }
+
+      // Check if the service account's organization matches the requested organization
+      if (organization.id !== req.serviceAccountOrgId) {
         return res.status(403).send({
           message: 'Service account not authorized for this organization!',
         });
       }
+
+      // Attach org context to request for use in controllers
+      req.organizationId = organization.id;
 
       return next();
     }

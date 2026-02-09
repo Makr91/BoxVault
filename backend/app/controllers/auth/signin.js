@@ -142,6 +142,11 @@ export const signin = async (req, res) => {
             as: 'organization',
             attributes: ['name'],
           },
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username'],
+          },
         ],
       });
 
@@ -198,7 +203,8 @@ export const signin = async (req, res) => {
 
     const token = jwt.sign(
       {
-        id: user.id,
+        id: isServiceAccount ? user.userId : user.id, // For service accounts, use creator's user ID
+        serviceAccountId: isServiceAccount ? user.id : null, // Store service account's own ID
         isServiceAccount,
         stayLoggedIn,
         provider,
