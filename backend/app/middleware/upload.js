@@ -102,39 +102,46 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
     autoClose: true,
   });
 
-  // Merge chunks sequentially
-  let assembledSize = 0;
-  for (let i = 0; i < sortedChunks.length; i++) {
-    const chunk = sortedChunks[i];
+  // Helper function to merge chunks recursively (avoids await-in-loop)
+  const mergeChunkRecursive = async (index, currentSize) => {
+    if (index >= sortedChunks.length) {
+      return currentSize;
+    }
+
+    const chunk = sortedChunks[index];
     const chunkSize = statSync(chunk.path).size;
 
-    log.app.info(`Merging chunk ${i + 1}/${sortedChunks.length}:`, {
+    log.app.info(`Merging chunk ${index + 1}/${sortedChunks.length}:`, {
       chunkIndex: chunk.index,
       chunkPath: chunk.path,
       chunkSize,
-      assembledSize,
+      assembledSize: currentSize,
     });
 
     const chunkContent = readFileSync(chunk.path);
     if (chunkContent.length !== chunkSize) {
       throw new Error(
-        `Chunk ${i} size mismatch: expected ${chunkSize}, got ${chunkContent.length}`
+        `Chunk ${index} size mismatch: expected ${chunkSize}, got ${chunkContent.length}`
       );
     }
 
     const canContinue = writeStream.write(chunkContent);
-    assembledSize += chunkContent.length;
+    const newSize = currentSize + chunkContent.length;
 
     // If write buffer is full, wait for it to drain before continuing
     if (!canContinue) {
-      // eslint-disable-next-line no-await-in-loop
       await new Promise(resolve => {
         writeStream.once('drain', resolve);
       });
     }
 
     safeUnlink(chunk.path); // Delete chunk after merging
-  }
+
+    return mergeChunkRecursive(index + 1, newSize);
+  };
+
+  // Merge chunks sequentially using recursion
+  const assembledSize = await mergeChunkRecursive(0, 0);
 
   // Finish write stream
   await new Promise((resolve, reject) => {
