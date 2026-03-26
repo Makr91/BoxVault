@@ -8,7 +8,7 @@ const getSmtpConfig = () => {
     return loadConfig('mail');
   } catch (e) {
     log.error.error(`Failed to load SMTP configuration: ${e.message}`);
-    throw new Error(`Failed to load SMTP configuration: ${e.message}`);
+    throw new Error(`Failed to load SMTP configuration: ${e.message}`, { cause: e });
   }
 };
 

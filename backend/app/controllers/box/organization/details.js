@@ -62,7 +62,6 @@ export const getOrganizationBoxDetails = async (req, res) => {
   const token = req.headers['x-access-token'];
   let userId = null;
   let userOrganizationId = null;
-  let isServiceAccount = false;
 
   let authConfig;
   try {
@@ -78,7 +77,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
       try {
         const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;
-        isServiceAccount = decoded.isServiceAccount || false;
+        const isServiceAccount = decoded.isServiceAccount || false;
 
         // Check if user is member of the organization
         if (!isServiceAccount) {
