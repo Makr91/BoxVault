@@ -89,5 +89,9 @@
     "backend/",
     "backend/app/views/",
     "frontend/package.json"
-  ]
+  ],
+  "overrides": {
+    "brace-expansion": "^5.0.5",
+    "minimatch": "^10.2.4"
+  }
 }
