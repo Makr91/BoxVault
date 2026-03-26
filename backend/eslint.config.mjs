@@ -112,7 +112,7 @@ export default [
       // === NODE.JS SPECIFIC ===
       'no-process-exit': 'error',
       'no-process-env': 'off', // Allow process.env in config files
-      'no-console': 'off', // Allow console in backend (now using Winston)
+      'no-console': 'warn', // Warn on console usage since we now use Winston
 
       // === CODE QUALITY ===
       complexity: ['warn', 30], // Warn on high cyclomatic complexity (increased for system code)

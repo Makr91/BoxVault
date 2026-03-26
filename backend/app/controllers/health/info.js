@@ -9,6 +9,7 @@ import http from 'http';
 import nodemailer from 'nodemailer';
 import { getSupportedLocales, getDefaultLocale } from '../../config/i18n.js';
 import { getIsoStorageRoot } from '../iso/helpers.js';
+import { log } from '../../utils/Logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -261,13 +262,13 @@ const handleDiskAlerting = async (boxDisk, isoDisk, appConfig) => {
           text: `High disk usage detected!\nBox: ${boxDisk.message}\nISO: ${isoDisk.message}`,
         });
 
-        console.warn(
+        log.app.warn(
           `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(
             ', '
           )}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
         );
       } catch (e) {
-        console.error('Failed to send alert email', e);
+        log.error.error('Failed to send alert email', e);
       }
       lastAlertTime = now;
     }

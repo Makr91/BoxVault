@@ -116,6 +116,7 @@ const loadConfig = configName => {
     return config;
   } catch (error) {
     if (process.env.NODE_ENV !== 'test') {
+      // eslint-disable-next-line no-console -- Chicken-and-egg: Logger depends on config-loader, so console is the only option for config load errors at startup
       console.error('Failed to load configuration', {
         configName,
         configPath,
@@ -177,6 +178,7 @@ const getRateLimitConfig = () => {
     };
   } catch (error) {
     // Return defaults if config not available
+    // eslint-disable-next-line no-console -- Chicken-and-egg: Logger depends on config-loader, so console is the only option for config load errors at startup
     console.warn('Failed to load rate limiting config, using defaults:', error.message);
     return {
       window_minutes: 15,
@@ -204,6 +206,7 @@ const getI18nConfig = () => {
     };
   } catch (error) {
     // Return defaults if config not available
+    // eslint-disable-next-line no-console -- Chicken-and-egg: Logger depends on config-loader, so console is the only option for config load errors at startup
     console.warn('Failed to load i18n config, using defaults:', error.message);
     return {
       default_language: 'en',
