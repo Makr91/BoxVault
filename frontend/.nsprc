@@ -1,0 +1,7 @@
+{
+  "1115432": {
+    "active": true,
+    "notes": "brace-expansion <5.0.5 (GHSA-f886-m6hf-6m8v) - dev dependency only, blocked by eslint-plugin-import, eslint-plugin-react, eslint-plugin-jsx-a11y using old minimatch. No fix available until plugins update.",
+    "expiry": "2026-07-01"
+  }
+}
