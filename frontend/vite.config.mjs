@@ -18,8 +18,7 @@ export default defineConfig(() => {
       emptyOutDir: true,
       copyPublicDir: true,
       minify: false,
-      rollupOptions: {
-        external: ["rollup"],
+      rolldownOptions: {
         output: {
           entryFileNames: `assets/[name].js`,
           chunkFileNames: `assets/[name].js`,
@@ -35,9 +34,6 @@ export default defineConfig(() => {
           },
         },
       },
-    },
-    optimizeDeps: {
-      exclude: ["rollup"],
     },
     plugins: [react(), svgr()],
     server: {
