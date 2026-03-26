@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.43.0](https://github.com/Makr91/BoxVault/compare/v0.42.6...v0.43.0) (2026-03-26)
+
+
+### Features
+
+* add settings and .nsprc files for backend and frontend, update security scripts to use better-npm-audit ([1feb20e](https://github.com/Makr91/BoxVault/commit/1feb20e2b8181c4483e3eac5d081e485860a25e4))
+
+
+### Bug Fixes
+
+* enhance authentication middleware with service account validation and improve logging ([0e64da8](https://github.com/Makr91/BoxVault/commit/0e64da8709a30e222d24380d5b3b260a90c9cd56))
+* enhance service account handling and organization verification in authentication middleware ([c8ddf85](https://github.com/Makr91/BoxVault/commit/c8ddf85327caac924f1ab55df22fe27228466b26))
+* ensure proper handling of write stream drain event in chunk merging ([05dd1f8](https://github.com/Makr91/BoxVault/commit/05dd1f884fdd4278b61060b6089264293676bf23))
+* improve chunked upload handling and increase resource limits in service configuration ([b33868d](https://github.com/Makr91/BoxVault/commit/b33868d2a31c0497bb5220186f78fcec6c2f6128))
+* refactor chunk merging to use recursion for improved performance and readability ([7f13507](https://github.com/Makr91/BoxVault/commit/7f13507f389eec9de14ff918cafbeee065363ed7))
+* update balanced-match and brace-expansion versions in package-lock.json ([f2c7a6e](https://github.com/Makr91/BoxVault/commit/f2c7a6ee2971310e931759ffbae51b2dbf06cde4))
+* update brace-expansion and minimatch versions in package.json and package-lock.json ([737822a](https://github.com/Makr91/BoxVault/commit/737822a9e783a4e8579bd79ede737346fcbeb1a9))
+* update brace-expansion version and remove overrides from package.json ([716c5a1](https://github.com/Makr91/BoxVault/commit/716c5a1ca140b3e8a4a51e7054eec157d828ebac))
+* update eslint-plugin-prettier to version 5.5.5 ([81684ff](https://github.com/Makr91/BoxVault/commit/81684ff3c955ffdb42d66ca175259d738e9676a5))
+* update minimatch version and clean up package overrides ([3b094e8](https://github.com/Makr91/BoxVault/commit/3b094e8c568f27df434d54cd65b3a3b508fd1849))
+
 ## [0.42.6](https://github.com/Makr91/BoxVault/compare/v0.42.5...v0.42.6) (2026-02-09)
 
 
