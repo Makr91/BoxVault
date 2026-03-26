@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh release:*)",
+      "WebFetch(domain:vite.dev)",
+      "WebFetch(domain:sass-lang.com)"
+    ]
+  }
+}
