@@ -1,7 +1,7 @@
 // findonewithusers.js
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { organization: Organization, user: User, role: Role, box: Box } = db;
+const { organization: Organization, user: User, role: Role, box: Box, UserOrg } = db;
 
 /**
  * @swagger
@@ -93,6 +93,10 @@ export const findOneWithUsers = async (req, res) => {
       ],
     });
 
+    // Per-organization roles (distinct from the global `roles` below)
+    const memberships = await UserOrg.findAll({ where: { organization_id: organization.id } });
+    const orgRoleByUserId = new Map(memberships.map(m => [m.user_id, m.role]));
+
     const users = organization.members.map(user => ({
       id: user.id,
       username: user.username,
@@ -100,6 +104,7 @@ export const findOneWithUsers = async (req, res) => {
       verified: user.verified,
       suspended: user.suspended,
       roles: user.roles.map(role => role.name),
+      orgRole: orgRoleByUserId.get(user.id) || null,
       totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
     }));
 

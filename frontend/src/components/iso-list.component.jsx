@@ -16,7 +16,7 @@ import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
 
-const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
+const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const { t } = useTranslation();
   const [isos, setIsos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
     let fetchIsos;
     if (showOnlyPublic) {
       fetchIsos = IsoService.discoverAll();
-    } else if (isAuthorized) {
+    } else if (isMember) {
       fetchIsos = IsoService.getAll(organization);
     } else {
       fetchIsos = IsoService.getPublic(organization);
@@ -60,7 +60,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
     return () => {
       mounted = false;
     };
-  }, [organization, showOnlyPublic, isAuthorized]);
+  }, [organization, showOnlyPublic, isMember]);
 
   const handleFileUpload = (event) => {
     const [file] = event.target.files;
@@ -129,7 +129,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
   };
 
   const handleVisibilityToggle = (iso) => {
-    if (!isAuthorized) {
+    if (!canManage) {
       return;
     }
 
@@ -243,7 +243,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
           <td>{iso.organization?.name || "Unknown"}</td>
         ) : (
           <td>
-            {isAuthorized ? (
+            {canManage ? (
               <button
                 type="button"
                 className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"} border-0 cursor-pointer`}
@@ -312,7 +312,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
                 >
                   <FaDownload />
                 </button>
-                {isAuthorized && (
+                {canManage && (
                   <>
                     <button
                       className="btn btn-sm btn-outline-secondary"
@@ -359,7 +359,7 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
 
         {/* Right: Action Buttons */}
         <div className="d-flex gap-2 align-items-center">
-          {isAuthorized && (
+          {canManage && (
             <div className="d-flex align-items-center gap-2">
               <div className="form-check mb-0">
                 <input
@@ -442,7 +442,8 @@ const IsoList = ({ organization, isAuthorized, showOnlyPublic }) => {
 
 IsoList.propTypes = {
   organization: PropTypes.string,
-  isAuthorized: PropTypes.bool.isRequired,
+  isMember: PropTypes.bool.isRequired,
+  canManage: PropTypes.bool.isRequired,
   showOnlyPublic: PropTypes.bool,
 };
 

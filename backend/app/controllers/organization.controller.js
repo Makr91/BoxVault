@@ -13,6 +13,7 @@ import { updateAccessMode } from './organization/accessmode.js';
 import { getUserOrgRole } from './organization/userrole.js';
 import { updateUserOrgRole } from './organization/updateuserrole.js';
 import { removeUserFromOrg } from './organization/removeuser.js';
+import { joinAsAdmin } from './organization/joinasadmin.js';
 
 export {
   create,
@@ -29,4 +30,5 @@ export {
   getUserOrgRole,
   updateUserOrgRole,
   removeUserFromOrg,
+  joinAsAdmin,
 };

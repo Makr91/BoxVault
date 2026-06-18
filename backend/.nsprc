@@ -1,2 +1,7 @@
 {
+  "1115432": {
+    "active": true,
+    "notes": "brace-expansion <5.0.5 (GHSA-f886-m6hf-6m8v) - dev dependency only, blocked by swagger-jsdoc, jest, and license-checker-rseidelsohn using old minimatch/glob. No fix available until upstream packages update.",
+    "expiry": "2026-07-01"
+  }
 }

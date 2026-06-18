@@ -7,8 +7,8 @@ import AuthService from "../services/auth.service";
 import InvitationService from "../services/invitation.service";
 import OrganizationService from "../services/organization.service";
 import RequestService from "../services/request.service";
-import UserService from "../services/user.service";
 import { log } from "../utils/Logger";
+import { isOrgAdmin } from "../utils/permissions";
 
 import ConfirmationModal from "./confirmation.component";
 import UserCard from "./UserCard.component";
@@ -37,6 +37,7 @@ const Moderator = ({ currentOrganization }) => {
   const [inviteRole, setInviteRole] = useState("user");
   const [activeTab, setActiveTab] = useState("organization");
   const currentUser = AuthService.getCurrentUser();
+  const canManageRoles = isOrgAdmin(currentUser, currentOrganization);
   const [searchTerm, setSearchTerm] = useState("");
 
   const validateOrgName = (orgName) => {
@@ -164,24 +165,23 @@ const Moderator = ({ currentOrganization }) => {
     }
   };
 
-  const handlePromoteUser = (userId) => {
-    UserService.promoteToModerator(userId).then(() => {
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, roles: ["moderator"] } : user
-        )
-      );
-    });
-  };
-
-  const handleDemoteUser = (userId) => {
-    UserService.demoteToUser(userId).then(() => {
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, roles: ["user"] } : user
-        )
-      );
-    });
+  const handleSetOrgRole = (userId, newRole) => {
+    OrganizationService.updateUserOrgRole(currentOrganization, userId, newRole)
+      .then(() => {
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.id === userId ? { ...user, orgRole: newRole } : user
+          )
+        );
+        setUpdateMessage(t("messages.operationSuccessful"));
+      })
+      .catch((error) => {
+        log.component.error("Error updating user org role", {
+          userId,
+          error: error.message,
+        });
+        setUpdateMessage(t("messages.operationFailed"));
+      });
   };
 
   const handleRemoveUserFromOrg = (userId) => {
@@ -526,10 +526,16 @@ const Moderator = ({ currentOrganization }) => {
                           key={user.id}
                           user={user}
                           currentUser={currentUser}
-                          onPromote={() => handlePromoteUser(user.id)}
-                          onDemote={() => handleDemoteUser(user.id)}
-                          onRemoveFromOrg={() =>
-                            handleRemoveUserFromOrg(user.id)
+                          orgRole={user.orgRole}
+                          onChangeRole={
+                            canManageRoles
+                              ? (newRole) => handleSetOrgRole(user.id, newRole)
+                              : undefined
+                          }
+                          onRemoveFromOrg={
+                            canManageRoles
+                              ? () => handleRemoveUserFromOrg(user.id)
+                              : undefined
                           }
                         />
                       ))}

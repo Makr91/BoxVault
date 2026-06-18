@@ -506,7 +506,8 @@
         "leave": "Dejar Organización",
         "createBox": "Crear Box",
         "createNewBox": "Crear Nueva Box",
-        "removeAll": "Eliminar Todo"
+        "removeAll": "Eliminar Todo",
+        "joinAsAdmin": "Unirse como Admin"
       },
       "headers": {
         "createNewBox": "Crear Nueva Box",

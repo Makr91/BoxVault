@@ -16,6 +16,7 @@ import {
   getUserOrgRole,
   updateUserOrgRole,
   removeUserFromOrg,
+  joinAsAdmin,
 } from '../controllers/organization.controller.js';
 
 const router = Router();
@@ -112,6 +113,13 @@ router.delete(
   '/organization/:organization/members/:userId',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   removeUserFromOrg
+);
+
+// Global-admin self-join: a platform admin adds themselves to an org as admin
+router.post(
+  '/organization/:organization/join',
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  joinAsAdmin
 );
 
 export default router;

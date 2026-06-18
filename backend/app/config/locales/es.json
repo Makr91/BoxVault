@@ -51,7 +51,10 @@
     "getUserRoleError": "Error al obtener el rol del usuario",
     "cannotLeaveOnlyOrg": "¡No puedes dejar tu única organización! Debes pertenecer al menos a una organización.",
     "leftOrganization": "Has dejado exitosamente la organización {{orgName}}",
-    "leaveError": "Error al dejar la organización"
+    "leaveError": "Error al dejar la organización",
+    "alreadyMember": "Ya eres miembro de esta organización.",
+    "joinedAsAdmin": "Te has unido a la organización {{organization}} como administrador.",
+    "joinError": "Error al unirse a la organización"
   },
   "boxes": {
     "boxNotFoundInOrg": "Box {{boxId}} no encontrada en la organización {{organization}}.",

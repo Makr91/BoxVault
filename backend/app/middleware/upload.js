@@ -7,6 +7,8 @@ import {
   createReadStream,
 } from 'fs';
 import { createHash } from 'crypto';
+import { Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import { join, dirname } from 'path';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
@@ -397,7 +399,24 @@ const handleSingleUpload = async (
   startTime,
   maxFileSize
 ) => {
-  // Single file upload
+  // Resolve the checksum algorithm up front so we can hash the bytes as they
+  // stream in (single pass) instead of re-reading the finished file. Mapping
+  // matches verifyChecksum(): unknown/missing type means verification is skipped.
+  const expectedChecksum = req.headers['x-checksum'];
+  const checksumType = req.headers['x-checksum-type'];
+  let nodeAlgo = null;
+  if (expectedChecksum && checksumType) {
+    const algoMap = { sha1: 'sha1', sha256: 'sha256', sha512: 'sha512', md5: 'md5' };
+    nodeAlgo = algoMap[checksumType.toLowerCase().replace('-', '')] || null;
+    if (!nodeAlgo) {
+      log.app.warn(`Unsupported checksum type: ${checksumType}, skipping verification`);
+    } else {
+      log.app.info(`Verifying checksum (${nodeAlgo}) inline for file: ${finalPath}`);
+    }
+  }
+  const hash = nodeAlgo ? createHash(nodeAlgo) : null;
+
+  // Single file upload: hash each chunk while it streams through to disk.
   const writeStream = createWriteStream(finalPath, {
     flags: 'w',
     encoding: 'binary',
@@ -405,15 +424,24 @@ const handleSingleUpload = async (
     autoClose: true,
   });
 
-  // Handle connection close/abort
-  req.on('close', () => {
-    writeStream.end();
+  // Pass-through that taps the byte stream to update the running hash.
+  const hasher = new Transform({
+    transform(chunk, encoding, callback) {
+      void encoding;
+      if (hash) {
+        hash.update(chunk);
+      }
+      callback(null, chunk);
+    },
   });
 
-  // Write file
-  await new Promise((resolve, reject) => {
-    req.pipe(writeStream).on('finish', resolve).on('error', reject);
-  });
+  // pipeline() preserves backpressure and tears the streams down on abort/error.
+  try {
+    await pipeline(req, hasher, writeStream);
+  } catch (error) {
+    safeUnlink(finalPath);
+    throw error;
+  }
 
   // Verify file size
   const finalSize = statSync(finalPath).size;
@@ -435,18 +463,10 @@ const handleSingleUpload = async (
     throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
   }
 
-  // Verify checksum if provided
-  const checksum = req.headers['x-checksum'];
-  const checksumType = req.headers['x-checksum-type'];
-  if (checksum || checksumType) {
-    let isValid;
-    try {
-      isValid = await verifyChecksum(finalPath, checksum, checksumType);
-    } catch (error) {
-      safeUnlink(finalPath);
-      throw error;
-    }
-    if (!isValid) {
+  // Verify checksum from the hash computed during the stream (no second read)
+  if (hash) {
+    const calculated = hash.digest('hex');
+    if (calculated !== expectedChecksum.toLowerCase()) {
       safeUnlink(finalPath);
       throw new Error('Checksum verification failed');
     }

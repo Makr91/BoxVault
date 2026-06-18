@@ -10,7 +10,9 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import BoxDataService from "../services/box.service";
+import OrganizationService from "../services/organization.service";
 import { log } from "../utils/Logger";
+import { isGlobalAdmin, isOrgMember, isOrgManager } from "../utils/permissions";
 
 import ConfirmationModal from "./confirmation.component";
 import IsoList from "./iso-list.component";
@@ -545,6 +547,22 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     }
   };
 
+  const handleJoinAsAdmin = () => {
+    OrganizationService.joinOrganizationAsAdmin(organization)
+      .then(async () => {
+        await AuthService.refreshUserData();
+        window.location.reload();
+      })
+      .catch((e) => {
+        log.api.error("Error joining organization as admin", {
+          organization,
+          error: e.message,
+        });
+        setMessage(t("messages.operationFailed"));
+        setMessageType("danger");
+      });
+  };
+
   const handleDeleteClick = () => {
     setShowModal(true);
   };
@@ -647,17 +665,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       });
   };
 
-  const canEditBoxes = (box) => {
-    if (!currentUser) {
-      return false;
-    }
-    if (currentUser.organizations) {
-      return currentUser.organizations.some(
-        (org) => org.name === box.organization
-      );
-    }
-    return currentUser.organization === box.organization;
-  };
+  const canEditBoxes = (box) => isOrgMember(currentUser, box.organization);
+
+  const showJoinAsAdmin =
+    !showOnlyPublic &&
+    isGlobalAdmin(currentUser) &&
+    !isOrgMember(currentUser, organization);
 
   const renderSortIcon = (column) => {
     if (sortColumn !== column) {
@@ -829,6 +842,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               {t("navbar.organization")}
             </Link>
           )}
+          {showJoinAsAdmin && (
+            <button
+              className="btn btn-sm btn-outline-warning"
+              onClick={handleJoinAsAdmin}
+            >
+              {t("box.organization.buttons.joinAsAdmin")}
+            </button>
+          )}
           {!showOnlyPublic && canEditBoxes({ organization }) && (
             <>
               <button
@@ -852,17 +873,21 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                   {t("buttons.cancel")}
                 </button>
               )}
-              <button
-                className="btn btn-sm btn-danger"
-                onClick={handleDeleteClick}
-              >
-                {t("box.organization.buttons.removeAll")}
-              </button>
-              <ConfirmationModal
-                show={showModal}
-                handleClose={handleCloseModal}
-                handleConfirm={handleConfirmDelete}
-              />
+              {isOrgManager(currentUser, organization) && (
+                <>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={handleDeleteClick}
+                  >
+                    {t("box.organization.buttons.removeAll")}
+                  </button>
+                  <ConfirmationModal
+                    show={showModal}
+                    handleClose={handleCloseModal}
+                    handleConfirm={handleConfirmDelete}
+                  />
+                </>
+              )}
             </>
           )}
           {!showOnlyPublic && (
@@ -1045,14 +1070,15 @@ const Organization = ({ showOnlyPublic, theme }) => {
     routeOrganization || (currentUser ? currentUser.organization : null);
   const [activeTab, setActiveTab] = useState("boxes");
 
-  const isAuthorized = useMemo(() => {
-    if (!currentUser || !organization) {
-      return false;
-    }
-    return currentUser.organizations
-      ? currentUser.organizations.some((org) => org.name === organization)
-      : currentUser.organization === organization;
-  }, [currentUser, organization]);
+  const isMember = useMemo(
+    () => isOrgMember(currentUser, organization),
+    [currentUser, organization]
+  );
+
+  const canManage = useMemo(
+    () => isOrgManager(currentUser, organization),
+    [currentUser, organization]
+  );
 
   return (
     <div className="list row">
@@ -1082,7 +1108,8 @@ const Organization = ({ showOnlyPublic, theme }) => {
         <IsoList
           key={organization || "public"}
           organization={organization}
-          isAuthorized={isAuthorized}
+          isMember={isMember}
+          canManage={canManage}
           showOnlyPublic={showOnlyPublic}
         />
       )}

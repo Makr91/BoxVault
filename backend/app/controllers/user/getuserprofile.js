@@ -5,7 +5,7 @@ const { sign } = jwt;
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { user: User, role: Role, organization: Organization } = db;
+const { user: User, role: Role, organization: Organization, UserOrg } = db;
 
 /**
  * @swagger
@@ -97,6 +97,14 @@ export const getUserProfile = async (req, res) => {
 
     const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
 
+    // Multi-org membership for the frontend (mirrors signin.js / refresh-token)
+    const userOrgs = await UserOrg.getUserOrganizations(user.id);
+    const organizations = userOrgs.map(userOrg => ({
+      name: userOrg.organization.name,
+      role: userOrg.role,
+      isPrimary: userOrg.is_primary,
+    }));
+
     return res.status(200).send({
       id: user.id,
       username: user.username,
@@ -105,6 +113,7 @@ export const getUserProfile = async (req, res) => {
       emailHash: user.emailHash,
       roles: authorities,
       organization: user.primaryOrganization ? user.primaryOrganization.name : null,
+      organizations,
       accessToken: token,
       gravatarUrl: user.gravatarUrl,
     });

@@ -79,6 +79,13 @@ const removeUserFromOrg = (organizationName, userId) =>
     { headers: authHeader() }
   );
 
+const joinOrganizationAsAdmin = (organizationName) =>
+  axios.post(
+    `${baseURL}/api/organization/${organizationName}/join`,
+    {},
+    { headers: authHeader() }
+  );
+
 const OrganizationService = {
   getOrganizations,
   getOrganizationsWithUsers,
@@ -93,6 +100,7 @@ const OrganizationService = {
   getUserOrgRole,
   updateUserOrgRole,
   removeUserFromOrg,
+  joinOrganizationAsAdmin,
 };
 
 export default OrganizationService;

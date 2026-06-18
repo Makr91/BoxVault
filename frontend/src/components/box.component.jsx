@@ -11,6 +11,7 @@ import FileService from "../services/file.service";
 import ProviderService from "../services/provider.service";
 import VersionDataService from "../services/version.service";
 import { log } from "../utils/Logger";
+import { canManageBox } from "../utils/permissions";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -68,7 +69,7 @@ const Box = ({ theme }) => {
     architectureName
   ) => {
     await FileService.delete(
-      currentUser.organization,
+      organization,
       currentBox.name,
       versionNumber,
       providerName,
@@ -87,7 +88,7 @@ const Box = ({ theme }) => {
     versionNumber
   ) => {
     const architectures = await ArchitectureService.getArchitectures(
-      currentUser.organization,
+      organization,
       currentBox.name,
       versionNumber,
       providerName
@@ -105,7 +106,7 @@ const Box = ({ theme }) => {
       );
       // eslint-disable-next-line no-await-in-loop
       await ArchitectureService.deleteArchitecture(
-        currentUser.organization,
+        organization,
         currentBox.name,
         versionNumber,
         providerName,
@@ -122,7 +123,7 @@ const Box = ({ theme }) => {
 
   const deleteProvidersForVersion = async (versionNumber) => {
     const versionProviders = await ProviderService.getProviders(
-      currentUser.organization,
+      organization,
       currentBox.name,
       versionNumber
     );
@@ -135,7 +136,7 @@ const Box = ({ theme }) => {
       await deleteArchitecturesForProvider(provider.name, versionNumber);
       // eslint-disable-next-line no-await-in-loop
       await ProviderService.deleteProvider(
-        currentUser.organization,
+        organization,
         currentBox.name,
         versionNumber,
         provider.name
@@ -153,7 +154,7 @@ const Box = ({ theme }) => {
     try {
       await deleteProvidersForVersion(versionNumber);
       await VersionDataService.deleteVersion(
-        currentUser.organization,
+        organization,
         currentBox.name,
         versionNumber
       );
@@ -181,7 +182,6 @@ const Box = ({ theme }) => {
       const user = AuthService.getCurrentUser();
       if (user) {
         setCurrentUser(user);
-        setIsAuthorized(user.organization === organization);
       }
 
       if (name) {
@@ -198,40 +198,37 @@ const Box = ({ theme }) => {
             setBoxOrganization(boxData.user.organization.name);
           }
 
-          if (
-            boxData.isPublic ||
-            (user && user.organization === organization)
-          ) {
-            const versionsResponse = await VersionDataService.getVersions(
-              organization,
-              name
-            );
-            setVersions(versionsResponse.data);
-            setAllVersions(versionsResponse.data);
+          // Edit/delete/publish + version controls: owner or org mod/admin.
+          setIsAuthorized(canManageBox(user, organization, boxData));
 
-            versionsResponse.data.forEach((version) => {
-              ProviderService.getProviders(
-                organization,
-                name,
-                version.versionNumber
-              )
-                .then((providerResponse) => {
-                  setProviders((prev) => ({
-                    ...prev,
-                    [version.versionNumber]: providerResponse.data,
-                  }));
-                })
-                .catch((e) => {
-                  log.api.error("Error fetching providers", {
-                    versionNumber: version.versionNumber,
-                    error: e.message,
-                  });
+          // Viewing is authorized by the backend (membership or public box),
+          // so always fetch versions and let the API decide.
+          const versionsResponse = await VersionDataService.getVersions(
+            organization,
+            name
+          );
+          setVersions(versionsResponse.data);
+          setAllVersions(versionsResponse.data);
+
+          versionsResponse.data.forEach((version) => {
+            ProviderService.getProviders(
+              organization,
+              name,
+              version.versionNumber
+            )
+              .then((providerResponse) => {
+                setProviders((prev) => ({
+                  ...prev,
+                  [version.versionNumber]: providerResponse.data,
+                }));
+              })
+              .catch((e) => {
+                log.api.error("Error fetching providers", {
+                  versionNumber: version.versionNumber,
+                  error: e.message,
                 });
-            });
-          } else {
-            setMessage(t("box.notFound"));
-            setMessageType("danger");
-          }
+              });
+          });
         } catch (e) {
           log.api.error("Error loading box data", {
             organization,
@@ -289,7 +286,7 @@ const Box = ({ theme }) => {
       published: status,
     };
 
-    BoxDataService.update(currentUser.organization, currentBox.name, data).then(
+    BoxDataService.update(organization, currentBox.name, data).then(
       (response) => {
         setCurrentBox({ ...currentBox, published: status });
         log.api.debug("Box release status updated", {
@@ -311,14 +308,14 @@ const Box = ({ theme }) => {
       }
     }
 
-    BoxDataService.update(currentUser.organization, originalName, currentBox)
+    BoxDataService.update(organization, originalName, currentBox)
       .then(() => {
         setMessage(t("box.updated"));
         setMessageType("success");
         setEditMode(false);
 
         if (originalName !== currentBox.name) {
-          navigate(`/${currentUser.organization}/${currentBox.name}`);
+          navigate(`/${organization}/${currentBox.name}`);
         }
       })
       .catch((e) => {
@@ -336,13 +333,13 @@ const Box = ({ theme }) => {
   };
 
   const deleteBox = () => {
-    BoxDataService.remove(currentUser.organization, currentBox.name)
+    BoxDataService.remove(organization, currentBox.name)
       .then((response) => {
         log.api.debug("Box deleted successfully", {
           boxName: currentBox.name,
           response: response.data,
         });
-        navigate(`/${currentUser.organization}`);
+        navigate(`/${organization}`);
       })
       .catch((e) => {
         log.api.error("Error deleting box", {
@@ -381,11 +378,7 @@ const Box = ({ theme }) => {
       return;
     }
 
-    VersionDataService.createVersion(
-      currentUser.organization,
-      currentBox.name,
-      newVersion
-    )
+    VersionDataService.createVersion(organization, currentBox.name, newVersion)
       .then((response) => {
         setMessage(t("version.added"));
         setMessageType("success");
@@ -548,7 +541,7 @@ const Box = ({ theme }) => {
               className="form-control"
               id="organization"
               name="organization"
-              value={currentUser ? currentUser.organization : ""}
+              value={currentUser ? organization : ""}
               onChange={handleInputChange}
               disabled
             />

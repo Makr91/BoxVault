@@ -703,7 +703,8 @@
         "leave": "Leave Organization",
         "createBox": "Create Box",
         "createNewBox": "Create New Box",
-        "removeAll": "Remove All"
+        "removeAll": "Remove All",
+        "joinAsAdmin": "Join as Admin"
       },
       "headers": {
         "createNewBox": "Create New Box",

@@ -4,10 +4,12 @@ import { useTranslation } from "react-i18next";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import ArchitectureService from "../services/architecture.service";
+import BoxDataService from "../services/box.service";
 import FileService from "../services/file.service";
 import ProviderService from "../services/provider.service";
 import VersionDataService from "../services/version.service";
 import { log } from "../utils/Logger";
+import { canManageBox } from "../utils/permissions";
 
 import ConfirmationModal from "./confirmation.component";
 
@@ -153,10 +155,19 @@ const Version = () => {
     document.title = `${name} v${version}`;
 
     const fetchData = async () => {
-      // Check authorization
+      // Authorization mirrors the backend: box owner or org moderator/admin.
+      // Fetch the box so we know its owner.
       const user = JSON.parse(localStorage.getItem("user"));
-      const userAuthorized = user && user.organization === organization;
-      setIsAuthorized(userAuthorized);
+      try {
+        const boxResponse = await BoxDataService.get(organization, name);
+        setIsAuthorized(canManageBox(user, organization, boxResponse.data));
+      } catch (e) {
+        log.api.error("Error checking box authorization", {
+          boxName: name,
+          error: e.message,
+        });
+        setIsAuthorized(false);
+      }
 
       try {
         const providerResponse = await ProviderService.getProviders(

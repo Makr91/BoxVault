@@ -18,6 +18,8 @@ import { log } from "../utils/Logger";
 const UserCardActions = ({
   user,
   currentUser,
+  orgRole,
+  onChangeRole,
   onPromote,
   onDemote,
   onSuspend,
@@ -34,24 +36,39 @@ const UserCardActions = ({
   const isSelf = currentUser && currentUser.id === user.id;
 
   return (
-    <div className="d-flex flex-wrap gap-2 justify-content-end">
-      {onPromote && !isModerator && !isAdmin && (
-        <button
-          className="btn btn-sm btn-outline-primary"
-          onClick={onPromote}
-          title={t("buttons.promote")}
+    <div className="d-flex flex-wrap gap-2 justify-content-end align-items-center">
+      {onChangeRole ? (
+        <select
+          className="form-select form-select-sm w-auto"
+          value={orgRole || "user"}
+          onChange={(e) => onChangeRole(e.target.value)}
+          aria-label={t("moderator.users.roles")}
         >
-          <FaUserShield />
-        </button>
-      )}
-      {onDemote && isModerator && (
-        <button
-          className="btn btn-sm btn-outline-secondary"
-          onClick={onDemote}
-          title={t("buttons.demote")}
-        >
-          <FaUser />
-        </button>
+          <option value="user">{t("roles.user")}</option>
+          <option value="moderator">{t("roles.moderator")}</option>
+          <option value="admin">{t("roles.admin")}</option>
+        </select>
+      ) : (
+        <>
+          {onPromote && !isModerator && !isAdmin && (
+            <button
+              className="btn btn-sm btn-outline-primary"
+              onClick={onPromote}
+              title={t("buttons.promote")}
+            >
+              <FaUserShield />
+            </button>
+          )}
+          {onDemote && isModerator && (
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              onClick={onDemote}
+              title={t("buttons.demote")}
+            >
+              <FaUser />
+            </button>
+          )}
+        </>
       )}
       {onSuspend && !user.suspended && !isSelf && (
         <button
@@ -96,6 +113,8 @@ const UserCardActions = ({
 UserCardActions.propTypes = {
   user: PropTypes.object.isRequired,
   currentUser: PropTypes.object,
+  orgRole: PropTypes.string,
+  onChangeRole: PropTypes.func,
   onPromote: PropTypes.func,
   onDemote: PropTypes.func,
   onSuspend: PropTypes.func,
@@ -107,6 +126,8 @@ UserCardActions.propTypes = {
 const UserCard = ({
   user,
   currentUser,
+  orgRole,
+  onChangeRole,
   onPromote,
   onDemote,
   onSuspend,
@@ -142,18 +163,34 @@ const UserCard = ({
   const roles = user.roles
     ? user.roles.map((r) => (typeof r === "string" ? r : r.name))
     : [];
-  const isModerator = roles.includes("moderator");
-  const isAdmin = roles.includes("admin");
+  const globalIsModerator = roles.includes("moderator");
+  const globalIsAdmin = roles.includes("admin");
+
+  // In per-org mode (onChangeRole provided) the badge reflects the org role;
+  // otherwise it reflects the global role.
+  const resolveBadgeRole = () => {
+    if (onChangeRole) {
+      return orgRole || "user";
+    }
+    if (globalIsAdmin) {
+      return "admin";
+    }
+    if (globalIsModerator) {
+      return "moderator";
+    }
+    return "user";
+  };
+  const badgeRole = resolveBadgeRole();
 
   const getRoleBadge = () => {
-    if (isAdmin) {
+    if (badgeRole === "admin") {
       return (
         <span className="badge bg-danger me-1">
           <FaUserGear className="me-1" /> {t("roles.admin")}
         </span>
       );
     }
-    if (isModerator) {
+    if (badgeRole === "moderator") {
       return (
         <span className="badge bg-warning text-dark me-1">
           <FaUserShield className="me-1" /> {t("roles.moderator")}
@@ -223,6 +260,8 @@ const UserCard = ({
           <UserCardActions
             user={user}
             currentUser={currentUser}
+            orgRole={orgRole}
+            onChangeRole={onChangeRole}
             onPromote={onPromote}
             onDemote={onDemote}
             onSuspend={onSuspend}
@@ -239,6 +278,8 @@ const UserCard = ({
 UserCard.propTypes = {
   user: PropTypes.object.isRequired,
   currentUser: PropTypes.object,
+  orgRole: PropTypes.string,
+  onChangeRole: PropTypes.func,
   onPromote: PropTypes.func,
   onDemote: PropTypes.func,
   onSuspend: PropTypes.func,
