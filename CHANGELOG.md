@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.43.1](https://github.com/Makr91/BoxVault/compare/v0.43.0...v0.43.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* update dependencies and devDependencies versions in package.json files, upgrade upload-artifact action in dev-build.yml, and add settings.local.json for permissions ([b826b11](https://github.com/Makr91/BoxVault/commit/b826b11c871c504a5fcdf08ad16b6a4ba4b708c4))
+* update dependencies for improved performance and compatibility ([7b4f4dc](https://github.com/Makr91/BoxVault/commit/7b4f4dcfdda01816f8e916ea0b165ed0d911b5fa))
+
 ## [0.43.0](https://github.com/Makr91/BoxVault/compare/v0.42.6...v0.43.0) (2026-03-26)
 
 
