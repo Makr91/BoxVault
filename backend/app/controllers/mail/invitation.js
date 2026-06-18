@@ -31,7 +31,7 @@ export const sendInvitationMail = async (
   try {
     const transporter = createTransporter();
     const frontendUrl = appConfig?.boxvault?.origin?.value || 'http://localhost:3000';
-    const invitationLink = `${frontendUrl}/register?token=${token}&organization=${organizationName}`;
+    const invitationLink = `${frontendUrl}/invite/${token}`;
     const expirationDate = new Date(expirationTime).toLocaleString();
 
     const mailOptions = {

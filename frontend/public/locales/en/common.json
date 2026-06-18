@@ -771,6 +771,22 @@
       "requestSent": "Join request sent to {{orgName}} successfully!"
     }
   },
+  "inviteAccept": {
+    "title": "Organization Invitation",
+    "validating": "Checking your invitation…",
+    "invalid": "This invitation is invalid or has expired.",
+    "invitedAs": "You've been invited to join {{organization}} as {{role}}.",
+    "accept": "Accept Invitation",
+    "accepting": "Joining…",
+    "signInPrompt": "Sign in to accept your invitation to join {{organization}}.",
+    "signIn": "Sign in to accept",
+    "registerPrompt": "Don't have an account yet?",
+    "register": "Create one to join",
+    "alreadyMember": "You're already a member of {{organization}}.",
+    "emailMismatch": "This invitation was sent to {{email}}, but you're signed in as {{current}}.",
+    "goToOrg": "Go to {{organization}}",
+    "error": "Could not accept the invitation. Please try again."
+  },
   "User Authentication": "User Authentication",
   "Box Management": "Box Management",
   "Version Control": "Version Control",

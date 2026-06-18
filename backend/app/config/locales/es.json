@@ -235,6 +235,11 @@
     "invalidOrExpired": "Token de invitación inválido o caducado.",
     "validate": {
       "error": "Ocurrió un error al validar el token de invitación."
+    },
+    "accepted": "Te has unido a {{organization}}.",
+    "emailMismatch": "Esta invitación fue enviada a {{email}}. Por favor inicia sesión con esa cuenta para aceptarla.",
+    "accept": {
+      "error": "Ocurrió un error al aceptar la invitación."
     }
   },
   "mail": {

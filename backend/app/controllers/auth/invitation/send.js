@@ -1,7 +1,7 @@
 // send.js
 import { randomBytes } from 'crypto';
 import db from '../../../models/index.js';
-const { organization: Organization, invitation: Invitation } = db;
+const { organization: Organization, invitation: Invitation, user: User, UserOrg } = db;
 import { log } from '../../../utils/Logger.js';
 import { sendInvitationMail } from '../../mail.controller.js';
 import { loadConfig } from '../../../utils/config-loader.js';
@@ -87,6 +87,15 @@ export const sendInvitation = async (req, res) => {
       return res.status(400).send({
         message: req.__('invitations.invalidRole'),
       });
+    }
+
+    // Don't invite an existing account that already belongs to this organization.
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      const membership = await UserOrg.findUserOrgRole(existingUser.id, organization.id);
+      if (membership) {
+        return res.status(409).send({ message: req.__('organizations.alreadyMember') });
+      }
     }
 
     const invitationToken = randomBytes(20).toString('hex');

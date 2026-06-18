@@ -8,6 +8,7 @@ import {
   getActiveInvitations,
   sendInvitation,
   deleteInvitation,
+  acceptInvitation,
   refreshToken,
 } from '../controllers/auth.controller.js';
 
@@ -37,6 +38,11 @@ router.post(
 router.post('/auth/signin', signin);
 router.get('/auth/verify-mail/:token', verifyMail);
 router.get('/auth/validate-invitation/:token', validateInvitationToken);
+router.post(
+  '/auth/invitations/:token/accept',
+  [authJwt.verifyToken, authJwt.isUser],
+  acceptInvitation
+);
 router.get(
   '/invitations/active/:organization',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isModerator],

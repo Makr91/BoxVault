@@ -235,6 +235,11 @@
     "invalidOrExpired": "Invalid or expired invitation token.",
     "validate": {
       "error": "Some error occurred while validating the invitation token."
+    },
+    "accepted": "You have joined {{organization}}.",
+    "emailMismatch": "This invitation was sent to {{email}}. Please sign in with that account to accept it.",
+    "accept": {
+      "error": "Some error occurred while accepting the invitation."
     }
   },
   "mail": {

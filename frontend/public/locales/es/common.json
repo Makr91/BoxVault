@@ -574,6 +574,22 @@
       "requestSent": "¡Solicitud de unión enviada a {{orgName}} exitosamente!"
     }
   },
+  "inviteAccept": {
+    "title": "Invitación a la Organización",
+    "validating": "Verificando tu invitación…",
+    "invalid": "Esta invitación es inválida o ha caducado.",
+    "invitedAs": "Has sido invitado a unirte a {{organization}} como {{role}}.",
+    "accept": "Aceptar Invitación",
+    "accepting": "Uniéndose…",
+    "signInPrompt": "Inicia sesión para aceptar tu invitación a unirte a {{organization}}.",
+    "signIn": "Iniciar sesión para aceptar",
+    "registerPrompt": "¿Aún no tienes una cuenta?",
+    "register": "Crea una para unirte",
+    "alreadyMember": "Ya eres miembro de {{organization}}.",
+    "emailMismatch": "Esta invitación fue enviada a {{email}}, pero has iniciado sesión como {{current}}.",
+    "goToOrg": "Ir a {{organization}}",
+    "error": "No se pudo aceptar la invitación. Por favor intenta de nuevo."
+  },
   "setup": {
     "title": "Configuración de BoxVault",
     "alreadyComplete": "La configuración ya está completa. Ahora puedes usar BoxVault.",

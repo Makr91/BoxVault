@@ -7,6 +7,7 @@ import { sendInvitation } from './auth/invitation/send.js';
 import { getActiveInvitations } from './auth/invitation/get.js';
 import { deleteInvitation } from './auth/invitation/delete.js';
 import { validateInvitationToken } from './auth/invitation/validate.js';
+import { acceptInvitation } from './auth/invitation/accept.js';
 import { deleteUser } from './auth/user/delete.js';
 import { suspendUser } from './auth/user/suspend.js';
 import { resumeUser } from './auth/user/resume.js';
@@ -20,6 +21,7 @@ export {
   getActiveInvitations,
   deleteInvitation,
   validateInvitationToken,
+  acceptInvitation,
   deleteUser,
   suspendUser,
   resumeUser,

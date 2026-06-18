@@ -230,6 +230,13 @@ const register = (username, email, password, invitationToken) =>
 const validateInvitationToken = (token) =>
   axios.get(`${baseURL}/api/auth/validate-invitation/${token}`);
 
+const acceptInvitation = (token) =>
+  axios.post(
+    `${baseURL}/api/auth/invitations/${token}/accept`,
+    {},
+    { headers: authHeader() }
+  );
+
 const login = (username, password, stayLoggedIn = false) =>
   axios
     .post(`${baseURL}/api/auth/signin`, {
@@ -382,6 +389,7 @@ const AuthService = {
   verifyMail,
   sendInvitation,
   validateInvitationToken,
+  acceptInvitation,
   getGravatarConfig,
   refreshTokenIfNeeded,
   forceTokenRefresh,

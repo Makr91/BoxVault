@@ -10,6 +10,7 @@ import Admin from "./components/admin.component";
 import AuthCallback from "./components/AuthCallback";
 import Box from "./components/box.component";
 import Footer from "./components/Footer.component";
+import InviteAccept from "./components/InviteAccept.component";
 import Login from "./components/login.component";
 import Moderator from "./components/moderator.component";
 import Navbar from "./components/navbar.component";
@@ -363,6 +364,7 @@ const App = () => {
                 <Route path="/login" element={<Login theme={theme} />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/register" element={<Register theme={theme} />} />
+                <Route path="/invite/:token" element={<InviteAccept />} />
                 <Route
                   path="/profile"
                   element={<Profile activeOrganization={activeOrganization} />}

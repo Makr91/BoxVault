@@ -61,6 +61,7 @@ export const validateInvitationToken = async (req, res) => {
       message: 'Invitation token is valid.',
       email: invitation.email,
       organizationName: invitation.organization.name,
+      invitedRole: invitation.invited_role,
     });
   } catch (err) {
     return res.status(500).send({ message: err.message || 'Error validating invitation.' });

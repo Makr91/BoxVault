@@ -294,21 +294,21 @@ const Register = ({ theme }) => {
                       </div>
                     )}
                   </div>
-
-                  <div className="d-grid gap-2 col-6 mx-auto mt-3">
-                    <button
-                      type="submit"
-                      className="btn btn-primary btn-block"
-                      disabled={isSubmitting}
-                    >
-                      {authMethod.startsWith("oidc-")
-                        ? (authMethods.find((m) => m.id === authMethod)?.name ??
-                          t("register.continueWithSso"))
-                        : t("register.signUpButton")}
-                    </button>
-                  </div>
                 </>
               )}
+
+              <div className="d-grid gap-2 col-6 mx-auto mt-3">
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-block"
+                  disabled={isSubmitting}
+                >
+                  {authMethod.startsWith("oidc-")
+                    ? (authMethods.find((m) => m.id === authMethod)?.name ??
+                      t("register.continueWithSso"))
+                    : t("register.signUpButton")}
+                </button>
+              </div>
             </div>
           )}
 
