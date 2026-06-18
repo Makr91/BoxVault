@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.2](https://github.com/Makr91/BoxVault/compare/v0.43.1...v0.43.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* update deps, rework effects for react-hooks v7, consume Bootstrap precompiled CSS" -m "- backend: axios 1.14, nodemailer 9 (fixes HIGH), audit-ci allowlist + .nsprc suppressions for js-yaml/uuid (transitive, dev-only) ([fd65d88](https://github.com/Makr91/BoxVault/commit/fd65d88444e63a8cd526c3a462735f5221e4c80b))
+
 ## [0.43.1](https://github.com/Makr91/BoxVault/compare/v0.43.0...v0.43.1) (2026-03-26)
 
 
