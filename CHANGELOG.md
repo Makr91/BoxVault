@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/Makr91/BoxVault/compare/v0.43.3...v0.44.0) (2026-06-18)
+
+
+### Features
+
+* accept organization invitations as an existing or OIDC user ([5f23bbf](https://github.com/Makr91/BoxVault/commit/5f23bbf6d4c8c8bbd9ba3618b02ceae724408459))
+
 ## [0.43.3](https://github.com/Makr91/BoxVault/compare/v0.43.2...v0.43.3) (2026-06-18)
 
 
