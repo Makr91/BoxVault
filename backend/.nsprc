@@ -1,7 +1,12 @@
 {
-  "1115432": {
+  "1120792": {
     "active": true,
-    "notes": "brace-expansion <5.0.5 (GHSA-f886-m6hf-6m8v) - dev dependency only, blocked by swagger-jsdoc, jest, and license-checker-rseidelsohn using old minimatch/glob. No fix available until upstream packages update.",
-    "expiry": "2026-07-01"
+    "notes": "js-yaml <=4.1.1 merge-key quadratic DoS (GHSA-h67p-54hq-rp68) - moderate, transitive via jest's @istanbuljs/load-nyc-config (dev/test tooling only, never shipped). No patched js-yaml in range; awaits jest updating its coverage deps.",
+    "expiry": "2026-09-01"
+  },
+  "1119441": {
+    "active": true,
+    "notes": "uuid <11.1.1 missing buffer bounds check in v3/v5/v6 (GHSA-w5hq-g745-h8pq) - moderate, transitive via sequelize 6 which pins an old uuid. uuid 11 is ESM-only and incompatible with sequelize 6 (CommonJS); awaits sequelize bumping its uuid dep.",
+    "expiry": "2026-09-01"
   }
 }

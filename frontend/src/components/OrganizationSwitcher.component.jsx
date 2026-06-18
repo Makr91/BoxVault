@@ -23,57 +23,73 @@ const OrganizationSwitcher = ({
 }) => {
   const { t } = useTranslation();
   const [userOrganizations, setUserOrganizations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [orgGravatars, setOrgGravatars] = useState({});
 
-  const loadUserOrganizations = async () => {
-    setLoading(true);
-    try {
-      const response = await UserService.getUserOrganizations();
-      const orgs = response.data || [];
-      setUserOrganizations(orgs);
+  useEffect(() => {
+    if (!showModal || !currentUser) {
+      return undefined;
+    }
 
-      // Fetch gravatars for all orgs in parallel
-      const gravatarPromises = orgs
-        .filter((org) => org.emailHash || org.organization?.emailHash)
-        .map(async (org) => {
-          try {
-            const emailHash = org.emailHash || org.organization?.emailHash;
+    let cancelled = false;
+
+    const loadUserOrganizations = async () => {
+      try {
+        const response = await UserService.getUserOrganizations();
+        if (cancelled) {
+          return;
+        }
+        const orgs = response.data || [];
+        setUserOrganizations(orgs);
+
+        // Fetch gravatars for all orgs in parallel
+        const gravatarPromises = orgs
+          .filter((org) => org.emailHash || org.organization?.emailHash)
+          .map(async (org) => {
             const name = org.name || org.organization?.name;
-            const profile = await AuthService.getGravatarProfile(emailHash);
-            return { name, url: profile?.avatar_url };
-          } catch (error) {
-            const name = org.name || org.organization?.name;
-            log.api.error("Error fetching org gravatar", {
-              orgName: name,
-              error: error.message,
-            });
-            return { name, url: null };
+            try {
+              const emailHash = org.emailHash || org.organization?.emailHash;
+              const profile = await AuthService.getGravatarProfile(emailHash);
+              return { name, url: profile?.avatar_url };
+            } catch (error) {
+              log.api.error("Error fetching org gravatar", {
+                orgName: name,
+                error: error.message,
+              });
+              return { name, url: null };
+            }
+          });
+
+        const gravatarResults = await Promise.all(gravatarPromises);
+        if (cancelled) {
+          return;
+        }
+        const gravatars = {};
+        gravatarResults.forEach((result) => {
+          if (result.url) {
+            gravatars[result.name] = result.url;
           }
         });
-
-      const gravatarResults = await Promise.all(gravatarPromises);
-      const gravatars = {};
-      gravatarResults.forEach((result) => {
-        if (result.url) {
-          gravatars[result.name] = result.url;
+        setOrgGravatars(gravatars);
+      } catch (error) {
+        if (!cancelled) {
+          log.api.error("Error loading user organizations", {
+            error: error.message,
+          });
+          setUserOrganizations([]);
         }
-      });
-      setOrgGravatars(gravatars);
-    } catch (error) {
-      log.api.error("Error loading user organizations", {
-        error: error.message,
-      });
-      setUserOrganizations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
 
-  useEffect(() => {
-    if (showModal && currentUser) {
-      loadUserOrganizations();
-    }
+    loadUserOrganizations();
+
+    return () => {
+      cancelled = true;
+    };
   }, [showModal, currentUser]);
 
   const handleOrganizationClick = (orgName) => {

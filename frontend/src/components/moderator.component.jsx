@@ -141,8 +141,8 @@ const Moderator = ({ currentOrganization }) => {
         // Update the user's organization in localStorage if name changed
         if (newOrgName !== currentOrganization) {
           if (currentUser) {
-            currentUser.organization = newOrgName;
-            localStorage.setItem("user", JSON.stringify(currentUser));
+            const updatedUser = { ...currentUser, organization: newOrgName };
+            localStorage.setItem("user", JSON.stringify(updatedUser));
           }
 
           // Force token refresh to update claims with new org name

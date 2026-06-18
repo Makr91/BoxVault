@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -15,6 +15,22 @@ const sanitizeProvider = (provider) => {
     throw new Error("Invalid authentication provider");
   }
   return provider;
+};
+
+// Maps an OIDC `error` query parameter to a translated, user-facing message.
+const getOidcErrorMessage = (error, t) => {
+  switch (error) {
+    case "oidc_failed":
+      return t("errors.oidcFailed");
+    case "access_denied":
+      return t("errors.accessDenied");
+    case "no_provider":
+      return t("errors.noProvider");
+    case "token_failed":
+      return t("errors.failedToProcess");
+    default:
+      return error ? t("errors.authError", { error }) : "";
+  }
 };
 
 const Login = ({ theme }) => {
@@ -33,50 +49,73 @@ const Login = ({ theme }) => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [authMethod, setAuthMethod] = useState("local");
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
+
+  // OIDC errors arrive via the URL; derive that message rather than storing it,
+  // and let interaction-driven messages take precedence.
+  const oidcErrorMessage = useMemo(() => {
+    const error = new URLSearchParams(location.search).get("error");
+    return getOidcErrorMessage(error, t);
+  }, [location.search, t]);
+  const message = statusMessage || oidcErrorMessage;
 
   const enabledAuthMethods = useMemo(
     () => authMethods.filter((method) => method.enabled),
     [authMethods]
   );
 
-  const loadAuthMethods = useCallback(async () => {
-    try {
-      setMethodsLoading(true);
-      const result = await AuthService.getAuthMethods();
-
-      if (result.methods && result.methods.length > 0) {
-        setAuthMethods(result.methods);
-        const firstMethod = result.methods.find((m) => m.enabled); // Find first enabled method
-        if (firstMethod) {
-          setAuthMethod(firstMethod.id);
-        }
-      } else {
-        setAuthMethods([
-          { id: "local", name: t("login.localAccount"), enabled: true },
-        ]);
-        setAuthMethod("local");
-      }
-    } catch (error) {
-      log.auth.error("Error loading auth methods", { error: error.message });
-      setAuthMethods([{ id: "local", name: "Local Account", enabled: true }]);
-      setAuthMethod("local");
-    } finally {
-      setMethodsLoading(false);
-    }
-  }, [t]);
-
   useEffect(() => {
+    let cancelled = false;
+
+    const loadAuthMethods = async () => {
+      try {
+        const result = await AuthService.getAuthMethods();
+        if (cancelled) {
+          return;
+        }
+
+        if (result.methods && result.methods.length > 0) {
+          setAuthMethods(result.methods);
+          const firstMethod = result.methods.find((m) => m.enabled);
+          if (firstMethod) {
+            setAuthMethod(firstMethod.id);
+          }
+        } else {
+          setAuthMethods([
+            { id: "local", name: t("login.localAccount"), enabled: true },
+          ]);
+          setAuthMethod("local");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          log.auth.error("Error loading auth methods", {
+            error: error.message,
+          });
+          setAuthMethods([
+            { id: "local", name: "Local Account", enabled: true },
+          ]);
+          setAuthMethod("local");
+        }
+      } finally {
+        if (!cancelled) {
+          setMethodsLoading(false);
+        }
+      }
+    };
+
     loadAuthMethods();
-  }, [loadAuthMethods]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const token = urlParams.get("token");
-    const error = urlParams.get("error");
 
     if (token) {
       try {
@@ -99,30 +138,16 @@ const Login = ({ theme }) => {
         log.auth.error("Error processing OIDC token", {
           error: tokenError.message,
         });
-        setMessage(t("errors.failedToProcess", { ns: "auth" }));
+        // Surface the failure through the same URL-driven error channel
+        // instead of setting state synchronously inside the effect.
+        navigate("/login?error=token_failed", { replace: true });
       }
-    } else if (error) {
-      let errorMessage = t("errors.authenticationFailed");
-      switch (error) {
-        case "oidc_failed":
-          errorMessage = t("errors.oidcFailed");
-          break;
-        case "access_denied":
-          errorMessage = t("errors.accessDenied");
-          break;
-        case "no_provider":
-          errorMessage = t("errors.noProvider");
-          break;
-        default:
-          errorMessage = t("errors.authError", { error });
-      }
-      setMessage(errorMessage);
     }
-  }, [location.search, navigate, t]);
+  }, [location.search, navigate]);
 
   const handleAuthMethodChange = (newMethod) => {
     setAuthMethod(newMethod);
-    setMessage("");
+    setStatusMessage("");
   };
 
   const handleOidcLogin = (provider) => {
@@ -131,14 +156,14 @@ const Login = ({ theme }) => {
     }
 
     setLoading(true);
-    setMessage("");
+    setStatusMessage("");
     try {
       const safeProvider = sanitizeProvider(provider);
       window.location.href = `/api/auth/oidc/${safeProvider}`;
     } catch (err) {
       log("Invalid OIDC provider selected", err);
       setLoading(false);
-      setMessage(t("errors.invalidProvider"));
+      setStatusMessage(t("errors.invalidProvider"));
     }
   };
 
@@ -163,7 +188,7 @@ const Login = ({ theme }) => {
       return;
     }
 
-    setMessage("");
+    setStatusMessage("");
     setLoading(true);
 
     AuthService.login(
@@ -195,7 +220,7 @@ const Login = ({ theme }) => {
           error.response?.data?.message || error.message || error.toString();
 
         setLoading(false);
-        setMessage(resMessage);
+        setStatusMessage(resMessage);
       });
   };
 

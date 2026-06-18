@@ -52,42 +52,53 @@ const OrganizationDiscovery = ({ theme }) => {
     setOrgGravatars(gravatars);
   }, []);
 
-  const loadDiscoverableOrganizations = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await OrganizationService.getDiscoverableOrganizations();
-      const orgs = response.data || [];
-      setOrganizations(orgs);
-      await fetchOrgGravatars(orgs);
-    } catch (error) {
-      log.api.error("Error loading discoverable organizations", {
-        error: error.message,
-      });
-      setMessage(t("discovery.errors.load"));
-      setMessageType("danger");
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchOrgGravatars, t]);
-
   useEffect(() => {
     document.title = t("discovery.title");
-    loadDiscoverableOrganizations();
-  }, [loadDiscoverableOrganizations, t]);
 
-  // Separate effect for checking join intent after organizations load
-  useEffect(() => {
-    if (organizations.length > 0) {
-      const savedJoinOrg = localStorage.getItem("boxvault_join_org");
-      if (savedJoinOrg) {
-        const org = organizations.find((o) => o.name === savedJoinOrg);
-        if (org) {
-          setRequestingOrg(org);
-          localStorage.removeItem("boxvault_join_org");
+    let cancelled = false;
+
+    const loadDiscoverableOrganizations = async () => {
+      try {
+        const response =
+          await OrganizationService.getDiscoverableOrganizations();
+        if (cancelled) {
+          return;
+        }
+        const orgs = response.data || [];
+        setOrganizations(orgs);
+
+        // Honor a join intent saved before an OIDC login round-trip
+        const savedJoinOrg = localStorage.getItem("boxvault_join_org");
+        if (savedJoinOrg) {
+          const intendedOrg = orgs.find((o) => o.name === savedJoinOrg);
+          if (intendedOrg) {
+            setRequestingOrg(intendedOrg);
+            localStorage.removeItem("boxvault_join_org");
+          }
+        }
+
+        await fetchOrgGravatars(orgs);
+      } catch (error) {
+        if (!cancelled) {
+          log.api.error("Error loading discoverable organizations", {
+            error: error.message,
+          });
+          setMessage(t("discovery.errors.load"));
+          setMessageType("danger");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
-    }
-  }, [organizations]);
+    };
+
+    loadDiscoverableOrganizations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchOrgGravatars, t]);
 
   const handleJoinRequest = async (orgName) => {
     if (!joinRequestMessage.trim()) {

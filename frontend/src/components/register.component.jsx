@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
@@ -39,38 +39,52 @@ const Register = ({ theme }) => {
 
   const location = useLocation();
 
-  const loadAuthMethods = useCallback(async () => {
-    try {
-      setMethodsLoading(true);
-      const result = await AuthService.getAuthMethods();
-      if (result.methods && result.methods.length > 0) {
-        setAuthMethods(result.methods);
-      } else {
-        setAuthMethods([
-          {
-            id: "local",
-            name: t("login.localAccount", { ns: "auth" }),
-            enabled: true,
-          },
-        ]);
-      }
-    } catch (error) {
-      log.auth.error("Error loading auth methods", { error: error.message });
-      setAuthMethods([
-        {
-          id: "local",
-          name: t("login.localAccount", { ns: "auth" }),
-          enabled: true,
-        },
-      ]);
-    } finally {
-      setMethodsLoading(false);
-    }
-  }, [t]);
-
   useEffect(() => {
+    let cancelled = false;
+
+    const loadAuthMethods = async () => {
+      try {
+        const result = await AuthService.getAuthMethods();
+        if (cancelled) {
+          return;
+        }
+        if (result.methods && result.methods.length > 0) {
+          setAuthMethods(result.methods);
+        } else {
+          setAuthMethods([
+            {
+              id: "local",
+              name: t("login.localAccount", { ns: "auth" }),
+              enabled: true,
+            },
+          ]);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          log.auth.error("Error loading auth methods", {
+            error: error.message,
+          });
+          setAuthMethods([
+            {
+              id: "local",
+              name: t("login.localAccount", { ns: "auth" }),
+              enabled: true,
+            },
+          ]);
+        }
+      } finally {
+        if (!cancelled) {
+          setMethodsLoading(false);
+        }
+      }
+    };
+
     loadAuthMethods();
-  }, [loadAuthMethods]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   useEffect(() => {
     const validateToken = async () => {

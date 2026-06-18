@@ -7,11 +7,6 @@ export default defineConfig(() => {
   return {
     root: path.resolve(__dirname, "src"),
     publicDir: "../public",
-    resolve: {
-      alias: {
-        "~bootstrap": path.resolve(__dirname, "node_modules/bootstrap"),
-      },
-    },
     base: "/",
     build: {
       outDir: "../../backend/app/views/",

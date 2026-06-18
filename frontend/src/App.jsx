@@ -49,11 +49,27 @@ const App = () => {
     };
   }, []);
 
-  const [showAdminBoard, setShowAdminBoard] = useState(false);
-  const [showModeratorBoard, setShowModeratorBoard] = useState(false);
-  const [currentUser, setCurrentUser] = useState(undefined);
-  const [userOrganization, setUserOrganization] = useState("");
-  const [activeOrganization, setActiveOrganization] = useState("");
+  const [showAdminBoard, setShowAdminBoard] = useState(() =>
+    Boolean(AuthService.getCurrentUser()?.roles?.includes("ROLE_ADMIN"))
+  );
+  const [showModeratorBoard, setShowModeratorBoard] = useState(() =>
+    Boolean(AuthService.getCurrentUser()?.roles?.includes("ROLE_MODERATOR"))
+  );
+  const [currentUser, setCurrentUser] = useState(
+    () => AuthService.getCurrentUser() || undefined
+  );
+  const [userOrganization, setUserOrganization] = useState(
+    () => AuthService.getCurrentUser()?.organization || ""
+  );
+  const [activeOrganization, setActiveOrganization] = useState(() => {
+    const user = AuthService.getCurrentUser();
+    if (!user) {
+      return "";
+    }
+    return (
+      localStorage.getItem("activeOrganization") || user.organization || ""
+    );
+  });
   const [gravatarUrl, setGravatarUrl] = useState("");
   const [gravatarFetched, setGravatarFetched] = useState(false);
   const [theme, setTheme] = useState(() => {
@@ -173,24 +189,14 @@ const App = () => {
     [gravatarFetched]
   );
 
-  // Organization context management
+  // Organization context side effects: persist the default active org and load
+  // the user's avatar. Initial state is derived in the useState initializers
+  // above, so this effect performs no synchronous state updates.
   useEffect(() => {
     const user = AuthService.getCurrentUser();
 
     if (user) {
-      setCurrentUser(user);
-      setShowAdminBoard(user.roles && user.roles.includes("ROLE_ADMIN"));
-      setShowModeratorBoard(
-        user.roles && user.roles.includes("ROLE_MODERATOR")
-      );
-      setUserOrganization(user.organization);
-
-      // Set active organization from localStorage or default to user's org
-      const savedActiveOrg = localStorage.getItem("activeOrganization");
-      if (savedActiveOrg) {
-        setActiveOrganization(savedActiveOrg);
-      } else {
-        setActiveOrganization(user.organization);
+      if (!localStorage.getItem("activeOrganization") && user.organization) {
         localStorage.setItem("activeOrganization", user.organization);
       }
 
@@ -198,8 +204,6 @@ const App = () => {
         fetchGravatarUrl(user.emailHash);
       }
     } else {
-      // Clear organization context when user logs out
-      setActiveOrganization("");
       localStorage.removeItem("activeOrganization");
     }
   }, [fetchGravatarUrl]);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { FaStar, FaXmark, FaGripVertical, FaPlus } from "react-icons/fa6";
 
@@ -16,27 +16,39 @@ const FavoritesManager = () => {
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [draggedIndex, setDraggedIndex] = useState(null);
 
-  const loadFavorites = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [rawResponse, enrichedResponse] = await Promise.all([
-        FavoritesService.getFavorites(),
-        FavoritesService.getUserInfoClaims(),
-      ]);
-
-      setFavorites(rawResponse.data || []);
-      setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
-    } catch (error) {
-      log.api.error("Error loading favorites", { error: error.message });
-      setMessage(t("favorites.loadFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
   useEffect(() => {
+    let cancelled = false;
+
+    const loadFavorites = async () => {
+      try {
+        const [rawResponse, enrichedResponse] = await Promise.all([
+          FavoritesService.getFavorites(),
+          FavoritesService.getUserInfoClaims(),
+        ]);
+        if (cancelled) {
+          return;
+        }
+
+        setFavorites(rawResponse.data || []);
+        setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
+      } catch (error) {
+        if (!cancelled) {
+          log.api.error("Error loading favorites", { error: error.message });
+          setMessage(t("favorites.loadFailed"));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
     loadFavorites();
-  }, [loadFavorites]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   const saveFavorites = async (newFavorites) => {
     setSaving(true);
