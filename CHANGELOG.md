@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.43.3](https://github.com/Makr91/BoxVault/compare/v0.43.2...v0.43.3) (2026-06-18)
+
+
+### Bug Fixes
+
+* git attributes ([a8c7cc9](https://github.com/Makr91/BoxVault/commit/a8c7cc9a1ac02952894e8252343c3c93a454122e))
+* removing unused deps ([e53e770](https://github.com/Makr91/BoxVault/commit/e53e77046f9d2b0e6f81eb50e0b8ce84c29c0e4d))
+* renormalize files and update docs ([22696d6](https://github.com/Makr91/BoxVault/commit/22696d628fb21ff00f835d1d740cbbe7a43b3e3d))
+
 ## [0.43.2](https://github.com/Makr91/BoxVault/compare/v0.43.1...v0.43.2) (2026-06-18)
 
 
