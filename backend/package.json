@@ -11,7 +11,6 @@
     "test:nologs": "cross-env SUPPRESS_LOGS=true npm run test",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
-    "build": "pkg server.js --out-path=dist",
     "generate-docs": "node scripts/generate-docs.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

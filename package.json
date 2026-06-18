@@ -14,7 +14,6 @@
     "cinstall:all": "npm ci && npm run cinstall:backend && npm run cinstall:frontend",
     "cinstall:all:nodev": "npm run cinstall:backend:nodev && npm run cinstall:frontend:nodev",
     "build": "npm run sync-versions && npm run build:frontend",
-    "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
     "start": "cd backend && npm run start",
     "preproduction": "concurrently \"npm run start\" \"npm run watch:frontend\"",
@@ -39,7 +38,7 @@
   "dependencies": {
     "@popperjs/core": "^2.11.8",
     "@vitejs/plugin-react": "^6.0.1",
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -48,7 +47,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "mysql2": "^3.20.0",
-    "nodemailer": "^8.0.4",
+    "nodemailer": "^9.0.1",
     "react": "^19.2.4",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.4",
@@ -57,33 +56,22 @@
     "sequelize": "^6.37.8",
     "validator": "^13.15.26",
     "vite": "^8.0.3",
-    "vite-plugin-svgr": "^4.5.0",
+    "vite-plugin-svgr": "^5.0.0",
     "web-vitals": "^5.2.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "concurrently": "^9.2.1",
-    "eslint": "^9.39.2",
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^17.4.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.1",
-    "sass": "1.97.3"
+    "sass": "1.101.0"
   },
   "author": "makr91",
   "license": "GPL-3.0",
-  "pkg": {
-    "assets": [
-      "backend/app/views/**/*"
-    ],
-    "targets": [
-      "node16-linux-x64",
-      "node16-macos-x64",
-      "node16-win-x64",
-      "node18-sunos-x64"
-    ]
-  },
   "files": [
     "backend/",
     "backend/app/views/",

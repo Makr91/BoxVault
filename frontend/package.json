@@ -12,19 +12,19 @@
     "axios": "^1.14.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
-    "i18next": "^25.10.10",
+    "i18next": "^26.3.1",
     "i18next-browser-languagedetector": "^8.2.1",
-    "i18next-http-backend": "^3.0.2",
+    "i18next-http-backend": "^4.0.0",
     "loglevel": "^1.9.2",
     "prop-types": "^15.8.1",
     "react": "^19.2.4",
     "react-bootstrap": "^2.10.10",
     "react-country-flag": "^3.1.0",
     "react-dom": "^19.2.4",
-    "react-i18next": "^16.6.6",
+    "react-i18next": "^17.0.8",
     "react-icons": "^5.6.0",
     "react-router-dom": "^7.13.2",
-    "sass": "1.98.0",
+    "sass": "1.101.0",
     "validator": "^13.15.26",
     "vite": "^8.0.3",
     "vite-plugin-svgr": "^5.0.0",
@@ -44,23 +44,8 @@
     "security:audit": "better-npm-audit audit",
     "security:vulnerabilities": "better-npm-audit audit",
     "security:licenses": "license-checker-rseidelsohn --onlyAllow 'MIT;Apache-2.0;BSD;BSD-2-Clause;BSD-3-Clause;ISC;GPL-3.0;LGPL-2.1;LGPL-3.0;MPL-2.0;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;Unicode-DFS-2016;Apache 2.0;BlueOak-1.0.0' --excludePrivatePackages",
-    "security:supply-chain": "audit-ci --moderate --allowlist GHSA-f886-m6hf-6m8v",
+    "security:supply-chain": "audit-ci --moderate",
     "security:all": "npm run security:audit && npm run security:vulnerabilities && npm run security:licenses && npm run security:supply-chain"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
