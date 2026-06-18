@@ -1,0 +1,30 @@
+# Normalize line endings: text files are stored as LF in the repository.
+# A Windows CRLF in the Debian maintainer scripts produced a `#!/bin/bash\r`
+# shebang, so dpkg failed to exec preinst ("No such file or directory").
+* text=auto
+
+# Files executed on Linux must be LF in the working tree too
+*.sh                       text eol=lf
+packaging/DEBIAN/preinst   text eol=lf
+packaging/DEBIAN/postinst  text eol=lf
+packaging/DEBIAN/prerm     text eol=lf
+packaging/DEBIAN/postrm    text eol=lf
+
+# Windows-only scripts stay CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Binary assets — never convert
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.deb   binary
+*.p5p   binary
