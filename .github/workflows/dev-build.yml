@@ -89,6 +89,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ruby-full build-essential zlib1g-dev libffi-dev
+          sudo gem install bundler
           bundle config set --local path 'vendor/bundle'
           bundle config set --local without 'development'
           bundle install
