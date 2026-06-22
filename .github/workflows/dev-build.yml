@@ -85,11 +85,13 @@ jobs:
       - name: Generate OpenAPI documentation
         run: npm run generate-docs
 
-      - name: Setup Ruby for documentation build
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
+      - name: Install Ruby and Jekyll dependencies for documentation build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby-full build-essential zlib1g-dev libffi-dev
+          bundle config set --local path 'vendor/bundle'
+          bundle config set --local without 'development'
+          bundle install
 
       - name: Build documentation site with Jekyll
         run: bundle exec jekyll build
