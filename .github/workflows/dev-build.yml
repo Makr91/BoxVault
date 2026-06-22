@@ -200,18 +200,18 @@ jobs:
 
       - name: Upload Debian package to repository server
         run: |
-          rsync -av ${PACKAGE_NAME}_*.deb startcloud@packages.debian.startcloud.com:/tmp/
+          rsync -av ${PACKAGE_NAME}_*.deb startcloud@debian.startcloud.com:/tmp/
 
       - name: Add package to repository pool
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             mkdir -p /local/public/debian/pool/main/b/boxvault-dev
             cp /tmp/${PACKAGE_NAME}_*.deb /local/public/debian/pool/main/b/boxvault-dev/
           "
 
       - name: Update repository Packages files for all suites
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Generate Packages files for each suite
             for suite in bookworm trixie; do
@@ -222,7 +222,7 @@ jobs:
 
       - name: Generate Release files for all suites
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Generate Release files for each suite
             for suite in bookworm trixie; do
@@ -234,7 +234,7 @@ jobs:
 
       - name: Create stable distribution with proper Release file
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian/dists
             rm -rf stable 2>/dev/null || true
             cp -r trixie stable
@@ -244,7 +244,7 @@ jobs:
 
       - name: Sign repository for all suites including stable
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Sign each suite including stable
             for suite in bookworm trixie stable; do
@@ -321,7 +321,7 @@ jobs:
 
       - name: Clean up
         run: |
-          ssh startcloud@packages.debian.startcloud.com "rm -f /tmp/${PACKAGE_NAME}_*.deb"
+          ssh startcloud@debian.startcloud.com "rm -f /tmp/${PACKAGE_NAME}_*.deb"
       #          ssh ghrunner@omnios.packages.startcloud.com "rm -rf /local/builds/boxvault-dev/*"
       - name: Summary
         run: |

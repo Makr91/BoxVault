@@ -220,18 +220,18 @@ jobs:
       #
       - name: Upload Debian package to repository server
         run: |
-          rsync -av boxvault_*.deb startcloud@packages.debian.startcloud.com:/tmp/
+          rsync -av boxvault_*.deb startcloud@debian.startcloud.com:/tmp/
 
       - name: Add package to repository pool
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             mkdir -p /local/public/debian/pool/main/b/boxvault
             cp /tmp/boxvault_*.deb /local/public/debian/pool/main/b/boxvault/
           "
 
       - name: Create multi-suite directory structure
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Create suite directories if they don't exist
             mkdir -p dists/bookworm/main/binary-amd64
@@ -240,7 +240,7 @@ jobs:
 
       - name: Update repository Packages files for all suites
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Generate Packages files for each suite
             for suite in bookworm trixie; do
@@ -251,7 +251,7 @@ jobs:
 
       - name: Generate Release files for all suites
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Generate Release files for each suite
             for suite in bookworm trixie; do
@@ -263,7 +263,7 @@ jobs:
 
       - name: Create stable distribution with proper Release file
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian/dists
             rm -rf stable 2>/dev/null || true
             cp -r trixie stable
@@ -273,7 +273,7 @@ jobs:
 
       - name: Sign repository for all suites including stable
         run: |
-          ssh startcloud@packages.debian.startcloud.com "
+          ssh startcloud@debian.startcloud.com "
             cd /local/public/debian
             # Sign each suite including stable
             for suite in bookworm trixie stable; do
@@ -289,4 +289,4 @@ jobs:
 
       - name: Cleanup temporary files
         run: |
-          ssh startcloud@packages.debian.startcloud.com "rm -f /tmp/boxvault_*.deb"
+          ssh startcloud@debian.startcloud.com "rm -f /tmp/boxvault_*.deb"
