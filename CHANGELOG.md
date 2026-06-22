@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.44.1](https://github.com/Makr91/BoxVault/compare/v0.44.0...v0.44.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* ci/cd ([cf8e16b](https://github.com/Makr91/BoxVault/commit/cf8e16ba2c71e028a72227d720cb9d3c65a51b8b))
+* CI/CD ([26fd570](https://github.com/Makr91/BoxVault/commit/26fd5702cc573c90a4d7dee319d89e704817259d))
+* CI/CD ([a8bace3](https://github.com/Makr91/BoxVault/commit/a8bace37dca9157eccf0f2b2231e0d98937475d5))
+* moving docs from gh pages ([a358811](https://github.com/Makr91/BoxVault/commit/a358811ed0618d50e8324ba21a6bdc1711fd36e5))
+* moving docs from gh pages ([43998e4](https://github.com/Makr91/BoxVault/commit/43998e462041dea2df100524c7e159273d1fd803))
+
 ## [0.44.0](https://github.com/Makr91/BoxVault/compare/v0.43.3...v0.44.0) (2026-06-18)
 
 
