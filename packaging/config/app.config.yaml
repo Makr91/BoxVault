@@ -99,6 +99,18 @@ boxvault:
     subsection_key: boxvaultSettings
     required: false
     order: 8
+  trust_proxy:
+    type: boolean
+    value: true
+    description: >-
+      Trust the X-Forwarded-For header from a proxy/CDN in front (e.g.
+      Cloudflare). Enable when BoxVault sits behind a reverse proxy or CDN;
+      disable if it is exposed directly to clients.
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 9
 gravatar:
   base_url:
     type: url

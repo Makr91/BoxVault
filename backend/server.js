@@ -214,6 +214,13 @@ const static_path = `${__dirname}/app/views/`;
 
 const app = express();
 
+// Trust proxies in front (e.g. Cloudflare). Maps the boxvault.trust_proxy
+// boolean to Express's expected value: true -> 1 (trust exactly one hop, which
+// is silent under express-rate-limit and not X-Forwarded-For spoofable),
+// false -> false (trust nothing). Defaults to trusting when unset.
+const trustProxy = boxConfig.boxvault.trust_proxy?.value ?? true;
+app.set('trust proxy', trustProxy ? 1 : false);
+
 // Increase server limits
 app.set('timeout', 0);
 app.set('keep-alive-timeout', 0);
