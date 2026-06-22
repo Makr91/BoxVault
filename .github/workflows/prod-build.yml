@@ -32,7 +32,7 @@ jobs:
     steps:
       # Debian Build Steps
       - name: Checkout for Debian build
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -47,6 +47,33 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Prepare dev configs for documentation build
+        run: |
+          mkdir -p backend/app/config
+          sed 's|/var/log/boxvault|./logs|g; s|/var/lib/boxvault/storage|./storage|g' \
+              packaging/config/app.config.yaml > backend/app/config/app.dev.config.yaml
+          sed 's|/var/lib/boxvault/database/boxvault.db|./boxvault.db|g; s|value: ""|value: sqlite|g' \
+              packaging/config/db.config.yaml > backend/app/config/db.dev.config.yaml
+          cp packaging/config/auth.config.yaml backend/app/config/auth.dev.config.yaml
+          cp packaging/config/mail.config.yaml backend/app/config/mail.dev.config.yaml
+
+      - name: Generate OpenAPI documentation
+        run: npm run generate-docs
+
+      - name: Setup Ruby for documentation build
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Build documentation site with Jekyll
+        run: bundle exec jekyll build
+        env:
+          JEKYLL_ENV: production
+
+      - name: Bundle documentation into application views
+        run: cp -r _site backend/app/views/docs
 
       - name: Remove dev dependencies for packaging
         run: |
@@ -115,7 +142,7 @@ jobs:
 
       #      # OmniOS Build Steps
       #      - name: Fresh checkout for OmniOS build
-      #        uses: actions/checkout@v6
+      #        uses: actions/checkout@v7
       #        with:
       #          path: omnios-source
       #          clean: true

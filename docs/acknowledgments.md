@@ -2,7 +2,7 @@
 title: Acknowledgments
 layout: default
 nav_order: 12
-permalink: /docs/acknowledgments/
+permalink: /acknowledgments/
 ---
 
 ## Acknowledgments

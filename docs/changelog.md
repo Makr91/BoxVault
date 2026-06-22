@@ -2,7 +2,7 @@
 title: Changelog
 layout: default
 nav_order: 6
-permalink: /docs/changelog/
+permalink: /changelog/
 ---
 
 ## Changelog

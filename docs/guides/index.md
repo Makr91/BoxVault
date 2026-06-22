@@ -3,7 +3,7 @@ title: Guides
 layout: default
 nav_order: 3
 has_children: true
-permalink: /docs/guides/
+permalink: /guides/
 ---
 
 ## Guides
@@ -49,7 +49,7 @@ Comprehensive examples for using the BoxVault REST API with curl commands and de
 
 - **[Configuration](../configuration/)** - Configure BoxVault settings
 - **[API Reference](../api/)** - Complete API documentation
-- **[Troubleshooting](troubleshooting/)** - Common issues and solutions
+- **[Troubleshooting](installation/#troubleshooting)** - Common issues and solutions
 
 ## Video Tutorials
 

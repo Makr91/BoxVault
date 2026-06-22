@@ -3,7 +3,7 @@ title: API Examples
 layout: default
 parent: Guides
 nav_order: 4
-permalink: /docs/guides/api-examples/
+permalink: /guides/api-examples/
 ---
 
 ## API Examples
@@ -444,5 +444,5 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 For the complete API reference with all endpoints, parameters, and responses, visit:
 
 - **[Interactive API Documentation](/api-docs/)** - Swagger UI with live testing
-- **[API Overview](../api/)** - High-level API information
-- **[Authentication Guide](../guides/authentication/)** - Detailed authentication setup
+- **[API Overview](../../api/)** - High-level API information
+- **[Authentication Guide](../authentication/)** - Detailed authentication setup

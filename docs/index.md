@@ -14,7 +14,7 @@ Node.js and React-based web application for managing Vagrant box repositories. P
 {: .fs-6 .fw-300 }
 
 [Get started now](#getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View API Reference](docs/api/){: .btn .fs-5 .mb-4 .mb-md-0 }
+[View API Reference](api/){: .btn .fs-5 .mb-4 .mb-md-0 }
 [View on GitHub](https://github.com/Makr91/BoxVault){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
@@ -58,11 +58,10 @@ graph TD
 
 BoxVault provides comprehensive documentation:
 
-- **[API Reference](docs/api/)** - Complete API documentation with Swagger
-- **[Getting Started Guide](docs/guides/getting-started/)** - Step-by-step setup instructions
-- **[Installation Guide](docs/guides/installation/)** - Installation and deployment
-- **[User Guide](docs/guides/user-guide/)** - Web interface usage and features
-- **[Authentication Guide](docs/guides/authentication/)** - User and API authentication
+- **[API Reference](api/)** - Complete API documentation with Swagger
+- **[Getting Started Guide](guides/getting-started/)** - Step-by-step setup instructions
+- **[Installation Guide](guides/installation/)** - Installation and deployment
+- **[Authentication Guide](guides/authentication/)** - User and API authentication
 
 ---
 

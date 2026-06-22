@@ -3,7 +3,7 @@ title: Getting Started
 layout: default
 parent: Guides
 nav_order: 1
-permalink: /docs/guides/getting-started/
+permalink: /guides/getting-started/
 ---
 
 ## Getting Started with BoxVault
@@ -230,17 +230,17 @@ Use consistent naming conventions:
 
 Now that you have BoxVault running:
 
-1. **[Configure](../configuration/)** - Set up production configuration
-2. **[Install](installation/)** - Deploy to production
-3. **[API Reference](../api/)** - Explore the API
-4. **[Authentication](authentication/)** - Set up API access
-5. **[Backend Integration](backend-integration/)** - Integrate with CI/CD
+1. **[Configure](../../configuration/)** - Set up production configuration
+2. **[Install](../installation/)** - Deploy to production
+3. **[API Reference](../../api/)** - Explore the API
+4. **[Authentication](../authentication/)** - Set up API access
+5. **[Backend Integration](../backend-integration/)** - Integrate with CI/CD
 
 ## Getting Help
 
 Need help? Check out:
 
-- **[Troubleshooting](troubleshooting/)** - Common issues
+- **[Troubleshooting](../installation/#troubleshooting)** - Common issues
 - **[GitHub Issues](https://github.com/Makr91/BoxVault/issues)** - Bug reports
 - **[GitHub Discussions](https://github.com/Makr91/BoxVault/discussions)** - Community help
-- **[Support](../support/)** - Support resources
+- **[Support](../../support/)** - Support resources

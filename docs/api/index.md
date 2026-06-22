@@ -3,7 +3,7 @@ title: API Reference
 layout: default
 nav_order: 2
 has_children: false
-permalink: /docs/api/
+permalink: /api/
 ---
 
 ## API Reference
@@ -130,5 +130,5 @@ Successful responses follow this format:
 
 ## Related APIs
 
-- **[BoxVault Backend](https://your-boxvault-instance.com/)** - Box repository management and file storage
-- **[BoxVault API Reference](https://your-boxvault-instance.com/api-docs/)** - Backend API documentation
+- **[BoxVault Backend](/)** - Box repository management and file storage
+- **[BoxVault API Reference](/api-docs/)** - Backend API documentation

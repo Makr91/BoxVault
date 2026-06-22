@@ -2,7 +2,7 @@
 title: Support
 layout: default
 nav_order: 9
-permalink: /docs/support/
+permalink: /support/
 ---
 
 ## Support

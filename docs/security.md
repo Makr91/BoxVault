@@ -2,7 +2,7 @@
 title: Security Policy
 layout: default
 nav_order: 8
-permalink: /docs/security/
+permalink: /security/
 ---
 
 ## Security

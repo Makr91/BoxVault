@@ -3,7 +3,7 @@ title: Backend Integration
 layout: default
 parent: Guides
 nav_order: 4
-permalink: /docs/guides/backend-integration/
+permalink: /guides/backend-integration/
 ---
 
 ## Backend Integration Guide

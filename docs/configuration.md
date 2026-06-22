@@ -2,7 +2,7 @@
 title: Configuration
 layout: default
 nav_order: 4
-permalink: /docs/configuration/
+permalink: /configuration/
 ---
 
 ## Configuration

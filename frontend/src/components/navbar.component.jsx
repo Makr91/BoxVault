@@ -12,6 +12,7 @@ import {
   FaIdBadge,
   FaHouseLock,
   FaBridgeLock,
+  FaBook,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 
@@ -683,6 +684,12 @@ const Navbar = ({
                     {t("navbar.about")}
                   </Link>
                 </li>
+                <li>
+                  <a href="/docs" className="dropdown-item">
+                    <FaBook className="me-2" />
+                    {t("navbar.docs")}
+                  </a>
+                </li>
                 {favoriteApps && favoriteApps.length > 0 && (
                   <>
                     <li>
@@ -781,6 +788,11 @@ const Navbar = ({
               <Link to="/about" className="nav-link">
                 {t("navbar.about")}
               </Link>
+            </li>
+            <li className="nav-item">
+              <a href="/docs" className="nav-link">
+                {t("navbar.docs")}
+              </a>
             </li>
             <li className="nav-item">
               <button

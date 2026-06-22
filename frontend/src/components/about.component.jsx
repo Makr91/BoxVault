@@ -155,7 +155,7 @@ const About = () => {
               <ul className="list-unstyled">
                 <li className="mb-2">
                   <a
-                    href="https://docs.boxvault.startcloud.com"
+                    href="/docs"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-decoration-none"
@@ -177,7 +177,7 @@ const About = () => {
                 </li>
                 <li className="mb-2">
                   <a
-                    href="https://docs.boxvault.startcloud.com/docs/guides"
+                    href="/docs/guides/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-decoration-none"

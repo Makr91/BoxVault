@@ -2,7 +2,7 @@
 title: Code of Conduct
 layout: default
 nav_order: 11
-permalink: /docs/code-of-conduct/
+permalink: /code-of-conduct/
 ---
 
 ## Code of Conduct

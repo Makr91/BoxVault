@@ -2,7 +2,7 @@
 title: Contributing
 layout: default
 nav_order: 10
-permalink: /docs/contributing/
+permalink: /contributing/
 ---
 
 ## Contributing

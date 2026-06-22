@@ -1,8 +1,8 @@
 # Jekyll configuration for BoxVault documentation
 title: BoxVault Documentation
 description: Documentation for BoxVault - Vagrant Box Repository Management System
-url: 'https://makr91.github.io'
-baseurl: '/BoxVault'
+url: ''
+baseurl: '/docs'
 
 # Theme
 theme: just-the-docs
@@ -13,7 +13,7 @@ color_scheme: wider
 
 # Logo and favicon
 # logo: "/BoxVault/frontend/src/images/BoxVault.svg"
-favicon_ico: '/BoxVault/frontend/public/favicon.ico'
+favicon_ico: '/favicon.ico'
 
 # Search
 search_enabled: true

@@ -30,10 +30,10 @@ jobs:
       patch: ${{ steps.release.outputs.patch }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Release Please
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         id: release
 
   build-production:
@@ -50,20 +50,3 @@ jobs:
     needs: release-please
     if: ${{ !needs.release-please.outputs.release_created }}
     uses: ./.github/workflows/dev-build.yml
-
-  deploy-documentation:
-    name: Publish Documentation
-    needs: build-production
-    if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Documentation Build
-        uses: actions/github-script@v8
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'docs.yml',
-              ref: 'main'
-            });

@@ -2,7 +2,7 @@
 title: Releases
 layout: default
 nav_order: 5
-permalink: /docs/releases/
+permalink: /releases/
 ---
 
 ## Releases
@@ -34,7 +34,7 @@ For a complete list of releases, changes, and download links, visit the [BoxVaul
 
 ## Release Notes
 
-Detailed release notes and changelogs are available in the [Changelog](changelog/) section.
+Detailed release notes and changelogs are available in the [Changelog](../changelog/) section.
 
 ## Installation
 
@@ -80,7 +80,7 @@ npm start
 
 ### From v1.x to v2.x
 
-Major version upgrades may require configuration changes or database migrations. See the [upgrade guide](guides/upgrade/) for detailed instructions.
+Major version upgrades may require configuration changes or database migrations. See the [Installation Guide](../guides/installation/) for detailed instructions.
 
 ### Minor Updates
 
@@ -96,6 +96,6 @@ docker pull boxvault/boxvault:latest
 
 For installation issues or questions:
 
-- Check the [Installation Guide](guides/installation/)
-- Review [Common Issues](guides/troubleshooting/)
+- Check the [Installation Guide](../guides/installation/)
+- Review [Common Issues](../guides/installation/#troubleshooting)
 - Open an issue on [GitHub](https://github.com/Makr91/BoxVault/issues)

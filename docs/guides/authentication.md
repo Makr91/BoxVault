@@ -3,7 +3,7 @@ title: Authentication
 layout: default
 parent: Guides
 nav_order: 3
-permalink: /docs/guides/authentication/
+permalink: /guides/authentication/
 ---
 
 ## Authentication Guide

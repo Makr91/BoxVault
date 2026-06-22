@@ -2,7 +2,7 @@
 title: Authors
 layout: default
 nav_order: 13
-permalink: /docs/authors/
+permalink: /authors/
 ---
 
 ## Authors

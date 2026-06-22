@@ -2,7 +2,7 @@
 title: License
 layout: default
 nav_order: 7
-permalink: /docs/license/
+permalink: /license/
 ---
 
 ## License
