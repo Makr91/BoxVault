@@ -32,7 +32,7 @@ jobs:
     steps:
       # Debian Build Steps
       - name: Checkout for Debian build
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -115,7 +115,7 @@ jobs:
 
       #      # OmniOS Build Steps
       #      - name: Fresh checkout for OmniOS build
-      #        uses: actions/checkout@v6
+      #        uses: actions/checkout@v7
       #        with:
       #          path: omnios-source
       #          clean: true
