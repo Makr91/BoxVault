@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.2](https://github.com/Makr91/BoxVault/compare/v0.44.1...v0.44.2) (2026-06-22)
+
+
+### Bug Fixes
+
+* enable trust proxy ([51c1d6e](https://github.com/Makr91/BoxVault/commit/51c1d6eac42efa39b6293d1428abb98d29057734))
+
 ## [0.44.1](https://github.com/Makr91/BoxVault/compare/v0.44.0...v0.44.1) (2026-06-22)
 
 
