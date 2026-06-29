@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
-    "prettier": "^3.8.1"
+    "prettier": "^3.9.1"
   },
   "author": "makr91",
   "license": "GPL-3.0",
