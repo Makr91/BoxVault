@@ -2,6 +2,10 @@
 import configLoader from '../../../utils/config-loader.js';
 import { log } from '../../../utils/Logger.js';
 import jwt from 'jsonwebtoken';
+import {
+  extractBearerToken,
+  findServiceAccountByRawToken,
+} from '../../../utils/serviceAccountAuth.js';
 import db from '../../../models/index.js';
 const {
   organization: Organization,
@@ -91,6 +95,27 @@ export const getOrganizationBoxDetails = async (req, res) => {
           }
         }
       } catch {
+        // Not a valid JWT — may be a raw service-account key, checked below
+      }
+    }
+
+    // Raw service-account API key fallback (Authorization: Bearer or x-access-token).
+    // A key from a service account belonging to this organization gets member visibility.
+    if (!userId) {
+      const rawToken = extractBearerToken(req) || token;
+      const rawServiceAccount = await findServiceAccountByRawToken(rawToken);
+
+      if (rawServiceAccount) {
+        ({ userId } = rawServiceAccount);
+
+        const orgData = await Organization.findOne({
+          where: { name: organization },
+        });
+
+        if (orgData && rawServiceAccount.organization_id === orgData.id) {
+          userOrganizationId = orgData.id;
+        }
+      } else if (token || extractBearerToken(req)) {
         log.app.warn('Unauthorized User.');
       }
     }

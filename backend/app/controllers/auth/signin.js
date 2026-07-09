@@ -151,7 +151,8 @@ export const signin = async (req, res) => {
       });
 
       if (serviceAccount) {
-        if (new Date() > serviceAccount.expiresAt) {
+        // expiresAt: null = never expires
+        if (serviceAccount.expiresAt && new Date() > serviceAccount.expiresAt) {
           return res.status(401).send({ message: req.__('auth.serviceAccountExpired') });
         }
         user = serviceAccount;

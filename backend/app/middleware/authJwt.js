@@ -2,15 +2,50 @@ import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import jwt from 'jsonwebtoken';
 import db from '../models/index.js';
+import { extractBearerToken, findServiceAccountByRawToken } from '../utils/serviceAccountAuth.js';
 const { user: User, role: Role, organization } = db;
+
+// Fallback for raw service-account API keys: when no valid JWT is present,
+// look the token up in the service_account table and set the same request
+// fields the JWT service-account path sets below.
+const applyServiceAccountAuth = async (req, ...candidates) => {
+  const tokens = candidates.filter(Boolean);
+  const results = await Promise.all(tokens.map(t => findServiceAccountByRawToken(t)));
+  const serviceAccount = results.find(Boolean);
+
+  if (!serviceAccount) {
+    return false;
+  }
+
+  req.userId = serviceAccount.userId;
+  req.isServiceAccount = true;
+  req.serviceAccountId = serviceAccount.id;
+  req.serviceAccountOrgId = serviceAccount.organization_id;
+  return true;
+};
 
 const verifyToken = async (req, res, next) => {
   try {
     const authConfig = loadConfig('auth');
     const token = req.headers['x-access-token'];
+    const bearerToken = extractBearerToken(req);
+
+    if (!token && !bearerToken) {
+      return res.status(403).send({ message: 'No token provided!' });
+    }
+
+    // Raw service-account keys cannot refresh tokens
+    const canFallbackToServiceAccount = !req.path.endsWith('/auth/refresh-token');
 
     if (!token) {
-      return res.status(403).send({ message: 'No token provided!' });
+      // Only Authorization: Bearer present — raw service-account key
+      if (canFallbackToServiceAccount && (await applyServiceAccountAuth(req, bearerToken))) {
+        return next();
+      }
+      return res.status(401).send({
+        message: 'Unauthorized!',
+        error: 'TOKEN_INVALID',
+      });
     }
 
     try {
@@ -75,6 +110,11 @@ const verifyToken = async (req, res, next) => {
 
       return next();
     } catch (jwtError) {
+      // Not a valid JWT — try it as a raw service-account key
+      if (canFallbackToServiceAccount && (await applyServiceAccountAuth(req, bearerToken, token))) {
+        return next();
+      }
+
       log.error.error('JWT verification error:', {
         error: jwtError.message,
         token: '(token present)',

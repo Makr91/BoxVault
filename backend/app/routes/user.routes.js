@@ -69,8 +69,12 @@ router.delete(
 );
 router.get('/user', [authJwt.verifyToken, authJwt.isUser], getUserProfile);
 
-// Multi-organization user management
-router.get('/user/organizations', [authJwt.verifyToken, authJwt.isUser], getUserOrganizations);
+// Multi-organization user management (service accounts get their single organization)
+router.get(
+  '/user/organizations',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  getUserOrganizations
+);
 
 router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], leaveOrganization);
 

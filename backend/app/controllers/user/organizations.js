@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { UserOrg } = db;
+const { UserOrg, service_account: ServiceAccount, organization: Organization } = db;
 
 /**
  * @swagger
@@ -64,6 +64,41 @@ const { UserOrg } = db;
 const getUserOrganizations = async (req, res) => {
   try {
     const { userId } = req;
+
+    // A service account belongs to exactly one organization
+    if (req.isServiceAccount) {
+      const serviceAccount = await ServiceAccount.findByPk(req.serviceAccountId, {
+        include: [{ model: Organization, as: 'organization' }],
+      });
+
+      if (!serviceAccount || !serviceAccount.organization) {
+        return res.send([]);
+      }
+
+      const org = serviceAccount.organization;
+      const organizations = [
+        {
+          organization: {
+            id: org.id,
+            name: org.name,
+            description: org.description,
+            emailHash: org.emailHash,
+            accessMode: org.access_mode,
+          },
+          role: 'user',
+          isPrimary: true,
+          joinedAt: serviceAccount.createdAt,
+        },
+      ];
+
+      log.api.info('Service account organization retrieved', {
+        userId,
+        serviceAccountId: serviceAccount.id,
+        organizationCount: organizations.length,
+      });
+
+      return res.send(organizations);
+    }
 
     const userOrganizations = await UserOrg.getUserOrganizations(userId);
 
