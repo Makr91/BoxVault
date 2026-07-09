@@ -1,5 +1,5 @@
 {
-  "1120792": {
+  "1121859": {
     "active": true,
     "notes": "js-yaml merge-key quadratic DoS (GHSA-h67p-54hq-rp68) - moderate, dev/test only. Vulnerable instance is js-yaml 3.14.2, pulled transitively by jest + @jest/globals via @istanbuljs/load-nyc-config (coverage tooling, never shipped to runtime). Patched in js-yaml 4.2.0, but there is no 3.x backport and jest pins js-yaml 3.x; resolves when jest updates its coverage deps.",
     "expiry": "2026-09-01"
