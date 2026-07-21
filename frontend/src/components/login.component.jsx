@@ -1,13 +1,15 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
+
+const SILENT_SSO_FLAG = "boxvault_silent_sso_attempted";
 
 const sanitizeProvider = (provider) => {
   const safeProviderPattern = /^[A-Za-z0-9_-]+$/;
@@ -17,7 +19,6 @@ const sanitizeProvider = (provider) => {
   return provider;
 };
 
-// Maps an OIDC `error` query parameter to a translated, user-facing message.
 const getOidcErrorMessage = (error, t) => {
   switch (error) {
     case "oidc_failed":
@@ -50,22 +51,81 @@ const Login = ({ theme }) => {
 
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [authMethod, setAuthMethod] = useState("local");
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
+  const [defaultProvider, setDefaultProvider] = useState(null);
+  const [silentLogin, setSilentLogin] = useState(false);
+  const [showLocalForm, setShowLocalForm] = useState(false);
+  const [silentChecking, setSilentChecking] = useState(false);
 
-  // OIDC errors arrive via the URL; derive that message rather than storing it,
-  // and let interaction-driven messages take precedence.
-  const oidcErrorMessage = useMemo(() => {
-    const error = new URLSearchParams(location.search).get("error");
-    return getOidcErrorMessage(error, t);
-  }, [location.search, t]);
+  const urlParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
+  const providerParam = urlParams.get("provider");
+
+  const oidcErrorMessage = useMemo(
+    () => getOidcErrorMessage(urlParams.get("error"), t),
+    [urlParams, t]
+  );
   const message = statusMessage || oidcErrorMessage;
 
   const enabledAuthMethods = useMemo(
     () => authMethods.filter((method) => method.enabled),
     [authMethods]
   );
+
+  const localEnabled = useMemo(
+    () => enabledAuthMethods.some((method) => method.id === "local"),
+    [enabledAuthMethods]
+  );
+
+  const oidcMethods = useMemo(() => {
+    const methods = enabledAuthMethods.filter((method) =>
+      method.id.startsWith("oidc-")
+    );
+    if (!defaultProvider) {
+      return methods;
+    }
+    const defaultId = `oidc-${defaultProvider}`;
+    return [...methods].sort((a, b) => {
+      if (a.id === defaultId) {
+        return -1;
+      }
+      if (b.id === defaultId) {
+        return 1;
+      }
+      return 0;
+    });
+  }, [enabledAuthMethods, defaultProvider]);
+
+  const visibleOidcMethods = useMemo(() => {
+    if (providerParam === "local") {
+      return [];
+    }
+    if (providerParam) {
+      const gated = oidcMethods.filter(
+        (method) =>
+          method.id === providerParam || method.id === `oidc-${providerParam}`
+      );
+      if (gated.length > 0) {
+        return gated;
+      }
+    }
+    return oidcMethods;
+  }, [oidcMethods, providerParam]);
+
+  const isGated =
+    !!providerParam &&
+    providerParam !== "local" &&
+    visibleOidcMethods.length > 0 &&
+    visibleOidcMethods.length < oidcMethods.length;
+
+  const localVisible =
+    localEnabled &&
+    (providerParam === "local" ||
+      visibleOidcMethods.length === 0 ||
+      showLocalForm);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,16 +139,13 @@ const Login = ({ theme }) => {
 
         if (result.methods && result.methods.length > 0) {
           setAuthMethods(result.methods);
-          const firstMethod = result.methods.find((m) => m.enabled);
-          if (firstMethod) {
-            setAuthMethod(firstMethod.id);
-          }
         } else {
           setAuthMethods([
             { id: "local", name: t("login.localAccount"), enabled: true },
           ]);
-          setAuthMethod("local");
         }
+        setDefaultProvider(result.default_provider || null);
+        setSilentLogin(!!result.silent_login);
       } catch (error) {
         if (!cancelled) {
           log.auth.error("Error loading auth methods", {
@@ -97,7 +154,6 @@ const Login = ({ theme }) => {
           setAuthMethods([
             { id: "local", name: "Local Account", enabled: true },
           ]);
-          setAuthMethod("local");
         }
       } finally {
         if (!cancelled) {
@@ -114,7 +170,6 @@ const Login = ({ theme }) => {
   }, [t]);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
     const token = urlParams.get("token");
 
     if (token) {
@@ -125,7 +180,6 @@ const Login = ({ theme }) => {
         const returnTo = urlParams.get("returnTo");
         if (returnTo) {
           const decodedUrl = decodeURIComponent(returnTo);
-          // Only allow same-origin redirects (relative paths or same domain)
           if (decodedUrl.startsWith("/") && !decodedUrl.startsWith("//")) {
             navigate(decodedUrl, { replace: true });
           } else {
@@ -138,17 +192,55 @@ const Login = ({ theme }) => {
         log.auth.error("Error processing OIDC token", {
           error: tokenError.message,
         });
-        // Surface the failure through the same URL-driven error channel
-        // instead of setting state synchronously inside the effect.
         navigate("/login?error=token_failed", { replace: true });
       }
     }
-  }, [location.search, navigate]);
+  }, [urlParams, navigate]);
 
-  const handleAuthMethodChange = (newMethod) => {
-    setAuthMethod(newMethod);
-    setStatusMessage("");
-  };
+  useEffect(() => {
+    if (methodsLoading || !silentLogin || !defaultProvider) {
+      return;
+    }
+    if (
+      providerParam ||
+      urlParams.get("error") ||
+      urlParams.get("silent") ||
+      urlParams.get("token") ||
+      urlParams.get("logout")
+    ) {
+      return;
+    }
+    if (AuthService.getCurrentUser()) {
+      return;
+    }
+    if (sessionStorage.getItem(SILENT_SSO_FLAG)) {
+      return;
+    }
+    const defaultMethodEnabled = enabledAuthMethods.some(
+      (method) => method.id === `oidc-${defaultProvider}`
+    );
+    if (!defaultMethodEnabled) {
+      return;
+    }
+
+    try {
+      const safeProvider = sanitizeProvider(defaultProvider);
+      sessionStorage.setItem(SILENT_SSO_FLAG, "1");
+      setSilentChecking(true);
+      window.location.href = `/api/auth/oidc/${safeProvider}?prompt=none`;
+    } catch (err) {
+      log.auth.error("Silent SSO attempt failed to start", {
+        error: err.message,
+      });
+    }
+  }, [
+    methodsLoading,
+    silentLogin,
+    defaultProvider,
+    providerParam,
+    urlParams,
+    enabledAuthMethods,
+  ]);
 
   const handleOidcLogin = (provider) => {
     if (window.location.pathname !== "/login") {
@@ -161,7 +253,7 @@ const Login = ({ theme }) => {
       const safeProvider = sanitizeProvider(provider);
       window.location.href = `/api/auth/oidc/${safeProvider}`;
     } catch (err) {
-      log("Invalid OIDC provider selected", err);
+      log.auth.error("Invalid OIDC provider selected", { error: err.message });
       setLoading(false);
       setStatusMessage(t("errors.invalidProvider"));
     }
@@ -178,12 +270,6 @@ const Login = ({ theme }) => {
   const handleLogin = (event) => {
     event.preventDefault();
 
-    if (authMethod.startsWith("oidc-")) {
-      const provider = authMethod.replace("oidc-", "");
-      handleOidcLogin(provider);
-      return;
-    }
-
     if (!formValues.username || !formValues.password) {
       return;
     }
@@ -197,15 +283,12 @@ const Login = ({ theme }) => {
       formValues.stayLoggedIn
     )
       .then((user) => {
-        const urlParams = new URLSearchParams(location.search);
         const returnTo = urlParams.get("returnTo");
 
-        // Dispatch login event to update UI components like the navbar
         EventBus.dispatch("login", user);
 
         if (returnTo) {
           const decodedUrl = decodeURIComponent(returnTo);
-          // Only allow same-origin redirects (relative paths or same domain)
           if (decodedUrl.startsWith("/") && !decodedUrl.startsWith("//")) {
             navigate(decodedUrl, { replace: true });
           } else {
@@ -224,6 +307,19 @@ const Login = ({ theme }) => {
       });
   };
 
+  if (silentChecking) {
+    return (
+      <div className="col-md-12">
+        <div className="container col-md-3 text-center mt-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">{t("login.checkingSession")}</span>
+          </div>
+          <p className="mt-3">{t("login.checkingSession")}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="col-md-12">
       <div className="container col-md-3">
@@ -234,106 +330,133 @@ const Login = ({ theme }) => {
         )}
         <h2 className="fs-1 text-center mt-4">{t("login.title")}</h2>
 
-        <form onSubmit={handleLogin} noValidate>
-          {!methodsLoading && enabledAuthMethods.length > 1 && (
-            <div className="form-group">
-              <label htmlFor="authMethod">{t("login.authMethod")}</label>
-              <select
-                className="form-control"
-                name="authMethod"
-                value={authMethod}
-                onChange={(e) => handleAuthMethodChange(e.target.value)}
-                disabled={loading}
+        {methodsLoading && (
+          <div className="text-center mt-4">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">{t("common:loading")}</span>
+            </div>
+          </div>
+        )}
+
+        {!methodsLoading && visibleOidcMethods.length > 0 && (
+          <div className="d-grid gap-2 mt-4">
+            {visibleOidcMethods.map((method) => {
+              const providerName = method.id.replace("oidc-", "");
+              const isDefault =
+                defaultProvider && method.id === `oidc-${defaultProvider}`;
+              return (
+                <button
+                  key={method.id}
+                  type="button"
+                  className={`btn ${
+                    isDefault || visibleOidcMethods.length === 1
+                      ? "btn-primary"
+                      : "btn-outline-primary"
+                  }`}
+                  disabled={loading}
+                  onClick={() => handleOidcLogin(providerName)}
+                >
+                  {loading && (
+                    <span className="spinner-border spinner-border-sm me-2" />
+                  )}
+                  {method.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!methodsLoading &&
+          visibleOidcMethods.length > 0 &&
+          localEnabled &&
+          !localVisible && (
+            <div className="text-center mt-3">
+              <button
+                type="button"
+                className="btn btn-link btn-sm"
+                onClick={() => setShowLocalForm(true)}
               >
-                {enabledAuthMethods.map((method) => (
-                  <option key={method.id} value={method.id}>
-                    {method.name}
-                  </option>
-                ))}
-              </select>
-              <small className="form-text text-muted">
-                {authMethod.startsWith("oidc-")
-                  ? t("login.oidcHint")
-                  : t("login.localHint")}
-              </small>
+                {t("login.useLocalAccount")}
+              </button>
             </div>
           )}
 
-          {authMethod.startsWith("oidc-") && (
+        {!methodsLoading && isGated && (
+          <div className="text-center mt-2">
+            <Link to="/login" className="btn btn-link btn-sm">
+              {t("login.otherOptions")}
+            </Link>
+          </div>
+        )}
+
+        {!methodsLoading && localVisible && (
+          <form onSubmit={handleLogin} noValidate>
+            {visibleOidcMethods.length > 0 && (
+              <div className="d-flex align-items-center my-3">
+                <hr className="flex-grow-1" />
+                <span className="px-2 text-muted small">
+                  {t("login.orSeparator")}
+                </span>
+                <hr className="flex-grow-1" />
+              </div>
+            )}
+
             <div className="form-group">
-              <div className="alert alert-info text-center">
-                <i className="fas fa-external-link-alt me-2" />
-                {t("login.redirectMessage")}
-              </div>
-            </div>
-          )}
-
-          {!authMethod.startsWith("oidc-") && (
-            <>
-              <div className="form-group">
-                <label htmlFor="username">{t("login.username")}</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="username"
-                  value={formValues.username}
-                  onChange={handleInputChange}
-                  onFocus={(e) => e.preventDefault()}
-                  onBlur={(e) => e.preventDefault()}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="password">{t("login.password")}</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  name="password"
-                  value={formValues.password}
-                  onChange={handleInputChange}
-                  onFocus={(e) => e.preventDefault()}
-                  onBlur={(e) => e.preventDefault()}
-                />
-              </div>
-            </>
-          )}
-
-          <div className="form-group mt-3">
-            <div className="form-check">
+              <label htmlFor="username">{t("login.username")}</label>
               <input
-                type="checkbox"
-                className="form-check-input"
-                name="stayLoggedIn"
-                id="stayLoggedIn"
-                checked={formValues.stayLoggedIn}
+                type="text"
+                className="form-control"
+                name="username"
+                value={formValues.username}
                 onChange={handleInputChange}
               />
-              <label className="form-check-label" htmlFor="stayLoggedIn">
-                {t("login.stayLoggedIn")}
-              </label>
             </div>
-          </div>
 
-          <div className="d-grid gap-2 col-6 mx-auto mt-3">
-            <button className="btn btn-primary btn-block" disabled={loading}>
-              {loading && <span className="spinner-border spinner-border-sm" />}
-              <span>
-                {authMethod.startsWith("oidc-")
-                  ? (enabledAuthMethods.find((m) => m.id === authMethod)
-                      ?.name ?? t("login.continueWithOidc"))
-                  : t("login.loginButton")}
-              </span>
-            </button>
-          </div>
-
-          {message && (
             <div className="form-group">
-              <div className="alert alert-danger" role="alert">
-                {message}
+              <label htmlFor="password">{t("login.password")}</label>
+              <input
+                type="password"
+                className="form-control"
+                name="password"
+                value={formValues.password}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="form-group mt-3">
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  name="stayLoggedIn"
+                  id="stayLoggedIn"
+                  checked={formValues.stayLoggedIn}
+                  onChange={handleInputChange}
+                />
+                <label className="form-check-label" htmlFor="stayLoggedIn">
+                  {t("login.stayLoggedIn")}
+                </label>
               </div>
             </div>
-          )}
-        </form>
+
+            <div className="d-grid gap-2 col-6 mx-auto mt-3">
+              <button className="btn btn-primary btn-block" disabled={loading}>
+                {loading && (
+                  <span className="spinner-border spinner-border-sm" />
+                )}
+                <span>{t("login.loginButton")}</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {message && (
+          <div className="form-group mt-3">
+            <div className="alert alert-danger" role="alert">
+              {message}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

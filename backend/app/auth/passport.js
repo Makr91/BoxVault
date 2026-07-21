@@ -51,9 +51,16 @@ const getOidcConfiguration = providerName => oidcConfigurations.get(providerName
  * @param {string} redirectUri - Callback redirect URI
  * @param {string} state - State parameter for CSRF protection
  * @param {string} codeVerifier - PKCE code verifier
+ * @param {string|null} promptOverride - Per-request prompt value (e.g. 'none' for silent SSO)
  * @returns {Promise<URL>} Authorization URL
  */
-const buildAuthorizationUrl = async (providerName, redirectUri, state, codeVerifier) => {
+const buildAuthorizationUrl = async (
+  providerName,
+  redirectUri,
+  state,
+  codeVerifier,
+  promptOverride = null
+) => {
   const authConfig = loadConfig('auth');
   const config = oidcConfigurations.get(providerName);
   if (!config) {
@@ -71,9 +78,15 @@ const buildAuthorizationUrl = async (providerName, redirectUri, state, codeVerif
     code_challenge_method: 'S256',
   };
 
+  const prompt = promptOverride || providerConfig.prompt?.value;
+  if (prompt) {
+    authParams.prompt = prompt;
+  }
+
   log.auth.info('Building authorization URL', {
     provider: providerName,
     redirectUri,
+    prompt: prompt || 'default',
   });
 
   return _buildAuthorizationUrl(config, authParams);

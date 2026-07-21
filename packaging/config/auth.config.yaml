@@ -230,6 +230,30 @@ auth:
       subsection_key: oidcSettings
       required: false
       order: 52
+    default_provider:
+      type: string
+      value: ''
+      description: >-
+        Provider name to feature as the primary sign-in option when multiple
+        OIDC providers are enabled. Must match a key under providers. Leave
+        blank for no default.
+      section: Authentication
+      subsection: OIDC Settings
+      subsection_key: oidcSettings
+      required: false
+      order: 53
+    silent_login:
+      type: boolean
+      value: false
+      description: >-
+        Attempt a silent (prompt=none) sign-in with the default provider when
+        an unauthenticated user opens the login page. Users with an active
+        identity-provider session are logged in without interaction.
+      section: Authentication
+      subsection: OIDC Settings
+      subsection_key: oidcSettings
+      required: false
+      order: 54
     providers: {}
   resource_server:
     enabled:

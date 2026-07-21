@@ -200,7 +200,14 @@ router.get('/auth/methods', (req, res) => {
       methods: methods.map(m => m.id),
     });
 
-    return res.json({ methods });
+    const defaultProvider = authConfig.auth?.oidc?.default_provider?.value || null;
+    const silentLogin = !!authConfig.auth?.oidc?.silent_login?.value;
+
+    return res.json({
+      methods,
+      default_provider: defaultProvider,
+      silent_login: silentLogin,
+    });
   } catch (error) {
     log.auth.error('Get auth methods error', {
       error: error.message,
@@ -259,12 +266,14 @@ router.get('/auth/oidc/callback', async (req, res) => {
   const state = req.session?.oidcState;
   const codeVerifier = req.session?.oidcCodeVerifier;
   const returnUrl = req.session?.oidcReturnUrl || '/';
+  const wasSilent = !!req.session?.oidcSilent;
 
   log.auth.debug('OIDC callback session data', {
     provider,
     hasState: !!state,
     hasCodeVerifier: !!codeVerifier,
     returnUrl,
+    silent: wasSilent,
     queryCode: req.query.code ? 'present' : 'missing',
     queryState: req.query.state ? 'present' : 'missing',
     stateMatch: req.query.state === state,
@@ -276,6 +285,23 @@ router.get('/auth/oidc/callback', async (req, res) => {
     delete req.session.oidcState;
     delete req.session.oidcCodeVerifier;
     delete req.session.oidcReturnUrl;
+    delete req.session.oidcSilent;
+  }
+
+  if (req.query.error) {
+    log.auth.info('OIDC callback returned provider error', {
+      provider,
+      error: req.query.error,
+      silent: wasSilent,
+    });
+
+    if (wasSilent) {
+      return res.redirect('/login?silent=failed');
+    }
+    if (req.query.error === 'access_denied') {
+      return res.redirect('/login?error=access_denied');
+    }
+    return res.redirect('/login?error=oidc_failed');
   }
 
   if (!provider || !state || !codeVerifier) {
@@ -439,18 +465,21 @@ router.get('/auth/oidc/:provider', async (req, res) => {
     const state = randomState();
     const codeVerifier = randomPKCECodeVerifier();
     const returnUrl = req.query.return || '/';
+    const promptOverride = req.query.prompt === 'none' ? 'none' : null;
 
     log.auth.debug('Generated OIDC security parameters', {
       provider,
       hasState: !!state,
       hasCodeVerifier: !!codeVerifier,
       returnUrl,
+      silent: !!promptOverride,
     });
 
     req.session.oidcProvider = provider;
     req.session.oidcState = state;
     req.session.oidcCodeVerifier = codeVerifier;
     req.session.oidcReturnUrl = returnUrl;
+    req.session.oidcSilent = !!promptOverride;
 
     log.auth.debug('Stored OIDC session data', {
       provider,
@@ -459,7 +488,13 @@ router.get('/auth/oidc/:provider', async (req, res) => {
 
     // Generate authorization URL
     const redirectUri = `${appConfig.boxvault.origin.value}/api/auth/oidc/callback`;
-    const authUrl = await buildAuthorizationUrl(provider, redirectUri, state, codeVerifier);
+    const authUrl = await buildAuthorizationUrl(
+      provider,
+      redirectUri,
+      state,
+      codeVerifier,
+      promptOverride
+    );
 
     log.auth.info('Redirecting to OIDC provider', {
       provider,
