@@ -39,6 +39,9 @@
     "concurrently": "^10.0.3",
     "prettier": "^3.9.5"
   },
+  "overrides": {
+    "shell-quote": "^1.9.0"
+  },
   "author": "makr91",
   "license": "GPL-3.0",
   "files": [

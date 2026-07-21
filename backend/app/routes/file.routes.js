@@ -48,9 +48,10 @@ router.use((req, res, next) => {
   next();
 });
 
+router.use(fileOperationLimiter);
+
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyBoxFilePath,
@@ -59,7 +60,6 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
-  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyBoxFilePath,
@@ -68,7 +68,6 @@ router.post(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
-  fileOperationLimiter,
   verifyBoxFilePath,
   externalTokenAuth,
   sessionAuth,
@@ -78,7 +77,6 @@ router.get(
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/download',
   downloadLimiter,
-  fileOperationLimiter,
   verifyBoxFilePath,
   downloadAuth,
   externalTokenAuth,
@@ -89,7 +87,6 @@ router.get(
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/get-download-link',
   getDownloadLinkLimiter,
-  fileOperationLimiter,
   verifyBoxFilePath,
   sessionAuth,
   getDownloadLink
@@ -97,7 +94,6 @@ router.post(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
-  fileOperationLimiter,
   authJwt.verifyToken,
   verifyBoxFilePath,
   authJwt.isUserOrServiceAccount,
