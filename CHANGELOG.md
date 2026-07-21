@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.45.0](https://github.com/Makr91/BoxVault/compare/v0.44.2...v0.45.0) (2026-07-21)
+
+
+### Features
+
+* OAuth resource server with org sync from identity provider ([6215cb4](https://github.com/Makr91/BoxVault/commit/6215cb428a3e8ba780829e0fdc25c654ee151caa))
+
+
+### Bug Fixes
+
+* security vulnerabilities in js-yaml, tar, and brace-expansion dependencies ([3170146](https://github.com/Makr91/BoxVault/commit/3170146c4e9ee05a57638060d2cf369ebcc2fc38))
+
 ## [0.44.2](https://github.com/Makr91/BoxVault/compare/v0.44.1...v0.44.2) (2026-07-09)
 
 
