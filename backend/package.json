@@ -43,7 +43,7 @@
     "express-session": "^1.19.0",
     "i18n": "^0.15.3",
     "jose": "^5.9.6",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.3.0",
     "jsonwebtoken": "^9.0.3",
     "lusca": "^1.7.0",
     "morgan": "^1.10.1",
