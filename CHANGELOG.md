@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.45.1](https://github.com/Makr91/BoxVault/compare/v0.45.0...v0.45.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* linting issues ([d6b41b4](https://github.com/Makr91/BoxVault/commit/d6b41b4560c5c91919b20af840663865c32195cb))
+* linting issues ([ef4140f](https://github.com/Makr91/BoxVault/commit/ef4140fcc48f011ede6c7f63ea32fbba9a015d98))
+* OIDC ([715ae80](https://github.com/Makr91/BoxVault/commit/715ae8076d35b0d2379581453175f653c8e4fd71))
+* router-level rate limiting on file and architecture routes, shell-quote DoS override ([41e2e77](https://github.com/Makr91/BoxVault/commit/41e2e775a5d6dd44eb68a7171de382245b526a05))
+
 ## [0.45.0](https://github.com/Makr91/BoxVault/compare/v0.44.2...v0.45.0) (2026-07-21)
 
 
