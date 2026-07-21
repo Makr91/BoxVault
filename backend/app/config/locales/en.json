@@ -52,6 +52,8 @@
     "cannotLeaveOnlyOrg": "Cannot leave your only organization! You must belong to at least one organization.",
     "leftOrganization": "Successfully left organization {{orgName}}",
     "leaveError": "Error leaving organization",
+    "externallyManaged": "This organization is managed by your identity provider. Membership, roles, and organization lifecycle are managed there and synced to BoxVault automatically.",
+    "externallyManagedRename": "This organization is managed by your identity provider and cannot be renamed in BoxVault. Its display name updates automatically when renamed at the provider.",
     "alreadyMember": "You are already a member of this organization.",
     "joinedAsAdmin": "Joined organization {{organization}} as admin.",
     "joinError": "Error joining organization"

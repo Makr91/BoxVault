@@ -169,7 +169,7 @@ const UserCard = ({
   // In per-org mode (onChangeRole provided) the badge reflects the org role;
   // otherwise it reflects the global role.
   const resolveBadgeRole = () => {
-    if (onChangeRole) {
+    if (orgRole || onChangeRole) {
       return orgRole || "user";
     }
     if (globalIsAdmin) {

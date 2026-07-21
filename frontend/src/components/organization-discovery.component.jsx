@@ -167,6 +167,9 @@ const OrganizationDiscovery = ({ theme }) => {
   const filteredOrganizations = organizations.filter(
     (org) =>
       org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (org.display_name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       org.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -239,7 +242,7 @@ const OrganizationDiscovery = ({ theme }) => {
                       <div className="d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">
                           {renderOrgIcon(org)}
-                          {org.name}
+                          {org.display_name || org.name}
                         </h5>
                         <span
                           className={`badge ${getAccessModeClass(org.accessMode)}`}
@@ -329,7 +332,9 @@ const OrganizationDiscovery = ({ theme }) => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {t("discovery.modal.title", { orgName: requestingOrg.name })}
+                  {t("discovery.modal.title", {
+                    orgName: requestingOrg.display_name || requestingOrg.name,
+                  })}
                 </h5>
                 <button
                   type="button"
@@ -344,7 +349,9 @@ const OrganizationDiscovery = ({ theme }) => {
                 <p>
                   <Trans
                     i18nKey="discovery.modal.description"
-                    values={{ orgName: requestingOrg.name }}
+                    values={{
+                      orgName: requestingOrg.display_name || requestingOrg.name,
+                    }}
                     components={{ strong: <strong /> }}
                   />
                 </p>

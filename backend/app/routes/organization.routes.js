@@ -74,7 +74,12 @@ router.put(
 
 router.delete(
   '/organization/:organization',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    authJwt.isAdmin,
+    verifyOrgAccess.rejectExternallyManagedOrg,
+  ],
   deleteOrg
 );
 
@@ -105,20 +110,35 @@ router.get(
 
 router.put(
   '/organization/:organization/users/:userId/role',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    verifyOrgAccess.isOrgAdmin,
+    verifyOrgAccess.rejectExternallyManagedOrg,
+  ],
   updateUserOrgRole
 );
 
 router.delete(
   '/organization/:organization/members/:userId',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    verifyOrgAccess.isOrgAdmin,
+    verifyOrgAccess.rejectExternallyManagedOrg,
+  ],
   removeUserFromOrg
 );
 
 // Global-admin self-join: a platform admin adds themselves to an org as admin
 router.post(
   '/organization/:organization/join',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    authJwt.isAdmin,
+    verifyOrgAccess.rejectExternallyManagedOrg,
+  ],
   joinAsAdmin
 );
 

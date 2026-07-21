@@ -558,7 +558,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           organization,
           error: e.message,
         });
-        setMessage(t("messages.operationFailed"));
+        setMessage(e.response?.data?.message || t("messages.operationFailed"));
         setMessageType("danger");
       });
   };

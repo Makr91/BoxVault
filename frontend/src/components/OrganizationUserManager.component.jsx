@@ -298,7 +298,17 @@ const OrganizationUserManager = () => {
                   </form>
                 ) : (
                   <Link to={`/${org.name}`} className="card-title">
-                    {org.org_code ? `${org.org_code} - ${org.name}` : org.name}
+                    {org.org_code
+                      ? `${org.org_code} - ${org.display_name || org.name}`
+                      : org.display_name || org.name}
+                    {org.external_issuer && (
+                      <span
+                        className="badge bg-info ms-2"
+                        title={t("orgUserManager.ssoManagedHint")}
+                      >
+                        {t("orgUserManager.ssoManaged")}
+                      </span>
+                    )}
                   </Link>
                 )}
                 <div>
@@ -324,16 +334,18 @@ const OrganizationUserManager = () => {
                   >
                     {t("buttons.edit")}
                   </button>
-                  <button
-                    className="btn btn-primary btn-sm me-2"
-                    onClick={() => {
-                      setEditingOrgId(org.id);
-                      setNewOrgName(org.name);
-                      setOldName(org.name);
-                    }}
-                  >
-                    {t("buttons.rename")}
-                  </button>
+                  {!org.external_issuer && (
+                    <button
+                      className="btn btn-primary btn-sm me-2"
+                      onClick={() => {
+                        setEditingOrgId(org.id);
+                        setNewOrgName(org.name);
+                        setOldName(org.name);
+                      }}
+                    >
+                      {t("buttons.rename")}
+                    </button>
+                  )}
                   <button
                     className={`btn btn-${org.suspended ? "success" : "warning"} btn-sm me-2`}
                     onClick={() =>
@@ -342,17 +354,19 @@ const OrganizationUserManager = () => {
                   >
                     {org.suspended ? t("buttons.resume") : t("buttons.suspend")}
                   </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() =>
-                      handleDeleteClick({
-                        type: "organization",
-                        name: org.name,
-                      })
-                    }
-                  >
-                    {t("buttons.delete")}
-                  </button>
+                  {!org.external_issuer && (
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() =>
+                        handleDeleteClick({
+                          type: "organization",
+                          name: org.name,
+                        })
+                      }
+                    >
+                      {t("buttons.delete")}
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="card-body">
@@ -371,8 +385,10 @@ const OrganizationUserManager = () => {
                         handleSuspendOrResumeUser(user.id, false)
                       }
                       onResume={() => handleSuspendOrResumeUser(user.id, true)}
-                      onRemoveFromOrg={() =>
-                        handleRemoveUserFromOrg(org.name, user.id)
+                      onRemoveFromOrg={
+                        org.external_issuer
+                          ? undefined
+                          : () => handleRemoveUserFromOrg(org.name, user.id)
                       }
                       onDelete={() =>
                         handleDeleteClick({ type: "user", id: user.id })

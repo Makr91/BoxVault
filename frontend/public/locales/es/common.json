@@ -238,6 +238,8 @@
   "orgUserManager": {
     "searchPlaceholder": "Buscar organizaciones por nombre o código...",
     "totalBoxes": "Boxes Totales: {{count}}",
+    "ssoManaged": "Gestionada por SSO",
+    "ssoManagedHint": "Esta organización está gestionada por tu proveedor de identidad. La membresía, los roles, el renombrado y la eliminación se gestionan allí y se sincronizan automáticamente.",
     "rename": {
       "sameNameError": "El nuevo nombre es el mismo que el anterior. Por favor ingresa un nombre diferente.",
       "orgExistsError": "Ya existe una organización con este nombre. Por favor elige un nombre diferente.",

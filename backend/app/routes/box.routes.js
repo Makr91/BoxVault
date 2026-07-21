@@ -1,6 +1,6 @@
 // box.routes.js
 import { Router } from 'express';
-import { authJwt, verifyBoxName, verifyOrgAccess } from '../middleware/index.js';
+import { authJwt, externalTokenAuth, verifyBoxName, verifyOrgAccess } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   discoverAll,
@@ -25,9 +25,9 @@ router.use((req, res, next) => {
 
 router.get('/discover', discoverAll);
 router.get('/discover/:name', discoverAll);
-router.get('/organization/:organization/box', getOrganizationBoxDetails);
-router.get('/organization/:organization/box/:name', findOne);
-router.get('/organization/:organization/box/:name/metadata', findOne);
+router.get('/organization/:organization/box', externalTokenAuth, getOrganizationBoxDetails);
+router.get('/organization/:organization/box/:name', externalTokenAuth, findOne);
+router.get('/organization/:organization/box/:name/metadata', externalTokenAuth, findOne);
 
 // Administrative Actions - Now require organization membership
 router.post(

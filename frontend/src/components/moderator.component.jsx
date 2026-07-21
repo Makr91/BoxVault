@@ -13,6 +13,65 @@ import { isOrgAdmin } from "../utils/permissions";
 import ConfirmationModal from "./confirmation.component";
 import UserCard from "./UserCard.component";
 
+const ModeratorTabs = ({
+  activeTab,
+  setActiveTab,
+  isExternalOrg,
+  joinRequestCount,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <ul className="nav nav-tabs">
+      <li className="nav-item">
+        <button
+          className={`nav-link ${activeTab === "organization" ? "active" : ""}`}
+          onClick={() => setActiveTab("organization")}
+        >
+          {t("moderator.tabs.organization")}
+        </button>
+      </li>
+      {!isExternalOrg && (
+        <>
+          <li className="nav-item">
+            <button
+              className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
+              onClick={() => setActiveTab("joinRequests")}
+            >
+              {t("moderator.tabs.joinRequests")}
+              {joinRequestCount > 0 && (
+                <span className="badge bg-warning ms-2">
+                  {joinRequestCount}
+                </span>
+              )}
+            </button>
+          </li>
+          <li className="nav-item">
+            <button
+              className={`nav-link ${activeTab === "invitations" ? "active" : ""}`}
+              onClick={() => setActiveTab("invitations")}
+            >
+              {t("moderator.tabs.invitations")}
+            </button>
+          </li>
+        </>
+      )}
+    </ul>
+  );
+};
+
+ModeratorTabs.propTypes = {
+  activeTab: PropTypes.string.isRequired,
+  setActiveTab: PropTypes.func.isRequired,
+  isExternalOrg: PropTypes.bool.isRequired,
+  joinRequestCount: PropTypes.number.isRequired,
+};
+
+const getOrgNameFieldValue = (isExternalOrg, orgDisplayName, newOrgName) =>
+  isExternalOrg && orgDisplayName
+    ? `${orgDisplayName} (${newOrgName})`
+    : newOrgName;
+
 const Moderator = ({ currentOrganization }) => {
   const { t } = useTranslation();
   useEffect(() => {
@@ -35,6 +94,8 @@ const Moderator = ({ currentOrganization }) => {
   const [orgAccessMode, setOrgAccessMode] = useState("private");
   const [orgDefaultRole, setOrgDefaultRole] = useState("user");
   const [inviteRole, setInviteRole] = useState("user");
+  const [isExternalOrg, setIsExternalOrg] = useState(false);
+  const [orgDisplayName, setOrgDisplayName] = useState("");
   const [activeTab, setActiveTab] = useState("organization");
   const currentUser = AuthService.getCurrentUser();
   const canManageRoles = isOrgAdmin(currentUser, currentOrganization);
@@ -79,6 +140,8 @@ const Moderator = ({ currentOrganization }) => {
           setJoinRequests(joinRequestsResponse.data || []);
 
           setNewOrgName(orgDetailsResponse.data.name);
+          setIsExternalOrg(!!orgDetailsResponse.data.external_issuer);
+          setOrgDisplayName(orgDetailsResponse.data.display_name || "");
           setOrgEmail(orgDetailsResponse.data.email || "");
           setOrgEmailHash(orgDetailsResponse.data.emailHash || "");
           setOrgDescription(orgDetailsResponse.data.description || "");
@@ -118,7 +181,7 @@ const Moderator = ({ currentOrganization }) => {
       return;
     }
 
-    if (newOrgName !== currentOrganization) {
+    if (!isExternalOrg && newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
         setUpdateMessage(t("moderator.orgExists"));
@@ -127,11 +190,10 @@ const Moderator = ({ currentOrganization }) => {
     }
 
     try {
-      // Update organization details
       const response = await OrganizationService.updateOrganization(
         currentOrganization,
         {
-          organization: newOrgName,
+          organization: isExternalOrg ? currentOrganization : newOrgName,
           email: orgEmail,
           description: orgDescription,
         }
@@ -328,44 +390,20 @@ const Moderator = ({ currentOrganization }) => {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const canManageMembership = canManageRoles && !isExternalOrg;
+
   return (
     <div className="list row">
       <header>
         <h3 className="text-center">{t("moderator.title")}</h3>
       </header>
 
-      {/* Navigation Tabs */}
-      <ul className="nav nav-tabs">
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "organization" ? "active" : ""}`}
-            onClick={() => setActiveTab("organization")}
-          >
-            {t("moderator.tabs.organization")}
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
-            onClick={() => setActiveTab("joinRequests")}
-          >
-            {t("moderator.tabs.joinRequests")}
-            {joinRequests.length > 0 && (
-              <span className="badge bg-warning ms-2">
-                {joinRequests.length}
-              </span>
-            )}
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "invitations" ? "active" : ""}`}
-            onClick={() => setActiveTab("invitations")}
-          >
-            {t("moderator.tabs.invitations")}
-          </button>
-        </li>
-      </ul>
+      <ModeratorTabs
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isExternalOrg={isExternalOrg}
+        joinRequestCount={joinRequests.length}
+      />
 
       {loading ? (
         <p>{t("loading")}</p>
@@ -376,9 +414,24 @@ const Moderator = ({ currentOrganization }) => {
               <div className="col-md-12 mb-4">
                 <div className="card mt-2 mb-2">
                   <div className="card-header">
-                    <h4>{t("moderator.organization.title")}</h4>
+                    <h4>
+                      {t("moderator.organization.title")}
+                      {isExternalOrg && (
+                        <span
+                          className="badge bg-info ms-2"
+                          title={t("orgUserManager.ssoManagedHint")}
+                        >
+                          {t("orgUserManager.ssoManaged")}
+                        </span>
+                      )}
+                    </h4>
                   </div>
                   <div className="card-body">
+                    {isExternalOrg && (
+                      <div className="alert alert-info">
+                        {t("orgUserManager.ssoManagedHint")}
+                      </div>
+                    )}
                     <form onSubmit={handleUpdateOrganization}>
                       <div className="form-group">
                         <label htmlFor="orgName">
@@ -388,8 +441,14 @@ const Moderator = ({ currentOrganization }) => {
                           type="text"
                           className="form-control"
                           id="orgName"
-                          value={newOrgName}
+                          value={getOrgNameFieldValue(
+                            isExternalOrg,
+                            orgDisplayName,
+                            newOrgName
+                          )}
                           onChange={(e) => setNewOrgName(e.target.value)}
+                          readOnly={isExternalOrg}
+                          disabled={isExternalOrg}
                         />
                       </div>
                       <div className="form-group">
@@ -528,12 +587,12 @@ const Moderator = ({ currentOrganization }) => {
                           currentUser={currentUser}
                           orgRole={user.orgRole}
                           onChangeRole={
-                            canManageRoles
+                            canManageMembership
                               ? (newRole) => handleSetOrgRole(user.id, newRole)
                               : undefined
                           }
                           onRemoveFromOrg={
-                            canManageRoles
+                            canManageMembership
                               ? () => handleRemoveUserFromOrg(user.id)
                               : undefined
                           }

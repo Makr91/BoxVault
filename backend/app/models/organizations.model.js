@@ -48,6 +48,28 @@ export default (sequelize, Sequelize) => {
         comment: 'Default role for new members',
         field: 'default_role',
       },
+      display_name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment:
+          'Human-readable org name for presentation. For external orgs, refreshed from the provider on every sync; name (the URL slug) is frozen at creation.',
+        field: 'display_name',
+      },
+      external_issuer: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        unique: 'unique_external_org',
+        comment: 'OIDC issuer (iss) that owns this org; null for locally-created orgs',
+        field: 'external_issuer',
+      },
+      external_org_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        unique: 'unique_external_org',
+        comment:
+          'Immutable org UUID from the OIDC provider; null for local orgs. Keyed with external_issuer',
+        field: 'external_org_id',
+      },
     },
     {
       defaultScope: {},

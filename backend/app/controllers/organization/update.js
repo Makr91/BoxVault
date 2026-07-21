@@ -96,6 +96,15 @@ export const update = async (req, res) => {
       where: { name: organizationName },
     });
 
+    // Externally-managed orgs (mirrored from an OIDC provider) keep their slug
+    // frozen — renaming would break the mirror and every URL. Local-only fields
+    // (description, email, org_code) remain editable.
+    if (org?.external_issuer && organization && organization !== org.name) {
+      return res.status(403).send({
+        message: req.__('organizations.externallyManagedRename'),
+      });
+    }
+
     // Handle directory operations only if directories actually exist and names are different
     try {
       if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {

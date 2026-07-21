@@ -17,6 +17,7 @@ import vagrantHandler from './vagrantHandler.js';
 import { rateLimiter, fileOperationLimiter, architectureOperationLimiter } from './rateLimiter.js';
 import { verifyBoxFilePath } from './verifyBoxFilePath.js';
 import { downloadAuth } from './downloadAuth.js';
+import { externalTokenAuth } from './externalTokenAuth.js';
 import { sessionAuth } from './sessionAuth.js';
 import { errorHandler } from './errorHandler.js';
 import { configAwareI18nMiddleware } from '../config/i18n.js';
@@ -37,6 +38,7 @@ export {
   fileOperationLimiter,
   architectureOperationLimiter,
   downloadAuth,
+  externalTokenAuth,
   sessionAuth,
   errorHandler,
   oidcTokenRefresh,

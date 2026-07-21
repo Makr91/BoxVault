@@ -231,6 +231,31 @@ auth:
       required: false
       order: 52
     providers: {}
+  resource_server:
+    enabled:
+      type: boolean
+      value: false
+      description: >-
+        Accept access tokens issued by a configured OIDC provider as Bearer
+        credentials (e.g. from a desktop app), authenticating the matching
+        BoxVault user without a manually-generated API key.
+      section: Authentication
+      subsection: Resource Server
+      subsection_key: resourceServer
+      required: false
+      order: 1
+    audience:
+      type: string
+      value: boxvault
+      description: >-
+        Expected audience (aud) claim in access tokens presented to BoxVault as a
+        resource server. Must match the audience the OIDC provider issues for the
+        client. Leave blank to skip audience validation.
+      section: Authentication
+      subsection: Resource Server
+      subsection_key: resourceServer
+      required: false
+      order: 2
   external:
     domain_mapping_enabled:
       type: boolean

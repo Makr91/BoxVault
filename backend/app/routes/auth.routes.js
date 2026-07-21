@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifySignUp, authJwt, oidcTokenRefresh } from '../middleware/index.js';
+import { verifySignUp, authJwt, oidcTokenRefresh, verifyOrgAccess } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   signup,
@@ -50,7 +50,12 @@ router.get(
 );
 router.post(
   '/auth/invite',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isModeratorOrAdmin],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    authJwt.isModeratorOrAdmin,
+    verifyOrgAccess.rejectExternallyManagedOrg,
+  ],
   sendInvitation
 );
 router.delete(

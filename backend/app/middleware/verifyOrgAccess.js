@@ -233,6 +233,47 @@ const isOrgModeratorOrAdmin = async (req, res, next) => {
 };
 
 /**
+ * Middleware to reject membership/lifecycle writes on externally-managed orgs.
+ *
+ * Orgs with external_issuer set are mirrors of an OIDC provider's orgs: their
+ * membership, roles, and lifecycle are managed on the auth-server and re-synced
+ * on every login — local writes would be silently overwritten. Local orgs
+ * (external_issuer null) are unaffected.
+ *
+ * Resolves the org from req.params.organization or req.body.organizationName.
+ * Falls through when the org doesn't exist (later middleware handles 404).
+ */
+const rejectExternallyManagedOrg = async (req, res, next) => {
+  try {
+    const orgName = req.params.organization || req.body?.organizationName;
+
+    if (!orgName) {
+      return next();
+    }
+
+    const organization = await Organization.findOne({ where: { name: orgName } });
+    if (!organization) {
+      return next();
+    }
+
+    if (organization.external_issuer) {
+      return res.status(403).send({
+        message: req.__('organizations.externallyManaged'),
+      });
+    }
+
+    return next();
+  } catch (err) {
+    log.error.error('External-org write guard error:', {
+      error: err.message,
+      stack: err.stack,
+      organization: req.params.organization || req.body?.organizationName,
+    });
+    return res.status(500).send({ message: 'Error checking organization management source' });
+  }
+};
+
+/**
  * Helper function to get user's role in organization (for controllers)
  * @param {number} userId - User ID
  * @param {string} orgName - Organization name
@@ -261,4 +302,11 @@ const getUserOrgContext = async (userId, orgName) => {
   }
 };
 
-export { isOrgMember, isOrgModerator, isOrgAdmin, isOrgModeratorOrAdmin, getUserOrgContext };
+export {
+  isOrgMember,
+  isOrgModerator,
+  isOrgAdmin,
+  isOrgModeratorOrAdmin,
+  rejectExternallyManagedOrg,
+  getUserOrgContext,
+};

@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { authJwt, sessionAuth, downloadAuth, verifyBoxFilePath } from '../middleware/index.js';
+import {
+  authJwt,
+  sessionAuth,
+  downloadAuth,
+  externalTokenAuth,
+  verifyBoxFilePath,
+} from '../middleware/index.js';
 import {
   update,
   upload,
@@ -64,6 +70,7 @@ router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
   fileOperationLimiter,
   verifyBoxFilePath,
+  externalTokenAuth,
   sessionAuth,
   info
 );
@@ -74,6 +81,7 @@ router.get(
   fileOperationLimiter,
   verifyBoxFilePath,
   downloadAuth,
+  externalTokenAuth,
   sessionAuth,
   download
 );
