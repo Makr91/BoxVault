@@ -312,7 +312,9 @@ const Login = ({ theme }) => {
       <div className="col-md-12">
         <div className="container col-md-3 text-center mt-5">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">{t("login.checkingSession")}</span>
+            <span className="visually-hidden">
+              {t("login.checkingSession")}
+            </span>
           </div>
           <p className="mt-3">{t("login.checkingSession")}</p>
         </div>
