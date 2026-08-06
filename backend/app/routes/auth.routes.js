@@ -10,6 +10,7 @@ import {
   deleteInvitation,
   acceptInvitation,
   refreshToken,
+  backchannelLogout,
 } from '../controllers/auth.controller.js';
 
 import { validateInvitationToken } from '../controllers/auth/invitation/validate.js';
@@ -565,6 +566,8 @@ router.post('/auth/oidc/exchange', (req, res) => {
 
   return res.json({ token });
 });
+
+router.post('/auth/oidc/backchannel-logout', backchannelLogout);
 
 /**
  * @swagger

@@ -471,7 +471,10 @@ const initializeApp = async () => {
         // Header-authenticated: CSRF-immune (see scope note above)
         return next();
       }
-      if (req.path === '/api/auth/oidc/exchange') {
+      if (
+        req.path === '/api/auth/oidc/exchange' ||
+        req.path === '/api/auth/oidc/backchannel-logout'
+      ) {
         // Authenticated by a single-use body secret, not cookies
         return next();
       }

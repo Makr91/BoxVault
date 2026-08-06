@@ -1,8 +1,9 @@
-import { createRemoteJWKSet, jwtVerify, decodeJwt } from 'jose';
+import { jwtVerify, decodeJwt } from 'jose';
 import axios from 'axios';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { findProviderByIssuer } from '../utils/oidcProviders.js';
+import { getRemoteJwks } from '../utils/jwks.js';
 import { getOidcConfiguration } from '../auth/passport.js';
 import externalUserHandler from '../auth/external-user-handler.js';
 import db from '../models/index.js';
@@ -24,17 +25,6 @@ const { credential: Credential, user: User } = db;
  * falls through on a miss) and before sessionAuth. It never errors on a miss —
  * it calls next() so public-box access and other auth paths still work.
  */
-
-// Cache one JWKS key set per jwks_uri. createRemoteJWKSet handles its own
-// key-fetch caching and rotation, so we only need to avoid rebuilding it.
-const jwksByUri = new Map();
-
-const getJwks = jwksUri => {
-  if (!jwksByUri.has(jwksUri)) {
-    jwksByUri.set(jwksUri, createRemoteJWKSet(new URL(jwksUri)));
-  }
-  return jwksByUri.get(jwksUri);
-};
 
 /**
  * Fetch the userinfo profile for a freshly-validated access token. Only used
@@ -125,7 +115,7 @@ const externalTokenAuth = async (req, res, next) => {
 
   let claims;
   try {
-    const { payload } = await jwtVerify(token, getJwks(meta.jwks_uri), {
+    const { payload } = await jwtVerify(token, getRemoteJwks(meta.jwks_uri), {
       issuer,
       audience,
     });

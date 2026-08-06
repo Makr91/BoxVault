@@ -1,7 +1,8 @@
-import { createRemoteJWKSet, jwtVerify, decodeJwt } from 'jose';
+import { jwtVerify, decodeJwt } from 'jose';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { findProviderByIssuer } from '../utils/oidcProviders.js';
+import { getRemoteJwks } from '../utils/jwks.js';
 import { getOidcConfiguration } from '../auth/passport.js';
 
 /**
@@ -14,17 +15,6 @@ import { getOidcConfiguration } from '../auth/passport.js';
  * (externalTokenAuth), except this gate REJECTS on any miss instead of falling
  * through: /scim/v2 has no anonymous or alternative auth path.
  */
-
-// One JWKS key set per jwks_uri; createRemoteJWKSet handles fetch caching and
-// key rotation internally, we only avoid rebuilding the set per request.
-const jwksByUri = new Map();
-
-const getJwks = jwksUri => {
-  if (!jwksByUri.has(jwksUri)) {
-    jwksByUri.set(jwksUri, createRemoteJWKSet(new URL(jwksUri)));
-  }
-  return jwksByUri.get(jwksUri);
-};
 
 /**
  * Send a SCIM-shaped error response (RFC 7644 §3.12): the Error message
@@ -99,7 +89,7 @@ const scimAuth = async (req, res, next) => {
   }
 
   try {
-    await jwtVerify(token, getJwks(oidcConfig.serverMetadata().jwks_uri), {
+    await jwtVerify(token, getRemoteJwks(oidcConfig.serverMetadata().jwks_uri), {
       issuer,
       audience,
     });

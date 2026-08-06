@@ -26,6 +26,11 @@ export default (sequelize, Sequelize) => {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
     },
+    sessionsInvalidAfter: {
+      type: Sequelize.DATE,
+      allowNull: true,
+      field: 'sessions_invalid_after',
+    },
     authProvider: {
       type: Sequelize.STRING(50),
       allowNull: true,

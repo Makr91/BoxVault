@@ -24,6 +24,14 @@ const applyServiceAccountAuth = async (req, ...candidates) => {
   return true;
 };
 
+const isTokenRevoked = (decoded, sessionsInvalidAfter) =>
+  Boolean(
+    !decoded.isServiceAccount &&
+    decoded.iat &&
+    sessionsInvalidAfter &&
+    decoded.iat * 1000 < new Date(sessionsInvalidAfter).getTime()
+  );
+
 const verifyToken = async (req, res, next) => {
   try {
     const authConfig = loadConfig('auth');
@@ -99,7 +107,24 @@ const verifyToken = async (req, res, next) => {
           return res.status(403).send({ message: req.__('auth.accountSuspended') });
         }
 
+        if (isTokenRevoked(decoded, user.sessionsInvalidAfter)) {
+          return res.status(401).send({
+            message: 'Unauthorized!',
+            error: 'TOKEN_INVALID',
+          });
+        }
+
         req.user = user;
+      } else if (!decoded.isServiceAccount && decoded.iat) {
+        const revocationRow = await User.findByPk(decoded.id, {
+          attributes: ['sessionsInvalidAfter'],
+        });
+        if (revocationRow && isTokenRevoked(decoded, revocationRow.sessionsInvalidAfter)) {
+          return res.status(401).send({
+            message: 'Unauthorized!',
+            error: 'TOKEN_INVALID',
+          });
+        }
       }
 
       // Attach JWT context for service accounts
