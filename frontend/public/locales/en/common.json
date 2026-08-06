@@ -88,6 +88,7 @@
       "rateLimiting": "Rate Limiting",
       "fileOperations": "File Operations",
       "ticketSystem": "Ticket System",
+      "hyperweaverSettings": "Hyperweaver Settings",
       "frontendLogging": "Frontend Logging",
       "frontendLoggingCategories": "Frontend Logging Categories",
       "oidcSettings": "OIDC Settings",
@@ -397,6 +398,19 @@
     "permissionDenied": "Notification permission was denied by the browser.",
     "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
     "notSupported": "Push notifications are not supported by this browser."
+  },
+  "inbox": {
+    "title": "Notifications",
+    "empty": "No notifications yet.",
+    "markAllRead": "Mark all read",
+    "unreadCount": "{{count}} unread notifications",
+    "loadError": "Failed to load notifications. Please try again."
+  },
+  "watch": {
+    "watch": "Watch this box",
+    "unwatch": "Stop watching this box",
+    "filterWatched": "Watched",
+    "error": "Failed to update the box watch. Please try again."
   },
   "orgConsole": {
     "pageTitle": "Org Console",
@@ -736,6 +750,10 @@
       "option2": "Option 2: use a Vagrantfile pinned to this version",
       "starterKit": "Starter kit (self-bootstrapping Vagrantfile + Hosts.yml)",
       "starterStep1": "Step 1: add the box"
+    },
+    "hyperweaver": {
+      "deploy": "Deploy to Hyperweaver",
+      "deployTitle": "Open Hyperweaver with this box pre-selected"
     },
     "readmeTitle": "README",
     "downloadsFor": "Downloads for {{version}}",

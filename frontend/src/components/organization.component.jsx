@@ -2,7 +2,13 @@ import PropTypes from "prop-types";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Table from "react-bootstrap/Table";
 import { useTranslation } from "react-i18next";
-import { FaSortUp, FaSortDown, FaSort } from "react-icons/fa6";
+import {
+  FaSortUp,
+  FaSortDown,
+  FaSort,
+  FaStar,
+  FaRegStar,
+} from "react-icons/fa6";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
@@ -102,6 +108,56 @@ BoxOsCell.propTypes = {
   box: PropTypes.object.isRequired,
 };
 
+const WatchStarCell = ({ watched, onToggle }) => {
+  const { t } = useTranslation();
+  const label = watched ? t("watch.unwatch") : t("watch.watch");
+  return (
+    <button
+      type="button"
+      className="btn btn-link btn-sm p-0 text-warning"
+      onClick={onToggle}
+      title={label}
+      aria-label={label}
+      aria-pressed={watched}
+    >
+      {watched ? <FaStar /> : <FaRegStar />}
+    </button>
+  );
+};
+
+WatchStarCell.propTypes = {
+  watched: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
+
+const WatchedFilterPill = ({ active, count, onToggle }) => {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={`badge rounded-pill badge-xs cursor-pointer ${
+        active ? "bg-warning text-dark" : "bg-secondary bg-opacity-25"
+      }`}
+      onClick={onToggle}
+      onKeyPress={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      {t("watch.filterWatched")} ({count})
+    </span>
+  );
+};
+
+WatchedFilterPill.propTypes = {
+  active: PropTypes.bool.isRequired,
+  count: PropTypes.number.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
+
 // Shared boxes table markup (sortable headers + rows): used for the flat
 // list and for each per-organization group on the signed-in home page.
 const BoxesTable = ({
@@ -110,6 +166,7 @@ const BoxesTable = ({
   sortColumn,
   sortDirection,
   onSort,
+  showWatchColumn,
 }) => {
   const { t } = useTranslation();
 
@@ -124,6 +181,7 @@ const BoxesTable = ({
     <Table striped className="table">
       <thead>
         <tr>
+          {showWatchColumn && <th aria-label={t("watch.filterWatched")} />}
           <th onClick={() => onSort("name")} className="sortable-header">
             {t("box.organization.table.box")} {renderSortIcon("name")}
           </th>
@@ -154,7 +212,7 @@ const BoxesTable = ({
           boxes.map((box, index) => renderRow(box, index))
         ) : (
           <tr>
-            <td colSpan="10" className="text-center">
+            <td colSpan={showWatchColumn ? 11 : 10} className="text-center">
               {t("box.organization.table.noBoxes")}
             </td>
           </tr>
@@ -170,6 +228,7 @@ BoxesTable.propTypes = {
   sortColumn: PropTypes.string,
   sortDirection: PropTypes.string.isRequired,
   onSort: PropTypes.func.isRequired,
+  showWatchColumn: PropTypes.bool.isRequired,
 };
 
 // One organization section on the signed-in home page: org logo + org
@@ -198,6 +257,62 @@ OrgGroupSection.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
+const BoxManageButtons = ({
+  showCreateForm,
+  onCreateBox,
+  onCancelCreate,
+  createDisabled,
+  canManage,
+  onRemoveAll,
+  showRemoveModal,
+  onCloseRemoveModal,
+  onConfirmRemoveAll,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <>
+      <button
+        className="btn btn-sm btn-outline-success"
+        onClick={onCreateBox}
+        disabled={createDisabled}
+      >
+        {showCreateForm
+          ? t("box.organization.buttons.createBox")
+          : t("box.organization.buttons.createNewBox")}
+      </button>
+      {showCreateForm && (
+        <button className="btn btn-sm btn-secondary" onClick={onCancelCreate}>
+          {t("buttons.cancel")}
+        </button>
+      )}
+      {canManage && (
+        <>
+          <button className="btn btn-sm btn-danger" onClick={onRemoveAll}>
+            {t("box.organization.buttons.removeAll")}
+          </button>
+          <ConfirmationModal
+            show={showRemoveModal}
+            handleClose={onCloseRemoveModal}
+            handleConfirm={onConfirmRemoveAll}
+          />
+        </>
+      )}
+    </>
+  );
+};
+
+BoxManageButtons.propTypes = {
+  showCreateForm: PropTypes.bool.isRequired,
+  onCreateBox: PropTypes.func.isRequired,
+  onCancelCreate: PropTypes.func.isRequired,
+  createDisabled: PropTypes.bool.isRequired,
+  canManage: PropTypes.bool.isRequired,
+  onRemoveAll: PropTypes.func.isRequired,
+  showRemoveModal: PropTypes.bool.isRequired,
+  onCloseRemoveModal: PropTypes.func.isRequired,
+  onConfirmRemoveAll: PropTypes.func.isRequired,
+};
+
 const BoxesList = ({ showOnlyPublic, theme }) => {
   const { t, i18n } = useTranslation();
   const isMountedRef = useRef(true);
@@ -217,6 +332,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [gravatarUrls, setGravatarUrls] = useState({});
+  const [watchedBoxIds, setWatchedBoxIds] = useState(() => new Set());
+  const [watchedOnly, setWatchedOnly] = useState(false);
+  const isSignedIn = Boolean(currentUser);
 
   const [newBox, setNewBox] = useState({
     name: "",
@@ -501,6 +619,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       });
     }
 
+    if (watchedOnly) {
+      filtered = filtered.filter((box) => watchedBoxIds.has(box.id));
+    }
+
     // Apply search filter
     if (searchName.trim()) {
       filtered = filtered.filter((box) =>
@@ -559,6 +681,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     activeProviders,
     activeArchitectures,
     activeOs,
+    watchedOnly,
+    watchedBoxIds,
     searchName,
     sortColumn,
     sortDirection,
@@ -756,6 +880,56 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       isMountedRef.current = false;
     };
   }, [showOnlyPublic, organization, fetchGravatarUrls, t]);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      return undefined;
+    }
+    let mounted = true;
+    BoxDataService.getUserWatches()
+      .then((response) => {
+        if (mounted) {
+          setWatchedBoxIds(
+            new Set((response.data || []).map((entry) => entry.boxId))
+          );
+        }
+      })
+      .catch((e) => {
+        log.api.error("Error fetching watched boxes", { error: e.message });
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [isSignedIn]);
+
+  const toggleBoxWatch = (box) => {
+    const orgName = resolveBoxOrg(box).orgName || organization;
+    const nextWatched = !watchedBoxIds.has(box.id);
+    const applyWatched = (ids, isWatched) => {
+      const next = new Set(ids);
+      if (isWatched) {
+        next.add(box.id);
+      } else {
+        next.delete(box.id);
+      }
+      return next;
+    };
+
+    setWatchedBoxIds((prev) => applyWatched(prev, nextWatched));
+
+    const request = nextWatched
+      ? BoxDataService.watch(orgName, box.name)
+      : BoxDataService.unwatch(orgName, box.name);
+    request.catch((e) => {
+      log.api.error("Error toggling box watch", {
+        boxName: box.name,
+        error: e.message,
+      });
+      setWatchedBoxIds((prev) => applyWatched(prev, !nextWatched));
+      setMessage(t("watch.error"));
+      setMessageType("danger");
+    });
+  };
 
   const onChangeSearchName = (e) => {
     const searchValue = e.target.value;
@@ -961,6 +1135,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         className={index === currentIndex ? "active" : ""}
         key={box.id || box.name}
       >
+        {isSignedIn && (
+          <td className="text-center align-middle">
+            <WatchStarCell
+              watched={watchedBoxIds.has(box.id)}
+              onToggle={() => toggleBoxWatch(box)}
+            />
+          </td>
+        )}
         <td>
           {renderOrgLogo(box)}
           <Link
@@ -1039,11 +1221,19 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         </div>
 
         {/* Center: Tag Cloud Pills (compact, inline) */}
-        {(Object.keys(allProviders).length > 0 ||
+        {(isSignedIn ||
+          Object.keys(allProviders).length > 0 ||
           Object.keys(allArchitectures).length > 0 ||
           Object.keys(allOs).length > 0) && (
           <div className="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
             <small className="text-muted">{t("box.filter")}:</small>
+            {isSignedIn && (
+              <WatchedFilterPill
+                active={watchedOnly}
+                count={watchedBoxIds.size}
+                onToggle={() => setWatchedOnly(!watchedOnly)}
+              />
+            )}
             <FilterPillGroup
               entries={allProviders}
               activeSet={activeProviders}
@@ -1084,44 +1274,21 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             </button>
           )}
           {!showOnlyPublic && canEditBoxes({ organization }) && (
-            <>
-              <button
-                className="btn btn-sm btn-outline-success"
-                onClick={createBox}
-                disabled={!!validationErrors.name}
-              >
-                {showCreateForm
-                  ? t("box.organization.buttons.createBox")
-                  : t("box.organization.buttons.createNewBox")}
-              </button>
-              {showCreateForm && (
-                <button
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setNewBox({ name: "", description: "", isPublic: false });
-                    setValidationErrors({});
-                  }}
-                >
-                  {t("buttons.cancel")}
-                </button>
-              )}
-              {isOrgManager(currentUser, organization) && (
-                <>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={handleDeleteClick}
-                  >
-                    {t("box.organization.buttons.removeAll")}
-                  </button>
-                  <ConfirmationModal
-                    show={showModal}
-                    handleClose={handleCloseModal}
-                    handleConfirm={handleConfirmDelete}
-                  />
-                </>
-              )}
-            </>
+            <BoxManageButtons
+              showCreateForm={showCreateForm}
+              onCreateBox={createBox}
+              onCancelCreate={() => {
+                setShowCreateForm(false);
+                setNewBox({ name: "", description: "", isPublic: false });
+                setValidationErrors({});
+              }}
+              createDisabled={!!validationErrors.name}
+              canManage={isOrgManager(currentUser, organization)}
+              onRemoveAll={handleDeleteClick}
+              showRemoveModal={showModal}
+              onCloseRemoveModal={handleCloseModal}
+              onConfirmRemoveAll={handleConfirmDelete}
+            />
           )}
           {!showOnlyPublic && (
             <button
@@ -1252,6 +1419,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
+                showWatchColumn={isSignedIn}
               />
             </OrgGroupSection>
           ))
@@ -1262,6 +1430,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
+            showWatchColumn={isSignedIn}
           />
         )}
       </div>

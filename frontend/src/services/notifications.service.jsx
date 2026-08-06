@@ -21,9 +21,40 @@ const deleteSubscription = (endpoint) =>
     data: { endpoint },
   });
 
+const listNotifications = (params) =>
+  axios.get(`${baseURL}/api/notifications`, {
+    headers: authHeader(),
+    params,
+  });
+
+const getUnreadCount = () =>
+  axios.get(`${baseURL}/api/notifications/unread-count`, {
+    headers: authHeader(),
+  });
+
+const markRead = (id) =>
+  axios.post(`${baseURL}/api/notifications/${id}/read`, null, {
+    headers: authHeader(),
+  });
+
+const markAllRead = () =>
+  axios.post(`${baseURL}/api/notifications/read-all`, null, {
+    headers: authHeader(),
+  });
+
+const deleteNotification = (id) =>
+  axios.delete(`${baseURL}/api/notifications/${id}`, {
+    headers: authHeader(),
+  });
+
 const NotificationsService = {
   createSubscription,
   deleteSubscription,
+  listNotifications,
+  getUnreadCount,
+  markRead,
+  markAllRead,
+  deleteNotification,
 };
 
 export default NotificationsService;

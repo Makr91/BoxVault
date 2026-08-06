@@ -25,6 +25,7 @@ import {
   deleteUser as deleteUserAuth,
   signup,
 } from '../controllers/auth.controller.js';
+import { listUserWatches } from '../controllers/box.controller.js';
 
 const router = Router();
 
@@ -75,6 +76,8 @@ router.get(
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
   getUserOrganizations
 );
+
+router.get('/user/watches', [authJwt.verifyToken, authJwt.isUser], listUserWatches);
 
 router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], leaveOrganization);
 

@@ -5,6 +5,7 @@ import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   getGravatarProfile,
   getTicketConfig,
+  getHyperweaverConfig,
   getConfig,
   updateConfig,
   restartServer,
@@ -24,6 +25,7 @@ router.use((req, res, next) => {
 // Server-side Gravatar proxy (#17) — the API key never leaves the server
 router.get('/gravatar/profile/:emailHash', getGravatarProfile);
 router.get('/config/ticket', getTicketConfig);
+router.get('/config/hyperweaver', getHyperweaverConfig);
 router.get(
   '/config/:configName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],

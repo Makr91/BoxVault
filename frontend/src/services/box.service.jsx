@@ -52,6 +52,22 @@ const removeAll = (organization) =>
     headers: authHeader(),
   });
 
+const watch = (organization, name) =>
+  axios.post(
+    `${baseURL}/api/organization/${organization}/box/${name}/watch`,
+    null,
+    { headers: authHeader() }
+  );
+
+const unwatch = (organization, name) =>
+  axios.delete(
+    `${baseURL}/api/organization/${organization}/box/${name}/watch`,
+    { headers: authHeader() }
+  );
+
+const getUserWatches = () =>
+  axios.get(`${baseURL}/api/user/watches`, { headers: authHeader() });
+
 const BoxService = {
   discoverAll,
   getAll,
@@ -63,6 +79,9 @@ const BoxService = {
   findByName,
   discoverAllbyName,
   getAllBoxes,
+  watch,
+  unwatch,
+  getUserWatches,
 };
 
 export default BoxService;

@@ -23,6 +23,7 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
+import NotificationsService from "../services/notifications.service";
 import { fetchTrustedIssuers, resolveIssuer } from "../utils/authServer";
 import { log } from "../utils/Logger";
 import {
@@ -32,6 +33,7 @@ import {
   subscribePush,
   unsubscribePush,
 } from "../utils/pushNotifications";
+import { formatRelativeTime } from "../utils/relativeTime";
 
 import OrganizationSwitcher from "./OrganizationSwitcher.component";
 
@@ -201,6 +203,267 @@ NotificationToggle.propTypes = {
   currentUser: PropTypes.shape({
     accessToken: PropTypes.string,
   }).isRequired,
+};
+
+const BOXVAULT_SOURCE_PREFIX = "boxvault";
+
+const isBoxVaultNotification = (entry) =>
+  typeof entry.sourceClientId === "string" &&
+  entry.sourceClientId.startsWith(BOXVAULT_SOURCE_PREFIX);
+
+const extractInboxEntries = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return Array.isArray(data?.items) ? data.items : [];
+};
+
+const NotificationInboxItem = ({ entry, onSelect }) => {
+  const { i18n } = useTranslation();
+  return (
+    <button
+      type="button"
+      className={`dropdown-item text-wrap ${entry.readAt ? "" : "fw-bold"}`}
+      onClick={() => onSelect(entry)}
+    >
+      <span className="d-block">{entry.title}</span>
+      {entry.body && (
+        <span className="d-block small text-muted fw-normal">{entry.body}</span>
+      )}
+      <span className="d-block small text-muted fw-normal">
+        {formatRelativeTime(entry.createdAt, i18n.language)}
+      </span>
+    </button>
+  );
+};
+
+NotificationInboxItem.propTypes = {
+  entry: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string,
+    body: PropTypes.string,
+    navigate: PropTypes.string,
+    createdAt: PropTypes.string,
+    readAt: PropTypes.string,
+    sourceClientId: PropTypes.string,
+  }).isRequired,
+  onSelect: PropTypes.func.isRequired,
+};
+
+const NotificationBell = () => {
+  const { t } = useTranslation();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [entries, setEntries] = useState([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUnreadCount = async () => {
+      try {
+        const response = await NotificationsService.getUnreadCount();
+        if (active) {
+          setUnreadCount(response.data?.count || 0);
+        }
+      } catch (error) {
+        log.api.error("Error loading unread notification count", {
+          error: error.message,
+        });
+      }
+    };
+
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 60000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const loadEntries = async () => {
+    try {
+      setLoadFailed(false);
+      const response = await NotificationsService.listNotifications({
+        page: 0,
+        size: 20,
+      });
+      setEntries(
+        extractInboxEntries(response.data).filter(isBoxVaultNotification)
+      );
+    } catch (error) {
+      log.api.error("Error loading notification inbox", {
+        error: error.message,
+      });
+      setLoadFailed(true);
+    }
+  };
+
+  const handleSelect = async (entry) => {
+    if (!entry.readAt) {
+      try {
+        await NotificationsService.markRead(entry.id);
+        setUnreadCount((count) => Math.max(0, count - 1));
+        setEntries((prev) =>
+          prev.map((item) =>
+            item.id === entry.id
+              ? { ...item, readAt: new Date().toISOString() }
+              : item
+          )
+        );
+      } catch (error) {
+        log.api.error("Error marking notification read", {
+          error: error.message,
+        });
+      }
+    }
+    if (entry.navigate) {
+      window.location.assign(entry.navigate);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await NotificationsService.markAllRead();
+      setUnreadCount(0);
+      setEntries((prev) =>
+        prev.map((item) =>
+          item.readAt ? item : { ...item, readAt: new Date().toISOString() }
+        )
+      );
+    } catch (error) {
+      log.api.error("Error marking all notifications read", {
+        error: error.message,
+      });
+      setLoadFailed(true);
+    }
+  };
+
+  return (
+    <li className="nav-item dropdown">
+      <button
+        className="nav-link position-relative"
+        id="notificationBellDropdown"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+        onClick={loadEntries}
+        title={t("inbox.title")}
+        aria-label={t("inbox.unreadCount", { count: unreadCount })}
+      >
+        <FaBell />
+        {unreadCount > 0 && (
+          <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {unreadCount}
+          </span>
+        )}
+      </button>
+      <ul
+        className="dropdown-menu dropdown-menu-end overflow-auto"
+        aria-labelledby="notificationBellDropdown"
+        style={{ minWidth: 320, maxHeight: 400 }}
+      >
+        <li className="d-flex justify-content-between align-items-center px-3 py-1">
+          <strong>{t("inbox.title")}</strong>
+          <button
+            type="button"
+            className="btn btn-sm btn-link p-0"
+            onClick={handleMarkAllRead}
+          >
+            {t("inbox.markAllRead")}
+          </button>
+        </li>
+        <li>
+          <hr className="dropdown-divider" />
+        </li>
+        {loadFailed && (
+          <li>
+            <span className="dropdown-item-text small text-danger">
+              {t("inbox.loadError")}
+            </span>
+          </li>
+        )}
+        {!loadFailed && entries.length === 0 && (
+          <li>
+            <span className="dropdown-item-text small text-muted">
+              {t("inbox.empty")}
+            </span>
+          </li>
+        )}
+        {entries.map((entry) => (
+          <li key={entry.id}>
+            <NotificationInboxItem entry={entry} onSelect={handleSelect} />
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+};
+
+const BrandLogo = ({ theme, className }) =>
+  theme === "light" ? (
+    <BoxVaultLight className={className} />
+  ) : (
+    <BoxVaultDark className={className} />
+  );
+
+BrandLogo.propTypes = {
+  theme: PropTypes.string.isRequired,
+  className: PropTypes.string.isRequired,
+};
+
+const ProfileMenuItem = ({
+  profileIsLocal,
+  authServerUrl,
+  onToggle,
+  onToggleKeyPress,
+}) => {
+  const { t } = useTranslation();
+  const icon = (
+    <span
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle(e);
+      }}
+      onKeyPress={onToggleKeyPress}
+      role="button"
+      tabIndex={0}
+      title="Switch profile mode"
+      className="cursor-pointer"
+    >
+      {profileIsLocal ? (
+        <FaUser className="me-2" />
+      ) : (
+        <FaIdBadge className="me-2" />
+      )}
+    </span>
+  );
+  if (profileIsLocal || !authServerUrl) {
+    return (
+      <Link to="/profile" className="dropdown-item d-flex align-items-center">
+        {icon}
+        {t("navbar.profile")}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={`${authServerUrl}/user/profile`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="dropdown-item d-flex align-items-center"
+    >
+      {icon}
+      {t("navbar.profile")}
+    </a>
+  );
+};
+
+ProfileMenuItem.propTypes = {
+  profileIsLocal: PropTypes.bool.isRequired,
+  authServerUrl: PropTypes.string.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  onToggleKeyPress: PropTypes.func.isRequired,
 };
 
 const Navbar = ({
@@ -569,11 +832,7 @@ const Navbar = ({
     <nav className="navbar navbar-expand-lg">
       <div className="container-fluid">
         <Link to="/" className="navbar-brand">
-          {theme === "light" ? (
-            <BoxVaultLight className="logo-xl icon-with-margin-sm" />
-          ) : (
-            <BoxVaultDark className="logo-xl icon-with-margin-sm" />
-          )}
+          <BrandLogo theme={theme} className="logo-xl icon-with-margin-sm" />
           BoxVault
         </Link>
         <ul className="nav nav-pills me-auto">
@@ -588,6 +847,7 @@ const Navbar = ({
 
         {currentUser ? (
           <ul className="nav nav-pills ms-auto">
+            {currentUser?.provider?.startsWith("oidc-") && <NotificationBell />}
             <li className="nav-item dropdown">
               <button
                 className="nav-link dropdown-toggle"
@@ -646,59 +906,12 @@ const Navbar = ({
                   </li>
                 )}
                 <li>
-                  {profileIsLocal || !authServerUrl ? (
-                    <Link
-                      to="/profile"
-                      className="dropdown-item d-flex align-items-center"
-                    >
-                      <span
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleProfileToggle(e);
-                        }}
-                        onKeyPress={handleProfileToggleKeyPress}
-                        role="button"
-                        tabIndex={0}
-                        title="Switch profile mode"
-                        className="cursor-pointer"
-                      >
-                        {profileIsLocal ? (
-                          <FaUser className="me-2" />
-                        ) : (
-                          <FaIdBadge className="me-2" />
-                        )}
-                      </span>
-                      {t("navbar.profile")}
-                    </Link>
-                  ) : (
-                    <a
-                      href={`${authServerUrl}/user/profile`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="dropdown-item d-flex align-items-center"
-                    >
-                      <span
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleProfileToggle(e);
-                        }}
-                        onKeyPress={handleProfileToggleKeyPress}
-                        role="button"
-                        tabIndex={0}
-                        title="Switch profile mode"
-                        className="cursor-pointer"
-                      >
-                        {profileIsLocal ? (
-                          <FaUser className="me-2" />
-                        ) : (
-                          <FaIdBadge className="me-2" />
-                        )}
-                      </span>
-                      {t("navbar.profile")}
-                    </a>
-                  )}
+                  <ProfileMenuItem
+                    profileIsLocal={profileIsLocal}
+                    authServerUrl={authServerUrl}
+                    onToggle={handleProfileToggle}
+                    onToggleKeyPress={handleProfileToggleKeyPress}
+                  />
                 </li>
                 <li>
                   <Link to="/about" className="dropdown-item">

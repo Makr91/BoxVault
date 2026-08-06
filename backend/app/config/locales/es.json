@@ -120,6 +120,10 @@
       "tooLarge": "¡El tamaño del archivo de arte no puede ser mayor a {{size}}MB!",
       "unsupportedType": "Tipo de arte no soportado. Solo se permiten imágenes SVG, PNG y JPEG.",
       "notFound": "Arte no encontrado."
+    },
+    "watch": {
+      "error": "Ocurrió un error al actualizar el seguimiento de la box.",
+      "listError": "Ocurrió un error al recuperar las boxes seguidas."
     }
   },
   "versions": {
@@ -315,6 +319,7 @@
   },
   "config": {
     "gravatarNotFound": "Configuración de Gravatar no encontrada.",
+    "hyperweaverNotConfigured": "Hyperweaver no está configurado.",
     "restartInitiated": "Reinicio del servidor iniciado",
     "ticketSystemNotConfigured": "Sistema de tickets no configurado.",
     "updated": "Configuración actualizada exitosamente.",

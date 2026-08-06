@@ -7,3 +7,4 @@ export * from './box/findone.js';
 export * from './box/organization/details.js';
 export * from './box/artwork.js';
 export * from './box/badge.js';
+export * from './box/watch.js';

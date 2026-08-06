@@ -2,7 +2,8 @@ import axios from 'axios';
 import { log } from '../utils/Logger.js';
 import { getAuthServerUrl, extractOidcAccessToken } from './favorites/helpers.js';
 
-const buildSubscriptionsUrl = req => `${getAuthServerUrl(req)}/api/notifications/subscriptions`;
+const buildNotificationsUrl = (req, path = '') =>
+  `${getAuthServerUrl(req)}/api/notifications${path}`;
 
 const buildAuthHeaders = oidcAccessToken => ({
   Authorization: `Bearer ${oidcAccessToken}`,
@@ -12,7 +13,7 @@ const buildAuthHeaders = oidcAccessToken => ({
 const respondAuthServerError = (res, error) => {
   const status = error.response?.status;
 
-  log.error.error('Notification subscription request to auth server failed', {
+  log.error.error('Notification request to auth server failed', {
     error: error.message,
     status,
     data: error.response?.data,
@@ -25,7 +26,7 @@ const respondAuthServerError = (res, error) => {
   return res.status(502).json({ error: 'AUTH_SERVER_UNAVAILABLE' });
 };
 
-const proxySubscriptionRequest = async (req, res, sendRequest) => {
+const proxyNotificationRequest = async (req, res, sendRequest) => {
   const oidcAccessToken = extractOidcAccessToken(req);
 
   if (!oidcAccessToken) {
@@ -33,20 +34,60 @@ const proxySubscriptionRequest = async (req, res, sendRequest) => {
   }
 
   try {
-    const response = await sendRequest(
-      buildSubscriptionsUrl(req),
-      buildAuthHeaders(oidcAccessToken)
-    );
+    const response = await sendRequest(buildAuthHeaders(oidcAccessToken));
     return res.status(response.status).json(response.data || {});
   } catch (error) {
     return respondAuthServerError(res, error);
   }
 };
 
+const buildListQuery = query => {
+  const params = new URLSearchParams();
+  for (const key of ['page', 'size', 'unreadOnly']) {
+    if (typeof query[key] !== 'undefined') {
+      params.set(key, query[key]);
+    }
+  }
+  const serialized = params.toString();
+  return serialized ? `?${serialized}` : '';
+};
+
 export const createSubscription = (req, res) =>
-  proxySubscriptionRequest(req, res, (url, headers) => axios.post(url, req.body, { headers }));
+  proxyNotificationRequest(req, res, headers =>
+    axios.post(buildNotificationsUrl(req, '/subscriptions'), req.body, { headers })
+  );
 
 export const deleteSubscription = (req, res) =>
-  proxySubscriptionRequest(req, res, (url, headers) =>
-    axios.delete(url, { headers, data: req.body })
+  proxyNotificationRequest(req, res, headers => {
+    const endpoint = encodeURIComponent(req.body?.endpoint || '');
+    return axios.delete(`${buildNotificationsUrl(req, '/subscriptions')}?endpoint=${endpoint}`, {
+      headers,
+    });
+  });
+
+export const listNotifications = (req, res) =>
+  proxyNotificationRequest(req, res, headers =>
+    axios.get(`${buildNotificationsUrl(req)}${buildListQuery(req.query)}`, { headers })
+  );
+
+export const getUnreadCount = (req, res) =>
+  proxyNotificationRequest(req, res, headers =>
+    axios.get(buildNotificationsUrl(req, '/unread-count'), { headers })
+  );
+
+export const markNotificationRead = (req, res) =>
+  proxyNotificationRequest(req, res, headers =>
+    axios.post(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}/read`), null, {
+      headers,
+    })
+  );
+
+export const markAllNotificationsRead = (req, res) =>
+  proxyNotificationRequest(req, res, headers =>
+    axios.post(buildNotificationsUrl(req, '/read-all'), null, { headers })
+  );
+
+export const deleteNotification = (req, res) =>
+  proxyNotificationRequest(req, res, headers =>
+    axios.delete(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}`), { headers })
   );

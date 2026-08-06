@@ -13,6 +13,8 @@ import {
   uploadArtwork,
   getArtwork,
   getBadge,
+  watchBox,
+  unwatchBox,
 } from '../controllers/box.controller.js';
 
 const router = Router();
@@ -69,6 +71,18 @@ router.post(
   '/organization/:organization/box/:name/artwork',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
   uploadArtwork
+);
+
+router.post(
+  '/organization/:organization/box/:name/watch',
+  [authJwt.verifyToken, authJwt.isUser],
+  watchBox
+);
+
+router.delete(
+  '/organization/:organization/box/:name/watch',
+  [authJwt.verifyToken, authJwt.isUser],
+  unwatchBox
 );
 
 router.delete(

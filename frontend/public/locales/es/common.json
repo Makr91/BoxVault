@@ -88,6 +88,7 @@
       "rateLimiting": "Limitación de Velocidad",
       "fileOperations": "Operaciones de Archivo",
       "ticketSystem": "Sistema de Tickets",
+      "hyperweaverSettings": "Configuración de Hyperweaver",
       "frontendLogging": "Registro Frontend",
       "frontendLoggingCategories": "Categorías de Registro Frontend",
       "oidcSettings": "Configuración OIDC",
@@ -521,6 +522,10 @@
       "starterKit": "Kit de inicio (Vagrantfile auto-arrancable + Hosts.yml)",
       "starterStep1": "Paso 1: añade la box"
     },
+    "hyperweaver": {
+      "deploy": "Desplegar en Hyperweaver",
+      "deployTitle": "Abrir Hyperweaver con esta box preseleccionada"
+    },
     "readmeTitle": "README",
     "downloadsFor": "Descargas para {{version}}",
     "latestDeprecated": "La última versión ({{version}}) de esta box está obsoleta.",
@@ -665,6 +670,19 @@
     "permissionDenied": "El navegador denegó el permiso de notificaciones.",
     "scopeMissing": "Tu cuenta aún no está autorizada para notificaciones. Pide a tu administrador que habilite el alcance de notificaciones.",
     "notSupported": "Este navegador no soporta notificaciones push."
+  },
+  "inbox": {
+    "title": "Notificaciones",
+    "empty": "Aún no hay notificaciones.",
+    "markAllRead": "Marcar todas como leídas",
+    "unreadCount": "{{count}} notificaciones sin leer",
+    "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo."
+  },
+  "watch": {
+    "watch": "Seguir esta box",
+    "unwatch": "Dejar de seguir esta box",
+    "filterWatched": "Seguidas",
+    "error": "Error al actualizar el seguimiento de la box. Por favor intenta de nuevo."
   },
   "orgConsole": {
     "pageTitle": "Consola de Org",

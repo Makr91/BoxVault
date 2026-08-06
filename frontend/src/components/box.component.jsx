@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { Fragment, useState, useEffect, useRef } from "react";
 import { Table } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
+import { FaStar, FaRegStar, FaRocket } from "react-icons/fa6";
 import Markdown from "react-markdown";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
@@ -65,6 +66,14 @@ const formatDiskEntry = (entry) => {
   }
   return [entry.name, entry.size, entry.controller].filter(Boolean).join(" · ");
 };
+
+const hasHyperweaverEntitlement = (user) =>
+  Array.isArray(user?.entitlements) &&
+  user.entitlements.some(
+    (entitlement) =>
+      typeof entitlement.value === "string" &&
+      entitlement.value.startsWith("hyperweaver")
+  );
 
 const sortVersionsNewestFirst = (versionList) =>
   [...versionList].sort(
@@ -788,9 +797,72 @@ LatestDeprecatedBanner.propTypes = {
   version: PropTypes.object,
 };
 
+const DeployToHyperweaverButton = ({
+  user,
+  hyperweaverUrl,
+  organization,
+  boxName,
+  selectedVersion,
+}) => {
+  const { t } = useTranslation();
+  const eligible =
+    user &&
+    hyperweaverUrl &&
+    selectedVersion &&
+    hasHyperweaverEntitlement(user);
+  if (!eligible) {
+    return null;
+  }
+  const href = `${hyperweaverUrl}/?create=machine&box=${encodeURIComponent(`${organization}/${boxName}`)}&box_version=${encodeURIComponent(selectedVersion)}&box_arch=amd64&box_url=${encodeURIComponent(window.location.origin)}`;
+  return (
+    <a
+      className="btn btn-primary me-2"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={t("box.hyperweaver.deployTitle")}
+    >
+      <FaRocket className="me-2" />
+      {t("box.hyperweaver.deploy")}
+    </a>
+  );
+};
+
+DeployToHyperweaverButton.propTypes = {
+  user: PropTypes.object,
+  hyperweaverUrl: PropTypes.string.isRequired,
+  organization: PropTypes.string.isRequired,
+  boxName: PropTypes.string.isRequired,
+  selectedVersion: PropTypes.string,
+};
+
+const WatchStarButton = ({ watched, disabled, onToggle }) => {
+  const { t } = useTranslation();
+  const label = watched ? t("watch.unwatch") : t("watch.watch");
+  return (
+    <button
+      type="button"
+      className="btn btn-link p-0 text-warning fs-5 v-align-middle"
+      onClick={onToggle}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      aria-pressed={watched}
+    >
+      {watched ? <FaStar /> : <FaRegStar />}
+    </button>
+  );
+};
+
+WatchStarButton.propTypes = {
+  watched: PropTypes.bool.isRequired,
+  disabled: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
+
 // Read-only details header: artwork, name, short description, status,
 // visibility, description; CI/CD info arrives as children.
-const BoxDetailsView = ({ box, artworkUrl, children }) => {
+const BoxDetailsView = ({ box, artworkUrl, watchControl, children }) => {
   const { t } = useTranslation();
   return (
     <div className="d-flex align-items-start gap-3 flex-wrap">
@@ -803,8 +875,11 @@ const BoxDetailsView = ({ box, artworkUrl, children }) => {
         />
       )}
       <div className="flex-grow-1">
-        <p>
-          <strong>{t("box.name")}:</strong> {box.name}
+        <p className="d-flex align-items-center gap-2 mb-2">
+          <span>
+            <strong>{t("box.name")}:</strong> {box.name}
+          </span>
+          {watchControl}
         </p>
         {box.shortDescription && (
           <p className="text-muted">{box.shortDescription}</p>
@@ -831,6 +906,7 @@ const BoxDetailsView = ({ box, artworkUrl, children }) => {
 BoxDetailsView.propTypes = {
   box: PropTypes.object.isRequired,
   artworkUrl: PropTypes.string,
+  watchControl: PropTypes.node,
   children: PropTypes.node,
 };
 
@@ -914,6 +990,9 @@ const Box = ({ theme }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState("");
+  const [watched, setWatched] = useState(false);
+  const [watchBusy, setWatchBusy] = useState(false);
+  const [hyperweaverUrl, setHyperweaverUrl] = useState("");
 
   const form = useRef();
 
@@ -1090,6 +1169,26 @@ const Box = ({ theme }) => {
   const saveReleaseNotes = (versionNumber, releaseNotes) =>
     updateVersionFields(versionNumber, { release_notes: releaseNotes });
 
+  const toggleWatch = async () => {
+    const nextWatched = !watched;
+    setWatched(nextWatched);
+    setWatchBusy(true);
+    try {
+      if (nextWatched) {
+        await BoxDataService.watch(organization, currentBox.name);
+      } else {
+        await BoxDataService.unwatch(organization, currentBox.name);
+      }
+    } catch (e) {
+      log.api.error("Error toggling box watch", { error: e.message });
+      setWatched(!nextWatched);
+      setMessage(t("watch.error"));
+      setMessageType("danger");
+    } finally {
+      setWatchBusy(false);
+    }
+  };
+
   const toggleVersionDeprecated = (versionNumber, deprecated, reason) =>
     updateVersionFields(versionNumber, {
       deprecated,
@@ -1119,6 +1218,21 @@ const Box = ({ theme }) => {
 
           // Edit/delete/publish + version controls: owner or org admin/owner.
           setIsAuthorized(canManageBox(user, organization, boxData));
+
+          if (user) {
+            try {
+              const watchesResponse = await BoxDataService.getUserWatches();
+              setWatched(
+                (watchesResponse.data || []).some(
+                  (entry) => entry.boxId === boxData.id
+                )
+              );
+            } catch (watchError) {
+              log.api.error("Error loading watched boxes", {
+                error: watchError.message,
+              });
+            }
+          }
 
           // Viewing is authorized by the backend (membership or public box),
           // so always fetch versions and let the API decide.
@@ -1163,6 +1277,35 @@ const Box = ({ theme }) => {
 
     loadData();
   }, [organization, name, t]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadHyperweaverConfig = async () => {
+      try {
+        const response = await fetch(
+          `${window.location.origin}/api/config/hyperweaver`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const url = data?.hyperweaver?.url?.value;
+          if (mounted && url) {
+            setHyperweaverUrl(url.replace(/\/+$/, ""));
+          }
+        }
+      } catch (error) {
+        log.api.error("Error fetching hyperweaver config", {
+          error: error.message,
+        });
+      }
+    };
+
+    loadHyperweaverConfig();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Update title when box name changes (e.g., after edit)
   useEffect(() => {
@@ -1669,6 +1812,13 @@ const Box = ({ theme }) => {
               <h4>{t("box.details")}</h4>
               <div>
                 {isAuthorized && renderActionButtons()}
+                <DeployToHyperweaverButton
+                  user={currentUser}
+                  hyperweaverUrl={hyperweaverUrl}
+                  organization={organization}
+                  boxName={currentBox.name}
+                  selectedVersion={selectedVersion}
+                />
                 {renderBackButton()}
               </div>
             </div>
@@ -1681,6 +1831,15 @@ const Box = ({ theme }) => {
                   currentBox.artwork
                     ? `${window.location.origin}/api/organization/${organization}/box/${name}/artwork`
                     : null
+                }
+                watchControl={
+                  currentUser ? (
+                    <WatchStarButton
+                      watched={watched}
+                      disabled={watchBusy}
+                      onToggle={toggleWatch}
+                    />
+                  ) : null
                 }
               >
                 {renderCicdIntegration()}

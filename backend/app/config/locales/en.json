@@ -120,6 +120,10 @@
       "tooLarge": "Artwork file size cannot be larger than {{size}}MB!",
       "unsupportedType": "Unsupported artwork type. Only SVG, PNG, and JPEG images are allowed.",
       "notFound": "Artwork not found."
+    },
+    "watch": {
+      "error": "Some error occurred while updating the box watch.",
+      "listError": "Some error occurred while retrieving watched boxes."
     }
   },
   "versions": {
@@ -315,6 +319,7 @@
   },
   "config": {
     "gravatarNotFound": "Gravatar configuration not found.",
+    "hyperweaverNotConfigured": "Hyperweaver is not configured.",
     "restartInitiated": "Server restart initiated",
     "ticketSystemNotConfigured": "Ticket system not configured.",
     "updated": "Configuration updated successfully.",
