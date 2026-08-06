@@ -149,10 +149,12 @@ const OrganizationDiscovery = ({ theme }) => {
   };
 
   const renderOrgIcon = (org) => {
-    if (orgGravatars[org.name]) {
+    // Stored org logo first, fetched Gravatar second, BoxVault logo last
+    const iconUrl = org.logo || orgGravatars[org.name];
+    if (iconUrl) {
       return (
         <img
-          src={orgGravatars[org.name]}
+          src={iconUrl}
           alt={`${org.name} icon`}
           className="rounded-circle me-2"
           width="24"

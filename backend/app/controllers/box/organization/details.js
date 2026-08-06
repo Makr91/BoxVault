@@ -161,7 +161,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
             {
               model: Organization,
               as: 'primaryOrganization',
-              attributes: ['id', 'name', 'emailHash'],
+              attributes: ['id', 'name', 'emailHash', 'logo'],
             },
           ],
         },
@@ -251,6 +251,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
                   id: box.user.primaryOrganization.id,
                   name: box.user.primaryOrganization.name,
                   emailHash: box.user.primaryOrganization.emailHash,
+                  logo: box.user.primaryOrganization.logo,
                 }
               : null,
           }

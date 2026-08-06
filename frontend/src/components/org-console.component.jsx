@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { FaArrowUpRightFromSquare } from "react-icons/fa6";
 
 import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
@@ -70,6 +71,120 @@ const getOrgNameFieldValue = (isExternalOrg, orgDisplayName, newOrgName) =>
     ? `${orgDisplayName} (${newOrgName})`
     : newOrgName;
 
+// address is an object of RFC 7643 §4.1.2 sub-attributes. Prefer the
+// provider-formatted value; otherwise join the present sub-attributes.
+// streetAddress may contain newlines — they are preserved for display.
+const formatOrgAddress = (address) => {
+  if (!address) {
+    return "";
+  }
+  if (address.formatted) {
+    return address.formatted;
+  }
+  return [
+    address.streetAddress,
+    address.locality,
+    address.region,
+    address.postalCode,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+};
+
+// IdP-truth profile extras (synced via SCIM); rendered read-only, only when
+// the provider supplied a value.
+const OrgProfileExtras = ({
+  orgUrl,
+  orgTelephone,
+  orgLocale,
+  orgTimezone,
+  orgAddress,
+}) => {
+  const { t } = useTranslation();
+  const fields = [
+    { id: "orgUrl", labelKey: "url", value: orgUrl },
+    { id: "orgTelephone", labelKey: "telephone", value: orgTelephone },
+    { id: "orgLocale", labelKey: "locale", value: orgLocale },
+    { id: "orgTimezone", labelKey: "timezone", value: orgTimezone },
+  ];
+
+  return (
+    <>
+      {fields
+        .filter((field) => field.value)
+        .map((field) => (
+          <div className="form-group" key={field.id}>
+            <label htmlFor={field.id}>
+              {t(`orgConsole.organization.${field.labelKey}`)}
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              id={field.id}
+              value={field.value}
+              readOnly
+            />
+          </div>
+        ))}
+      {orgAddress && (
+        <div className="form-group">
+          <label htmlFor="orgAddress">
+            {t("orgConsole.organization.address")}
+          </label>
+          <textarea
+            className="form-control"
+            id="orgAddress"
+            value={orgAddress}
+            readOnly
+          />
+        </div>
+      )}
+    </>
+  );
+};
+
+OrgProfileExtras.propTypes = {
+  orgUrl: PropTypes.string.isRequired,
+  orgTelephone: PropTypes.string.isRequired,
+  orgLocale: PropTypes.string.isRequired,
+  orgTimezone: PropTypes.string.isRequired,
+  orgAddress: PropTypes.string.isRequired,
+};
+
+// SSO orgs are edited at the identity provider — the local update button is
+// replaced by a deep link to the provider's org card.
+const OrgFormAction = ({ isExternalOrg, orgIdpLink }) => {
+  const { t } = useTranslation();
+
+  if (!isExternalOrg) {
+    return (
+      <button type="submit" className="btn btn-primary mt-2">
+        {t("orgConsole.organization.updateButton")}
+      </button>
+    );
+  }
+  if (!orgIdpLink) {
+    return null;
+  }
+  return (
+    <a
+      href={orgIdpLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn btn-primary mt-2"
+    >
+      <FaArrowUpRightFromSquare className="me-2" />
+      {t("orgConsole.organization.manageAtIdp")}
+    </a>
+  );
+};
+
+OrgFormAction.propTypes = {
+  isExternalOrg: PropTypes.bool.isRequired,
+  orgIdpLink: PropTypes.string.isRequired,
+};
+
 const OrgConsole = ({ currentOrganization }) => {
   const { t } = useTranslation();
   useEffect(() => {
@@ -91,8 +206,14 @@ const OrgConsole = ({ currentOrganization }) => {
   const [orgDescription, setOrgDescription] = useState("");
   const [orgAccessMode, setOrgAccessMode] = useState("private");
   const [orgDefaultRole, setOrgDefaultRole] = useState("member");
+  const [orgUrl, setOrgUrl] = useState("");
+  const [orgTelephone, setOrgTelephone] = useState("");
+  const [orgLocale, setOrgLocale] = useState("");
+  const [orgTimezone, setOrgTimezone] = useState("");
+  const [orgAddress, setOrgAddress] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [isExternalOrg, setIsExternalOrg] = useState(false);
+  const [orgIdpLink, setOrgIdpLink] = useState("");
   const [orgDisplayName, setOrgDisplayName] = useState("");
   const [activeTab, setActiveTab] = useState("organization");
   const currentUser = AuthService.getCurrentUser();
@@ -120,43 +241,76 @@ const OrgConsole = ({ currentOrganization }) => {
   useEffect(() => {
     if (currentOrganization) {
       const loadData = async () => {
-        try {
-          const [
-            orgUsersResponse,
-            invitationsResponse,
-            orgDetailsResponse,
-            joinRequestsResponse,
-          ] = await Promise.all([
-            OrganizationService.getOrganizationWithUsers(currentOrganization),
-            InvitationService.getActiveInvitations(currentOrganization),
-            OrganizationService.getOrganizationByName(currentOrganization),
-            RequestService.getOrgJoinRequests(currentOrganization),
-          ]);
+        // Each call settles independently so one failure cannot blank the
+        // data loaded by the other three.
+        const [
+          orgUsersResult,
+          invitationsResult,
+          orgDetailsResult,
+          joinRequestsResult,
+        ] = await Promise.allSettled([
+          OrganizationService.getOrganizationWithUsers(currentOrganization),
+          InvitationService.getActiveInvitations(currentOrganization),
+          OrganizationService.getOrganizationByName(currentOrganization),
+          RequestService.getOrgJoinRequests(currentOrganization),
+        ]);
 
-          setUsers(orgUsersResponse.data);
-          setActiveInvitations(invitationsResponse.data);
-          setJoinRequests(joinRequestsResponse.data || []);
+        const failures = [
+          { name: "orgUsers", result: orgUsersResult },
+          { name: "invitations", result: invitationsResult },
+          { name: "orgDetails", result: orgDetailsResult },
+          { name: "joinRequests", result: joinRequestsResult },
+        ].filter(({ result }) => result.status === "rejected");
 
-          setNewOrgName(orgDetailsResponse.data.name);
-          setIsExternalOrg(!!orgDetailsResponse.data.external_issuer);
-          setOrgDisplayName(orgDetailsResponse.data.display_name || "");
-          setOrgEmail(orgDetailsResponse.data.email || "");
-          setOrgEmailHash(orgDetailsResponse.data.emailHash || "");
-          setOrgDescription(orgDetailsResponse.data.description || "");
-          setOrgAccessMode(orgDetailsResponse.data.access_mode || "private");
-          setOrgDefaultRole(orgDetailsResponse.data.default_role || "member");
-
-          setLoading(false);
-        } catch (error) {
+        failures.forEach(({ name, result }) => {
           log.api.error("Error fetching org console data", {
             organization: currentOrganization,
-            error: error.message,
+            call: name,
+            error: result.reason?.message,
           });
-          if (error.response && error.response.status === 401) {
-            EventBus.dispatch("logout");
-          }
-          setLoading(false);
+        });
+
+        if (orgUsersResult.status === "fulfilled") {
+          setUsers(orgUsersResult.value.data);
         }
+        if (invitationsResult.status === "fulfilled") {
+          setActiveInvitations(invitationsResult.value.data);
+        }
+        if (joinRequestsResult.status === "fulfilled") {
+          setJoinRequests(joinRequestsResult.value.data || []);
+        }
+        if (orgDetailsResult.status === "fulfilled") {
+          const orgDetails = orgDetailsResult.value.data;
+          setNewOrgName(orgDetails.name);
+          setIsExternalOrg(!!orgDetails.external_issuer);
+          // Canonical IdP org-management deep link: the fragment scrolls the
+          // provider's organizations page straight to this org's card.
+          setOrgIdpLink(
+            orgDetails.external_issuer && orgDetails.external_org_id
+              ? `${orgDetails.external_issuer.replace(/\/+$/, "")}/user/organizations#${orgDetails.external_org_id}`
+              : ""
+          );
+          setOrgDisplayName(orgDetails.display_name || "");
+          setOrgEmail(orgDetails.email || "");
+          setOrgEmailHash(orgDetails.emailHash || "");
+          setOrgDescription(orgDetails.description || "");
+          setOrgAccessMode(orgDetails.access_mode || "private");
+          setOrgDefaultRole(orgDetails.default_role || "member");
+          setOrgUrl(orgDetails.url || "");
+          setOrgTelephone(orgDetails.telephone || "");
+          setOrgLocale(orgDetails.locale || "");
+          setOrgTimezone(orgDetails.timezone || "");
+          setOrgAddress(formatOrgAddress(orgDetails.address));
+        }
+
+        const unauthorized = failures.some(
+          ({ result }) => result.reason?.response?.status === 401
+        );
+        if (unauthorized) {
+          EventBus.dispatch("logout");
+        }
+
+        setLoading(false);
       };
 
       loadData();
@@ -467,6 +621,8 @@ const OrgConsole = ({ currentOrganization }) => {
                           id="orgEmail"
                           value={orgEmail}
                           onChange={(e) => setOrgEmail(e.target.value)}
+                          readOnly={isExternalOrg}
+                          disabled={isExternalOrg}
                         />
                       </div>
                       <div className="form-group">
@@ -493,8 +649,18 @@ const OrgConsole = ({ currentOrganization }) => {
                           id="orgDescription"
                           value={orgDescription}
                           onChange={(e) => setOrgDescription(e.target.value)}
+                          readOnly={isExternalOrg}
+                          disabled={isExternalOrg}
                         />
                       </div>
+
+                      <OrgProfileExtras
+                        orgUrl={orgUrl}
+                        orgTelephone={orgTelephone}
+                        orgLocale={orgLocale}
+                        orgTimezone={orgTimezone}
+                        orgAddress={orgAddress}
+                      />
 
                       <div className="row">
                         <div className="col-md-6">
@@ -507,6 +673,7 @@ const OrgConsole = ({ currentOrganization }) => {
                               id="orgAccessMode"
                               value={orgAccessMode}
                               onChange={(e) => setOrgAccessMode(e.target.value)}
+                              disabled={isExternalOrg}
                             >
                               <option value="private">
                                 {t(
@@ -541,6 +708,7 @@ const OrgConsole = ({ currentOrganization }) => {
                               onChange={(e) =>
                                 setOrgDefaultRole(e.target.value)
                               }
+                              disabled={isExternalOrg}
                             >
                               <option value="member">
                                 {t("roles.member")}
@@ -554,9 +722,10 @@ const OrgConsole = ({ currentOrganization }) => {
                         </div>
                       </div>
 
-                      <button type="submit" className="btn btn-primary mt-2">
-                        {t("orgConsole.organization.updateButton")}
-                      </button>
+                      <OrgFormAction
+                        isExternalOrg={isExternalOrg}
+                        orgIdpLink={orgIdpLink}
+                      />
                     </form>
                     {updateMessage && (
                       <div className="alert alert-info mt-3">

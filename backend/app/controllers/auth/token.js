@@ -111,6 +111,7 @@ export const refreshToken = async (req, res) => {
       isServiceAccount: false,
       provider,
       stayLoggedIn: finalStayLoggedIn,
+      avatarUrl: user.avatar_url,
     });
   } catch (err) {
     log.error.error('Error in refreshToken:', err);

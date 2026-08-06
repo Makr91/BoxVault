@@ -69,22 +69,94 @@ const { organization: Organization } = db;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-// Update the 'update' function
+const trimIfSet = value => (value ? value.trim() : value);
+
+/**
+ * Rejections for externally-managed orgs (mirrored from an OIDC provider):
+ * the slug is frozen — renaming would break the mirror and every URL — and
+ * the profile is IdP-truth (synced through the SCIM Group extension), so
+ * email, description, and org_code may not be CHANGED locally (unchanged
+ * echoes from the console form pass through).
+ * @param {Object|null} org - Organization instance
+ * @param {Object} fields - { organization, email, description, org_code }
+ * @param {Object} req - Express request (for i18n)
+ * @returns {{status: number, message: string}|null}
+ */
+const getExternalEditRejection = (org, fields, req) => {
+  if (!org?.external_issuer) {
+    return null;
+  }
+  if (fields.organization && fields.organization !== org.name) {
+    return { status: 403, message: req.__('organizations.externallyManagedRename') };
+  }
+  const profileChanged =
+    (fields.email !== undefined && fields.email !== org.email) ||
+    (fields.description !== undefined && fields.description !== org.description) ||
+    (fields.org_code !== undefined && fields.org_code !== org.org_code);
+  if (profileChanged) {
+    return { status: 403, message: req.__('organizations.externallyManagedProfile') };
+  }
+  return null;
+};
+
+/**
+ * Validate a submitted org_code (6-hex format, globally unique).
+ * @param {Object} org - Organization instance
+ * @param {string|undefined} orgCode - Trimmed org_code from the request body
+ * @param {Object} req - Express request (for i18n)
+ * @returns {Promise<{status: number, message: string}|null>}
+ */
+const getOrgCodeRejection = async (org, orgCode, req) => {
+  if (orgCode === undefined || orgCode === null || orgCode === '') {
+    return null;
+  }
+  if (!/^[0-9A-F]{6}$/.test(orgCode)) {
+    return { status: 400, message: req.__('organizations.invalidOrgCode') };
+  }
+  if (orgCode !== org.org_code) {
+    const existingOrg = await Organization.findOne({ where: { org_code: orgCode } });
+    if (existingOrg) {
+      return {
+        status: 400,
+        message: req.__('organizations.orgCodeInUse', { org_code: orgCode }),
+      };
+    }
+  }
+  return null;
+};
+
+/**
+ * Move an org's storage directory on rename. Only acts when the old directory
+ * exists and the paths differ; failures are logged and never block the
+ * database update.
+ * @param {string} oldFilePath - Current storage path
+ * @param {string} newFilePath - Target storage path
+ * @returns {void}
+ */
+const moveOrgDirectory = (oldFilePath, newFilePath) => {
+  try {
+    if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {
+      if (!fs.existsSync(newFilePath)) {
+        fs.mkdirSync(newFilePath, { recursive: true });
+      }
+      fs.renameSync(oldFilePath, newFilePath);
+      if (fs.existsSync(oldFilePath)) {
+        fs.rmSync(oldFilePath, { recursive: true, force: true });
+      }
+    }
+    // If no directories exist, that's fine - they'll be created when boxes are uploaded
+  } catch (fileErr) {
+    log.error.error('Directory operation failed:', fileErr);
+  }
+};
+
 export const update = async (req, res) => {
   const { organization: organizationName } = req.params;
   const { description } = req.body;
-  let { organization, email, org_code } = req.body;
+  const organization = trimIfSet(req.body.organization);
+  const email = trimIfSet(req.body.email);
+  const org_code = trimIfSet(req.body.org_code);
 
-  // Trim inputs to prevent whitespace issues
-  if (organization) {
-    organization = organization.trim();
-  }
-  if (email) {
-    email = email.trim();
-  }
-  if (org_code) {
-    org_code = org_code.trim();
-  }
   const oldFilePath = getSecureBoxPath(organizationName);
   const newFilePath = getSecureBoxPath(organization || organizationName);
 
@@ -93,69 +165,27 @@ export const update = async (req, res) => {
       where: { name: organizationName },
     });
 
-    // Externally-managed orgs (mirrored from an OIDC provider) keep their slug
-    // frozen — renaming would break the mirror and every URL. Local-only fields
-    // (description, email, org_code) remain editable.
-    if (org?.external_issuer && organization && organization !== org.name) {
-      return res.status(403).send({
-        message: req.__('organizations.externallyManagedRename'),
-      });
+    const externalRejection = getExternalEditRejection(
+      org,
+      { organization, email, description, org_code },
+      req
+    );
+    if (externalRejection) {
+      return res.status(externalRejection.status).send({ message: externalRejection.message });
     }
 
-    // Handle directory operations only if directories actually exist and names are different
-    try {
-      if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {
-        // Create new directory structure if needed
-        if (!fs.existsSync(newFilePath)) {
-          fs.mkdirSync(newFilePath, { recursive: true });
-        }
+    moveOrgDirectory(oldFilePath, newFilePath);
 
-        // Move contents from old to new directory
-        fs.renameSync(oldFilePath, newFilePath);
-
-        // Clean up the old directory if it still exists
-        if (fs.existsSync(oldFilePath)) {
-          fs.rmSync(oldFilePath, { recursive: true, force: true });
-        }
-      }
-      // If no directories exist, that's fine - they'll be created when boxes are uploaded
-    } catch (fileErr) {
-      log.error.error('Directory operation failed:', fileErr);
-      // Continue with database update even if file operations fail
-    }
-
-    // Validate org_code format if provided
-    if (org_code !== undefined && org_code !== null && org_code !== '') {
-      if (!/^[0-9A-F]{6}$/.test(org_code)) {
-        return res.status(400).send({
-          message: req.__('organizations.invalidOrgCode'),
-        });
-      }
-
-      // Check uniqueness if changing org_code
-      if (org_code !== org.org_code) {
-        const existingOrg = await Organization.findOne({
-          where: { org_code },
-        });
-        if (existingOrg) {
-          return res.status(400).send({
-            message: req.__('organizations.orgCodeInUse', { org_code }),
-          });
-        }
-      }
-    }
-
-    // Generate email hash if email is provided
-    let emailHash = null;
-    if (email) {
-      emailHash = generateEmailHash(email);
+    const orgCodeRejection = await getOrgCodeRejection(org, org_code, req);
+    if (orgCodeRejection) {
+      return res.status(orgCodeRejection.status).send({ message: orgCodeRejection.message });
     }
 
     await org.update({
       name: organization !== undefined ? organization : org.name,
       description: description !== undefined ? description : org.description,
       email: email !== undefined ? email : org.email,
-      emailHash: emailHash || org.emailHash,
+      emailHash: email ? generateEmailHash(email) : org.emailHash,
       org_code: org_code !== undefined ? org_code : org.org_code,
     });
 

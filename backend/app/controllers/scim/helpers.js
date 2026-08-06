@@ -1,6 +1,7 @@
 // helpers.js — shared logic for the SCIM receiver controllers
 import fs from 'fs';
 import { log } from '../../utils/Logger.js';
+import { generateEmailHash } from '../../utils/identity.js';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { scimError } from '../../middleware/scimAuth.js';
 
@@ -115,6 +116,69 @@ const scimMeta = (resourceType, created, lastModified, location) => ({
  */
 const resourceLocation = (req, collection, id) =>
   `${req.protocol}://${req.get('host')}${req.baseUrl}${collection}/${id}`;
+
+// Nullable org-profile columns carried by the Group extension as plain strings.
+const ORG_PROFILE_STRING_KEYS = ['logo', 'url', 'telephone', 'locale', 'timezone'];
+
+/**
+ * Extract the additive optional org-profile keys from the urn:startcloud Group
+ * extension (schema.org/Organization names plus locale/timezone/address). An
+ * absent key means "no value": email/description clear to their '' column
+ * defaults, the nullable columns clear to null. The address object keeps the
+ * RFC 7643 §4.1.2 sub-attribute names verbatim (streetAddress newline-joined
+ * by the sender).
+ * @param {Object} extension - The urn:startcloud Group extension payload
+ * @returns {Object} Normalized profile (full desired state)
+ */
+const parseOrgProfile = extension => {
+  const profile = {
+    email: typeof extension.email === 'string' ? extension.email : '',
+    description: typeof extension.description === 'string' ? extension.description : '',
+    address:
+      extension.address &&
+      typeof extension.address === 'object' &&
+      !Array.isArray(extension.address)
+        ? extension.address
+        : null,
+  };
+  for (const key of ORG_PROFILE_STRING_KEYS) {
+    profile[key] = typeof extension[key] === 'string' && extension[key] ? extension[key] : null;
+  }
+  return profile;
+};
+
+/**
+ * Apply the pushed org profile to the mirrored org (full desired state, so
+ * every field is applied; email also maintains emailHash). Lives here — NOT in
+ * utils/externalOrgs.js — because the login-claim sync shares that upsert and
+ * carries no profile keys; clear-on-absent there would wipe org profiles on
+ * every login.
+ * @param {Object} org - Mirrored organization instance
+ * @param {Object} profile - Normalized profile from parseOrgProfile
+ * @param {Object} transaction - Active transaction
+ * @returns {Promise<void>}
+ */
+const applyOrgProfile = async (org, profile, transaction) => {
+  const patch = {};
+  if (org.email !== profile.email) {
+    patch.email = profile.email;
+    patch.emailHash = profile.email ? generateEmailHash(profile.email) : '';
+  }
+  if (org.description !== profile.description) {
+    patch.description = profile.description;
+  }
+  for (const key of ORG_PROFILE_STRING_KEYS) {
+    if (org[key] !== profile[key]) {
+      patch[key] = profile[key];
+    }
+  }
+  if (JSON.stringify(org.address || null) !== JSON.stringify(profile.address)) {
+    patch.address = profile.address;
+  }
+  if (Object.keys(patch).length) {
+    await org.update(patch, { transaction });
+  }
+};
 
 /**
  * Recompute a mirrored org's memberships from ALL stored role groups of its
@@ -242,6 +306,8 @@ export {
   parseGroupExternalId,
   parseResourceId,
   parseExternalIdFilter,
+  parseOrgProfile,
+  applyOrgProfile,
   recomputeOrgMemberships,
   destroyMirrorOrg,
 };

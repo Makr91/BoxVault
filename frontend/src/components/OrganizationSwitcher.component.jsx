@@ -113,11 +113,13 @@ const OrganizationSwitcher = ({
     }
   };
 
-  const renderOrgIcon = (orgName) => {
-    if (orgGravatars[orgName]) {
+  const renderOrgIcon = (org, orgName) => {
+    // Stored org logo first, fetched Gravatar second, BoxVault logo last
+    const iconUrl = org.logo || org.organization?.logo || orgGravatars[orgName];
+    if (iconUrl) {
       return (
         <img
-          src={orgGravatars[orgName]}
+          src={iconUrl}
           alt={`${orgName} icon`}
           className="rounded-circle me-2"
           width="20"
@@ -184,7 +186,7 @@ const OrganizationSwitcher = ({
                     >
                       <div>
                         <div className="d-flex align-items-center">
-                          {renderOrgIcon(orgName)}
+                          {renderOrgIcon(org, orgName)}
                           <div>
                             <div className="fw-bold">{orgName}</div>
                             {orgDesc && (

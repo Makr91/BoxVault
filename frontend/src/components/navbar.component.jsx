@@ -389,6 +389,12 @@ const Navbar = ({
         setActiveOrgCode(orgData.org_code);
       }
 
+      // Stored org logo wins; the Gravatar email-hash fetch stays as fallback
+      if (orgData.logo && mounted) {
+        setActiveOrgGravatar(orgData.logo);
+        return;
+      }
+
       if (!orgData.emailHash || !mounted) {
         return;
       }

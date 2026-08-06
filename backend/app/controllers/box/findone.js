@@ -242,7 +242,7 @@ export const findOne = async (req, res) => {
             {
               model: Organization,
               as: 'primaryOrganization',
-              attributes: ['id', 'name', 'emailHash'],
+              attributes: ['id', 'name', 'emailHash', 'logo'],
             },
           ],
         },
@@ -275,6 +275,7 @@ export const findOne = async (req, res) => {
           id: organizationData.id,
           name: organizationData.name,
           emailHash: organizationData.emailHash,
+          logo: organizationData.logo,
         },
       };
     }

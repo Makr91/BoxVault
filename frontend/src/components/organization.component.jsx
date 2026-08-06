@@ -17,6 +17,13 @@ import { isGlobalAdmin, isOrgMember, isOrgManager } from "../utils/permissions";
 import ConfirmationModal from "./confirmation.component";
 import IsoList from "./iso-list.component";
 
+// Box rows carry the owning org on either association; resolve whichever is
+// present.
+const resolveBoxOrg = (box) => {
+  const org = box.user?.organization || box.user?.primaryOrganization || {};
+  return { orgName: org.name, logo: org.logo, emailHash: org.emailHash };
+};
+
 const BoxesList = ({ showOnlyPublic, theme }) => {
   const { t } = useTranslation();
   const isMountedRef = useRef(true);
@@ -353,12 +360,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       const uniqueOrgs = new Map();
 
       boxesList.forEach((box) => {
-        const orgName =
-          box.user?.organization?.name || box.user?.primaryOrganization?.name;
-        const emailHash =
-          box.user?.organization?.emailHash ||
-          box.user?.primaryOrganization?.emailHash;
-        if (orgName && emailHash && !uniqueOrgs.has(orgName)) {
+        const { orgName, logo, emailHash } = resolveBoxOrg(box);
+        if (!orgName || urls[orgName] || uniqueOrgs.has(orgName)) {
+          return;
+        }
+        // Stored org logo wins; only orgs without one need a Gravatar fetch
+        if (logo) {
+          urls[orgName] = logo;
+        } else if (emailHash) {
           uniqueOrgs.set(orgName, emailHash);
         }
       });
@@ -682,10 +691,15 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const renderOrgLogo = (box) => {
     const orgName =
       box.user?.organization?.name || box.user?.primaryOrganization?.name;
-    if (gravatarUrls[orgName]) {
+    // Stored org logo first, fetched Gravatar second, BoxVault logo last
+    const logoUrl =
+      box.user?.organization?.logo ||
+      box.user?.primaryOrganization?.logo ||
+      gravatarUrls[orgName];
+    if (logoUrl) {
       return (
         <img
-          src={gravatarUrls[orgName]}
+          src={logoUrl}
           alt=""
           className="rounded-circle avatar-lg icon-with-margin-sm v-align-middle"
         />

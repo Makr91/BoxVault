@@ -793,7 +793,7 @@ const Profile = ({ activeOrganization }) => {
         <div className="card mt-2 mb-2">
           <div className="card-header text-center">
             <img
-              src={gravatarProfile.avatar_url || ""}
+              src={currentUser.avatarUrl || gravatarProfile.avatar_url || ""}
               alt="User Avatar"
               className="rounded-circle"
               width="100"

@@ -16,6 +16,8 @@ import {
   parseGroupExternalId,
   parseResourceId,
   parseExternalIdFilter,
+  parseOrgProfile,
+  applyOrgProfile,
   recomputeOrgMemberships,
   destroyMirrorOrg,
 } from './helpers.js';
@@ -59,7 +61,7 @@ const toScimGroup = (req, row) => {
 /**
  * Extract the desired group state from a SCIM Group body.
  * @param {Object} body - SCIM Group resource
- * @returns {Object} { extension, memberUuids, displayName, customerId, personal }
+ * @returns {Object} { extension, memberUuids, displayName, customerId, personal, profile }
  */
 const parseGroupState = body => {
   const extension =
@@ -74,6 +76,7 @@ const parseGroupState = body => {
     displayName: typeof body.displayName === 'string' && body.displayName ? body.displayName : null,
     customerId: extension.customerId || null,
     personal: extension.personal === true,
+    profile: parseOrgProfile(extension),
   };
 };
 
@@ -195,6 +198,7 @@ const createGroup = async (req, res) => {
       { uuid: parsed.orgUuid, name: state.displayName, customerId: state.customerId },
       transaction
     );
+    await applyOrgProfile(org, state.profile, transaction);
     await recomputeOrgMemberships(db, org, req.scimIssuer, parsed.orgUuid, transaction);
 
     await transaction.commit();
@@ -300,6 +304,7 @@ const putGroup = async (req, res) => {
       { uuid: row.org_uuid, name: state.displayName, customerId: state.customerId },
       transaction
     );
+    await applyOrgProfile(org, state.profile, transaction);
     await recomputeOrgMemberships(db, org, req.scimIssuer, row.org_uuid, transaction);
 
     await transaction.commit();

@@ -417,7 +417,13 @@
       "accessModeHint": "Controls organization visibility and join methods",
       "defaultRole": "Default Role",
       "defaultRoleHint": "Default role for new members",
-      "updateButton": "Update Organization"
+      "url": "Organization URL",
+      "telephone": "Telephone",
+      "locale": "Locale",
+      "timezone": "Timezone",
+      "address": "Address",
+      "updateButton": "Update Organization",
+      "manageAtIdp": "Manage at Identity Provider"
     },
     "users": {
       "title": "Users in {{organization}}",

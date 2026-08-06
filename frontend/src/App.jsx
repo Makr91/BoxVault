@@ -69,7 +69,11 @@ const App = () => {
       localStorage.getItem("activeOrganization") || user.organization || ""
     );
   });
-  const [gravatarUrl, setGravatarUrl] = useState("");
+  // Tier one of the avatar contract: the stored avatar URL from the login
+  // payload. The Gravatar email-hash fetch below stays as tier two.
+  const [gravatarUrl, setGravatarUrl] = useState(
+    () => AuthService.getCurrentUser()?.avatarUrl || ""
+  );
   const [gravatarFetched, setGravatarFetched] = useState(false);
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -199,7 +203,7 @@ const App = () => {
         localStorage.setItem("activeOrganization", user.organization);
       }
 
-      if (user.emailHash) {
+      if (!user.avatarUrl && user.emailHash) {
         fetchGravatarUrl(user.emailHash);
       }
     } else {
@@ -259,7 +263,9 @@ const App = () => {
       );
       setUserOrganization(userData.organization);
 
-      if (userData.emailHash) {
+      if (userData.avatarUrl) {
+        setGravatarUrl(userData.avatarUrl);
+      } else if (userData.emailHash) {
         fetchGravatarUrl(userData.emailHash);
       }
     });

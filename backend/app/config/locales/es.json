@@ -75,6 +75,7 @@
     "leaveError": "Error al dejar la organización",
     "externallyManaged": "Esta organización está gestionada por tu proveedor de identidad. La membresía, los roles y el ciclo de vida de la organización se gestionan allí y se sincronizan con BoxVault automáticamente.",
     "externallyManagedRename": "Esta organización está gestionada por tu proveedor de identidad y no se puede renombrar en BoxVault. Su nombre visible se actualiza automáticamente cuando se renombra en el proveedor.",
+    "externallyManagedProfile": "Esta organización está gestionada por tu proveedor de identidad. Su perfil (correo electrónico, descripción y código de organización) se sincroniza desde el proveedor y no se puede editar en BoxVault.",
     "alreadyMember": "Ya eres miembro de esta organización.",
     "joinedAsAdmin": "Te has unido a la organización {{organization}} como propietario.",
     "joinError": "Error al unirse a la organización"

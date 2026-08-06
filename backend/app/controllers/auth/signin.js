@@ -245,9 +245,10 @@ const buildSigninToken = ({
  *                 isServiceAccount:
  *                   type: boolean
  *                   description: Whether this is a service account
- *                 gravatarUrl:
+ *                 avatarUrl:
  *                   type: string
- *                   description: Gravatar URL (null for service accounts)
+ *                   nullable: true
+ *                   description: Stored avatar URL from the identity provider (null for service accounts or when unset; clients fall back to the emailHash gravatar)
  *       401:
  *         description: Invalid credentials or expired service account
  *         content:
@@ -340,7 +341,7 @@ export const signin = async (req, res) => {
       isServiceAccount,
       provider,
       stayLoggedIn: !!stayLoggedIn,
-      gravatarUrl: isServiceAccount ? null : user.gravatarUrl,
+      avatarUrl: isServiceAccount ? null : user.avatar_url,
     });
   } catch (err) {
     log.error.error('Error in signin:', err);

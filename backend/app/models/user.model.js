@@ -42,6 +42,13 @@ export default (sequelize, Sequelize) => {
       allowNull: true,
       field: 'linked_at',
     },
+    avatar_url: {
+      type: Sequelize.STRING,
+      allowNull: true,
+      comment:
+        'Provider avatar URL. Three-tier contract: SCIM photos at provision/PUT, then the OIDC picture claim at login (fresher, overwrites), else null and the email-hash gravatar is the render-time fallback',
+      field: 'avatar_url',
+    },
     primary_organization_id: {
       type: Sequelize.INTEGER,
       allowNull: true,

@@ -2,7 +2,7 @@
 // numeric id serialized as a string); the auth server's identity travels ONLY
 // in externalId (their user UUID), scoped per issuer.
 import { log } from '../../utils/Logger.js';
-import { generateEmailHash } from '../../utils/identity.js';
+import { generateEmailHash, isHttpUrl } from '../../utils/identity.js';
 import db from '../../models/index.js';
 import {
   SCIM_USER_EXTENSION,
@@ -38,6 +38,22 @@ const extractEmail = body => {
 };
 
 /**
+ * Extract the avatar URL from the core `photos` attribute (RFC 7643 §4.1.2):
+ * prefer the entry typed 'photo', else the first entry with a value. Only
+ * http(s) URLs are stored; absent or invalid means no avatar (null).
+ * @param {Object} body - SCIM User resource
+ * @returns {string|null}
+ */
+const extractAvatarUrl = body => {
+  if (!Array.isArray(body.photos)) {
+    return null;
+  }
+  const entry =
+    body.photos.find(p => p?.type === 'photo' && p?.value) || body.photos.find(p => p?.value);
+  return entry && isHttpUrl(entry.value) ? entry.value : null;
+};
+
+/**
  * Normalize the pushed SCIM User resource into the desired BoxVault state.
  * @param {Object} body - SCIM User resource
  * @returns {Object|null} Desired state, or null when no email can be derived
@@ -60,6 +76,7 @@ const parseScimUserState = body => {
       typeof extension.primaryOrgUuid === 'string' && extension.primaryOrgUuid
         ? extension.primaryOrgUuid
         : null,
+    avatarUrl: extractAvatarUrl(body),
   };
 };
 
@@ -80,6 +97,8 @@ const toScimUser = (req, user, externalId, primaryOrgUuid) => ({
   userName: user.username,
   active: !user.suspended,
   emails: [{ value: user.email, primary: true }],
+  // photos is rendered only when an avatar is stored (RFC 7643: no value = attribute absent)
+  ...(user.avatar_url ? { photos: [{ value: user.avatar_url, type: 'photo' }] } : {}),
   [SCIM_USER_EXTENSION]: {
     emailVerified: user.verified,
     primaryOrgUuid: primaryOrgUuid || null,
@@ -147,6 +166,7 @@ const provisionScimUser = async (externalId, issuer, state) => {
       authProvider: 'oidc',
       externalId,
       linkedAt: new Date(),
+      avatar_url: state.avatarUrl,
     });
   }
   await Credential.create({
@@ -181,6 +201,9 @@ const buildUserPatch = (user, state) => {
   }
   if (state.emailVerified !== null && user.verified !== state.emailVerified) {
     patch.verified = state.emailVerified;
+  }
+  if (user.avatar_url !== state.avatarUrl) {
+    patch.avatar_url = state.avatarUrl;
   }
   return patch;
 };

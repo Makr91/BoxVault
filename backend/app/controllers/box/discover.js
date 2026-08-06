@@ -88,7 +88,7 @@ export const discoverAll = async (req, res) => {
             {
               model: organization,
               as: 'primaryOrganization',
-              attributes: ['id', 'name', 'emailHash'],
+              attributes: ['id', 'name', 'emailHash', 'logo'],
             },
           ],
         },

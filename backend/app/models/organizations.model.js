@@ -23,6 +23,38 @@ export default (sequelize, Sequelize) => {
         type: Sequelize.STRING,
         defaultValue: '',
       },
+      logo: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment:
+          'Organization logo URL (schema.org/Organization logo); IdP-synced for external orgs',
+      },
+      url: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: 'Organization website URL (schema.org/Organization url)',
+      },
+      telephone: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: 'Organization telephone (schema.org/Organization telephone)',
+      },
+      locale: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: 'BCP 47 language tag (e.g. en-US)',
+      },
+      timezone: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: 'IANA timezone identifier (e.g. America/Chicago)',
+      },
+      address: {
+        type: Sequelize.JSON,
+        allowNull: true,
+        comment:
+          'Postal address object using RFC 7643 §4.1.2 sub-attribute names (streetAddress newline-joined), stored verbatim',
+      },
       org_code: {
         type: Sequelize.STRING(10),
         unique: true,

@@ -1,5 +1,5 @@
 import { log } from '../utils/Logger.js';
-import { generateEmailHash, generateOrgCode } from '../utils/identity.js';
+import { generateEmailHash, generateOrgCode, isHttpUrl } from '../utils/identity.js';
 import { upsertExternalOrg } from '../utils/externalOrgs.js';
 
 /**
@@ -599,6 +599,13 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
           authConfig
         );
       }
+    }
+
+    // Login tier of the avatar contract: a valid picture claim is fresher than
+    // the SCIM-provisioned photos value and overwrites it; the email-hash
+    // gravatar remains the render-time fallback when neither tier set a value.
+    if (isHttpUrl(profile.picture) && user.avatar_url !== profile.picture) {
+      await user.update({ avatar_url: profile.picture });
     }
 
     // Reconcile all org memberships from the claim (auth-server source of truth).

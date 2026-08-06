@@ -644,7 +644,13 @@
       "accessModeHint": "Controla la visibilidad de la organización y métodos de unión",
       "defaultRole": "Rol Predeterminado",
       "defaultRoleHint": "Rol predeterminado para nuevos miembros",
-      "updateButton": "Actualizar Organización"
+      "url": "URL de la Organización",
+      "telephone": "Teléfono",
+      "locale": "Configuración Regional",
+      "timezone": "Zona Horaria",
+      "address": "Dirección",
+      "updateButton": "Actualizar Organización",
+      "manageAtIdp": "Administrar en el Proveedor de Identidad"
     },
     "users": {
       "title": "Usuarios en {{organization}}",

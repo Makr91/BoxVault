@@ -75,6 +75,7 @@
     "leaveError": "Error leaving organization",
     "externallyManaged": "This organization is managed by your identity provider. Membership, roles, and organization lifecycle are managed there and synced to BoxVault automatically.",
     "externallyManagedRename": "This organization is managed by your identity provider and cannot be renamed in BoxVault. Its display name updates automatically when renamed at the provider.",
+    "externallyManagedProfile": "This organization is managed by your identity provider. Its profile (email, description, and organization code) is synced from the provider and cannot be edited in BoxVault.",
     "alreadyMember": "You are already a member of this organization.",
     "joinedAsAdmin": "Joined organization {{organization}} as owner.",
     "joinError": "Error joining organization"

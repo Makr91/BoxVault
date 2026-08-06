@@ -108,7 +108,9 @@ const UserCard = ({
 
   useEffect(() => {
     let mounted = true;
-    if (user.emailHash) {
+    // The stored avatar URL is preferred at render time; the Gravatar
+    // email-hash fetch is only needed when no stored URL exists.
+    if (!user.avatar_url && user.emailHash) {
       AuthService.getGravatarProfile(user.emailHash)
         .then((profile) => {
           if (mounted && profile?.thumbnailUrl) {
@@ -125,7 +127,9 @@ const UserCard = ({
     return () => {
       mounted = false;
     };
-  }, [user.emailHash]);
+  }, [user.avatar_url, user.emailHash]);
+
+  const avatarUrl = user.avatar_url || gravatarUrl;
 
   // Normalize roles to array of strings
   const roles = user.roles
@@ -177,9 +181,9 @@ const UserCard = ({
       <div className={`card h-100 ${user.suspended ? "border-danger" : ""}`}>
         <div className="card-body">
           <div className="d-flex align-items-center mb-3">
-            {gravatarUrl ? (
+            {avatarUrl ? (
               <img
-                src={gravatarUrl}
+                src={avatarUrl}
                 alt={user.username}
                 className="rounded-circle me-3"
                 style={{ width: 50, height: 50, objectFit: "cover" }}

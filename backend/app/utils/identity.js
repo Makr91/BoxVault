@@ -5,6 +5,23 @@ import { loadConfig } from './config-loader.js';
 const generateEmailHash = email =>
   createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 
+/**
+ * True when the value is an absolute http(s) URL. Guards stored avatar/profile
+ * URLs against non-web schemes (data:, javascript:, ...) from upstream claims.
+ * @param {*} value - Candidate URL
+ * @returns {boolean}
+ */
+const isHttpUrl = value => {
+  if (typeof value !== 'string' || !value) {
+    return false;
+  }
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+};
+
 // Fallback only for a missing/malformed knob — the real seed lives in the YAML
 // knob (app config: boxvault.org_code_seed).
 const DEFAULT_ORG_CODE_SEED = 'B00000';
@@ -44,4 +61,4 @@ const generateOrgCode = async (db, transaction = null) => {
   return (parseInt(highest, 16) + 1).toString(16).toUpperCase().padStart(6, '0');
 };
 
-export { generateEmailHash, generateOrgCode };
+export { generateEmailHash, generateOrgCode, isHttpUrl };
