@@ -1,4 +1,5 @@
 // findone.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
 
@@ -169,6 +170,7 @@ export const findOne = async (req, res) => {
     }
     return res.send(provider);
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('providers.findOne.error') });
+    log.error.error('Error retrieving provider:', err);
+    return res.status(500).send({ message: req.__('providers.findOne.error') });
   }
 };

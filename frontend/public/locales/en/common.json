@@ -31,8 +31,6 @@
     "copy": "Copy",
     "move": "Move",
     "rename": "Rename",
-    "promote": "Promote",
-    "demote": "Demote",
     "resume": "Resume",
     "download": "Download",
     "search": "Search",
@@ -92,7 +90,8 @@
       "ticketSystem": "Ticket System",
       "frontendLogging": "Frontend Logging",
       "frontendLoggingCategories": "Frontend Logging Categories",
-      "oidcSettings": "OIDC Settings"
+      "oidcSettings": "OIDC Settings",
+      "s2sSettings": "S2S Delegation"
     }
   },
   "status": {
@@ -305,7 +304,6 @@
         "newEmailPlaceholder": "New Email",
         "button": "Change Email"
       },
-      "promoteToModerator": "Promote to Moderator",
       "deleteAccount": {
         "title": "Delete Account",
         "warning": "Warning: This action cannot be undone.",
@@ -333,7 +331,8 @@
       "createButton": "Create Service Account",
       "organization": "Organization",
       "expires": "Expires",
-      "token": "Token"
+      "token": "Token",
+      "tokenShownOnce": "Copy this token now — it is shown only once and cannot be retrieved later."
     },
     "deleteModal": {
       "title": "Delete Account",
@@ -345,7 +344,6 @@
       "serviceAccountCreated": "Service account created successfully!",
       "passwordChanged": "Password changed successfully!",
       "emailChanged": "Email changed successfully!",
-      "promotedToModerator": "Promoted to moderator successfully!",
       "emailNotVerified": "Your email is not verified."
     },
     "errors": {
@@ -356,8 +354,7 @@
       "createServiceAccountFailed": "Error creating service account: {{error}}",
       "resendVerificationFailed": "Error sending verification email: {{error}}",
       "changePasswordFailed": "Error changing password: {{error}}",
-      "changeEmailFailed": "Error changing email: {{error}}",
-      "promoteToModeratorFailed": "Error promoting to moderator: {{error}}"
+      "changeEmailFailed": "Error changing email: {{error}}"
     },
     "buttons": {
       "leave": "Leave Organization",
@@ -425,9 +422,7 @@
     "users": {
       "title": "Users in {{organization}}",
       "boxes": "Boxes",
-      "roles": "Roles",
-      "promote": "Promote",
-      "demote": "Demote"
+      "roles": "Roles"
     },
     "joinRequest": {
       "title": "Pending Join Requests",
@@ -437,8 +432,8 @@
       "requested": "Requested",
       "actions": "Actions",
       "noMessage": "No message",
-      "approveAsUser": "Approve as User",
-      "approveAsModerator": "Approve as Moderator",
+      "approveAsMember": "Approve as Member",
+      "approveAsAdmin": "Approve as Admin",
       "deny": "Deny",
       "approved": "Join request approved successfully!",
       "approveError": "Error approving request: {{error}}",
@@ -466,8 +461,9 @@
   },
   "roles": {
     "user": "User",
-    "moderator": "Moderator",
-    "admin": "Administrator"
+    "member": "Member",
+    "admin": "Administrator",
+    "owner": "Owner"
   },
   "oidc": {
     "title": "OIDC Providers",
@@ -707,7 +703,7 @@
         "createBox": "Create Box",
         "createNewBox": "Create New Box",
         "removeAll": "Remove All",
-        "joinAsAdmin": "Join as Admin"
+        "joinAsAdmin": "Join as Owner"
       },
       "headers": {
         "createNewBox": "Create New Box",

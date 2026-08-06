@@ -2,12 +2,9 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { createHash } from 'crypto';
 import db from '../../models/index.js';
+import { generateEmailHash } from '../../utils/identity.js';
 const { organization: Organization } = db;
-
-const generateEmailHash = email =>
-  createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 
 /**
  * @swagger
@@ -170,8 +167,9 @@ export const update = async (req, res) => {
       organization: org,
     });
   } catch (err) {
+    log.error.error('Error updating organization:', err);
     return res.status(500).send({
-      message: err.message || req.__('organizations.updateError'),
+      message: req.__('organizations.updateError'),
     });
   }
 };

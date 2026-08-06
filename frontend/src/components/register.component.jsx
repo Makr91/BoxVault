@@ -7,14 +7,7 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
-
-const sanitizeProvider = (provider) => {
-  const safeProviderPattern = /^[A-Za-z0-9_-]+$/;
-  if (typeof provider !== "string" || !safeProviderPattern.test(provider)) {
-    throw new Error("Invalid authentication provider");
-  }
-  return provider;
-};
+import { sanitizeProvider } from "../utils/providers";
 
 const Register = ({ theme }) => {
   const { t } = useTranslation(["auth", "common"]);

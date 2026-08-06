@@ -103,11 +103,11 @@ const OrganizationSwitcher = ({
 
   const getRoleBadgeClass = (role) => {
     switch (role) {
-      case "admin":
+      case "owner":
         return "bg-danger";
-      case "moderator":
+      case "admin":
         return "bg-warning";
-      case "user":
+      case "member":
       default:
         return "bg-secondary";
     }

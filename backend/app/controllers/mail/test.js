@@ -82,8 +82,6 @@ export const testSmtp = async (req, res) => {
     }
     return res.status(500).send({
       message: req.__('mail.errorSendingEmail'),
-      error: error.message,
-      stack: error.stack,
     });
   }
 };

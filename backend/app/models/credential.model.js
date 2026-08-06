@@ -25,15 +25,10 @@ export default (sequelize, Sequelize) => {
         field: 'user_id',
       },
       provider: {
-        type: Sequelize.STRING(50),
+        type: Sequelize.STRING(255),
         allowNull: false,
-        comment: 'Authentication provider: ldap, oidc, oauth2, etc.',
-        validate: {
-          isIn: {
-            args: [['ldap', 'oidc', 'oauth2', 'saml']],
-            msg: 'Provider must be a valid authentication provider type',
-          },
-        },
+        comment:
+          'Credential namespace: the OIDC issuer URL (iss) for OIDC credentials, or the protocol name (ldap, saml, ...) for non-issuer providers',
       },
       subject: {
         type: Sequelize.STRING(255),
@@ -133,6 +128,33 @@ export default (sequelize, Sequelize) => {
   };
 
   /**
+   * Find an OIDC credential by issuer and subject (#30).
+   *
+   * Lazy deterministic backfill: rows created before issuer-scoping stored the
+   * flat provider value 'oidc' (single-issuer deployment). On a miss, claim any
+   * matching 'oidc' row for this issuer by rewriting its provider in place.
+   * @param {string} issuer - OIDC issuer URL (iss claim)
+   * @param {string} subject - Provider-specific user identifier
+   * @param {Object|null} transaction - Optional transaction for the lookup/backfill
+   * @returns {Promise<Credential|null>}
+   */
+  Credential.findByIssuerAndSubject = async function (issuer, subject, transaction = null) {
+    const opts = transaction ? { transaction } : {};
+    const credential = await this.findOne({ where: { provider: issuer, subject }, ...opts });
+    if (credential) {
+      return credential;
+    }
+
+    const flat = await this.findOne({ where: { provider: 'oidc', subject }, ...opts });
+    if (flat) {
+      await flat.update({ provider: issuer }, opts);
+      return flat;
+    }
+
+    return null;
+  };
+
+  /**
    * Find all credentials for a user
    * @param {number} userId - User ID
    * @returns {Promise<Credential[]>}
@@ -164,7 +186,7 @@ export default (sequelize, Sequelize) => {
   /**
    * Link external credential to user
    * @param {number} userId - User ID
-   * @param {string} provider - Authentication provider
+   * @param {string} provider - Credential namespace (issuer URL for OIDC, protocol name otherwise)
    * @param {Object} profile - External profile data
    * @returns {Promise<Credential>}
    */

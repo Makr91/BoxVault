@@ -1,11 +1,4 @@
-import {
-  readdirSync,
-  statSync,
-  createWriteStream,
-  readFileSync,
-  rmdirSync,
-  createReadStream,
-} from 'fs';
+import { readdirSync, statSync, createWriteStream, createReadStream } from 'fs';
 import { createHash } from 'crypto';
 import { Transform } from 'stream';
 import { pipeline } from 'stream/promises';
@@ -13,7 +6,7 @@ import { join, dirname } from 'path';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { getSecureBoxPath } from '../utils/paths.js';
-import { safeUnlink, safeRmdirSync, safeMkdirSync, safeExistsSync } from '../utils/fsHelper.js';
+import { safeUnlink, safeRmdirSync, ensureDirSync, safeExistsSync } from '../utils/fsHelper.js';
 import db from '../models/index.js';
 const { versions, box, providers, architectures, files } = db;
 
@@ -94,7 +87,7 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
   });
 
   // Ensure upload directory exists
-  safeMkdirSync(dirname(finalPath), { recursive: true, mode: 0o755 });
+  ensureDirSync(dirname(finalPath));
 
   // Create write stream for final file
   const writeStream = createWriteStream(finalPath, {
@@ -103,6 +96,28 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
     mode: 0o666,
     autoClose: true,
   });
+
+  // Stream one chunk into the shared write stream (never buffering a whole
+  // chunk in memory), leaving the stream open for the next chunk. pipe()
+  // handles backpressure; error listeners are detached once the chunk is done.
+  const appendChunk = chunkPath =>
+    new Promise((resolve, reject) => {
+      const readStream = createReadStream(chunkPath);
+      const onWriteError = err => {
+        readStream.destroy();
+        reject(err);
+      };
+      writeStream.once('error', onWriteError);
+      readStream.once('error', err => {
+        writeStream.removeListener('error', onWriteError);
+        reject(err);
+      });
+      readStream.once('end', () => {
+        writeStream.removeListener('error', onWriteError);
+        resolve();
+      });
+      readStream.pipe(writeStream, { end: false });
+    });
 
   // Helper function to merge chunks recursively (avoids await-in-loop)
   const mergeChunkRecursive = async (index, currentSize) => {
@@ -120,26 +135,11 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
       assembledSize: currentSize,
     });
 
-    const chunkContent = readFileSync(chunk.path);
-    if (chunkContent.length !== chunkSize) {
-      throw new Error(
-        `Chunk ${index} size mismatch: expected ${chunkSize}, got ${chunkContent.length}`
-      );
-    }
-
-    const canContinue = writeStream.write(chunkContent);
-    const newSize = currentSize + chunkContent.length;
-
-    // If write buffer is full, wait for it to drain before continuing
-    if (!canContinue) {
-      await new Promise(resolve => {
-        writeStream.once('drain', resolve);
-      });
-    }
+    await appendChunk(chunk.path);
 
     safeUnlink(chunk.path); // Delete chunk after merging
 
-    return mergeChunkRecursive(index + 1, newSize);
+    return mergeChunkRecursive(index + 1, currentSize + chunkSize);
   };
 
   // Merge chunks sequentially using recursion
@@ -375,18 +375,71 @@ const handleChunkedUpload = async (
       },
     };
   } catch (error) {
-    // Clean up temp files on error
+    // Clean up the upload's chunk directory on failure
     try {
-      if (safeExistsSync(tempDir)) {
-        const chunks = readdirSync(tempDir);
-        chunks.forEach(chunk => safeUnlink(join(tempDir, chunk)));
-        rmdirSync(tempDir);
-      }
+      safeRmdirSync(tempDir);
     } catch (cleanupError) {
       log.error.error('Error cleaning up temp files:', cleanupError);
     }
     throw error;
   }
+};
+
+// Stale chunk-dir sweep: a crashed or abandoned chunked upload leaves its
+// .temp directory behind forever. When a NEW chunked upload starts, sweep the
+// box storage tree and remove .temp dirs untouched for a generous age — an
+// in-flight upload keeps its dir fresh with every chunk it writes. The age is
+// a YAML knob (app config: boxvault.upload_stale_temp_max_age_hours); this
+// constant is only the load-failure fallback.
+const STALE_TEMP_DIR_MAX_AGE_HOURS_FALLBACK = 24;
+
+const sweepStaleTempDirs = () => {
+  let appConfig;
+  try {
+    appConfig = loadConfig('app');
+  } catch (e) {
+    log.app.warn(`Stale temp sweep skipped, app config unavailable: ${e.message}`);
+    return;
+  }
+  const storageRoot = appConfig.boxvault?.box_storage_directory?.value;
+  if (!storageRoot || !safeExistsSync(storageRoot)) {
+    return;
+  }
+
+  const configuredMaxAgeHours = appConfig.boxvault?.upload_stale_temp_max_age_hours?.value;
+  const maxAgeHours =
+    typeof configuredMaxAgeHours === 'number' && configuredMaxAgeHours > 0
+      ? configuredMaxAgeHours
+      : STALE_TEMP_DIR_MAX_AGE_HOURS_FALLBACK;
+  const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
+  const walk = (dir, depth) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const fullPath = join(dir, entry.name);
+      if (entry.name === '.temp') {
+        try {
+          if (statSync(fullPath).mtimeMs < cutoff) {
+            log.app.info('Removing stale chunk temp directory:', { path: fullPath });
+            safeRmdirSync(fullPath);
+          }
+        } catch (err) {
+          log.app.warn(`Could not inspect temp directory ${fullPath}: ${err.message}`);
+        }
+      } else if (depth < 6) {
+        // .temp lives at org/box/version/provider/arch/.temp — bounded walk
+        walk(fullPath, depth + 1);
+      }
+    }
+  };
+  walk(storageRoot, 0);
 };
 
 // Helper: Handle single file upload
@@ -570,7 +623,7 @@ const uploadMiddleware = async (req, res) => {
     );
 
     log.app.info('Creating upload directory:', { uploadDir });
-    safeMkdirSync(uploadDir, { recursive: true, mode: 0o755 });
+    ensureDirSync(uploadDir);
     finalPath = join(uploadDir, 'vagrant.box');
 
     // Get chunk information from headers
@@ -587,8 +640,12 @@ const uploadMiddleware = async (req, res) => {
     // Create temp directory for chunks if needed
     const tempDir = join(uploadDir, '.temp');
     if (isMultipart) {
+      // First chunk of a new upload: clear stale orphans left by dead uploads
+      if (chunkIndex === 0) {
+        sweepStaleTempDirs();
+      }
       log.app.info('Creating temp directory for chunks:', { tempDir });
-      safeMkdirSync(tempDir, { recursive: true, mode: 0o755 });
+      ensureDirSync(tempDir);
     }
 
     // Log upload start

@@ -1,4 +1,5 @@
 // discover.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import {
   extractBearerToken,
@@ -82,6 +83,7 @@ export const discoverAll = async (req, res) => {
         {
           model: user,
           as: 'user',
+          attributes: ['id', 'username', 'emailHash'],
           include: [
             {
               model: organization,
@@ -105,8 +107,9 @@ export const discoverAll = async (req, res) => {
 
     return res.send(restructuredBoxes);
   } catch (err) {
+    log.error.error('Error discovering boxes:', err);
     return res.status(500).send({
-      message: err.message || req.__('boxes.discover.error'),
+      message: req.__('boxes.discover.error'),
     });
   }
 };

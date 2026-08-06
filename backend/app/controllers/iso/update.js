@@ -47,7 +47,12 @@ const update = async (req, res) => {
   const { isPublic, name, description } = req.body || {};
 
   try {
-    const iso = await ISO.findByPk(isoId);
+    const iso = await ISO.findOne({
+      where: {
+        id: isoId,
+        organizationId: req.organizationId,
+      },
+    });
     if (!iso) {
       return res.status(404).send({ message: req.__('isos.notFound') });
     }

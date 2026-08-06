@@ -8,8 +8,11 @@ import { log } from '../utils/Logger.js';
  */
 const rateLimitConfig = getRateLimitConfig();
 
+// Shared window for every limiter — driven by the rate_limiting.window_minutes knob
+const windowMs = rateLimitConfig.window_minutes * 60 * 1000;
+
 const rateLimiter = rateLimit({
-  windowMs: rateLimitConfig.window_minutes * 60 * 1000,
+  windowMs,
   max: rateLimitConfig.max_requests,
   standardHeaders: true,
   legacyHeaders: false,
@@ -38,18 +41,40 @@ const rateLimiter = rateLimit({
 
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 2000,
+  windowMs,
+  max: rateLimitConfig.file_operations_max_requests,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // Explicit rate limiter for architecture operations (CodeQL requirement)
 const architectureOperationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 2000,
+  windowMs,
+  max: rateLimitConfig.architecture_operations_max_requests,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-export { rateLimiter, fileOperationLimiter, architectureOperationLimiter };
+// Dedicated rate limiter for download-link generation
+const getDownloadLinkLimiter = rateLimit({
+  windowMs,
+  max: rateLimitConfig.download_link_max_requests,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Dedicated rate limiter for file downloads
+const downloadLimiter = rateLimit({
+  windowMs,
+  max: rateLimitConfig.download_max_requests,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export {
+  rateLimiter,
+  fileOperationLimiter,
+  architectureOperationLimiter,
+  getDownloadLinkLimiter,
+  downloadLimiter,
+};

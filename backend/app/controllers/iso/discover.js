@@ -27,6 +27,6 @@ export const discoverAll = async (req, res) => {
     log.error.error('Error discovering public ISOs:', {
       error: err.message,
     });
-    return res.status(500).send({ message: err.message || req.__('isos.discoverError') });
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

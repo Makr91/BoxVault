@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import {
   authJwt,
   sessionAuth,
@@ -7,6 +6,11 @@ import {
   externalTokenAuth,
   verifyBoxFilePath,
 } from '../middleware/index.js';
+import {
+  fileOperationLimiter,
+  getDownloadLinkLimiter,
+  downloadLimiter,
+} from '../middleware/rateLimiter.js';
 import {
   update,
   upload,
@@ -17,30 +21,6 @@ import {
 } from '../controllers/file.controller.js';
 
 const router = Router();
-
-// Explicit rate limiter for file operations (CodeQL requirement)
-const fileOperationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 2000,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Dedicated rate limiter for download-link generation
-const getDownloadLinkLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 download-link requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Dedicated rate limiter for file downloads
-const downloadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // align with general file operation limits
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 router.use((req, res, next) => {
   void req;

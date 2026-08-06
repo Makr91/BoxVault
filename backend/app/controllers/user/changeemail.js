@@ -1,6 +1,7 @@
 // changeemail.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { generateEmailHash } from '../auth/helpers.js';
+import { generateEmailHash } from '../../utils/identity.js';
 const { user: User } = db;
 
 /**
@@ -72,6 +73,7 @@ export const changeEmail = async (req, res) => {
 
     return res.status(200).send({ message: req.__('users.emailChanged') });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('errors.operationFailed') });
+    log.error.error('Error changing email:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

@@ -39,7 +39,7 @@ const { organization: Organization, user: User, UserOrg } = db;
  *                       type: string
  *                     role:
  *                       type: string
- *                       enum: [user, moderator, admin]
+ *                       enum: [member, admin, owner]
  *       400:
  *         description: User is not a member of this organization
  *         content:

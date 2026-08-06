@@ -1,55 +1,28 @@
-import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
-const { service_account: ServiceAccount, user: User, Sequelize } = db;
+import { extractBearerToken, findServiceAccountByRawToken } from '../utils/serviceAccountAuth.js';
+import { t, getDefaultLocale } from '../config/i18n.js';
 
 const isVagrantRequest = req => {
   const userAgent = req.headers['user-agent'] || '';
   return userAgent.startsWith('Vagrant/');
 };
 
-const extractBearerToken = req => {
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-  return null;
-};
-
 const validateVagrantToken = async token => {
   try {
     log.app.info('Attempting to validate token:', `${token.substring(0, 8)}...`);
-    const serviceAccount = await ServiceAccount.findOne({
-      where: {
-        token,
-        expiresAt: {
-          [Sequelize.Op.or]: {
-            [Sequelize.Op.gt]: new Date(),
-            [Sequelize.Op.eq]: null,
-          },
-        },
-      },
-      include: [
-        {
-          model: User,
-          as: 'user',
-        },
-      ],
-    });
+    const serviceAccount = await findServiceAccountByRawToken(token);
 
     if (!serviceAccount) {
-      log.app.info('No service account found for token');
-      return null;
-    }
-
-    if (!serviceAccount.user) {
-      log.app.info('Service account found but no associated user');
+      log.app.info('No valid service account found for token');
       return null;
     }
 
     log.app.info('Successfully validated token for user:', serviceAccount.user.id);
+    // Service accounts impersonate their owning user
     return {
       userId: serviceAccount.user.id,
       isServiceAccount: true,
+      serviceAccountId: serviceAccount.id,
     };
   } catch (err) {
     log.error.error('Error validating vagrant token:', {
@@ -146,14 +119,23 @@ const vagrantHandler = async (req, res, next) => {
     return next();
   }
 
-  // For Vagrant requests, validate the Bearer token
+  // For Vagrant requests, validate the Bearer token. A PRESENTED token that
+  // fails validation is rejected immediately — it must never silently degrade
+  // to anonymous access. Requests with no credentials stay anonymous so public
+  // box downloads keep working. (This middleware runs before the i18n
+  // middleware, so translation goes through t() with the default locale.)
   const bearerToken = extractBearerToken(req);
   if (bearerToken) {
     const authInfo = await validateVagrantToken(bearerToken);
-    if (authInfo) {
-      req.userId = authInfo.userId;
-      req.isServiceAccount = authInfo.isServiceAccount;
+    if (!authInfo) {
+      log.app.warn('Vagrant request presented an invalid or expired service account token', {
+        url: req.url,
+      });
+      return res.status(401).json({ message: t('auth.vagrantInvalidToken', getDefaultLocale()) });
     }
+    req.userId = authInfo.userId;
+    req.isServiceAccount = authInfo.isServiceAccount;
+    req.serviceAccountId = authInfo.serviceAccountId;
   }
 
   // Parse the URL

@@ -1,4 +1,5 @@
 // suspend.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { organization: Organization } = db;
 
@@ -59,6 +60,7 @@ export const suspendOrganization = async (req, res) => {
 
     return res.status(200).send({ message: req.__('organizations.suspended') });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('organizations.suspendError') });
+    log.error.error('Error suspending organization:', err);
+    return res.status(500).send({ message: req.__('organizations.suspendError') });
   }
 };

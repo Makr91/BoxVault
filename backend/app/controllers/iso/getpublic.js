@@ -36,6 +36,6 @@ export const getPublic = async (req, res) => {
     return res.status(200).send(isos);
   } catch (err) {
     log.error.error('Error fetching public ISOs:', { error: err.message });
-    return res.status(500).send({ message: err.message || req.__('errors.operationFailed') });
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

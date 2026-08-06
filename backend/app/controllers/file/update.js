@@ -206,10 +206,10 @@ const update = (req, res) => {
     // Entities are pre-loaded by verifyBoxFilePath middleware
     const { organization: organizationData, box, architecture } = req.entities;
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canUpdate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canUpdate) {
       return res.status(403).send({
@@ -234,12 +234,10 @@ const update = (req, res) => {
     await uploadFileMiddleware(req, res);
     return undefined;
   })().catch(err => {
-    log.app.info(err);
+    log.error.error('File update error:', err);
 
     return res.status(500).send({
       message: req.__('files.update.error', { file: '' }),
-      error: err.message,
-      code: err.code || 'UNKNOWN_ERROR',
       details: {
         duration: (Date.now() - uploadStartTime) / 1000,
       },

@@ -15,11 +15,90 @@ import {
 import { validateInvitationToken } from '../controllers/auth/invitation/validate.js';
 import { buildAuthorizationUrl, handleOidcCallback, buildEndSessionUrl } from '../auth/passport.js';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import { randomState, randomPKCECodeVerifier } from 'openid-client';
 import { loadConfig } from '../utils/config-loader.js';
+import { getJwtClaimOptions } from '../utils/auth.js';
 import { log } from '../utils/Logger.js';
+import db from '../models/index.js';
+
+const { invitation: Invitation, organization: Organization } = db;
 
 const router = Router();
+
+// One-time login handoff codes (#15): after a successful OIDC callback the
+// signed BoxVault JWT is parked here behind an opaque, single-use, short-lived
+// code. The browser is redirected with only that code in the URL and swaps it
+// via POST /auth/oidc/exchange — the JWT itself never appears in a URL,
+// browser history, referrer header, or access log.
+const loginHandoffCodes = new Map();
+
+const purgeExpiredHandoffCodes = () => {
+  const now = Date.now();
+  for (const [code, entry] of loginHandoffCodes) {
+    if (entry.expiresAt <= now) {
+      loginHandoffCodes.delete(code);
+    }
+  }
+};
+
+const createLoginHandoffCode = token => {
+  purgeExpiredHandoffCodes();
+  const authConfig = loadConfig('auth');
+  const ttlSeconds = authConfig.auth?.oidc?.login_handoff_ttl_seconds?.value || 60;
+  const code = randomBytes(32).toString('hex');
+  loginHandoffCodes.set(code, { token, expiresAt: Date.now() + ttlSeconds * 1000 });
+  return code;
+};
+
+const consumeLoginHandoffCode = code => {
+  purgeExpiredHandoffCodes();
+  if (typeof code !== 'string' || !code) {
+    return null;
+  }
+  const entry = loginHandoffCodes.get(code);
+  if (!entry) {
+    return null;
+  }
+  // Single-use: a code is dead the moment it is redeemed
+  loginHandoffCodes.delete(code);
+  return entry.token;
+};
+
+// Resolve the org that owns :invitationId so the per-org role gate can
+// authorize against THAT org — the delete route itself carries no org segment,
+// and the org must come from the invitation record, never from the caller.
+const resolveInvitationOrg = async (req, res, next) => {
+  try {
+    // External invites (customer orgs) are addressed as `ext:<org>:<invite_id>`
+    // — the record lives on the auth server, so the org rides in the id itself.
+    if (req.params.invitationId.startsWith('ext:')) {
+      const [, orgName] = req.params.invitationId.split(':');
+      if (!orgName) {
+        return res.status(404).send({ message: req.__('invitations.notFound') });
+      }
+      req.params.organization = orgName;
+      return next();
+    }
+
+    const invitation = await Invitation.findByPk(req.params.invitationId, {
+      include: [{ model: Organization, as: 'organization' }],
+    });
+
+    if (!invitation || !invitation.organization) {
+      return res.status(404).send({ message: req.__('invitations.notFound') });
+    }
+
+    req.params.organization = invitation.organization.name;
+    return next();
+  } catch (err) {
+    log.auth.error('Invitation org resolution error:', {
+      error: err.message,
+      invitationId: req.params.invitationId,
+    });
+    return res.status(500).send({ message: req.__('invitations.delete.error') });
+  }
+};
 
 // Apply rate limiting to this router
 router.use(rateLimiter);
@@ -43,9 +122,13 @@ router.post(
   [authJwt.verifyToken, authJwt.isUser],
   acceptInvitation
 );
+// Invite management is gated per-org: the org's owners (UserOrg owner) and
+// admins (UserOrg admin) manage its invitations — global roles no
+// longer grant invite rights on other orgs (global admins still pass via the
+// bypass inside isOrgAdminOrOwner).
 router.get(
   '/invitations/active/:organization',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isModerator],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   getActiveInvitations
 );
 router.post(
@@ -53,14 +136,16 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUser,
-    authJwt.isModeratorOrAdmin,
-    verifyOrgAccess.rejectExternallyManagedOrg,
+    // Resolves the org from req.body.organizationName (no :organization segment).
+    // Externally-managed orgs are NOT rejected here: the controller delegates
+    // their invites to the auth server instead of writing a local invitation.
+    verifyOrgAccess.isOrgAdminOrOwner,
   ],
   sendInvitation
 );
 router.delete(
   '/invitations/:invitationId',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isModeratorOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, resolveInvitationOrg, verifyOrgAccess.isOrgAdminOrOwner],
   deleteInvitation
 );
 
@@ -225,7 +310,10 @@ router.get('/auth/methods', (req, res) => {
  * /api/auth/oidc/callback:
  *   get:
  *     summary: Handle OIDC callback from providers
- *     description: Process the callback from OIDC provider and generate JWT token
+ *     description: >-
+ *       Process the callback from the OIDC provider, generate the BoxVault JWT
+ *       server-side, and redirect the browser with a single-use login code
+ *       redeemable at /api/auth/oidc/exchange (the JWT never appears in a URL)
  *     tags: [Authentication]
  *     parameters:
  *       - in: query
@@ -240,7 +328,7 @@ router.get('/auth/methods', (req, res) => {
  *         description: State parameter for CSRF protection
  *     responses:
  *       302:
- *         description: Redirect to frontend with token or error
+ *         description: Redirect to frontend with a one-time login code or error
  *       400:
  *         description: OIDC provider not enabled or authentication failed
  *       403:
@@ -339,6 +427,15 @@ router.get('/auth/oidc/callback', async (req, res) => {
       return res.redirect('/?error=user_creation_failed');
     }
 
+    // Suspended users may not log in — reject before any BoxVault JWT is issued
+    if (user.suspended) {
+      log.auth.info('OIDC callback: suspended user rejected', {
+        provider,
+        username: user.username,
+      });
+      return res.redirect('/login?error=account_suspended');
+    }
+
     // Calculate OIDC token expiration time
     const claims = tokens.claims();
 
@@ -369,6 +466,7 @@ router.get('/auth/oidc/callback', async (req, res) => {
         algorithm: 'HS256',
         allowInsecureKeySizes: true, // This should be optional configurable ie moved into the config
         expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
+        ...getJwtClaimOptions(),
       }
     );
 
@@ -382,7 +480,10 @@ router.get('/auth/oidc/callback', async (req, res) => {
       email: user.email,
     });
 
-    return res.redirect(`/auth/callback?token=${encodeURIComponent(token)}`);
+    // #15: the JWT never rides in a URL — hand the browser a single-use,
+    // short-lived opaque code and let the SPA swap it via POST /auth/oidc/exchange.
+    const handoffCode = createLoginHandoffCode(token);
+    return res.redirect(`/auth/callback?code=${handoffCode}`);
   } catch (error) {
     // Enhanced error logging with all available details
     const safeParamLength = value => (typeof value === 'string' ? value.length : undefined);
@@ -415,6 +516,54 @@ router.get('/auth/oidc/callback', async (req, res) => {
 
     return res.redirect('/?error=oidc_failed');
   }
+});
+
+/**
+ * @swagger
+ * /api/auth/oidc/exchange:
+ *   post:
+ *     summary: Exchange a one-time login code for the session JWT
+ *     description: >-
+ *       Redeems the single-use, short-lived code issued by the OIDC callback
+ *       redirect for the BoxVault JWT. Each code works exactly once and expires
+ *       after the configured TTL.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: One-time login code from the callback redirect
+ *     responses:
+ *       200:
+ *         description: Code redeemed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   description: BoxVault JWT access token
+ *       400:
+ *         description: Invalid, expired, or already-used login code
+ */
+router.post('/auth/oidc/exchange', (req, res) => {
+  const { code } = req.body || {};
+  const token = consumeLoginHandoffCode(code);
+
+  if (!token) {
+    log.auth.info('Login handoff exchange rejected', { hasCode: !!code });
+    return res.status(400).json({ message: req.__('auth.invalidLoginCode') });
+  }
+
+  return res.json({ token });
 });
 
 /**
@@ -568,7 +717,7 @@ router.post('/auth/oidc/logout', (req, res) => {
     const appConfig = loadConfig('app');
 
     // Verify and decode token
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, getJwtClaimOptions());
 
     log.auth.info('OIDC logout request', {
       userId: decoded.id,

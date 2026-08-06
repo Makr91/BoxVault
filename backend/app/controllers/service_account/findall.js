@@ -1,3 +1,4 @@
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { service_account: ServiceAccount } = db;
 
@@ -38,6 +39,7 @@ export const findAll = async (req, res) => {
     const serviceAccounts = await ServiceAccount.getForUser(userId);
     return res.send(serviceAccounts);
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    log.error.error('Error retrieving service accounts:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

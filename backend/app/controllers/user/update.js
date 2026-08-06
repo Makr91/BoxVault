@@ -1,6 +1,7 @@
 // update.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { generateEmailHash } from '../auth/helpers.js';
+import { generateEmailHash } from '../../utils/identity.js';
 const { user: User } = db;
 
 /**
@@ -94,8 +95,9 @@ export const update = async (req, res) => {
     await user.save();
     return res.status(200).send({ message: 'User was updated successfully.' });
   } catch (err) {
+    log.error.error('Error updating user:', err);
     return res.status(500).send({
-      message: err.message || req.__('users.update.error'),
+      message: req.__('users.update.error'),
     });
   }
 };

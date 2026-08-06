@@ -247,9 +247,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }
-  enabled_strategies: { value: ['local', 'jwt'] }
-`;
+    jwt_secret: { value: 'test-secret' }`;
         }
         throw new Error('Config Load Error');
       });
@@ -279,9 +277,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }
-  enabled_strategies: { value: ['local', 'jwt'] }
-`;
+    jwt_secret: { value: 'test-secret' }`;
         }
         throw new Error('Config Load Error');
       });
@@ -310,9 +306,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }
-  enabled_strategies: { value: ['local', 'jwt'] }
-`;
+    jwt_secret: { value: 'test-secret' }`;
         }
         if (p.includes('app')) {
           return 'boxvault: {}'; // Valid yaml, missing gravatar
@@ -342,9 +336,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }
-  enabled_strategies: { value: ['local', 'jwt'] }
-`;
+    jwt_secret: { value: 'test-secret' }`;
         }
         if (p.includes('app')) {
           return 'boxvault: {}'; // Valid yaml, missing ticket_system
@@ -369,9 +361,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }
-  enabled_strategies: { value: ['local', 'jwt'] }
-`;
+    jwt_secret: { value: 'test-secret' }`;
         }
         return 'key: value';
       });

@@ -16,7 +16,6 @@ const {
   providers: Provider,
   files: File,
   UserOrg,
-  service_account,
 } = db;
 const { verify } = jwt;
 
@@ -169,34 +168,16 @@ export const getOrganizationBoxDetails = async (req, res) => {
       ],
     });
 
-    // For each box, check if it was created by a service account
-    const serviceAccountBoxes = await Promise.all(
-      boxes.map(async box => {
-        const serviceAccount = await service_account.findOne({
-          where: { id: box.userId },
-          include: [
-            {
-              model: Users,
-              as: 'user',
-            },
-          ],
-        });
-        return { box, serviceAccount };
-      })
-    );
-
     // Filter boxes based on access rules
-    boxes = boxes.filter((box, index) => {
-      const { serviceAccount } = serviceAccountBoxes[index];
-
+    boxes = boxes.filter(box => {
       // Allow access if:
       // 1. Box is public
       // 2. User belongs to organization
-      // 3. User is the owner of the service account that created the box
+      // 3. User owns the box (service accounts impersonate their owning user)
       const hasAccess =
         box.isPublic ||
         (userId && userOrganizationId === organizationData.id) ||
-        (serviceAccount && serviceAccount.user && serviceAccount.user.id === userId);
+        box.userId === userId;
 
       // Filter pending boxes - only show to owner
       if (!hasAccess) {
@@ -261,7 +242,6 @@ export const getOrganizationBoxDetails = async (req, res) => {
         ? {
             id: box.user.id,
             username: box.user.username,
-            email: box.user.email,
             emailHash: box.user.emailHash,
             suspended: box.user.suspended,
             createdAt: box.user.createdAt,
@@ -279,8 +259,9 @@ export const getOrganizationBoxDetails = async (req, res) => {
 
     return res.status(200).send(formattedBoxes);
   } catch (err) {
+    log.error.error('Error retrieving organization box details:', err);
     return res.status(500).send({
-      message: err.message || req.__('boxes.organizationDetails.error'),
+      message: req.__('boxes.organizationDetails.error'),
     });
   }
 };

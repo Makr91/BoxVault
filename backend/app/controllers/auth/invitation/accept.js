@@ -75,7 +75,7 @@ export const acceptInvitation = async (req, res) => {
     // Already a member: consume the now-redundant invitation and report it.
     const existing = await UserOrg.findUserOrgRole(userId, organization.id);
     if (existing) {
-      await invitation.update({ accepted: true });
+      await invitation.update({ accepted: true, accepted_at: new Date() });
       return res.status(409).send({ message: req.__('organizations.alreadyMember') });
     }
 
@@ -87,7 +87,7 @@ export const acceptInvitation = async (req, res) => {
       is_primary: false,
     });
 
-    await invitation.update({ accepted: true });
+    await invitation.update({ accepted: true, accepted_at: new Date() });
 
     log.api.info('Invitation accepted', {
       userId,

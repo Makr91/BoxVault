@@ -7,7 +7,7 @@ const { organization: Organization, UserOrg } = db;
  * /api/organization/{organization}/join:
  *   post:
  *     summary: Join an organization as admin (global admin only)
- *     description: Adds the requesting global admin to the organization with the admin role. Lets a platform maintainer gain org-scoped access on demand, via a real membership row rather than a content bypass.
+ *     description: Adds the requesting global admin to the organization with the owner role. Lets a platform maintainer gain org-scoped access on demand, via a real membership row rather than a content bypass.
  *     tags: [Organizations]
  *     security:
  *       - bearerAuth: []
@@ -46,11 +46,11 @@ export const joinAsAdmin = async (req, res) => {
     await UserOrg.create({
       user_id: userId,
       organization_id: organization.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: false,
     });
 
-    log.api.info('Global admin joined organization as admin', {
+    log.api.info('Global admin joined organization as owner', {
       userId,
       organizationId: organization.id,
     });

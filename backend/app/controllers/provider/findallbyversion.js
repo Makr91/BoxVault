@@ -1,4 +1,5 @@
 // findallbyversion.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
 
@@ -138,6 +139,7 @@ export const findAllByVersion = async (req, res) => {
     const providers = await Provider.findAll({ where: { versionId: version.id } });
     return res.send(providers);
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('providers.findAll.error') });
+    log.error.error('Error retrieving providers:', err);
+    return res.status(500).send({ message: req.__('providers.findAll.error') });
   }
 };

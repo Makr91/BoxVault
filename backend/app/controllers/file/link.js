@@ -1,5 +1,6 @@
 // download.link.file.controller.js
 import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { UserOrg } = db;
 import { generateDownloadToken } from '../../utils/auth.js';
@@ -98,7 +99,7 @@ const getDownloadLink = async (req, res) => {
     const { organization: organizationData, box } = req.entities;
 
     // Check authorization
-    if (!box.isPublic && !isServiceAccount) {
+    if (!box.isPublic) {
       if (!userId) {
         return res.status(403).send({ message: req.__('files.unauthorized') });
       }
@@ -129,9 +130,9 @@ const getDownloadLink = async (req, res) => {
 
     return res.status(200).json({ downloadUrl });
   } catch (err) {
+    log.error.error('Error generating download link:', err);
     return res.status(500).send({
-      message: err.message || req.__('files.link.error'),
-      error: err,
+      message: req.__('files.link.error'),
     });
   }
 };

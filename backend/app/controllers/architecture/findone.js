@@ -1,4 +1,5 @@
 // findone.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const {
   architectures: Architecture,
@@ -152,8 +153,8 @@ export const findOne = async (req, res) => {
       });
     }
 
-    // If the box is public or it's a service account, allow access
-    if (box.isPublic || req.isServiceAccount) {
+    // If the box is public, allow access
+    if (box.isPublic) {
       const architecture = await Architecture.findOne({
         where: { name: architectureName, providerId: provider.id },
       });
@@ -163,7 +164,7 @@ export const findOne = async (req, res) => {
       return res.send(architecture);
     }
 
-    // If the box is private and it's not a service account, check if the user is member of the organization
+    // If the box is private, check if the user is member of the organization
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('architectures.unauthorized') });
@@ -178,6 +179,7 @@ export const findOne = async (req, res) => {
     }
     return res.send(architecture);
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('architectures.findOne.error') });
+    log.error.error('Error retrieving architecture:', err);
+    return res.status(500).send({ message: req.__('architectures.findOne.error') });
   }
 };

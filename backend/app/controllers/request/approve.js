@@ -7,7 +7,7 @@ const { Request } = db;
  * /api/organization/{organization}/requests/{requestId}/approve:
  *   post:
  *     summary: Approve a join request
- *     description: Approve a pending join request and add the user to the organization (moderator/admin only)
+ *     description: Approve a pending join request and add the user to the organization (admin/owner only)
  *     tags: [Join Requests]
  *     security:
  *       - JwtAuth: []
@@ -35,9 +35,9 @@ const { Request } = db;
  *             properties:
  *               assignedRole:
  *                 type: string
- *                 enum: [user, moderator]
- *                 description: Role to assign to the user (defaults to 'user')
- *                 example: "user"
+ *                 enum: [member, admin]
+ *                 description: Role to assign to the user (defaults to 'member')
+ *                 example: "member"
  *     responses:
  *       200:
  *         description: Join request approved successfully
@@ -51,7 +51,7 @@ const { Request } = db;
  *                   example: "Join request approved successfully!"
  *                 assignedRole:
  *                   type: string
- *                   example: "user"
+ *                   example: "member"
  *       400:
  *         description: Invalid role or request already processed
  *         content:
@@ -65,7 +65,7 @@ const { Request } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Requires moderator or admin role in organization
+ *         description: Requires admin or owner role in organization
  *         content:
  *           application/json:
  *             schema:
@@ -89,25 +89,25 @@ export const approveJoinRequest = async (req, res) => {
     const assignedRoleInput = req.body?.assignedRole;
     const { userId: reviewerId, organizationId } = req;
 
-    // Default to 'user' if not provided
-    const assignedRole = assignedRoleInput || 'user';
+    // Default to 'member' if not provided
+    const assignedRole = assignedRoleInput || 'member';
 
     // Validate assigned role
-    const validRoles = ['user', 'moderator'];
+    const validRoles = ['member', 'admin'];
     if (!validRoles.includes(assignedRole)) {
       return res.status(400).send({
-        message: 'Invalid role. Must be user or moderator.',
+        message: req.__('requests.invalidRole'),
       });
     }
 
     // Verify request belongs to this organization
     const request = await Request.findByPk(requestId);
     if (!request || request.organization_id !== organizationId) {
-      return res.status(404).send({ message: 'Join request not found!' });
+      return res.status(404).send({ message: req.__('requests.notFound') });
     }
 
     if (request.status !== 'pending') {
-      return res.status(400).send({ message: 'Request has already been processed!' });
+      return res.status(400).send({ message: req.__('requests.alreadyProcessed') });
     }
 
     // Approve the request
@@ -121,7 +121,7 @@ export const approveJoinRequest = async (req, res) => {
     });
 
     return res.send({
-      message: 'Join request approved successfully!',
+      message: req.__('requests.approved'),
       assignedRole,
     });
   } catch (err) {
@@ -130,6 +130,6 @@ export const approveJoinRequest = async (req, res) => {
       requestId: req.params.requestId,
       reviewerId: req.userId,
     });
-    return res.status(500).send({ message: 'Error approving join request' });
+    return res.status(500).send({ message: req.__('requests.approve.error') });
   }
 };

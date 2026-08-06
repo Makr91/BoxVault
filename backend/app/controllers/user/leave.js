@@ -74,6 +74,19 @@ const leaveOrganization = async (req, res) => {
       });
     }
 
+    // An organization must always keep at least one owner
+    if (membership.role === 'owner') {
+      const ownerCount = await UserOrg.count({
+        where: { organization_id: organization.id, role: 'owner' },
+      });
+
+      if (ownerCount === 1) {
+        return res.status(400).send({
+          message: req.__('organizations.cannotLeaveLastOwner'),
+        });
+      }
+    }
+
     // Check if this is their primary organization
     if (membership.is_primary) {
       // Count other organizations

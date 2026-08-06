@@ -24,6 +24,7 @@ import Version from "./components/version.component";
 import AuthService from "./services/auth.service";
 import SetupService from "./services/setup.service";
 import { log } from "./utils/Logger";
+import { isOrgManager } from "./utils/permissions";
 
 const App = () => {
   const { t } = useTranslation();
@@ -52,9 +53,6 @@ const App = () => {
 
   const [showAdminBoard, setShowAdminBoard] = useState(() =>
     Boolean(AuthService.getCurrentUser()?.roles?.includes("ROLE_ADMIN"))
-  );
-  const [showModeratorBoard, setShowModeratorBoard] = useState(() =>
-    Boolean(AuthService.getCurrentUser()?.roles?.includes("ROLE_MODERATOR"))
   );
   const [currentUser, setCurrentUser] = useState(
     () => AuthService.getCurrentUser() || undefined
@@ -229,7 +227,6 @@ const App = () => {
   const logOut = useCallback(() => {
     AuthService.logout();
     setShowAdminBoard(false);
-    setShowModeratorBoard(false);
     setCurrentUser(undefined);
     setUserOrganization("");
     setGravatarUrl("");
@@ -239,7 +236,6 @@ const App = () => {
   const logOutLocal = useCallback(() => {
     AuthService.logoutLocal();
     setShowAdminBoard(false);
-    setShowModeratorBoard(false);
     setCurrentUser(undefined);
     setUserOrganization("");
     setGravatarUrl("");
@@ -260,9 +256,6 @@ const App = () => {
       setCurrentUser(userData);
       setShowAdminBoard(
         userData.roles && userData.roles.includes("ROLE_ADMIN")
-      );
-      setShowModeratorBoard(
-        userData.roles && userData.roles.includes("ROLE_MODERATOR")
       );
       setUserOrganization(userData.organization);
 
@@ -325,6 +318,10 @@ const App = () => {
     // Show a loading indicator while checking setup status
     return <div>{t("loading")}</div>;
   }
+
+  // The organization-management board is gated per-org (org admin/owner of
+  // the active organization, or global admin) — mirrors verifyOrgAccess.
+  const showModeratorBoard = isOrgManager(currentUser, activeOrganization);
 
   return (
     <ErrorBoundary showErrorDetails={isDevelopment}>

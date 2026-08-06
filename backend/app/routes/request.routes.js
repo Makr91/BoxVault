@@ -36,22 +36,22 @@ router.delete(
   cancelJoinRequest
 );
 
-// Moderator/admin actions - manage join requests
+// Admin/owner actions - manage join requests
 router.get(
   '/organization/:organization/requests',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModerator],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   getOrgJoinRequests
 );
 
 router.post(
   '/organization/:organization/requests/:requestId/approve',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModerator],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   approveJoinRequest
 );
 
 router.post(
   '/organization/:organization/requests/:requestId/deny',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModerator],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   denyJoinRequest
 );
 

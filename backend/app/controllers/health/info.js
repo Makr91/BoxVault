@@ -82,9 +82,18 @@ let lastAlertTime = 0;
  *                     database:
  *                       type: string
  *                       example: "ok"
- *                     storage:
+ *                     storage_boxes:
  *                       type: string
- *                       example: "ok"
+ *                       description: Coarse status word (Good/Warning/Error)
+ *                       example: "Good"
+ *                     storage_isos:
+ *                       type: string
+ *                       description: Coarse status word (Good/Warning/Error)
+ *                       example: "Good"
+ *                     oidc_providers:
+ *                       type: string
+ *                       description: Coarse aggregate status word (Good/Warning/Error), present only when OIDC providers are configured
+ *                       example: "Good"
  *       500:
  *         description: Health check failed
  *         content:
@@ -311,29 +320,27 @@ const getHealth = async (req, res) => {
     // Alerting Logic
     await handleDiskAlerting(boxDisk, isoDisk, appConfig);
 
-    // Check OIDC Providers
+    // Check OIDC Providers (#54): the public payload carries ONE coarse,
+    // threshold-derived status word for the whole OIDC set — never counts,
+    // per-provider detail, or issuer identities.
     const oidcServices = await checkOidcProviders();
     const oidcStatuses = Object.values(oidcServices);
     if (oidcStatuses.length > 0) {
-      const okCount = oidcStatuses.filter(s => String(s).startsWith('ok')).length;
-      const warnCount = oidcStatuses.filter(s => String(s).startsWith('warning')).length;
-      const errorCount = oidcStatuses.length - okCount - warnCount;
-
-      const summaryParts = [];
-      if (okCount > 0) {
-        summaryParts.push(`${okCount} Good`);
+      let oidcStatus = 'Good';
+      if (oidcStatuses.some(s => String(s).startsWith('error'))) {
+        oidcStatus = 'Error';
+      } else if (oidcStatuses.some(s => String(s).startsWith('warning'))) {
+        oidcStatus = 'Warning';
       }
-      if (warnCount > 0) {
-        summaryParts.push(`${warnCount} Warn`);
-      }
-      if (errorCount > 0) {
-        summaryParts.push(`${errorCount} Bad`);
-      }
-      services.oidc_providers = summaryParts.join(', ');
+      services.oidc_providers = oidcStatus;
     }
 
     const overallStatus = calculateOverallStatus(services);
 
+    // Public payload stays coarse (#54): every services value is a bare status
+    // word (ok/Good/Warning/Error). Disk percentages and per-provider OIDC
+    // detail feed the overall status and internal alerting but are never
+    // exposed.
     return res.status(200).json({
       status: overallStatus,
       timestamp: new Date().toISOString(),
@@ -345,11 +352,11 @@ const getHealth = async (req, res) => {
       services,
     });
   } catch (error) {
+    log.error.error('Health check failed:', error);
     return res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
       message: 'Health check failed',
-      error: error.message,
     });
   }
 };

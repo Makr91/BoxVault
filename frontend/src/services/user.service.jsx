@@ -55,20 +55,6 @@ const changeEmail = (userId, newEmail, signal) =>
     }
   );
 
-const promoteToModerator = (userId) =>
-  axios.put(
-    `${baseURL}/api/users/${userId}/promote`,
-    {},
-    { headers: authHeader() }
-  );
-
-const demoteToUser = (userId) =>
-  axios.put(
-    `${baseURL}/api/users/${userId}/demote`,
-    {},
-    { headers: authHeader() }
-  );
-
 const getUserRoles = () =>
   axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
 
@@ -116,8 +102,6 @@ const UserService = {
   resumeUser,
   changePassword,
   changeEmail,
-  promoteToModerator,
-  demoteToUser,
   isOnlyUserInOrg,
   getUserOrganizations,
   leaveOrganization,

@@ -27,6 +27,13 @@ const validateProvider = (req, res, next) => {
     });
   }
 
+  // Defense-in-depth: names are used as filesystem path segments
+  if (name.includes('..')) {
+    return res.status(400).send({
+      message: 'Provider name should not contain consecutive periods.',
+    });
+  }
+
   return next();
 };
 

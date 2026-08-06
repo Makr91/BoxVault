@@ -1,7 +1,8 @@
 // delete.js
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
-const { invitation: Invitation } = db;
+import { deleteExternalInvite } from '../../../utils/externalInvites.js';
+const { invitation: Invitation, organization: Organization } = db;
 
 /**
  * @swagger
@@ -47,6 +48,36 @@ export const deleteInvitation = async (req, res) => {
   const { invitationId } = req.params;
 
   try {
+    // External invites (customer orgs) are addressed as `ext:<org>:<invite_id>`
+    // — the record lives on the auth server, so delegate the deletion.
+    if (invitationId.startsWith('ext:')) {
+      const [, orgName, ...inviteIdParts] = invitationId.split(':');
+      const inviteId = inviteIdParts.join(':');
+      const organization = await Organization.findOne({ where: { name: orgName } });
+
+      // Their DELETE requires the org_uuid query parameter, so an org row
+      // without external_org_id cannot address the invite at all.
+      if (
+        !organization ||
+        !organization.external_issuer ||
+        !organization.external_org_id ||
+        !inviteId
+      ) {
+        return res.status(404).send({ message: req.__('invitations.notFound') });
+      }
+
+      try {
+        await deleteExternalInvite(organization, inviteId);
+        return res.status(200).send({ message: req.__('invitations.deleted') });
+      } catch (delegationErr) {
+        if (delegationErr.response?.status === 404) {
+          return res.status(404).send({ message: req.__('invitations.notFound') });
+        }
+        log.error.error('Failed to delete invitation on auth server:', delegationErr);
+        return res.status(502).send({ message: req.__('invitations.delete.error') });
+      }
+    }
+
     const invitation = await Invitation.findByPk(invitationId);
 
     if (!invitation) {
@@ -58,7 +89,7 @@ export const deleteInvitation = async (req, res) => {
   } catch (err) {
     log.error.error('Error in deleteInvitation:', err);
     return res.status(500).send({
-      message: err.message || req.__('invitations.delete.error'),
+      message: req.__('invitations.delete.error'),
     });
   }
 };

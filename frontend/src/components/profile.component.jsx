@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
@@ -28,14 +27,13 @@ const Profile = ({ activeOrganization }) => {
   const [activeTab, setActiveTab] = useState("profile");
   const [passwordErrors, setPasswordErrors] = useState({});
   const [emailErrors, setEmailErrors] = useState({});
-  const [isOnlyUserInOrg, setIsOnlyUserInOrg] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [serviceAccounts, setServiceAccounts] = useState([]);
   const [newServiceAccountDescription, setNewServiceAccountDescription] =
     useState("");
   const [newServiceAccountExpiration, setNewServiceAccountExpiration] =
     useState(30);
-  const [showPasswords, setShowPasswords] = useState({});
+  const [newServiceAccountToken, setNewServiceAccountToken] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userOrganizations, setUserOrganizations] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
@@ -83,10 +81,10 @@ const Profile = ({ activeOrganization }) => {
   };
 
   const getRoleBadgeClass = (role) => {
-    if (role === "admin") {
+    if (role === "owner") {
       return "bg-danger";
     }
-    if (role === "moderator") {
+    if (role === "admin") {
       return "bg-warning";
     }
     return "bg-secondary";
@@ -134,7 +132,7 @@ const Profile = ({ activeOrganization }) => {
 
   const resetServiceAccountStates = useCallback(() => {
     setMessage("");
-    setShowPasswords({});
+    setNewServiceAccountToken(null);
     setNewServiceAccountDescription("");
     setNewServiceAccountExpiration(30);
   }, []);
@@ -161,7 +159,10 @@ const Profile = ({ activeOrganization }) => {
         userId: currentUser.id,
         error: error.message,
       });
-      setMessage(t("profile.errors.deleteAccountFailed"));
+      // Surface the server's refusal reason (e.g. sole-owner guard) when present
+      setMessage(
+        error.response?.data?.message || t("profile.errors.deleteAccountFailed")
+      );
     }
   };
 
@@ -218,20 +219,6 @@ const Profile = ({ activeOrganization }) => {
     }
   }, []);
 
-  const checkOrganizationStatus = useCallback(async (organizationName) => {
-    try {
-      const isOnly = await UserService.isOnlyUserInOrg(organizationName);
-      setIsOnlyUserInOrg(isOnly);
-    } catch (error) {
-      if (!error.name?.includes("Cancel") && !error.name?.includes("Abort")) {
-        log.api.error("Error checking organization status", {
-          organizationName,
-          error: error.message,
-        });
-      }
-    }
-  }, []);
-
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
@@ -241,10 +228,6 @@ const Profile = ({ activeOrganization }) => {
         const { emailHash } = currentUser;
         if (emailHash && mounted) {
           await loadGravatarProfile(emailHash, controller.signal);
-        }
-
-        if (mounted) {
-          await checkOrganizationStatus(currentUser.organization);
         }
       } else {
         navigate("/login");
@@ -257,7 +240,7 @@ const Profile = ({ activeOrganization }) => {
       mounted = false;
       controller.abort();
     };
-  }, [currentUser, navigate, loadGravatarProfile, checkOrganizationStatus]);
+  }, [currentUser, navigate, loadGravatarProfile]);
 
   useEffect(() => {
     let mounted = true;
@@ -354,7 +337,7 @@ const Profile = ({ activeOrganization }) => {
         return;
       }
 
-      await ServiceAccountService.createServiceAccount(
+      const createResponse = await ServiceAccountService.createServiceAccount(
         newServiceAccountDescription,
         newServiceAccountExpiration,
         activeOrg.id
@@ -362,6 +345,8 @@ const Profile = ({ activeOrganization }) => {
       await loadServiceAccounts(controller.signal);
       setNewServiceAccountDescription("");
       setNewServiceAccountExpiration(30);
+      // The raw token is returned only by this response — show it once
+      setNewServiceAccountToken(createResponse.data?.token || null);
       setMessage(t("profile.messages.serviceAccountCreated"));
     } catch (error) {
       if (
@@ -468,19 +453,6 @@ const Profile = ({ activeOrganization }) => {
       }
     }
     controller.abort();
-  };
-
-  const handlePromoteToModerator = () => {
-    UserService.promoteToModerator(currentUser.id)
-      .then(() => {
-        setMessage(t("profile.messages.promotedToModerator"));
-        refreshUserData();
-      })
-      .catch((error) =>
-        setMessage(
-          t("profile.errors.promoteToModeratorFailed", { error: error.message })
-        )
-      );
   };
 
   const renderProfileTab = () => (
@@ -598,16 +570,6 @@ const Profile = ({ activeOrganization }) => {
         </button>
         {emailMessage && <p className="mt-3">{emailMessage}</p>}
       </form>
-      {currentUser.roles.includes("ROLE_USER") && isOnlyUserInOrg && (
-        <div>
-          <button
-            className="btn btn-primary"
-            onClick={handlePromoteToModerator}
-          >
-            {t("profile.security.promoteToModerator")}
-          </button>
-        </div>
-      )}
       <div className="mt-3">
         <h4>{t("profile.security.deleteAccount.title")}</h4>
         <p>{t("profile.security.deleteAccount.warning")}</p>
@@ -785,6 +747,14 @@ const Profile = ({ activeOrganization }) => {
           {t("profile.serviceAccounts.createButton")}
         </button>
       </form>
+      {newServiceAccountToken && (
+        <div className="alert alert-warning">
+          <strong>{t("profile.serviceAccounts.token")}:</strong>{" "}
+          <code>{newServiceAccountToken}</code>
+          <br />
+          <small>{t("profile.serviceAccounts.tokenShownOnce")}</small>
+        </div>
+      )}
       <ul className="list-group">
         {serviceAccounts.map((account) => (
           <li key={account.id} className="list-group-item">
@@ -804,17 +774,6 @@ const Profile = ({ activeOrganization }) => {
               </div>
               <div>
                 <button
-                  className="btn btn-outline-secondary btn-sm me-2"
-                  onClick={() =>
-                    setShowPasswords((prev) => ({
-                      ...prev,
-                      [account.id]: !prev[account.id],
-                    }))
-                  }
-                >
-                  {showPasswords[account.id] ? <FaEyeSlash /> : <FaEye />}
-                </button>
-                <button
                   className="btn btn-danger btn-sm"
                   onClick={() => handleDeleteServiceAccount(account.id)}
                 >
@@ -822,12 +781,6 @@ const Profile = ({ activeOrganization }) => {
                 </button>
               </div>
             </div>
-            {showPasswords[account.id] && (
-              <div className="mt-2">
-                <strong>{t("profile.serviceAccounts.token")}:</strong>{" "}
-                {account.token}
-              </div>
-            )}
           </li>
         ))}
       </ul>

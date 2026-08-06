@@ -70,7 +70,6 @@ const getMockConfig = configName => {
     return {
       auth: {
         jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
-        enabled_strategies: { value: ['local', 'jwt'] },
         oidc: { providers: {} },
         local: {
           local_enabled: { value: true },
@@ -169,12 +168,19 @@ const getRateLimitConfig = () => {
     const appConfig = loadConfig('app');
     return {
       window_minutes: appConfig.rate_limiting?.window_minutes?.value || 15,
-      max_requests: Math.max(appConfig.rate_limiting?.max_requests?.value || 1000, 5000),
+      // The configured YAML value is law — no silent floor (#16)
+      max_requests: appConfig.rate_limiting?.max_requests?.value || 1000,
       message:
         appConfig.rate_limiting?.message?.value ||
         'Too many requests from this IP, please try again later.',
       skip_successful_requests: appConfig.rate_limiting?.skip_successful_requests?.value || false,
       skip_failed_requests: appConfig.rate_limiting?.skip_failed_requests?.value || false,
+      file_operations_max_requests:
+        appConfig.rate_limiting?.file_operations_max_requests?.value || 2000,
+      download_max_requests: appConfig.rate_limiting?.download_max_requests?.value || 2000,
+      download_link_max_requests: appConfig.rate_limiting?.download_link_max_requests?.value || 100,
+      architecture_operations_max_requests:
+        appConfig.rate_limiting?.architecture_operations_max_requests?.value || 500,
     };
   } catch (error) {
     // Return defaults if config not available
@@ -182,10 +188,14 @@ const getRateLimitConfig = () => {
     console.warn('Failed to load rate limiting config, using defaults:', error.message);
     return {
       window_minutes: 15,
-      max_requests: 5000,
+      max_requests: 1000,
       message: 'Too many requests from this IP, please try again later.',
       skip_successful_requests: false,
       skip_failed_requests: false,
+      file_operations_max_requests: 2000,
+      download_max_requests: 2000,
+      download_link_max_requests: 100,
+      architecture_operations_max_requests: 500,
     };
   }
 };

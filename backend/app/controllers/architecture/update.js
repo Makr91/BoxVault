@@ -1,6 +1,7 @@
 // update.js
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const {
   architectures: Architecture,
@@ -137,10 +138,10 @@ export const update = async (req, res) => {
       });
     }
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canUpdate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canUpdate) {
       return res.status(403).send({
@@ -215,8 +216,9 @@ export const update = async (req, res) => {
 
     throw new Error(req.__('architectures.notFound'));
   } catch (err) {
+    log.error.error('Error updating architecture:', err);
     return res.status(500).send({
-      message: err.message || req.__('architectures.update.error'),
+      message: req.__('architectures.update.error'),
     });
   }
 };

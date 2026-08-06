@@ -112,7 +112,7 @@ export const findOneWithUsers = async (req, res) => {
   } catch (err) {
     log.error.error('Error in findOneWithUsers:', err);
     return res.status(500).send({
-      message: err.message || req.__('organizations.findUsersError'),
+      message: req.__('organizations.findUsersError'),
     });
   }
 };

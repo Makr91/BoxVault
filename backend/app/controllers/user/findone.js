@@ -1,4 +1,5 @@
 // findone.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { user: User, organization: Organization, UserOrg } = db;
 
@@ -84,8 +85,9 @@ export const findOne = async (req, res) => {
     void password;
     return res.status(200).send(userWithoutPassword);
   } catch (err) {
+    log.error.error('Error retrieving user:', err);
     return res.status(500).send({
-      message: err.message || req.__('users.findOne.error'),
+      message: req.__('users.findOne.error'),
     });
   }
 };

@@ -20,55 +20,27 @@ const UserCardActions = ({
   currentUser,
   orgRole,
   onChangeRole,
-  onPromote,
-  onDemote,
   onSuspend,
   onResume,
   onRemoveFromOrg,
   onDelete,
 }) => {
   const { t } = useTranslation();
-  const roles = user.roles
-    ? user.roles.map((r) => (typeof r === "string" ? r : r.name))
-    : [];
-  const isModerator = roles.includes("moderator");
-  const isAdmin = roles.includes("admin");
   const isSelf = currentUser && currentUser.id === user.id;
 
   return (
     <div className="d-flex flex-wrap gap-2 justify-content-end align-items-center">
-      {onChangeRole ? (
+      {onChangeRole && (
         <select
           className="form-select form-select-sm w-auto"
-          value={orgRole || "user"}
+          value={orgRole || "member"}
           onChange={(e) => onChangeRole(e.target.value)}
           aria-label={t("moderator.users.roles")}
         >
-          <option value="user">{t("roles.user")}</option>
-          <option value="moderator">{t("roles.moderator")}</option>
+          <option value="member">{t("roles.member")}</option>
           <option value="admin">{t("roles.admin")}</option>
+          <option value="owner">{t("roles.owner")}</option>
         </select>
-      ) : (
-        <>
-          {onPromote && !isModerator && !isAdmin && (
-            <button
-              className="btn btn-sm btn-outline-primary"
-              onClick={onPromote}
-              title={t("buttons.promote")}
-            >
-              <FaUserShield />
-            </button>
-          )}
-          {onDemote && isModerator && (
-            <button
-              className="btn btn-sm btn-outline-secondary"
-              onClick={onDemote}
-              title={t("buttons.demote")}
-            >
-              <FaUser />
-            </button>
-          )}
-        </>
       )}
       {onSuspend && !user.suspended && !isSelf && (
         <button
@@ -115,8 +87,6 @@ UserCardActions.propTypes = {
   currentUser: PropTypes.object,
   orgRole: PropTypes.string,
   onChangeRole: PropTypes.func,
-  onPromote: PropTypes.func,
-  onDemote: PropTypes.func,
   onSuspend: PropTypes.func,
   onResume: PropTypes.func,
   onRemoveFromOrg: PropTypes.func,
@@ -128,8 +98,6 @@ const UserCard = ({
   currentUser,
   orgRole,
   onChangeRole,
-  onPromote,
-  onDemote,
   onSuspend,
   onResume,
   onRemoveFromOrg,
@@ -163,37 +131,37 @@ const UserCard = ({
   const roles = user.roles
     ? user.roles.map((r) => (typeof r === "string" ? r : r.name))
     : [];
-  const globalIsModerator = roles.includes("moderator");
   const globalIsAdmin = roles.includes("admin");
 
-  // In per-org mode (onChangeRole provided) the badge reflects the org role;
-  // otherwise it reflects the global role.
+  // In per-org mode (onChangeRole provided) the badge reflects the org role
+  // (owner/admin/member); otherwise it reflects the global role (admin/user).
   const resolveBadgeRole = () => {
     if (orgRole || onChangeRole) {
-      return orgRole || "user";
+      return orgRole || "member";
     }
-    if (globalIsAdmin) {
-      return "admin";
-    }
-    if (globalIsModerator) {
-      return "moderator";
-    }
-    return "user";
+    return globalIsAdmin ? "admin" : "user";
   };
   const badgeRole = resolveBadgeRole();
 
   const getRoleBadge = () => {
-    if (badgeRole === "admin") {
+    if (badgeRole === "owner") {
       return (
         <span className="badge bg-danger me-1">
-          <FaUserGear className="me-1" /> {t("roles.admin")}
+          <FaUserGear className="me-1" /> {t("roles.owner")}
         </span>
       );
     }
-    if (badgeRole === "moderator") {
+    if (badgeRole === "admin") {
       return (
         <span className="badge bg-warning text-dark me-1">
-          <FaUserShield className="me-1" /> {t("roles.moderator")}
+          <FaUserShield className="me-1" /> {t("roles.admin")}
+        </span>
+      );
+    }
+    if (badgeRole === "member") {
+      return (
+        <span className="badge bg-secondary me-1">
+          <FaUser className="me-1" /> {t("roles.member")}
         </span>
       );
     }
@@ -262,8 +230,6 @@ const UserCard = ({
             currentUser={currentUser}
             orgRole={orgRole}
             onChangeRole={onChangeRole}
-            onPromote={onPromote}
-            onDemote={onDemote}
             onSuspend={onSuspend}
             onResume={onResume}
             onRemoveFromOrg={onRemoveFromOrg}
@@ -280,8 +246,6 @@ UserCard.propTypes = {
   currentUser: PropTypes.object,
   orgRole: PropTypes.string,
   onChangeRole: PropTypes.func,
-  onPromote: PropTypes.func,
-  onDemote: PropTypes.func,
   onSuspend: PropTypes.func,
   onResume: PropTypes.func,
   onRemoveFromOrg: PropTypes.func,

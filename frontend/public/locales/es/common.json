@@ -31,8 +31,6 @@
     "copy": "Copiar",
     "move": "Mover",
     "rename": "Renombrar",
-    "promote": "Promover",
-    "demote": "Degradar",
     "resume": "Reanudar",
     "download": "Descargar",
     "search": "Buscar",
@@ -92,7 +90,8 @@
       "ticketSystem": "Sistema de Tickets",
       "frontendLogging": "Registro Frontend",
       "frontendLoggingCategories": "Categorías de Registro Frontend",
-      "oidcSettings": "Configuración OIDC"
+      "oidcSettings": "Configuración OIDC",
+      "s2sSettings": "Delegación S2S"
     }
   },
   "status": {
@@ -313,7 +312,6 @@
         "newEmailPlaceholder": "Nuevo Correo",
         "button": "Cambiar Correo"
       },
-      "promoteToModerator": "Promover a Moderador",
       "deleteAccount": {
         "title": "Eliminar Cuenta",
         "warning": "Advertencia: Esta acción no se puede deshacer.",
@@ -341,7 +339,8 @@
       "createButton": "Crear Cuenta de Servicio",
       "organization": "Organización",
       "expires": "Expira",
-      "token": "Token"
+      "token": "Token",
+      "tokenShownOnce": "Copia este token ahora — se muestra solo una vez y no se puede recuperar después."
     },
     "deleteModal": {
       "title": "Eliminar Cuenta",
@@ -353,7 +352,6 @@
       "serviceAccountCreated": "¡Cuenta de servicio creada exitosamente!",
       "passwordChanged": "¡Contraseña cambiada exitosamente!",
       "emailChanged": "¡Correo electrónico cambiado exitosamente!",
-      "promotedToModerator": "¡Promovido a moderador exitosamente!",
       "emailNotVerified": "Tu correo electrónico no está verificado."
     },
     "errors": {
@@ -365,7 +363,6 @@
       "resendVerificationFailed": "Error al enviar correo de verificación: {{error}}",
       "changePasswordFailed": "Error al cambiar contraseña: {{error}}",
       "changeEmailFailed": "Error al cambiar correo: {{error}}",
-      "promoteToModeratorFailed": "Error al promover a moderador: {{error}}",
       "leaveOrganization": "Error al dejar la organización: {{error}}"
     },
     "buttons": {
@@ -509,7 +506,7 @@
         "createBox": "Crear Box",
         "createNewBox": "Crear Nueva Box",
         "removeAll": "Eliminar Todo",
-        "joinAsAdmin": "Unirse como Admin"
+        "joinAsAdmin": "Unirse como Propietario"
       },
       "headers": {
         "createNewBox": "Crear Nueva Box",
@@ -652,9 +649,7 @@
     "users": {
       "title": "Usuarios en {{organization}}",
       "boxes": "Boxes",
-      "roles": "Roles",
-      "promote": "Promover",
-      "demote": "Degradar"
+      "roles": "Roles"
     },
     "joinRequest": {
       "title": "Solicitudes de Unión Pendientes",
@@ -664,8 +659,8 @@
       "requested": "Solicitado",
       "actions": "Acciones",
       "noMessage": "Sin mensaje",
-      "approveAsUser": "Aprobar como Usuario",
-      "approveAsModerator": "Aprobar como Moderador",
+      "approveAsMember": "Aprobar como Miembro",
+      "approveAsAdmin": "Aprobar como Administrador",
       "deny": "Denegar",
       "approved": "¡Solicitud de unión aprobada exitosamente!",
       "approveError": "Error al aprobar solicitud: {{error}}",
@@ -693,8 +688,9 @@
   },
   "roles": {
     "user": "Usuario",
-    "moderator": "Moderador",
-    "admin": "Administrador"
+    "member": "Miembro",
+    "admin": "Administrador",
+    "owner": "Propietario"
   },
   "oidc": {
     "title": "Proveedores OIDC",

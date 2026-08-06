@@ -84,7 +84,6 @@ const mockableConfigLoader = {
       return {
         auth: {
           jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
-          enabled_strategies: { value: ['local'] },
         },
       };
     }

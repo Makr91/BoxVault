@@ -12,10 +12,48 @@ const {
   UserOrg,
 } = db;
 import { sendVerificationMail } from '../mail.controller.js';
-import { generateEmailHash } from './helpers.js';
+import { generateEmailHash, generateOrgCode } from '../../utils/identity.js';
+import { getBcryptRounds, getPasswordPolicyError } from './helpers.js';
 import { loadConfig } from '../../utils/config-loader.js';
 
 const { Op } = Sequelize;
+
+/**
+ * Enforce the invitation rules for a token signup: the invitation must exist,
+ * be unused, be unexpired, and be addressed to the signup email. Sends the 400
+ * and returns the response when a rule fails; returns null when valid.
+ * @param {Object|null} invitation - Invitation row matched by token (or null)
+ * @param {string} email - Signup email from the request body
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @returns {Promise<Object|null>} The sent rejection response, or null
+ */
+const rejectInvalidInvitation = async (invitation, email, req, res) => {
+  if (!invitation) {
+    return res.status(400).send({ message: req.__('auth.invalidInvitationToken') });
+  }
+
+  // Single-use: a consumed invitation can never register a second account.
+  if (invitation.accepted) {
+    return res.status(400).send({ message: req.__('auth.invitationAlreadyUsed') });
+  }
+
+  if (invitation.expired || invitation.expires < Date.now()) {
+    // Set the expired flag to true
+    await invitation.update({ expired: true });
+    return res.status(400).send({ message: req.__('auth.invitationTokenExpired') });
+  }
+
+  // Email-bound: the invitation is addressed to a specific mailbox
+  // (mirrors the accept-invitation controller).
+  if (!email || email.toLowerCase() !== invitation.email.toLowerCase()) {
+    return res.status(400).send({
+      message: req.__('auth.invitationEmailMismatch', { email: invitation.email }),
+    });
+  }
+
+  return null;
+};
 
 /**
  * @swagger
@@ -85,27 +123,41 @@ export const signup = async (req, res) => {
     let organization;
     let invitation;
 
+    // local_enabled=false switches off LOCAL SIGNUP too (same knob that gates
+    // local signin). The very first account (fresh install bootstrap) is
+    // always allowed.
+    const existingUsers = await User.count();
+    if (existingUsers > 0 && authConfig.auth?.jwt?.local_enabled?.value === false) {
+      return res.status(403).send({ message: req.__('auth.localAuthDisabled') });
+    }
+
+    // Password policy knobs (#18) apply to every locally-created account
+    const passwordPolicyError = getPasswordPolicyError(password, req);
+    if (passwordPolicyError) {
+      return res.status(400).send({ message: passwordPolicyError });
+    }
+
     if (invitationToken) {
       // Handle signup with invitation token
       invitation = await Invitation.findOne({ where: { token: invitationToken } });
 
-      if (!invitation) {
-        return res.status(400).send({ message: req.__('auth.invalidInvitationToken') });
-      }
-
-      if (invitation.expires < Date.now()) {
-        // Set the expired flag to true
-        await invitation.update({ expired: true });
-        return res.status(400).send({ message: req.__('auth.invitationTokenExpired') });
+      const rejection = await rejectInvalidInvitation(invitation, email, req, res);
+      if (rejection) {
+        return rejection;
       }
 
       organization = await Organization.findByPk(invitation.organizationId);
     } else {
-      // Handle signup without invitation token
-      const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
+      // Handle signup without invitation token — this creates a new (personal)
+      // organization, which the local_allow_new_organizations knob gates (#18).
+      // The very first account (fresh install bootstrap) is always allowed.
+      if (existingUsers > 0 && !authConfig.auth?.local?.local_allow_new_organizations?.value) {
+        return res.status(403).send({ message: req.__('auth.newOrganizationsDisabled') });
+      }
+
       organization = await Organization.create({
         name: username,
-        org_code: generateOrgCode(),
+        org_code: await generateOrgCode(db),
       });
     }
 
@@ -129,7 +181,7 @@ export const signup = async (req, res) => {
     const user = await User.create({
       username,
       email,
-      password: hashSync(password, 8),
+      password: hashSync(password, getBcryptRounds()),
       emailHash,
       primary_organization_id: organization.id,
       verificationToken: randomBytes(20).toString('hex'),
@@ -139,17 +191,17 @@ export const signup = async (req, res) => {
     });
 
     const userCount = await User.count();
-    let assignedRole = 'user';
+
+    // Per-org role: invited users get the invited role; a self-signup creates
+    // a personal organization with the creator as its owner.
+    let assignedRole = invitation ? invitation.invited_role || 'member' : 'owner';
 
     if (userCount === 1) {
-      // First user gets admin role
-      assignedRole = 'admin';
+      // First user gets the global admin role; their personal org role is owner
+      assignedRole = 'owner';
       const adminRole = await Role.findOne({ where: { name: 'admin' } });
-      const moderatorRole = await Role.findOne({ where: { name: 'moderator' } });
-      await user.setRoles([adminRole, moderatorRole]);
+      await user.setRoles([adminRole]);
     } else {
-      // Use invited role or default to user
-      assignedRole = invitation?.invited_role || 'user';
       const userRole = await Role.findOne({ where: { name: 'user' } });
       await user.setRoles([userRole]);
     }
@@ -164,7 +216,7 @@ export const signup = async (req, res) => {
 
     // If signup was done with an invitation, mark it as accepted
     if (invitation) {
-      await invitation.update({ accepted: true });
+      await invitation.update({ accepted: true, accepted_at: new Date() });
     }
 
     // Send verification email asynchronously
@@ -187,7 +239,7 @@ export const signup = async (req, res) => {
   } catch (err) {
     log.error.error('Error during signup:', err);
     return res.status(500).send({
-      message: err.message || req.__('auth.signupError'),
+      message: req.__('auth.signupError'),
     });
   }
 };

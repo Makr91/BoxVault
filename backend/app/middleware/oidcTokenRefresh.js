@@ -3,6 +3,7 @@ import axios from 'axios';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { getOidcConfiguration } from '../auth/passport.js';
+import { getJwtClaimOptions } from '../utils/auth.js';
 
 /**
  * Middleware to automatically refresh OIDC access tokens before they expire
@@ -18,7 +19,7 @@ const oidcTokenRefresh = async (req, res, next) => {
   try {
     const authConfig = loadConfig('auth');
     // Decode JWT to check OIDC token expiration
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, getJwtClaimOptions());
 
     // Only process OIDC-authenticated users
     if (!decoded.provider || !decoded.provider.startsWith('oidc-')) {
@@ -131,12 +132,20 @@ const oidcTokenRefresh = async (req, res, next) => {
         ? Date.now() + newTokens.expires_in * 1000
         : Date.now() + defaultExpiryMinutes * 60 * 1000;
 
-      // Generate new JWT with refreshed tokens
+      // Generate new JWT with refreshed tokens, preserving every original claim
+      // (organizations, stayLoggedIn, etc.) and overriding only the refreshed
+      // OIDC fields. Registered timestamp/issuer/audience claims are dropped so
+      // jwt.sign can issue fresh ones via expiresIn and the claim options.
+      const refreshedClaims = { ...decoded };
+      delete refreshedClaims.exp;
+      delete refreshedClaims.iat;
+      delete refreshedClaims.nbf;
+      delete refreshedClaims.iss;
+      delete refreshedClaims.aud;
+
       const newJwtToken = jwt.sign(
         {
-          id: decoded.id,
-          isServiceAccount: false,
-          provider: decoded.provider,
+          ...refreshedClaims,
           id_token: newTokens.id_token || decoded.id_token, // Use new if provided, else keep old
           oidc_access_token: newTokens.access_token,
           oidc_refresh_token: newTokens.refresh_token || decoded.oidc_refresh_token, // Some providers don't return new refresh token
@@ -147,6 +156,7 @@ const oidcTokenRefresh = async (req, res, next) => {
           algorithm: 'HS256',
           allowInsecureKeySizes: true,
           expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
+          ...getJwtClaimOptions(),
         }
       );
 

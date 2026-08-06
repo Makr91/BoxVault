@@ -130,8 +130,6 @@ const mockConfigLoader = {
     if (name === 'auth') {
       return {
         auth: {
-          enabled_strategies: { value: ['local', 'jwt', 'oidc'] },
-          default_strategy: { value: 'local' },
           jwt: {
             jwt_secret: { value: 'test-secret' },
             jwt_expiration: { value: '24h' },
@@ -689,7 +687,7 @@ describe('Health API Integration Tests', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.status).not.toBe('ok');
-    expect(res.body.services.oidc_providers).toContain('Bad');
+    expect(res.body.services.oidc_providers).toBe('Error');
   });
 
   it('should handle OIDC provider timeout', async () => {
@@ -710,7 +708,7 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.services.oidc_providers).toContain('Bad');
+    expect(res.body.services.oidc_providers).toBe('Error');
   });
 
   it('should handle HTTP OIDC provider', async () => {
@@ -778,7 +776,7 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.services.oidc_providers).toContain('Good');
+    expect(res.body.services.oidc_providers).toBe('Good');
 
     // http.get can be called with (url, options, cb) or (url, cb)
     // We check if it was called with at least the url and a function as the last argument
@@ -944,8 +942,8 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.services.oidc_providers).toContain('1 Good');
-    expect(res.body.services.oidc_providers).toContain('2 Bad');
+    // Coarse aggregate (#54): any failing provider collapses to a single Error word
+    expect(res.body.services.oidc_providers).toBe('Error');
   });
 
   it('should handle handleDiskAlerting with no emails configured', async () => {
@@ -1242,7 +1240,7 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.services.oidc_providers).toContain('1 Warn');
+    expect(res.body.services.oidc_providers).toBe('Warning');
   });
 
   it('should use default logging config when missing', async () => {
@@ -1473,7 +1471,7 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.services.oidc_providers).toContain('1 Good');
+    expect(res.body.services.oidc_providers).toBe('Good');
   });
 
   it('should report multiple Good OIDC providers', async () => {
@@ -1536,7 +1534,7 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.services.oidc_providers).toContain('2 Good');
+    expect(res.body.services.oidc_providers).toBe('Good');
   });
 
   it('should default environment to development if NODE_ENV is missing', async () => {

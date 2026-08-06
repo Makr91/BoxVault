@@ -1,6 +1,7 @@
 import { realpathSync, existsSync, mkdirSync, createWriteStream } from 'fs';
-import { resolve as pathResolve, sep, join, dirname } from 'path';
+import { resolve as pathResolve, join, dirname } from 'path';
 import { log } from '../../utils/Logger.js';
+import { isPathInside } from '../../utils/paths.js';
 
 export const uploadSSL = async (req, res) => {
   const { targetPath } = req.query;
@@ -29,19 +30,14 @@ export const uploadSSL = async (req, res) => {
     return;
   }
 
-  // Ensure we have a consistent trailing separator for prefix checks
-  const configRootWithSep = configRoot.endsWith(sep) ? configRoot : configRoot + sep;
-
   // Resolve the requested path relative to the config root
   const resolvedPath = join(configRoot, targetPath);
-
-  // Allow only paths that are exactly the root or under the root directory
 
   // Ensure the directory exists
   const dir = dirname(resolvedPath);
 
   // Re-validate directory path against allowed root before creating it
-  const isDirAllowed = dir === configRoot || dir.startsWith(configRootWithSep);
+  const isDirAllowed = isPathInside(configRoot, dir);
 
   if (!isDirAllowed) {
     log.app.warn('Blocked SSL directory creation at unauthorized path', { targetPath, dir });

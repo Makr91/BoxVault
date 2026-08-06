@@ -1,6 +1,7 @@
 // update.js
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { versions: Version, UserOrg } = db;
 
@@ -76,14 +77,14 @@ export const update = async (req, res) => {
     // Organization and Box are already verified and attached by verifyVersion middleware
     const { organizationData, boxData: box } = req;
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canUpdate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canUpdate) {
       return res.status(403).send({
-        message: 'You can only update versions of boxes you own, or you need moderator/admin role.',
+        message: 'You can only update versions of boxes you own, or you need admin/owner role.',
       });
     }
 
@@ -128,8 +129,9 @@ export const update = async (req, res) => {
 
     throw new Error(`Version ${versionNumber} not found`);
   } catch (err) {
+    log.error.error('Error updating version:', err);
     return res.status(500).send({
-      message: err.message || 'Some error occurred while updating the Version.',
+      message: req.__('errors.operationFailed'),
     });
   }
 };

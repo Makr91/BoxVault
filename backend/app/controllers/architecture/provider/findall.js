@@ -1,4 +1,5 @@
 // findall.js
+import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 const {
   architectures: Architecture,
@@ -80,7 +81,6 @@ const {
  */
 export const findAllByProvider = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
-  const token = req.headers['x-access-token'];
   const { userId } = req;
 
   try {
@@ -138,26 +138,30 @@ export const findAllByProvider = async (req, res) => {
       });
     }
 
-    // Check if the box is public or if the user is authenticated
-    if (box.isPublic || token) {
+    // Public boxes are readable by anyone
+    if (box.isPublic) {
       const architectures = await Architecture.findAll({
         where: { providerId: provider.id },
       });
-
-      // If the box is private and authenticated, check if the user is member of the organization
-      if (!box.isPublic && userId) {
-        const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
-        if (!membership) {
-          return res.status(403).send({ message: req.__('architectures.unauthorized') });
-        }
-      }
-
       return res.send(architectures);
     }
 
-    // If the box is private and no token is present, return unauthorized
-    return res.status(403).send({ message: req.__('boxes.privateBoxAccessDenied') });
+    // Private boxes require an authenticated, resolved user who is an org member
+    if (!userId) {
+      return res.status(403).send({ message: req.__('boxes.privateBoxAccessDenied') });
+    }
+
+    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    if (!membership) {
+      return res.status(403).send({ message: req.__('architectures.unauthorized') });
+    }
+
+    const architectures = await Architecture.findAll({
+      where: { providerId: provider.id },
+    });
+    return res.send(architectures);
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('architectures.findAll.error') });
+    log.error.error('Error retrieving architectures:', err);
+    return res.status(500).send({ message: req.__('architectures.findAll.error') });
   }
 };

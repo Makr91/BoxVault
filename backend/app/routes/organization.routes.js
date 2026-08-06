@@ -66,18 +66,19 @@ router.put(
   [
     authJwt.verifyToken,
     authJwt.isUser,
-    verifyOrgAccess.isOrgModeratorOrAdmin,
+    verifyOrgAccess.isOrgAdminOrOwner,
     verifyOrganization.validateOrganization,
   ],
   update
 );
 
+// Org owners may delete their own organization; global admins any.
 router.delete(
   '/organization/:organization',
   [
     authJwt.verifyToken,
     authJwt.isUser,
-    authJwt.isAdmin,
+    verifyOrgAccess.isOrgOwner,
     verifyOrgAccess.rejectExternallyManagedOrg,
   ],
   deleteOrg
@@ -98,13 +99,13 @@ router.put(
 // Organization-specific user management
 router.put(
   '/organization/:organization/access-mode',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   updateAccessMode
 );
 
 router.get(
   '/organization/:organization/users/:userId/role',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModerator],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   getUserOrgRole
 );
 
@@ -113,18 +114,19 @@ router.put(
   [
     authJwt.verifyToken,
     authJwt.isUser,
-    verifyOrgAccess.isOrgAdmin,
+    verifyOrgAccess.isOrgOwner,
     verifyOrgAccess.rejectExternallyManagedOrg,
   ],
   updateUserOrgRole
 );
 
+// Org-scoped membership removal (hierarchy check happens in the controller)
 router.delete(
   '/organization/:organization/members/:userId',
   [
     authJwt.verifyToken,
     authJwt.isUser,
-    verifyOrgAccess.isOrgAdmin,
+    verifyOrgAccess.isOrgAdminOrOwner,
     verifyOrgAccess.rejectExternallyManagedOrg,
   ],
   removeUserFromOrg

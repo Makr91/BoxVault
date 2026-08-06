@@ -10,11 +10,11 @@
  * (populated by signin, refresh-token, and getUserProfile).
  *
  * Backend rules being mirrored:
- *   - view / create box ............ org member (any role)            -> isOrgMember
+ *   - view / create box ............ org member (any role)         -> isOrgMember
  *   - box update/delete + version/
- *     provider/arch/file mutations . box owner OR org moderator/admin -> canManageBox
+ *     provider/arch/file mutations . box owner OR org admin/owner  -> canManageBox
  *   - remove-all / org settings /
- *     member roles ................. org moderator/admin OR global admin -> isOrgManager
+ *     member roles ................. org admin/owner OR global admin -> isOrgManager
  */
 
 /** The user's role within a specific organization, or undefined if not a member. */
@@ -39,25 +39,25 @@ export const isOrgMember = (user, organizationName) =>
   orgRole(user, organizationName) !== undefined;
 
 /**
- * Org moderator/admin, or a global admin.
- * Mirrors verifyOrgAccess.isOrgModeratorOrAdmin (which bypasses for global admins).
+ * Org admin/owner, or a global admin.
+ * Mirrors verifyOrgAccess.isOrgAdminOrOwner (which bypasses for global admins).
  * Used for org settings, member-role management, and bulk delete.
  */
 export const isOrgManager = (user, organizationName) =>
   isGlobalAdmin(user) ||
-  ["moderator", "admin"].includes(orgRole(user, organizationName));
+  ["admin", "owner"].includes(orgRole(user, organizationName));
 
 /**
- * Org admin specifically, or a global admin.
- * Mirrors verifyOrgAccess.isOrgAdmin (gates per-org role changes + member removal).
+ * Org owner specifically, or a global admin.
+ * Mirrors verifyOrgAccess.isOrgOwner (gates per-org role changes + org deletion).
  */
-export const isOrgAdmin = (user, organizationName) =>
-  isGlobalAdmin(user) || orgRole(user, organizationName) === "admin";
+export const isOrgOwner = (user, organizationName) =>
+  isGlobalAdmin(user) || orgRole(user, organizationName) === "owner";
 
 /**
  * Whether the user may mutate a box's content (edit/delete the box, and
  * create/update/delete its versions, providers, architectures, and files).
- * Mirrors the content controllers: box owner OR org moderator/admin.
+ * Mirrors the content controllers: box owner OR org admin/owner.
  * (The backend intentionally does not grant global admins content access, so
  * neither do we.)
  *
@@ -72,5 +72,5 @@ export const canManageBox = (user, organizationName, box) => {
   if (box && box.userId === user.id) {
     return true;
   }
-  return ["moderator", "admin"].includes(orgRole(user, organizationName));
+  return ["admin", "owner"].includes(orgRole(user, organizationName));
 };

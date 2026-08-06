@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import { update } from '../app/controllers/box/update.js';
 import configLoader from '../app/utils/config-loader.js';
+import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
 import { log } from '../app/utils/Logger.js';
 
 describe('Box API', () => {
@@ -526,6 +527,7 @@ describe('Box API', () => {
     let nonMemberToken;
     let serviceAccount;
     let saToken;
+    let saRawToken;
 
     beforeAll(async () => {
       // Create private box
@@ -562,10 +564,11 @@ describe('Box API', () => {
       });
       nonMemberToken = jwt.sign({ id: nonMemberUser.id }, 'test-secret', { expiresIn: '1h' });
 
-      // Create Service Account
+      // Create Service Account (tokens are stored as sha256 hashes at rest)
+      saRawToken = `sa-fo-token-${uniqueId}`;
       serviceAccount = await db.service_account.create({
         username: `sa-fo-${uniqueId}`,
-        token: `sa-fo-token-${uniqueId}`,
+        token: hashServiceAccountToken(saRawToken),
         organization_id: organization.id,
         userId: user.id,
       });
@@ -638,10 +641,19 @@ describe('Box API', () => {
     it('should handle Vagrant request with valid Bearer token (skips x-access-token check)', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}/box/${privateBoxName}`)
-        .set('Authorization', `Bearer ${serviceAccount.token}`)
+        .set('Authorization', `Bearer ${saRawToken}`)
         .set('User-Agent', 'Vagrant/2.2.19');
 
       expect(res.statusCode).toBe(200);
+    });
+
+    it('should reject Vagrant request with an invalid Bearer token', async () => {
+      const res = await request(app)
+        .get(`/api/organization/${orgName}/box/${privateBoxName}`)
+        .set('Authorization', 'Bearer not-a-valid-service-account-token')
+        .set('User-Agent', 'Vagrant/2.2.19');
+
+      expect(res.statusCode).toBe(401);
     });
 
     it('should return Vagrant metadata when User-Agent is Vagrant', async () => {

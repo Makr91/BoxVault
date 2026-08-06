@@ -1,30 +1,46 @@
 // delete.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { user: User, organization: Organization, UserOrg } = db;
+import { removeMembershipFromOrg } from '../organization/removeuser.js';
+const { user: User } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/users/{username}:
  *   delete:
- *     summary: Remove a user from the system
- *     description: Permanently delete a user account (Admin only)
+ *     summary: Remove a user from an organization by username
+ *     description: >
+ *       Remove a user's membership from an organization (same semantics as the
+ *       userId-addressed removal route). The caller's org role must outrank the
+ *       target's; only the membership in this organization is removed — never
+ *       the account.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Organization name
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Username to remove from the organization
  *     responses:
  *       200:
- *         description: User deleted successfully
+ *         description: User removed from organization successfully
+ *       403:
+ *         description: Caller's organization role does not outrank the target's
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "User deleted successfully."
+ *               $ref: '#/components/schemas/Error'
  *       404:
- *         description: User not found
+ *         description: User not found or not a member of this organization
  *         content:
  *           application/json:
  *             schema:
@@ -37,38 +53,27 @@ const { user: User, organization: Organization, UserOrg } = db;
  *               $ref: '#/components/schemas/Error'
  */
 const _delete = async (req, res) => {
-  const { username, organization: orgName } = req.params;
+  const { username } = req.params;
+  const { organizationId } = req; // Set by verifyOrgAccess middleware
 
   try {
-    let user;
-
-    // Find user within the organization context
-    const organization = await Organization.findOne({ where: { name: orgName } });
-    if (!organization) {
-      return res.status(404).send({ message: `Organization not found: ${orgName}` });
-    }
-    user = await User.findOne({ where: { username } });
-    if (user) {
-      const membership = await UserOrg.findOne({
-        where: { user_id: user.id, organization_id: organization.id },
-      });
-      if (!membership) {
-        // User exists but not in this org, so treat as not found for this request
-        user = null;
-      }
-    }
-
+    const user = await User.findOne({ where: { username } });
     if (!user) {
       return res.status(404).send({
         message: req.__('users.userNotFound'),
       });
     }
 
-    await user.destroy();
-    return res.status(200).send({ message: 'User was deleted successfully!' });
+    return await removeMembershipFromOrg(req, res, user, organizationId);
   } catch (err) {
+    log.error.error('Error removing user from organization:', {
+      error: err.message,
+      username,
+      organizationId,
+      removedBy: req.userId,
+    });
     return res.status(500).send({
-      message: err.message || req.__('errors.operationFailed'),
+      message: req.__('organizations.removeUserError'),
     });
   }
 };

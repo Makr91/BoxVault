@@ -86,8 +86,9 @@ export const deleteAll = async (req, res) => {
 
     throw new Error(req.__('boxes.notFoundToDelete'));
   } catch (err) {
+    log.error.error('Error deleting all boxes:', err);
     return res.status(500).send({
-      message: err.message || req.__('boxes.deleteAll.error'),
+      message: req.__('boxes.deleteAll.error'),
     });
   }
 };

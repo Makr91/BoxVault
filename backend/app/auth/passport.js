@@ -339,13 +339,7 @@ const setupOidcProviders = async authConfig => {
 const initializeStrategies = async () => {
   const authConfig = loadConfig('auth');
 
-  const enabledStrategies = authConfig.auth?.enabled_strategies?.value || [];
-
-  log.app.info('Initializing authentication strategies', { enabledStrategies });
-
-  if (enabledStrategies.includes('oidc')) {
-    await setupOidcProviders(authConfig);
-  }
+  await setupOidcProviders(authConfig);
 
   log.app.info('Passport strategies initialized');
 };

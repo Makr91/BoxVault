@@ -1,6 +1,7 @@
 // findall.js
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../../utils/config-loader.js';
+import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 
 const { versions: Version, UserOrg } = db;
@@ -121,8 +122,9 @@ export const findAllByBox = async (req, res) => {
     const versions = await Version.findAll({ where: { boxId: box.id } });
     return res.send(versions);
   } catch (err) {
+    log.error.error('Error retrieving versions:', err);
     return res.status(500).send({
-      message: err.message || req.__('versions.findAll.error'),
+      message: req.__('versions.findAll.error'),
     });
   }
 };

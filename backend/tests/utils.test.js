@@ -36,9 +36,9 @@ jest.unstable_mockModule('jsonwebtoken', () => ({ default: mockJwt }));
 jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
 
 const { atomicWriteFile, atomicWriteFileSync } = await import('../app/utils/atomic-file-writer.js');
-const { checkSessionAuth, verifyDownloadToken, generateDownloadToken } =
+const { verifySessionToken, verifyDownloadToken, generateDownloadToken } =
   await import('../app/utils/auth.js');
-const { safeUnlink, safeRm, safeRmdirSync, safeMkdirSync, safeRenameSync, safeExistsSync } =
+const { safeUnlink, safeRm, safeRmdirSync, ensureDirSync, safeExistsSync } =
   await import('../app/utils/fsHelper.js');
 
 describe('Atomic File Writer', () => {
@@ -217,79 +217,90 @@ describe('Atomic File Writer', () => {
       mockJwt.sign.mockReset();
     });
 
-    it('checkSessionAuth should return false if no token', async () => {
-      const req = { headers: {} };
-      const result = await checkSessionAuth(req);
-      expect(result).toBe(false);
-    });
-
-    it('checkSessionAuth should return true and populate req on success', async () => {
-      const req = { headers: { 'x-access-token': 'valid' } };
-      mockJwt.verify.mockImplementation((token, secret, cb) => {
+    it('verifySessionToken should resolve the decoded token', async () => {
+      mockJwt.verify.mockImplementation((token, secret, options, cb) => {
         void token;
         void secret;
+        void options;
         cb(null, { id: 1, isServiceAccount: true });
       });
 
-      const result = await checkSessionAuth(req);
-      expect(result).toBe(true);
-      expect(req.userId).toBe(1);
-      expect(req.isServiceAccount).toBe(true);
+      const decoded = await verifySessionToken('valid');
+      expect(decoded).toEqual({ id: 1, isServiceAccount: true });
     });
 
-    it('checkSessionAuth should default isServiceAccount to false if missing in token', async () => {
-      const req = { headers: { 'x-access-token': 'valid' } };
-      mockJwt.verify.mockImplementation((token, secret, cb) => {
+    it('verifySessionToken should verify with issuer and audience claims', async () => {
+      mockJwt.verify.mockImplementation((token, secret, options, cb) => {
         void token;
         void secret;
+        void options;
         cb(null, { id: 1 });
       });
 
-      const result = await checkSessionAuth(req);
-      expect(result).toBe(true);
-      expect(req.isServiceAccount).toBe(false);
-    });
-
-    it('checkSessionAuth should return false on verify error', async () => {
-      const req = { headers: { 'x-access-token': 'invalid' } };
-      mockJwt.verify.mockImplementation((token, secret, cb) => {
-        void token;
-        void secret;
-        cb(new Error('Invalid'));
-      });
-
-      const result = await checkSessionAuth(req);
-      expect(result).toBe(false);
-      expect(mockLog.app.debug).toHaveBeenCalledWith(
-        'Session auth check failed:',
-        expect.any(Object)
+      await verifySessionToken('valid');
+      expect(mockJwt.verify).toHaveBeenCalledWith(
+        'valid',
+        'secret',
+        expect.objectContaining({ issuer: 'boxvault', audience: 'boxvault-api' }),
+        expect.any(Function)
       );
     });
 
-    it('verifyDownloadToken should return decoded token', async () => {
-      mockJwt.verify.mockImplementation((token, secret, cb) => {
+    it('verifySessionToken should reject on verify error', async () => {
+      mockJwt.verify.mockImplementation((token, secret, options, cb) => {
         void token;
         void secret;
-        cb(null, { foo: 'bar' });
+        void options;
+        cb(new Error('Invalid'));
+      });
+
+      await expect(verifySessionToken('invalid')).rejects.toThrow('Invalid');
+    });
+
+    it('verifyDownloadToken should return decoded download token', async () => {
+      mockJwt.verify.mockImplementation((token, secret, options, cb) => {
+        void token;
+        void secret;
+        void options;
+        cb(null, { foo: 'bar', type: 'download' });
       });
       const result = await verifyDownloadToken('token');
-      expect(result).toEqual({ foo: 'bar' });
+      expect(result).toEqual({ foo: 'bar', type: 'download' });
+    });
+
+    it('verifyDownloadToken should reject tokens without the download type claim', async () => {
+      mockJwt.verify.mockImplementation((token, secret, options, cb) => {
+        void token;
+        void secret;
+        void options;
+        cb(null, { foo: 'bar' });
+      });
+      await expect(verifyDownloadToken('token')).rejects.toThrow('Not a download token');
     });
 
     it('verifyDownloadToken should throw on error', async () => {
-      mockJwt.verify.mockImplementation((token, secret, cb) => {
+      mockJwt.verify.mockImplementation((token, secret, options, cb) => {
         void token;
         void secret;
+        void options;
         cb(new Error('Invalid'));
       });
       await expect(verifyDownloadToken('token')).rejects.toThrow('Invalid');
     });
 
-    it('generateDownloadToken should sign token', () => {
+    it('generateDownloadToken should sign token with the download type claim', () => {
       mockJwt.sign.mockReturnValue('signed-token');
       const result = generateDownloadToken({ data: 1 });
       expect(result).toBe('signed-token');
-      expect(mockJwt.sign).toHaveBeenCalledWith({ data: 1 }, 'secret', { expiresIn: '1h' });
+      expect(mockJwt.sign).toHaveBeenCalledWith(
+        { data: 1, type: 'download' },
+        'secret',
+        expect.objectContaining({
+          expiresIn: '1h',
+          issuer: 'boxvault',
+          audience: 'boxvault-api',
+        })
+      );
     });
   });
 
@@ -347,14 +358,9 @@ describe('Atomic File Writer', () => {
       expect(mockFs.rmSync).not.toHaveBeenCalled();
     });
 
-    it('safeMkdirSync should call mkdirSync', () => {
-      safeMkdirSync('dir', { recursive: true });
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith('dir', { recursive: true });
-    });
-
-    it('safeRenameSync should call renameSync', () => {
-      safeRenameSync('old', 'new');
-      expect(mockFs.renameSync).toHaveBeenCalledWith('old', 'new');
+    it('ensureDirSync should create the directory recursively', () => {
+      ensureDirSync('dir');
+      expect(mockFs.mkdirSync).toHaveBeenCalledWith('dir', { recursive: true, mode: 0o755 });
     });
 
     it('safeExistsSync should call existsSync', () => {

@@ -7,7 +7,7 @@ const { organization: Organization } = db;
  * /api/organization/{organization}/access-mode:
  *   put:
  *     summary: Update organization access mode
- *     description: Update the access mode and default role for an organization (admin only)
+ *     description: Update the access mode and default role for an organization (admin/owner only)
  *     tags: [Organizations]
  *     security:
  *       - JwtAuth: []
@@ -35,9 +35,9 @@ const { organization: Organization } = db;
  *                 example: "request_to_join"
  *               defaultRole:
  *                 type: string
- *                 enum: [user, moderator]
+ *                 enum: [member, admin]
  *                 description: Default role for new members
- *                 example: "user"
+ *                 example: "member"
  *     responses:
  *       200:
  *         description: Access mode updated successfully
@@ -54,7 +54,7 @@ const { organization: Organization } = db;
  *                   example: "request_to_join"
  *                 defaultRole:
  *                   type: string
- *                   example: "user"
+ *                   example: "member"
  *       400:
  *         description: Invalid access mode or default role
  *         content:
@@ -68,7 +68,7 @@ const { organization: Organization } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Requires admin role in organization
+ *         description: Requires admin or owner role in organization
  *         content:
  *           application/json:
  *             schema:
@@ -100,7 +100,7 @@ const updateAccessMode = async (req, res) => {
     }
 
     // Validate default role
-    const validRoles = ['user', 'moderator'];
+    const validRoles = ['member', 'admin'];
     if (defaultRole && !validRoles.includes(defaultRole)) {
       return res.status(400).send({
         message: req.__('organizations.invalidDefaultRole'),

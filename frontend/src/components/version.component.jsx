@@ -155,7 +155,7 @@ const Version = () => {
     document.title = `${name} v${version}`;
 
     const fetchData = async () => {
-      // Authorization mirrors the backend: box owner or org moderator/admin.
+      // Authorization mirrors the backend: box owner or org admin/owner.
       // Fetch the box so we know its owner.
       const user = JSON.parse(localStorage.getItem("user"));
       try {

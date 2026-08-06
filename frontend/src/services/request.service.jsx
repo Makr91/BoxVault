@@ -29,7 +29,7 @@ const cancelJoinRequest = (requestId) =>
   });
 
 /**
- * Get pending join requests for organization (moderator/admin only)
+ * Get pending join requests for organization (admin/owner only)
  */
 const getOrgJoinRequests = (orgName) =>
   axios.get(`${baseURL}/api/organization/${orgName}/requests`, {
@@ -37,9 +37,9 @@ const getOrgJoinRequests = (orgName) =>
   });
 
 /**
- * Approve a join request (moderator/admin only)
+ * Approve a join request (admin/owner only)
  */
-const approveJoinRequest = (orgName, requestId, assignedRole = "user") =>
+const approveJoinRequest = (orgName, requestId, assignedRole = "member") =>
   axios.post(
     `${baseURL}/api/organization/${orgName}/requests/${requestId}/approve`,
     { assignedRole },
@@ -47,7 +47,7 @@ const approveJoinRequest = (orgName, requestId, assignedRole = "user") =>
   );
 
 /**
- * Deny a join request (moderator/admin only)
+ * Deny a join request (admin/owner only)
  */
 const denyJoinRequest = (orgName, requestId) =>
   axios.post(

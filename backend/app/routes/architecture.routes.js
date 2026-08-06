@@ -1,7 +1,7 @@
 // architecture.routes.js
 import { Router } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { authJwt, verifyArchitecture, sessionAuth } from '../middleware/index.js';
+import { architectureOperationLimiter } from '../middleware/rateLimiter.js';
 import {
   findAllByProvider,
   findOne,
@@ -12,14 +12,6 @@ import {
 } from '../controllers/architecture.controller.js';
 
 const router = Router();
-
-// Explicit rate limiter for architecture operations (CodeQL requirement)
-const architectureOperationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 500,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // Apply rate limiting to all routes in this router
 router.use(architectureOperationLimiter);

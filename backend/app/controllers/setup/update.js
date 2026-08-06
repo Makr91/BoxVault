@@ -3,7 +3,7 @@ import fs from 'fs';
 import { getSetupTokenPath } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { verifyAuthorizedToken } from './middleware.js';
-import { configPaths, readConfig, writeConfig } from './helpers.js';
+import { configPaths, readConfig, writeConfig, setAuthorizedSetupToken } from './helpers.js';
 
 export const updateConfigs = [
   verifyAuthorizedToken,
@@ -53,6 +53,10 @@ export const updateConfigs = [
       } catch (err) {
         log.error.warn('Failed to delete setup token:', err.message);
       }
+
+      // Clear the in-memory authorized token so post-setup requests can no longer
+      // read configs even though the process is still running.
+      setAuthorizedSetupToken(null);
 
       return res.send(req.__('config.updated'));
     } catch (error) {

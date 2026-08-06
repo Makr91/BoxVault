@@ -65,7 +65,7 @@ export const cancelJoinRequest = async (req, res) => {
 
     if (!request) {
       return res.status(404).send({
-        message: 'Join request not found or cannot be cancelled!',
+        message: req.__('requests.notFoundOrNotCancellable'),
       });
     }
 
@@ -78,13 +78,13 @@ export const cancelJoinRequest = async (req, res) => {
       organizationId: request.organization_id,
     });
 
-    return res.send({ message: 'Join request cancelled successfully!' });
+    return res.send({ message: req.__('requests.cancelled') });
   } catch (err) {
     log.error.error('Error cancelling join request:', {
       error: err.message,
       requestId: req.params.requestId,
       userId: req.userId,
     });
-    return res.status(500).send({ message: 'Error cancelling join request' });
+    return res.status(500).send({ message: req.__('requests.cancel.error') });
   }
 };

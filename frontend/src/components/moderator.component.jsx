@@ -8,7 +8,7 @@ import InvitationService from "../services/invitation.service";
 import OrganizationService from "../services/organization.service";
 import RequestService from "../services/request.service";
 import { log } from "../utils/Logger";
-import { isOrgAdmin } from "../utils/permissions";
+import { isOrgOwner } from "../utils/permissions";
 
 import ConfirmationModal from "./confirmation.component";
 import UserCard from "./UserCard.component";
@@ -32,30 +32,28 @@ const ModeratorTabs = ({
         </button>
       </li>
       {!isExternalOrg && (
-        <>
-          <li className="nav-item">
-            <button
-              className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
-              onClick={() => setActiveTab("joinRequests")}
-            >
-              {t("moderator.tabs.joinRequests")}
-              {joinRequestCount > 0 && (
-                <span className="badge bg-warning ms-2">
-                  {joinRequestCount}
-                </span>
-              )}
-            </button>
-          </li>
-          <li className="nav-item">
-            <button
-              className={`nav-link ${activeTab === "invitations" ? "active" : ""}`}
-              onClick={() => setActiveTab("invitations")}
-            >
-              {t("moderator.tabs.invitations")}
-            </button>
-          </li>
-        </>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
+            onClick={() => setActiveTab("joinRequests")}
+          >
+            {t("moderator.tabs.joinRequests")}
+            {joinRequestCount > 0 && (
+              <span className="badge bg-warning ms-2">{joinRequestCount}</span>
+            )}
+          </button>
+        </li>
       )}
+      {/* Invitations stay available for SSO-managed orgs too: their invites
+          are delegated to the identity provider's invite API. */}
+      <li className="nav-item">
+        <button
+          className={`nav-link ${activeTab === "invitations" ? "active" : ""}`}
+          onClick={() => setActiveTab("invitations")}
+        >
+          {t("moderator.tabs.invitations")}
+        </button>
+      </li>
     </ul>
   );
 };
@@ -92,13 +90,13 @@ const Moderator = ({ currentOrganization }) => {
   const [orgEmailHash, setOrgEmailHash] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
   const [orgAccessMode, setOrgAccessMode] = useState("private");
-  const [orgDefaultRole, setOrgDefaultRole] = useState("user");
-  const [inviteRole, setInviteRole] = useState("user");
+  const [orgDefaultRole, setOrgDefaultRole] = useState("member");
+  const [inviteRole, setInviteRole] = useState("member");
   const [isExternalOrg, setIsExternalOrg] = useState(false);
   const [orgDisplayName, setOrgDisplayName] = useState("");
   const [activeTab, setActiveTab] = useState("organization");
   const currentUser = AuthService.getCurrentUser();
-  const canManageRoles = isOrgAdmin(currentUser, currentOrganization);
+  const canManageRoles = isOrgOwner(currentUser, currentOrganization);
   const [searchTerm, setSearchTerm] = useState("");
 
   const validateOrgName = (orgName) => {
@@ -146,7 +144,7 @@ const Moderator = ({ currentOrganization }) => {
           setOrgEmailHash(orgDetailsResponse.data.emailHash || "");
           setOrgDescription(orgDetailsResponse.data.description || "");
           setOrgAccessMode(orgDetailsResponse.data.access_mode || "private");
-          setOrgDefaultRole(orgDetailsResponse.data.default_role || "user");
+          setOrgDefaultRole(orgDetailsResponse.data.default_role || "member");
 
           setLoading(false);
         } catch (error) {
@@ -256,7 +254,8 @@ const Moderator = ({ currentOrganization }) => {
     try {
       const response = await AuthService.sendInvitation(
         email,
-        currentOrganization
+        currentOrganization,
+        inviteRole
       );
       const invitationDetails = `Invitation sent! 
         ${t("moderator.invitation.token")}: ${response.data.invitationToken}
@@ -271,7 +270,11 @@ const Moderator = ({ currentOrganization }) => {
         organization: currentOrganization,
         error: error.message,
       });
-      setInvitationMessage(t("moderator.invitation.sendWarning"));
+      // Prefer the server's own message (e.g. the identity provider's reason
+      // for refusing a delegated invite) over the generic local warning.
+      setInvitationMessage(
+        error.response?.data?.message || t("moderator.invitation.sendWarning")
+      );
     } finally {
       // Always refresh invitations list (even if email failed)
       try {
@@ -340,7 +343,10 @@ const Moderator = ({ currentOrganization }) => {
     }
   };
 
-  const handleApproveJoinRequest = async (requestId, assignedRole = "user") => {
+  const handleApproveJoinRequest = async (
+    requestId,
+    assignedRole = "member"
+  ) => {
     try {
       await RequestService.approveJoinRequest(
         currentOrganization,
@@ -536,10 +542,10 @@ const Moderator = ({ currentOrganization }) => {
                                 setOrgDefaultRole(e.target.value)
                               }
                             >
-                              <option value="user">{t("roles.user")}</option>
-                              <option value="moderator">
-                                {t("roles.moderator")}
+                              <option value="member">
+                                {t("roles.member")}
                               </option>
+                              <option value="admin">{t("roles.admin")}</option>
                             </select>
                             <small className="form-text text-muted">
                               {t("moderator.organization.defaultRoleHint")}
@@ -648,23 +654,24 @@ const Moderator = ({ currentOrganization }) => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() =>
-                                    handleApproveJoinRequest(request.id, "user")
+                                    handleApproveJoinRequest(
+                                      request.id,
+                                      "member"
+                                    )
                                   }
                                 >
-                                  {t("moderator.joinRequest.approveAsUser")}
+                                  {t("moderator.joinRequest.approveAsMember")}
                                 </button>
                                 <button
                                   className="btn btn-warning btn-sm"
                                   onClick={() =>
                                     handleApproveJoinRequest(
                                       request.id,
-                                      "moderator"
+                                      "admin"
                                     )
                                   }
                                 >
-                                  {t(
-                                    "moderator.joinRequest.approveAsModerator"
-                                  )}
+                                  {t("moderator.joinRequest.approveAsAdmin")}
                                 </button>
                                 <button
                                   className="btn btn-danger btn-sm"
@@ -724,11 +731,10 @@ const Moderator = ({ currentOrganization }) => {
                             value={inviteRole}
                             onChange={(e) => setInviteRole(e.target.value)}
                           >
-                            <option value="user">{t("roles.user")}</option>
-                            <option value="moderator">
-                              {t("roles.moderator")}
-                            </option>
-                            <option value="admin">{t("roles.admin")}</option>
+                            <option value="member">{t("roles.member")}</option>
+                            {canManageRoles && (
+                              <option value="admin">{t("roles.admin")}</option>
+                            )}
                           </select>
                         </div>
                       </div>
@@ -769,7 +775,17 @@ const Moderator = ({ currentOrganization }) => {
                             <td>
                               {new Date(invitation.expires).toLocaleString()}
                             </td>
-                            <td>{invitation.accepted ? t("yes") : t("no")}</td>
+                            <td>
+                              {invitation.accepted ? t("yes") : t("no")}
+                              {invitation.accepted &&
+                                invitation.accepted_at && (
+                                  <small className="text-muted d-block">
+                                    {new Date(
+                                      invitation.accepted_at
+                                    ).toLocaleString()}
+                                  </small>
+                                )}
+                            </td>
                             <td>{invitation.expired ? t("yes") : t("no")}</td>
                             <td>
                               <a

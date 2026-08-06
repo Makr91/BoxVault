@@ -86,10 +86,10 @@ const remove = async (req, res) => {
     // Entities are pre-loaded by verifyBoxFilePath middleware
     const { organization: organizationData, box, architecture } = req.entities;
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canDelete) {
       return res.status(403).json({
@@ -130,8 +130,9 @@ const remove = async (req, res) => {
       });
     }
   } catch (err) {
+    log.error.error('Error deleting file:', err);
     return res.status(500).send({
-      message: err.message || req.__('files.delete.error'),
+      message: req.__('files.delete.error'),
     });
   }
 };

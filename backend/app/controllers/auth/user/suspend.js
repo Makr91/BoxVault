@@ -1,4 +1,5 @@
 // suspend.js
+import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 const { user: User } = db;
 
@@ -53,6 +54,7 @@ export const suspendUser = async (req, res) => {
     await user.update({ suspended: true });
     return res.status(200).send({ message: req.__('users.suspended') });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('users.suspend.error') });
+    log.error.error('Error in suspendUser:', err);
+    return res.status(500).send({ message: req.__('users.suspend.error') });
   }
 };

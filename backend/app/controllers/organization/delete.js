@@ -1,6 +1,7 @@
 // delete.js
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 
 const Organization = db.organization;
@@ -10,7 +11,7 @@ const Organization = db.organization;
  * /api/organization/{organizationName}:
  *   delete:
  *     summary: Delete an organization
- *     description: Delete an organization and all its associated files and directories (Admin only)
+ *     description: Delete an organization and all its associated files and directories (org owner or global admin)
  *     tags: [Organizations]
  *     security:
  *       - bearerAuth: []
@@ -74,8 +75,9 @@ const _delete = async (req, res) => {
       message: req.__('organizations.deleted'),
     });
   } catch (err) {
+    log.error.error('Error deleting organization:', err);
     return res.status(500).send({
-      message: err.message || req.__('organizations.deleteError'),
+      message: req.__('organizations.deleteError'),
     });
   }
 };

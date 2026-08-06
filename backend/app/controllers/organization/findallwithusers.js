@@ -1,4 +1,5 @@
 // findallwithusers.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { organization: Organization, user: User, role: Role, box: Box } = db;
 
@@ -95,8 +96,9 @@ export const findAllWithUsers = async (req, res) => {
 
     return res.status(200).send(result);
   } catch (err) {
+    log.error.error('Error retrieving organizations with users:', err);
     return res.status(500).send({
-      message: err.message || req.__('organizations.findAllError'),
+      message: req.__('organizations.findAllError'),
     });
   }
 };

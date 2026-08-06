@@ -1,4 +1,5 @@
 // resume.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { organization: Organization } = db;
 
@@ -59,6 +60,7 @@ export const resumeOrganization = async (req, res) => {
 
     return res.status(200).send({ message: req.__('organizations.resumed') });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('organizations.resumeError') });
+    log.error.error('Error resuming organization:', err);
+    return res.status(500).send({ message: req.__('organizations.resumeError') });
   }
 };

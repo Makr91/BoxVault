@@ -1,6 +1,7 @@
 // create.js
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
 
@@ -92,8 +93,9 @@ export const create = async (req, res) => {
     const data = await Box.create(box);
     return res.status(201).send(data);
   } catch (err) {
+    log.error.error('Error creating box:', err);
     return res.status(500).send({
-      message: err.message || req.__('boxes.create.error'),
+      message: req.__('boxes.create.error'),
     });
   }
 };

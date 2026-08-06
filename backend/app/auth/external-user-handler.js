@@ -1,121 +1,42 @@
-import { createHash } from 'crypto';
 import { log } from '../utils/Logger.js';
+import { generateEmailHash, generateOrgCode } from '../utils/identity.js';
+import { upsertExternalOrg } from '../utils/externalOrgs.js';
 
 /**
- * Generate a random organization code
- * @returns {string} Random 6-character hexcode
- */
-const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
-
-/**
- * Map an auth-server org role (OWNER/ADMIN/MEMBER) to BoxVault's per-org role enum.
+ * Pick the per-org role from an auth-server organizations claim entry. The
+ * claim vocabulary IS BoxVault's per-org enum — no translation, just
+ * lowercase and highest privilege across overlapping roles.
  * @param {string[]|undefined} roles - Roles from the organizations claim
- * @returns {'admin'|'moderator'|'user'}
+ * @returns {'owner'|'admin'|'member'}
  */
-const mapOrgRole = roles => {
-  const list = Array.isArray(roles) ? roles.map(r => String(r).toUpperCase()) : [];
-  if (list.includes('OWNER')) {
+const pickOrgRole = roles => {
+  const list = Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()) : [];
+  if (list.includes('owner')) {
+    return 'owner';
+  }
+  if (list.includes('admin')) {
     return 'admin';
   }
-  if (list.includes('ADMIN')) {
-    return 'moderator';
-  }
-  return 'user';
+  return 'member';
 };
 
 /**
- * Turn a (mutable, possibly non-URL-safe) upstream org name into a slug that
- * matches BoxVault's org-name rules ([A-Za-z0-9.-]) since the name is used as
- * the URL path segment for the org.
- * @param {string} name
- * @param {string} externalOrgId - Fallback seed if the name slugs to empty
- * @returns {string}
- */
-const slugifyOrgName = (name, externalOrgId) => {
-  const slug = (name || '')
-    .trim()
-    .replace(/[^A-Za-z0-9.-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return slug || `org-${externalOrgId.slice(0, 8)}`;
-};
-
-/**
- * Find a unique, URL-safe org name. BoxVault org names are globally unique (they
- * are the URL slug), but upstream names are neither unique nor stable, so on a
- * collision we disambiguate with a fragment of the immutable org UUID.
- * @param {Object} Organization - Sequelize model
- * @param {string} desired - Upstream org name
- * @param {string} externalOrgId - Immutable org UUID
- * @param {number|null} selfOrgId - Existing org id to treat as non-conflicting
- * @param {Object|null} transaction
- * @returns {Promise<string>}
- */
-const findFreeOrgName = async (Organization, desired, externalOrgId, selfOrgId, transaction) => {
-  const base = slugifyOrgName(desired, externalOrgId);
-  const opts = transaction ? { transaction } : {};
-  const candidates = [
-    base,
-    `${base}-${externalOrgId.slice(0, 6)}`,
-    `${base}-${externalOrgId.slice(0, 12)}`,
-  ];
-  for (const candidate of candidates) {
-    // eslint-disable-next-line no-await-in-loop -- sequential uniqueness probing is intentional
-    const clash = await Organization.findOne({ where: { name: candidate }, ...opts });
-    if (!clash || clash.id === selfOrgId) {
-      return candidate;
-    }
-  }
-  return `${base}-${externalOrgId}`;
-};
-
-/**
- * Upsert the BoxVault org row that mirrors one org from the claim, keyed on
- * (external_issuer, external_org_id). Keeps the name loosely in sync with the
- * upstream (mutable) name without ever colliding.
- * @param {Object} Organization - Sequelize model
+ * Upsert the BoxVault org row that mirrors one org from the claim. The
+ * slug/customer-id/collision/reconcile rules live in utils/externalOrgs.js —
+ * the ONE home shared with the SCIM receiver.
+ * @param {Object} db - Database models
  * @param {string} issuer
  * @param {Object} claimOrg - One entry from the organizations claim
  * @param {Object|null} transaction
  * @returns {Promise<Object>} Organization instance
  */
-const upsertClaimOrg = async (Organization, issuer, claimOrg, transaction) => {
-  const externalOrgId = claimOrg.uuid;
-  const opts = transaction ? { transaction } : {};
-
-  let org = await Organization.findOne({
-    where: { external_issuer: issuer, external_org_id: externalOrgId },
-    ...opts,
-  });
-
-  if (!org) {
-    // Slug is frozen at creation (stable URLs forever); display_name carries the
-    // mutable upstream name from here on.
-    const name = await findFreeOrgName(
-      Organization,
-      claimOrg.name,
-      externalOrgId,
-      null,
-      transaction
-    );
-    org = await Organization.create(
-      {
-        name,
-        display_name: claimOrg.name || name,
-        external_issuer: issuer,
-        external_org_id: externalOrgId,
-        org_code: generateOrgCode(),
-      },
-      opts
-    );
-    return org;
-  }
-
-  // Existing mirror row — never re-slugify; only refresh the display name.
-  if (claimOrg.name && org.display_name !== claimOrg.name) {
-    await org.update({ display_name: claimOrg.name }, opts);
-  }
-  return org;
-};
+const upsertClaimOrg = (db, issuer, claimOrg, transaction) =>
+  upsertExternalOrg(
+    db,
+    issuer,
+    { uuid: claimOrg.uuid, name: claimOrg.name, customerId: claimOrg.customer_id },
+    transaction
+  );
 
 /**
  * Sync a user's org memberships from the organizations claim (auth-server is the
@@ -154,8 +75,8 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
       }
 
       // eslint-disable-next-line no-await-in-loop -- memberships upserted sequentially in one txn
-      const org = await upsertClaimOrg(Organization, issuer, claimOrg, transaction);
-      const role = mapOrgRole(claimOrg.roles);
+      const org = await upsertClaimOrg(db, issuer, claimOrg, transaction);
+      const role = pickOrgRole(claimOrg.roles);
       const isPrimary = !!claimOrg.primary;
 
       // eslint-disable-next-line no-await-in-loop
@@ -260,7 +181,7 @@ const resolveOrgFromClaim = async (db, profile, issuer) => {
   if (!primary?.uuid) {
     return null;
   }
-  const org = await upsertClaimOrg(db.organization, issuer, primary, null);
+  const org = await upsertClaimOrg(db, issuer, primary, null);
   return org.id;
 };
 
@@ -285,7 +206,7 @@ const resolveOrgFromInvitation = async (email, db) => {
   if (!invitation) {
     return null;
   }
-  await invitation.update({ accepted: true });
+  await invitation.update({ accepted: true, accepted_at: new Date() });
   return invitation.organizationId;
 };
 
@@ -305,17 +226,20 @@ const resolveOrgFromDomainMapping = async (domain, db, authConfig) => {
     const mappingsJson = authConfig.auth.external?.domain_mappings?.value || '{}';
     const mappings = JSON.parse(mappingsJson);
 
-    // Find matching domain first, then do single await lookup
-    let matchedOrgName = null;
-    for (const [orgName, domains] of Object.entries(mappings)) {
+    // Mappings are keyed by org_code (the stable identity key; names are
+    // display/URL only). Find matching domain first, then do single await lookup.
+    let matchedOrgCode = null;
+    for (const [orgCode, domains] of Object.entries(mappings)) {
       if (Array.isArray(domains) && domains.includes(domain)) {
-        matchedOrgName = orgName;
+        matchedOrgCode = orgCode;
         break;
       }
     }
 
-    if (matchedOrgName) {
-      const org = await db.organization.findOne({ where: { name: matchedOrgName } });
+    if (matchedOrgCode) {
+      const org = await db.organization.findOne({
+        where: { org_code: matchedOrgCode.trim().toUpperCase() },
+      });
       if (org) {
         return org.id;
       }
@@ -345,7 +269,7 @@ const applyProvisioningFallback = async (domain, db, authConfig) => {
     case 'create_org': {
       const newOrg = await db.organization.create({
         name: domain,
-        org_code: generateOrgCode(),
+        org_code: await generateOrgCode(db),
         description: `Auto-created organization for domain ${domain}`,
       });
       return newOrg.id;
@@ -442,7 +366,7 @@ const handleExistingCredentialUser = async (credential, profile, email, db, auth
  * @param {string} subject - User subject
  * @param {Object} profile - User profile
  * @param {string} email - User email
- * @param {string} normalizedProvider - Normalized provider name
+ * @param {string} credentialProvider - Credential namespace (issuer URL for OIDC)
  * @param {Object} db - Database models
  * @param {Object} authConfig - Auth config
  * @returns {Promise<Object>} User object
@@ -453,12 +377,26 @@ const handleExistingEmailUser = async (
   subject,
   profile,
   email,
-  normalizedProvider,
+  credentialProvider,
   db,
   authConfig
 ) => {
   const { credential: Credential } = db;
   const baseProvider = provider.startsWith('oidc-') ? 'oidc' : provider;
+
+  // #10: linking an OIDC identity to an EXISTING local account by email match
+  // requires provider-verified mailbox ownership — the auth server's
+  // email_verified claim is mailbox-truth. New-user creation is unaffected.
+  if (profile.email_verified !== true) {
+    log.error.error('Refusing to link external identity to existing account: email not verified', {
+      provider,
+      email,
+      userId: user.id,
+    });
+    throw new Error(
+      `Account linking denied: email ${email} is not verified by the identity provider`
+    );
+  }
 
   if (!user.primary_organization_id) {
     const organizationId = await determineUserOrganization(
@@ -483,7 +421,7 @@ const handleExistingEmailUser = async (
   }
 
   try {
-    await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
+    await Credential.linkToUser(user.id, credentialProvider, { ...profile, subject });
   } catch {
     // Credential might already exist
   }
@@ -499,7 +437,7 @@ const handleExistingEmailUser = async (
  * @param {Object} profile - User profile
  * @param {string} email - User email
  * @param {string} subject - User subject
- * @param {string} normalizedProvider - Normalized provider name
+ * @param {string} credentialProvider - Credential namespace (issuer URL for OIDC)
  * @param {Object} db - Database models
  * @param {Object} authConfig - Auth config
  * @returns {Promise<Object>} User object
@@ -509,7 +447,7 @@ const createNewExternalUser = async (
   profile,
   email,
   subject,
-  normalizedProvider,
+  credentialProvider,
   db,
   authConfig
 ) => {
@@ -528,7 +466,7 @@ const createNewExternalUser = async (
     username: profile.displayName || profile.cn || email.split('@')[0],
     email,
     password: 'external',
-    emailHash: createHash('sha256').update(email.toLowerCase()).digest('hex'),
+    emailHash: generateEmailHash(email),
     verified: true,
     primary_organization_id: organizationId,
     authProvider: baseProvider,
@@ -538,18 +476,67 @@ const createNewExternalUser = async (
 
   await assignDefaultRoleIfNeeded(user, db, authConfig);
 
-  // Create user-organization relationship for external users
-  const defaultRole = authConfig.auth?.external?.provisioning_default_role?.value || 'user';
+  // Create user-organization relationship for external users. The
+  // provisioning_default_role knob speaks the GLOBAL role vocabulary and only
+  // feeds assignDefaultRoleIfNeeded; the per-org membership starts as member
+  // (claim-based providers overwrite it in syncOrganizationsFromClaim).
   await db.UserOrg.create({
     user_id: user.id,
     organization_id: organizationId,
-    role: defaultRole,
+    role: 'member',
     is_primary: true,
   });
 
-  await Credential.linkToUser(user.id, normalizedProvider, { ...profile, subject });
+  await Credential.linkToUser(user.id, credentialProvider, { ...profile, subject });
 
   return user;
+};
+
+/**
+ * Resolve the stable subject identifier from an external profile. Prefers the
+ * custom UUID claim (never reassigned) over sub (currently the email, which
+ * can change), falling back to sub/uid/id for generic OIDC providers that do
+ * not emit a UUID claim, and finally to the uid/cn of an LDAP-style DN.
+ * @param {Object} profile - User profile from external provider
+ * @returns {string|undefined} Subject identifier or undefined
+ */
+const resolveSubject = profile => {
+  let subject = profile.UUID || profile.uid || profile.sub || profile.id || profile.cn;
+
+  if (!subject && profile.dn) {
+    const dnMatch = profile.dn.match(/^uid=(?<id>[^,]+)/i) || profile.dn.match(/^cn=(?<id>[^,]+)/i);
+    if (dnMatch) {
+      const [, extractedSubject] = dnMatch;
+      subject = extractedSubject;
+    }
+  }
+
+  return subject;
+};
+
+/**
+ * Resolve the credential namespace for a provider (#30): OIDC credentials are
+ * namespaced by the REAL issuer so a second IdP can never collide on subject
+ * values. The issuer comes from the token's iss claim, falling back to the
+ * provider's configured issuer (identical by definition — discovery and token
+ * validation pin the issuer). Non-OIDC providers keep their protocol name as
+ * the namespace.
+ * @param {string} provider - Authentication provider (ldap, oidc-<name>, etc.)
+ * @param {Object} profile - User profile from external provider
+ * @param {Object} authConfig - Authentication configuration
+ * @returns {{isOidc: boolean, credentialProvider: string}}
+ * @throws {Error} For an OIDC provider with no resolvable issuer
+ */
+const resolveCredentialNamespace = (provider, profile, authConfig) => {
+  const isOidc = provider.startsWith('oidc-');
+  const configuredIssuer = isOidc
+    ? authConfig.auth?.oidc?.providers?.[provider.slice('oidc-'.length)]?.issuer?.value
+    : null;
+  const issuer = profile.iss || configuredIssuer || null;
+  if (isOidc && !issuer) {
+    throw new Error(`No issuer found for ${provider}: profile.iss and configured issuer missing`);
+  }
+  return { isOidc, credentialProvider: isOidc ? issuer : provider };
 };
 
 /**
@@ -569,30 +556,23 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
       throw new Error(`No email found in ${provider} profile`);
     }
 
-    // Prefer the stable custom UUID claim (never reassigned) over sub (currently
-    // the email, which can change). Fall back to sub/uid/id for generic OIDC
-    // providers that do not emit a UUID claim.
-    let subject = profile.UUID || profile.uid || profile.sub || profile.id || profile.cn;
-
-    if (!subject && profile.dn) {
-      const dnMatch =
-        profile.dn.match(/^uid=(?<id>[^,]+)/i) || profile.dn.match(/^cn=(?<id>[^,]+)/i);
-      if (dnMatch) {
-        const [, extractedSubject] = dnMatch;
-        subject = extractedSubject;
-      }
-    }
-
+    const subject = resolveSubject(profile);
     if (!subject) {
       throw new Error(`No user identifier found in ${provider} profile`);
     }
 
-    // Normalize provider name for database storage
-    const normalizedProvider = provider.startsWith('oidc-') ? 'oidc' : provider;
+    const { isOidc, credentialProvider } = resolveCredentialNamespace(
+      provider,
+      profile,
+      authConfig
+    );
 
-    // Resolve the user via one of three paths.
+    // Resolve the user via one of three paths. findByIssuerAndSubject also
+    // backfills pre-issuer rows stored under the flat 'oidc' value.
     let user;
-    const credential = await Credential.findByProviderAndSubject(normalizedProvider, subject);
+    const credential = isOidc
+      ? await Credential.findByIssuerAndSubject(credentialProvider, subject)
+      : await Credential.findByProviderAndSubject(credentialProvider, subject);
     if (credential) {
       user = await handleExistingCredentialUser(credential, profile, email, db, authConfig);
     } else {
@@ -604,7 +584,7 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
           subject,
           profile,
           email,
-          normalizedProvider,
+          credentialProvider,
           db,
           authConfig
         );
@@ -614,7 +594,7 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
           profile,
           email,
           subject,
-          normalizedProvider,
+          credentialProvider,
           db,
           authConfig
         );
@@ -636,5 +616,4 @@ export default {
   handleExternalUser,
   determineUserOrganization,
   syncOrganizationsFromClaim,
-  generateOrgCode,
 };

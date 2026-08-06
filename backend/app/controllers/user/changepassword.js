@@ -1,6 +1,8 @@
 // changepassword.js
 import { hashSync } from 'bcryptjs';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { getBcryptRounds, getPasswordPolicyError } from '../auth/helpers.js';
 const { user: User } = db;
 
 /**
@@ -61,16 +63,23 @@ export const changePassword = async (req, res) => {
   const { newPassword } = req.body;
 
   try {
+    // Password policy knobs (#18) apply to password changes too
+    const passwordPolicyError = getPasswordPolicyError(newPassword, req);
+    if (passwordPolicyError) {
+      return res.status(400).send({ message: passwordPolicyError });
+    }
+
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    user.password = hashSync(newPassword, 8);
+    user.password = hashSync(newPassword, getBcryptRounds());
     await user.save();
 
     return res.status(200).send({ message: req.__('users.passwordChanged') });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('errors.operationFailed') });
+    log.error.error('Error changing password:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };

@@ -1,6 +1,7 @@
 // update.js
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
 
@@ -96,9 +97,9 @@ export const update = async (req, res) => {
       });
     }
 
-    // Check if user is owner OR has moderator/admin role
+    // Check if user is owner OR has admin/owner role
     const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || ['moderator', 'admin'].includes(req.userOrgRole);
+    const canUpdate = isOwner || ['admin', 'owner'].includes(req.userOrgRole);
 
     if (!canUpdate) {
       return res.status(403).send({
@@ -131,8 +132,9 @@ export const update = async (req, res) => {
 
     return res.send(updatedBox);
   } catch (err) {
+    log.error.error('Error updating box:', err);
     return res.status(500).send({
-      message: err.message || req.__('boxes.update.error'),
+      message: req.__('boxes.update.error'),
     });
   }
 };

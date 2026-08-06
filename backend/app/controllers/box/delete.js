@@ -65,9 +65,9 @@ const deleteBox = async (req, res) => {
       return res.status(404).send({ message: req.__('boxes.boxNotFound') });
     }
 
-    // Check if user is owner OR has moderator/admin role
+    // Check if user is owner OR has admin/owner role
     const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || ['moderator', 'admin'].includes(req.userOrgRole);
+    const canDelete = isOwner || ['admin', 'owner'].includes(req.userOrgRole);
 
     if (!canDelete) {
       return res.status(403).send({
@@ -93,8 +93,9 @@ const deleteBox = async (req, res) => {
 
     return res.status(404).send({ message: req.__('boxes.boxNotFound') });
   } catch (err) {
+    log.error.error('Error deleting box:', err);
     return res.status(500).send({
-      message: err.message || req.__('errors.operationFailed'),
+      message: req.__('errors.operationFailed'),
     });
   }
 };

@@ -51,11 +51,21 @@ const mockConfigLoader = {
   }),
 };
 
+// BoxVault JWT verification enforces issuer/audience; the mocked auth config
+// carries no jwt_issuer/jwt_audience knobs, so the defaults apply.
+const JWT_CLAIM_OPTIONS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 const createMockStream = () => {
   const stream = new EventEmitter();
   stream.write = jest.fn();
   stream.end = jest.fn().mockImplementation(() => {
     setTimeout(() => stream.emit('finish'), 0);
+  });
+  // Streaming chunk merge pipes read streams into the shared write stream and
+  // resolves on the read stream's 'end' event.
+  stream.pipe = jest.fn().mockImplementation(dest => {
+    setTimeout(() => stream.emit('end'), 0);
+    return dest;
   });
   return stream;
 };
@@ -127,12 +137,18 @@ jest.unstable_mockModule('crypto', () => ({
 const mockFsHelper = {
   safeUnlink: jest.fn((...args) => mockFs.unlink(...args)),
   safeRmdirSync: jest.fn((...args) => mockFs.rmdirSync(...args)),
-  safeMkdirSync: jest.fn((...args) => mockFs.mkdirSync(...args)),
+  ensureDirSync: jest.fn((...args) => mockFs.mkdirSync(...args)),
   safeExistsSync: jest.fn((...args) => mockFs.existsSync(...args)),
   safeRm: jest.fn((...args) => mockFs.rm(...args)),
-  safeRenameSync: jest.fn((...args) => mockFs.renameSync(...args)),
 };
 jest.unstable_mockModule('../app/utils/fsHelper.js', () => mockFsHelper);
+
+// vagrantHandler translates its 401 through the i18n module directly (it runs
+// before the i18n middleware); stub it so tests stay locale-independent.
+jest.unstable_mockModule('../app/config/i18n.js', () => ({
+  t: jest.fn(key => key),
+  getDefaultLocale: jest.fn(() => 'en'),
+}));
 
 const { uploadFile, uploadSSLFile } = await import('../app/middleware/upload.js');
 const { default: vagrantHandler } = await import('../app/middleware/vagrantHandler.js');
@@ -238,6 +254,10 @@ describe('Middleware Tests', () => {
       // Mock createReadStream for checksum verification
       mockFs.createReadStream.mockImplementation(() => {
         const stream = new EventEmitter();
+        stream.pipe = jest.fn(dest => {
+          setTimeout(() => stream.emit('end'), 0);
+          return dest;
+        });
         process.nextTick(() => {
           stream.emit('data', Buffer.from('content'));
           stream.emit('end');
@@ -294,6 +314,7 @@ describe('Middleware Tests', () => {
         set: jest.fn(),
         status: jest.fn().mockReturnThis(),
         end: jest.fn(),
+        json: jest.fn(),
         getHeaders: jest.fn().mockReturnValue({}),
       };
       next = jest.fn();
@@ -347,26 +368,34 @@ describe('Middleware Tests', () => {
       );
     });
 
-    it('should handle service account not found', async () => {
+    it('should reject with 401 when service account not found', async () => {
       req.headers.authorization = 'Bearer invalid-token';
       mockDb.service_account.findOne.mockResolvedValue(null);
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'auth.vagrantInvalidToken' })
+      );
+      expect(next).not.toHaveBeenCalled();
     });
 
-    it('should handle service account without user', async () => {
+    it('should reject with 401 when service account has no user', async () => {
       req.headers.authorization = 'Bearer orphan-token';
       mockDb.service_account.findOne.mockResolvedValue({ user: null });
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(next).not.toHaveBeenCalled();
     });
 
-    it('should handle database error in token validation', async () => {
+    it('should reject with 401 on database error in token validation', async () => {
       req.headers.authorization = 'Bearer error-token';
       mockDb.service_account.findOne.mockRejectedValue(new Error('DB Error'));
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
-      expect(next).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(next).not.toHaveBeenCalled();
     });
 
     it('should skip static files', async () => {
@@ -670,6 +699,10 @@ describe('Middleware Tests', () => {
       // Mock createReadStream to emit data for checksum calculation
       mockFs.createReadStream.mockImplementation(() => {
         const stream = new EventEmitter();
+        stream.pipe = jest.fn(dest => {
+          setTimeout(() => stream.emit('end'), 0);
+          return dest;
+        });
         process.nextTick(() => {
           stream.emit('data', Buffer.from('different content'));
           stream.emit('end');
@@ -738,6 +771,10 @@ describe('Middleware Tests', () => {
       // Mock createReadStream for checksum verification
       mockFs.createReadStream.mockImplementation(() => {
         const stream = new EventEmitter();
+        stream.pipe = jest.fn(dest => {
+          setTimeout(() => stream.emit('end'), 0);
+          return dest;
+        });
         process.nextTick(() => {
           stream.emit('data', Buffer.from('different content'));
           stream.emit('end');
@@ -845,8 +882,8 @@ describe('Middleware Tests', () => {
         return stream;
       });
 
-      // Force error in cleanup
-      mockFs.readdirSync.mockImplementation(() => {
+      // Force error in cleanup (temp dir removal fails)
+      mockFs.rmdirSync.mockImplementationOnce(() => {
         throw new Error('Cleanup Error');
       });
 
@@ -931,67 +968,6 @@ describe('Middleware Tests', () => {
       );
     });
 
-    it('should detect chunk size mismatch during merge', async () => {
-      req.headers['x-chunk-index'] = '1';
-      req.headers['x-total-chunks'] = '2';
-
-      mockFs.readdirSync.mockReturnValue(['chunk-0', 'chunk-1']);
-
-      // Mock statSync to return size 50
-      mockFs.statSync.mockReturnValue({ size: 50 });
-
-      // Mock readFileSync to return buffer of size 40 (mismatch)
-      mockFs.readFileSync.mockReturnValue(Buffer.alloc(40));
-
-      // Mock mkdirSync
-      mockFs.mkdirSync.mockImplementation(() => {});
-
-      // Mock pipe to handle chunk upload before merge
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
-      await uploadFile(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('size mismatch'),
-        })
-      );
-    });
-
-    it('should throw error when chunk size does not match stat size', async () => {
-      req.headers['x-chunk-index'] = '0';
-      req.headers['x-total-chunks'] = '1';
-
-      mockFs.readdirSync.mockReturnValue(['chunk-0']);
-      mockFs.statSync.mockImplementation(path => {
-        if (path && path.toString().includes('chunk-0')) {
-          return { size: 100 };
-        }
-        return { size: 0 };
-      });
-      mockFs.readFileSync.mockReturnValue(Buffer.alloc(50)); // Actual size (mismatch)
-      mockFs.mkdirSync.mockImplementation(() => {});
-
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
-      await uploadFile(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('size mismatch: expected 100, got 50'),
-        })
-      );
-      // Ensure the error was thrown inside mergeChunks (line 149 in upload.js)
-    });
-
     it('should handle chunked merge without content-length', async () => {
       req.headers['x-chunk-index'] = '1';
       req.headers['x-total-chunks'] = '2';
@@ -1043,12 +1019,11 @@ describe('Middleware Tests', () => {
         })
       );
 
-      // Verify cleanup was attempted
-      expect(mockFs.unlink).toHaveBeenCalled();
+      // Verify cleanup: the whole temp dir is removed recursively
       expect(mockFs.rmdirSync).toHaveBeenCalled();
     });
 
-    it('should cleanup temp files when upload fails', async () => {
+    it('should cleanup temp dir when upload fails', async () => {
       req.headers['x-chunk-index'] = '0';
       req.headers['x-total-chunks'] = '2';
 
@@ -1066,29 +1041,8 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      // Verify cleanup
-      expect(mockFs.unlink).toHaveBeenCalledTimes(2); // 2 chunks
+      // Verify cleanup: recursive temp dir removal replaces per-chunk unlinks
       expect(mockFs.rmdirSync).toHaveBeenCalled();
-    });
-
-    it('should skip cleanup if temp dir does not exist during chunk upload error', async () => {
-      req.headers['x-chunk-index'] = '0';
-      req.headers['x-total-chunks'] = '2';
-
-      // Force error in main logic
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('error', new Error('Stream Error')), 0);
-        return stream;
-      });
-
-      // Mock existsSync to return false for tempDir
-      mockFs.existsSync.mockReturnValue(false);
-      mockFs.readdirSync.mockClear();
-
-      await uploadFile(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(mockFs.readdirSync).not.toHaveBeenCalled();
     });
 
     it('should successfully upload chunked file with valid checksum', async () => {
@@ -1105,6 +1059,10 @@ describe('Middleware Tests', () => {
       // Mock createReadStream for checksum verification
       mockFs.createReadStream.mockImplementation(() => {
         const stream = new EventEmitter();
+        stream.pipe = jest.fn(dest => {
+          setTimeout(() => stream.emit('end'), 0);
+          return dest;
+        });
         process.nextTick(() => {
           stream.emit('data', Buffer.from('content'));
           stream.emit('end');
@@ -1173,6 +1131,7 @@ describe('Middleware Tests', () => {
       // Mock createReadStream to error out
       mockFs.createReadStream.mockImplementation(() => {
         const stream = new EventEmitter();
+        stream.pipe = jest.fn(dest => dest);
         process.nextTick(() => {
           stream.emit('error', new Error('Checksum Read Error'));
         });
@@ -1192,8 +1151,8 @@ describe('Middleware Tests', () => {
           message: 'Checksum Read Error',
         })
       );
-      // Verify cleanup
-      expect(mockFs.unlink).toHaveBeenCalled();
+      // Verify cleanup: temp dir removed recursively on failure
+      expect(mockFs.rmdirSync).toHaveBeenCalled();
     });
   });
 
@@ -1322,40 +1281,6 @@ describe('Middleware Tests', () => {
 
       await uploadPromise;
       expect(mockStream.end).toHaveBeenCalled();
-    });
-
-    it('uploadFile should handle read error during checksum verification', async () => {
-      req.headers['content-length'] = '100';
-      req.headers['x-checksum'] = 'validchecksum';
-      req.headers['x-checksum-type'] = 'sha256';
-
-      mockFs.statSync.mockReturnValue({ size: 100 });
-      mockFs.existsSync.mockReturnValue(true);
-
-      // Mock createReadStream to error out
-      mockFs.createReadStream.mockImplementation(() => {
-        const stream = new EventEmitter();
-        process.nextTick(() => {
-          stream.emit('error', new Error('Checksum Read Error'));
-        });
-        return stream;
-      });
-
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
-      await uploadFile(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Checksum Read Error',
-        })
-      );
-      // Verify cleanup
-      expect(mockFs.unlink).toHaveBeenCalled();
     });
 
     it('uploadFile should use default max size and log error if config load fails', async () => {
@@ -1584,12 +1509,6 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isModerator should handle database errors', async () => {
-      mockDb.user.findByPk = jest.fn().mockRejectedValue(new Error('DB Error'));
-      await authJwt.isModerator(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
     it('isSelfOrAdmin should handle database errors', async () => {
       mockDb.user.findByPk = jest.fn().mockRejectedValue(new Error('DB Error'));
       await authJwt.isSelfOrAdmin(req, res, next);
@@ -1651,12 +1570,6 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(401);
     });
 
-    it('isModeratorOrAdmin should return 401 if user not found', async () => {
-      mockDb.user.findByPk.mockResolvedValue(null);
-      await authJwt.isModeratorOrAdmin(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-    });
-
     it('verifyToken should return 403 if no token provided', async () => {
       req.headers['x-access-token'] = undefined;
       await authJwt.verifyToken(req, res, next);
@@ -1669,7 +1582,8 @@ describe('Middleware Tests', () => {
           id: 1,
           isServiceAccount: true,
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -1710,33 +1624,6 @@ describe('Middleware Tests', () => {
       mockDb.user.findByPk.mockRejectedValue(new Error('DB Error'));
       await authJwt.isSelfOrAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('isModeratorOrAdmin should return 401 if user not found', async () => {
-      mockDb.user.findByPk.mockResolvedValue(null);
-      await authJwt.isModeratorOrAdmin(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-    });
-
-    it('isModerator should deny if user is not moderator', async () => {
-      mockDb.user.findByPk.mockResolvedValue({
-        id: 1,
-        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
-      });
-      await authJwt.isModerator(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(403);
-    });
-
-    it('isModeratorOrAdmin should handle database errors', async () => {
-      mockDb.user.findByPk.mockRejectedValue(new Error('DB Error'));
-      await authJwt.isModeratorOrAdmin(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('isModerator should return 401 if user not found', async () => {
-      mockDb.user.findByPk.mockResolvedValue(null);
-      await authJwt.isModerator(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
     });
 
     it('isOrgAdmin should return 400 if organization param missing', async () => {
@@ -2243,7 +2130,7 @@ describe('Middleware Tests', () => {
         auth: { jwt: { jwt_secret: { value: 'test-secret' } } },
       });
 
-      const token = jwt.sign({ id: 1, isServiceAccount: true }, 'test-secret');
+      const token = jwt.sign({ id: 1, isServiceAccount: true }, 'test-secret', JWT_CLAIM_OPTIONS);
       req.headers['x-access-token'] = token;
       req.path = '/api/auth/refresh-token';
 
@@ -2252,22 +2139,6 @@ describe('Middleware Tests', () => {
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Service accounts cannot refresh tokens' })
       );
-    });
-
-    it('authJwt.verifyToken should attach service account org id', async () => {
-      const token = jwt.sign(
-        {
-          id: 1,
-          isServiceAccount: true,
-          serviceAccountOrgId: 999,
-        },
-        'test-secret'
-      );
-      req.headers['x-access-token'] = token;
-
-      await authJwt.verifyToken(req, res, next);
-      expect(req.serviceAccountOrgId).toBe(999);
-      expect(next).toHaveBeenCalled();
     });
 
     // verifyBoxName.js coverage
@@ -2643,7 +2514,7 @@ describe('Middleware Tests', () => {
     });
 
     it('oidcTokenRefresh should skip if not OIDC provider', async () => {
-      const token = jwt.sign({ id: 1, provider: 'local' }, 'test-secret');
+      const token = jwt.sign({ id: 1, provider: 'local' }, 'test-secret', JWT_CLAIM_OPTIONS);
       req.headers['x-access-token'] = token;
       await oidcTokenRefresh(req, res, next);
       expect(next).toHaveBeenCalled();
@@ -2658,7 +2529,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: future,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2675,7 +2547,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: soon,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2694,7 +2567,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: soon,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2717,7 +2591,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: Date.now() + 60000,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2761,7 +2636,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: Date.now() + 60000,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2800,7 +2676,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: Date.now() + 60000,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2842,7 +2719,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: Date.now() + 60000,
           oidc_refresh_token: 'rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2881,7 +2759,8 @@ describe('Middleware Tests', () => {
           oidc_expires_at: Date.now() + 60000,
           oidc_refresh_token: 'old-rt',
         },
-        'test-secret'
+        'test-secret',
+        JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
 
@@ -2991,37 +2870,6 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(mockFs.unlink).toHaveBeenCalled();
-    });
-
-    it('uploadFile should detect chunk size mismatch during merge', async () => {
-      req.headers['x-chunk-index'] = '1';
-      req.headers['x-total-chunks'] = '2';
-
-      mockFs.readdirSync.mockReturnValue(['chunk-0', 'chunk-1']);
-
-      // Mock statSync to return size 50
-      mockFs.statSync.mockReturnValue({ size: 50 });
-
-      // Mock readFileSync to return buffer of size 40 (mismatch)
-      mockFs.readFileSync.mockReturnValue(Buffer.alloc(40));
-
-      // Mock mkdirSync
-      mockFs.mkdirSync.mockImplementation(() => {});
-
-      // Mock pipe to handle chunk upload before merge
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
-      await uploadFile(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('size mismatch'),
-        })
-      );
     });
 
     it('uploadFile should cleanup on premature close error', async () => {

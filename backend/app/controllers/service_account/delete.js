@@ -1,3 +1,4 @@
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { service_account: ServiceAccount } = db;
 
@@ -56,7 +57,8 @@ const _delete = async (req, res) => {
     }
     return res.status(404).send({ message: 'Service account not found.' });
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    log.error.error('Error deleting service account:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };
 export { _delete as delete };

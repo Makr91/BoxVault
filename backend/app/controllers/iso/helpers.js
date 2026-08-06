@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { join } from 'path';
 import { loadConfig } from '../../utils/config-loader.js';
+import { isPathInside } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 
 const getIsoStorageRoot = () => {
@@ -20,7 +21,7 @@ const getSecureIsoPath = (...pathSegments) => {
   const fullPath = join(root, ...pathSegments);
 
   // Validate that the joined path is still within the root directory
-  if (!fullPath.startsWith(root)) {
+  if (!isPathInside(root, fullPath)) {
     throw new Error('Path traversal attempt detected');
   }
 

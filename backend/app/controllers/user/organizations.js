@@ -35,7 +35,7 @@ const { UserOrg, service_account: ServiceAccount, organization: Organization } =
  *                     description: Email hash for Gravatar
  *                   role:
  *                     type: string
- *                     enum: [user, moderator, admin]
+ *                     enum: [member, admin, owner]
  *                     description: User's role in this organization
  *                   isPrimary:
  *                     type: boolean
@@ -85,7 +85,7 @@ const getUserOrganizations = async (req, res) => {
             emailHash: org.emailHash,
             accessMode: org.access_mode,
           },
-          role: 'user',
+          role: 'member',
           isPrimary: true,
           joinedAt: serviceAccount.createdAt,
         },

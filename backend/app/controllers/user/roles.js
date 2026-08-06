@@ -1,4 +1,5 @@
 // roles.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { user: User, role: Role } = db;
 
@@ -54,6 +55,7 @@ export const getUserRoles = async (req, res) => {
     const roles = user.roles.map(role => role.name);
     return res.status(200).send(roles);
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('users.roles.error') });
+    log.error.error('Error retrieving user roles:', err);
+    return res.status(500).send({ message: req.__('users.roles.error') });
   }
 };

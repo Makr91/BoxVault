@@ -3,6 +3,7 @@ import { log } from '../utils/Logger.js';
 import jwt from 'jsonwebtoken';
 import db from '../models/index.js';
 import { extractBearerToken, findServiceAccountByRawToken } from '../utils/serviceAccountAuth.js';
+import { getJwtClaimOptions } from '../utils/auth.js';
 const { user: User, role: Role, organization } = db;
 
 // Fallback for raw service-account API keys: when no valid JWT is present,
@@ -20,7 +21,6 @@ const applyServiceAccountAuth = async (req, ...candidates) => {
   req.userId = serviceAccount.userId;
   req.isServiceAccount = true;
   req.serviceAccountId = serviceAccount.id;
-  req.serviceAccountOrgId = serviceAccount.organization_id;
   return true;
 };
 
@@ -50,13 +50,18 @@ const verifyToken = async (req, res, next) => {
 
     try {
       const decoded = await new Promise((resolve, reject) => {
-        jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, (err, decodedToken) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(decodedToken);
+        jwt.verify(
+          token,
+          authConfig.auth.jwt.jwt_secret.value,
+          getJwtClaimOptions(),
+          (err, decodedToken) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(decodedToken);
+            }
           }
-        });
+        );
       });
 
       req.userId = decoded.id;
@@ -90,17 +95,16 @@ const verifyToken = async (req, res, next) => {
           return res.status(401).send({ message: 'User not found' });
         }
 
+        if (user.suspended) {
+          return res.status(403).send({ message: req.__('auth.accountSuspended') });
+        }
+
         req.user = user;
       }
 
       // Attach JWT context for service accounts
-      if (decoded.isServiceAccount) {
-        if (decoded.serviceAccountOrgId) {
-          req.serviceAccountOrgId = decoded.serviceAccountOrgId;
-        }
-        if (decoded.serviceAccountId) {
-          req.serviceAccountId = decoded.serviceAccountId;
-        }
+      if (decoded.isServiceAccount && decoded.serviceAccountId) {
+        req.serviceAccountId = decoded.serviceAccountId;
       }
 
       // Attach user's organizations from JWT for frontend
@@ -143,6 +147,26 @@ const isServiceAccount = (req, res, next) => {
   return res.status(403).send({ message: 'Require Service Account Role!' });
 };
 
+// Shared gate step: load the requesting user (for service accounts, the owning
+// user) and reject the request when the account is missing or suspended.
+// Sends the response itself and returns null so callers can simply bail.
+const loadActiveUser = async (req, res) => {
+  const user = await User.findByPk(req.userId);
+  if (!user) {
+    res.status(401).send({
+      message: 'User not found!',
+    });
+    return null;
+  }
+
+  if (user.suspended) {
+    res.status(403).send({ message: req.__('auth.accountSuspended') });
+    return null;
+  }
+
+  return user;
+};
+
 const isUser = async (req, res, next) => {
   try {
     // First, check if it's not a service account
@@ -152,22 +176,20 @@ const isUser = async (req, res, next) => {
       });
     }
 
-    const user = await User.findByPk(req.userId);
+    const user = await loadActiveUser(req, res);
     if (!user) {
-      return res.status(401).send({
-        message: 'User not found!',
-      });
+      return undefined;
     }
 
     const roles = await user.getRoles();
-    const hasValidRole = roles.some(role => ['user', 'moderator', 'admin'].includes(role.name));
+    const hasValidRole = roles.some(role => ['user', 'admin'].includes(role.name));
 
     if (hasValidRole) {
       return next();
     }
 
     return res.status(403).send({
-      message: 'Require User, Moderator or Admin Role!',
+      message: 'Require User or Admin Role!',
     });
   } catch (err) {
     log.error.error('Auth middleware error:', {
@@ -183,11 +205,9 @@ const isUser = async (req, res, next) => {
 
 const isSelfOrAdmin = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.userId);
+    const user = await loadActiveUser(req, res);
     if (!user) {
-      return res.status(401).send({
-        message: 'User not found!',
-      });
+      return undefined;
     }
 
     const roles = await user.getRoles();
@@ -216,25 +236,28 @@ const isSelfOrAdmin = async (req, res, next) => {
 const isUserOrServiceAccount = async (req, res, next) => {
   try {
     if (req.isServiceAccount) {
+      // Impersonation model: the owning user must still be active
+      const owner = await loadActiveUser(req, res);
+      if (!owner) {
+        return undefined;
+      }
       return next();
     }
 
-    const user = await User.findByPk(req.userId);
+    const user = await loadActiveUser(req, res);
     if (!user) {
-      return res.status(401).send({
-        message: 'User not found!',
-      });
+      return undefined;
     }
 
     const roles = await user.getRoles();
-    const hasValidRole = roles.some(role => ['user', 'moderator', 'admin'].includes(role.name));
+    const hasValidRole = roles.some(role => ['user', 'admin'].includes(role.name));
 
     if (hasValidRole) {
       return next();
     }
 
     return res.status(403).send({
-      message: 'Require User, Moderator or Admin Role!',
+      message: 'Require User or Admin Role!',
     });
   } catch (err) {
     log.error.error('Auth middleware error:', {
@@ -250,11 +273,9 @@ const isUserOrServiceAccount = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.userId);
+    const user = await loadActiveUser(req, res);
     if (!user) {
-      return res.status(401).send({
-        message: 'User not found!',
-      });
+      return undefined;
     }
 
     const roles = await user.getRoles();
@@ -279,73 +300,9 @@ const isAdmin = async (req, res, next) => {
   }
 };
 
-const isModerator = async (req, res, next) => {
-  try {
-    const user = await User.findByPk(req.userId);
-    if (!user) {
-      return res.status(401).send({
-        message: 'User not found!',
-      });
-    }
-
-    const roles = await user.getRoles();
-    const isModeratorRole = roles.some(role => role.name === 'moderator');
-
-    if (isModeratorRole) {
-      return next();
-    }
-
-    return res.status(403).send({
-      message: 'Require Moderator Role!',
-    });
-  } catch (err) {
-    log.error.error('Auth middleware error:', {
-      error: err.message,
-      stack: err.stack,
-      userId: req.userId,
-    });
-    return res.status(500).send({
-      message: 'Error checking user permissions',
-    });
-  }
-};
-
-const isModeratorOrAdmin = async (req, res, next) => {
-  try {
-    const user = await User.findByPk(req.userId);
-    if (!user) {
-      return res.status(401).send({
-        message: 'User not found!',
-      });
-    }
-
-    const roles = await user.getRoles();
-    const hasValidRole = roles.some(role => ['moderator', 'admin'].includes(role.name));
-
-    if (hasValidRole) {
-      return next();
-    }
-
-    return res.status(403).send({
-      message: 'Require Moderator or Admin Role!',
-    });
-  } catch (err) {
-    log.error.error('Auth middleware error:', {
-      error: err.message,
-      stack: err.stack,
-      userId: req.userId,
-    });
-    return res.status(500).send({
-      message: 'Error checking user permissions',
-    });
-  }
-};
-
 const authJwt = {
   verifyToken,
   isAdmin,
-  isModerator,
-  isModeratorOrAdmin,
   isUserOrServiceAccount,
   isServiceAccount,
   isUser,

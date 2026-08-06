@@ -111,6 +111,19 @@ boxvault:
     subsection_key: boxvaultSettings
     required: true
     order: 9
+  org_code_seed:
+    type: string
+    value: B00000
+    description: >-
+      Starting point (inclusive, 6 hex characters) for the sequential
+      organization codes assigned to locally-created organizations. Customer
+      organizations mirrored from the auth server keep their admin-assigned
+      customer ID instead and are not sequential.
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: true
+    order: 10
 gravatar:
   base_url:
     type: url

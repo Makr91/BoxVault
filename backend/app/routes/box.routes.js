@@ -62,7 +62,7 @@ router.delete(
 
 router.delete(
   '/organization/:organization/box',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgModeratorOrAdmin],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
   deleteAll
 );
 

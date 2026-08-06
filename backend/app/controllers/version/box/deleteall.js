@@ -66,10 +66,10 @@ export const deleteAllByBox = async (req, res) => {
     // Organization and Box are already verified and attached by verifyVersion middleware
     const { organizationData, boxData: box } = req;
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canDelete) {
       return res.status(403).send({
@@ -96,8 +96,9 @@ export const deleteAllByBox = async (req, res) => {
       message: req.__('versions.notFoundToDelete'),
     });
   } catch (err) {
+    log.error.error('Error deleting versions:', err);
     return res.status(500).send({
-      message: err.message || req.__('versions.deleteAll.error'),
+      message: req.__('versions.deleteAll.error'),
     });
   }
 };

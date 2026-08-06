@@ -2,6 +2,8 @@
 import { compareSync } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
+import { getJwtClaimOptions } from '../../utils/auth.js';
+import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const {
@@ -11,6 +13,171 @@ const {
   service_account: ServiceAccount,
   UserOrg,
 } = db;
+
+/**
+ * Look up a regular user for signin, with roles and primary organization.
+ * @param {string} username - Presented username
+ * @returns {Promise<Object|null>} User instance or null
+ */
+const findSigninUser = username =>
+  User.findOne({
+    where: { username },
+    include: [
+      {
+        model: Role,
+        as: 'roles',
+        attributes: ['name'],
+        through: { attributes: [] },
+      },
+      {
+        model: Organization,
+        as: 'primaryOrganization',
+        attributes: ['name'],
+      },
+    ],
+  });
+
+/**
+ * Look up a service account for signin (tokens are stored as sha256 hashes —
+ * hash the presented token before comparing).
+ * @param {string} username - Presented username
+ * @param {string} password - Presented raw token
+ * @returns {Promise<Object|null>} Service account instance or null
+ */
+const findSigninServiceAccount = (username, password) =>
+  ServiceAccount.findOne({
+    where: { username, token: hashServiceAccountToken(password || '') },
+    include: [
+      {
+        model: Organization,
+        as: 'organization',
+        attributes: ['name'],
+      },
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username', 'suspended'],
+      },
+    ],
+  });
+
+/**
+ * Run the local-account signin gates in order; returns the rejection to send,
+ * or null when the signin may proceed.
+ * @param {Object} user - User instance
+ * @param {string} password - Presented password
+ * @param {Object} authConfig - Loaded auth config
+ * @param {Object} req - Express request (for i18n)
+ * @returns {{status: number, body: Object}|null}
+ */
+const getLocalSigninRejection = (user, password, authConfig, req) => {
+  // Username/password authentication can be switched off entirely (#18)
+  if (authConfig.auth?.jwt?.local_enabled?.value === false) {
+    return { status: 403, body: { message: req.__('auth.localAuthDisabled') } };
+  }
+
+  const passwordIsValid = compareSync(password, user.password);
+  if (!passwordIsValid) {
+    return {
+      status: 401,
+      body: { accessToken: null, message: req.__('auth.invalidCredentials') },
+    };
+  }
+
+  // Checked after password verification so suspension status is only
+  // revealed to the account holder.
+  if (user.suspended) {
+    return { status: 403, body: { message: req.__('auth.accountSuspended') } };
+  }
+
+  // Email-verification enforcement for local accounts (#18): when the knob
+  // is on, unverified accounts may not sign in. Checked after password
+  // verification so the status is only revealed to the account holder.
+  if (authConfig.auth?.local?.local_require_email_verification?.value && !user.verified) {
+    return { status: 403, body: { message: req.__('auth.emailNotVerified') } };
+  }
+
+  return null;
+};
+
+/**
+ * Resolve the organizations to embed in the signin response/JWT.
+ * @param {Object} user - User or service-account instance
+ * @param {boolean} isServiceAccount
+ * @returns {Promise<{userOrganizations: Object[], primaryOrgName: string|null|undefined}>}
+ */
+const resolveSigninOrganizations = async (user, isServiceAccount) => {
+  if (isServiceAccount) {
+    // Service account has one organization
+    return { userOrganizations: [], primaryOrgName: user.organization?.name || null };
+  }
+
+  // Get all user's organizations with roles
+  const userOrgs = await UserOrg.getUserOrganizations(user.id);
+  const userOrganizations = userOrgs.map(userOrg => ({
+    name: userOrg.organization.name,
+    role: userOrg.role,
+    isPrimary: userOrg.is_primary,
+  }));
+
+  // Find primary organization
+  const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
+  const primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
+  return { userOrganizations, primaryOrgName };
+};
+
+/**
+ * Provider tag stamped on the token and response.
+ * @param {Object} user - User or service-account instance
+ * @param {boolean} isServiceAccount
+ * @returns {string}
+ */
+const resolveSigninProvider = (user, isServiceAccount) => {
+  if (isServiceAccount) {
+    return 'service_account';
+  }
+  return user.authProvider || 'local';
+};
+
+/**
+ * Sign the BoxVault session JWT for a successful signin.
+ * @param {Object} params - { user, isServiceAccount, stayLoggedIn, provider,
+ *   userOrganizations, authConfig }
+ * @returns {string} Signed JWT
+ */
+const buildSigninToken = ({
+  user,
+  isServiceAccount,
+  stayLoggedIn,
+  provider,
+  userOrganizations,
+  authConfig,
+}) => {
+  // Use the configured session timeout for stayLoggedIn sessions (#18:
+  // auth.local.local_session_timeout, hours), default expiry otherwise.
+  const sessionTimeoutHours = authConfig.auth?.local?.local_session_timeout?.value || 24;
+  const tokenExpiry = stayLoggedIn
+    ? `${sessionTimeoutHours}h`
+    : authConfig.auth.jwt.jwt_expiration.value || '24h';
+
+  return jwt.sign(
+    {
+      id: isServiceAccount ? user.userId : user.id, // For service accounts, use creator's user ID
+      serviceAccountId: isServiceAccount ? user.id : null, // Store service account's own ID
+      isServiceAccount,
+      stayLoggedIn,
+      provider,
+      organizations: userOrganizations, // Multi-org data for frontend
+    },
+    authConfig.auth.jwt.jwt_secret.value,
+    {
+      algorithm: 'HS256',
+      allowInsecureKeySizes: true,
+      expiresIn: tokenExpiry,
+      ...getJwtClaimOptions(),
+    }
+  );
+};
 
 /**
  * @swagger
@@ -93,13 +260,7 @@ const {
  *                   nullable: true
  *                 message:
  *                   type: string
- *                   example: "Invalid Password!"
- *       404:
- *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                   example: "Invalid username or password."
  *       500:
  *         description: Internal server error
  *         content:
@@ -113,112 +274,54 @@ export const signin = async (req, res) => {
     const { username, password, stayLoggedIn } = req.body || {};
 
     // First, try to find a regular user
-    let user = await User.findOne({
-      where: { username },
-      include: [
-        {
-          model: Role,
-          as: 'roles',
-          attributes: ['name'],
-          through: { attributes: [] },
-        },
-        {
-          model: Organization,
-          as: 'primaryOrganization',
-          attributes: ['name'],
-        },
-      ],
-    });
-
+    let user = await findSigninUser(username);
     let isServiceAccount = false;
 
     // If no user found, check for a service account
     if (!user) {
-      const serviceAccount = await ServiceAccount.findOne({
-        where: { username, token: password },
-        include: [
-          {
-            model: Organization,
-            as: 'organization',
-            attributes: ['name'],
-          },
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username'],
-          },
-        ],
-      });
+      const serviceAccount = await findSigninServiceAccount(username, password);
 
       if (serviceAccount) {
         // expiresAt: null = never expires
         if (serviceAccount.expiresAt && new Date() > serviceAccount.expiresAt) {
           return res.status(401).send({ message: req.__('auth.serviceAccountExpired') });
         }
+        // Service accounts impersonate their owning user — a suspended owner
+        // may not sign in through their API keys either.
+        if (serviceAccount.user?.suspended) {
+          return res.status(403).send({ message: req.__('auth.accountSuspended') });
+        }
         user = serviceAccount;
         isServiceAccount = true;
       } else {
-        return res.status(404).send({ message: req.__('auth.userNotFound') });
+        // Uniform response for unknown username and wrong password (no enumeration)
+        return res
+          .status(401)
+          .send({ accessToken: null, message: req.__('auth.invalidCredentials') });
       }
     }
 
     if (!isServiceAccount) {
-      const passwordIsValid = compareSync(password, user.password);
-      if (!passwordIsValid) {
-        return res.status(401).send({ accessToken: null, message: req.__('auth.invalidPassword') });
+      const rejection = getLocalSigninRejection(user, password, authConfig, req);
+      if (rejection) {
+        return res.status(rejection.status).send(rejection.body);
       }
     }
 
-    // Get user's organizations for multi-org JWT
-    let userOrganizations = [];
-    let primaryOrgName = null;
-
-    if (isServiceAccount) {
-      // Service account has one organization
-      primaryOrgName = user.organization?.name || null;
-    } else {
-      // Get all user's organizations with roles
-      const userOrgs = await UserOrg.getUserOrganizations(user.id);
-      userOrganizations = userOrgs.map(userOrg => ({
-        name: userOrg.organization.name,
-        role: userOrg.role,
-        isPrimary: userOrg.is_primary,
-      }));
-
-      // Find primary organization
-      const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
-      primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
-    }
-
-    // Use longer expiry for stayLoggedIn
-    const tokenExpiry = stayLoggedIn ? '24h' : authConfig.auth.jwt.jwt_expiration.value || '24h';
-
-    let provider = user.authProvider;
-    if (!provider) {
-      provider = 'local';
-    }
-
-    if (isServiceAccount) {
-      provider = 'service_account';
-    }
-
-    const token = jwt.sign(
-      {
-        id: isServiceAccount ? user.userId : user.id, // For service accounts, use creator's user ID
-        serviceAccountId: isServiceAccount ? user.id : null, // Store service account's own ID
-        isServiceAccount,
-        stayLoggedIn,
-        provider,
-        organizations: userOrganizations, // Multi-org data for frontend
-        serviceAccountOrgId: isServiceAccount ? user.organization_id : null,
-      },
-      authConfig.auth.jwt.jwt_secret.value,
-      {
-        algorithm: 'HS256',
-        allowInsecureKeySizes: true,
-        expiresIn: tokenExpiry,
-      }
+    const { userOrganizations, primaryOrgName } = await resolveSigninOrganizations(
+      user,
+      isServiceAccount
     );
+
+    const provider = resolveSigninProvider(user, isServiceAccount);
+    const token = buildSigninToken({
+      user,
+      isServiceAccount,
+      stayLoggedIn,
+      provider,
+      userOrganizations,
+      authConfig,
+    });
 
     const authorities = isServiceAccount
       ? ['ROLE_SERVICE_ACCOUNT']

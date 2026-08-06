@@ -1,6 +1,7 @@
 // get.js
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { maskSecrets } from './helpers.js';
 
 /**
  * @swagger
@@ -46,7 +47,9 @@ export const getConfig = (req, res) => {
   const { configName } = req.params;
   try {
     const data = loadConfig(configName);
-    return res.send(data);
+    // #44: secret-bearing values (type: password) are masked in HTTP read
+    // responses only; the YAML on disk stays plain.
+    return res.send(maskSecrets(data));
   } catch (err) {
     log.error.error('Error getting config:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });

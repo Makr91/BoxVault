@@ -62,11 +62,13 @@ export const findOne = async (req, res) => {
         {
           model: User,
           as: 'members',
+          attributes: ['id', 'username', 'emailHash'],
           through: { attributes: [] },
           include: [
             {
               model: Box,
               as: 'box',
+              attributes: ['id', 'isPublic'],
             },
           ],
         },

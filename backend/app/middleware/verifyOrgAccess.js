@@ -13,29 +13,8 @@ const isOrgMember = async (req, res, next) => {
       return res.status(400).send({ message: 'Organization parameter required!' });
     }
 
-    // Service accounts use organization-scoped tokens
-    if (req.isServiceAccount) {
-      // Look up the organization by name
-      const organization = await Organization.findOne({ where: { name: orgName } });
-
-      if (!organization) {
-        return res.status(404).send({ message: 'Organization not found!' });
-      }
-
-      // Check if the service account's organization matches the requested organization
-      if (organization.id !== req.serviceAccountOrgId) {
-        return res.status(403).send({
-          message: 'Service account not authorized for this organization!',
-        });
-      }
-
-      // Attach org context to request for use in controllers
-      req.organizationId = organization.id;
-
-      return next();
-    }
-
-    // Regular user membership check
+    // Membership check — service accounts impersonate their owning user
+    // (req.userId is the owning user's id), so they take the same path.
     const user = await User.findByPk(req.userId);
     if (!user) {
       return res.status(401).send({ message: 'User not found!' });
@@ -70,61 +49,7 @@ const isOrgMember = async (req, res, next) => {
 };
 
 /**
- * Middleware to verify user has moderator role in organization
- */
-const isOrgModerator = async (req, res, next) => {
-  try {
-    const { organization: orgName } = req.params;
-
-    if (!orgName) {
-      return res.status(400).send({ message: 'Organization parameter required!' });
-    }
-
-    const user = await User.findByPk(req.userId);
-    if (!user) {
-      return res.status(401).send({ message: 'User not found!' });
-    }
-
-    // Check if user is global admin first (bypasses org-specific checks)
-    const globalRoles = await user.getRoles();
-    const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
-
-    const organization = await Organization.findOne({ where: { name: orgName } });
-    if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
-    }
-
-    if (isGlobalAdmin) {
-      // Global admins can access any organization
-      req.organizationId = organization.id;
-      req.userOrgRole = 'admin';
-      return next();
-    }
-
-    const hasRole = await UserOrg.hasRole(user.id, organization.id, ['moderator', 'admin']);
-    if (!hasRole) {
-      return res.status(403).send({
-        message: 'Require Moderator or Admin role in this organization!',
-      });
-    }
-
-    // Attach org context to request
-    req.organizationId = organization.id;
-
-    return next();
-  } catch (err) {
-    log.error.error('Org moderator check error:', {
-      error: err.message,
-      stack: err.stack,
-      userId: req.userId,
-      organization: req.params.organization,
-    });
-    return res.status(500).send({ message: 'Error checking organization permissions' });
-  }
-};
-
-/**
- * Middleware to verify user has admin role in organization
+ * Middleware to verify user has admin or owner role in organization
  */
 const isOrgAdmin = async (req, res, next) => {
   try {
@@ -151,14 +76,14 @@ const isOrgAdmin = async (req, res, next) => {
     if (isGlobalAdmin) {
       // Global admins can access any organization
       req.organizationId = organization.id;
-      req.userOrgRole = 'admin';
+      req.userOrgRole = 'owner';
       return next();
     }
 
-    const hasRole = await UserOrg.hasRole(user.id, organization.id, 'admin');
+    const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
     if (!hasRole) {
       return res.status(403).send({
-        message: 'Require Admin role in this organization!',
+        message: 'Require Admin or Owner role in this organization!',
       });
     }
 
@@ -178,9 +103,9 @@ const isOrgAdmin = async (req, res, next) => {
 };
 
 /**
- * Middleware to verify user has moderator or admin role in organization
+ * Middleware to verify user has owner role in organization
  */
-const isOrgModeratorOrAdmin = async (req, res, next) => {
+const isOrgOwner = async (req, res, next) => {
   try {
     const { organization: orgName } = req.params;
 
@@ -205,15 +130,14 @@ const isOrgModeratorOrAdmin = async (req, res, next) => {
     if (isGlobalAdmin) {
       // Global admins can access any organization
       req.organizationId = organization.id;
-      req.userOrgRole = 'admin'; // Treat as org admin
+      req.userOrgRole = 'owner';
       return next();
     }
 
-    // Check org-specific role
-    const hasRole = await UserOrg.hasRole(user.id, organization.id, ['moderator', 'admin']);
+    const hasRole = await UserOrg.hasRole(user.id, organization.id, 'owner');
     if (!hasRole) {
       return res.status(403).send({
-        message: 'Require Moderator or Admin role in this organization!',
+        message: 'Require Owner role in this organization!',
       });
     }
 
@@ -222,7 +146,65 @@ const isOrgModeratorOrAdmin = async (req, res, next) => {
 
     return next();
   } catch (err) {
-    log.error.error('Org moderator/admin check error:', {
+    log.error.error('Org owner check error:', {
+      error: err.message,
+      stack: err.stack,
+      userId: req.userId,
+      organization: req.params.organization,
+    });
+    return res.status(500).send({ message: 'Error checking organization permissions' });
+  }
+};
+
+/**
+ * Middleware to verify user has admin or owner role in organization.
+ * Resolves the org from req.params.organization or req.body.organizationName
+ * (same resolution as rejectExternallyManagedOrg) so body-driven routes like
+ * POST /auth/invite can be gated per-org too.
+ */
+const isOrgAdminOrOwner = async (req, res, next) => {
+  try {
+    const orgName = req.params.organization || req.body?.organizationName;
+
+    if (!orgName) {
+      return res.status(400).send({ message: 'Organization parameter required!' });
+    }
+
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(401).send({ message: 'User not found!' });
+    }
+
+    // Check if user is global admin first (bypasses org-specific checks)
+    const globalRoles = await user.getRoles();
+    const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
+
+    const organization = await Organization.findOne({ where: { name: orgName } });
+    if (!organization) {
+      return res.status(404).send({ message: 'Organization not found!' });
+    }
+
+    if (isGlobalAdmin) {
+      // Global admins can access any organization
+      req.organizationId = organization.id;
+      req.userOrgRole = 'owner'; // Treat as org owner
+      return next();
+    }
+
+    // Check org-specific role
+    const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
+    if (!hasRole) {
+      return res.status(403).send({
+        message: 'Require Admin or Owner role in this organization!',
+      });
+    }
+
+    // Attach org context to request
+    req.organizationId = organization.id;
+
+    return next();
+  } catch (err) {
+    log.error.error('Org admin/owner check error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId,
@@ -304,9 +286,9 @@ const getUserOrgContext = async (userId, orgName) => {
 
 export {
   isOrgMember,
-  isOrgModerator,
   isOrgAdmin,
-  isOrgModeratorOrAdmin,
+  isOrgOwner,
+  isOrgAdminOrOwner,
   rejectExternallyManagedOrg,
   getUserOrgContext,
 };

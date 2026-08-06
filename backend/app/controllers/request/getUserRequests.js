@@ -69,6 +69,6 @@ export const getUserJoinRequests = async (req, res) => {
       error: err.message,
       userId: req.userId,
     });
-    return res.status(500).send({ message: 'Error fetching your join requests' });
+    return res.status(500).send({ message: req.__('requests.fetchUser.error') });
   }
 };

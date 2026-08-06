@@ -30,7 +30,7 @@ const { UserOrg } = db;
  *                   description: Organization description
  *                 role:
  *                   type: string
- *                   enum: [user, moderator, admin]
+ *                   enum: [member, admin, owner]
  *                   description: User's role in this organization
  *                 joinedAt:
  *                   type: string

@@ -31,7 +31,7 @@ router.get('/organization/:organization/public-isos', getPublic);
 // Upload an ISO
 router.post(
   '/organization/:organization/iso',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   upload
 );
 
@@ -69,14 +69,14 @@ router.post('/organization/:organization/iso/:isoId/download-link', [sessionAuth
 // Update ISO
 router.put(
   '/organization/:organization/iso/:isoId',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   update
 );
 
 // Delete an ISO
 router.delete(
   '/organization/:organization/iso/:isoId',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgModeratorOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   deleteIso
 );
 

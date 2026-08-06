@@ -68,9 +68,9 @@ const options = {
               type: 'array',
               items: {
                 type: 'string',
-                enum: ['user', 'moderator', 'admin'],
+                enum: ['user', 'admin'],
               },
-              description: 'User roles/permissions',
+              description: 'Global user roles (per-organization roles live in UserOrg)',
               example: ['user', 'admin'],
             },
             organizationId: {
@@ -552,7 +552,8 @@ const options = {
             },
             token: {
               type: 'string',
-              description: 'Service account authentication token (write-only)',
+              description:
+                'Raw authentication token. Returned ONLY in the creation response; stored hashed and never retrievable afterwards.',
               writeOnly: true,
               example: 'abc123def456...',
             },
@@ -664,27 +665,6 @@ const options = {
               additionalProperties: {
                 type: 'object',
                 description: 'Configuration section',
-              },
-            },
-          },
-        },
-        GravatarConfigResponse: {
-          type: 'object',
-          properties: {
-            gravatar: {
-              type: 'object',
-              description: 'Gravatar configuration settings',
-              properties: {
-                enabled: {
-                  type: 'boolean',
-                  description: 'Whether Gravatar is enabled',
-                  example: true,
-                },
-                default: {
-                  type: 'string',
-                  description: 'Default Gravatar image type',
-                  example: 'identicon',
-                },
               },
             },
           },

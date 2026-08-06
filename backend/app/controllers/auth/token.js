@@ -1,6 +1,7 @@
 // token.js
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
+import { getJwtClaimOptions } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { UserOrg } = db;
@@ -91,6 +92,7 @@ export const refreshToken = async (req, res) => {
         algorithm: 'HS256',
         allowInsecureKeySizes: true,
         expiresIn: '24h',
+        ...getJwtClaimOptions(),
       }
     );
 

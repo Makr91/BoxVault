@@ -1,10 +1,42 @@
 // send.js
 import { randomBytes } from 'crypto';
 import db from '../../../models/index.js';
-const { organization: Organization, invitation: Invitation, user: User, UserOrg } = db;
+const {
+  organization: Organization,
+  invitation: Invitation,
+  user: User,
+  credential: Credential,
+  UserOrg,
+} = db;
 import { log } from '../../../utils/Logger.js';
 import { sendInvitationMail } from '../../mail.controller.js';
 import { loadConfig } from '../../../utils/config-loader.js';
+import { createExternalInvite } from '../../../utils/externalInvites.js';
+
+/**
+ * Resolve the inviting user's auth-server UUID from their issuer-scoped
+ * credential (the subject IS their UUID at that issuer). Pre-issuer rows
+ * stored under the flat 'oidc' provider are claimed for the issuer via the
+ * model's lazy backfill. Purely-local admins have no credential -> null, and
+ * the auth server's own 400 surfaces to the caller.
+ * @param {number} userId - BoxVault user id of the inviter
+ * @param {string} issuer - The org's external_issuer
+ * @returns {Promise<string|null>} Auth-server user UUID or null
+ */
+const resolveInviterUuid = async (userId, issuer) => {
+  const credential = await Credential.findOne({ where: { user_id: userId, provider: issuer } });
+  if (credential) {
+    return credential.subject;
+  }
+
+  const flat = await Credential.findOne({ where: { user_id: userId, provider: 'oidc' } });
+  if (flat) {
+    const backfilled = await Credential.findByIssuerAndSubject(issuer, flat.subject);
+    return backfilled ? backfilled.subject : null;
+  }
+
+  return null;
+};
 
 /**
  * @swagger
@@ -80,13 +112,30 @@ export const sendInvitation = async (req, res) => {
       return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
-    // Validate invited role - only user and moderator allowed, never admin
-    const validRoles = ['user', 'moderator'];
-    const role = inviteRole || 'user';
+    // Validate invited role - only member and admin allowed, never owner
+    const validRoles = ['member', 'admin'];
+    const role = inviteRole || 'member';
     if (!validRoles.includes(role)) {
       return res.status(400).send({
         message: req.__('invitations.invalidRole'),
       });
+    }
+
+    // Parity with the auth-server rule: only org owners may invite admins —
+    // org admins invite members only. Global admins arrive stamped as org
+    // 'owner' by the route middleware; everyone else resolves from their
+    // own membership in this organization.
+    if (role === 'admin') {
+      let inviterRole = req.userOrgRole;
+      if (!inviterRole) {
+        const inviterMembership = await UserOrg.findUserOrgRole(req.userId, organization.id);
+        inviterRole = inviterMembership?.role || null;
+      }
+      if (inviterRole !== 'owner') {
+        return res.status(403).send({
+          message: req.__('invitations.adminInviteRequiresOwner'),
+        });
+      }
     }
 
     // Don't invite an existing account that already belongs to this organization.
@@ -95,6 +144,49 @@ export const sendInvitation = async (req, res) => {
       const membership = await UserOrg.findUserOrgRole(existingUser.id, organization.id);
       if (membership) {
         return res.status(409).send({ message: req.__('organizations.alreadyMember') });
+      }
+    }
+
+    // Customer orgs are IdP-truth: their invites live on the auth server, so
+    // delegate instead of writing a local invitation. The invite token never
+    // leaves the auth server, so token/link are null in the response.
+    if (organization.external_issuer) {
+      if (!organization.external_org_id) {
+        log.error.error('External org has no external_org_id; cannot delegate invitation', {
+          organizationId: organization.id,
+        });
+        return res.status(500).send({ message: req.__('invitations.send.error') });
+      }
+      try {
+        const invitedByUserUuid = await resolveInviterUuid(
+          req.userId,
+          organization.external_issuer
+        );
+        const externalInvite = await createExternalInvite(
+          organization,
+          email,
+          role,
+          invitedByUserUuid
+        );
+        return res.status(200).send({
+          message: req.__('invitations.sent'),
+          invitationToken: null,
+          invitationTokenExpires: externalInvite?.expires_at || null,
+          organizationId: organization.id,
+          invitationLink: null,
+        });
+      } catch (delegationErr) {
+        // Surface the auth server's own 400 (e.g. inviter has no account
+        // there) instead of masking it behind a generic transport error.
+        const upstreamStatus = delegationErr.response?.status;
+        const upstreamMessage =
+          delegationErr.response?.data?.message || delegationErr.response?.data?.error;
+        if (upstreamStatus === 400 && upstreamMessage) {
+          return res.status(400).send({ message: upstreamMessage });
+        }
+        log.error.error('Failed to delegate invitation to auth server:', delegationErr);
+        // Their pending-invite replacement makes a re-POST safe after any failure.
+        return res.status(502).send({ message: req.__('invitations.send.externalError') });
       }
     }
 

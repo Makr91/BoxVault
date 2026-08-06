@@ -1,6 +1,8 @@
 // create.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { organization: Organization } = db;
+import { generateOrgCode } from '../../utils/identity.js';
+const { organization: Organization, UserOrg } = db;
 
 /**
  * @swagger
@@ -48,22 +50,31 @@ const { organization: Organization } = db;
  */
 // Create and Save a new Organization
 export const create = async (req, res) => {
-  // Create a Organization
-  const generateOrgCode = () => Math.random().toString(16).substr(2, 6).toUpperCase();
-  const organization = {
-    name: req.body.organization,
-    org_code: generateOrgCode(),
-    description: req.body.description,
-    details: '',
-  };
-
   // Save Organization in the database
   try {
+    // Create a Organization
+    const organization = {
+      name: req.body.organization,
+      org_code: await generateOrgCode(db),
+      description: req.body.description,
+      details: '',
+    };
+
     const data = await Organization.create(organization);
+
+    // The creator becomes the organization's owner; their primary org is unchanged
+    await UserOrg.create({
+      user_id: req.userId,
+      organization_id: data.id,
+      role: 'owner',
+      is_primary: false,
+    });
+
     return res.status(201).send(data);
   } catch (err) {
+    log.error.error('Error creating organization:', err);
     return res.status(500).send({
-      message: err.message || req.__('organizations.createError'),
+      message: req.__('organizations.createError'),
     });
   }
 };

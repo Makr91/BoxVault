@@ -31,8 +31,6 @@ const createTransporter = () => {
       user: smtpConfig.smtp_auth.user.value,
       pass: smtpConfig.smtp_auth.password.value,
     },
-    debug: true,
-    logger: true,
   });
 };
 

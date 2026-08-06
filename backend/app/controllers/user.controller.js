@@ -8,8 +8,6 @@ import { update } from './user/update.js';
 import { delete as deleteUser } from './user/delete.js';
 import { changePassword } from './user/changepassword.js';
 import { changeEmail } from './user/changeemail.js';
-import { promoteToModerator } from './user/promote.js';
-import { demoteToUser } from './user/demote.js';
 import { getUserRoles } from './user/roles.js';
 import { getUserProfile } from './user/getuserprofile.js';
 import { getUserOrganizations } from './user/organizations.js';
@@ -27,8 +25,6 @@ export {
   deleteUser as delete,
   changePassword,
   changeEmail,
-  promoteToModerator,
-  demoteToUser,
   getUserRoles,
   getUserProfile,
   getUserOrganizations,

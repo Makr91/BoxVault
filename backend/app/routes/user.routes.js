@@ -1,6 +1,6 @@
 // user.routes.js
 import { Router } from 'express';
-import { authJwt, verifySignUp } from '../middleware/index.js';
+import { authJwt, verifySignUp, verifyOrgAccess } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   allAccess,
@@ -9,8 +9,6 @@ import {
   getUserRoles,
   changePassword,
   changeEmail,
-  promoteToModerator,
-  demoteToUser,
   getUserProfile,
   getUserOrganizations,
   leaveOrganization,
@@ -44,13 +42,15 @@ router.get('/users/user', [authJwt.verifyToken, authJwt.isUser], userBoard);
 router.get('/users/admin', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], adminBoard);
 router.get('/users/roles', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], getUserRoles);
 
-router.put('/users/:userId/change-password', [authJwt.verifyToken], authJwt.isUser, changePassword);
-router.put('/users/:userId/change-email', [authJwt.verifyToken], authJwt.isUser, changeEmail);
-router.put('/users/:userId/promote', [authJwt.verifyToken], authJwt.isUser, promoteToModerator);
 router.put(
-  '/users/:userId/demote',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isModeratorOrAdmin],
-  demoteToUser
+  '/users/:userId/change-password',
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  changePassword
+);
+router.put(
+  '/users/:userId/change-email',
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  changeEmail
 );
 router.put(
   '/users/:userId/suspend',
@@ -116,9 +116,15 @@ router.put(
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   update
 );
+// Org-scoped membership removal (hierarchy check happens in the controller)
 router.delete(
   '/organization/:organization/users/:username',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyOrgAccess.rejectExternallyManagedOrg,
+  ],
   deleteUser
 );
 

@@ -45,7 +45,7 @@ auth:
       order: 2
     jwt_issuer:
       type: string
-      value: zoneweaver
+      value: boxvault
       description: JWT token issuer identifier
       section: Authentication
       subsection: JWT Settings
@@ -54,7 +54,7 @@ auth:
       order: 3
     jwt_audience:
       type: string
-      value: zoneweaver-api
+      value: boxvault
       description: JWT token audience identifier
       section: Authentication
       subsection: JWT Settings

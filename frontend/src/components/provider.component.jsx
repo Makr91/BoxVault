@@ -187,7 +187,7 @@ const Provider = () => {
     document.title = `${providerName} - ${name}`;
 
     const loadData = async () => {
-      // Authorization mirrors the backend: box owner or org moderator/admin.
+      // Authorization mirrors the backend: box owner or org admin/owner.
       const user = JSON.parse(localStorage.getItem("user"));
       try {
         const boxResponse = await BoxDataService.get(organization, name);

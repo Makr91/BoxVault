@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { join, resolve, sep } from 'path';
 import { loadConfig } from './config-loader.js';
 
 let STORAGE_ROOT;
@@ -21,6 +21,20 @@ const getStorageRoot = () => {
 };
 
 /**
+ * Check whether a target path is contained within a root directory.
+ * Resolves both paths and requires the target to be the root itself or a
+ * descendant separated by a path separator (so /root-evil never matches /root).
+ * @param {string} rootDir - The containing directory
+ * @param {string} targetPath - The path to test
+ * @returns {boolean} True if targetPath is rootDir or inside it
+ */
+const isPathInside = (rootDir, targetPath) => {
+  const resolvedRoot = resolve(rootDir);
+  const resolvedTarget = resolve(targetPath);
+  return resolvedTarget === resolvedRoot || resolvedTarget.startsWith(resolvedRoot + sep);
+};
+
+/**
  * Securely construct a path within the box storage directory
  * Prevents path traversal attacks by validating the final path
  * @param {...string} pathSegments - Path segments to join
@@ -32,11 +46,11 @@ const getSecureBoxPath = (...pathSegments) => {
   const fullPath = join(root, ...pathSegments);
 
   // Validate that the joined path is still within the root directory
-  if (!fullPath.startsWith(root)) {
+  if (!isPathInside(root, fullPath)) {
     throw new Error('Path traversal attempt detected');
   }
 
   return fullPath;
 };
 
-export { getStorageRoot, getSecureBoxPath };
+export { getStorageRoot, getSecureBoxPath, isPathInside };

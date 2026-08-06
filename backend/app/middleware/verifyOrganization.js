@@ -19,6 +19,13 @@ const validateOrganization = (req, res, next) => {
     });
   }
 
+  // Defense-in-depth: names are used as filesystem path segments
+  if (organization.includes('..')) {
+    return res.status(400).send({
+      message: 'Invalid organization name. It should not contain consecutive periods.',
+    });
+  }
+
   return next();
 };
 

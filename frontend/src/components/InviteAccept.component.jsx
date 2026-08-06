@@ -98,7 +98,7 @@ const InviteAccept = () => {
     }
 
     const orgName = invitation.organizationName;
-    const roleLabel = t(`roles.${invitation.invitedRole || "user"}`);
+    const roleLabel = t(`roles.${invitation.invitedRole || "member"}`);
 
     // Not signed in -> sign in (existing account) or register (new account) to accept.
     if (!currentUser) {

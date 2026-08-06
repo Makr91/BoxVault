@@ -1,7 +1,6 @@
-import jwt from 'jsonwebtoken';
-const { sign } = jwt;
 import db from '../../models/index.js';
 import { loadConfig } from '../../utils/config-loader.js';
+import { generateDownloadToken } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
 const { iso: ISO, UserOrg } = db;
 
@@ -68,16 +67,15 @@ const getDownloadLink = async (req, res) => {
     }
 
     const authConfig = loadConfig('auth');
-    // Generate a short-lived token for the download
-    const token = sign(
+    // Generate a short-lived, typed download token (type:'download' + iss/aud)
+    const token = generateDownloadToken(
       {
         userId,
         isServiceAccount: req.isServiceAccount,
         isoId: parseInt(isoId, 10), // Scope token to this specific ISO
         organization: req.params.organization,
       },
-      authConfig.auth.jwt.jwt_secret.value,
-      { expiresIn: '1h' }
+      authConfig.auth?.jwt?.download_link_expiry?.value || '1h'
     );
 
     const downloadUrl = `/api/organization/${req.params.organization}/iso/${isoId}/download?token=${token}`;

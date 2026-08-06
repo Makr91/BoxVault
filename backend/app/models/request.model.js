@@ -37,10 +37,10 @@ export default (sequelize, Sequelize) => {
         field: 'organization_id',
       },
       requested_role: {
-        type: Sequelize.ENUM('user', 'moderator'),
+        type: Sequelize.ENUM('member', 'admin'),
         allowNull: false,
-        defaultValue: 'user',
-        comment: 'Role requested by user (always defaults to user for requests)',
+        defaultValue: 'member',
+        comment: 'Role requested by user (always defaults to member for requests)',
       },
       status: {
         type: Sequelize.ENUM('pending', 'approved', 'denied'),
@@ -62,7 +62,7 @@ export default (sequelize, Sequelize) => {
         },
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL',
-        comment: 'Moderator/admin who reviewed the request',
+        comment: 'Admin/owner who reviewed the request',
         field: 'reviewed_by',
       },
       reviewed_at: {
@@ -128,7 +128,7 @@ export default (sequelize, Sequelize) => {
     return this.create({
       user_id: userId,
       organization_id: organizationId,
-      requested_role: 'user', // Always defaults to user for requests
+      requested_role: 'member', // Always defaults to member for requests
       message,
       status: 'pending',
     });
@@ -183,11 +183,11 @@ export default (sequelize, Sequelize) => {
   /**
    * Approve join request and add user to organization
    * @param {number} requestId - Request ID
-   * @param {number} reviewerId - Moderator/admin approving
-   * @param {string} assignedRole - Role to assign (user/moderator)
+   * @param {number} reviewerId - Admin/owner approving
+   * @param {string} assignedRole - Role to assign (member/admin)
    * @returns {Promise<void>}
    */
-  Request.approveRequest = async function (requestId, reviewerId, assignedRole = 'user') {
+  Request.approveRequest = async function (requestId, reviewerId, assignedRole = 'member') {
     const transaction = await sequelize.transaction();
 
     try {
@@ -227,7 +227,7 @@ export default (sequelize, Sequelize) => {
   /**
    * Deny join request
    * @param {number} requestId - Request ID
-   * @param {number} reviewerId - Moderator/admin denying
+   * @param {number} reviewerId - Admin/owner denying
    * @returns {Promise<void>}
    */
   Request.denyRequest = async function (requestId, reviewerId) {

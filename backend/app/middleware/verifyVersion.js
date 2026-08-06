@@ -41,6 +41,14 @@ const validateVersion = (req, res, next) => {
     });
   }
 
+  // Defense-in-depth: version numbers are used as filesystem path segments
+  if (versionNumber.includes('..')) {
+    log.app.info('Version number contains consecutive periods');
+    return res.status(400).send({
+      message: 'Version identifier should not contain consecutive periods.',
+    });
+  }
+
   return next();
 };
 

@@ -1,4 +1,5 @@
 // create.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { versions: Version, UserOrg } = db;
 
@@ -65,10 +66,10 @@ export const create = async (req, res) => {
     // Organization and Box are already verified and attached by verifyVersion middleware
     const { organizationData, boxData: box } = req;
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canCreate = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canCreate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canCreate) {
       return res.status(403).send({
@@ -85,8 +86,9 @@ export const create = async (req, res) => {
 
     return res.status(201).send(version);
   } catch (err) {
+    log.error.error('Error creating version:', err);
     return res.status(500).send({
-      message: err.message || req.__('versions.create.error'),
+      message: req.__('versions.create.error'),
     });
   }
 };

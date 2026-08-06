@@ -11,7 +11,6 @@ const {
   versions: Version,
   providers: Provider,
   files: File,
-  service_account,
   UserOrg,
 } = db;
 
@@ -195,7 +194,6 @@ export const findOne = async (req, res) => {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers,
   });
 
   try {
@@ -239,10 +237,12 @@ export const findOne = async (req, res) => {
         {
           model: Users,
           as: 'user',
+          attributes: ['id', 'username', 'emailHash'],
           include: [
             {
               model: Organization,
               as: 'primaryOrganization',
+              attributes: ['id', 'name', 'emailHash'],
             },
           ],
         },
@@ -298,32 +298,13 @@ export const findOne = async (req, res) => {
       return res.status(403).json({ message: req.__('boxes.unauthorized') });
     }
 
-    // Check if this box was created by a service account
-    const serviceAccount = await service_account.findOne({
-      where: { id: box.userId },
-      include: [
-        {
-          model: Users,
-          as: 'user',
-        },
-      ],
-    });
-
-    // Check if the requesting user owns any service accounts
-    await service_account.findAll({
-      where: { userId },
-    });
-
     // Check if user is member of the organization
     const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
     const isMember = !!membership;
 
-    // Allow access if:
-    // 1. The user is a member of the organization
-    // 2. The user is the owner of the service account that created the box
-    // 3. The box was created by a service account owned by the requesting user
-    // 4. The requester is a service account
-    const hasAccess = isMember || serviceAccount?.user?.id === userId || isServiceAccount;
+    // Allow access if the user owns the box or is a member of the organization.
+    // Service accounts impersonate their owning user, so req.userId covers them.
+    const hasAccess = isMember || box.userId === userId;
 
     if (hasAccess) {
       return res.json(response);
@@ -331,8 +312,7 @@ export const findOne = async (req, res) => {
 
     return res.status(403).json({ message: req.__('boxes.unauthorized') });
   } catch (err) {
-    return res
-      .status(500)
-      .send({ message: req.__('boxes.findOne.error', { name, error: err.message }) });
+    log.error.error('Error retrieving box:', err);
+    return res.status(500).send({ message: req.__('boxes.findOne.error', { name }) });
   }
 };

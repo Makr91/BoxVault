@@ -3,9 +3,13 @@
     "serviceAccountExpired": "Service account has expired.",
     "userNotFound": "User Not found.",
     "invalidPassword": "Invalid Password!",
+    "invalidCredentials": "Invalid username or password.",
     "signinError": "Error during signin process",
     "invalidInvitationToken": "Invalid invitation token.",
     "invitationTokenExpired": "Invitation token has expired.",
+    "invitationAlreadyUsed": "This invitation has already been used.",
+    "invitationEmailMismatch": "This invitation was sent to {{email}}. Please sign up with that email address.",
+    "invalidUsername": "Invalid username. Only letters, digits, dash, and period are allowed (no consecutive periods).",
     "usernameOrEmailInUse": "Username or email already in use.",
     "userRegistered": "User registered successfully! If configured, a verification email will be sent to your email address.",
     "signupError": "Some error occurred while signing up the user.",
@@ -16,13 +20,26 @@
     "userAlreadyVerified": "User is already verified.",
     "verificationEmailResent": "Verification email resent successfully.",
     "tokenRefreshNotAllowed": "Token refresh only allowed for stay-logged-in sessions",
-    "tokenRefreshError": "Error refreshing token"
+    "tokenRefreshError": "Error refreshing token",
+    "accountSuspended": "Account suspended. Contact your administrator.",
+    "invalidLoginCode": "Invalid or expired login code.",
+    "invalidToken": "Invalid token.",
+    "forbidden": "Access denied.",
+    "emailNotVerified": "Please verify your email address before signing in.",
+    "localAuthDisabled": "Username/password authentication is disabled.",
+    "newOrganizationsDisabled": "Self-registration is disabled. Ask for an invitation to join an organization.",
+    "passwordTooShort": "Password must be at least {{min}} characters long.",
+    "passwordRequiresUppercase": "Password must contain at least one uppercase letter.",
+    "passwordRequiresLowercase": "Password must contain at least one lowercase letter.",
+    "passwordRequiresNumber": "Password must contain at least one number.",
+    "passwordRequiresSymbol": "Password must contain at least one special symbol.",
+    "vagrantInvalidToken": "Invalid or expired service account token."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organization not found with name: {{organization}}.",
     "organizationNotFound": "Organization not found.",
     "invalidAccessMode": "Invalid access mode. Must be private, invite_only, or request_to_join.",
-    "invalidDefaultRole": "Invalid default role. Must be user or moderator.",
+    "invalidDefaultRole": "Invalid default role. Must be member or admin.",
     "accessModeUpdated": "Organization access mode updated successfully!",
     "updateAccessModeError": "Error updating organization access mode",
     "nameCannotBeEmpty": "Organization cannot be empty!",
@@ -35,8 +52,12 @@
     "findUsersError": "Some error occurred while retrieving users.",
     "userNotMember": "User is not a member of this organization!",
     "cannotRemoveOnlyOrg": "Cannot remove user from their only organization! User must belong to at least one organization.",
+    "cannotRemoveLastOwner": "Cannot remove the organization's only owner! Assign another owner first.",
+    "cannotDemoteLastOwner": "Cannot demote the organization's only owner! Assign another owner first.",
+    "cannotLeaveLastOwner": "Cannot leave the organization as its only owner! Assign another owner first.",
     "userRemoved": "User {{username}} removed from organization",
     "removeUserError": "Error removing user from organization",
+    "removeRequiresHigherRole": "You need a higher role in this organization than the member you are removing.",
     "resumed": "Organization resumed successfully!",
     "resumeError": "Some error occurred while resuming the organization.",
     "suspended": "Organization suspended successfully!",
@@ -45,7 +66,7 @@
     "orgCodeInUse": "Organization code {{org_code}} is already in use.",
     "updated": "Organization updated successfully.",
     "updateError": "Some error occurred while updating the organization.",
-    "invalidRole": "Invalid role. Must be user, moderator, or admin.",
+    "invalidRole": "Invalid role. Must be member, admin, or owner.",
     "userRoleUpdated": "User role updated to {{role}}",
     "updateUserRoleError": "Error updating user role",
     "getUserRoleError": "Error fetching user role",
@@ -55,7 +76,7 @@
     "externallyManaged": "This organization is managed by your identity provider. Membership, roles, and organization lifecycle are managed there and synced to BoxVault automatically.",
     "externallyManagedRename": "This organization is managed by your identity provider and cannot be renamed in BoxVault. Its display name updates automatically when renamed at the provider.",
     "alreadyMember": "You are already a member of this organization.",
-    "joinedAsAdmin": "Joined organization {{organization}} as admin.",
+    "joinedAsAdmin": "Joined organization {{organization}} as owner.",
     "joinError": "Error joining organization"
   },
   "boxes": {
@@ -82,17 +103,17 @@
       "error": "Error processing download request"
     },
     "findOne": {
-      "error": "Error retrieving box with name={{name}}: {{error}}"
+      "error": "Error retrieving box with name={{name}}."
     },
     "update": {
-      "permissionDenied": "You can only update boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only update boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while updating the Box."
     },
     "organizationDetails": {
       "error": "Some error occurred while retrieving the organization details."
     },
     "delete": {
-      "permissionDenied": "You can only delete boxes you own, or you need moderator/admin role."
+      "permissionDenied": "You can only delete boxes you own, or you need admin/owner role."
     }
   },
   "versions": {
@@ -104,11 +125,11 @@
       "error": "Some error occurred while retrieving versions."
     },
     "create": {
-      "permissionDenied": "You can only create versions for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only create versions for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while creating the Version."
     },
     "delete": {
-      "permissionDenied": "You can only delete versions of boxes you own, or you need moderator/admin role."
+      "permissionDenied": "You can only delete versions of boxes you own, or you need admin/owner role."
     },
     "versionDeleted": "Version deleted successfully!",
     "deletedAll": "All versions deleted successfully!",
@@ -121,11 +142,11 @@
     "providerNotFoundInVersion": "Provider {{providerName}} not found for version {{versionNumber}} in box {{boxId}}.",
     "providerNotFound": "Provider not found.",
     "create": {
-      "permissionDenied": "You can only create providers for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only create providers for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while creating the Provider."
     },
     "delete": {
-      "permissionDenied": "You can only delete providers for boxes you own, or you need moderator/admin role."
+      "permissionDenied": "You can only delete providers for boxes you own, or you need admin/owner role."
     },
     "providerDeleted": "Provider and associated architectures deleted successfully!",
     "deletedAll": "All providers deleted successfully!",
@@ -141,14 +162,14 @@
       "error": "Some error occurred while retrieving the Provider."
     },
     "update": {
-      "permissionDenied": "You can only update providers for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only update providers for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while updating the Provider."
     },
     "notFound": "Provider not found"
   },
   "architectures": {
     "delete": {
-      "permissionDenied": "You can only delete architectures for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only delete architectures for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while deleting the architectures."
     },
     "deletedAll": "All architectures deleted successfully!",
@@ -158,7 +179,7 @@
       "error": "Some error occurred while retrieving architectures."
     },
     "create": {
-      "permissionDenied": "You can only create architectures for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only create architectures for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while creating the Architecture."
     },
     "deleted": "Architecture deleted successfully!",
@@ -167,13 +188,14 @@
       "error": "Some error occurred while retrieving the Architecture."
     },
     "update": {
-      "permissionDenied": "You can only update architectures for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only update architectures for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while updating the Architecture."
     }
   },
   "users": {
     "deleted": "User was deleted successfully!",
     "cannotDelete": "Cannot delete User with id={{userId}}. Maybe User was not found!",
+    "cannotDeleteSoleOwner": "Cannot delete this account while it is the only owner of organization {{organization}}, which still has other members. Hand off or delete that organization first.",
     "delete": {
       "error": "Could not delete User with id={{userId}}"
     },
@@ -190,8 +212,6 @@
     "emailChanged": "Email changed successfully!",
     "passwordChanged": "Password changed successfully!",
     "userDeleted": "User deleted successfully.",
-    "demotedToUser": "Demoted to user successfully!",
-    "promotedToModerator": "Promoted to moderator successfully!",
     "adminBoard": "Admin Board.",
     "findAll": {
       "error": "Some error occurred while retrieving users."
@@ -229,10 +249,12 @@
     "get": {
       "error": "Some error occurred while retrieving active invitations."
     },
-    "invalidRole": "Invalid role. Invitations can only assign user or moderator roles.",
+    "invalidRole": "Invalid role. Invitations can only assign member or admin roles.",
+    "adminInviteRequiresOwner": "Only organization owners can invite admins.",
     "sent": "Invitation sent successfully!",
     "send": {
-      "error": "Some error occurred while sending the invitation."
+      "error": "Some error occurred while sending the invitation.",
+      "externalError": "The identity provider could not send the invitation. It is safe to try again — resending replaces the pending invitation for that address."
     },
     "invalidOrExpired": "Invalid or expired invitation token.",
     "validate": {
@@ -315,23 +337,24 @@
       "error": "Some error occurred while generating the download link."
     },
     "delete": {
-      "permissionDenied": "You can only delete files for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only delete files for boxes you own, or you need admin/owner role.",
       "partialError": "File deletion attempted, but encountered issues with database or directory cleanup.",
       "error": "Some error occurred while deleting the file."
     },
     "deleted": "File and database record are deleted, or file was not found but cleanup attempted.",
     "update": {
-      "permissionDenied": "You can only update files for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only update files for boxes you own, or you need admin/owner role.",
       "error": "Could not update the file: {{file}}"
     },
     "notFoundUploadFirst": "File not found. Please upload the file first.",
     "noFileUploaded": "No file uploaded",
+    "invalidFileName": "Invalid file name. Only letters, digits, dot, dash, and underscore are allowed.",
     "updated": "Updated the file successfully",
     "fileTooLarge": "File size cannot be larger than {{size}}GB!",
     "uploadTimeout": "Upload timed out - Request took too long to complete",
     "noStorageSpace": "Not enough storage space available",
     "upload": {
-      "permissionDenied": "You can only upload files for boxes you own, or you need moderator/admin role.",
+      "permissionDenied": "You can only upload files for boxes you own, or you need admin/owner role.",
       "error": "Could not upload the file"
     }
   },
@@ -345,5 +368,37 @@
   "isos": {
     "notFound": "ISO not found.",
     "deleted": "ISO deleted successfully."
+  },
+  "requests": {
+    "invalidRole": "Invalid role. Must be member or admin.",
+    "notFound": "Join request not found!",
+    "alreadyProcessed": "Request has already been processed!",
+    "approved": "Join request approved successfully!",
+    "approve": {
+      "error": "Error approving join request"
+    },
+    "notFoundOrNotCancellable": "Join request not found or cannot be cancelled!",
+    "cancelled": "Join request cancelled successfully!",
+    "cancel": {
+      "error": "Error cancelling join request"
+    },
+    "organizationNotFound": "Organization not found!",
+    "joinRequestsNotAllowed": "Organization does not allow join requests!",
+    "alreadyMember": "You are already a member of this organization!",
+    "alreadyPending": "You already have a pending request for this organization!",
+    "submitted": "Join request submitted successfully!",
+    "create": {
+      "error": "Error creating join request"
+    },
+    "denied": "Join request denied.",
+    "deny": {
+      "error": "Error denying join request"
+    },
+    "fetchOrg": {
+      "error": "Error fetching join requests"
+    },
+    "fetchUser": {
+      "error": "Error fetching your join requests"
+    }
   }
 }

@@ -7,7 +7,7 @@ const { Request } = db;
  * /api/organization/{organization}/requests/{requestId}/deny:
  *   post:
  *     summary: Deny a join request
- *     description: Deny a pending join request (moderator/admin only)
+ *     description: Deny a pending join request (admin/owner only)
  *     tags: [Join Requests]
  *     security:
  *       - JwtAuth: []
@@ -50,7 +50,7 @@ const { Request } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Requires moderator or admin role in organization
+ *         description: Requires admin or owner role in organization
  *         content:
  *           application/json:
  *             schema:
@@ -76,11 +76,11 @@ export const denyJoinRequest = async (req, res) => {
     // Verify request belongs to this organization
     const request = await Request.findByPk(requestId);
     if (!request || request.organization_id !== organizationId) {
-      return res.status(404).send({ message: 'Join request not found!' });
+      return res.status(404).send({ message: req.__('requests.notFound') });
     }
 
     if (request.status !== 'pending') {
-      return res.status(400).send({ message: 'Request has already been processed!' });
+      return res.status(400).send({ message: req.__('requests.alreadyProcessed') });
     }
 
     // Deny the request
@@ -92,13 +92,13 @@ export const denyJoinRequest = async (req, res) => {
       organizationId,
     });
 
-    return res.send({ message: 'Join request denied.' });
+    return res.send({ message: req.__('requests.denied') });
   } catch (err) {
     log.error.error('Error denying join request:', {
       error: err.message,
       requestId: req.params.requestId,
       reviewerId: req.userId,
     });
-    return res.status(500).send({ message: 'Error denying join request' });
+    return res.status(500).send({ message: req.__('requests.deny.error') });
   }
 };

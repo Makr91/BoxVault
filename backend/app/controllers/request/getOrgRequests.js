@@ -7,7 +7,7 @@ const { Request } = db;
  * /api/organization/{organization}/requests:
  *   get:
  *     summary: Get pending join requests for an organization
- *     description: Retrieve all pending join requests for the organization (moderator/admin only)
+ *     description: Retrieve all pending join requests for the organization (admin/owner only)
  *     tags: [Join Requests]
  *     security:
  *       - JwtAuth: []
@@ -59,7 +59,7 @@ const { Request } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Requires moderator or admin role in organization
+ *         description: Requires admin or owner role in organization
  *         content:
  *           application/json:
  *             schema:
@@ -83,6 +83,6 @@ export const getOrgJoinRequests = async (req, res) => {
       error: err.message,
       organizationId: req.organizationId,
     });
-    return res.status(500).send({ message: 'Error fetching join requests' });
+    return res.status(500).send({ message: req.__('requests.fetchOrg.error') });
   }
 };

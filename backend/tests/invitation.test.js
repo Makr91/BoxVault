@@ -69,7 +69,6 @@ const mockableConfigLoader = {
       return {
         auth: {
           jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
-          enabled_strategies: { value: ['local'] },
         },
       };
     }
@@ -175,9 +174,16 @@ describe('Invitation API', () => {
       is_primary: true,
     });
 
-    // Get tokens
-    adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', { expiresIn: '1h' });
-    userToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
+    // Get tokens — BoxVault verification enforces issuer/audience claims
+    const claimOptions = { issuer: 'boxvault', audience: 'boxvault-api' };
+    adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...claimOptions,
+    });
+    userToken = jwt.sign({ id: regularUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...claimOptions,
+    });
   });
 
   afterAll(async () => {

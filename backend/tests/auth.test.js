@@ -177,6 +177,10 @@ const {
 } = await import('../app/auth/passport.js');
 const { passport } = await import('../app/auth/passport.js');
 
+// BoxVault JWT verification enforces issuer/audience; these match the test
+// auth fixture (jwt_issuer/jwt_audience) and the code defaults.
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 describe('Authentication API', () => {
   const uniqueId = Date.now().toString(36);
   const testUsername = `AuthUser_${uniqueId}`;
@@ -542,6 +546,7 @@ describe('Authentication API', () => {
       // Create a token for a non-existent user
       const fakeToken = jwt.sign({ id: 999999, stayLoggedIn: true }, 'test-secret', {
         expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
       });
 
       const res = await request(app)
@@ -569,7 +574,7 @@ describe('Authentication API', () => {
       const saToken = jwt.sign(
         { id: 1, isServiceAccount: true, stayLoggedIn: true },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app).post('/api/auth/refresh-token').set('x-access-token', saToken);
@@ -597,7 +602,7 @@ describe('Authentication API', () => {
           stayLoggedIn: true,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       // Configure provider for this test
@@ -605,7 +610,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           testprovider: {
             enabled: { value: true },
@@ -657,7 +661,7 @@ describe('Authentication API', () => {
           oidc_refresh_token: 'mock-refresh-token',
         },
         'test-secret',
-        { expiresIn: '2h' }
+        { expiresIn: '2h', ...TEST_JWT_CLAIMS }
       );
 
       await request(app)
@@ -671,6 +675,7 @@ describe('Authentication API', () => {
       // Create token with stayLoggedIn: true
       const token = jwt.sign({ id: testUserForRefresh.id, stayLoggedIn: true }, 'test-secret', {
         expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
       });
 
       const res = await request(app)
@@ -697,7 +702,10 @@ describe('Authentication API', () => {
       const role = await db.role.findOne({ where: { name: 'user' } });
       await providerUser.setRoles([role]);
 
-      const token = jwt.sign({ id: providerUser.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: providerUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .post('/api/auth/refresh-token')
@@ -714,6 +722,7 @@ describe('Authentication API', () => {
       // Create token with stayLoggedIn: false
       const token = jwt.sign({ id: testUserForRefresh.id, stayLoggedIn: false }, 'test-secret', {
         expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
       });
 
       const res = await request(app)
@@ -739,6 +748,7 @@ describe('Authentication API', () => {
 
       const token = jwt.sign({ id: nullProviderUser.id, stayLoggedIn: true }, 'test-secret', {
         expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
       });
 
       const res = await request(app)
@@ -761,7 +771,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           testprovider: {
             enabled: { value: true },
@@ -833,7 +842,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           testprovider: {
             enabled: { value: true },
@@ -1221,6 +1229,7 @@ describe('Authentication API', () => {
       });
       const userToken = jwt.sign({ id: user.id, stayLoggedIn: true }, 'test-secret', {
         expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
       });
 
       // Mock jwt.sign to throw an error
@@ -1574,7 +1583,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1607,7 +1615,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1642,7 +1649,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1729,7 +1735,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1764,7 +1769,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1802,7 +1806,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1837,7 +1840,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1870,7 +1872,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1926,7 +1927,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -1970,7 +1970,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2018,7 +2017,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2061,7 +2059,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2096,7 +2093,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2145,7 +2141,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2179,7 +2174,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2219,7 +2213,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2263,7 +2256,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           delete config.auth.oidc.token_default_expiry_minutes;
           config.auth.oidc.providers = {
             testprovider: {
@@ -2306,7 +2298,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.token_default_expiry_minutes = { value: 60 };
           config.auth.oidc.providers = {
             testprovider: {
@@ -2350,7 +2341,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2401,7 +2391,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.jwt.jwt_expiration = {};
           config.auth.oidc.token_default_expiry_minutes = {};
           config.auth.oidc.providers = {
@@ -2450,7 +2439,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2511,7 +2499,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2561,7 +2548,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2616,7 +2602,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2686,7 +2671,14 @@ describe('Authentication API', () => {
           verified: true,
         });
 
-        const profile = { sub: 'direct-sub', email };
+        // email_verified: linking to an EXISTING account by email match is
+        // gated on provider-verified mailbox ownership (#10)
+        const profile = {
+          sub: 'direct-sub',
+          email,
+          iss: 'https://oidc.example.com',
+          email_verified: true,
+        };
         const authConfig = {
           auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
         };
@@ -2709,7 +2701,7 @@ describe('Authentication API', () => {
 
       it('should create new external user and link credential (unit test for line 218)', async () => {
         const email = `direct-new-${Date.now()}@test.com`;
-        const profile = { sub: 'direct-new-sub', email };
+        const profile = { sub: 'direct-new-sub', email, iss: 'https://oidc.example.com' };
         const authConfig = {
           auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
         };
@@ -2736,7 +2728,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2898,7 +2889,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2937,7 +2927,14 @@ describe('Authentication API', () => {
           verified: true,
         });
 
-        const profile = { sub: 'link-fail-sub', email };
+        // email_verified: the existing-email linking path is gated on
+        // provider-verified mailbox ownership (#10)
+        const profile = {
+          sub: 'link-fail-sub',
+          email,
+          iss: 'https://oidc.example.com',
+          email_verified: true,
+        };
         const authConfig = {
           auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
         };
@@ -2963,7 +2960,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -2999,7 +2995,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3047,7 +3042,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3085,7 +3079,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3506,7 +3499,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3654,7 +3646,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3702,7 +3693,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3753,7 +3743,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3800,7 +3789,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3843,7 +3831,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3882,7 +3869,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3931,7 +3917,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -3980,7 +3965,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -4028,7 +4012,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -4084,7 +4067,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             no_end_session: {
               enabled: { value: true },
@@ -4123,7 +4105,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             unknown_method: {
               enabled: { value: true },
@@ -4240,7 +4221,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             post_provider: {
               enabled: { value: true },
@@ -4297,7 +4277,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           broken_provider: {
             enabled: { value: true },
@@ -4324,7 +4303,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           fail_discovery: {
             enabled: { value: true },
@@ -4352,7 +4330,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           testprovider: { enabled: { value: true }, issuer: { value: 'https://oidc.example.com' } },
         };
@@ -4388,7 +4365,6 @@ describe('Authentication API', () => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
-        config.auth.enabled_strategies = { value: ['local', 'oidc'] };
         config.auth.oidc.providers = {
           disabled_prov: { enabled: { value: false }, issuer: { value: 'https://disabled.com' } },
         };
@@ -4432,7 +4408,7 @@ describe('Authentication API', () => {
       });
 
       it('should perform local logout for non-OIDC token', async () => {
-        const localToken = jwt.sign({ id: 1, provider: 'local' }, 'test-secret');
+        const localToken = jwt.sign({ id: 1, provider: 'local' }, 'test-secret', TEST_JWT_CLAIMS);
         const res = await request(app)
           .post('/api/auth/oidc/logout')
           .set('x-access-token', localToken);
@@ -4448,7 +4424,8 @@ describe('Authentication API', () => {
             provider: 'oidc-testprovider',
             id_token: 'id-token',
           },
-          'test-secret'
+          'test-secret',
+          TEST_JWT_CLAIMS
         );
 
         // Ensure provider is configured
@@ -4456,7 +4433,6 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.enabled_strategies = { value: ['local', 'oidc'] };
           config.auth.oidc.providers = {
             testprovider: {
               enabled: { value: true },
@@ -4505,7 +4481,8 @@ describe('Authentication API', () => {
             provider: 'oidc-testprovider',
             id_token: 'id-token',
           },
-          'test-secret'
+          'test-secret',
+          TEST_JWT_CLAIMS
         );
 
         mockOpenIdClient.buildEndSessionUrl.mockReturnValue(null);

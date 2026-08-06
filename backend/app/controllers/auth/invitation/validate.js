@@ -1,3 +1,4 @@
+import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 const { invitation: Invitation, organization: Organization } = db;
 
@@ -64,6 +65,7 @@ export const validateInvitationToken = async (req, res) => {
       invitedRole: invitation.invited_role,
     });
   } catch (err) {
-    return res.status(500).send({ message: err.message || 'Error validating invitation.' });
+    log.error.error('Error in validateInvitationToken:', err);
+    return res.status(500).send({ message: req.__('invitations.validate.error') });
   }
 };

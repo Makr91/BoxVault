@@ -1,4 +1,5 @@
 // deleteallbyversion.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
 
@@ -109,10 +110,10 @@ export const deleteAllByVersion = async (req, res) => {
       });
     }
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canDelete) {
       return res.status(403).send({
@@ -132,8 +133,9 @@ export const deleteAllByVersion = async (req, res) => {
       message: req.__('providers.notFoundToDelete'),
     });
   } catch (err) {
+    log.error.error('Error deleting providers:', err);
     return res.status(500).send({
-      message: err.message || req.__('providers.deleteAll.error'),
+      message: req.__('providers.deleteAll.error'),
     });
   }
 };

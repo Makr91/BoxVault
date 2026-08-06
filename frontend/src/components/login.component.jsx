@@ -8,16 +8,9 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
+import { sanitizeProvider } from "../utils/providers";
 
 const SILENT_SSO_FLAG = "boxvault_silent_sso_attempted";
-
-const sanitizeProvider = (provider) => {
-  const safeProviderPattern = /^[A-Za-z0-9_-]+$/;
-  if (typeof provider !== "string" || !safeProviderPattern.test(provider)) {
-    throw new Error("Invalid authentication provider");
-  }
-  return provider;
-};
 
 const redirectToProvider = (provider, query = "") => {
   const safeProvider = sanitizeProvider(provider);
@@ -403,23 +396,6 @@ const Login = ({ theme }) => {
       cancelled = true;
     };
   }, [t]);
-
-  useEffect(() => {
-    const token = urlParams.get("token");
-    if (!token) {
-      return;
-    }
-
-    try {
-      localStorage.setItem("user", JSON.stringify({ accessToken: token }));
-      navigate(resolveReturnPath(urlParams), { replace: true });
-    } catch (tokenError) {
-      log.auth.error("Error processing OIDC token", {
-        error: tokenError.message,
-      });
-      navigate("/login?error=token_failed", { replace: true });
-    }
-  }, [urlParams, navigate]);
 
   useEffect(() => {
     if (!shouldAttemptSilent) {

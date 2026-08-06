@@ -1,8 +1,21 @@
 import db from '../models/index.js';
 const { ROLES, user: User } = db;
 
+// Usernames become the personal-org name, URL path segment, and filesystem
+// directory (#33) — enforce the same URL-safe charset as organization names
+// (see verifyOrganization.validateOrganization).
+const USERNAME_PATTERN = /^[A-Za-z0-9.-]+$/;
+
 const checkDuplicateUsernameOrEmail = async (req, res, next) => {
   try {
+    const { username } = req.body || {};
+
+    if (!username || !USERNAME_PATTERN.test(username) || username.includes('..')) {
+      return res.status(400).send({
+        message: req.__('auth.invalidUsername'),
+      });
+    }
+
     // Username
     const user = await User.findOne({
       where: {

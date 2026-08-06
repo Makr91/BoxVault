@@ -2,6 +2,7 @@
 import jwt from 'jsonwebtoken';
 const { verify } = jwt;
 import { loadConfig } from '../../utils/config-loader.js';
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { versions: Version, UserOrg } = db;
 
@@ -130,8 +131,9 @@ export const findOne = async (req, res) => {
     // User is member, allow access
     return res.send(version);
   } catch (err) {
+    log.error.error('Error retrieving version:', err);
     return res.status(500).send({
-      message: err.message || 'Some error occurred while retrieving the Version.',
+      message: req.__('errors.operationFailed'),
     });
   }
 };

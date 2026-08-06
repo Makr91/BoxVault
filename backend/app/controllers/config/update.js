@@ -1,7 +1,7 @@
 // update.js
 import { loadConfig, getConfigPath } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { writeConfig } from './helpers.js';
+import { writeConfig, restoreSecretSentinels } from './helpers.js';
 
 /**
  * Helper function for deep merging objects.
@@ -18,6 +18,10 @@ const mergeDeep = (target, ...sources) => {
 
   if (isObject(target) && isObject(source)) {
     for (const key in source) {
+      // Never merge prototype-polluting keys from untrusted input
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        continue;
+      }
       if (isObject(source[key])) {
         if (!target[key]) {
           Object.assign(target, { [key]: {} });
@@ -93,6 +97,11 @@ export const updateConfig = async (req, res) => {
   try {
     const filePath = getConfigPath(configName);
     const currentConfig = loadConfig(configName);
+
+    // #44: a sentinel (or blank) value on a password-typed knob means
+    // "unchanged" — put the stored value back before merging so the mask
+    // never reaches the YAML on disk.
+    restoreSecretSentinels(req.body, currentConfig);
 
     // Deep merge the request body into the current configuration
     const updatedConfig = mergeDeep({}, currentConfig, req.body);

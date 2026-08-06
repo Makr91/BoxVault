@@ -62,6 +62,24 @@ const authConfig = {
       jwt_expiration: {
         value: '1h',
       },
+      jwt_issuer: {
+        value: 'boxvault',
+      },
+      jwt_audience: {
+        value: 'boxvault-api',
+      },
+    },
+    local: {
+      local_enabled: { value: true },
+      local_require_email_verification: { value: false },
+      local_password_min_length: { value: 6 },
+      local_password_require_uppercase: { value: false },
+      local_password_require_lowercase: { value: false },
+      local_password_require_numbers: { value: false },
+      local_password_require_symbols: { value: false },
+      local_bcrypt_rounds: { value: 8 },
+      local_session_timeout: { value: 24 },
+      local_allow_new_organizations: { value: true },
     },
     oidc: {
       providers: {},

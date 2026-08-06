@@ -10,24 +10,6 @@ const baseURL = window.location.origin;
 
 const getCurrentUser = () => JSON.parse(localStorage.getItem("user"));
 
-const getGravatarConfig = async () => {
-  try {
-    const response = await axios.get(`${baseURL}/api/config/gravatar`);
-    if (response.data && response.data.gravatar) {
-      return {
-        apiUrl: response.data.gravatar.base_url.value,
-        apiKey: response.data.gravatar.api_key.value,
-      };
-    }
-    return null;
-  } catch (error) {
-    log.api.error("Error fetching Gravatar configuration", {
-      error: error.message,
-    });
-    return null;
-  }
-};
-
 // Function to refresh token if needed
 const refreshTokenIfNeeded = async () => {
   const user = getCurrentUser();
@@ -320,21 +302,18 @@ const logoutLocal = () => {
 
 const getGravatarProfile = async (emailHash, signal) => {
   try {
-    // Use deduplicated fetch - ensures only ONE fetch per emailHash
+    // Use deduplicated fetch - ensures only ONE fetch per emailHash.
+    // Profiles come from BoxVault's server-side proxy — the Gravatar API key
+    // never reaches the browser (#17).
     return await fetchWithDeduplication(emailHash, async (hash) => {
-      const config = await getGravatarConfig();
-      if (!config) {
-        return null;
-      }
-
       // Use fetch instead of axios to avoid message port issues
-      const response = await fetch(`${config.apiUrl}${hash}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        signal,
-      });
+      const response = await fetch(
+        `${baseURL}/api/gravatar/profile/${encodeURIComponent(hash)}`,
+        {
+          method: "GET",
+          signal,
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -367,10 +346,10 @@ const resendVerificationMail = (signal) =>
 const verifyMail = (token) =>
   axios.get(`${baseURL}/api/auth/verify-mail/${token}`);
 
-const sendInvitation = (email, organizationName) =>
+const sendInvitation = (email, organizationName, inviteRole) =>
   axios.post(
     `${baseURL}/api/auth/invite`,
-    { email, organizationName },
+    { email, organizationName, inviteRole },
     { headers: authHeader() }
   );
 
@@ -390,7 +369,6 @@ const AuthService = {
   sendInvitation,
   validateInvitationToken,
   acceptInvitation,
-  getGravatarConfig,
   refreshTokenIfNeeded,
   forceTokenRefresh,
   getAuthMethods,

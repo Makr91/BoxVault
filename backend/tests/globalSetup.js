@@ -50,8 +50,9 @@ export default () => {
       jwt: {
         jwt_secret: { value: 'test-secret' },
         jwt_expiration: { value: '1h' },
+        jwt_issuer: { value: 'boxvault' },
+        jwt_audience: { value: 'boxvault-api' },
       },
-      enabled_strategies: { value: ['local'] },
     },
   };
 

@@ -95,6 +95,7 @@ if (shouldSkipInitialization) {
   db.UserOrg = (await import('./user-org.model.js')).default(sequelize, Sequelize);
   db.Request = (await import('./request.model.js')).default(sequelize, Sequelize);
   db.iso = (await import('./iso.model.js')).default(sequelize, Sequelize);
+  db.scimGroup = (await import('./scim-group.model.js')).default(sequelize, Sequelize);
 
   // Define associations for new models
   db.UserOrg.associate = function (models) {
@@ -146,6 +147,6 @@ if (shouldSkipInitialization) {
   });
 }
 
-db.ROLES = ['user', 'admin', 'moderator'];
+db.ROLES = ['user', 'admin'];
 
 export default db;

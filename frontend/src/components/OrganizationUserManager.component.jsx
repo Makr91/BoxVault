@@ -28,7 +28,7 @@ const OrganizationUserManager = () => {
   const [editOrgEmail, setEditOrgEmail] = useState("");
   const [editOrgDescription, setEditOrgDescription] = useState("");
   const [editOrgAccessMode, setEditOrgAccessMode] = useState("private");
-  const [editOrgDefaultRole, setEditOrgDefaultRole] = useState("user");
+  const [editOrgDefaultRole, setEditOrgDefaultRole] = useState("member");
   const [editMessage, setEditMessage] = useState("");
   const [itemToDelete, setItemToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -152,34 +152,6 @@ const OrganizationUserManager = () => {
             ? { ...org, suspended: !isSuspended }
             : org
         )
-      );
-    });
-  };
-
-  const handlePromoteUser = (userId) => {
-    UserService.promoteToModerator(userId).then(() => {
-      setOrganizations((prev) =>
-        prev.map((org) => ({
-          ...org,
-          members: org.members.map((user) =>
-            user.id === userId
-              ? { ...user, roles: [{ name: "moderator" }] }
-              : user
-          ),
-        }))
-      );
-    });
-  };
-
-  const handleDemoteUser = (userId) => {
-    UserService.demoteToUser(userId).then(() => {
-      setOrganizations((prev) =>
-        prev.map((org) => ({
-          ...org,
-          members: org.members.map((user) =>
-            user.id === userId ? { ...user, roles: [{ name: "user" }] } : user
-          ),
-        }))
       );
     });
   };
@@ -327,7 +299,7 @@ const OrganizationUserManager = () => {
                         response.data.access_mode || "private"
                       );
                       setEditOrgDefaultRole(
-                        response.data.default_role || "user"
+                        response.data.default_role || "member"
                       );
                       setShowEditModal(true);
                     }}
@@ -379,8 +351,6 @@ const OrganizationUserManager = () => {
                       key={user.id}
                       user={user}
                       currentUser={currentUser}
-                      onPromote={() => handlePromoteUser(user.id)}
-                      onDemote={() => handleDemoteUser(user.id)}
                       onSuspend={() =>
                         handleSuspendOrResumeUser(user.id, false)
                       }
@@ -515,8 +485,8 @@ const OrganizationUserManager = () => {
                     value={editOrgDefaultRole}
                     onChange={(e) => setEditOrgDefaultRole(e.target.value)}
                   >
-                    <option value="user">{t("roles.user")}</option>
-                    <option value="moderator">{t("roles.moderator")}</option>
+                    <option value="member">{t("roles.member")}</option>
+                    <option value="admin">{t("roles.admin")}</option>
                   </select>
                   <small className="form-text text-muted">
                     {t("orgUserManager.editModal.defaultRoleHint")}

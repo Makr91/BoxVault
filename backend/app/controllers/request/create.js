@@ -88,13 +88,13 @@ export const createJoinRequest = async (req, res) => {
     // Find the organization
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('requests.organizationNotFound') });
     }
 
     // Check if organization allows join requests
     if (organization.access_mode !== 'request_to_join') {
       return res.status(403).send({
-        message: 'Organization does not allow join requests!',
+        message: req.__('requests.joinRequestsNotAllowed'),
       });
     }
 
@@ -102,7 +102,7 @@ export const createJoinRequest = async (req, res) => {
     const existingMembership = await UserOrg.findUserOrgRole(userId, organization.id);
     if (existingMembership) {
       return res.status(400).send({
-        message: 'You are already a member of this organization!',
+        message: req.__('requests.alreadyMember'),
       });
     }
 
@@ -110,7 +110,7 @@ export const createJoinRequest = async (req, res) => {
     const hasPending = await Request.hasPendingRequest(userId, organization.id);
     if (hasPending) {
       return res.status(400).send({
-        message: 'You already have a pending request for this organization!',
+        message: req.__('requests.alreadyPending'),
       });
     }
 
@@ -124,7 +124,7 @@ export const createJoinRequest = async (req, res) => {
     });
 
     return res.status(201).send({
-      message: 'Join request submitted successfully!',
+      message: req.__('requests.submitted'),
       request: {
         id: joinRequest.id,
         organizationName: orgName,
@@ -138,6 +138,6 @@ export const createJoinRequest = async (req, res) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: 'Error creating join request' });
+    return res.status(500).send({ message: req.__('requests.create.error') });
   }
 };

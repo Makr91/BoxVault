@@ -7,7 +7,7 @@ const { user: User, UserOrg } = db;
  * /api/organization/{organization}/users/{userId}/role:
  *   put:
  *     summary: Update user's role in organization
- *     description: Change a user's role within an organization (admin only)
+ *     description: Change a user's role within an organization (owner only)
  *     tags: [Organizations]
  *     security:
  *       - JwtAuth: []
@@ -37,9 +37,9 @@ const { user: User, UserOrg } = db;
  *             properties:
  *               role:
  *                 type: string
- *                 enum: [user, moderator, admin]
+ *                 enum: [member, admin, owner]
  *                 description: New role to assign
- *                 example: "moderator"
+ *                 example: "admin"
  *     responses:
  *       200:
  *         description: User role updated successfully
@@ -50,7 +50,7 @@ const { user: User, UserOrg } = db;
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "User role updated to moderator"
+ *                   example: "User role updated to admin"
  *                 userId:
  *                   type: integer
  *                 username:
@@ -70,7 +70,7 @@ const { user: User, UserOrg } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Requires admin role in organization
+ *         description: Requires owner role in organization
  *         content:
  *           application/json:
  *             schema:
@@ -95,7 +95,7 @@ const updateUserOrgRole = async (req, res) => {
     const { organizationId } = req; // Set by verifyOrgAccess middleware
 
     // Validate role
-    const validRoles = ['user', 'moderator', 'admin'];
+    const validRoles = ['member', 'admin', 'owner'];
     if (!validRoles.includes(role)) {
       return res.status(400).send({
         message: req.__('organizations.invalidRole'),
@@ -114,6 +114,19 @@ const updateUserOrgRole = async (req, res) => {
       return res.status(404).send({
         message: req.__('organizations.userNotMember'),
       });
+    }
+
+    // An organization must always keep at least one owner
+    if (membership.role === 'owner' && role !== 'owner') {
+      const ownerCount = await UserOrg.count({
+        where: { organization_id: organizationId, role: 'owner' },
+      });
+
+      if (ownerCount === 1) {
+        return res.status(400).send({
+          message: req.__('organizations.cannotDemoteLastOwner'),
+        });
+      }
     }
 
     // Update the role

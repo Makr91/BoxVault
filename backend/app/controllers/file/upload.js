@@ -6,7 +6,7 @@ import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { UserOrg } = db;
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
-import { safeMkdirSync, safeExistsSync } from '../../utils/fsHelper.js';
+import { ensureDirSync, safeExistsSync } from '../../utils/fsHelper.js';
 
 /**
  * @swagger
@@ -234,16 +234,16 @@ const upload = (req, res) => {
     const dir = dirname(filePath);
     log.app.info('Ensuring upload directory exists:', { dir });
     if (!safeExistsSync(dir)) {
-      safeMkdirSync(dir, { recursive: true });
+      ensureDirSync(dir);
       log.app.info('Created upload directory:', { dir });
     } else {
       log.app.info('Upload directory already exists:', { dir });
     }
 
-    // Check if user owns the box OR has moderator/admin role
+    // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, boxData.organizationId);
     const isOwner = boxData.userId === req.userId;
-    const canUpload = isOwner || (membership && ['moderator', 'admin'].includes(membership.role));
+    const canUpload = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
 
     if (!canUpload) {
       log.app.error('Permission denied for upload', {
@@ -279,13 +279,11 @@ const upload = (req, res) => {
       },
     });
 
-    // Generic error response with more details
+    // Generic error response
     return res.status(500).json({
       error: 'UPLOAD_ERROR',
       message: req.__('files.upload.error'),
       details: {
-        error: err.message,
-        code: err.code || 'UNKNOWN_ERROR',
         duration: (Date.now() - uploadStartTime) / 1000,
       },
     });

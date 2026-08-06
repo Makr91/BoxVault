@@ -198,7 +198,7 @@ const Box = ({ theme }) => {
             setBoxOrganization(boxData.user.organization.name);
           }
 
-          // Edit/delete/publish + version controls: owner or org mod/admin.
+          // Edit/delete/publish + version controls: owner or org admin/owner.
           setIsAuthorized(canManageBox(user, organization, boxData));
 
           // Viewing is authorized by the backend (membership or public box),

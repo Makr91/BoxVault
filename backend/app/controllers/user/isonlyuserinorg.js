@@ -1,4 +1,5 @@
 // isonlyuserinorg.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { organization: Organization } = db;
 
@@ -65,8 +66,9 @@ export const isOnlyUserInOrg = async (req, res) => {
     }
     return res.status(200).send({ isOnlyUser: false });
   } catch (err) {
+    log.error.error('Error checking organization users:', err);
     return res.status(500).send({
-      message: err.message || req.__('users.checkOrgUsers.error'),
+      message: req.__('users.checkOrgUsers.error'),
     });
   }
 };

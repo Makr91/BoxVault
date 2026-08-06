@@ -16,6 +16,8 @@ const handleError = (req, res, err) => {
     return undefined;
   }
 
+  log.error.error('Error in download controller:', err);
+
   // Ensure JSON content type for error and remove file headers
   res.setHeader('Content-Type', 'application/json');
   res.removeHeader('Content-Disposition');
@@ -23,10 +25,7 @@ const handleError = (req, res, err) => {
   res.removeHeader('Content-Range');
   res.removeHeader('Accept-Ranges');
 
-  // Use generic error message if specific one isn't appropriate
-  const message = req.__('files.download.error', { error: err.message || err });
-
-  return res.status(500).send({ message });
+  return res.status(500).send({ message: req.__('files.download.genericError') });
 };
 
 /**
@@ -175,7 +174,6 @@ const download = (req, res) => {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers,
   });
 
   return (async () => {
@@ -231,8 +229,8 @@ const download = (req, res) => {
       return undefined;
     };
 
-    // If the box is public or the requester is a service account, allow download
-    if (box.isPublic || isServiceAccount) {
+    // If the box is public, allow download
+    if (box.isPublic) {
       await sendFile();
       return undefined;
     }

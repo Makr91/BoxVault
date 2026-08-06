@@ -63,6 +63,9 @@ export default (sequelize, Sequelize) => {
           [Sequelize.Op.in]: orgIds,
         },
       },
+      // Tokens are stored hashed and are shown exactly once at creation —
+      // never return the stored hash to clients.
+      attributes: { exclude: ['token'] },
       include: [
         {
           model: db.organization,

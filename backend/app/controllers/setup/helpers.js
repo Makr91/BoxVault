@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { load, dump } from 'js-yaml';
 import { getConfigPath } from '../../utils/config-loader.js';
-import { atomicWriteFile } from '../../utils/atomic-file-writer.js';
+import { atomicWriteFile } from '../../utils/fsHelper.js';
 
 const configPaths = {
   app: getConfigPath('app'),

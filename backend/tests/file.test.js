@@ -9,6 +9,11 @@ import { EventEmitter } from 'events';
 import app from '../server.js';
 import db from '../app/models/index.js';
 import { getSecureBoxPath } from '../app/utils/paths.js';
+import { generateDownloadToken, getJwtClaimOptions } from '../app/utils/auth.js';
+
+// BoxVault JWT verification enforces issuer/audience claims — every
+// test-minted session token must carry them.
+const testJwtOpts = { expiresIn: '1h', ...getJwtClaimOptions() };
 import { log } from '../app/utils/Logger.js';
 import { upload as uploadController } from '../app/controllers/file/upload.js';
 import { download as downloadController } from '../app/controllers/file/download.js';
@@ -91,7 +96,7 @@ describe('File API', () => {
     });
 
     // Generate token directly using the test secret
-    userToken = jwt.sign({ id: testUser.id }, 'test-secret', { expiresIn: '1h' });
+    userToken = jwt.sign({ id: testUser.id }, 'test-secret', testJwtOpts);
   });
 
   afterAll(async () => {
@@ -267,7 +272,7 @@ describe('File API', () => {
         password: 'password',
         verified: true,
       });
-      const otherToken = jwt.sign({ id: otherUser.id }, 'test-secret', { expiresIn: '1h' });
+      const otherToken = jwt.sign({ id: otherUser.id }, 'test-secret', testJwtOpts);
 
       const res = await request(app)
         .put(
@@ -336,7 +341,7 @@ describe('File API', () => {
         password: 'password',
         verified: true,
       });
-      const nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      const nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', testJwtOpts);
 
       const res = await request(app)
         .get(
@@ -395,7 +400,8 @@ describe('File API', () => {
         fs.writeFileSync(filePath, fileContent);
       }
 
-      // Generate download token
+      // Generate a real download token (carries the required type:'download'
+      // claim plus issuer/audience) via the production util
       const payload = {
         userId: testUser.id,
         organization: testOrg.name,
@@ -404,7 +410,7 @@ describe('File API', () => {
         providerName: testProvider.name,
         architectureName: testArchitecture.name,
       };
-      const token = jwt.sign(payload, 'test-secret', { expiresIn: '1h' });
+      const token = generateDownloadToken(payload, '1h');
 
       const res = await request(app).get(
         `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download?token=${token}`
@@ -414,7 +420,7 @@ describe('File API', () => {
     });
 
     it('should fail download with token for different resource', async () => {
-      // Generate download token for different version
+      // Generate a real download token for a different version
       const payload = {
         userId: testUser.id,
         organization: testOrg.name,
@@ -423,7 +429,7 @@ describe('File API', () => {
         providerName: testProvider.name,
         architectureName: testArchitecture.name,
       };
-      const token = jwt.sign(payload, 'test-secret', { expiresIn: '1h' });
+      const token = generateDownloadToken(payload, '1h');
 
       const res = await request(app).get(
         `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download?token=${token}`
@@ -652,7 +658,7 @@ describe('File API', () => {
           isServiceAccount: true,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        testJwtOpts
       );
 
       const res = await request(app)
@@ -677,7 +683,7 @@ describe('File API', () => {
           isServiceAccount: true,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        testJwtOpts
       );
 
       const res = await request(app)
@@ -696,7 +702,7 @@ describe('File API', () => {
           isServiceAccount: true,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        testJwtOpts
       );
 
       const res = await request(app)
@@ -831,7 +837,7 @@ describe('File API', () => {
         role: 'user',
         is_primary: false,
       });
-      regularMemberToken = jwt.sign({ id: regularMember.id }, 'test-secret', { expiresIn: '1h' });
+      regularMemberToken = jwt.sign({ id: regularMember.id }, 'test-secret', testJwtOpts);
 
       // Create Non-Member
       nonMember = await User.create({
@@ -841,7 +847,7 @@ describe('File API', () => {
         verified: true,
       });
       await nonMember.setRoles([userRole]);
-      nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', testJwtOpts);
     });
 
     afterAll(async () => {
@@ -1132,9 +1138,11 @@ describe('File API', () => {
     });
 
     it('GET /file/info - should return info for service account', async () => {
-      const saJwt = jwt.sign({ id: testUser.id, isServiceAccount: true }, 'test-secret', {
-        expiresIn: '1h',
-      });
+      const saJwt = jwt.sign(
+        { id: testUser.id, isServiceAccount: true },
+        'test-secret',
+        testJwtOpts
+      );
       const res = await request(app)
         .get(
           `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/info`
@@ -1465,7 +1473,7 @@ describe('File API', () => {
         is_primary: false,
       });
 
-      adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', { expiresIn: '1h' });
+      adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', testJwtOpts);
     });
 
     afterAll(async () => {
@@ -1517,7 +1525,7 @@ describe('File API', () => {
       });
       const userRole = await db.role.findOne({ where: { name: 'user' } });
       await nonMember.setRoles([userRole]);
-      const token = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: nonMember.id }, 'test-secret', testJwtOpts);
 
       const res = await request(app)
         .delete(
@@ -1546,7 +1554,7 @@ describe('File API', () => {
         organization_id: testOrg.id,
         role: 'user',
       });
-      const regToken = jwt.sign({ id: regUser.id }, 'test-secret', { expiresIn: '1h' });
+      const regToken = jwt.sign({ id: regUser.id }, 'test-secret', testJwtOpts);
 
       const res = await request(app)
         .put(
@@ -1572,7 +1580,7 @@ describe('File API', () => {
       });
       const userRole = await db.role.findOne({ where: { name: 'user' } });
       await nonMember.setRoles([userRole]);
-      const token = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: nonMember.id }, 'test-secret', testJwtOpts);
 
       const res = await request(app)
         .put(
@@ -1598,7 +1606,7 @@ describe('File API', () => {
       });
       const userRole = await db.role.findOne({ where: { name: 'user' } });
       await nonMember.setRoles([userRole]);
-      const token = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: nonMember.id }, 'test-secret', testJwtOpts);
 
       const res = await request(app)
         .post(

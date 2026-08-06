@@ -17,6 +17,12 @@ export default (sequelize, Sequelize) => {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
     },
+    accepted_at: {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: 'When the invitation was accepted',
+      field: 'accepted_at',
+    },
     expired: {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
@@ -29,9 +35,9 @@ export default (sequelize, Sequelize) => {
       },
     },
     invited_role: {
-      type: Sequelize.ENUM('user', 'moderator', 'admin'),
+      type: Sequelize.ENUM('member', 'admin'),
       allowNull: false,
-      defaultValue: 'user',
+      defaultValue: 'member',
       comment: 'Role to assign when invitation is accepted',
       field: 'invited_role',
     },

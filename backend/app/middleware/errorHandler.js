@@ -40,7 +40,7 @@ const errorHandler = (err, req, res, next) => {
     });
     return res.status(500).json({
       error: 'INTERNAL_SERVER_ERROR',
-      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+      message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
     });
   }
 

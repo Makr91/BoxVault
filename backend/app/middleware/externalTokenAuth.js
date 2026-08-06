@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify, decodeJwt } from 'jose';
 import axios from 'axios';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
+import { findProviderByIssuer } from '../utils/oidcProviders.js';
 import { getOidcConfiguration } from '../auth/passport.js';
 import externalUserHandler from '../auth/external-user-handler.js';
 import db from '../models/index.js';
@@ -63,17 +64,6 @@ const fetchUserInfo = async (userinfoEndpoint, token, verifiedClaims) => {
   }
 };
 
-/**
- * Resolve the enabled OIDC provider whose configured issuer matches the token.
- * @param {Object} providersConfig - authConfig.auth.oidc.providers
- * @param {string} issuer - `iss` from the token
- * @returns {string|null} Provider name or null
- */
-const findProviderByIssuer = (providersConfig, issuer) =>
-  Object.keys(providersConfig).find(
-    name => providersConfig[name]?.enabled?.value && providersConfig[name]?.issuer?.value === issuer
-  ) || null;
-
 const externalTokenAuth = async (req, res, next) => {
   void res;
 
@@ -110,8 +100,7 @@ const externalTokenAuth = async (req, res, next) => {
     return next();
   }
 
-  const providersConfig = authConfig.auth?.oidc?.providers || {};
-  const providerName = findProviderByIssuer(providersConfig, issuer);
+  const providerName = findProviderByIssuer(issuer);
   if (!providerName) {
     return next();
   }
@@ -125,11 +114,20 @@ const externalTokenAuth = async (req, res, next) => {
   const meta = oidcConfig.serverMetadata();
   const audience = authConfig.auth.resource_server.audience?.value;
 
+  // Refuse to validate without an audience: skipping the aud check would accept
+  // tokens minted for any other client at this issuer.
+  if (!audience) {
+    log.auth.warn(
+      'Resource-server: auth.resource_server.audience is not configured; refusing external token validation'
+    );
+    return next();
+  }
+
   let claims;
   try {
     const { payload } = await jwtVerify(token, getJwks(meta.jwks_uri), {
       issuer,
-      audience: audience || undefined,
+      audience,
     });
     claims = payload;
   } catch (err) {
@@ -145,16 +143,22 @@ const externalTokenAuth = async (req, res, next) => {
   }
 
   try {
-    const credential = await Credential.findByProviderAndSubject('oidc', subject);
+    // #30: credentials are namespaced by the token's verified issuer; the
+    // lookup also backfills pre-issuer rows stored under the flat 'oidc' value.
+    const credential = await Credential.findByIssuerAndSubject(issuer, subject);
 
     let userId;
     if (credential) {
-      userId = credential.user_id;
+      const user = await User.findByPk(credential.user_id);
+      if (!user || user.suspended) {
+        log.auth.info('Resource-server: user missing or suspended, refusing token', {
+          provider: providerName,
+        });
+        return next();
+      }
+      userId = user.id;
       if (Array.isArray(claims.organizations)) {
-        const user = await User.findByPk(userId);
-        if (user) {
-          await externalUserHandler.syncOrganizationsFromClaim(user, claims, issuer, db);
-        }
+        await externalUserHandler.syncOrganizationsFromClaim(user, claims, issuer, db);
       }
     } else {
       // First contact for this subject — mint/link via the same provisioning

@@ -1,4 +1,5 @@
 // findall.js
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js'; // Keep this for Sequelize
 const { organization: Organization, user: User, box: Box, Sequelize } = db;
 const { Op } = Sequelize;
@@ -83,8 +84,9 @@ export const findAll = async (req, res) => {
 
     return res.status(200).send(result);
   } catch (err) {
+    log.error.error('Error retrieving organizations:', err);
     return res.status(500).send({
-      message: err.message || req.__('organizations.findAllError'),
+      message: req.__('organizations.findAllError'),
     });
   }
 };

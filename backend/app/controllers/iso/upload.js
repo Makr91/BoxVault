@@ -48,6 +48,11 @@ const { iso: ISO } = db;
  *       500:
  *         description: Internal server error
  */
+// x-file-name allowlist (#40): plain filename characters only, no path
+// separators or traversal sequences, sane length.
+const FILENAME_PATTERN = /^[A-Za-z0-9._-]+$/;
+const FILENAME_MAX_LENGTH = 255;
+
 const upload = async (req, res) => {
   const appConfig = loadConfig('app');
   const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
@@ -55,12 +60,23 @@ const upload = async (req, res) => {
   req.setTimeout(uploadTimeoutMs);
 
   try {
+    const filename = req.headers['x-file-name'] || 'uploaded.iso';
+
+    // Reject bad names before any filesystem work; the streaming path below
+    // is untouched (#40).
+    if (
+      !FILENAME_PATTERN.test(filename) ||
+      filename.includes('..') ||
+      filename.length > FILENAME_MAX_LENGTH
+    ) {
+      return res.status(400).send({ message: req.__('files.invalidFileName') });
+    }
+
     const isoRoot = getIsoStorageRoot();
     if (!fs.existsSync(isoRoot)) {
       fs.mkdirSync(isoRoot, { recursive: true });
     }
 
-    const filename = req.headers['x-file-name'] || 'uploaded.iso';
     const isPublic = req.headers['x-is-public'] === 'true';
     const fileSize = parseInt(req.headers['content-length'], 10);
 

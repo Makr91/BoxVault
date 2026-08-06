@@ -7,7 +7,7 @@ const { user: User, UserOrg } = db;
  * /api/organization/{organization}/users/{userId}/role:
  *   get:
  *     summary: Get user's role in organization
- *     description: Retrieve a user's role and membership information for a specific organization (moderator/admin only)
+ *     description: Retrieve a user's role and membership information for a specific organization (admin/owner only)
  *     tags: [Organizations]
  *     security:
  *       - JwtAuth: []
@@ -42,7 +42,7 @@ const { user: User, UserOrg } = db;
  *                   type: string
  *                 role:
  *                   type: string
- *                   enum: [user, moderator, admin]
+ *                   enum: [member, admin, owner]
  *                 isPrimary:
  *                   type: boolean
  *                   description: Whether this is user's primary organization
@@ -56,7 +56,7 @@ const { user: User, UserOrg } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Requires moderator or admin role in organization
+ *         description: Requires admin or owner role in organization
  *         content:
  *           application/json:
  *             schema:

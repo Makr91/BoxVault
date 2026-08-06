@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
-  getGravatarConfig,
+  getGravatarProfile,
   getTicketConfig,
   getConfig,
   updateConfig,
@@ -21,7 +21,8 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/config/gravatar', getGravatarConfig);
+// Server-side Gravatar proxy (#17) — the API key never leaves the server
+router.get('/gravatar/profile/:emailHash', getGravatarProfile);
 router.get('/config/ticket', getTicketConfig);
 router.get(
   '/config/:configName',

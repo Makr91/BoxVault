@@ -1,5 +1,6 @@
 // verify.js
 import fs from 'fs';
+import { timingSafeEqual } from 'crypto';
 import { getSetupTokenPath } from '../../utils/config-loader.js';
 import { setAuthorizedSetupToken } from './helpers.js';
 
@@ -46,7 +47,9 @@ export const verifySetupToken = (req, res) => {
   }
 
   const storedToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
-  if (token !== storedToken) {
+  const tokenBuffer = Buffer.from(token || '', 'utf8');
+  const storedBuffer = Buffer.from(storedToken, 'utf8');
+  if (tokenBuffer.length !== storedBuffer.length || !timingSafeEqual(tokenBuffer, storedBuffer)) {
     return res.status(403).send(req.__('setup.invalidToken'));
   }
 

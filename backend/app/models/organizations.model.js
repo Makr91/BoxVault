@@ -42,9 +42,9 @@ export default (sequelize, Sequelize) => {
         field: 'access_mode',
       },
       default_role: {
-        type: Sequelize.ENUM('user', 'moderator'),
+        type: Sequelize.ENUM('member', 'admin'),
         allowNull: false,
-        defaultValue: 'user',
+        defaultValue: 'member',
         comment: 'Default role for new members',
         field: 'default_role',
       },

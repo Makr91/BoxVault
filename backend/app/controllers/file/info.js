@@ -1,7 +1,6 @@
 // info.file.controller.js
-import jwt from 'jsonwebtoken';
-const { sign } = jwt;
 import { loadConfig } from '../../utils/config-loader.js';
+import { generateDownloadToken } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { files: File, UserOrg } = db;
@@ -110,7 +109,6 @@ const info = async (req, res) => {
     userId,
     isServiceAccount,
     isVagrantRequest: req.isVagrantRequest,
-    headers: req.headers,
   });
 
   try {
@@ -120,8 +118,8 @@ const info = async (req, res) => {
     // Entities are pre-loaded by verifyBoxFilePath middleware
     const { organization: organizationData, box, architecture } = req.entities;
 
-    // If the box is public or the requester is a service account, allow access
-    if (box.isPublic || isServiceAccount) {
+    // If the box is public, allow access
+    if (box.isPublic) {
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
@@ -130,8 +128,8 @@ const info = async (req, res) => {
       });
 
       if (fileRecord) {
-        // Generate a secure download token
-        const downloadToken = sign(
+        // Generate a secure, typed download token (type:'download' + iss/aud)
+        const downloadToken = generateDownloadToken(
           {
             userId,
             isServiceAccount,
@@ -141,8 +139,7 @@ const info = async (req, res) => {
             providerName,
             architectureName,
           },
-          authConfig.auth.jwt.jwt_secret.value,
-          { expiresIn: '1h' }
+          authConfig.auth?.jwt?.download_link_expiry?.value || '1h'
         );
 
         // Create secure download URL
@@ -179,8 +176,8 @@ const info = async (req, res) => {
     });
 
     if (fileRecord) {
-      // Generate a secure download token
-      const downloadToken = sign(
+      // Generate a secure, typed download token (type:'download' + iss/aud)
+      const downloadToken = generateDownloadToken(
         {
           userId,
           isServiceAccount,
@@ -190,8 +187,7 @@ const info = async (req, res) => {
           providerName,
           architectureName,
         },
-        authConfig.auth.jwt.jwt_secret.value,
-        { expiresIn: '1h' }
+        authConfig.auth?.jwt?.download_link_expiry?.value || '1h'
       );
 
       // Create secure download URL
@@ -208,8 +204,9 @@ const info = async (req, res) => {
     }
     return res.status(404).send({ message: req.__('files.notFound') });
   } catch (err) {
+    log.error.error('Error retrieving file info:', err);
     return res.status(500).send({
-      message: err.message || req.__('files.info.error'),
+      message: req.__('files.info.error'),
     });
   }
 };

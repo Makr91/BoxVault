@@ -42,6 +42,7 @@ import setupRoutes from './app/routes/setup.routes.js';
 import sslRoutes from './app/routes/ssl.routes.js';
 import isoRoutes from './app/routes/iso.routes.js';
 import systemRoutes from './app/routes/system.routes.js';
+import scimRoutes from './app/routes/scim.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -180,7 +181,7 @@ const getOrGenerateSetupToken = () => {
     mkdirSync(tokenDir, { recursive: true, mode: 0o755 });
   }
 
-  writeFileSync(setupTokenPath, token);
+  writeFileSync(setupTokenPath, token, { mode: 0o600 });
   return token;
 };
 
@@ -332,7 +333,6 @@ const initial = async () => {
     const { role: Role } = db;
     const roles = [
       { id: 1, name: 'user' },
-      { id: 2, name: 'moderator' },
       { id: 3, name: 'admin' },
     ];
 
@@ -377,9 +377,24 @@ const initializeApp = async () => {
       log.error.error(`Failed to load auth configuration: ${e.message}`);
     }
 
+    const jwtSecret = authConfig?.auth?.jwt?.jwt_secret?.value;
+    if (!jwtSecret || jwtSecret.length < 32) {
+      log.app.warn(
+        'auth.jwt.jwt_secret is missing or shorter than 32 characters; configure a strong random secret of at least 32 characters.'
+      );
+    }
+
+    let sessionSecret = jwtSecret;
+    if (!sessionSecret) {
+      sessionSecret = randomBytes(32).toString('hex');
+      log.app.warn(
+        'No auth.jwt.jwt_secret configured; using a random session secret. Sessions will not survive restarts until jwt_secret is configured.'
+      );
+    }
+
     app.use(
       session({
-        secret: authConfig?.auth?.jwt?.jwt_secret?.value || 'boxvault-session-secret',
+        secret: sessionSecret,
         store: sessionStore,
         name: 'boxvault.sid',
         resave: false,
@@ -424,25 +439,46 @@ const initializeApp = async () => {
     await initializeStrategies();
     log.app.info('Passport.js initialized with OIDC providers');
 
-    // Selective CSRF protection middleware (following Armor pattern)
-    const selectiveCSRF = (req, res, next) => {
-      // Skip CSRF for API routes with JWT auth, GET requests, and static files
-      if (
-        req.path.startsWith('/api/') ||
-        req.path.startsWith('/auth/') ||
-        req.method === 'GET' ||
-        req.headers['x-access-token'] || // Skip for JWT authentication
-        req.headers.accept === 'text/event-stream'
-      ) {
+    // CSRF protection (#26).
+    //
+    // Scope note (for humans and security scanners):
+    // - BoxVault's JSON API authenticates exclusively via explicit credential
+    //   headers: `x-access-token` (BoxVault JWT) or `Authorization` (Bearer or
+    //   Basic service-account credentials). Browsers never attach custom or
+    //   Authorization headers to cross-site requests, so a hostile page cannot
+    //   forge an authenticated API call — header-based auth is CSRF-immune by
+    //   construction (OWASP CSRF Prevention Cheat Sheet, "custom request
+    //   headers"). Header-authenticated requests are therefore exempt below.
+    // - The only cookie/session-authenticated surface is the OIDC login
+    //   handshake under /api/auth/oidc/*. Its redirect GETs are protected by
+    //   the per-login `state` nonce (verified in the callback via
+    //   openid-client); every state-changing (non-GET) request on that surface
+    //   without header auth must satisfy lusca's CSRF check. No such request
+    //   legitimately exists today, so this is deny-by-default: adding a future
+    //   session-cookie form POST requires plumbing lusca token issuance first.
+    // - POST /api/auth/oidc/exchange is exempt: it is authenticated by a
+    //   single-use, short-lived, high-entropy code in the JSON body — not by
+    //   ambient cookies — so a cross-site attacker gains nothing by forging
+    //   it, and the SPA holds no CSRF token yet at login time.
+    const csrfProtection = csrf();
+    const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+    const oidcSessionCsrf = (req, res, next) => {
+      if (!req.path.startsWith('/api/auth/oidc') || SAFE_METHODS.includes(req.method)) {
         return next();
       }
-
-      // Apply CSRF protection for traditional form submissions
-      return csrf()(req, res, next);
+      if (req.headers['x-access-token'] || req.headers.authorization) {
+        // Header-authenticated: CSRF-immune (see scope note above)
+        return next();
+      }
+      if (req.path === '/api/auth/oidc/exchange') {
+        // Authenticated by a single-use body secret, not cookies
+        return next();
+      }
+      return csrfProtection(req, res, next);
     };
 
-    app.use(selectiveCSRF);
-    log.app.info('Selective CSRF protection middleware applied');
+    app.use(oidcSessionCsrf);
+    log.app.info('CSRF protection applied to session-cookie OIDC routes');
 
     // i18n internationalization middleware
     app.use(i18nMiddleware);
@@ -478,6 +514,9 @@ const initializeApp = async () => {
     app.use('/api', sslRoutes);
     app.use('/api', isoRoutes);
     app.use('/api', systemRoutes);
+    // SCIM 2.0 receiver for auth-server provisioning pushes (contract URL is
+    // /scim/v2, not under /api). Bearer-JWT authenticated inside the router.
+    app.use('/scim/v2', scimRoutes);
 
     log.app.info('All routes loaded successfully');
 

@@ -1,4 +1,5 @@
 // resume.js
+import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 const { user: User } = db;
 
@@ -56,6 +57,7 @@ export const resumeUser = async (req, res) => {
 
     return res.status(200).send({ message: req.__('users.resumed') });
   } catch (err) {
-    return res.status(500).send({ message: err.message || req.__('users.resume.error') });
+    log.error.error('Error in resumeUser:', err);
+    return res.status(500).send({ message: req.__('users.resume.error') });
   }
 };

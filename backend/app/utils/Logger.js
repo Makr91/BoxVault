@@ -53,7 +53,7 @@ applyConfigCategories(loggingConfig);
 const logDir = extractedConfig.log_directory;
 const ensureLogDirectory = dir => {
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
 };
 
@@ -94,7 +94,7 @@ const rotateLogFile = async (filePath, maxFiles, config = extractedConfig) => {
     const archiveDir = join(dirname(filePath), 'archive');
 
     try {
-      await fs.promises.mkdir(archiveDir, { recursive: true });
+      await fs.promises.mkdir(archiveDir, { recursive: true, mode: 0o700 });
     } catch {
       return;
     }
@@ -144,7 +144,8 @@ const rotateLogFile = async (filePath, maxFiles, config = extractedConfig) => {
 
 class DailyRotatingFileTransport extends winston.transports.File {
   constructor(options) {
-    super(options);
+    // Log files may contain sensitive data — create them owner-only (0600)
+    super({ ...options, options: { flags: 'a', mode: 0o600, ...options.options } });
     this.maxFiles = options.maxFiles || 5;
     this.lastRotateDate = null;
   }
@@ -174,7 +175,7 @@ const transports = [
 export const initializeLogDirectory = () => {
   try {
     if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
+      fs.mkdirSync(logDir, { recursive: true, mode: 0o700 });
     }
 
     const logFiles = [
@@ -193,7 +194,7 @@ export const initializeLogDirectory = () => {
         try {
           const archiveDir = join(logDir, 'archive');
           if (!fs.existsSync(archiveDir)) {
-            fs.mkdirSync(archiveDir, { recursive: true });
+            fs.mkdirSync(archiveDir, { recursive: true, mode: 0o700 });
           }
 
           const [today] = new Date().toISOString().split('T');
@@ -370,7 +371,7 @@ const createTimer = operation => {
   return {
     end: (meta = {}) => {
       const end = process.hrtime.bigint();
-      const duration = Number(end - start) / 500000;
+      const duration = Number(end - start) / 1e6;
 
       const thresholdMs = extractedConfig.performance_threshold_ms;
       if (duration >= thresholdMs) {

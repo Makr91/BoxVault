@@ -1,3 +1,4 @@
+import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { UserOrg, organization } = db;
 
@@ -6,7 +7,7 @@ const { UserOrg, organization } = db;
  * /api/service-accounts/organizations:
  *   get:
  *     summary: Get organizations where user can create service accounts
- *     description: Retrieve all organizations where the authenticated user has moderator or admin role (required to create service accounts)
+ *     description: Retrieve all organizations where the authenticated user has admin or owner role (required to create service accounts)
  *     tags: [Service Accounts]
  *     security:
  *       - JwtAuth: []
@@ -31,7 +32,7 @@ const { UserOrg, organization } = db;
  *                     description: Organization description
  *                   role:
  *                     type: string
- *                     enum: [moderator, admin]
+ *                     enum: [admin, owner]
  *                     description: User's role in this organization
  *       401:
  *         description: Authentication required
@@ -72,6 +73,7 @@ export const getAvailableOrganizations = async (req, res) => {
 
     return res.send(organizations);
   } catch (err) {
-    return res.status(500).send({ message: err.message });
+    log.error.error('Error retrieving service account organizations:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };
