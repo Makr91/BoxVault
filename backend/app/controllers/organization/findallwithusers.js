@@ -70,29 +70,32 @@ export const findAllWithUsers = async (req, res) => {
             {
               model: Box,
               as: 'box',
-              attributes: ['id'],
+              attributes: ['id', 'isPublic', 'organizationId'],
             },
           ],
         },
       ],
     });
 
-    const result = organizations.map(org => ({
-      ...org.toJSON(),
-      members: org.members.map(user => {
-        const { password, ...userWithoutPassword } = user.toJSON();
-        void password;
-        return {
-          ...userWithoutPassword,
-          totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
-        };
-      }),
-      totalBoxes: org.members.reduce(
-        (acc, user) =>
-          acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
-        0
-      ),
-    }));
+    const result = organizations.map(org => {
+      const countOrgBoxes = user =>
+        user.box.filter(
+          box => box.organizationId === org.id && (box.isPublic || (userId && user.id === userId))
+        ).length;
+
+      return {
+        ...org.toJSON(),
+        members: org.members.map(user => {
+          const { password, ...userWithoutPassword } = user.toJSON();
+          void password;
+          return {
+            ...userWithoutPassword,
+            totalBoxes: countOrgBoxes(user),
+          };
+        }),
+        totalBoxes: org.members.reduce((acc, user) => acc + countOrgBoxes(user), 0),
+      };
+    });
 
     return res.status(200).send(result);
   } catch (err) {

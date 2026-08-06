@@ -105,7 +105,11 @@ export const findOneWithUsers = async (req, res) => {
       suspended: user.suspended,
       roles: user.roles.map(role => role.name),
       orgRole: orgRoleByUserId.get(user.id) || null,
-      totalBoxes: user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
+      totalBoxes: user.box.filter(
+        box =>
+          box.organizationId === organization.id &&
+          (box.isPublic || (userId && user.id === userId))
+      ).length,
     }));
 
     return res.status(200).send(users);
