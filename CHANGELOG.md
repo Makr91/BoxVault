@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.47.0](https://github.com/Makr91/BoxVault/compare/v0.46.2...v0.47.0) (2026-08-06)
+
+
+### Features
+
+* box catalog, authenticated home, primary-org invariant, and notification producer ([0c0c6dd](https://github.com/Makr91/BoxVault/commit/0c0c6dd661e732e33c764ba7a3ecb5aee8ca5e86))
+* Box Stylingfeat: box facts, artwork, starter kit, release notes, deprecation, badges, and entitlements and box catalog, authenticated home, primary-org invariant, and notification producer ([1a7748f](https://github.com/Makr91/BoxVault/commit/1a7748f6789bcd863676d15340d25d8cb419ffd2))
+
+
+### Bug Fixes
+
+* linting ([d8ef503](https://github.com/Makr91/BoxVault/commit/d8ef503ae56013aeb4568a52ec4bf660da876b95))
+* more organization maangement changes ([f98a573](https://github.com/Makr91/BoxVault/commit/f98a573a24c826880578795989663f708055a7ed))
+
 ## [0.46.2](https://github.com/Makr91/BoxVault/compare/v0.46.1...v0.46.2) (2026-08-06)
 
 
