@@ -47,7 +47,7 @@ export default (sequelize, Sequelize) => {
   ServiceAccount.getForUser = async function (userId) {
     const { default: db } = await import('./index.js');
 
-    // Get organizations where user has moderator or admin role
+    // Get organizations where user has admin or owner role
     const userOrgs = await db.UserOrg.findAll({
       where: {
         user_id: userId,

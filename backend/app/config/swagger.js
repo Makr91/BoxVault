@@ -296,7 +296,7 @@ const options = {
             },
             default_role: {
               type: 'string',
-              enum: ['user', 'moderator'],
+              enum: ['member', 'admin'],
               description: 'Default role for new members',
               example: 'user',
             },

@@ -51,7 +51,7 @@ describe('Box API', () => {
     await db.UserOrg.create({
       user_id: user.id,
       organization_id: organization.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -337,7 +337,7 @@ describe('Box API', () => {
       await db.UserOrg.create({
         user_id: memberUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
         is_primary: true,
       });
 
@@ -551,7 +551,7 @@ describe('Box API', () => {
       await db.UserOrg.create({
         user_id: memberUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
       });
       memberToken = jwt.sign({ id: memberUser.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -1236,7 +1236,7 @@ describe('Box API', () => {
       await db.UserOrg.create({
         user_id: member.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
       });
       const memberToken = jwt.sign({ id: member.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -1429,7 +1429,7 @@ describe('Box API', () => {
       await db.UserOrg.create({
         user_id: member.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
       });
       const token = jwt.sign({ id: member.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -1447,7 +1447,7 @@ describe('Box API', () => {
 
       expect(res.statusCode).toBe(403);
       expect(res.body.message).toContain(
-        'You can only update boxes you own, or you need moderator/admin role.'
+        'You can only update boxes you own, or you need admin/owner role.'
       );
 
       await member.destroy();
@@ -1575,7 +1575,7 @@ describe('Box API', () => {
       // Mock UserOrg check for authenticated request
       const userOrgSpy = jest
         .spyOn(db.UserOrg, 'findUserOrgRole')
-        .mockResolvedValue({ role: 'user' });
+        .mockResolvedValue({ role: 'member' });
 
       // Use request without token to ensure no access to private box
       const res = await request(app).get(`/api/organization/${orgName}/box`);

@@ -57,7 +57,7 @@ describe('Organization API', () => {
     await db.UserOrg.create({
       user_id: user.id,
       organization_id: organization.id,
-      role: 'user',
+      role: 'member',
       is_primary: true,
     });
 
@@ -65,7 +65,7 @@ describe('Organization API', () => {
     await db.UserOrg.create({
       user_id: adminUser.id,
       organization_id: organization.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -276,7 +276,7 @@ describe('Organization API', () => {
   });
 
   describe('PUT /api/organization/:organization', () => {
-    it('should fail for regular user (requires moderator/admin)', async () => {
+    it('should fail for regular user (requires admin/owner)', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}`)
         .set('x-access-token', authToken)
@@ -458,7 +458,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only', defaultRole: 'user' });
+        .send({ accessMode: 'invite_only', defaultRole: 'member' });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessMode', 'invite_only');
@@ -813,7 +813,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: tempUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
         is_primary: true,
       });
 
@@ -822,7 +822,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: tempUser.id,
         organization_id: secondOrg.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
     });
@@ -881,7 +881,7 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('role', 'user');
+      expect(res.body).toHaveProperty('role', 'member');
     });
 
     it('PUT .../role - should fail with invalid role', async () => {
@@ -897,7 +897,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/999999/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(404);
     });
@@ -914,7 +914,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/${outsider.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(404);
       await outsider.destroy();
@@ -977,7 +977,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: soloUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
         is_primary: true,
       });
 
@@ -1010,7 +1010,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: multiOrgUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
         is_primary: true,
       });
       // Add to another org
@@ -1018,7 +1018,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: multiOrgUser.id,
         organization_id: otherOrg.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
 
@@ -1082,7 +1082,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: npUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
 
@@ -1129,7 +1129,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: boxUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
       });
       const boxUserToken = jwt.sign({ id: boxUser.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -1330,7 +1330,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/${user.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1437,7 +1437,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/${user.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1450,7 +1450,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/${user.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1530,7 +1530,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/${user.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1568,7 +1568,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: boxUser.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
       });
       const boxUserToken = jwt.sign({ id: boxUser.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -1792,7 +1792,7 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: member.id,
         organization_id: organization.id,
-        role: 'user',
+        role: 'member',
       });
       const memToken = jwt.sign({ id: member.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -1857,12 +1857,12 @@ describe('Organization API', () => {
       await db.UserOrg.create({
         user_id: adminUser.id,
         organization_id: otherOrg.id,
-        role: 'admin',
+        role: 'owner',
       });
       await db.UserOrg.create({
         user_id: otherUser.id,
         organization_id: otherOrg.id,
-        role: 'user',
+        role: 'member',
       });
 
       const otherAuth = await request(app)

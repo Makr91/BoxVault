@@ -103,7 +103,7 @@ const mockDb = {
   organization: { findOne: jest.fn() },
   UserOrg: { findUserOrgRole: jest.fn(), hasRole: jest.fn() },
   Sequelize: { Op: { or: 'or', gt: 'gt', eq: 'eq' } },
-  ROLES: ['user', 'admin', 'moderator'],
+  ROLES: ['user', 'admin'],
 };
 
 const mockPaths = {
@@ -156,7 +156,7 @@ const { default: verifySignUp } = await import('../app/middleware/verifySignUp.j
 const authJwtModule = await import('../app/middleware/authJwt.js');
 const authJwt = authJwtModule.default;
 const { errorHandler } = await import('../app/middleware/errorHandler.js');
-const { isOrgMember, isOrgModerator, isOrgAdmin, isOrgModeratorOrAdmin, getUserOrgContext } =
+const { isOrgMember, isOrgAdmin, isOrgOwner, isOrgAdminOrOwner, getUserOrgContext } =
   await import('../app/middleware/verifyOrgAccess.js');
 const { verifyBoxFilePath } = await import('../app/middleware/verifyBoxFilePath.js');
 const { rateLimiter } = await import('../app/middleware/rateLimiter.js');
@@ -1397,7 +1397,7 @@ describe('Middleware Tests', () => {
 
     it('checkRolesExisted should validate multiple roles', async () => {
       mockDb.user.count.mockResolvedValue(1);
-      req.body = { roles: ['user', 'moderator'] };
+      req.body = { roles: ['user', 'admin'] };
 
       await verifySignUp.checkRolesExisted(req, res, next);
       expect(next).toHaveBeenCalled();
@@ -1416,7 +1416,7 @@ describe('Middleware Tests', () => {
 
       it('should validate provided roles', async () => {
         mockDb.user.count.mockResolvedValue(1);
-        req.body = { roles: ['user', 'moderator'] };
+        req.body = { roles: ['user', 'admin'] };
 
         await verifySignUp.checkRolesExisted(req, res, next);
 
@@ -1626,64 +1626,64 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgAdmin should return 400 if organization param missing', async () => {
+    it('isOrgOwner should return 400 if organization param missing', async () => {
       req.params.organization = undefined;
-      await isOrgAdmin(req, res, next);
+      await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
-    it('isOrgAdmin should return 404 if organization not found', async () => {
+    it('isOrgOwner should return 404 if organization not found', async () => {
       req.params.organization = 'NonExistent';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue(null);
-      await isOrgAdmin(req, res, next);
+      await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(404);
     });
 
-    it('isOrgAdmin should return 401 if user not found', async () => {
+    it('isOrgOwner should return 401 if user not found', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue(null);
-      await isOrgAdmin(req, res, next);
+      await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
     });
 
-    it('isOrgAdmin should handle database errors', async () => {
+    it('isOrgOwner should handle database errors', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockRejectedValue(new Error('DB Error'));
-      await isOrgAdmin(req, res, next);
+      await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgAdmin should handle error in hasRole check', async () => {
+    it('isOrgOwner should handle error in hasRole check', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
       mockDb.UserOrg.hasRole.mockRejectedValue(new Error('DB Error'));
 
-      await isOrgAdmin(req, res, next);
+      await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgModeratorOrAdmin should return 400 if organization param missing', async () => {
+    it('isOrgAdminOrOwner should return 400 if organization param missing', async () => {
       req.params.organization = undefined;
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
-    it('isOrgModeratorOrAdmin should handle database errors', async () => {
+    it('isOrgAdminOrOwner should handle database errors', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockRejectedValue(new Error('DB Error'));
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgModeratorOrAdmin should handle error in hasRole check', async () => {
+    it('isOrgAdminOrOwner should handle error in hasRole check', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
       mockDb.UserOrg.hasRole.mockRejectedValue(new Error('DB Error'));
 
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
@@ -1694,10 +1694,10 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgModerator should handle database errors', async () => {
+    it('isOrgAdmin should handle database errors', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockRejectedValue(new Error('DB Error'));
-      await isOrgModerator(req, res, next);
+      await isOrgAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
     });
   });
@@ -1781,30 +1781,6 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(403);
     });
 
-    it('isOrgModerator should allow global admin', async () => {
-      mockDb.user.findByPk.mockResolvedValue({
-        id: 1,
-        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
-      });
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-
-      await isOrgModerator(req, res, next);
-      expect(next).toHaveBeenCalled();
-      expect(req.userOrgRole).toBe('admin');
-    });
-
-    it('isOrgModerator should deny if user is not org moderator', async () => {
-      req.params.organization = 'org';
-      mockDb.user.findByPk.mockResolvedValue({
-        id: 1,
-        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
-      });
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(false);
-      await isOrgModerator(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(403);
-    });
-
     it('isOrgAdmin should allow global admin', async () => {
       mockDb.user.findByPk.mockResolvedValue({
         id: 1,
@@ -1814,46 +1790,10 @@ describe('Middleware Tests', () => {
 
       await isOrgAdmin(req, res, next);
       expect(next).toHaveBeenCalled();
-      expect(req.userOrgRole).toBe('admin');
+      expect(req.userOrgRole).toBe('owner');
     });
 
-    it('isOrgAdmin should allow org admin', async () => {
-      mockDb.user.findByPk.mockResolvedValue({
-        id: 1,
-        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
-      });
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(true);
-
-      await isOrgAdmin(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('isOrgAdmin should deny non-admin', async () => {
-      mockDb.user.findByPk.mockResolvedValue({
-        id: 1,
-        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
-      });
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(false);
-
-      await isOrgAdmin(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(403);
-    });
-
-    it('isOrgModeratorOrAdmin should allow global admin', async () => {
-      mockDb.user.findByPk.mockResolvedValue({
-        id: 1,
-        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
-      });
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-
-      await isOrgModeratorOrAdmin(req, res, next);
-      expect(next).toHaveBeenCalled();
-      expect(req.userOrgRole).toBe('admin');
-    });
-
-    it('isOrgModeratorOrAdmin should deny if user is not org moderator/admin', async () => {
+    it('isOrgAdmin should deny if user is not org admin or owner', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({
         id: 1,
@@ -1861,7 +1801,67 @@ describe('Middleware Tests', () => {
       });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
       mockDb.UserOrg.hasRole.mockResolvedValue(false);
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgAdmin(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('isOrgOwner should allow global admin', async () => {
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+
+      await isOrgOwner(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(req.userOrgRole).toBe('owner');
+    });
+
+    it('isOrgOwner should allow org owner', async () => {
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.hasRole.mockResolvedValue(true);
+
+      await isOrgOwner(req, res, next);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('isOrgOwner should deny non-owner', async () => {
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.hasRole.mockResolvedValue(false);
+
+      await isOrgOwner(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('isOrgAdminOrOwner should allow global admin', async () => {
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+
+      await isOrgAdminOrOwner(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(req.userOrgRole).toBe('owner');
+    });
+
+    it('isOrgAdminOrOwner should deny if user is not org admin or owner', async () => {
+      req.params.organization = 'org';
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.hasRole.mockResolvedValue(false);
+      await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
     });
   });
@@ -1882,10 +1882,10 @@ describe('Middleware Tests', () => {
 
     it('should return context if user is member', async () => {
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'user' });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'member' });
       const result = await getUserOrgContext(1, 'Org');
       expect(result).toEqual({
-        role: 'user',
+        role: 'member',
         organizationId: 1,
         organization: { id: 1 },
       });
@@ -2352,51 +2352,51 @@ describe('Middleware Tests', () => {
     });
 
     // verifyOrgAccess.js coverage
-    it('verifyOrgAccess.isOrgModerator should return 400 if organization param missing', async () => {
-      req.params.organization = undefined;
-      await isOrgModerator(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
     it('verifyOrgAccess.isOrgAdmin should return 400 if organization param missing', async () => {
       req.params.organization = undefined;
       await isOrgAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
-    it('verifyOrgAccess.isOrgModeratorOrAdmin should return 400 if organization param missing', async () => {
+    it('verifyOrgAccess.isOrgOwner should return 400 if organization param missing', async () => {
       req.params.organization = undefined;
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
-    it('isOrgModerator should return 404 if organization not found', async () => {
+    it('verifyOrgAccess.isOrgAdminOrOwner should return 400 if organization param missing', async () => {
+      req.params.organization = undefined;
+      await isOrgAdminOrOwner(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('isOrgAdmin should return 404 if organization not found', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue(null);
-      await isOrgModerator(req, res, next);
+      await isOrgAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(404);
     });
 
-    it('isOrgModerator should return 401 if user not found', async () => {
+    it('isOrgAdmin should return 401 if user not found', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue(null);
-      await isOrgModerator(req, res, next);
+      await isOrgAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
     });
 
-    it('isOrgModeratorOrAdmin should return 404 if organization not found', async () => {
+    it('isOrgAdminOrOwner should return 404 if organization not found', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue(null);
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(404);
     });
 
-    it('isOrgModeratorOrAdmin should return 401 if user not found', async () => {
+    it('isOrgAdminOrOwner should return 401 if user not found', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue(null);
-      await isOrgModeratorOrAdmin(req, res, next);
+      await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
     });
 

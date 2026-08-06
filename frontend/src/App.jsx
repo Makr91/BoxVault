@@ -12,7 +12,7 @@ import Box from "./components/box.component";
 import Footer from "./components/Footer.component";
 import InviteAccept from "./components/InviteAccept.component";
 import Login from "./components/login.component";
-import Moderator from "./components/moderator.component";
+import OrgConsole from "./components/org-console.component";
 import Navbar from "./components/navbar.component";
 import OrganizationDiscovery from "./components/organization-discovery.component";
 import Organization from "./components/organization.component";
@@ -321,7 +321,7 @@ const App = () => {
 
   // The organization-management board is gated per-org (org admin/owner of
   // the active organization, or global admin) — mirrors verifyOrgAccess.
-  const showModeratorBoard = isOrgManager(currentUser, activeOrganization);
+  const showOrgConsole = isOrgManager(currentUser, activeOrganization);
 
   return (
     <ErrorBoundary showErrorDetails={isDevelopment}>
@@ -333,7 +333,7 @@ const App = () => {
           onOrganizationSwitch={handleOrganizationSwitch}
           gravatarUrl={gravatarUrl}
           showAdminBoard={showAdminBoard}
-          showModeratorBoard={showModeratorBoard}
+          showOrgConsole={showOrgConsole}
           theme={theme}
           toggleTheme={toggleTheme}
           logOut={logOut}
@@ -368,9 +368,9 @@ const App = () => {
                 />
                 <Route path="/admin" element={<Admin />} />
                 <Route
-                  path="/moderator"
+                  path="/org-console"
                   element={
-                    <Moderator currentOrganization={activeOrganization} />
+                    <OrgConsole currentOrganization={activeOrganization} />
                   }
                 />
                 <Route

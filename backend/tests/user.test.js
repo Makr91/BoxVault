@@ -62,25 +62,25 @@ describe('User API', () => {
     await db.UserOrg.create({
       user_id: testUser.id,
       organization_id: orgOne.id,
-      role: 'user',
+      role: 'member',
       is_primary: true,
     });
     await db.UserOrg.create({
       user_id: testUser.id,
       organization_id: orgTwo.id,
-      role: 'user',
+      role: 'member',
       is_primary: false,
     });
     await db.UserOrg.create({
       user_id: adminUser.id,
       organization_id: orgOne.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
     await db.UserOrg.create({
       user_id: anotherUser.id,
       organization_id: orgOne.id,
-      role: 'user',
+      role: 'member',
       is_primary: true,
     });
 
@@ -122,14 +122,14 @@ describe('User API', () => {
   describe('User Model', () => {
     it('should get organization role', async () => {
       const role = await testUser.getOrganizationRole(orgOne.id);
-      expect(role).toBe('user');
+      expect(role).toBe('member');
     });
 
     it('should check if user has organization role', async () => {
-      const hasRole = await testUser.hasOrganizationRole(orgOne.id, 'user');
+      const hasRole = await testUser.hasOrganizationRole(orgOne.id, 'member');
       expect(hasRole).toBe(true);
-      const hasAdmin = await testUser.hasOrganizationRole(orgOne.id, 'admin');
-      expect(hasAdmin).toBe(false);
+      const hasOwner = await testUser.hasOrganizationRole(orgOne.id, 'owner');
+      expect(hasOwner).toBe(false);
     });
 
     it('should get all organizations', async () => {
@@ -146,7 +146,7 @@ describe('User API', () => {
 
     it('should return false for hasOrganizationRole if not member', async () => {
       const nonMemberOrg = await db.organization.create({ name: `NonMemRoleOrg-${uniqueId}` });
-      const hasRole = await testUser.hasOrganizationRole(nonMemberOrg.id, 'user');
+      const hasRole = await testUser.hasOrganizationRole(nonMemberOrg.id, 'member');
       expect(hasRole).toBe(false);
       await nonMemberOrg.destroy();
     });
@@ -298,7 +298,7 @@ describe('User API', () => {
         verified: true,
       });
       const org = await db.organization.create({ name: `RollbackOrg-${uniqueId}` });
-      await db.UserOrg.create({ user_id: tempUser.id, organization_id: org.id, role: 'user' });
+      await db.UserOrg.create({ user_id: tempUser.id, organization_id: org.id, role: 'member' });
 
       // Mock update to throw error
       const updateSpy = jest.spyOn(db.UserOrg, 'update').mockRejectedValue(new Error('DB Error'));
@@ -351,35 +351,35 @@ describe('User API', () => {
       await db.UserOrg.create({
         user_id: testUser.id,
         organization_id: orgOne.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
     });
 
-    it('should allow an admin to promote a user to moderator', async () => {
+    it('should allow an admin to promote a user to orgAdmin', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgOne.name}/users/${anotherUser.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('newRole', 'moderator');
+      expect(res.body).toHaveProperty('newRole', 'admin');
     });
 
-    it('should allow an admin to demote a moderator to user', async () => {
-      // First, ensure the user is a moderator
+    it('should allow an admin to demote a orgAdmin to member', async () => {
+      // First, ensure the user is a orgAdmin
       await db.UserOrg.update(
-        { role: 'moderator' },
+        { role: 'admin' },
         { where: { user_id: anotherUser.id, organization_id: orgOne.id } }
       );
 
       const res = await request(app)
         .put(`/api/organization/${orgOne.name}/users/${anotherUser.id}/role`)
         .set('x-access-token', adminToken)
-        .send({ role: 'user' });
+        .send({ role: 'member' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('newRole', 'user');
+      expect(res.body).toHaveProperty('newRole', 'member');
     });
 
     it('should allow a user to leave their primary organization if they have others', async () => {
@@ -397,14 +397,14 @@ describe('User API', () => {
       await db.UserOrg.create({
         user_id: tempUser.id,
         organization_id: orgOne.id,
-        role: 'user',
+        role: 'member',
         is_primary: true,
       });
       // Add to orgTwo (secondary)
       await db.UserOrg.create({
         user_id: tempUser.id,
         organization_id: orgTwo.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
 
@@ -425,21 +425,21 @@ describe('User API', () => {
       await db.user.destroy({ where: { id: tempUser.id } });
     });
 
-    it('should allow an admin to globally promote a user to moderator', async () => {
+    it('should allow an admin to globally promote a user to orgAdmin', async () => {
       const res = await request(app)
         .put(`/api/users/${anotherUser.id}/promote`)
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.message).toContain('Promoted to moderator');
+      expect(res.body.message).toContain('Promoted to orgAdmin');
 
       // Verify role change
       const user = await db.user.findByPk(anotherUser.id, { include: ['roles'] });
       const roleNames = user.roles.map(r => r.name);
-      expect(roleNames).toContain('moderator');
+      expect(roleNames).toContain('admin');
     });
 
-    it('should allow an admin to globally demote a moderator to user', async () => {
+    it('should allow an admin to globally demote a orgAdmin to user', async () => {
       const res = await request(app)
         .put(`/api/users/${anotherUser.id}/demote`)
         .set('x-access-token', adminToken);
@@ -451,14 +451,14 @@ describe('User API', () => {
       const user = await db.user.findByPk(anotherUser.id, { include: ['roles'] });
       const roleNames = user.roles.map(r => r.name);
       expect(roleNames).toContain('user');
-      expect(roleNames).not.toContain('moderator');
+      expect(roleNames).not.toContain('admin');
     });
 
     it('should not allow a regular user to change roles', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgOne.name}/users/${anotherUser.id}/role`)
         .set('x-access-token', userToken) // Using non-admin token
-        .send({ role: 'moderator' });
+        .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(403);
     });
@@ -517,7 +517,7 @@ describe('User API', () => {
       await db.UserOrg.create({
         user_id: tempUser.id,
         organization_id: orgOne.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
 
@@ -557,7 +557,7 @@ describe('User API', () => {
       await db.UserOrg.create({
         user_id: testUser.id,
         organization_id: soloOrg.id,
-        role: 'admin',
+        role: 'owner',
         is_primary: false,
       });
 
@@ -842,7 +842,11 @@ describe('User API', () => {
         password: 'pwd',
         verified: true,
       });
-      await db.UserOrg.create({ user_id: otherUser.id, organization_id: orgOne.id, role: 'user' });
+      await db.UserOrg.create({
+        user_id: otherUser.id,
+        organization_id: orgOne.id,
+        role: 'member',
+      });
 
       const res = await request(app)
         .get(`/api/organizations/${orgOne.name}/only-user`)

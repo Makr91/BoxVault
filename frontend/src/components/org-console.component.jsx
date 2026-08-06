@@ -13,7 +13,7 @@ import { isOrgOwner } from "../utils/permissions";
 import ConfirmationModal from "./confirmation.component";
 import UserCard from "./UserCard.component";
 
-const ModeratorTabs = ({
+const OrgConsoleTabs = ({
   activeTab,
   setActiveTab,
   isExternalOrg,
@@ -28,7 +28,7 @@ const ModeratorTabs = ({
           className={`nav-link ${activeTab === "organization" ? "active" : ""}`}
           onClick={() => setActiveTab("organization")}
         >
-          {t("moderator.tabs.organization")}
+          {t("orgConsole.tabs.organization")}
         </button>
       </li>
       {!isExternalOrg && (
@@ -37,7 +37,7 @@ const ModeratorTabs = ({
             className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
             onClick={() => setActiveTab("joinRequests")}
           >
-            {t("moderator.tabs.joinRequests")}
+            {t("orgConsole.tabs.joinRequests")}
             {joinRequestCount > 0 && (
               <span className="badge bg-warning ms-2">{joinRequestCount}</span>
             )}
@@ -51,14 +51,14 @@ const ModeratorTabs = ({
           className={`nav-link ${activeTab === "invitations" ? "active" : ""}`}
           onClick={() => setActiveTab("invitations")}
         >
-          {t("moderator.tabs.invitations")}
+          {t("orgConsole.tabs.invitations")}
         </button>
       </li>
     </ul>
   );
 };
 
-ModeratorTabs.propTypes = {
+OrgConsoleTabs.propTypes = {
   activeTab: PropTypes.string.isRequired,
   setActiveTab: PropTypes.func.isRequired,
   isExternalOrg: PropTypes.bool.isRequired,
@@ -70,10 +70,10 @@ const getOrgNameFieldValue = (isExternalOrg, orgDisplayName, newOrgName) =>
     ? `${orgDisplayName} (${newOrgName})`
     : newOrgName;
 
-const Moderator = ({ currentOrganization }) => {
+const OrgConsole = ({ currentOrganization }) => {
   const { t } = useTranslation();
   useEffect(() => {
-    document.title = t("moderator.pageTitle");
+    document.title = t("orgConsole.pageTitle");
   }, [t]);
 
   const [users, setUsers] = useState([]);
@@ -148,7 +148,7 @@ const Moderator = ({ currentOrganization }) => {
 
           setLoading(false);
         } catch (error) {
-          log.api.error("Error fetching moderator data", {
+          log.api.error("Error fetching org console data", {
             organization: currentOrganization,
             error: error.message,
           });
@@ -167,22 +167,22 @@ const Moderator = ({ currentOrganization }) => {
     e.preventDefault();
     // Validation
     if (!newOrgName.trim()) {
-      setUpdateMessage(t("moderator.orgNameRequired"));
+      setUpdateMessage(t("orgConsole.orgNameRequired"));
       return;
     }
     if (!validateOrgName(newOrgName)) {
-      setUpdateMessage(t("moderator.invalidOrgName"));
+      setUpdateMessage(t("orgConsole.invalidOrgName"));
       return;
     }
     if (!orgEmail.trim()) {
-      setUpdateMessage(t("moderator.orgEmailRequired"));
+      setUpdateMessage(t("orgConsole.orgEmailRequired"));
       return;
     }
 
     if (!isExternalOrg && newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
-        setUpdateMessage(t("moderator.orgExists"));
+        setUpdateMessage(t("orgConsole.orgExists"));
         return;
       }
     }
@@ -214,14 +214,14 @@ const Moderator = ({ currentOrganization }) => {
             newName: newOrgName,
           });
         }
-        setUpdateMessage(t("moderator.orgUpdateSuccess"));
+        setUpdateMessage(t("orgConsole.orgUpdateSuccess"));
       }
     } catch (error) {
       log.component.error("Error updating organization", {
         organization: currentOrganization,
         error: error.message,
       });
-      setUpdateMessage(t("moderator.orgUpdateError"));
+      setUpdateMessage(t("orgConsole.orgUpdateError"));
     }
   };
 
@@ -258,10 +258,10 @@ const Moderator = ({ currentOrganization }) => {
         inviteRole
       );
       const invitationDetails = `Invitation sent! 
-        ${t("moderator.invitation.token")}: ${response.data.invitationToken}
-        ${t("moderator.invitation.expires")}: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
-        ${t("moderator.invitation.orgId")}: ${response.data.organizationId}
-        ${t("moderator.invitation.link")}: ${response.data.invitationLink}`;
+        ${t("orgConsole.invitation.token")}: ${response.data.invitationToken}
+        ${t("orgConsole.invitation.expires")}: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
+        ${t("orgConsole.invitation.orgId")}: ${response.data.organizationId}
+        ${t("orgConsole.invitation.link")}: ${response.data.invitationLink}`;
       setInvitationMessage(invitationDetails);
       setEmail("");
     } catch (error) {
@@ -273,7 +273,7 @@ const Moderator = ({ currentOrganization }) => {
       // Prefer the server's own message (e.g. the identity provider's reason
       // for refusing a delegated invite) over the generic local warning.
       setInvitationMessage(
-        error.response?.data?.message || t("moderator.invitation.sendWarning")
+        error.response?.data?.message || t("orgConsole.invitation.sendWarning")
       );
     } finally {
       // Always refresh invitations list (even if email failed)
@@ -328,7 +328,7 @@ const Moderator = ({ currentOrganization }) => {
           setUsers((prevUsers) =>
             prevUsers.filter((user) => user.id !== itemToDelete.id)
           );
-          setUpdateMessage(t("moderator.users.removeSuccess"));
+          setUpdateMessage(t("orgConsole.users.removeSuccess"));
           handleCloseDeleteModal();
         })
         .catch((error) => {
@@ -337,7 +337,7 @@ const Moderator = ({ currentOrganization }) => {
             organization: currentOrganization,
             error: error.message,
           });
-          setUpdateMessage(t("moderator.users.removeError"));
+          setUpdateMessage(t("orgConsole.users.removeError"));
           handleCloseDeleteModal();
         });
     }
@@ -353,7 +353,7 @@ const Moderator = ({ currentOrganization }) => {
         requestId,
         assignedRole
       );
-      setUpdateMessage(t("moderator.joinRequest.approved"));
+      setUpdateMessage(t("orgConsole.joinRequest.approved"));
 
       // Refresh join requests list
       const response =
@@ -365,7 +365,7 @@ const Moderator = ({ currentOrganization }) => {
         error: error.message,
       });
       setUpdateMessage(
-        t("moderator.joinRequest.approveError", { error: error.message })
+        t("orgConsole.joinRequest.approveError", { error: error.message })
       );
     }
   };
@@ -373,7 +373,7 @@ const Moderator = ({ currentOrganization }) => {
   const handleDenyJoinRequest = async (requestId) => {
     try {
       await RequestService.denyJoinRequest(currentOrganization, requestId);
-      setUpdateMessage(t("moderator.joinRequest.denied"));
+      setUpdateMessage(t("orgConsole.joinRequest.denied"));
 
       // Refresh join requests list
       const response =
@@ -385,7 +385,7 @@ const Moderator = ({ currentOrganization }) => {
         error: error.message,
       });
       setUpdateMessage(
-        t("moderator.joinRequest.denyError", { error: error.message })
+        t("orgConsole.joinRequest.denyError", { error: error.message })
       );
     }
   };
@@ -401,10 +401,10 @@ const Moderator = ({ currentOrganization }) => {
   return (
     <div className="list row">
       <header>
-        <h3 className="text-center">{t("moderator.title")}</h3>
+        <h3 className="text-center">{t("orgConsole.title")}</h3>
       </header>
 
-      <ModeratorTabs
+      <OrgConsoleTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isExternalOrg={isExternalOrg}
@@ -421,7 +421,7 @@ const Moderator = ({ currentOrganization }) => {
                 <div className="card mt-2 mb-2">
                   <div className="card-header">
                     <h4>
-                      {t("moderator.organization.title")}
+                      {t("orgConsole.organization.title")}
                       {isExternalOrg && (
                         <span
                           className="badge bg-info ms-2"
@@ -441,7 +441,7 @@ const Moderator = ({ currentOrganization }) => {
                     <form onSubmit={handleUpdateOrganization}>
                       <div className="form-group">
                         <label htmlFor="orgName">
-                          {t("moderator.organization.name")}
+                          {t("orgConsole.organization.name")}
                         </label>
                         <input
                           type="text"
@@ -459,7 +459,7 @@ const Moderator = ({ currentOrganization }) => {
                       </div>
                       <div className="form-group">
                         <label htmlFor="orgEmail">
-                          {t("moderator.organization.email")}
+                          {t("orgConsole.organization.email")}
                         </label>
                         <input
                           type="email"
@@ -471,7 +471,7 @@ const Moderator = ({ currentOrganization }) => {
                       </div>
                       <div className="form-group">
                         <label htmlFor="orgEmailHash">
-                          {t("moderator.organization.emailHash")}
+                          {t("orgConsole.organization.emailHash")}
                         </label>
                         <input
                           type="text"
@@ -481,12 +481,12 @@ const Moderator = ({ currentOrganization }) => {
                           readOnly
                         />
                         <small className="form-text text-muted">
-                          {t("moderator.organization.emailHashHint")}
+                          {t("orgConsole.organization.emailHashHint")}
                         </small>
                       </div>
                       <div className="form-group">
                         <label htmlFor="orgDescription">
-                          {t("moderator.organization.description")}
+                          {t("orgConsole.organization.description")}
                         </label>
                         <textarea
                           className="form-control"
@@ -500,7 +500,7 @@ const Moderator = ({ currentOrganization }) => {
                         <div className="col-md-6">
                           <div className="form-group">
                             <label htmlFor="orgAccessMode">
-                              {t("moderator.organization.accessMode")}
+                              {t("orgConsole.organization.accessMode")}
                             </label>
                             <select
                               className="form-control"
@@ -510,29 +510,29 @@ const Moderator = ({ currentOrganization }) => {
                             >
                               <option value="private">
                                 {t(
-                                  "moderator.organization.accessModes.private"
+                                  "orgConsole.organization.accessModes.private"
                                 )}
                               </option>
                               <option value="invite_only">
                                 {t(
-                                  "moderator.organization.accessModes.inviteOnly"
+                                  "orgConsole.organization.accessModes.inviteOnly"
                                 )}
                               </option>
                               <option value="request_to_join">
                                 {t(
-                                  "moderator.organization.accessModes.requestToJoin"
+                                  "orgConsole.organization.accessModes.requestToJoin"
                                 )}
                               </option>
                             </select>
                             <small className="form-text text-muted">
-                              {t("moderator.organization.accessModeHint")}
+                              {t("orgConsole.organization.accessModeHint")}
                             </small>
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="form-group">
                             <label htmlFor="orgDefaultRole">
-                              {t("moderator.organization.defaultRole")}
+                              {t("orgConsole.organization.defaultRole")}
                             </label>
                             <select
                               className="form-control"
@@ -548,14 +548,14 @@ const Moderator = ({ currentOrganization }) => {
                               <option value="admin">{t("roles.admin")}</option>
                             </select>
                             <small className="form-text text-muted">
-                              {t("moderator.organization.defaultRoleHint")}
+                              {t("orgConsole.organization.defaultRoleHint")}
                             </small>
                           </div>
                         </div>
                       </div>
 
                       <button type="submit" className="btn btn-primary mt-2">
-                        {t("moderator.organization.updateButton")}
+                        {t("orgConsole.organization.updateButton")}
                       </button>
                     </form>
                     {updateMessage && (
@@ -570,7 +570,7 @@ const Moderator = ({ currentOrganization }) => {
                 <div className="card mt-2 mb-2">
                   <div className="card-header">
                     <h4>
-                      {t("moderator.users.title", {
+                      {t("orgConsole.users.title", {
                         organization: currentOrganization,
                       })}
                     </h4>
@@ -614,12 +614,12 @@ const Moderator = ({ currentOrganization }) => {
           {activeTab === "joinRequests" && (
             <div className="card">
               <div className="card-header">
-                <h4>{t("moderator.joinRequest.title")}</h4>
+                <h4>{t("orgConsole.joinRequest.title")}</h4>
               </div>
               <div className="card-body">
                 {joinRequests.length === 0 ? (
                   <div className="alert alert-info">
-                    {t("moderator.joinRequest.noRequests")}
+                    {t("orgConsole.joinRequest.noRequests")}
                   </div>
                 ) : (
                   <div className="table-responsive">
@@ -627,10 +627,10 @@ const Moderator = ({ currentOrganization }) => {
                       <thead>
                         <tr>
                           <th>User</th>
-                          <th>{t("moderator.joinRequest.email")}</th>
-                          <th>{t("moderator.joinRequest.message")}</th>
-                          <th>{t("moderator.joinRequest.requested")}</th>
-                          <th>{t("moderator.joinRequest.actions")}</th>
+                          <th>{t("orgConsole.joinRequest.email")}</th>
+                          <th>{t("orgConsole.joinRequest.message")}</th>
+                          <th>{t("orgConsole.joinRequest.requested")}</th>
+                          <th>{t("orgConsole.joinRequest.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -642,7 +642,7 @@ const Moderator = ({ currentOrganization }) => {
                             <td>{request.user.email}</td>
                             <td>
                               {request.message ||
-                                t("moderator.joinRequest.noMessage")}
+                                t("orgConsole.joinRequest.noMessage")}
                             </td>
                             <td>
                               {new Date(
@@ -660,7 +660,7 @@ const Moderator = ({ currentOrganization }) => {
                                     )
                                   }
                                 >
-                                  {t("moderator.joinRequest.approveAsMember")}
+                                  {t("orgConsole.joinRequest.approveAsMember")}
                                 </button>
                                 <button
                                   className="btn btn-warning btn-sm"
@@ -671,7 +671,7 @@ const Moderator = ({ currentOrganization }) => {
                                     )
                                   }
                                 >
-                                  {t("moderator.joinRequest.approveAsAdmin")}
+                                  {t("orgConsole.joinRequest.approveAsAdmin")}
                                 </button>
                                 <button
                                   className="btn btn-danger btn-sm"
@@ -679,7 +679,7 @@ const Moderator = ({ currentOrganization }) => {
                                     handleDenyJoinRequest(request.id)
                                   }
                                 >
-                                  {t("moderator.joinRequest.deny")}
+                                  {t("orgConsole.joinRequest.deny")}
                                 </button>
                               </div>
                             </td>
@@ -697,18 +697,18 @@ const Moderator = ({ currentOrganization }) => {
             <div className="card">
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h4>{t("moderator.invitation.manageTitle")}</h4>
+                  <h4>{t("orgConsole.invitation.manageTitle")}</h4>
                 </div>
               </div>
               <div className="card-body">
                 <div className="mb-4">
-                  <h5>{t("moderator.invitation.sendTitle")}</h5>
+                  <h5>{t("orgConsole.invitation.sendTitle")}</h5>
                   <form onSubmit={handleSendInvitation}>
                     <div className="row">
                       <div className="col-md-8">
                         <div className="form-group">
                           <label htmlFor="email">
-                            {t("moderator.invitation.email")}
+                            {t("orgConsole.invitation.email")}
                           </label>
                           <input
                             type="email"
@@ -723,7 +723,7 @@ const Moderator = ({ currentOrganization }) => {
                       <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="inviteRole">
-                            {t("moderator.invitation.assignRole")}
+                            {t("orgConsole.invitation.assignRole")}
                           </label>
                           <select
                             className="form-control"
@@ -740,7 +740,7 @@ const Moderator = ({ currentOrganization }) => {
                       </div>
                     </div>
                     <button type="submit" className="btn btn-primary mt-2">
-                      {t("moderator.invitation.sendButton")}
+                      {t("orgConsole.invitation.sendButton")}
                     </button>
                   </form>
                   {invitationMessage && (
@@ -750,22 +750,22 @@ const Moderator = ({ currentOrganization }) => {
                   )}
                 </div>
 
-                <h5>{t("moderator.invitation.activeTitle")}</h5>
+                <h5>{t("orgConsole.invitation.activeTitle")}</h5>
                 {activeInvitations.length === 0 ? (
                   <div className="alert alert-info">
-                    {t("moderator.invitation.noActive")}
+                    {t("orgConsole.invitation.noActive")}
                   </div>
                 ) : (
                   <div className="table-responsive">
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>{t("moderator.invitation.email")}</th>
-                          <th>{t("moderator.invitation.expires")}</th>
-                          <th>{t("moderator.invitation.accepted")}</th>
-                          <th>{t("moderator.invitation.expired")}</th>
-                          <th>{t("moderator.invitation.link")}</th>
-                          <th>{t("moderator.invitation.actions")}</th>
+                          <th>{t("orgConsole.invitation.email")}</th>
+                          <th>{t("orgConsole.invitation.expires")}</th>
+                          <th>{t("orgConsole.invitation.accepted")}</th>
+                          <th>{t("orgConsole.invitation.expired")}</th>
+                          <th>{t("orgConsole.invitation.link")}</th>
+                          <th>{t("orgConsole.invitation.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -793,7 +793,7 @@ const Moderator = ({ currentOrganization }) => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                {t("moderator.invitation.linkText")}
+                                {t("orgConsole.invitation.linkText")}
                               </a>
                             </td>
                             <td>
@@ -835,8 +835,8 @@ const Moderator = ({ currentOrganization }) => {
   );
 };
 
-Moderator.propTypes = {
+OrgConsole.propTypes = {
   currentOrganization: PropTypes.string.isRequired,
 };
 
-export default Moderator;
+export default OrgConsole;

@@ -117,7 +117,7 @@ const Navbar = ({
   currentUser,
   gravatarUrl,
   showAdminBoard,
-  showModeratorBoard,
+  showOrgConsole,
   theme,
   toggleTheme,
   logOut,
@@ -593,10 +593,10 @@ const Navbar = ({
                     </li>
                   </>
                 )}
-                {showModeratorBoard && (
+                {showOrgConsole && (
                   <li>
                     <Link
-                      to="/moderator"
+                      to="/org-console"
                       className="dropdown-item d-flex align-items-center"
                     >
                       <span
@@ -893,7 +893,7 @@ Navbar.propTypes = {
   }),
   gravatarUrl: PropTypes.string,
   showAdminBoard: PropTypes.bool,
-  showModeratorBoard: PropTypes.bool,
+  showOrgConsole: PropTypes.bool,
   theme: PropTypes.string.isRequired,
   toggleTheme: PropTypes.func.isRequired,
   logOut: PropTypes.func.isRequired,

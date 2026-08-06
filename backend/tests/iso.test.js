@@ -40,7 +40,7 @@ describe('ISO API', () => {
     });
     const userRole = await db.role.findOne({ where: { name: 'user' } });
     await user.setRoles([userRole]);
-    await db.UserOrg.create({ user_id: user.id, organization_id: org.id, role: 'user' });
+    await db.UserOrg.create({ user_id: user.id, organization_id: org.id, role: 'member' });
     authToken = jwt.sign({ id: user.id }, 'test-secret', { expiresIn: '1h' });
 
     // Create Admin
@@ -52,7 +52,7 @@ describe('ISO API', () => {
     });
     const adminRole = await db.role.findOne({ where: { name: 'admin' } });
     await admin.setRoles([adminRole]);
-    await db.UserOrg.create({ user_id: admin.id, organization_id: org.id, role: 'admin' });
+    await db.UserOrg.create({ user_id: admin.id, organization_id: org.id, role: 'owner' });
     adminToken = jwt.sign({ id: admin.id }, 'test-secret', { expiresIn: '1h' });
 
     // Create ISO

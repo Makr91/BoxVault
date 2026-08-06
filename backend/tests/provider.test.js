@@ -57,7 +57,7 @@ describe('Provider API', () => {
     await db.UserOrg.create({
       user_id: user.id,
       organization_id: org.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -80,7 +80,7 @@ describe('Provider API', () => {
     await db.UserOrg.create({
       user_id: regularUser.id,
       organization_id: org.id,
-      role: 'user', // Standard user role
+      role: 'member', // Standard member role
     });
     regularToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
 
@@ -945,7 +945,7 @@ describe('Provider API', () => {
     it('create should handle existing directory (create.js)', async () => {
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'admin' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.providers, 'create').mockResolvedValue({ id: 1, name: 'test-provider' });
 
@@ -976,7 +976,7 @@ describe('Provider API', () => {
     it('delete should return 404 if version not found (delete.js)', async () => {
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'admin' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue(null);
       await deleteProviderController(req, res);
       expect(res.status).toHaveBeenCalledWith(404);
@@ -985,7 +985,7 @@ describe('Provider API', () => {
     it('delete should log error if fs.rm fails (delete.js)', async () => {
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'admin' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.providers, 'findOne').mockResolvedValue({ id: 1, destroy: jest.fn() });
       jest.spyOn(db.architectures, 'findAll').mockResolvedValue([]);
@@ -1006,7 +1006,7 @@ describe('Provider API', () => {
     it('update should return 404 if version not found (update.js)', async () => {
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'admin' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue(null);
 
       await update(req, res);
@@ -1016,7 +1016,7 @@ describe('Provider API', () => {
     it('update should clean up old directory if it exists after rename (update.js)', async () => {
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'admin' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.providers, 'update').mockResolvedValue([1]);
       jest.spyOn(db.providers, 'findOne').mockResolvedValue({ name: 'new-name' });
@@ -1093,7 +1093,7 @@ describe('Provider API', () => {
         versions: [{ versionNumber: '1.0.0', providers: [] }],
       });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'user' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'member' });
       jest.spyOn(db.providers, 'findOne').mockResolvedValue(null);
 
       await findOne(req, res);
@@ -1103,7 +1103,7 @@ describe('Provider API', () => {
     it('delete should log error if fs.rm fails for architecture (delete.js)', async () => {
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'admin' });
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.providers, 'findOne').mockResolvedValue({ id: 1, destroy: jest.fn() });
       // Return one architecture to enter the loop

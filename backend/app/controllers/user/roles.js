@@ -21,7 +21,7 @@ const { user: User, role: Role } = db;
  *               type: array
  *               items:
  *                 type: string
- *               example: ["user", "moderator"]
+ *               example: ["user", "admin"]
  *       404:
  *         description: User not found
  *         content:

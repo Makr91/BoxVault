@@ -387,9 +387,9 @@
     "favorites": "Favorites",
     "help": "Help"
   },
-  "moderator": {
-    "pageTitle": "Moderator",
-    "title": "Moderator Panel",
+  "orgConsole": {
+    "pageTitle": "Org Console",
+    "title": "Organization Console",
     "orgNameRequired": "Organization name is required.",
     "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
     "orgEmailRequired": "Organization email is required.",

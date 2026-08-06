@@ -102,13 +102,13 @@ curl -X POST http://localhost:3000/api/auth/signout \
 ### Role Hierarchy
 
 1. **Admin** - Full system access
-2. **Moderator** - Organization management
+2. **Org Admin** - Organization management
 3. **User** - Basic access
 4. **Service Account** - API-only access
 
 ### Permission Matrix
 
-| Action                     | Admin | Moderator (org)    | User (org member)      | Service Account    |
+| Action                     | Admin | Org Admin          | Member                 | Service Account    |
 | -------------------------- | ----- | ------------------ | ---------------------- | ------------------ |
 | Create Organization        | ✓     | ✓                  | ✗                      | ✗                  |
 | Manage Users               | ✓     | ✓ (org only)       | ✗                      | ✗                  |
@@ -126,7 +126,7 @@ curl -X POST http://localhost:3000/api/auth/signout \
 
 - Users can create boxes in ANY organization they belong to (not just their primary organization)
 - Users can only modify/delete boxes they created
-- Moderators and admins can modify/delete ANY box within their organizations
+- Org admins and owners can modify/delete ANY box within their organizations
 - Service accounts are scoped to a specific organization at creation time
 
 ## Service Accounts

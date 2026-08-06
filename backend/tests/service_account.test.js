@@ -25,7 +25,7 @@ describe('Service Account API', () => {
 
   beforeAll(async () => {
     // Ensure roles exist
-    const roles = ['user', 'moderator', 'admin'].map(name => ({ name }));
+    const roles = ['user', 'admin'].map(name => ({ name }));
     await Role.bulkCreate(roles, { ignoreDuplicates: true });
 
     const password = await bcrypt.hash('password', 8);
@@ -70,7 +70,7 @@ describe('Service Account API', () => {
     await UserOrg.create({
       user_id: adminUser.id,
       organization_id: testOrg.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -78,7 +78,7 @@ describe('Service Account API', () => {
     await UserOrg.create({
       user_id: regularUser.id,
       organization_id: testOrg.id,
-      role: 'user',
+      role: 'member',
     });
 
     // Get Token for Admin

@@ -159,7 +159,7 @@ describe('Mail API', () => {
     await db.UserOrg.create({
       user_id: adminUser.id,
       organization_id: testOrg.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -176,7 +176,7 @@ describe('Mail API', () => {
     await db.UserOrg.create({
       user_id: regularUser.id,
       organization_id: testOrg.id,
-      role: 'user',
+      role: 'member',
       is_primary: true,
     });
 

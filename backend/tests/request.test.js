@@ -8,10 +8,10 @@ const { Request, organization: Organization, user: User, UserOrg, role: Role } =
 
 describe('Request API Integration Tests', () => {
   let adminToken;
-  let moderatorToken;
+  let orgAdminToken;
   let outsiderToken;
   let adminUser;
-  let moderatorUser;
+  let orgAdminUser;
   let regularUser;
   let outsiderUser;
   let testOrg;
@@ -20,7 +20,7 @@ describe('Request API Integration Tests', () => {
 
   beforeAll(async () => {
     // Ensure roles exist
-    const roles = ['user', 'moderator', 'admin'].map(name => ({ name }));
+    const roles = ['user', 'admin'].map(name => ({ name }));
     await Role.bulkCreate(roles, { ignoreDuplicates: true });
 
     const password = await bcrypt.hash('password', 8);
@@ -41,7 +41,7 @@ describe('Request API Integration Tests', () => {
     };
 
     adminUser = await createUser('ReqAdmin', 'admin');
-    moderatorUser = await createUser('ReqMod', 'moderator');
+    orgAdminUser = await createUser('ReqMod', 'user');
     regularUser = await createUser('ReqUser', 'user');
     outsiderUser = await createUser('ReqOut', 'user');
 
@@ -56,18 +56,18 @@ describe('Request API Integration Tests', () => {
     await UserOrg.create({
       user_id: adminUser.id,
       organization_id: testOrg.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
     await UserOrg.create({
-      user_id: moderatorUser.id,
+      user_id: orgAdminUser.id,
       organization_id: testOrg.id,
-      role: 'moderator',
+      role: 'admin',
     });
     await UserOrg.create({
       user_id: regularUser.id,
       organization_id: testOrg.id,
-      role: 'user',
+      role: 'member',
     });
 
     // Get Tokens
@@ -79,7 +79,7 @@ describe('Request API Integration Tests', () => {
     };
 
     adminToken = await getToken(adminUser);
-    moderatorToken = await getToken(moderatorUser);
+    orgAdminToken = await getToken(orgAdminUser);
     outsiderToken = await getToken(outsiderUser);
   });
 
@@ -89,7 +89,7 @@ describe('Request API Integration Tests', () => {
     await UserOrg.destroy({ where: { organization_id: testOrg.id } });
     await testOrg.destroy();
     await adminUser.destroy();
-    await moderatorUser.destroy();
+    await orgAdminUser.destroy();
     await regularUser.destroy();
     await outsiderUser.destroy();
   });
@@ -147,10 +147,10 @@ describe('Request API Integration Tests', () => {
   });
 
   describe('GET /api/organization/:organization/requests', () => {
-    it('should return requests for moderator', async () => {
+    it('should return requests for orgAdmin', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}/requests`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
       expect(res.statusCode).toBe(200);
     });
 
@@ -158,7 +158,7 @@ describe('Request API Integration Tests', () => {
       jest.spyOn(Request, 'getPendingRequests').mockRejectedValueOnce(new Error('DB Error'));
       const res = await request(app)
         .get(`/api/organization/${orgName}/requests`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
       expect(res.statusCode).toBe(500);
     });
   });
@@ -189,8 +189,8 @@ describe('Request API Integration Tests', () => {
     it('should approve request', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${requestId}/approve`)
-        .set('x-access-token', moderatorToken)
-        .send({ assignedRole: 'user' });
+        .set('x-access-token', orgAdminToken)
+        .send({ assignedRole: 'member' });
       expect(res.statusCode).toBe(200);
 
       // Cleanup membership
@@ -201,8 +201,8 @@ describe('Request API Integration Tests', () => {
       jest.spyOn(Request, 'approveRequest').mockRejectedValueOnce(new Error('DB Error'));
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${requestId}/approve`)
-        .set('x-access-token', moderatorToken)
-        .send({ assignedRole: 'user' });
+        .set('x-access-token', orgAdminToken)
+        .send({ assignedRole: 'member' });
       expect(res.statusCode).toBe(500);
     });
   });
@@ -219,7 +219,7 @@ describe('Request API Integration Tests', () => {
     it('should deny request', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${requestId}/deny`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
       expect(res.statusCode).toBe(200);
     });
 
@@ -227,7 +227,7 @@ describe('Request API Integration Tests', () => {
       jest.spyOn(Request, 'denyRequest').mockRejectedValueOnce(new Error('DB Error'));
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${requestId}/deny`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
       expect(res.statusCode).toBe(500);
     });
   });
@@ -312,7 +312,7 @@ describe('Request API Integration Tests', () => {
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${req.id}/approve`)
-        .set('x-access-token', moderatorToken)
+        .set('x-access-token', orgAdminToken)
         .send({ assignedRole: 'invalid_role' });
 
       expect(res.statusCode).toBe(400);
@@ -324,7 +324,7 @@ describe('Request API Integration Tests', () => {
     it('should return 404 when approving non-existent request', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/999999/approve`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
       expect(res.statusCode).toBe(404);
     });
 
@@ -346,7 +346,7 @@ describe('Request API Integration Tests', () => {
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${req.id}/approve`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
 
       expect(res.statusCode).toBe(404);
 
@@ -369,12 +369,12 @@ describe('Request API Integration Tests', () => {
         user_id: tempUser.id,
         organization_id: testOrg.id,
         status: 'approved',
-        requested_role: 'user',
+        requested_role: 'member',
       });
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${req.id}/approve`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
 
       expect(res.statusCode).toBe(400);
 
@@ -385,7 +385,7 @@ describe('Request API Integration Tests', () => {
     it('should return 404 when denying non-existent request', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/999999/deny`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
       expect(res.statusCode).toBe(404);
     });
 
@@ -403,12 +403,12 @@ describe('Request API Integration Tests', () => {
         user_id: tempUser.id,
         organization_id: testOrg.id,
         status: 'approved',
-        requested_role: 'user',
+        requested_role: 'member',
       });
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${req.id}/deny`)
-        .set('x-access-token', moderatorToken);
+        .set('x-access-token', orgAdminToken);
 
       expect(res.statusCode).toBe(400);
 
@@ -438,7 +438,7 @@ describe('Request API Integration Tests', () => {
         .spyOn(Request.prototype, 'update')
         .mockRejectedValue(new Error('Update Error'));
 
-      await expect(Request.approveRequest(req.id, moderatorUser.id)).rejects.toThrow(
+      await expect(Request.approveRequest(req.id, orgAdminUser.id)).rejects.toThrow(
         'Update Error'
       );
 
@@ -452,7 +452,7 @@ describe('Request API Integration Tests', () => {
 
     it('denyRequest should throw if request not found or not pending', async () => {
       // Test non-existent
-      await expect(Request.denyRequest(999999, moderatorUser.id)).rejects.toThrow(
+      await expect(Request.denyRequest(999999, orgAdminUser.id)).rejects.toThrow(
         'Request not found or already processed'
       );
 
@@ -461,10 +461,10 @@ describe('Request API Integration Tests', () => {
         user_id: outsiderUser.id,
         organization_id: testOrg.id,
         status: 'approved',
-        requested_role: 'user',
+        requested_role: 'member',
       });
 
-      await expect(Request.denyRequest(req.id, moderatorUser.id)).rejects.toThrow(
+      await expect(Request.denyRequest(req.id, orgAdminUser.id)).rejects.toThrow(
         'Request not found or already processed'
       );
 
@@ -473,7 +473,7 @@ describe('Request API Integration Tests', () => {
 
     it('approveRequest should throw if request not found or not pending', async () => {
       // Test non-existent
-      await expect(Request.approveRequest(999999, moderatorUser.id)).rejects.toThrow(
+      await expect(Request.approveRequest(999999, orgAdminUser.id)).rejects.toThrow(
         'Request not found or already processed'
       );
     });

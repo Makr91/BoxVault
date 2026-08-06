@@ -46,7 +46,7 @@ describe('Version API', () => {
     await db.UserOrg.create({
       user_id: testUser.id,
       organization_id: org.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -75,7 +75,7 @@ describe('Version API', () => {
     await db.UserOrg.create({
       user_id: regularUser.id,
       organization_id: org.id,
-      role: 'user',
+      role: 'member',
       is_primary: false,
     });
     regularUserToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });

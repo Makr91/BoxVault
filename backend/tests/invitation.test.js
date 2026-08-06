@@ -149,12 +149,11 @@ describe('Invitation API', () => {
       verified: true,
     });
     const adminRole = await db.role.findOne({ where: { name: 'admin' } });
-    const moderatorRole = await db.role.findOne({ where: { name: 'moderator' } });
-    await adminUser.setRoles([adminRole, moderatorRole]);
+    await adminUser.setRoles([adminRole]);
     await db.UserOrg.create({
       user_id: adminUser.id,
       organization_id: testOrg.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -170,7 +169,7 @@ describe('Invitation API', () => {
     await db.UserOrg.create({
       user_id: regularUser.id,
       organization_id: testOrg.id,
-      role: 'user',
+      role: 'member',
       is_primary: true,
     });
 
@@ -215,7 +214,7 @@ describe('Invitation API', () => {
         .send({
           email: inviteeEmail,
           organizationName: orgName,
-          inviteRole: 'user',
+          inviteRole: 'member',
         });
 
       expect(res.statusCode).toBe(200);
@@ -250,7 +249,7 @@ describe('Invitation API', () => {
         .send({
           email: 'test@test.com',
           organizationName: orgName,
-          inviteRole: 'admin', // Only user/moderator allowed
+          inviteRole: 'owner', // Only member/admin allowed
         });
       expect(res.statusCode).toBe(400);
     });
@@ -346,7 +345,7 @@ describe('Invitation API', () => {
   });
 
   describe('GET /api/invitations/active/:organization', () => {
-    it('should list active invitations for an organization moderator/admin', async () => {
+    it('should list active invitations for an organization admin/owner', async () => {
       const res = await request(app)
         .get(`/api/invitations/active/${orgName}`)
         .set('x-access-token', adminToken);
@@ -424,7 +423,7 @@ describe('Invitation API', () => {
       findSpy.mockRestore();
     });
 
-    it('sendInvitation should default to user role', async () => {
+    it('sendInvitation should default to member role', async () => {
       req.body = { email: 'test@test.com', organizationName: orgName };
       // Mock organization find
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
@@ -434,7 +433,7 @@ describe('Invitation API', () => {
       await sendInvitation(req, res);
 
       expect(db.invitation.create).toHaveBeenCalledWith(
-        expect.objectContaining({ invited_role: 'user' })
+        expect.objectContaining({ invited_role: 'member' })
       );
     });
 

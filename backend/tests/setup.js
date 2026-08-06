@@ -162,8 +162,7 @@ beforeAll(async () => {
 
     // Create test roles idempotently to prevent unique constraint errors
     await db.role.findOrCreate({ where: { id: 1 }, defaults: { name: 'user' } });
-    await db.role.findOrCreate({ where: { id: 2 }, defaults: { name: 'moderator' } });
-    await db.role.findOrCreate({ where: { id: 3 }, defaults: { name: 'admin' } });
+    await db.role.findOrCreate({ where: { id: 2 }, defaults: { name: 'admin' } });
 
     // Create test organization idempotently
     const [testOrg] = await db.organization.findOrCreate({
@@ -191,11 +190,11 @@ beforeAll(async () => {
     // Assign user to organization with a role
     await db.UserOrg.findOrCreate({
       where: { user_id: testUser.id, organization_id: testOrg.id },
-      defaults: { role: 'admin', is_primary: true },
+      defaults: { role: 'owner', is_primary: true },
     });
 
     // Assign global roles to test user
-    await testUser.setRoles([1, 2, 3]); // User, Moderator and Admin roles
+    await testUser.setRoles([1, 2]); // User and Admin roles
   } catch (error) {
     console.error('Test database initialization failed:', error);
     throw error;

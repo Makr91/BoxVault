@@ -35,7 +35,7 @@ const UserCardActions = ({
           className="form-select form-select-sm w-auto"
           value={orgRole || "member"}
           onChange={(e) => onChangeRole(e.target.value)}
-          aria-label={t("moderator.users.roles")}
+          aria-label={t("orgConsole.users.roles")}
         >
           <option value="member">{t("roles.member")}</option>
           <option value="admin">{t("roles.admin")}</option>
@@ -219,7 +219,7 @@ const UserCard = ({
 
           <div className="d-flex align-items-center text-muted small">
             <FaBox className="me-2" />
-            {t("moderator.users.boxes")}:{" "}
+            {t("orgConsole.users.boxes")}:{" "}
             <strong>{user.totalBoxes || 0}</strong>
           </div>
         </div>

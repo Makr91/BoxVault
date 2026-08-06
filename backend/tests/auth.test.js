@@ -274,7 +274,7 @@ describe('Authentication API', () => {
       await db.UserOrg.create({
         user_id: noPrimUser.id,
         organization_id: org.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
 
@@ -306,7 +306,7 @@ describe('Authentication API', () => {
       await db.UserOrg.create({
         user_id: user.id,
         organization_id: org.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
 
@@ -504,7 +504,7 @@ describe('Authentication API', () => {
       await db.UserOrg.create({
         user_id: testUserForRefresh.id,
         organization_id: org.id,
-        role: 'user',
+        role: 'member',
         is_primary: true,
       });
 
@@ -1040,7 +1040,7 @@ describe('Authentication API', () => {
         token: expiredToken,
         expires: new Date(Date.now() - 10000), // Expired
         organizationId: org.id,
-        invited_role: 'user',
+        invited_role: 'member',
       });
 
       const res = await request(app)
@@ -1081,7 +1081,7 @@ describe('Authentication API', () => {
         token: inviteToken,
         expires: new Date(Date.now() + 10000),
         organizationId: tempOrg.id,
-        invited_role: 'user',
+        invited_role: 'member',
       });
 
       // Mock Organization.findByPk to return null (simulating org not found even if ID is valid)
@@ -1113,7 +1113,7 @@ describe('Authentication API', () => {
         token,
         expires: new Date(Date.now() + 10000),
         organizationId: org.id,
-        invited_role: 'user',
+        invited_role: 'member',
         accepted: false,
       });
 
@@ -2647,7 +2647,7 @@ describe('Authentication API', () => {
           token: `token-${Date.now()}`,
           expires: new Date(Date.now() + 10000),
           organizationId: org.id,
-          invited_role: 'user',
+          invited_role: 'member',
         });
 
         const orgId = await externalUserHandler.determineUserOrganization(email, db, {
@@ -3782,7 +3782,7 @@ describe('Authentication API', () => {
           token: `token-${Date.now()}`,
           expires: new Date(Date.now() + 10000),
           organizationId: org.id,
-          invited_role: 'user',
+          invited_role: 'member',
         });
 
         const restore = updateConfig('auth', config => {

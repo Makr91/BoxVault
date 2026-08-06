@@ -150,7 +150,7 @@ curl -X POST https://boxvault.example.com/api/organization/otherorg/box \
 
 - Any organization member can create boxes
 - You can only update/delete boxes you created
-- Moderators and admins can update/delete any box in their organizations
+- Org admins and owners can update/delete any box in their organizations
 
 ### Create Box Version
 

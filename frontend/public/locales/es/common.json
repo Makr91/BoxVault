@@ -614,9 +614,9 @@
     "favorites": "Favoritos",
     "help": "Ayuda"
   },
-  "moderator": {
-    "pageTitle": "Moderador",
-    "title": "Panel de Moderador",
+  "orgConsole": {
+    "pageTitle": "Consola de Org",
+    "title": "Consola de la Organización",
     "orgNameRequired": "El nombre de la organización es obligatorio.",
     "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos.",
     "orgEmailRequired": "El correo de la organización es obligatorio.",

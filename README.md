@@ -19,7 +19,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 - **Box Management**: Create, update, and delete boxes with version control.
 - **Organization Management**: Manage users and roles within organizations.
 - **Version Control**: Track and manage different versions of VM templates.
-- **Role-Based Access**: Admin, moderator, and provider roles with specific permissions.
+- **Role-Based Access**: Platform admin plus per-organization owner, admin, and member roles with specific permissions.
 - **Public and Private Boxes**: Control visibility of boxes within the organization.
 - **Architecture Management**: Manage architectures and providers for different versions.
 

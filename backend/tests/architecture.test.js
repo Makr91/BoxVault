@@ -53,7 +53,7 @@ describe('Architecture API', () => {
     await db.UserOrg.create({
       user_id: user.id,
       organization_id: org.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -75,7 +75,7 @@ describe('Architecture API', () => {
     await db.UserOrg.create({
       user_id: regularUser.id,
       organization_id: org.id,
-      role: 'user',
+      role: 'member',
       is_primary: false,
     });
     const regAuth = await request(app)
@@ -1335,8 +1335,8 @@ describe('Architecture API', () => {
       jest.restoreAllMocks();
     });
 
-    it('should handle permission denied with non-owner non-moderator (create.js line 103)', async () => {
-      // Create a user who is NOT owner and NOT moderator/admin
+    it('should handle permission denied with non-owner non-admin (create.js line 103)', async () => {
+      // Create a user who is NOT the box owner and NOT org admin/owner
       const outsider = await db.user.create({
         username: `outsider-create-${uniqueId}`,
         email: `outsider-create-${uniqueId}@example.com`,

@@ -61,11 +61,11 @@ describe('File API', () => {
       access_mode: 'private',
     });
 
-    // Add user to Org as Admin
+    // Add user to Org as Owner
     await UserOrg.create({
       user_id: testUser.id,
       organization_id: testOrg.id,
-      role: 'admin',
+      role: 'owner',
       is_primary: true,
     });
 
@@ -834,7 +834,7 @@ describe('File API', () => {
       await UserOrg.create({
         user_id: regularMember.id,
         organization_id: testOrg.id,
-        role: 'user',
+        role: 'member',
         is_primary: false,
       });
       regularMemberToken = jwt.sign({ id: regularMember.id }, 'test-secret', testJwtOpts);
@@ -1552,7 +1552,7 @@ describe('File API', () => {
       await UserOrg.create({
         user_id: regUser.id,
         organization_id: testOrg.id,
-        role: 'user',
+        role: 'member',
       });
       const regToken = jwt.sign({ id: regUser.id }, 'test-secret', testJwtOpts);
 
