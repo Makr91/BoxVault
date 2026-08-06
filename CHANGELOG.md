@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.46.0](https://github.com/Makr91/BoxVault/compare/v0.45.1...v0.46.0) (2026-08-06)
+
+
+### Features
+
+* implementing SCIM ([c8054af](https://github.com/Makr91/BoxVault/commit/c8054afcb81da7458b69f357ef1480daab82b647))
+
+
+### Bug Fixes
+
+* import order after org-console rename ([a5c1fa9](https://github.com/Makr91/BoxVault/commit/a5c1fa95a76efb6dc15ccba96ce78458a6940477))
+* renaming moderators to admins and fixing naming alignment ([22060ee](https://github.com/Makr91/BoxVault/commit/22060ee1ba484771d19b1b7d155ae9ffce55c7b5))
+* some linting items to attend to ([06271c5](https://github.com/Makr91/BoxVault/commit/06271c53c015d8dc823794c59825538684eda434))
+
 ## [0.45.1](https://github.com/Makr91/BoxVault/compare/v0.45.0...v0.45.1) (2026-07-21)
 
 
