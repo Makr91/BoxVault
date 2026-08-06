@@ -25,10 +25,18 @@ const ORG_CODE_PATTERN = /^[0-9A-F]{6}$/;
  * @returns {string}
  */
 const slugifyOrgName = (name, externalOrgId) => {
-  const slug = (name || '')
-    .trim()
-    .replace(/[^A-Za-z0-9.-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  let slug = (name || '').trim().replace(/[^A-Za-z0-9.-]+/g, '-');
+  // Trim leading/trailing hyphens without regex: `-+$`-style patterns backtrack
+  // polynomially on adversarial upstream names.
+  let start = 0;
+  let end = slug.length;
+  while (start < end && slug[start] === '-') {
+    start += 1;
+  }
+  while (end > start && slug[end - 1] === '-') {
+    end -= 1;
+  }
+  slug = slug.slice(start, end);
   return slug || `org-${externalOrgId.slice(0, 8)}`;
 };
 

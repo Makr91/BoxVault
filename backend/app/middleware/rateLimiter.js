@@ -1,4 +1,4 @@
-import { rateLimit } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import { getRateLimitConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 
