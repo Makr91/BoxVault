@@ -17,6 +17,21 @@ export default (sequelize, Sequelize) => {
           key: 'id',
         },
       },
+      releaseNotes: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: 'release_notes',
+      },
+      deprecated: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      deprecationReason: {
+        type: Sequelize.STRING(512),
+        allowNull: true,
+        field: 'deprecation_reason',
+      },
     },
     {
       indexes: [

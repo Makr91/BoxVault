@@ -52,6 +52,25 @@ export default (sequelize, Sequelize) => {
         isUrl: true,
       },
     },
+    shortDescription: {
+      type: Sequelize.STRING,
+      allowNull: true,
+      field: 'short_description',
+    },
+    metadata: {
+      type: Sequelize.JSON,
+      allowNull: true,
+      comment: 'Structured box facts pushed by the build pipeline (whitelisted keys only)',
+    },
+    readme: {
+      type: Sequelize.TEXT,
+      allowNull: true,
+    },
+    artwork: {
+      type: Sequelize.STRING(64),
+      allowNull: true,
+      comment: "Stored artwork FILENAME inside the box storage directory (e.g. 'artwork.svg')",
+    },
   });
 
   Box.associate = function (models) {

@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { parseBoxContentFields } from './helpers.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
 
@@ -44,6 +45,19 @@ const { box: Box } = db;
  *                 type: boolean
  *                 description: Whether the box is publicly accessible
  *                 default: false
+ *               shortDescription:
+ *                 type: string
+ *                 maxLength: 255
+ *                 nullable: true
+ *                 description: Short one-line box description
+ *               readme:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Box README (markdown)
+ *               metadata:
+ *                 type: object
+ *                 nullable: true
+ *                 description: Structured box facts pushed by the build pipeline (whitelisted top-level keys only, unknown keys stripped silently)
  *     responses:
  *       200:
  *         description: Box created successfully
@@ -68,6 +82,11 @@ export const create = async (req, res) => {
   const { organization } = req.params;
   const { name, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
 
+  const { error: contentError, fields: contentFields } = parseBoxContentFields(req.body);
+  if (contentError) {
+    return res.status(400).send({ message: contentError });
+  }
+
   try {
     const newFilePath = getSecureBoxPath(organization, name);
 
@@ -87,6 +106,9 @@ export const create = async (req, res) => {
       githubRepo: githubRepo || null,
       workflowFile: workflowFile || null,
       cicdUrl: cicdUrl || null,
+      shortDescription: contentFields.shortDescription ?? null,
+      readme: contentFields.readme ?? null,
+      metadata: contentFields.metadata ?? null,
     };
 
     // Save Box in the database

@@ -54,6 +54,28 @@ const extractAvatarUrl = body => {
 };
 
 /**
+ * Extract the core `entitlements` attribute (RFC 7643 §4.1.2): keep
+ * value/type/display per entry (string `value` is required — entries without
+ * one are dropped, other keys are dropped). Absent, non-array, or empty means
+ * no entitlements (null) — the same full-desired-state semantics as photos.
+ * @param {Object} body - SCIM User resource
+ * @returns {Object[]|null}
+ */
+const extractEntitlements = body => {
+  if (!Array.isArray(body.entitlements)) {
+    return null;
+  }
+  const entries = body.entitlements
+    .filter(e => e && typeof e.value === 'string' && e.value)
+    .map(e => ({
+      value: e.value,
+      ...(typeof e.type !== 'undefined' ? { type: e.type } : {}),
+      ...(typeof e.display !== 'undefined' ? { display: e.display } : {}),
+    }));
+  return entries.length ? entries : null;
+};
+
+/**
  * Normalize the pushed SCIM User resource into the desired BoxVault state.
  * @param {Object} body - SCIM User resource
  * @returns {Object|null} Desired state, or null when no email can be derived
@@ -77,6 +99,7 @@ const parseScimUserState = body => {
         ? extension.primaryOrgUuid
         : null,
     avatarUrl: extractAvatarUrl(body),
+    entitlements: extractEntitlements(body),
   };
 };
 
@@ -97,8 +120,9 @@ const toScimUser = (req, user, externalId, primaryOrgUuid) => ({
   userName: user.username,
   active: !user.suspended,
   emails: [{ value: user.email, primary: true }],
-  // photos is rendered only when an avatar is stored (RFC 7643: no value = attribute absent)
+  // photos/entitlements are rendered only when stored (RFC 7643: no value = attribute absent)
   ...(user.avatar_url ? { photos: [{ value: user.avatar_url, type: 'photo' }] } : {}),
+  ...(user.entitlements ? { entitlements: user.entitlements } : {}),
   [SCIM_USER_EXTENSION]: {
     emailVerified: user.verified,
     primaryOrgUuid: primaryOrgUuid || null,
@@ -167,6 +191,7 @@ const provisionScimUser = async (externalId, issuer, state) => {
       externalId,
       linkedAt: new Date(),
       avatar_url: state.avatarUrl,
+      entitlements: state.entitlements,
     });
   }
   await Credential.create({
@@ -205,6 +230,9 @@ const buildUserPatch = (user, state) => {
   if (user.avatar_url !== state.avatarUrl) {
     patch.avatar_url = state.avatarUrl;
   }
+  if (JSON.stringify(user.entitlements || null) !== JSON.stringify(state.entitlements)) {
+    patch.entitlements = state.entitlements;
+  }
   return patch;
 };
 
@@ -227,7 +255,16 @@ const applyPrimaryOrgPointer = async (user, issuer, primaryOrgUuid, patch) => {
     return;
   }
   if (user.primary_organization_id !== primaryOrg.id) {
-    patch.primary_organization_id = primaryOrg.id;
+    // The pushed primary is authoritative only among this issuer's orgs: the
+    // overall pointer may be set only when unset or already on one of this
+    // issuer's orgs — never stolen from a locally-created org or another
+    // issuer's org.
+    const currentPrimary = user.primary_organization_id
+      ? await Organization.findByPk(user.primary_organization_id)
+      : null;
+    if (!currentPrimary || currentPrimary.external_issuer === issuer) {
+      patch.primary_organization_id = primaryOrg.id;
+    }
   }
   const membership = await UserOrg.findUserOrgRole(user.id, primaryOrg.id);
   if (membership && !membership.is_primary) {

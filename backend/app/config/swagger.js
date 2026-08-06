@@ -190,13 +190,36 @@ const options = {
             },
             shortDescription: {
               type: 'string',
-              description: 'Short description',
+              maxLength: 255,
+              description: 'Short one-line box description',
               example: 'Ubuntu 22.04 LTS',
               nullable: true,
             },
-            isPrivate: {
+            readme: {
+              type: 'string',
+              description: 'Box README (markdown)',
+              nullable: true,
+            },
+            metadata: {
+              type: 'object',
+              description:
+                'Structured box facts pushed by the build pipeline (whitelisted top-level keys only)',
+              nullable: true,
+            },
+            artwork: {
+              type: 'string',
+              description: "Stored artwork filename (e.g. 'artwork.svg')",
+              example: 'artwork.svg',
+              nullable: true,
+            },
+            published: {
               type: 'boolean',
-              description: 'Whether the box is private to the organization',
+              description: 'Whether the box is published (visible beyond its owner)',
+              example: true,
+            },
+            isPublic: {
+              type: 'boolean',
+              description: 'Whether the box is publicly accessible without authentication',
               example: false,
             },
             organizationId: {
@@ -240,6 +263,22 @@ const options = {
               type: 'string',
               description: 'Version description',
               example: 'Initial release with basic Ubuntu setup',
+              nullable: true,
+            },
+            releaseNotes: {
+              type: 'string',
+              description: 'Version release notes',
+              nullable: true,
+            },
+            deprecated: {
+              type: 'boolean',
+              description: 'Whether the version is deprecated',
+              example: false,
+            },
+            deprecationReason: {
+              type: 'string',
+              maxLength: 512,
+              description: 'Why the version is deprecated',
               nullable: true,
             },
             boxId: {

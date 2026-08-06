@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { UserOrg, service_account: ServiceAccount, organization: Organization } = db;
+const { UserOrg, service_account: ServiceAccount, organization: Organization, user: User } = db;
 
 /**
  * @swagger
@@ -103,7 +103,13 @@ const getUserOrganizations = async (req, res) => {
       return res.send(organizations);
     }
 
-    const userOrganizations = await UserOrg.getUserOrganizations(userId);
+    // The "Primary" badge reflects the ONE overall pointer on the user row,
+    // not the per-membership is_primary flags.
+    const [userOrganizations, userRow] = await Promise.all([
+      UserOrg.getUserOrganizations(userId),
+      User.findByPk(userId, { attributes: ['primary_organization_id'] }),
+    ]);
+    const primaryOrganizationId = userRow?.primary_organization_id ?? null;
 
     // Format response for frontend
     const organizations = userOrganizations.map(userOrg => ({
@@ -118,7 +124,7 @@ const getUserOrganizations = async (req, res) => {
         accessMode: userOrg.organization.access_mode,
       },
       role: userOrg.role,
-      isPrimary: userOrg.is_primary,
+      isPrimary: userOrg.organization.id === primaryOrganizationId,
       joinedAt: userOrg.joined_at,
     }));
 

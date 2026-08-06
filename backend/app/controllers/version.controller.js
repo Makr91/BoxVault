@@ -20,6 +20,17 @@
  *         boxId:
  *           type: integer
  *           description: ID of the box this version belongs to
+ *         releaseNotes:
+ *           type: string
+ *           nullable: true
+ *           description: Version release notes (markdown)
+ *         deprecated:
+ *           type: boolean
+ *           description: Whether this version is deprecated
+ *         deprecationReason:
+ *           type: string
+ *           nullable: true
+ *           description: Why this version is deprecated
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -33,6 +44,9 @@
  *         versionNumber: "1.0.0"
  *         description: "Initial release"
  *         boxId: 1
+ *         releaseNotes: "First stable build"
+ *         deprecated: false
+ *         deprecationReason: null
  *         createdAt: "2023-01-01T00:00:00.000Z"
  *         updatedAt: "2023-01-01T00:00:00.000Z"
  *
@@ -95,9 +109,23 @@
  *         description:
  *           type: string
  *           description: Updated description of the version
+ *         release_notes:
+ *           type: string
+ *           nullable: true
+ *           description: Version release notes (absent = unchanged)
+ *         deprecated:
+ *           type: boolean
+ *           description: Whether the version is deprecated. Setting true requires a non-empty deprecation_reason (in this request or already stored).
+ *         deprecation_reason:
+ *           type: string
+ *           maxLength: 512
+ *           nullable: true
+ *           description: Why the version is deprecated (absent = unchanged)
  *       example:
  *         versionNumber: "1.0.1"
  *         description: "Bug fixes and improvements"
+ *         release_notes: "Fixed the resize race on first boot"
+ *         deprecated: false
  */
 
 // version.controller.js

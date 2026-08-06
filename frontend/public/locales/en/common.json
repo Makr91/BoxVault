@@ -626,7 +626,13 @@
     "updatedAt": "Updated At",
     "actions": "Actions",
     "providers": "Providers for Version: {{version}}",
-    "add": "Add Version"
+    "add": "Add Version",
+    "releaseNotes": "Release notes",
+    "editReleaseNotes": "Edit release notes",
+    "deprecated": "Deprecated",
+    "deprecate": "Deprecate",
+    "undeprecate": "Undeprecate",
+    "deprecationReason": "Deprecation reason"
   },
   "architecture": {
     "deleted": "Architecture deleted successfully!",
@@ -694,6 +700,35 @@
     "removeAllError": "Error removing all boxes.",
     "filter": "Filter",
     "noBoxes": "No boxes found",
+    "facts": {
+      "title": "Box facts",
+      "os": "OS",
+      "type": "Type",
+      "username": "Username",
+      "password": "Password",
+      "communicator": "Communicator",
+      "cpus": "CPUs",
+      "memory": "Memory",
+      "disks": "Disks",
+      "providers": "Providers",
+      "built": "Built",
+      "driver": "Driver",
+      "desktop": "Desktop",
+      "server": "Server",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "useThisBox": {
+      "title": "Use this box",
+      "version": "Version",
+      "copied": "Copied!",
+      "option2": "Option 2: use a Vagrantfile pinned to this version",
+      "starterKit": "Starter kit (self-bootstrapping Vagrantfile + Hosts.yml)",
+      "starterStep1": "Step 1: add the box"
+    },
+    "readmeTitle": "README",
+    "downloadsFor": "Downloads for {{version}}",
+    "latestDeprecated": "The latest version ({{version}}) of this box is deprecated.",
     "organization": {
       "errors": {
         "retrievePublic": "Error retrieving public boxes.",
@@ -717,11 +752,17 @@
         "createNewBox": "Create New Box",
         "templateList": "Template List"
       },
+      "group": {
+        "boxCount": "{{count}} box",
+        "boxCount_plural": "{{count}} boxes"
+      },
       "table": {
         "box": "Box",
+        "os": "OS",
         "status": "Status",
         "public": "Public",
         "created": "Created",
+        "released": "Latest release",
         "downloads": "Downloads",
         "versions": "# Versions",
         "providers": "Providers",

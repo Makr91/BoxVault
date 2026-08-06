@@ -115,7 +115,8 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
       attributes: ['id'],
       transaction,
     });
-    const staleOrgIds = externalOrgs.map(o => o.id).filter(id => !seenOrgIds.includes(id));
+    const issuerOrgIds = externalOrgs.map(o => o.id);
+    const staleOrgIds = issuerOrgIds.filter(id => !seenOrgIds.includes(id));
 
     if (staleOrgIds.length) {
       await UserOrg.destroy({
@@ -127,8 +128,13 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
       });
     }
 
-    // Denormalized primary pointer.
-    if (primaryOrgId && user.primary_organization_id !== primaryOrgId) {
+    // Denormalized primary pointer. The claim's primary flag is authoritative
+    // only among this issuer's orgs: the pointer may be set only when unset or
+    // already on one of this issuer's orgs — never stolen from a
+    // locally-created org or another issuer's org.
+    const pointerReassignable =
+      !user.primary_organization_id || issuerOrgIds.includes(user.primary_organization_id);
+    if (primaryOrgId && pointerReassignable && user.primary_organization_id !== primaryOrgId) {
       await user.update({ primary_organization_id: primaryOrgId }, { transaction });
     }
 

@@ -351,6 +351,7 @@ const OrganizationUserManager = () => {
                       key={user.id}
                       user={user}
                       currentUser={currentUser}
+                      orgRole={user.orgRole}
                       onSuspend={() =>
                         handleSuspendOrResumeUser(user.id, false)
                       }

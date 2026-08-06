@@ -59,7 +59,9 @@ export const findAllWithUsers = async (req, res) => {
         {
           model: User,
           as: 'members',
-          through: { attributes: [] },
+          // Junction role = the user's role IN THIS ORG (distinct from the
+          // global `roles` include below)
+          through: { attributes: ['role'] },
           include: [
             {
               model: Role,
@@ -86,10 +88,11 @@ export const findAllWithUsers = async (req, res) => {
       return {
         ...org.toJSON(),
         members: org.members.map(user => {
-          const { password, ...userWithoutPassword } = user.toJSON();
+          const { password, UserOrg: membership, ...userWithoutPassword } = user.toJSON();
           void password;
           return {
             ...userWithoutPassword,
+            orgRole: membership?.role || null,
             totalBoxes: countOrgBoxes(user),
           };
         }),

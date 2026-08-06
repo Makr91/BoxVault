@@ -20,21 +20,24 @@ const INVITE_SCOPE = 'org:invite';
 // auth YAML (auth.oidc.s2s_client_id / s2s_client_secret).
 const DEFAULT_S2S_CLIENT_ID = 'boxvault_s2s';
 
-// issuer -> { token, expiresAt } (ms epoch). Tokens are short-lived; refresh
-// with a small safety margin instead of per-request round-trips.
+// `issuer scope` -> { token, expiresAt } (ms epoch). Tokens are short-lived;
+// refresh with a small safety margin instead of per-request round-trips.
 const tokenCache = new Map();
 const EXPIRY_MARGIN_MS = 30 * 1000;
 
 /**
  * Get (or mint) a client_credentials access token for the auth server behind
  * the given issuer, using the dedicated s2s client credentials against the
- * issuer's standard token endpoint.
+ * issuer's standard token endpoint. The scope is always sent explicitly and
+ * tokens are cached per (issuer, scope) pair.
  * @param {string} issuer - The org's external_issuer
- * @returns {Promise<string>} Bearer access token with the org:invite scope
+ * @param {string} scope - OAuth scope to request (e.g. org:invite)
+ * @returns {Promise<string>} Bearer access token carrying the requested scope
  * @throws {Error} When no enabled provider matches or the grant fails
  */
-const getDelegationToken = async issuer => {
-  const cached = tokenCache.get(issuer);
+const getS2sToken = async (issuer, scope) => {
+  const cacheKey = `${issuer} ${scope}`;
+  const cached = tokenCache.get(cacheKey);
   if (cached && cached.expiresAt - EXPIRY_MARGIN_MS > Date.now()) {
     return cached.token;
   }
@@ -53,13 +56,15 @@ const getDelegationToken = async issuer => {
   const clientId = authConfig.auth?.oidc?.s2s_client_id?.value || DEFAULT_S2S_CLIENT_ID;
   const clientSecret = authConfig.auth?.oidc?.s2s_client_secret?.value;
   if (!clientSecret) {
-    throw new Error('auth.oidc.s2s_client_secret is not configured; cannot delegate invites');
+    throw new Error(
+      'auth.oidc.s2s_client_secret is not configured; cannot mint service-to-service tokens'
+    );
   }
 
   const tokenEndpoint = oidcConfig.serverMetadata().token_endpoint;
   const response = await axios.post(
     tokenEndpoint,
-    new URLSearchParams({ grant_type: 'client_credentials', scope: INVITE_SCOPE }).toString(),
+    new URLSearchParams({ grant_type: 'client_credentials', scope }).toString(),
     {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       auth: { username: clientId, password: clientSecret },
@@ -67,14 +72,15 @@ const getDelegationToken = async issuer => {
   );
 
   const expiresInSeconds = Number(response.data?.expires_in) || 60;
-  tokenCache.set(issuer, {
+  tokenCache.set(cacheKey, {
     token: response.data.access_token,
     expiresAt: Date.now() + expiresInSeconds * 1000,
   });
 
-  log.auth.info('Invite delegation: minted client_credentials token', {
+  log.auth.info('S2S delegation: minted client_credentials token', {
     provider: providerName,
     clientId,
+    scope,
     expiresInSeconds,
   });
   return response.data.access_token;
@@ -127,7 +133,7 @@ const resolveInviterUuid = async (userId, issuer) => {
  */
 const createExternalInvite = async (organization, email, role, invitedByUserUuid) => {
   const issuer = organization.external_issuer;
-  const token = await getDelegationToken(issuer);
+  const token = await getS2sToken(issuer, INVITE_SCOPE);
   const response = await axios.post(
     inviteApiBase(issuer),
     {
@@ -150,7 +156,7 @@ const createExternalInvite = async (organization, email, role, invitedByUserUuid
  */
 const listExternalInvites = async organization => {
   const issuer = organization.external_issuer;
-  const token = await getDelegationToken(issuer);
+  const token = await getS2sToken(issuer, INVITE_SCOPE);
   const response = await axios.get(inviteApiBase(issuer), {
     params: { org_uuid: organization.external_org_id },
     headers: { Authorization: `Bearer ${token}` },
@@ -172,11 +178,17 @@ const listExternalInvites = async organization => {
  */
 const deleteExternalInvite = async (organization, inviteId) => {
   const issuer = organization.external_issuer;
-  const token = await getDelegationToken(issuer);
+  const token = await getS2sToken(issuer, INVITE_SCOPE);
   await axios.delete(`${inviteApiBase(issuer)}/${encodeURIComponent(inviteId)}`, {
     params: { org_uuid: organization.external_org_id },
     headers: { Authorization: `Bearer ${token}` },
   });
 };
 
-export { createExternalInvite, listExternalInvites, deleteExternalInvite, resolveInviterUuid };
+export {
+  getS2sToken,
+  createExternalInvite,
+  listExternalInvites,
+  deleteExternalInvite,
+  resolveInviterUuid,
+};

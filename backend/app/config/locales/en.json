@@ -115,12 +115,18 @@
     },
     "delete": {
       "permissionDenied": "You can only delete boxes you own, or you need admin/owner role."
+    },
+    "artwork": {
+      "tooLarge": "Artwork file size cannot be larger than {{size}}MB!",
+      "unsupportedType": "Unsupported artwork type. Only SVG, PNG, and JPEG images are allowed.",
+      "notFound": "Artwork not found."
     }
   },
   "versions": {
     "versionNotFoundInBox": "Version {{versionNumber}} not found for box {{boxId}} in organization {{organization}}.",
     "versionNotFoundForBox": "Version {{versionNumber}} not found for box {{boxId}}.",
     "versionNotFound": "Version not found.",
+    "deprecationReasonRequired": "A non-empty deprecation reason is required when deprecating a version.",
     "unauthorized": "Unauthorized access to versions.",
     "findAll": {
       "error": "Some error occurred while retrieving versions."

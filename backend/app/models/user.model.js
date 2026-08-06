@@ -61,6 +61,13 @@ export default (sequelize, Sequelize) => {
       comment: 'Primary organization for this user (denormalized for performance)',
       field: 'primary_organization_id',
     },
+    entitlements: {
+      type: Sequelize.JSON,
+      allowNull: true,
+      comment:
+        'RFC 7643 core entitlements pushed by SCIM: array of {value,type,display}. Full desired state — absent attribute on push clears to null',
+      field: 'entitlements',
+    },
   });
 
   User.associate = function (models) {

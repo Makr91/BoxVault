@@ -3,7 +3,46 @@ import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { notifyVersionDeprecated } from './notifications.js';
 const { versions: Version, UserOrg } = db;
+
+/**
+ * Validate the optional release-notes/deprecation fields of a version update.
+ * A request setting deprecated:true must carry (or the version must already
+ * store) a non-empty deprecation reason.
+ * @param {Object} req - Express request (body + i18n)
+ * @param {Object} version - The version being updated
+ * @returns {string|null} 400 rejection message, or null when acceptable
+ */
+const getVersionContentRejection = (req, version) => {
+  const {
+    release_notes: releaseNotes,
+    deprecated,
+    deprecation_reason: deprecationReason,
+  } = req.body;
+
+  if (typeof releaseNotes !== 'undefined' && releaseNotes !== null) {
+    if (typeof releaseNotes !== 'string') {
+      return 'release_notes must be a string.';
+    }
+  }
+  if (typeof deprecated !== 'undefined' && typeof deprecated !== 'boolean') {
+    return 'deprecated must be a boolean.';
+  }
+  if (typeof deprecationReason !== 'undefined' && deprecationReason !== null) {
+    if (typeof deprecationReason !== 'string' || deprecationReason.length > 512) {
+      return 'deprecation_reason must be a string of at most 512 characters.';
+    }
+  }
+  if (deprecated === true) {
+    const effectiveReason =
+      typeof deprecationReason !== 'undefined' ? deprecationReason : version.deprecationReason;
+    if (typeof effectiveReason !== 'string' || !effectiveReason.trim()) {
+      return req.__('versions.deprecationReasonRequired');
+    }
+  }
+  return null;
+};
 
 /**
  * @swagger
@@ -68,7 +107,13 @@ const { versions: Version, UserOrg } = db;
  */
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
-  const { versionNumber: newVersionNumber, description } = req.body;
+  const {
+    versionNumber: newVersionNumber,
+    description,
+    release_notes: releaseNotes,
+    deprecated,
+    deprecation_reason: deprecationReason,
+  } = req.body;
   const oldFilePath = getSecureBoxPath(organization, boxId, versionNumber);
   // Use the new version number for the path if it's provided, otherwise use the old one.
   const newFilePath = getSecureBoxPath(organization, boxId, newVersionNumber || versionNumber);
@@ -98,6 +143,15 @@ export const update = async (req, res) => {
       });
     }
 
+    const contentRejection = getVersionContentRejection(req, version);
+    if (contentRejection) {
+      return res.status(400).send({ message: contentRejection });
+    }
+
+    // Only THIS request flipping deprecated false -> true triggers a hub
+    // notification below; re-saving an already-deprecated version does not.
+    const becomesDeprecated = deprecated === true && !version.deprecated;
+
     // Build the update payload carefully to avoid setting fields to null
     const updatePayload = {};
     if (newVersionNumber) {
@@ -105,6 +159,15 @@ export const update = async (req, res) => {
     }
     if (typeof description !== 'undefined') {
       updatePayload.description = description;
+    }
+    if (typeof releaseNotes !== 'undefined') {
+      updatePayload.releaseNotes = releaseNotes;
+    }
+    if (typeof deprecated !== 'undefined') {
+      updatePayload.deprecated = deprecated;
+    }
+    if (typeof deprecationReason !== 'undefined') {
+      updatePayload.deprecationReason = deprecationReason;
     }
 
     const updated = await version.update(updatePayload);
@@ -124,6 +187,18 @@ export const update = async (req, res) => {
       const updatedVersion = await Version.findOne({
         where: { versionNumber: newVersionNumber || versionNumber, boxId: box.id },
       });
+
+      // Fan out the deprecation to the org's notification hub (externally
+      // managed orgs only). Fire-and-forget — never blocks or fails the request.
+      if (becomesDeprecated) {
+        notifyVersionDeprecated(
+          organizationData,
+          box.name,
+          updatedVersion.versionNumber,
+          updatedVersion.deprecationReason
+        );
+      }
+
       return res.send(updatedVersion);
     }
 

@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { parseBoxContentFields } from './helpers.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
 
@@ -46,6 +47,19 @@ const { box: Box } = db;
  *               isPublic:
  *                 type: boolean
  *                 description: Whether the box is publicly accessible
+ *               shortDescription:
+ *                 type: string
+ *                 maxLength: 255
+ *                 nullable: true
+ *                 description: Short one-line box description (absent = unchanged)
+ *               readme:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Box README (markdown, absent = unchanged)
+ *               metadata:
+ *                 type: object
+ *                 nullable: true
+ *                 description: Structured box facts pushed by the build pipeline (whitelisted top-level keys only, unknown keys stripped silently, absent = unchanged)
  *     responses:
  *       200:
  *         description: Box updated successfully
@@ -79,6 +93,11 @@ export const update = async (req, res) => {
   } = req.body;
   const oldFilePath = getSecureBoxPath(organization, name);
   const newFilePath = getSecureBoxPath(organization, updatedName || name);
+
+  const { error: contentError, fields: contentFields } = parseBoxContentFields(req.body);
+  if (contentError) {
+    return res.status(400).send({ message: contentError });
+  }
 
   try {
     if (!req.organizationId) {
@@ -128,6 +147,8 @@ export const update = async (req, res) => {
       githubRepo: githubRepo !== undefined ? githubRepo : box.githubRepo,
       workflowFile: workflowFile !== undefined ? workflowFile : box.workflowFile,
       cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl,
+      // Content fields carry only the keys present in the body (absent = unchanged)
+      ...contentFields,
     });
 
     return res.send(updatedBox);

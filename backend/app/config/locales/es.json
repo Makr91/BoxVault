@@ -115,12 +115,18 @@
     },
     "delete": {
       "permissionDenied": "Solo puedes eliminar Boxes que posees, o necesitas rol de administrador/propietario."
+    },
+    "artwork": {
+      "tooLarge": "¡El tamaño del archivo de arte no puede ser mayor a {{size}}MB!",
+      "unsupportedType": "Tipo de arte no soportado. Solo se permiten imágenes SVG, PNG y JPEG.",
+      "notFound": "Arte no encontrado."
     }
   },
   "versions": {
     "versionNotFoundInBox": "Versión {{versionNumber}} no encontrada para la Box {{boxId}} en la organización {{organization}}.",
     "versionNotFoundForBox": "Versión {{versionNumber}} no encontrada para la Box {{boxId}}.",
     "versionNotFound": "Versión no encontrada.",
+    "deprecationReasonRequired": "Se requiere un motivo de obsolescencia no vacío al marcar una versión como obsoleta.",
     "unauthorized": "Acceso no autorizado a versiones.",
     "findAll": {
       "error": "Ocurrió un error al recuperar las versiones."

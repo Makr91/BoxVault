@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { FaArrowUpRightFromSquare, FaBuilding } from "react-icons/fa6";
 
@@ -270,6 +270,9 @@ const OrgConsole = ({ currentOrganization }) => {
   const currentUser = AuthService.getCurrentUser();
   const canManageRoles = isOrgOwner(currentUser, currentOrganization);
   const [searchTerm, setSearchTerm] = useState("");
+  // Access mode / default role as loaded, so save only calls the dedicated
+  // endpoint when one of them actually changed.
+  const loadedAccessRef = useRef({ accessMode: "private", defaultRole: "member" });
 
   const validateOrgName = (orgName) => {
     const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
@@ -347,6 +350,10 @@ const OrgConsole = ({ currentOrganization }) => {
           setOrgDescription(orgDetails.description || "");
           setOrgAccessMode(orgDetails.access_mode || "private");
           setOrgDefaultRole(orgDetails.default_role || "member");
+          loadedAccessRef.current = {
+            accessMode: orgDetails.access_mode || "private",
+            defaultRole: orgDetails.default_role || "member",
+          };
           setOrgLogo(orgDetails.logo || "");
           setOrgUrl(orgDetails.url || "");
           setOrgTelephone(orgDetails.telephone || "");
@@ -419,6 +426,24 @@ const OrgConsole = ({ currentOrganization }) => {
             oldName: currentOrganization,
             newName: newOrgName,
           });
+        }
+
+        // Local orgs: persist access mode / default role through the
+        // dedicated endpoint when either differs from what was loaded.
+        // newOrgName is the org's current name even after a rename above.
+        const accessChanged =
+          orgAccessMode !== loadedAccessRef.current.accessMode ||
+          orgDefaultRole !== loadedAccessRef.current.defaultRole;
+        if (!isExternalOrg && accessChanged) {
+          await OrganizationService.updateAccessMode(
+            newOrgName,
+            orgAccessMode,
+            orgDefaultRole
+          );
+          loadedAccessRef.current = {
+            accessMode: orgAccessMode,
+            defaultRole: orgDefaultRole,
+          };
         }
         setUpdateMessage(t("orgConsole.orgUpdateSuccess"));
       }

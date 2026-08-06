@@ -1,6 +1,7 @@
 // create.js
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { notifyVersionCreated } from './notifications.js';
 const { versions: Version, UserOrg } = db;
 
 /**
@@ -83,6 +84,12 @@ export const create = async (req, res) => {
       description,
       boxId: box.id,
     });
+
+    // Fan out to the org's notification hub (published boxes in externally
+    // managed orgs only). Fire-and-forget — never blocks or fails the request.
+    if (box.published) {
+      notifyVersionCreated(organizationData, box.name, versionNumber);
+    }
 
     return res.status(201).send(version);
   } catch (err) {

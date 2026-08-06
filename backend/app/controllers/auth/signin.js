@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
 import { getJwtClaimOptions } from '../../utils/auth.js';
 import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
+import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const {
@@ -11,7 +12,6 @@ const {
   role: Role,
   organization: Organization,
   service_account: ServiceAccount,
-  UserOrg,
 } = db;
 
 /**
@@ -106,24 +106,14 @@ const getLocalSigninRejection = (user, password, authConfig, req) => {
  * @param {boolean} isServiceAccount
  * @returns {Promise<{userOrganizations: Object[], primaryOrgName: string|null|undefined}>}
  */
-const resolveSigninOrganizations = async (user, isServiceAccount) => {
+const resolveSigninOrganizations = (user, isServiceAccount) => {
   if (isServiceAccount) {
     // Service account has one organization
     return { userOrganizations: [], primaryOrgName: user.organization?.name || null };
   }
 
-  // Get all user's organizations with roles
-  const userOrgs = await UserOrg.getUserOrganizations(user.id);
-  const userOrganizations = userOrgs.map(userOrg => ({
-    name: userOrg.organization.name,
-    role: userOrg.role,
-    isPrimary: userOrg.is_primary,
-  }));
-
-  // Find primary organization
-  const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
-  const primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
-  return { userOrganizations, primaryOrgName };
+  // Pointer-first primary resolution shared with token refresh
+  return resolveUserOrganizations(user);
 };
 
 /**
@@ -249,6 +239,18 @@ const buildSigninToken = ({
  *                   type: string
  *                   nullable: true
  *                   description: Stored avatar URL from the identity provider (null for service accounts or when unset; clients fall back to the emailHash gravatar)
+ *                 entitlements:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       value:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                       display:
+ *                         type: string
+ *                   description: RFC 7643 entitlements pushed by SCIM (empty array for service accounts or when none are stored)
  *       401:
  *         description: Invalid credentials or expired service account
  *         content:
@@ -342,6 +344,7 @@ export const signin = async (req, res) => {
       provider,
       stayLoggedIn: !!stayLoggedIn,
       avatarUrl: isServiceAccount ? null : user.avatar_url,
+      entitlements: isServiceAccount ? [] : user.entitlements || [],
     });
   } catch (err) {
     log.error.error('Error in signin:', err);

@@ -10,6 +10,9 @@ import {
   update,
   delete as deleteBox,
   deleteAll,
+  uploadArtwork,
+  getArtwork,
+  getBadge,
 } from '../controllers/box.controller.js';
 
 const router = Router();
@@ -23,11 +26,17 @@ router.use((req, res, next) => {
   next();
 });
 
+// Public status badge — registered first so nothing can shadow it. This router
+// is mounted at the root (alongside the Vagrant routes) as well as under /api,
+// which is what puts the badge at /badge/:organization/:name.svg.
+router.get('/badge/:organization/:name.svg', getBadge);
+
 router.get('/discover', discoverAll);
 router.get('/discover/:name', discoverAll);
 router.get('/organization/:organization/box', externalTokenAuth, getOrganizationBoxDetails);
 router.get('/organization/:organization/box/:name', externalTokenAuth, findOne);
 router.get('/organization/:organization/box/:name/metadata', externalTokenAuth, findOne);
+router.get('/organization/:organization/box/:name/artwork', externalTokenAuth, getArtwork);
 
 // Administrative Actions - Now require organization membership
 router.post(
@@ -52,6 +61,14 @@ router.put(
     verifyBoxName.checkBoxDuplicate,
   ],
   update
+);
+
+// Raw image body — the verifyBoxName middleware pair reads a JSON body and so
+// only applies to create/rename; auth matches the box update chain.
+router.post(
+  '/organization/:organization/box/:name/artwork',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
+  uploadArtwork
 );
 
 router.delete(

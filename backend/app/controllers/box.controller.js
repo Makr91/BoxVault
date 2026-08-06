@@ -5,3 +5,5 @@ export * from './box/deleteall.js';
 export * from './box/discover.js';
 export * from './box/findone.js';
 export * from './box/organization/details.js';
+export * from './box/artwork.js';
+export * from './box/badge.js';

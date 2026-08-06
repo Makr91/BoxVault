@@ -420,7 +420,13 @@
     "updatedAt": "Actualizado El",
     "providers": "Proveedores para Versión: {{version}}",
     "actions": "Acciones",
-    "add": "Añadir Versión"
+    "add": "Añadir Versión",
+    "releaseNotes": "Notas de la versión",
+    "editReleaseNotes": "Editar notas de la versión",
+    "deprecated": "Obsoleta",
+    "deprecate": "Marcar obsoleta",
+    "undeprecate": "Quitar obsoleta",
+    "deprecationReason": "Motivo de obsolescencia"
   },
   "architecture": {
     "deleted": "¡La arquitectura fue eliminada exitosamente!",
@@ -489,6 +495,35 @@
     "filter": "Filtrar",
     "templateList": "Lista de Plantillas",
     "noBoxes": "No se encontraron Boxes",
+    "facts": {
+      "title": "Datos de la Box",
+      "os": "SO",
+      "type": "Tipo",
+      "username": "Usuario",
+      "password": "Contraseña",
+      "communicator": "Comunicador",
+      "cpus": "CPUs",
+      "memory": "Memoria",
+      "disks": "Discos",
+      "providers": "Proveedores",
+      "built": "Compilada",
+      "driver": "Driver",
+      "desktop": "Escritorio",
+      "server": "Servidor",
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "useThisBox": {
+      "title": "Usar esta box",
+      "version": "Versión",
+      "copied": "¡Copiado!",
+      "option2": "Opción 2: usar un Vagrantfile fijado a esta versión",
+      "starterKit": "Kit de inicio (Vagrantfile auto-arrancable + Hosts.yml)",
+      "starterStep1": "Paso 1: añade la box"
+    },
+    "readmeTitle": "README",
+    "downloadsFor": "Descargas para {{version}}",
+    "latestDeprecated": "La última versión ({{version}}) de esta box está obsoleta.",
     "organization": {
       "errors": {
         "retrievePublic": "Error al recuperar Boxes públicas.",
@@ -512,11 +547,17 @@
         "createNewBox": "Crear Nueva Box",
         "templateList": "Lista de Plantillas"
       },
+      "group": {
+        "boxCount": "{{count}} box",
+        "boxCount_plural": "{{count}} boxes"
+      },
       "table": {
         "box": "Box",
+        "os": "SO",
         "status": "Estado",
         "public": "Público",
         "created": "Creado",
+        "released": "Último lanzamiento",
         "downloads": "Descargas",
         "versions": "# Versiones",
         "providers": "Proveedores",

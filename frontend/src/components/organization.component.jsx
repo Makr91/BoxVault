@@ -11,8 +11,10 @@ import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import BoxDataService from "../services/box.service";
 import OrganizationService from "../services/organization.service";
+import { getDistroIconUrl, getOsDisplayName } from "../utils/DistroIcons";
 import { log } from "../utils/Logger";
 import { isGlobalAdmin, isOrgMember, isOrgManager } from "../utils/permissions";
+import { formatRelativeTime } from "../utils/relativeTime";
 
 import ConfirmationModal from "./confirmation.component";
 import IsoList from "./iso-list.component";
@@ -24,8 +26,173 @@ const resolveBoxOrg = (box) => {
   return { orgName: org.name, logo: org.logo, emailHash: org.emailHash };
 };
 
-const BoxesList = ({ showOnlyPublic, theme }) => {
+// Readable OS info for a box, from backend-provided metadata.
+const getBoxOsInfo = (box) => {
+  const metadata = box.metadata || {};
+  return {
+    distro: metadata.distro || null,
+    label: getOsDisplayName(metadata),
+  };
+};
+
+// Newest version creation time (ms) for a box, or null without versions.
+const getLatestReleaseTime = (box) => {
+  if (!Array.isArray(box.versions) || box.versions.length === 0) {
+    return null;
+  }
+  const latest = box.versions.reduce((newest, version) => {
+    const time = new Date(version.createdAt).getTime();
+    return Number.isNaN(time) ? newest : Math.max(newest, time);
+  }, 0);
+  return latest || null;
+};
+
+// One clickable filter-pill group (providers / architectures / OS).
+const FilterPillGroup = ({ entries, activeSet, activeClass, onToggle }) =>
+  Object.entries(entries).map(([value, count]) => (
+    <span
+      key={value}
+      className={`badge rounded-pill badge-xs cursor-pointer ${
+        activeSet.has(value) ? activeClass : "bg-secondary bg-opacity-25"
+      }`}
+      onClick={() => onToggle(value)}
+      onKeyPress={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle(value);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      {value} ({count})
+    </span>
+  ));
+
+FilterPillGroup.propTypes = {
+  entries: PropTypes.objectOf(PropTypes.number).isRequired,
+  activeSet: PropTypes.instanceOf(Set).isRequired,
+  activeClass: PropTypes.string.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
+
+// OS cell: round distro icon plus readable OS name; empty without metadata.
+const BoxOsCell = ({ box }) => {
+  const { distro, label } = getBoxOsInfo(box);
+  const iconUrl = getDistroIconUrl(distro);
+  if (!iconUrl && !label) {
+    return null;
+  }
+  return (
+    <>
+      {iconUrl && (
+        <img
+          src={iconUrl}
+          alt=""
+          className="rounded-circle icon-with-margin-sm v-align-middle"
+          style={{ width: 30, height: 30 }}
+        />
+      )}
+      <span className="v-align-middle">{label}</span>
+    </>
+  );
+};
+
+BoxOsCell.propTypes = {
+  box: PropTypes.object.isRequired,
+};
+
+// Shared boxes table markup (sortable headers + rows): used for the flat
+// list and for each per-organization group on the signed-in home page.
+const BoxesTable = ({ boxes, renderRow, sortColumn, sortDirection, onSort }) => {
   const { t } = useTranslation();
+
+  const renderSortIcon = (column) => {
+    if (sortColumn !== column) {
+      return <FaSort />;
+    }
+    return sortDirection === "asc" ? <FaSortUp /> : <FaSortDown />;
+  };
+
+  return (
+    <Table striped className="table">
+      <thead>
+        <tr>
+          <th onClick={() => onSort("name")} className="sortable-header">
+            {t("box.organization.table.box")} {renderSortIcon("name")}
+          </th>
+          <th onClick={() => onSort("os")} className="sortable-header">
+            {t("box.organization.table.os")} {renderSortIcon("os")}
+          </th>
+          <th>{t("box.organization.table.status")}</th>
+          <th>{t("box.organization.table.public")}</th>
+          <th onClick={() => onSort("created")} className="sortable-header">
+            {t("box.organization.table.created")} {renderSortIcon("created")}
+          </th>
+          <th onClick={() => onSort("released")} className="sortable-header">
+            {t("box.organization.table.released")} {renderSortIcon("released")}
+          </th>
+          <th onClick={() => onSort("downloads")} className="sortable-header">
+            {t("box.organization.table.downloads")} {renderSortIcon("downloads")}
+          </th>
+          <th onClick={() => onSort("versions")} className="sortable-header">
+            {t("box.organization.table.versions")} {renderSortIcon("versions")}
+          </th>
+          <th>{t("box.organization.table.providers")}</th>
+          <th>{t("box.organization.table.architectures")}</th>
+        </tr>
+      </thead>
+      <tbody key="tbody">
+        {boxes.length > 0 ? (
+          boxes.map((box, index) => renderRow(box, index))
+        ) : (
+          <tr>
+            <td colSpan="10" className="text-center">
+              {t("box.organization.table.noBoxes")}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </Table>
+  );
+};
+
+BoxesTable.propTypes = {
+  boxes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  renderRow: PropTypes.func.isRequired,
+  sortColumn: PropTypes.string,
+  sortDirection: PropTypes.string.isRequired,
+  onSort: PropTypes.func.isRequired,
+};
+
+// One organization section on the signed-in home page: org logo + org
+// display name + box count header above that organization's boxes table.
+const OrgGroupSection = ({ orgName, logo, count, children }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="mb-4">
+      <div className="d-flex align-items-center mb-2">
+        {logo}
+        <h5 className="mb-0 v-align-middle">{orgName}</h5>
+        <span className="badge bg-secondary bg-opacity-50 ms-2">
+          {t("box.organization.group.boxCount", { count })}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+};
+
+OrgGroupSection.propTypes = {
+  orgName: PropTypes.string.isRequired,
+  logo: PropTypes.node.isRequired,
+  count: PropTypes.number.isRequired,
+  children: PropTypes.node.isRequired,
+};
+
+const BoxesList = ({ showOnlyPublic, theme }) => {
+  const { t, i18n } = useTranslation();
   const isMountedRef = useRef(true);
   const { organization: routeOrganization } = useParams();
   const [boxes, setBoxes] = useState([]);
@@ -104,6 +271,20 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       try {
         const prefs = JSON.parse(saved);
         return new Set(prefs.architectures || []);
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
+
+  const [activeOs, setActiveOs] = useState(() => {
+    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved);
+        return new Set(prefs.os || []);
       } catch {
         return new Set();
       }
@@ -222,6 +403,17 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     return archCounts;
   }, [boxes, getArchitectureNames]);
 
+  const allOs = useMemo(() => {
+    const osCounts = {};
+    boxes.forEach((box) => {
+      const { distro } = getBoxOsInfo(box);
+      if (distro) {
+        osCounts[distro] = (osCounts[distro] || 0) + 1;
+      }
+    });
+    return osCounts;
+  }, [boxes]);
+
   // Toggle tag filter
   const toggleProviderFilter = (provider) => {
     setActiveProviders((prev) => {
@@ -242,6 +434,18 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         newSet.delete(arch);
       } else {
         newSet.add(arch);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleOsFilter = (distro) => {
+    setActiveOs((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(distro)) {
+        newSet.delete(distro);
+      } else {
+        newSet.add(distro);
       }
       return newSet;
     });
@@ -282,6 +486,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       });
     }
 
+    // Apply OS (distro) filter
+    if (activeOs.size > 0) {
+      filtered = filtered.filter((box) => {
+        const { distro } = getBoxOsInfo(box);
+        return Boolean(distro) && activeOs.has(distro);
+      });
+    }
+
     // Apply search filter
     if (searchName.trim()) {
       filtered = filtered.filter((box) =>
@@ -312,6 +524,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             aVal = a.versions ? a.versions.length : 0;
             bVal = b.versions ? b.versions.length : 0;
             break;
+          case "os":
+            aVal = getBoxOsInfo(a).label.toLowerCase();
+            bVal = getBoxOsInfo(b).label.toLowerCase();
+            break;
+          case "released":
+            aVal = getLatestReleaseTime(a) || 0;
+            bVal = getLatestReleaseTime(b) || 0;
+            break;
           default:
             return 0;
         }
@@ -331,6 +551,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     boxes,
     activeProviders,
     activeArchitectures,
+    activeOs,
     searchName,
     sortColumn,
     sortDirection,
@@ -465,6 +686,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       sortDirection,
       providers: Array.from(activeProviders),
       architectures: Array.from(activeArchitectures),
+      os: Array.from(activeOs),
     };
     localStorage.setItem(key, JSON.stringify(prefs));
   }, [
@@ -472,6 +694,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     sortDirection,
     activeProviders,
     activeArchitectures,
+    activeOs,
     organization,
   ]);
 
@@ -681,12 +904,24 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     isGlobalAdmin(currentUser) &&
     !isOrgMember(currentUser, organization);
 
-  const renderSortIcon = (column) => {
-    if (sortColumn !== column) {
-      return <FaSort />;
+  // Signed-in home page groups the final processed boxes (search/sort/filter
+  // already applied) by organization; anonymous home and organization pages
+  // keep one flat table.
+  const groupedBoxes = useMemo(() => {
+    if (!showOnlyPublic || !currentUser) {
+      return null;
     }
-    return sortDirection === "asc" ? <FaSortUp /> : <FaSortDown />;
-  };
+    const groups = new Map();
+    processedBoxes.forEach((box) => {
+      const { orgName } = resolveBoxOrg(box);
+      const key = orgName || t("unknown");
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key).push(box);
+    });
+    return Array.from(groups.entries());
+  }, [showOnlyPublic, currentUser, processedBoxes, t]);
 
   const renderOrgLogo = (box) => {
     const { orgName, logo } = resolveBoxOrg(box);
@@ -710,6 +945,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     const totalDownloads = calculatePublicDownloads(box);
     const providerNames = getProviderNames(box);
     const architectureNames = getArchitectureNames(box);
+    const releaseTime = getLatestReleaseTime(box);
     const organizationName =
       routeOrganization || box.organization?.name || "Unknown";
 
@@ -726,6 +962,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           >
             {organizationName}/{box.name}
           </Link>
+        </td>
+        <td>
+          <BoxOsCell box={box} />
         </td>
         <td className="px-2">
           <span
@@ -746,6 +985,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           </span>
         </td>
         <td>{new Date(box.createdAt).toLocaleDateString()}</td>
+        <td>
+          {releaseTime ? formatRelativeTime(releaseTime, i18n.language) : ""}
+        </td>
         <td>{totalDownloads}</td>
         <td>
           {box.versions ? box.versions.length : box.numberOfVersions || 0}
@@ -791,51 +1033,28 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
         {/* Center: Tag Cloud Pills (compact, inline) */}
         {(Object.keys(allProviders).length > 0 ||
-          Object.keys(allArchitectures).length > 0) && (
+          Object.keys(allArchitectures).length > 0 ||
+          Object.keys(allOs).length > 0) && (
           <div className="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
             <small className="text-muted">{t("box.filter")}:</small>
-            {Object.entries(allProviders).map(([provider, count]) => (
-              <span
-                key={provider}
-                className={`badge rounded-pill badge-xs cursor-pointer ${
-                  activeProviders.has(provider)
-                    ? "bg-primary"
-                    : "bg-secondary bg-opacity-25"
-                }`}
-                onClick={() => toggleProviderFilter(provider)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggleProviderFilter(provider);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                {provider} ({count})
-              </span>
-            ))}
-            {Object.entries(allArchitectures).map(([arch, count]) => (
-              <span
-                key={arch}
-                className={`badge rounded-pill badge-xs cursor-pointer ${
-                  activeArchitectures.has(arch)
-                    ? "bg-info"
-                    : "bg-secondary bg-opacity-25"
-                }`}
-                onClick={() => toggleArchitectureFilter(arch)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggleArchitectureFilter(arch);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                {arch} ({count})
-              </span>
-            ))}
+            <FilterPillGroup
+              entries={allProviders}
+              activeSet={activeProviders}
+              activeClass="bg-primary"
+              onToggle={toggleProviderFilter}
+            />
+            <FilterPillGroup
+              entries={allArchitectures}
+              activeSet={activeArchitectures}
+              activeClass="bg-info"
+              onToggle={toggleArchitectureFilter}
+            />
+            <FilterPillGroup
+              entries={allOs}
+              activeSet={activeOs}
+              activeClass="bg-success"
+              onToggle={toggleOsFilter}
+            />
           </div>
         )}
 
@@ -1012,54 +1231,32 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       )}
 
       <div className="col-md-12">
-        <Table striped className="table">
-          <thead>
-            <tr>
-              <th
-                onClick={() => handleSort("name")}
-                className="sortable-header"
-              >
-                {t("box.organization.table.box")} {renderSortIcon("name")}
-              </th>
-              <th>{t("box.organization.table.status")}</th>
-              <th>{t("box.organization.table.public")}</th>
-              <th
-                onClick={() => handleSort("created")}
-                className="sortable-header"
-              >
-                {t("box.organization.table.created")}{" "}
-                {renderSortIcon("created")}
-              </th>
-              <th
-                onClick={() => handleSort("downloads")}
-                className="sortable-header"
-              >
-                {t("box.organization.table.downloads")}{" "}
-                {renderSortIcon("downloads")}
-              </th>
-              <th
-                onClick={() => handleSort("versions")}
-                className="sortable-header"
-              >
-                {t("box.organization.table.versions")}{" "}
-                {renderSortIcon("versions")}
-              </th>
-              <th>{t("box.organization.table.providers")}</th>
-              <th>{t("box.organization.table.architectures")}</th>
-            </tr>
-          </thead>
-          <tbody key="tbody">
-            {processedBoxes.length > 0 ? (
-              processedBoxes.map((box, index) => renderTableRow(box, index))
-            ) : (
-              <tr>
-                <td colSpan="8" className="text-center">
-                  {t("box.organization.table.noBoxes")}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
+        {groupedBoxes && groupedBoxes.length > 0 ? (
+          groupedBoxes.map(([orgName, orgBoxes]) => (
+            <OrgGroupSection
+              key={orgName}
+              orgName={orgName}
+              logo={renderOrgLogo(orgBoxes[0])}
+              count={orgBoxes.length}
+            >
+              <BoxesTable
+                boxes={orgBoxes}
+                renderRow={renderTableRow}
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            </OrgGroupSection>
+          ))
+        ) : (
+          <BoxesTable
+            boxes={processedBoxes}
+            renderRow={renderTableRow}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
+        )}
       </div>
     </div>
   );

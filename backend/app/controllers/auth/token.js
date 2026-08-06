@@ -2,9 +2,8 @@
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
 import { getJwtClaimOptions } from '../../utils/auth.js';
+import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
-import db from '../../models/index.js';
-const { UserOrg } = db;
 
 /**
  * @swagger
@@ -39,6 +38,18 @@ const { UserOrg } = db;
  *                 stayLoggedIn:
  *                   type: boolean
  *                   description: Stay-logged-in status
+ *                 entitlements:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       value:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                       display:
+ *                         type: string
+ *                   description: RFC 7643 entitlements pushed by SCIM (empty array when none are stored)
  *       403:
  *         description: Token refresh not allowed
  *         content:
@@ -59,17 +70,8 @@ export const refreshToken = async (req, res) => {
     const { user } = req;
     const { stayLoggedIn } = req.body || {};
 
-    // Get user's organizations for multi-org JWT
-    const userOrgs = await UserOrg.getUserOrganizations(user.id);
-    const userOrganizations = userOrgs.map(userOrg => ({
-      name: userOrg.organization.name,
-      role: userOrg.role,
-      isPrimary: userOrg.is_primary,
-    }));
-
-    // Find primary organization
-    const primaryOrg = userOrgs.find(userOrg => userOrg.is_primary);
-    const primaryOrgName = primaryOrg?.organization.name || user.primaryOrganization?.name;
+    // Get user's organizations for multi-org JWT (pointer-first primary)
+    const { userOrganizations, primaryOrgName } = await resolveUserOrganizations(user);
 
     let provider = user.authProvider;
     if (!provider) {
@@ -112,6 +114,7 @@ export const refreshToken = async (req, res) => {
       provider,
       stayLoggedIn: finalStayLoggedIn,
       avatarUrl: user.avatar_url,
+      entitlements: user.entitlements || [],
     });
   } catch (err) {
     log.error.error('Error in refreshToken:', err);

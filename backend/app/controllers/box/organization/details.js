@@ -192,6 +192,11 @@ export const getOrganizationBoxDetails = async (req, res) => {
       id: box.id,
       name: box.name,
       description: box.description,
+      // readme is deliberately omitted: listings don't render it and it can
+      // be arbitrarily large per box.
+      shortDescription: box.shortDescription,
+      metadata: box.metadata,
+      artwork: box.artwork,
       published: box.published,
       isPublic: box.isPublic,
       userId: box.userId,
@@ -201,6 +206,9 @@ export const getOrganizationBoxDetails = async (req, res) => {
         id: version.id,
         versionNumber: version.versionNumber,
         description: version.description,
+        releaseNotes: version.releaseNotes,
+        deprecated: version.deprecated,
+        deprecationReason: version.deprecationReason,
         boxId: version.boxId,
         createdAt: version.createdAt,
         updatedAt: version.updatedAt,
