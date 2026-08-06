@@ -107,8 +107,7 @@ export const findOneWithUsers = async (req, res) => {
       orgRole: orgRoleByUserId.get(user.id) || null,
       totalBoxes: user.box.filter(
         box =>
-          box.organizationId === organization.id &&
-          (box.isPublic || (userId && user.id === userId))
+          box.organizationId === organization.id && (box.isPublic || (userId && user.id === userId))
       ).length,
     }));
 
