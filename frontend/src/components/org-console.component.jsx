@@ -93,6 +93,31 @@ const formatOrgAddress = (address) => {
     .join(", ");
 };
 
+// Normalized console state from a fetched org-details payload — all the
+// defaulting lives here so the loader stays simple.
+const extractOrgDetailsState = (orgDetails) => ({
+  name: orgDetails.name,
+  isExternalOrg: !!orgDetails.external_issuer,
+  // Canonical IdP org-management deep link: the fragment scrolls the
+  // provider's organizations page straight to this org's card.
+  idpLink:
+    orgDetails.external_issuer && orgDetails.external_org_id
+      ? `${orgDetails.external_issuer.replace(/\/+$/, "")}/user/organizations#${orgDetails.external_org_id}`
+      : "",
+  displayName: orgDetails.display_name || "",
+  email: orgDetails.email || "",
+  emailHash: orgDetails.emailHash || "",
+  description: orgDetails.description || "",
+  accessMode: orgDetails.access_mode || "private",
+  defaultRole: orgDetails.default_role || "member",
+  logo: orgDetails.logo || "",
+  url: orgDetails.url || "",
+  telephone: orgDetails.telephone || "",
+  locale: orgDetails.locale || "",
+  timezone: orgDetails.timezone || "",
+  address: formatOrgAddress(orgDetails.address),
+});
+
 // One label/value row of the SSO profile display.
 const OrgProfileRow = ({ row }) => {
   const { t } = useTranslation();
@@ -337,32 +362,26 @@ const OrgConsole = ({ currentOrganization }) => {
           setJoinRequests(joinRequestsResult.value.data || []);
         }
         if (orgDetailsResult.status === "fulfilled") {
-          const orgDetails = orgDetailsResult.value.data;
-          setNewOrgName(orgDetails.name);
-          setIsExternalOrg(!!orgDetails.external_issuer);
-          // Canonical IdP org-management deep link: the fragment scrolls the
-          // provider's organizations page straight to this org's card.
-          setOrgIdpLink(
-            orgDetails.external_issuer && orgDetails.external_org_id
-              ? `${orgDetails.external_issuer.replace(/\/+$/, "")}/user/organizations#${orgDetails.external_org_id}`
-              : ""
-          );
-          setOrgDisplayName(orgDetails.display_name || "");
-          setOrgEmail(orgDetails.email || "");
-          setOrgEmailHash(orgDetails.emailHash || "");
-          setOrgDescription(orgDetails.description || "");
-          setOrgAccessMode(orgDetails.access_mode || "private");
-          setOrgDefaultRole(orgDetails.default_role || "member");
+          const details = extractOrgDetailsState(orgDetailsResult.value.data);
+          setNewOrgName(details.name);
+          setIsExternalOrg(details.isExternalOrg);
+          setOrgIdpLink(details.idpLink);
+          setOrgDisplayName(details.displayName);
+          setOrgEmail(details.email);
+          setOrgEmailHash(details.emailHash);
+          setOrgDescription(details.description);
+          setOrgAccessMode(details.accessMode);
+          setOrgDefaultRole(details.defaultRole);
           loadedAccessRef.current = {
-            accessMode: orgDetails.access_mode || "private",
-            defaultRole: orgDetails.default_role || "member",
+            accessMode: details.accessMode,
+            defaultRole: details.defaultRole,
           };
-          setOrgLogo(orgDetails.logo || "");
-          setOrgUrl(orgDetails.url || "");
-          setOrgTelephone(orgDetails.telephone || "");
-          setOrgLocale(orgDetails.locale || "");
-          setOrgTimezone(orgDetails.timezone || "");
-          setOrgAddress(formatOrgAddress(orgDetails.address));
+          setOrgLogo(details.logo);
+          setOrgUrl(details.url);
+          setOrgTelephone(details.telephone);
+          setOrgLocale(details.locale);
+          setOrgTimezone(details.timezone);
+          setOrgAddress(details.address);
         }
 
         const unauthorized = failures.some(
