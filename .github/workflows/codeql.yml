@@ -11,12 +11,13 @@
 #
 name: 'CodeQL Advanced'
 
+# Reusable: chained from ci.yml (which runs on every PR and, via release-please.yml,
+# on every push to main) — no direct push/pull_request triggers here or CodeQL would
+# run twice per event. The weekly schedule still scans independent of pushes.
 on:
-  pull_request:
-    branches: ['main']
+  workflow_call:
   schedule:
     - cron: '32 5 * * 4'
-  workflow_call:
 
 jobs:
   analyze:
