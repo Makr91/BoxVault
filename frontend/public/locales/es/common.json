@@ -650,7 +650,9 @@
       "timezone": "Zona Horaria",
       "address": "Dirección",
       "updateButton": "Actualizar Organización",
-      "manageAtIdp": "Administrar en el Proveedor de Identidad"
+      "manageAtIdp": "Administrar en el Proveedor de Identidad",
+      "listed": "Listada en descubrimiento",
+      "unlisted": "No listada"
     },
     "users": {
       "title": "Usuarios en {{organization}}",

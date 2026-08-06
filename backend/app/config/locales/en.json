@@ -375,8 +375,10 @@
     "notFound": "Join request not found!",
     "alreadyProcessed": "Request has already been processed!",
     "approved": "Join request approved successfully!",
+    "approvedDelegated": "Join request approved — an invitation was sent through the identity provider; membership completes once the user accepts it there.",
     "approve": {
-      "error": "Error approving join request"
+      "error": "Error approving join request",
+      "externalError": "Could not create the invitation at the identity provider. Please try again."
     },
     "notFoundOrNotCancellable": "Join request not found or cannot be cancelled!",
     "cancelled": "Join request cancelled successfully!",

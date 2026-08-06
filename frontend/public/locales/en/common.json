@@ -423,7 +423,9 @@
       "timezone": "Timezone",
       "address": "Address",
       "updateButton": "Update Organization",
-      "manageAtIdp": "Manage at Identity Provider"
+      "manageAtIdp": "Manage at Identity Provider",
+      "listed": "Listed in discovery",
+      "unlisted": "Unlisted"
     },
     "users": {
       "title": "Users in {{organization}}",

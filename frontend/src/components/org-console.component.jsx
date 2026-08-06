@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { FaArrowUpRightFromSquare } from "react-icons/fa6";
+import { FaArrowUpRightFromSquare, FaBuilding } from "react-icons/fa6";
 
 import EventBus from "../common/EventBus";
 import AuthService from "../services/auth.service";
@@ -18,9 +18,14 @@ const OrgConsoleTabs = ({
   activeTab,
   setActiveTab,
   isExternalOrg,
+  orgAccessMode,
   joinRequestCount,
 }) => {
   const { t } = useTranslation();
+  // SSO orgs take join requests too when the IdP-managed access mode allows
+  // them; approval then delegates an IdP invite instead of a local membership.
+  const showJoinRequests =
+    !isExternalOrg || orgAccessMode === "request_to_join";
 
   return (
     <ul className="nav nav-tabs">
@@ -32,7 +37,7 @@ const OrgConsoleTabs = ({
           {t("orgConsole.tabs.organization")}
         </button>
       </li>
-      {!isExternalOrg && (
+      {showJoinRequests && (
         <li className="nav-item">
           <button
             className={`nav-link ${activeTab === "joinRequests" ? "active" : ""}`}
@@ -63,13 +68,9 @@ OrgConsoleTabs.propTypes = {
   activeTab: PropTypes.string.isRequired,
   setActiveTab: PropTypes.func.isRequired,
   isExternalOrg: PropTypes.bool.isRequired,
+  orgAccessMode: PropTypes.string.isRequired,
   joinRequestCount: PropTypes.number.isRequired,
 };
-
-const getOrgNameFieldValue = (isExternalOrg, orgDisplayName, newOrgName) =>
-  isExternalOrg && orgDisplayName
-    ? `${orgDisplayName} (${newOrgName})`
-    : newOrgName;
 
 // address is an object of RFC 7643 §4.1.2 sub-attributes. Prefer the
 // provider-formatted value; otherwise join the present sub-attributes.
@@ -92,96 +93,145 @@ const formatOrgAddress = (address) => {
     .join(", ");
 };
 
-// IdP-truth profile extras (synced via SCIM); rendered read-only, only when
-// the provider supplied a value.
-const OrgProfileExtras = ({
+// One label/value row of the SSO profile display.
+const OrgProfileRow = ({ row }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="row mb-1">
+      <dt className="col-sm-3">{t(`orgConsole.organization.${row.key}`)}</dt>
+      <dd
+        className="col-sm-9 mb-1"
+        style={row.multiline ? { whiteSpace: "pre-line" } : undefined}
+      >
+        {row.link ? (
+          <a href={row.value} target="_blank" rel="noopener noreferrer">
+            {row.value}
+          </a>
+        ) : (
+          row.value
+        )}
+      </dd>
+    </div>
+  );
+};
+
+OrgProfileRow.propTypes = {
+  row: PropTypes.shape({
+    key: PropTypes.string.isRequired,
+    value: PropTypes.string.isRequired,
+    link: PropTypes.bool,
+    multiline: PropTypes.bool,
+  }).isRequired,
+};
+
+const ACCESS_MODE_LABEL_KEYS = {
+  private: "orgConsole.organization.accessModes.private",
+  invite_only: "orgConsole.organization.accessModes.inviteOnly",
+  request_to_join: "orgConsole.organization.accessModes.requestToJoin",
+};
+
+// SSO orgs render as a read-only profile: everything shown here is IdP-truth
+// (synced via SCIM), and management happens at the provider via the deep link.
+const OrgProfileDisplay = ({
+  orgName,
+  orgDisplayName,
+  orgLogo,
+  orgEmail,
+  orgDescription,
   orgUrl,
   orgTelephone,
   orgLocale,
   orgTimezone,
   orgAddress,
+  orgAccessMode,
+  orgDefaultRole,
+  orgIdpLink,
 }) => {
   const { t } = useTranslation();
-  const fields = [
-    { id: "orgUrl", labelKey: "url", value: orgUrl },
-    { id: "orgTelephone", labelKey: "telephone", value: orgTelephone },
-    { id: "orgLocale", labelKey: "locale", value: orgLocale },
-    { id: "orgTimezone", labelKey: "timezone", value: orgTimezone },
-  ];
+  const isUnlisted = orgAccessMode === "private";
+  const rows = [
+    { key: "email", value: orgEmail },
+    { key: "url", value: orgUrl, link: true },
+    { key: "telephone", value: orgTelephone },
+    { key: "locale", value: orgLocale },
+    { key: "timezone", value: orgTimezone },
+    { key: "address", value: orgAddress, multiline: true },
+    {
+      key: "accessMode",
+      value: t(ACCESS_MODE_LABEL_KEYS[orgAccessMode] || "unknown"),
+    },
+    { key: "defaultRole", value: t(`roles.${orgDefaultRole}`) },
+  ].filter((row) => row.value);
 
   return (
-    <>
-      {fields
-        .filter((field) => field.value)
-        .map((field) => (
-          <div className="form-group" key={field.id}>
-            <label htmlFor={field.id}>
-              {t(`orgConsole.organization.${field.labelKey}`)}
-            </label>
-            <input
-              type="text"
-              className="form-control"
-              id={field.id}
-              value={field.value}
-              readOnly
-            />
-          </div>
-        ))}
-      {orgAddress && (
-        <div className="form-group">
-          <label htmlFor="orgAddress">
-            {t("orgConsole.organization.address")}
-          </label>
-          <textarea
-            className="form-control"
-            id="orgAddress"
-            value={orgAddress}
-            readOnly
+    <div>
+      <div className="d-flex align-items-center mb-3">
+        {orgLogo ? (
+          <img
+            src={orgLogo}
+            alt=""
+            className="rounded-circle me-3"
+            style={{ width: 64, height: 64, objectFit: "cover" }}
           />
+        ) : (
+          <div
+            className="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3"
+            style={{ width: 64, height: 64 }}
+          >
+            <FaBuilding className="text-white fs-3" />
+          </div>
+        )}
+        <div>
+          <h4 className="mb-0">{orgDisplayName || orgName}</h4>
+          <small className="text-muted">/{orgName}</small>
+          <div>
+            <span
+              className={`badge ${isUnlisted ? "bg-secondary" : "bg-success"} mt-1`}
+            >
+              {isUnlisted
+                ? t("orgConsole.organization.unlisted")
+                : t("orgConsole.organization.listed")}
+            </span>
+          </div>
         </div>
+      </div>
+      {orgDescription && <p>{orgDescription}</p>}
+      {rows.length > 0 && (
+        <dl className="mb-3">
+          {rows.map((row) => (
+            <OrgProfileRow key={row.key} row={row} />
+          ))}
+        </dl>
       )}
-    </>
+      {orgIdpLink && (
+        <a
+          href={orgIdpLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-primary"
+        >
+          <FaArrowUpRightFromSquare className="me-2" />
+          {t("orgConsole.organization.manageAtIdp")}
+        </a>
+      )}
+    </div>
   );
 };
 
-OrgProfileExtras.propTypes = {
+OrgProfileDisplay.propTypes = {
+  orgName: PropTypes.string.isRequired,
+  orgDisplayName: PropTypes.string.isRequired,
+  orgLogo: PropTypes.string.isRequired,
+  orgEmail: PropTypes.string.isRequired,
+  orgDescription: PropTypes.string.isRequired,
   orgUrl: PropTypes.string.isRequired,
   orgTelephone: PropTypes.string.isRequired,
   orgLocale: PropTypes.string.isRequired,
   orgTimezone: PropTypes.string.isRequired,
   orgAddress: PropTypes.string.isRequired,
-};
-
-// SSO orgs are edited at the identity provider — the local update button is
-// replaced by a deep link to the provider's org card.
-const OrgFormAction = ({ isExternalOrg, orgIdpLink }) => {
-  const { t } = useTranslation();
-
-  if (!isExternalOrg) {
-    return (
-      <button type="submit" className="btn btn-primary mt-2">
-        {t("orgConsole.organization.updateButton")}
-      </button>
-    );
-  }
-  if (!orgIdpLink) {
-    return null;
-  }
-  return (
-    <a
-      href={orgIdpLink}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="btn btn-primary mt-2"
-    >
-      <FaArrowUpRightFromSquare className="me-2" />
-      {t("orgConsole.organization.manageAtIdp")}
-    </a>
-  );
-};
-
-OrgFormAction.propTypes = {
-  isExternalOrg: PropTypes.bool.isRequired,
+  orgAccessMode: PropTypes.string.isRequired,
+  orgDefaultRole: PropTypes.string.isRequired,
   orgIdpLink: PropTypes.string.isRequired,
 };
 
@@ -206,6 +256,7 @@ const OrgConsole = ({ currentOrganization }) => {
   const [orgDescription, setOrgDescription] = useState("");
   const [orgAccessMode, setOrgAccessMode] = useState("private");
   const [orgDefaultRole, setOrgDefaultRole] = useState("member");
+  const [orgLogo, setOrgLogo] = useState("");
   const [orgUrl, setOrgUrl] = useState("");
   const [orgTelephone, setOrgTelephone] = useState("");
   const [orgLocale, setOrgLocale] = useState("");
@@ -296,6 +347,7 @@ const OrgConsole = ({ currentOrganization }) => {
           setOrgDescription(orgDetails.description || "");
           setOrgAccessMode(orgDetails.access_mode || "private");
           setOrgDefaultRole(orgDetails.default_role || "member");
+          setOrgLogo(orgDetails.logo || "");
           setOrgUrl(orgDetails.url || "");
           setOrgTelephone(orgDetails.telephone || "");
           setOrgLocale(orgDetails.locale || "");
@@ -333,7 +385,7 @@ const OrgConsole = ({ currentOrganization }) => {
       return;
     }
 
-    if (!isExternalOrg && newOrgName !== currentOrganization) {
+    if (newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
         setUpdateMessage(t("orgConsole.orgExists"));
@@ -345,7 +397,7 @@ const OrgConsole = ({ currentOrganization }) => {
       const response = await OrganizationService.updateOrganization(
         currentOrganization,
         {
-          organization: isExternalOrg ? currentOrganization : newOrgName,
+          organization: newOrgName,
           email: orgEmail,
           description: orgDescription,
         }
@@ -562,6 +614,7 @@ const OrgConsole = ({ currentOrganization }) => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isExternalOrg={isExternalOrg}
+        orgAccessMode={orgAccessMode}
         joinRequestCount={joinRequests.length}
       />
 
@@ -588,145 +641,147 @@ const OrgConsole = ({ currentOrganization }) => {
                   </div>
                   <div className="card-body">
                     {isExternalOrg && (
-                      <div className="alert alert-info">
-                        {t("orgUserManager.ssoManagedHint")}
-                      </div>
+                      <>
+                        <div className="alert alert-info">
+                          {t("orgUserManager.ssoManagedHint")}
+                        </div>
+                        <OrgProfileDisplay
+                          orgName={newOrgName}
+                          orgDisplayName={orgDisplayName}
+                          orgLogo={orgLogo}
+                          orgEmail={orgEmail}
+                          orgDescription={orgDescription}
+                          orgUrl={orgUrl}
+                          orgTelephone={orgTelephone}
+                          orgLocale={orgLocale}
+                          orgTimezone={orgTimezone}
+                          orgAddress={orgAddress}
+                          orgAccessMode={orgAccessMode}
+                          orgDefaultRole={orgDefaultRole}
+                          orgIdpLink={orgIdpLink}
+                        />
+                      </>
                     )}
-                    <form onSubmit={handleUpdateOrganization}>
-                      <div className="form-group">
-                        <label htmlFor="orgName">
-                          {t("orgConsole.organization.name")}
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="orgName"
-                          value={getOrgNameFieldValue(
-                            isExternalOrg,
-                            orgDisplayName,
-                            newOrgName
-                          )}
-                          onChange={(e) => setNewOrgName(e.target.value)}
-                          readOnly={isExternalOrg}
-                          disabled={isExternalOrg}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="orgEmail">
-                          {t("orgConsole.organization.email")}
-                        </label>
-                        <input
-                          type="email"
-                          className="form-control"
-                          id="orgEmail"
-                          value={orgEmail}
-                          onChange={(e) => setOrgEmail(e.target.value)}
-                          readOnly={isExternalOrg}
-                          disabled={isExternalOrg}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="orgEmailHash">
-                          {t("orgConsole.organization.emailHash")}
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="orgEmailHash"
-                          value={orgEmailHash}
-                          readOnly
-                        />
-                        <small className="form-text text-muted">
-                          {t("orgConsole.organization.emailHashHint")}
-                        </small>
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="orgDescription">
-                          {t("orgConsole.organization.description")}
-                        </label>
-                        <textarea
-                          className="form-control"
-                          id="orgDescription"
-                          value={orgDescription}
-                          onChange={(e) => setOrgDescription(e.target.value)}
-                          readOnly={isExternalOrg}
-                          disabled={isExternalOrg}
-                        />
-                      </div>
+                    {!isExternalOrg && (
+                      <form onSubmit={handleUpdateOrganization}>
+                        <div className="form-group">
+                          <label htmlFor="orgName">
+                            {t("orgConsole.organization.name")}
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="orgName"
+                            value={newOrgName}
+                            onChange={(e) => setNewOrgName(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label htmlFor="orgEmail">
+                            {t("orgConsole.organization.email")}
+                          </label>
+                          <input
+                            type="email"
+                            className="form-control"
+                            id="orgEmail"
+                            value={orgEmail}
+                            onChange={(e) => setOrgEmail(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label htmlFor="orgEmailHash">
+                            {t("orgConsole.organization.emailHash")}
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="orgEmailHash"
+                            value={orgEmailHash}
+                            readOnly
+                          />
+                          <small className="form-text text-muted">
+                            {t("orgConsole.organization.emailHashHint")}
+                          </small>
+                        </div>
+                        <div className="form-group">
+                          <label htmlFor="orgDescription">
+                            {t("orgConsole.organization.description")}
+                          </label>
+                          <textarea
+                            className="form-control"
+                            id="orgDescription"
+                            value={orgDescription}
+                            onChange={(e) => setOrgDescription(e.target.value)}
+                          />
+                        </div>
 
-                      <OrgProfileExtras
-                        orgUrl={orgUrl}
-                        orgTelephone={orgTelephone}
-                        orgLocale={orgLocale}
-                        orgTimezone={orgTimezone}
-                        orgAddress={orgAddress}
-                      />
-
-                      <div className="row">
-                        <div className="col-md-6">
-                          <div className="form-group">
-                            <label htmlFor="orgAccessMode">
-                              {t("orgConsole.organization.accessMode")}
-                            </label>
-                            <select
-                              className="form-control"
-                              id="orgAccessMode"
-                              value={orgAccessMode}
-                              onChange={(e) => setOrgAccessMode(e.target.value)}
-                              disabled={isExternalOrg}
-                            >
-                              <option value="private">
-                                {t(
-                                  "orgConsole.organization.accessModes.private"
-                                )}
-                              </option>
-                              <option value="invite_only">
-                                {t(
-                                  "orgConsole.organization.accessModes.inviteOnly"
-                                )}
-                              </option>
-                              <option value="request_to_join">
-                                {t(
-                                  "orgConsole.organization.accessModes.requestToJoin"
-                                )}
-                              </option>
-                            </select>
-                            <small className="form-text text-muted">
-                              {t("orgConsole.organization.accessModeHint")}
-                            </small>
+                        <div className="row">
+                          <div className="col-md-6">
+                            <div className="form-group">
+                              <label htmlFor="orgAccessMode">
+                                {t("orgConsole.organization.accessMode")}
+                              </label>
+                              <select
+                                className="form-control"
+                                id="orgAccessMode"
+                                value={orgAccessMode}
+                                onChange={(e) =>
+                                  setOrgAccessMode(e.target.value)
+                                }
+                              >
+                                <option value="private">
+                                  {t(
+                                    "orgConsole.organization.accessModes.private"
+                                  )}
+                                </option>
+                                <option value="invite_only">
+                                  {t(
+                                    "orgConsole.organization.accessModes.inviteOnly"
+                                  )}
+                                </option>
+                                <option value="request_to_join">
+                                  {t(
+                                    "orgConsole.organization.accessModes.requestToJoin"
+                                  )}
+                                </option>
+                              </select>
+                              <small className="form-text text-muted">
+                                {t("orgConsole.organization.accessModeHint")}
+                              </small>
+                            </div>
+                          </div>
+                          <div className="col-md-6">
+                            <div className="form-group">
+                              <label htmlFor="orgDefaultRole">
+                                {t("orgConsole.organization.defaultRole")}
+                              </label>
+                              <select
+                                className="form-control"
+                                id="orgDefaultRole"
+                                value={orgDefaultRole}
+                                onChange={(e) =>
+                                  setOrgDefaultRole(e.target.value)
+                                }
+                              >
+                                <option value="member">
+                                  {t("roles.member")}
+                                </option>
+                                <option value="admin">
+                                  {t("roles.admin")}
+                                </option>
+                              </select>
+                              <small className="form-text text-muted">
+                                {t("orgConsole.organization.defaultRoleHint")}
+                              </small>
+                            </div>
                           </div>
                         </div>
-                        <div className="col-md-6">
-                          <div className="form-group">
-                            <label htmlFor="orgDefaultRole">
-                              {t("orgConsole.organization.defaultRole")}
-                            </label>
-                            <select
-                              className="form-control"
-                              id="orgDefaultRole"
-                              value={orgDefaultRole}
-                              onChange={(e) =>
-                                setOrgDefaultRole(e.target.value)
-                              }
-                              disabled={isExternalOrg}
-                            >
-                              <option value="member">
-                                {t("roles.member")}
-                              </option>
-                              <option value="admin">{t("roles.admin")}</option>
-                            </select>
-                            <small className="form-text text-muted">
-                              {t("orgConsole.organization.defaultRoleHint")}
-                            </small>
-                          </div>
-                        </div>
-                      </div>
 
-                      <OrgFormAction
-                        isExternalOrg={isExternalOrg}
-                        orgIdpLink={orgIdpLink}
-                      />
-                    </form>
+                        <button type="submit" className="btn btn-primary mt-2">
+                          {t("orgConsole.organization.updateButton")}
+                        </button>
+                      </form>
+                    )}
                     {updateMessage && (
                       <div className="alert alert-info mt-3">
                         {updateMessage}

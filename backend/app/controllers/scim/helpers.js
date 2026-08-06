@@ -120,13 +120,20 @@ const resourceLocation = (req, collection, id) =>
 // Nullable org-profile columns carried by the Group extension as plain strings.
 const ORG_PROFILE_STRING_KEYS = ['logo', 'url', 'telephone', 'locale', 'timezone'];
 
+// IdP-managed org settings: always present on the extension by contract, with
+// these defaults when missing or malformed.
+const ORG_ACCESS_MODES = ['private', 'invite_only', 'request_to_join'];
+const ORG_DEFAULT_ROLES = ['member', 'admin'];
+
 /**
- * Extract the additive optional org-profile keys from the urn:startcloud Group
- * extension (schema.org/Organization names plus locale/timezone/address). An
- * absent key means "no value": email/description clear to their '' column
- * defaults, the nullable columns clear to null. The address object keeps the
- * RFC 7643 §4.1.2 sub-attribute names verbatim (streetAddress newline-joined
- * by the sender).
+ * Extract the org-profile keys from the urn:startcloud Group extension
+ * (schema.org/Organization names plus locale/timezone/address, and the
+ * IdP-managed accessMode/defaultRole settings). An absent optional key means
+ * "no value": email/description clear to their '' column defaults, the
+ * nullable columns clear to null. accessMode/defaultRole are always present
+ * by contract and fall back to their defaults (private/member) when not. The
+ * address object keeps the RFC 7643 §4.1.2 sub-attribute names verbatim
+ * (streetAddress newline-joined by the sender).
  * @param {Object} extension - The urn:startcloud Group extension payload
  * @returns {Object} Normalized profile (full desired state)
  */
@@ -140,6 +147,10 @@ const parseOrgProfile = extension => {
       !Array.isArray(extension.address)
         ? extension.address
         : null,
+    accessMode: ORG_ACCESS_MODES.includes(extension.accessMode) ? extension.accessMode : 'private',
+    defaultRole: ORG_DEFAULT_ROLES.includes(extension.defaultRole)
+      ? extension.defaultRole
+      : 'member',
   };
   for (const key of ORG_PROFILE_STRING_KEYS) {
     profile[key] = typeof extension[key] === 'string' && extension[key] ? extension[key] : null;
@@ -174,6 +185,12 @@ const applyOrgProfile = async (org, profile, transaction) => {
   }
   if (JSON.stringify(org.address || null) !== JSON.stringify(profile.address)) {
     patch.address = profile.address;
+  }
+  if (org.access_mode !== profile.accessMode) {
+    patch.access_mode = profile.accessMode;
+  }
+  if (org.default_role !== profile.defaultRole) {
+    patch.default_role = profile.defaultRole;
   }
   if (Object.keys(patch).length) {
     await org.update(patch, { transaction });

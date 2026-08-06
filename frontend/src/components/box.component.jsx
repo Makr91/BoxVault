@@ -194,8 +194,8 @@ const Box = ({ theme }) => {
           // Set document title
           document.title = boxData.name;
 
-          if (boxData.user && boxData.user.organization) {
-            setBoxOrganization(boxData.user.organization.name);
+          if (boxData.organization) {
+            setBoxOrganization(boxData.organization.name);
           }
 
           // Edit/delete/publish + version controls: owner or org admin/owner.

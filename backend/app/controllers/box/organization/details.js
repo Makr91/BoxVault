@@ -157,13 +157,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
         {
           model: Users,
           as: 'user',
-          include: [
-            {
-              model: Organization,
-              as: 'primaryOrganization',
-              attributes: ['id', 'name', 'emailHash', 'logo'],
-            },
-          ],
+          attributes: ['id', 'username', 'emailHash', 'suspended', 'createdAt', 'updatedAt'],
         },
       ],
     });
@@ -238,6 +232,14 @@ export const getOrganizationBoxDetails = async (req, res) => {
           })),
         })),
       })),
+      // The box's OWN organization — never the owner's primary org, which can
+      // differ and would mislabel the row.
+      organization: {
+        id: organizationData.id,
+        name: organizationData.name,
+        emailHash: organizationData.emailHash,
+        logo: organizationData.logo,
+      },
       user: box.user
         ? {
             id: box.user.id,
@@ -246,14 +248,6 @@ export const getOrganizationBoxDetails = async (req, res) => {
             suspended: box.user.suspended,
             createdAt: box.user.createdAt,
             updatedAt: box.user.updatedAt,
-            organization: box.user.primaryOrganization
-              ? {
-                  id: box.user.primaryOrganization.id,
-                  name: box.user.primaryOrganization.name,
-                  emailHash: box.user.primaryOrganization.emailHash,
-                  logo: box.user.primaryOrganization.logo,
-                }
-              : null,
           }
         : null,
     }));

@@ -1,6 +1,63 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { Request } = db;
+import { createExternalInvite, resolveInviterUuid } from '../../utils/externalInvites.js';
+const { Request, organization: Organization, user: User } = db;
+
+/**
+ * Approve a join request on an SSO-managed org: membership is IdP-truth, so
+ * instead of a local membership row the approval delegates an invite to the
+ * auth server as boxvault_s2s — the membership then arrives via SCIM once the
+ * user accepts at the provider. The request row is finalized as approved
+ * (locally the approval is complete; the IdP owns the rest of the journey).
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Object} params - { request, organization, assignedRole, reviewerId }
+ * @returns {Promise<Object>} The response
+ */
+const approveViaIdpInvite = async (
+  req,
+  res,
+  { request, organization, assignedRole, reviewerId }
+) => {
+  const requester = await User.findByPk(request.user_id);
+  if (!requester) {
+    return res.status(404).send({ message: req.__('requests.notFound') });
+  }
+
+  try {
+    const invitedByUserUuid = await resolveInviterUuid(reviewerId, organization.external_issuer);
+    await createExternalInvite(organization, requester.email, assignedRole, invitedByUserUuid);
+  } catch (delegationErr) {
+    // Surface the auth server's own 400 (e.g. approver has no account there)
+    // instead of masking it behind a generic transport error.
+    const upstreamStatus = delegationErr.response?.status;
+    const upstreamMessage =
+      delegationErr.response?.data?.message || delegationErr.response?.data?.error;
+    if (upstreamStatus === 400 && upstreamMessage) {
+      return res.status(400).send({ message: upstreamMessage });
+    }
+    log.error.error('Failed to delegate join-request approval to auth server:', delegationErr);
+    return res.status(502).send({ message: req.__('requests.approve.externalError') });
+  }
+
+  await request.update({
+    status: 'approved',
+    reviewed_by: reviewerId,
+    reviewed_at: new Date(),
+  });
+
+  log.api.info('Join request approved via IdP invite delegation', {
+    requestId: request.id,
+    reviewerId,
+    organizationId: organization.id,
+    assignedRole,
+  });
+
+  return res.send({
+    message: req.__('requests.approvedDelegated'),
+    assignedRole,
+  });
+};
 
 /**
  * @swagger
@@ -108,6 +165,17 @@ export const approveJoinRequest = async (req, res) => {
 
     if (request.status !== 'pending') {
       return res.status(400).send({ message: req.__('requests.alreadyProcessed') });
+    }
+
+    // SSO-managed orgs never get local membership rows — delegate to the IdP.
+    const organization = await Organization.findByPk(organizationId);
+    if (organization?.external_issuer) {
+      return approveViaIdpInvite(req, res, {
+        request,
+        organization,
+        assignedRole,
+        reviewerId,
+      });
     }
 
     // Approve the request

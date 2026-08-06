@@ -17,10 +17,10 @@ import { isGlobalAdmin, isOrgMember, isOrgManager } from "../utils/permissions";
 import ConfirmationModal from "./confirmation.component";
 import IsoList from "./iso-list.component";
 
-// Box rows carry the owning org on either association; resolve whichever is
-// present.
+// Box rows carry the box's OWN organization (never the owner's primary org,
+// which can differ and would mislabel the row).
 const resolveBoxOrg = (box) => {
-  const org = box.user?.organization || box.user?.primaryOrganization || {};
+  const org = box.organization || {};
   return { orgName: org.name, logo: org.logo, emailHash: org.emailHash };
 };
 
@@ -689,13 +689,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   };
 
   const renderOrgLogo = (box) => {
-    const orgName =
-      box.user?.organization?.name || box.user?.primaryOrganization?.name;
+    const { orgName, logo } = resolveBoxOrg(box);
     // Stored org logo first, fetched Gravatar second, BoxVault logo last
-    const logoUrl =
-      box.user?.organization?.logo ||
-      box.user?.primaryOrganization?.logo ||
-      gravatarUrls[orgName];
+    const logoUrl = logo || gravatarUrls[orgName];
     if (logoUrl) {
       return (
         <img
@@ -715,10 +711,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     const providerNames = getProviderNames(box);
     const architectureNames = getArchitectureNames(box);
     const organizationName =
-      routeOrganization ||
-      box.user?.primaryOrganization?.name ||
-      currentUser?.organization ||
-      "Unknown";
+      routeOrganization || box.organization?.name || "Unknown";
 
     return (
       <tr

@@ -12,6 +12,7 @@ import { loadConfig } from './config-loader.js';
 import { log } from './Logger.js';
 import { findProviderByIssuer } from './oidcProviders.js';
 import { getOidcConfiguration } from '../auth/passport.js';
+import db from '../models/index.js';
 
 const INVITE_SCOPE = 'org:invite';
 
@@ -87,6 +88,32 @@ const getDelegationToken = async issuer => {
 const inviteApiBase = issuer => `${issuer.replace(/\/+$/, '')}/api/org/invites`;
 
 /**
+ * Resolve a BoxVault user's auth-server UUID from their issuer-scoped
+ * credential (the subject IS their UUID at that issuer). Pre-issuer rows
+ * stored under the flat 'oidc' provider are claimed for the issuer via the
+ * model's lazy backfill. Purely-local users have no credential -> null, and
+ * the auth server's own 400 surfaces to the caller.
+ * @param {number} userId - BoxVault user id of the inviter/approver
+ * @param {string} issuer - The org's external_issuer
+ * @returns {Promise<string|null>} Auth-server user UUID or null
+ */
+const resolveInviterUuid = async (userId, issuer) => {
+  const { credential: Credential } = db;
+  const credential = await Credential.findOne({ where: { user_id: userId, provider: issuer } });
+  if (credential) {
+    return credential.subject;
+  }
+
+  const flat = await Credential.findOne({ where: { user_id: userId, provider: 'oidc' } });
+  if (flat) {
+    const backfilled = await Credential.findByIssuerAndSubject(issuer, flat.subject);
+    return backfilled ? backfilled.subject : null;
+  }
+
+  return null;
+};
+
+/**
  * Create an invite on the auth server for an externally-managed org.
  * Their 500-after-email-failure is retry-safe: re-POSTing replaces the pending
  * invite for the same address.
@@ -152,4 +179,4 @@ const deleteExternalInvite = async (organization, inviteId) => {
   });
 };
 
-export { createExternalInvite, listExternalInvites, deleteExternalInvite };
+export { createExternalInvite, listExternalInvites, deleteExternalInvite, resolveInviterUuid };

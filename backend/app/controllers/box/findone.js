@@ -238,13 +238,6 @@ export const findOne = async (req, res) => {
           model: Users,
           as: 'user',
           attributes: ['id', 'username', 'emailHash'],
-          include: [
-            {
-              model: Organization,
-              as: 'primaryOrganization',
-              attributes: ['id', 'name', 'emailHash', 'logo'],
-            },
-          ],
         },
       ],
     });

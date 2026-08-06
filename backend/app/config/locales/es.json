@@ -375,8 +375,10 @@
     "notFound": "¡Solicitud de unión no encontrada!",
     "alreadyProcessed": "¡La solicitud ya ha sido procesada!",
     "approved": "¡Solicitud de unión aprobada exitosamente!",
+    "approvedDelegated": "Solicitud aprobada — se envió una invitación a través del proveedor de identidad; la membresía se completa cuando el usuario la acepte allí.",
     "approve": {
-      "error": "Error al aprobar la solicitud de unión"
+      "error": "Error al aprobar la solicitud de unión",
+      "externalError": "No se pudo crear la invitación en el proveedor de identidad. Por favor intenta de nuevo."
     },
     "notFoundOrNotCancellable": "¡Solicitud de unión no encontrada o no se puede cancelar!",
     "cancelled": "¡Solicitud de unión cancelada exitosamente!",

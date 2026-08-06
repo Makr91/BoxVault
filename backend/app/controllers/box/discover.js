@@ -84,28 +84,18 @@ export const discoverAll = async (req, res) => {
           model: user,
           as: 'user',
           attributes: ['id', 'username', 'emailHash'],
-          include: [
-            {
-              model: organization,
-              as: 'primaryOrganization',
-              attributes: ['id', 'name', 'emailHash', 'logo'],
-            },
-          ],
+        },
+        {
+          // The box's OWN organization — never the owner's primary org, which
+          // can differ and would mislabel the row.
+          model: organization,
+          as: 'organization',
+          attributes: ['id', 'name', 'emailHash', 'logo'],
         },
       ],
     });
 
-    // Ensure the emailHash is included in the response
-    const restructuredBoxes = boxes.map(box => {
-      const boxJson = box.toJSON();
-      if (boxJson.user && boxJson.user.primaryOrganization) {
-        boxJson.user.primaryOrganization.emailHash =
-          boxJson.user.primaryOrganization.emailHash || null;
-      }
-      return boxJson;
-    });
-
-    return res.send(restructuredBoxes);
+    return res.send(boxes);
   } catch (err) {
     log.error.error('Error discovering boxes:', err);
     return res.status(500).send({

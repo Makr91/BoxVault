@@ -1,42 +1,11 @@
 // send.js
 import { randomBytes } from 'crypto';
 import db from '../../../models/index.js';
-const {
-  organization: Organization,
-  invitation: Invitation,
-  user: User,
-  credential: Credential,
-  UserOrg,
-} = db;
+const { organization: Organization, invitation: Invitation, user: User, UserOrg } = db;
 import { log } from '../../../utils/Logger.js';
 import { sendInvitationMail } from '../../mail.controller.js';
 import { loadConfig } from '../../../utils/config-loader.js';
-import { createExternalInvite } from '../../../utils/externalInvites.js';
-
-/**
- * Resolve the inviting user's auth-server UUID from their issuer-scoped
- * credential (the subject IS their UUID at that issuer). Pre-issuer rows
- * stored under the flat 'oidc' provider are claimed for the issuer via the
- * model's lazy backfill. Purely-local admins have no credential -> null, and
- * the auth server's own 400 surfaces to the caller.
- * @param {number} userId - BoxVault user id of the inviter
- * @param {string} issuer - The org's external_issuer
- * @returns {Promise<string|null>} Auth-server user UUID or null
- */
-const resolveInviterUuid = async (userId, issuer) => {
-  const credential = await Credential.findOne({ where: { user_id: userId, provider: issuer } });
-  if (credential) {
-    return credential.subject;
-  }
-
-  const flat = await Credential.findOne({ where: { user_id: userId, provider: 'oidc' } });
-  if (flat) {
-    const backfilled = await Credential.findByIssuerAndSubject(issuer, flat.subject);
-    return backfilled ? backfilled.subject : null;
-  }
-
-  return null;
-};
+import { createExternalInvite, resolveInviterUuid } from '../../../utils/externalInvites.js';
 
 /**
  * @swagger
