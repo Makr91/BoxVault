@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.46.1](https://github.com/Makr91/BoxVault/compare/v0.46.0...v0.46.1) (2026-08-06)
+
+
+### Bug Fixes
+
+* ci/cd ([0ef88a7](https://github.com/Makr91/BoxVault/commit/0ef88a7f629ca64bf7417d36bc0b30c5d074206b))
+* ci/cd ([1d1d607](https://github.com/Makr91/BoxVault/commit/1d1d60769f1808f5cd39fc62853854df79a45845))
+* ci/cd ([7a1de09](https://github.com/Makr91/BoxVault/commit/7a1de099a3e84cac1dbfd5ffd5344e74a754dc8c))
+* linear-time slug trim; default express-rate-limit import for scanner recognition ([0b39e54](https://github.com/Makr91/BoxVault/commit/0b39e5484e37bbb24fbd3a4fefdeee7ba550a00b))
+* lockfile resolves express-rate-limit 8.6.2 compatible with ip-address 10 ([9cafc54](https://github.com/Makr91/BoxVault/commit/9cafc54009dd89e11079169c9524232fa37f3fef))
+* scope admin org-listing box counts to boxes owned within each organization ([6f8b541](https://github.com/Makr91/BoxVault/commit/6f8b541637034d16518a5594255d9d9e6c2ebba7))
+
 ## [0.46.0](https://github.com/Makr91/BoxVault/compare/v0.45.1...v0.46.0) (2026-08-06)
 
 
