@@ -438,9 +438,7 @@ describe('Request API Integration Tests', () => {
         .spyOn(Request.prototype, 'update')
         .mockRejectedValue(new Error('Update Error'));
 
-      await expect(Request.approveRequest(req.id, orgAdminUser.id)).rejects.toThrow(
-        'Update Error'
-      );
+      await expect(Request.approveRequest(req.id, orgAdminUser.id)).rejects.toThrow('Update Error');
 
       // Verify request is still pending (rollback successful)
       const checkReq = await Request.findByPk(req.id);
