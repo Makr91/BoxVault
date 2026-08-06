@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/Makr91/BoxVault/compare/v0.47.0...v0.48.0) (2026-08-06)
+
+
+### Features
+
+* final notification consumer and producer updates ([4929614](https://github.com/Makr91/BoxVault/commit/4929614931ad359b8e36adb1d3440e3f7f5cb710))
+
 ## [0.47.0](https://github.com/Makr91/BoxVault/compare/v0.46.2...v0.47.0) (2026-08-06)
 
 
