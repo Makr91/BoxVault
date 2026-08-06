@@ -13,6 +13,8 @@ import {
   FaHouseLock,
   FaBridgeLock,
   FaBook,
+  FaBell,
+  FaBellSlash,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 
@@ -21,7 +23,15 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
+import { fetchTrustedIssuers, resolveIssuer } from "../utils/authServer";
 import { log } from "../utils/Logger";
+import {
+  isPushSupported,
+  isPushEnabled,
+  setPushEnabled,
+  subscribePush,
+  unsubscribePush,
+} from "../utils/pushNotifications";
 
 import OrganizationSwitcher from "./OrganizationSwitcher.component";
 
@@ -39,24 +49,6 @@ const getLanguageDisplayName = (languageCode) => {
     return name.charAt(0).toUpperCase() + name.slice(1);
   } catch {
     return code.toUpperCase();
-  }
-};
-
-// Helper to normalize URLs
-const normalizeUrl = (url) => url.replace(/\/+$/, "");
-
-// Helper to validate issuer URL format
-const validateIssuerFormat = (issuer) => {
-  if (!issuer || !issuer.startsWith("https://")) {
-    return false;
-  }
-
-  try {
-    const url = new URL(issuer);
-    return url.protocol === "https:" && url.hostname;
-  } catch {
-    log.auth.warn("Invalid issuer URL format", { issuer });
-    return false;
   }
 };
 
@@ -110,6 +102,104 @@ AppIcon.propTypes = {
   app: PropTypes.shape({
     iconUrl: PropTypes.string,
     homeUrl: PropTypes.string,
+  }).isRequired,
+};
+
+const NotificationToggle = ({ currentUser }) => {
+  const { t } = useTranslation();
+  const [enabled, setEnabled] = useState(isPushEnabled());
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const enableNotifications = async () => {
+    if (!isPushSupported()) {
+      setFeedback({ tone: "danger", text: t("notifications.notSupported") });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      setFeedback({
+        tone: "danger",
+        text: t("notifications.permissionDenied"),
+      });
+      return;
+    }
+
+    await subscribePush(currentUser.accessToken);
+    setPushEnabled(true);
+    setEnabled(true);
+    setFeedback({ tone: "success", text: t("notifications.enableSuccess") });
+  };
+
+  const disableNotifications = async () => {
+    await unsubscribePush();
+    setPushEnabled(false);
+    setEnabled(false);
+    setFeedback({ tone: "success", text: t("notifications.disableSuccess") });
+  };
+
+  const describeToggleError = (error) => {
+    if (error.response?.status === 403) {
+      return t("notifications.scopeMissing");
+    }
+    return enabled
+      ? t("notifications.disableError")
+      : t("notifications.enableError");
+  };
+
+  const handleToggle = async (e) => {
+    e.stopPropagation();
+    setBusy(true);
+    setFeedback(null);
+
+    try {
+      if (enabled) {
+        await disableNotifications();
+      } else {
+        await enableNotifications();
+      }
+    } catch (error) {
+      log.component.error("Notification toggle failed", {
+        error: error.message,
+      });
+      setFeedback({ tone: "danger", text: describeToggleError(error) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <li>
+        <button
+          type="button"
+          className="dropdown-item d-flex align-items-center"
+          onClick={handleToggle}
+          disabled={busy}
+        >
+          {enabled ? (
+            <FaBell className="me-2" />
+          ) : (
+            <FaBellSlash className="me-2" />
+          )}
+          {enabled ? t("notifications.disable") : t("notifications.enable")}
+        </button>
+      </li>
+      {feedback && (
+        <li>
+          <span className={`dropdown-item-text small text-${feedback.tone}`}>
+            {feedback.text}
+          </span>
+        </li>
+      )}
+    </>
+  );
+};
+
+NotificationToggle.propTypes = {
+  currentUser: PropTypes.shape({
+    accessToken: PropTypes.string,
   }).isRequired,
 };
 
@@ -217,33 +307,10 @@ const Navbar = ({
 
     const loadTrustedIssuers = async () => {
       try {
-        const response = await fetch(
-          `${window.location.origin}/api/auth/oidc/issuers`
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        // Check if response is JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          log.auth.warn("Trusted issuers endpoint returned non-JSON response", {
-            contentType,
-            status: response.status,
-          });
-          if (mounted) {
-            setTrustedIssuers([]);
-          }
-          return;
-        }
-
-        const data = await response.json();
+        const issuers = await fetchTrustedIssuers();
         if (mounted) {
-          setTrustedIssuers(data.issuers || []);
-          log.auth.debug("Trusted issuers loaded", {
-            count: data.issuers?.length,
-          });
+          setTrustedIssuers(issuers);
+          log.auth.debug("Trusted issuers loaded", { count: issuers.length });
         }
       } catch (error) {
         log.auth.error("Failed to load trusted issuers", {
@@ -298,60 +365,9 @@ const Navbar = ({
     };
   }, [currentUser]);
 
-  // Helper to validate issuer is trusted
-  const validateIssuerTrusted = useCallback(
-    (issuer) => {
-      const normalizedIssuer = normalizeUrl(issuer);
-      const isTrusted = trustedIssuers.some(
-        (trustedIssuer) =>
-          normalizeUrl(trustedIssuer.issuer) === normalizedIssuer
-      );
-
-      if (!isTrusted) {
-        log.auth.warn("Issuer not in trusted whitelist", {
-          issuer,
-          normalizedIssuer,
-          trustedIssuers: trustedIssuers.map((trustedIssuer) =>
-            normalizeUrl(trustedIssuer.issuer)
-          ),
-        });
-      }
-      return isTrusted;
-    },
-    [trustedIssuers]
-  );
-
   const extractAuthServerUrl = useCallback(
-    (accessToken) => {
-      try {
-        const jwtPayload = JSON.parse(atob(accessToken.split(".")[1]));
-        if (!jwtPayload.id_token) {
-          return "";
-        }
-
-        const idTokenPayload = JSON.parse(
-          atob(jwtPayload.id_token.split(".")[1])
-        );
-        const issuer = idTokenPayload.iss || "";
-
-        // Validate against whitelist and format
-        if (!validateIssuerTrusted(issuer)) {
-          return "";
-        }
-
-        if (!validateIssuerFormat(issuer)) {
-          return "";
-        }
-
-        return issuer;
-      } catch (error) {
-        log.auth.debug("Could not extract issuer from id_token", {
-          error: error.message,
-        });
-        return "";
-      }
-    },
-    [validateIssuerTrusted]
+    (accessToken) => resolveIssuer(accessToken, trustedIssuers),
+    [trustedIssuers]
   );
 
   const fetchTicketConfig = useCallback(async (mounted) => {
@@ -696,6 +712,9 @@ const Navbar = ({
                     {t("navbar.docs")}
                   </a>
                 </li>
+                {currentUser?.provider?.startsWith("oidc-") && (
+                  <NotificationToggle currentUser={currentUser} />
+                )}
                 {favoriteApps && favoriteApps.length > 0 && (
                   <>
                     <li>

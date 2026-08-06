@@ -655,6 +655,17 @@
     "favorites": "Favoritos",
     "help": "Ayuda"
   },
+  "notifications": {
+    "enable": "Activar notificaciones",
+    "disable": "Desactivar notificaciones",
+    "enableSuccess": "¡Notificaciones activadas exitosamente!",
+    "enableError": "Error al activar las notificaciones. Por favor intenta de nuevo.",
+    "disableSuccess": "Notificaciones desactivadas.",
+    "disableError": "Error al desactivar las notificaciones. Por favor intenta de nuevo.",
+    "permissionDenied": "El navegador denegó el permiso de notificaciones.",
+    "scopeMissing": "Tu cuenta aún no está autorizada para notificaciones. Pide a tu administrador que habilite el alcance de notificaciones.",
+    "notSupported": "Este navegador no soporta notificaciones push."
+  },
   "orgConsole": {
     "pageTitle": "Consola de Org",
     "title": "Consola de la Organización",

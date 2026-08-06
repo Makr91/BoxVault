@@ -25,6 +25,7 @@ import AuthService from "./services/auth.service";
 import SetupService from "./services/setup.service";
 import { log } from "./utils/Logger";
 import { isOrgManager } from "./utils/permissions";
+import { isPushEnabled, syncSubscription } from "./utils/pushNotifications";
 
 const App = () => {
   const { t } = useTranslation();
@@ -318,6 +319,16 @@ const App = () => {
         clearInterval(intervalId);
       }
     };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser?.provider?.startsWith("oidc-") && isPushEnabled()) {
+      syncSubscription().catch((error) => {
+        log.app.error("Push subscription sync failed", {
+          error: error.message,
+        });
+      });
+    }
   }, [currentUser]);
 
   if (setupComplete === null) {

@@ -387,6 +387,17 @@
     "favorites": "Favorites",
     "help": "Help"
   },
+  "notifications": {
+    "enable": "Enable notifications",
+    "disable": "Disable notifications",
+    "enableSuccess": "Notifications enabled successfully!",
+    "enableError": "Failed to enable notifications. Please try again.",
+    "disableSuccess": "Notifications disabled.",
+    "disableError": "Failed to disable notifications. Please try again.",
+    "permissionDenied": "Notification permission was denied by the browser.",
+    "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
+    "notSupported": "Push notifications are not supported by this browser."
+  },
   "orgConsole": {
     "pageTitle": "Org Console",
     "title": "Organization Console",

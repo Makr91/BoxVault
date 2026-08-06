@@ -38,6 +38,7 @@ import providerRoutes from './app/routes/provider.routes.js';
 import architectureRoutes from './app/routes/architecture.routes.js';
 import serviceAccountRoutes from './app/routes/service_account.routes.js';
 import favoritesRoutes from './app/routes/favorites.routes.js';
+import notificationRoutes from './app/routes/notification.routes.js';
 import setupRoutes from './app/routes/setup.routes.js';
 import sslRoutes from './app/routes/ssl.routes.js';
 import isoRoutes from './app/routes/iso.routes.js';
@@ -510,6 +511,7 @@ const initializeApp = async () => {
     app.use('/api', architectureRoutes);
     app.use('/api', serviceAccountRoutes);
     app.use('/api', favoritesRoutes);
+    app.use('/api', notificationRoutes);
     app.use('/api', setupRoutes);
     app.use('/api', sslRoutes);
     app.use('/api', isoRoutes);
