@@ -272,7 +272,10 @@ const OrgConsole = ({ currentOrganization }) => {
   const [searchTerm, setSearchTerm] = useState("");
   // Access mode / default role as loaded, so save only calls the dedicated
   // endpoint when one of them actually changed.
-  const loadedAccessRef = useRef({ accessMode: "private", defaultRole: "member" });
+  const loadedAccessRef = useRef({
+    accessMode: "private",
+    defaultRole: "member",
+  });
 
   const validateOrgName = (orgName) => {
     const validCharsRegex = /^[0-9a-zA-Z-._]+$/;

@@ -7,12 +7,7 @@ import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const {
-  user: User,
-  role: Role,
-  organization: Organization,
-  service_account: ServiceAccount,
-} = db;
+const { user: User, role: Role, organization: Organization, service_account: ServiceAccount } = db;
 
 /**
  * Look up a regular user for signin, with roles and primary organization.

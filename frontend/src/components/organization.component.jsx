@@ -104,7 +104,13 @@ BoxOsCell.propTypes = {
 
 // Shared boxes table markup (sortable headers + rows): used for the flat
 // list and for each per-organization group on the signed-in home page.
-const BoxesTable = ({ boxes, renderRow, sortColumn, sortDirection, onSort }) => {
+const BoxesTable = ({
+  boxes,
+  renderRow,
+  sortColumn,
+  sortDirection,
+  onSort,
+}) => {
   const { t } = useTranslation();
 
   const renderSortIcon = (column) => {
@@ -133,7 +139,8 @@ const BoxesTable = ({ boxes, renderRow, sortColumn, sortDirection, onSort }) => 
             {t("box.organization.table.released")} {renderSortIcon("released")}
           </th>
           <th onClick={() => onSort("downloads")} className="sortable-header">
-            {t("box.organization.table.downloads")} {renderSortIcon("downloads")}
+            {t("box.organization.table.downloads")}{" "}
+            {renderSortIcon("downloads")}
           </th>
           <th onClick={() => onSort("versions")} className="sortable-header">
             {t("box.organization.table.versions")} {renderSortIcon("versions")}
