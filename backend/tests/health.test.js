@@ -6,7 +6,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const originalFs = require('fs');
 
-// Define FS Mock
+// Define FS Mockss
 const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 const mockMkdirSync = jest.fn();
