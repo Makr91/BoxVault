@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.48.1](https://github.com/Makr91/BoxVault/compare/v0.48.0...v0.48.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* back channel logout ([6e103d8](https://github.com/Makr91/BoxVault/commit/6e103d86265394e4f807ddcaa909b7e570ac9750))
+* back channel logout ([bc5dc8e](https://github.com/Makr91/BoxVault/commit/bc5dc8ef20418fa7f15305836217ce39dd7c5d04))
+* back channel logout ([5dd5bb9](https://github.com/Makr91/BoxVault/commit/5dd5bb9346d9ca83217f07d49d514405d4d3687c))
+
 ## [0.48.0](https://github.com/Makr91/BoxVault/compare/v0.47.0...v0.48.0) (2026-08-06)
 
 
