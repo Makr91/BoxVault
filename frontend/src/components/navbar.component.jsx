@@ -655,9 +655,10 @@ const Navbar = ({
 
       const orgData = await response.json();
 
-      // Store org_code for ticket URL
-      if (orgData.org_code && mounted) {
-        setActiveOrgCode(orgData.org_code);
+      if (mounted) {
+        setActiveOrgCode(
+          orgData.external_issuer ? orgData.org_code || null : null
+        );
       }
 
       // Stored org logo wins; the Gravatar email-hash fetch stays as fallback
@@ -717,7 +718,7 @@ const Navbar = ({
 
   // Helper to get customer ID with priority logic
   const getCustomerId = useCallback(
-    () => userClaims?.customer_id || activeOrgCode || "A55DF1",
+    () => activeOrgCode || userClaims?.customer_id || "A55DF1",
     [userClaims, activeOrgCode]
   );
 

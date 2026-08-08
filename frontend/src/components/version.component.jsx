@@ -1,6 +1,8 @@
+import PropTypes from "prop-types";
 import { useState, useEffect, useRef } from "react";
 import Table from "react-bootstrap/Table";
 import { useTranslation } from "react-i18next";
+import Markdown from "react-markdown";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import ArchitectureService from "../services/architecture.service";
@@ -10,8 +12,193 @@ import ProviderService from "../services/provider.service";
 import VersionDataService from "../services/version.service";
 import { log } from "../utils/Logger";
 import { canManageBox } from "../utils/permissions";
+import { readDeprecated, readReleaseNotes } from "../utils/versionFields";
 
+import BoxPageHeader from "./BoxPageHeader.component";
 import ConfirmationModal from "./confirmation.component";
+import DeprecationBanner from "./DeprecationBanner.component";
+import StatusChips from "./StatusChips.component";
+
+const ReleaseNotesEditor = ({ initialNotes, onSave, onCancel }) => {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(initialNotes);
+
+  return (
+    <div className="flex-grow-1">
+      <textarea
+        className="form-control mb-2"
+        rows="4"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={t("version.releaseNotes")}
+      />
+      <button
+        type="button"
+        className="btn btn-sm btn-success me-2"
+        onClick={() => onSave(draft)}
+      >
+        {t("buttons.save")}
+      </button>
+      <button
+        type="button"
+        className="btn btn-sm btn-secondary"
+        onClick={onCancel}
+      >
+        {t("buttons.cancel")}
+      </button>
+    </div>
+  );
+};
+
+ReleaseNotesEditor.propTypes = {
+  initialNotes: PropTypes.string.isRequired,
+  onSave: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+};
+
+const DeprecateButton = ({ onDeprecate }) => {
+  const { t } = useTranslation();
+  const [askingReason, setAskingReason] = useState(false);
+  const [reasonDraft, setReasonDraft] = useState("");
+
+  if (!askingReason) {
+    return (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-danger"
+        onClick={() => setAskingReason(true)}
+      >
+        {t("version.deprecate")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="d-flex gap-2 align-items-start flex-wrap">
+      <input
+        type="text"
+        className="form-control form-control-sm w-auto"
+        value={reasonDraft}
+        onChange={(e) => setReasonDraft(e.target.value)}
+        placeholder={t("version.deprecationReason")}
+      />
+      <button
+        type="button"
+        className="btn btn-sm btn-danger"
+        disabled={!reasonDraft.trim()}
+        onClick={async () => {
+          const ok = await onDeprecate(reasonDraft.trim());
+          if (ok) {
+            setAskingReason(false);
+            setReasonDraft("");
+          }
+        }}
+      >
+        {t("version.deprecate")}
+      </button>
+      <button
+        type="button"
+        className="btn btn-sm btn-secondary"
+        onClick={() => setAskingReason(false)}
+      >
+        {t("buttons.cancel")}
+      </button>
+    </div>
+  );
+};
+
+DeprecateButton.propTypes = {
+  onDeprecate: PropTypes.func.isRequired,
+};
+
+const ReleaseNotesCard = ({
+  version,
+  isAuthorized,
+  editingNotes,
+  onStartEditing,
+  onStopEditing,
+  onSaveNotes,
+  onDeprecate,
+}) => {
+  const { t } = useTranslation();
+  const notes = readReleaseNotes(version);
+
+  if (!notes && !isAuthorized) {
+    return null;
+  }
+
+  return (
+    <div className="card mb-3">
+      <div className="card-header">
+        <h5 className="mb-0">{t("version.releaseNotes")}</h5>
+      </div>
+      <div className="card-body">
+        {editingNotes ? (
+          <ReleaseNotesEditor
+            initialNotes={notes || ""}
+            onSave={onSaveNotes}
+            onCancel={onStopEditing}
+          />
+        ) : (
+          <>
+            {notes && <Markdown>{notes}</Markdown>}
+            {isAuthorized && (
+              <div className="d-flex flex-wrap gap-2 align-items-start">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={onStartEditing}
+                >
+                  {t("version.editReleaseNotes")}
+                </button>
+                {!readDeprecated(version) && (
+                  <DeprecateButton onDeprecate={onDeprecate} />
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+ReleaseNotesCard.propTypes = {
+  version: PropTypes.object.isRequired,
+  isAuthorized: PropTypes.bool.isRequired,
+  editingNotes: PropTypes.bool.isRequired,
+  onStartEditing: PropTypes.func.isRequired,
+  onStopEditing: PropTypes.func.isRequired,
+  onSaveNotes: PropTypes.func.isRequired,
+  onDeprecate: PropTypes.func.isRequired,
+};
+
+const VersionMetaRow = ({ version }) => {
+  const { t } = useTranslation();
+  const formatDate = (value) =>
+    value ? new Date(value).toLocaleDateString() : "";
+
+  return (
+    <div className="d-flex flex-wrap gap-4 text-muted small mb-3">
+      <span>
+        {t("provider.description")}:{" "}
+        <strong className="text-body">{version.description}</strong>
+      </span>
+      <span>
+        {t("version.createdAt")}:{" "}
+        <strong className="text-body">{formatDate(version.createdAt)}</strong>
+      </span>
+      <span>
+        {t("version.updatedAt")}:{" "}
+        <strong className="text-body">{formatDate(version.updatedAt)}</strong>
+      </span>
+    </div>
+  );
+};
+
+VersionMetaRow.propTypes = {
+  version: PropTypes.object.isRequired,
+};
 
 const Version = () => {
   const { t } = useTranslation();
@@ -30,6 +217,7 @@ const Version = () => {
     updatedAt: "",
   });
   const [editMode, setEditMode] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
   const [architectures, setArchitectures] = useState({});
   const [newProvider, setNewProvider] = useState({ name: "", description: "" });
   const [showAddProviderForm, setShowAddProviderForm] = useState(false);
@@ -40,6 +228,44 @@ const Version = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const form = useRef();
+
+  const updateVersionFields = async (fields) => {
+    try {
+      await VersionDataService.updateVersion(
+        organization,
+        name,
+        version,
+        fields
+      );
+      const versionResponse = await VersionDataService.getVersion(
+        organization,
+        name,
+        version
+      );
+      setCurrentVersion(versionResponse.data);
+      setMessage(t("version.updated"));
+      setMessageType("success");
+      return true;
+    } catch (e) {
+      log.api.error("Error updating version", {
+        versionNumber: version,
+        error: e.message,
+      });
+      setMessage(
+        e.response && e.response.data && e.response.data.message
+          ? e.response.data.message
+          : t("version.updateError")
+      );
+      setMessageType("danger");
+      return false;
+    }
+  };
+
+  const saveReleaseNotes = (releaseNotes) =>
+    updateVersionFields({ release_notes: releaseNotes });
+
+  const toggleDeprecated = (deprecated, reason) =>
+    updateVersionFields({ deprecated, deprecation_reason: reason });
 
   const required = (value) => (value ? undefined : t("validation.required"));
 
@@ -387,6 +613,30 @@ const Version = () => {
     setEditMode(false);
   };
 
+  const viewActions = (
+    <>
+      {isAuthorized ? (
+        <>
+          <button
+            className="btn btn-primary me-2"
+            onClick={() => setEditMode(true)}
+          >
+            {t("buttons.edit")}
+          </button>
+          <button
+            className="btn btn-danger me-2"
+            onClick={handleVersionDeleteClick}
+          >
+            {t("buttons.delete")}
+          </button>
+        </>
+      ) : null}
+      <Link className="btn btn-dark me-2" to={`/${organization}/${name}`}>
+        {t("actions.back")}
+      </Link>
+    </>
+  );
+
   return (
     <div className="list row">
       {message ? (
@@ -458,45 +708,48 @@ const Version = () => {
               </div>
             ) : (
               <div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4>{t("version.details")}</h4>
-                  <div>
-                    {isAuthorized ? (
-                      <>
-                        <button
-                          className="btn btn-primary me-2"
-                          onClick={() => setEditMode(true)}
-                        >
-                          {t("buttons.edit")}
-                        </button>
-                        <button
-                          className="btn btn-danger me-2"
-                          onClick={handleVersionDeleteClick}
-                        >
-                          {t("buttons.delete")}
-                        </button>
-                      </>
-                    ) : null}
-                    <Link
-                      className="btn btn-dark me-2"
-                      to={`/${organization}/${name}`}
+                <BoxPageHeader
+                  crumbs={[
+                    { label: organization, to: `/${organization}` },
+                    { label: name, to: `/${organization}/${name}` },
+                    { label: currentVersion.versionNumber || version },
+                  ]}
+                  actions={viewActions}
+                  title={t("version.title", {
+                    version: currentVersion.versionNumber || version,
+                  })}
+                  chips={
+                    readDeprecated(currentVersion) ? (
+                      <StatusChips deprecated />
+                    ) : null
+                  }
+                />
+                <DeprecationBanner version={currentVersion}>
+                  {isAuthorized && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success"
+                      onClick={() => toggleDeprecated(false, null)}
                     >
-                      {t("actions.backToFiles")}
-                    </Link>
-                  </div>
-                </div>
-                <p>
-                  {t("version.number")}: {currentVersion.versionNumber}
-                </p>
-                <p>
-                  {t("provider.description")}: {currentVersion.description}
-                </p>
-                <p>
-                  {t("version.createdAt")}: {currentVersion.createdAt}
-                </p>
-                <p>
-                  {t("version.updatedAt")}: {currentVersion.updatedAt}
-                </p>
+                      {t("version.undeprecate")}
+                    </button>
+                  )}
+                </DeprecationBanner>
+                <ReleaseNotesCard
+                  version={currentVersion}
+                  isAuthorized={isAuthorized}
+                  editingNotes={editingNotes}
+                  onStartEditing={() => setEditingNotes(true)}
+                  onStopEditing={() => setEditingNotes(false)}
+                  onSaveNotes={async (draft) => {
+                    const ok = await saveReleaseNotes(draft);
+                    if (ok) {
+                      setEditingNotes(false);
+                    }
+                  }}
+                  onDeprecate={(reason) => toggleDeprecated(true, reason)}
+                />
+                <VersionMetaRow version={currentVersion} />
               </div>
             )}
           </div>

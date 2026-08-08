@@ -10,6 +10,8 @@ import nodemailer from 'nodemailer';
 import { getSupportedLocales, getDefaultLocale } from '../../config/i18n.js';
 import { getIsoStorageRoot } from '../iso/helpers.js';
 import { log } from '../../utils/Logger.js';
+import { sendHubNotification } from '../../utils/notifyHub.js';
+import { resolveGlobalAdminRecipients } from '../../utils/notifyRecipients.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -243,6 +245,70 @@ const getDbStatus = async () => {
   }
 };
 
+const sendDiskAlertEmail = async (boxDisk, isoDisk) => {
+  const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails?.value;
+  if (!alertEmails || alertEmails.length === 0) {
+    return;
+  }
+  try {
+    const mailConfig = loadConfig('mail');
+    const transporter = nodemailer.createTransport({
+      host: mailConfig.smtp_connect.host.value,
+      port: mailConfig.smtp_connect.port.value,
+      secure: mailConfig.smtp_connect.secure.value,
+      auth: {
+        user: mailConfig.smtp_auth.user.value,
+        pass: mailConfig.smtp_auth.password.value,
+      },
+      tls: {
+        rejectUnauthorized: mailConfig.smtp_connect.rejectUnauthorized.value,
+      },
+    });
+
+    await transporter.sendMail({
+      from: mailConfig.smtp_settings.from.value,
+      to: alertEmails.join(', '),
+      subject: 'Critical Disk Usage Alert',
+      text: `High disk usage detected!\nBox: ${boxDisk.message}\nISO: ${isoDisk.message}`,
+    });
+
+    log.app.warn(
+      `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(
+        ', '
+      )}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
+    );
+  } catch (e) {
+    log.error.error('Failed to send alert email', e);
+  }
+};
+
+const sendDiskAlertNotifications = async (boxDisk, isoDisk, appConfig) => {
+  try {
+    const recipients = await resolveGlobalAdminRecipients();
+    const origin = appConfig.boxvault?.origin?.value || '';
+    const hourBucket = new Date().toISOString().slice(0, 13);
+    await Promise.all(
+      recipients.map(({ issuer, uuid }) =>
+        sendHubNotification({
+          issuer,
+          recipient: { user_uuid: uuid },
+          notification: {
+            title: 'BoxVault disk space alert',
+            body: `Box storage: ${boxDisk.message}. ISO storage: ${isoDisk.message}.`,
+            navigate: `${origin}/admin`,
+            tag: 'boxvault-disk',
+          },
+          type: 'SYSTEM',
+          severity: 'WARNING',
+          idempotencyKey: `boxvault:disk-alert:${hourBucket}:user:${uuid}`,
+        })
+      )
+    );
+  } catch (e) {
+    log.app.warn('Disk-alert notification skipped', { error: e.message });
+  }
+};
+
 const handleDiskAlerting = async (boxDisk, isoDisk, appConfig) => {
   if (boxDisk.status !== 'warning' && isoDisk.status !== 'warning') {
     return;
@@ -252,40 +318,9 @@ const handleDiskAlerting = async (boxDisk, isoDisk, appConfig) => {
   const now = Date.now();
   // Alert at most once every X hours
   if (alertFrequencyHours === 0 || now - lastAlertTime > alertFrequencyHours * 60 * 60 * 1000) {
-    const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails?.value;
-    if (alertEmails && alertEmails.length > 0) {
-      try {
-        const mailConfig = loadConfig('mail');
-        const transporter = nodemailer.createTransport({
-          host: mailConfig.smtp_connect.host.value,
-          port: mailConfig.smtp_connect.port.value,
-          secure: mailConfig.smtp_connect.secure.value,
-          auth: {
-            user: mailConfig.smtp_auth.user.value,
-            pass: mailConfig.smtp_auth.password.value,
-          },
-          tls: {
-            rejectUnauthorized: mailConfig.smtp_connect.rejectUnauthorized.value,
-          },
-        });
-
-        await transporter.sendMail({
-          from: mailConfig.smtp_settings.from.value,
-          to: alertEmails.join(', '),
-          subject: 'Critical Disk Usage Alert',
-          text: `High disk usage detected!\nBox: ${boxDisk.message}\nISO: ${isoDisk.message}`,
-        });
-
-        log.app.warn(
-          `[ALERT] High disk usage detected! Sending alert email to ${alertEmails.join(
-            ', '
-          )}. Box: ${boxDisk.message}, ISO: ${isoDisk.message}`
-        );
-      } catch (e) {
-        log.error.error('Failed to send alert email', e);
-      }
-      lastAlertTime = now;
-    }
+    await sendDiskAlertEmail(boxDisk, isoDisk);
+    await sendDiskAlertNotifications(boxDisk, isoDisk, appConfig);
+    lastAlertTime = now;
   }
 };
 

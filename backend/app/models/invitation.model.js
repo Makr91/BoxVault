@@ -41,6 +41,11 @@ export default (sequelize, Sequelize) => {
       comment: 'Role to assign when invitation is accepted',
       field: 'invited_role',
     },
+    invited_by: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      field: 'invited_by',
+    },
   });
 
   Invitation.associate = function (models) {

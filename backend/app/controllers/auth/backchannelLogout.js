@@ -112,13 +112,20 @@ const backchannelLogout = async (req, res) => {
 
   const logoutToken = req.body?.logout_token;
   if (typeof logoutToken !== 'string' || logoutToken.split('.').length !== 3) {
+    log.auth.info('Back-channel logout: rejected', {
+      reason: 'missing or malformed logout_token',
+    });
     return logoutError(res, 'missing or malformed logout_token');
   }
 
   let verified;
   try {
     verified = await verifyLogoutToken(logoutToken);
-  } catch {
+  } catch (err) {
+    log.auth.info('Back-channel logout: rejected', {
+      reason: 'logout_token could not be decoded',
+      error: err.message,
+    });
     return logoutError(res, 'missing or malformed logout_token');
   }
   if (verified.error) {
@@ -127,6 +134,7 @@ const backchannelLogout = async (req, res) => {
 
   const claimError = validateLogoutClaims(verified.payload);
   if (claimError) {
+    log.auth.info('Back-channel logout: rejected', { reason: claimError });
     return logoutError(res, claimError);
   }
 

@@ -7,9 +7,11 @@ import ArchitectureService from "../services/architecture.service";
 import BoxDataService from "../services/box.service";
 import FileService from "../services/file.service";
 import ProviderService from "../services/provider.service";
+import { formatFileSize } from "../utils/fileSize";
 import { log } from "../utils/Logger";
 import { canManageBox } from "../utils/permissions";
 
+import BoxPageHeader from "./BoxPageHeader.component";
 import ConfirmationModal from "./confirmation.component";
 
 const Provider = () => {
@@ -65,15 +67,6 @@ const Provider = () => {
     return pattern.test(checksumValue)
       ? undefined
       : t("validation.invalidChecksumFormat", { type });
-  };
-
-  const formatFileSize = (bytes) => {
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    if (bytes === 0) {
-      return "0 Byte";
-    }
-    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
-    return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
   };
 
   const copyToClipboard = (text) => {
@@ -535,7 +528,7 @@ const Provider = () => {
             className="btn btn-dark me-2"
             onClick={() => navigate(`/${organization}/${name}/${version}`)}
           >
-            {t("actions.backToFiles")}
+            {t("actions.back")}
           </button>
         </div>
       </div>
@@ -567,43 +560,48 @@ const Provider = () => {
     </form>
   );
 
-  const renderProviderDetails = () => (
-    <>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>{t("provider.details")}</h4>
-        <div>
-          {isAuthorized && (
-            <>
-              <button
-                className="btn btn-primary me-2"
-                onClick={() => setEditMode(true)}
-              >
-                {t("buttons.edit")}
-              </button>
-              <button
-                className="btn btn-danger me-2"
-                onClick={handleProviderDeleteClick}
-              >
-                {t("buttons.delete")}
-              </button>
-            </>
-          )}
-          <button
-            className="btn btn-dark me-2"
-            onClick={() => navigate(`/${organization}/${name}/${version}`)}
-          >
-            {t("actions.backToFiles")}
-          </button>
-        </div>
-      </div>
-      <p>
-        {t("provider.name")}: {currentProvider.name}
-      </p>
-      <p>
-        {t("provider.description")}: {currentProvider.description}
-      </p>
-    </>
-  );
+  const renderProviderDetails = () => {
+    const headerActions = (
+      <>
+        {isAuthorized && (
+          <>
+            <button
+              className="btn btn-primary me-2"
+              onClick={() => setEditMode(true)}
+            >
+              {t("buttons.edit")}
+            </button>
+            <button
+              className="btn btn-danger me-2"
+              onClick={handleProviderDeleteClick}
+            >
+              {t("buttons.delete")}
+            </button>
+          </>
+        )}
+        <button
+          className="btn btn-dark me-2"
+          onClick={() => navigate(`/${organization}/${name}/${version}`)}
+        >
+          {t("actions.back")}
+        </button>
+      </>
+    );
+
+    return (
+      <BoxPageHeader
+        crumbs={[
+          { label: organization, to: `/${organization}` },
+          { label: name, to: `/${organization}/${name}` },
+          { label: version, to: `/${organization}/${name}/${version}` },
+          { label: currentProvider.name },
+        ]}
+        actions={headerActions}
+        title={currentProvider.name}
+        subtitle={currentProvider.description || null}
+      />
+    );
+  };
 
   const renderArchitectureForm = () => (
     <div className="add-architecture-form">

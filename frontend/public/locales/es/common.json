@@ -425,9 +425,11 @@
     "releaseNotes": "Notas de la versión",
     "editReleaseNotes": "Editar notas de la versión",
     "deprecated": "Obsoleta",
+    "deprecatedBanner": "Esta versión está obsoleta",
     "deprecate": "Marcar obsoleta",
     "undeprecate": "Quitar obsoleta",
-    "deprecationReason": "Motivo de obsolescencia"
+    "deprecationReason": "Motivo de obsolescencia",
+    "title": "Versión {{version}}"
   },
   "architecture": {
     "deleted": "¡La arquitectura fue eliminada exitosamente!",
@@ -488,6 +490,7 @@
     "publish": "Publicar",
     "unpublish": "Despublicar",
     "versions": "Versiones para Box: {{name}}",
+    "versionsTitle": "Versiones",
     "create": "Crear Nueva Box",
     "createButton": "Crear Box",
     "removeAll": "Eliminar Todo",
@@ -527,8 +530,6 @@
       "deployTitle": "Abrir Hyperweaver con esta box preseleccionada"
     },
     "readmeTitle": "README",
-    "downloadsFor": "Descargas para {{version}}",
-    "latestDeprecated": "La última versión ({{version}}) de esta box está obsoleta.",
     "organization": {
       "errors": {
         "retrievePublic": "Error al recuperar Boxes públicas.",

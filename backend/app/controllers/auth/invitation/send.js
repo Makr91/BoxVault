@@ -184,6 +184,7 @@ export const sendInvitation = async (req, res) => {
       expires: invitationTokenExpires,
       organizationId: organization.id,
       invited_role: role,
+      invited_by: req.userId,
     });
 
     // Send the invitation email and get the invitation link

@@ -147,6 +147,12 @@ button::-moz-focus-inner {
   font-size: 0.7rem;
 }
 
+// OS chip on the box hero (mock accent green, distinct from bg-success)
+.badge-os {
+  background-color: #91c54e;
+  color: #16240a;
+}
+
 // Sortable table headers
 .sortable-header {
   cursor: pointer;

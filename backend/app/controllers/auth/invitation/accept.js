@@ -1,6 +1,7 @@
 // accept.js
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { notifyInvitationAccepted } from './notifications.js';
 
 const { invitation: Invitation, organization: Organization, user: User, UserOrg } = db;
 
@@ -88,6 +89,8 @@ export const acceptInvitation = async (req, res) => {
     });
 
     await invitation.update({ accepted: true, accepted_at: new Date() });
+
+    await notifyInvitationAccepted(invitation, organization, user.email);
 
     log.api.info('Invitation accepted', {
       userId,

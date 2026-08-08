@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Fragment, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Table } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import { FaStar, FaRegStar, FaRocket } from "react-icons/fa6";
@@ -15,30 +15,11 @@ import VersionDataService from "../services/version.service";
 import { getDistroIconUrl, getOsDisplayName } from "../utils/DistroIcons";
 import { log } from "../utils/Logger";
 import { canManageBox } from "../utils/permissions";
+import { readDeprecated } from "../utils/versionFields";
 
+import BoxPageHeader from "./BoxPageHeader.component";
 import ConfirmationModal from "./confirmation.component";
-
-// The backend field spelling for release-notes/deprecation is being settled
-// by a parallel backend change; read both spellings defensively per the wire
-// brief until it lands.
-const readReleaseNotes = (version) =>
-  version.releaseNotes ?? version.release_notes ?? null;
-
-const readDeprecated = (version) => Boolean(version.deprecated);
-
-const readDeprecationReason = (version) =>
-  version.deprecationReason ?? version.deprecation_reason ?? null;
-
-// Local size formatter (MB/GB), matching the per-component precedent set by
-// provider.component.jsx / StorageInfo.component.jsx.
-const formatFileSize = (bytes) => {
-  const size = Number(bytes) || 0;
-  const gib = size / 1024 ** 3;
-  if (gib >= 1) {
-    return `${gib.toFixed(2)} GB`;
-  }
-  return `${(size / 1024 ** 2).toFixed(2)} MB`;
-};
+import StatusChips from "./StatusChips.component";
 
 // metadata.memory_mb display: GB when >= 1024, MB below.
 const formatMemoryDisplay = (memoryMb) => {
@@ -240,12 +221,14 @@ CopyButton.propTypes = {
   text: PropTypes.string.isRequired,
 };
 
-// Dark code block with a copy action and an optional download action.
 const CodeBlock = ({ code, downloadFileName }) => {
   const { t } = useTranslation();
   return (
-    <div className="bg-dark text-light rounded p-3 mb-2">
-      <div className="d-flex justify-content-end gap-2 mb-2">
+    <div className="bg-dark text-light rounded p-3 mb-2 d-flex align-items-start gap-2">
+      <pre className="text-light mb-0 overflow-auto flex-grow-1">
+        <code>{code}</code>
+      </pre>
+      <div className="d-flex flex-column gap-2">
         <CopyButton text={code} />
         {downloadFileName && (
           <button
@@ -257,9 +240,6 @@ const CodeBlock = ({ code, downloadFileName }) => {
           </button>
         )}
       </div>
-      <pre className="text-light mb-0 overflow-auto">
-        <code>{code}</code>
-      </pre>
     </div>
   );
 };
@@ -272,8 +252,8 @@ CodeBlock.propTypes = {
 // One label/value row of the box-facts display.
 const BoxFactRow = ({ label, children }) => (
   <div className="row mb-1">
-    <dt className="col-sm-3">{label}</dt>
-    <dd className="col-sm-9 mb-1">{children}</dd>
+    <dt className="col-sm-4">{label}</dt>
+    <dd className="col-sm-8 mb-1">{children}</dd>
   </div>
 );
 
@@ -289,8 +269,8 @@ const PasswordFactRow = ({ password }) => {
 
   return (
     <div className="row mb-1">
-      <dt className="col-sm-3">{t("box.facts.password")}</dt>
-      <dd className="col-sm-9 mb-1">
+      <dt className="col-sm-4">{t("box.facts.password")}</dt>
+      <dd className="col-sm-8 mb-1">
         <code className="me-2">{show ? password : "••••••••"}</code>
         <button
           type="button"
@@ -393,7 +373,7 @@ const BoxFacts = ({ metadata }) => {
   }
 
   return (
-    <div className="card mb-4">
+    <div className="card h-100">
       <div className="card-header">
         <h5 className="mb-0">{t("box.facts.title")}</h5>
       </div>
@@ -450,13 +430,16 @@ const UseThisBox = ({
   });
 
   return (
-    <div className="card mb-4">
-      <div className="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h5 className="mb-0">{t("box.useThisBox.title")}</h5>
-        <div className="d-flex align-items-center gap-2">
-          <label className="mb-0" htmlFor="useThisBoxVersion">
-            {t("box.useThisBox.version")}
-          </label>
+    <div className="bg-dark text-light rounded p-3 mb-4">
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <span className="text-uppercase small fw-semibold text-white-50">
+          {t("box.useThisBox.title")}
+        </span>
+        <label
+          className="mb-0 small text-white-50 d-flex align-items-center gap-2"
+          htmlFor="useThisBoxVersion"
+        >
+          {t("box.useThisBox.version")}
           <select
             id="useThisBoxVersion"
             className="form-select form-select-sm w-auto"
@@ -473,35 +456,33 @@ const UseThisBox = ({
               </option>
             ))}
           </select>
+        </label>
+      </div>
+      <CodeBlock code={initCommand} />
+      <details className="mb-2">
+        <summary>{t("box.useThisBox.option2")}</summary>
+        <div className="mt-2">
+          <CodeBlock code={pinnedVagrantfile} />
         </div>
-      </div>
-      <div className="card-body">
-        <CodeBlock code={initCommand} />
-        <details className="mb-2">
-          <summary>{t("box.useThisBox.option2")}</summary>
-          <div className="mt-2">
-            <CodeBlock code={pinnedVagrantfile} />
-          </div>
-        </details>
-        <details>
-          <summary>{t("box.useThisBox.starterKit")}</summary>
-          <div className="mt-2">
-            <p className="mb-1">{t("box.useThisBox.starterStep1")}</p>
-            <CodeBlock code={`vagrant box add ${boxTag} ${metadataUrl}`} />
-            <p className="mb-1">
-              <code>Vagrantfile</code>
-            </p>
-            <CodeBlock
-              code={STARTER_VAGRANTFILE}
-              downloadFileName="Vagrantfile"
-            />
-            <p className="mb-1">
-              <code>Hosts.yml</code>
-            </p>
-            <CodeBlock code={hostsYml} downloadFileName="Hosts.yml" />
-          </div>
-        </details>
-      </div>
+      </details>
+      <details>
+        <summary>{t("box.useThisBox.starterKit")}</summary>
+        <div className="mt-2">
+          <p className="mb-1">{t("box.useThisBox.starterStep1")}</p>
+          <CodeBlock code={`vagrant box add ${boxTag} ${metadataUrl}`} />
+          <p className="mb-1">
+            <code>Vagrantfile</code>
+          </p>
+          <CodeBlock
+            code={STARTER_VAGRANTFILE}
+            downloadFileName="Vagrantfile"
+          />
+          <p className="mb-1">
+            <code>Hosts.yml</code>
+          </p>
+          <CodeBlock code={hostsYml} downloadFileName="Hosts.yml" />
+        </div>
+      </details>
     </div>
   );
 };
@@ -515,255 +496,12 @@ UseThisBox.propTypes = {
   onSelectVersion: PropTypes.func.isRequired,
 };
 
-// Per-provider download rows for the selected version, from the nested
-// versions -> providers -> architectures -> files tree of box findone.
-const ProviderDownloads = ({ organization, boxName, version }) => {
-  const { t } = useTranslation();
-  const providerList = version.providers || [];
-  if (providerList.length === 0) {
-    return null;
-  }
-  const { origin } = window.location;
-  const versionPath = version.versionNumber.replace(/^v/, "");
-
-  return (
-    <div className="mb-3 w-100">
-      <h5>{t("box.downloadsFor", { version: version.versionNumber })}</h5>
-      {providerList.map((provider) => {
-        const architectures = provider.architectures || [];
-        const totalSize = architectures.reduce(
-          (sum, arch) =>
-            sum +
-            (arch.files || []).reduce(
-              (fileSum, file) => fileSum + Number(file.fileSize || 0),
-              0
-            ),
-          0
-        );
-        return (
-          <div
-            key={provider.id || provider.name}
-            className="d-flex align-items-center flex-wrap gap-2 border rounded p-2 mb-2"
-          >
-            <strong>{provider.name}</strong>
-            <span className="text-muted">{formatFileSize(totalSize)}</span>
-            {architectures.map((arch) => (
-              <a
-                key={arch.id || arch.name}
-                className="btn btn-sm btn-outline-primary"
-                href={`${origin}/${organization}/boxes/${boxName}/versions/${versionPath}/providers/${provider.name}/${arch.name}/vagrant.box`}
-              >
-                {t("buttons.download")} {arch.name}
-              </a>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-ProviderDownloads.propTypes = {
-  organization: PropTypes.string.isRequired,
-  boxName: PropTypes.string.isRequired,
-  version: PropTypes.object.isRequired,
-};
-
-const ReleaseNotesEditor = ({ initialNotes, onSave, onCancel }) => {
-  const { t } = useTranslation();
-  const [draft, setDraft] = useState(initialNotes);
-
-  return (
-    <div className="flex-grow-1">
-      <textarea
-        className="form-control mb-2"
-        rows="4"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder={t("version.releaseNotes")}
-      />
-      <button
-        type="button"
-        className="btn btn-sm btn-success me-2"
-        onClick={() => onSave(draft)}
-      >
-        {t("buttons.save")}
-      </button>
-      <button
-        type="button"
-        className="btn btn-sm btn-secondary"
-        onClick={onCancel}
-      >
-        {t("buttons.cancel")}
-      </button>
-    </div>
-  );
-};
-
-ReleaseNotesEditor.propTypes = {
-  initialNotes: PropTypes.string.isRequired,
-  onSave: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-};
-
-// Deprecate/undeprecate toggle; deprecating requires a reason.
-const DeprecateControl = ({ deprecated, onToggle }) => {
-  const { t } = useTranslation();
-  const [askingReason, setAskingReason] = useState(false);
-  const [reasonDraft, setReasonDraft] = useState("");
-
-  if (deprecated) {
-    return (
-      <button
-        type="button"
-        className="btn btn-sm btn-outline-success"
-        onClick={() => onToggle(false, null)}
-      >
-        {t("version.undeprecate")}
-      </button>
-    );
-  }
-
-  if (!askingReason) {
-    return (
-      <button
-        type="button"
-        className="btn btn-sm btn-outline-danger"
-        onClick={() => setAskingReason(true)}
-      >
-        {t("version.deprecate")}
-      </button>
-    );
-  }
-
-  return (
-    <div className="d-flex gap-2 align-items-start flex-wrap">
-      <input
-        type="text"
-        className="form-control form-control-sm w-auto"
-        value={reasonDraft}
-        onChange={(e) => setReasonDraft(e.target.value)}
-        placeholder={t("version.deprecationReason")}
-      />
-      <button
-        type="button"
-        className="btn btn-sm btn-danger"
-        disabled={!reasonDraft.trim()}
-        onClick={async () => {
-          const ok = await onToggle(true, reasonDraft.trim());
-          if (ok) {
-            setAskingReason(false);
-            setReasonDraft("");
-          }
-        }}
-      >
-        {t("version.deprecate")}
-      </button>
-      <button
-        type="button"
-        className="btn btn-sm btn-secondary"
-        onClick={() => setAskingReason(false)}
-      >
-        {t("buttons.cancel")}
-      </button>
-    </div>
-  );
-};
-
-DeprecateControl.propTypes = {
-  deprecated: PropTypes.bool.isRequired,
-  onToggle: PropTypes.func.isRequired,
-};
-
-// Extra table row under each version: release notes (Markdown), deprecation
-// notice, and manager controls (edit notes, deprecate/undeprecate).
-const VersionExtrasRow = ({
-  version,
-  isAuthorized,
-  columnCount,
-  onSaveNotes,
-  onToggleDeprecated,
-}) => {
-  const { t } = useTranslation();
-  const [editingNotes, setEditingNotes] = useState(false);
-  const notes = readReleaseNotes(version);
-  const deprecated = readDeprecated(version);
-  const reason = readDeprecationReason(version);
-
-  if (!notes && !deprecated && !isAuthorized) {
-    return null;
-  }
-
-  return (
-    <tr>
-      <td colSpan={columnCount}>
-        {deprecated && (
-          <div className="alert alert-warning py-1 px-2 mb-2">
-            <strong>{t("version.deprecated")}</strong>
-            {reason ? ` — ${reason}` : ""}
-          </div>
-        )}
-        {notes && !editingNotes && (
-          <div className="border rounded p-2 mb-2">
-            <strong className="d-block mb-1">
-              {t("version.releaseNotes")}
-            </strong>
-            <Markdown>{notes}</Markdown>
-          </div>
-        )}
-        {isAuthorized && (
-          <div className="d-flex flex-wrap gap-2 align-items-start">
-            {editingNotes ? (
-              <ReleaseNotesEditor
-                initialNotes={notes || ""}
-                onSave={async (draft) => {
-                  const ok = await onSaveNotes(version.versionNumber, draft);
-                  if (ok) {
-                    setEditingNotes(false);
-                  }
-                }}
-                onCancel={() => setEditingNotes(false)}
-              />
-            ) : (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary"
-                onClick={() => setEditingNotes(true)}
-              >
-                {t("version.editReleaseNotes")}
-              </button>
-            )}
-            <DeprecateControl
-              deprecated={deprecated}
-              onToggle={(nextDeprecated, nextReason) =>
-                onToggleDeprecated(
-                  version.versionNumber,
-                  nextDeprecated,
-                  nextReason
-                )
-              }
-            />
-          </div>
-        )}
-      </td>
-    </tr>
-  );
-};
-
-VersionExtrasRow.propTypes = {
-  version: PropTypes.object.isRequired,
-  isAuthorized: PropTypes.bool.isRequired,
-  columnCount: PropTypes.number.isRequired,
-  onSaveNotes: PropTypes.func.isRequired,
-  onToggleDeprecated: PropTypes.func.isRequired,
-};
-
 // README rendered as Markdown; raw HTML stays escaped (react-markdown
 // defaults) as the sanitization stance.
 const BoxReadme = ({ readme }) => {
   const { t } = useTranslation();
   return (
-    <div className="card mb-4 w-100">
+    <div className="card h-100">
       <div className="card-header">
         <h5 className="mb-0">{t("box.readmeTitle")}</h5>
       </div>
@@ -776,25 +514,6 @@ const BoxReadme = ({ readme }) => {
 
 BoxReadme.propTypes = {
   readme: PropTypes.string.isRequired,
-};
-
-// Red banner shown when the newest version of the box is deprecated.
-const LatestDeprecatedBanner = ({ version }) => {
-  const { t } = useTranslation();
-  if (!version || !readDeprecated(version)) {
-    return null;
-  }
-  const reason = readDeprecationReason(version);
-  return (
-    <div className="alert alert-danger" role="alert">
-      {t("box.latestDeprecated", { version: version.versionNumber })}
-      {reason ? ` ${reason}` : ""}
-    </div>
-  );
-};
-
-LatestDeprecatedBanner.propTypes = {
-  version: PropTypes.object,
 };
 
 const DeployToHyperweaverButton = ({
@@ -860,54 +579,66 @@ WatchStarButton.propTypes = {
   onToggle: PropTypes.func.isRequired,
 };
 
-// Read-only details header: artwork, name, short description, status,
-// visibility, description; CI/CD info arrives as children.
-const BoxDetailsView = ({ box, artworkUrl, watchControl, children }) => {
-  const { t } = useTranslation();
-  return (
-    <div className="d-flex align-items-start gap-3 flex-wrap">
-      {artworkUrl && (
-        <img
-          src={artworkUrl}
-          alt=""
-          className="rounded"
-          style={{ width: 236, maxWidth: "100%" }}
-        />
+const BoxHero = ({
+  organization,
+  boxName,
+  box,
+  watchControl,
+  actions,
+  cicdBar,
+}) => {
+  const osLabel = getOsDisplayName(box.metadata);
+  const media = box.artwork ? (
+    <img
+      src={`${window.location.origin}/api/organization/${organization}/box/${boxName}/artwork`}
+      alt=""
+      className="rounded"
+      style={{ width: 236, maxWidth: "100%" }}
+    />
+  ) : null;
+  const title = (
+    <>
+      {box.name}
+      {watchControl && (
+        <span className="ms-2 align-middle">{watchControl}</span>
       )}
-      <div className="flex-grow-1">
-        <p className="d-flex align-items-center gap-2 mb-2">
-          <span>
-            <strong>{t("box.name")}:</strong> {box.name}
-          </span>
-          {watchControl}
-        </p>
-        {box.shortDescription && (
-          <p className="text-muted">{box.shortDescription}</p>
-        )}
-        <p>
-          <strong>{t("box.status")}:</strong>{" "}
-          {box.published ? t("status.completed") : t("status.pending")}
-        </p>
-        <p>
-          <strong>{t("box.visibility")}:</strong>{" "}
-          {box.isPublic
-            ? t("box.organization.visibility.public")
-            : t("box.organization.visibility.private")}
-        </p>
-        <p>
-          <strong>{t("box.description")}:</strong> {box.description}
-        </p>
-        {children}
-      </div>
-    </div>
+    </>
+  );
+  const chips = (
+    <StatusChips
+      status={box.published ? "published" : "pending"}
+      visibility={box.isPublic ? "public" : "private"}
+      osLabel={osLabel || null}
+    />
+  );
+
+  return (
+    <BoxPageHeader
+      crumbs={[
+        { label: organization, to: `/${organization}` },
+        { label: box.name },
+      ]}
+      actions={actions}
+      media={media}
+      title={title}
+      subtitle={`${organization} / ${box.name}`}
+      chips={chips}
+    >
+      {(box.shortDescription || box.description) && (
+        <p className="mb-0 mt-2">{box.shortDescription || box.description}</p>
+      )}
+      {cicdBar}
+    </BoxPageHeader>
   );
 };
 
-BoxDetailsView.propTypes = {
+BoxHero.propTypes = {
+  organization: PropTypes.string.isRequired,
+  boxName: PropTypes.string.isRequired,
   box: PropTypes.object.isRequired,
-  artworkUrl: PropTypes.string,
   watchControl: PropTypes.node,
-  children: PropTypes.node,
+  actions: PropTypes.node,
+  cicdBar: PropTypes.node,
 };
 
 // Add-version header controls (toggle + save), shown to managers only.
@@ -1123,52 +854,6 @@ const Box = ({ theme }) => {
     }
   };
 
-  const refreshVersions = async () => {
-    const versionsResponse = await VersionDataService.getVersions(
-      organization,
-      currentBox.name
-    );
-    setVersions(versionsResponse.data);
-    setAllVersions(versionsResponse.data);
-    setSelectedVersion((current) =>
-      versionsResponse.data.some((v) => v.versionNumber === current)
-        ? current
-        : pickDefaultVersion(versionsResponse.data) || ""
-    );
-  };
-
-  // Release notes + deprecation go through the version update endpoint with
-  // snake_case field names, then the list is refetched as the authority.
-  const updateVersionFields = async (versionNumber, fields) => {
-    try {
-      await VersionDataService.updateVersion(
-        organization,
-        currentBox.name,
-        versionNumber,
-        fields
-      );
-      await refreshVersions();
-      setMessage(t("version.updated"));
-      setMessageType("success");
-      return true;
-    } catch (e) {
-      log.api.error("Error updating version", {
-        versionNumber,
-        error: e.message,
-      });
-      setMessage(
-        e.response && e.response.data && e.response.data.message
-          ? e.response.data.message
-          : t("version.updateError")
-      );
-      setMessageType("danger");
-      return false;
-    }
-  };
-
-  const saveReleaseNotes = (versionNumber, releaseNotes) =>
-    updateVersionFields(versionNumber, { release_notes: releaseNotes });
-
   const toggleWatch = async () => {
     const nextWatched = !watched;
     setWatched(nextWatched);
@@ -1188,12 +873,6 @@ const Box = ({ theme }) => {
       setWatchBusy(false);
     }
   };
-
-  const toggleVersionDeprecated = (versionNumber, deprecated, reason) =>
-    updateVersionFields(versionNumber, {
-      deprecated,
-      deprecation_reason: reason,
-    });
 
   useEffect(() => {
     const loadData = async () => {
@@ -1494,71 +1173,46 @@ const Box = ({ theme }) => {
     </Link>
   );
 
-  const renderCicdIntegration = () => {
-    if (
-      !currentBox.githubRepo &&
-      !currentBox.workflowFile &&
-      !currentBox.cicdUrl
-    ) {
+  const renderCicdBar = () => {
+    if (!currentBox.githubRepo && !currentBox.cicdUrl) {
       return null;
     }
 
     return (
-      <div className="mt-3">
-        <h5>
-          <strong>{t("box.cicd.title")}</strong>
-        </h5>
+      <div className="d-flex align-items-center gap-2 mt-2 small">
         {currentBox.githubRepo && currentBox.workflowFile && (
-          <div className="mb-2">
-            <p>
-              <strong>{t("box.cicd.buildStatus")}:</strong>
-            </p>
-            <a
-              href={
-                currentBox.cicdUrl ||
-                `https://github.com/${currentBox.githubRepo}/actions`
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
-                alt={t("box.cicd.buildStatus")}
-                className="badge-max-height"
-              />
-            </a>
-          </div>
+          <a
+            href={
+              currentBox.cicdUrl ||
+              `https://github.com/${currentBox.githubRepo}/actions`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
+              alt={t("box.cicd.buildStatus")}
+              className="badge-max-height"
+            />
+          </a>
         )}
         {currentBox.githubRepo && (
-          <p>
-            <strong>{t("box.cicd.repository")}:</strong>
-            <a
-              href={`https://github.com/${currentBox.githubRepo}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ms-2"
-            >
-              {currentBox.githubRepo}
-            </a>
-          </p>
+          <a
+            href={`https://github.com/${currentBox.githubRepo}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {currentBox.githubRepo}
+          </a>
         )}
-        {currentBox.workflowFile && (
-          <p>
-            <strong>{t("box.cicd.workflow")}:</strong> {currentBox.workflowFile}
-          </p>
-        )}
-        {currentBox.cicdUrl && (
-          <p>
-            <strong>{t("box.cicd.pipeline")}:</strong>
-            <a
-              href={currentBox.cicdUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ms-2"
-            >
-              {t("box.cicd.viewPipeline")}
-            </a>
-          </p>
+        {!currentBox.githubRepo && currentBox.cicdUrl && (
+          <a
+            href={currentBox.cicdUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("box.cicd.viewPipeline")}
+          </a>
         )}
       </div>
     );
@@ -1790,12 +1444,19 @@ const Box = ({ theme }) => {
     </>
   );
 
-  const [newestVersion] = sortVersionsNewestFirst(versions);
-  const selectedVersionNode = Array.isArray(currentBox.versions)
-    ? currentBox.versions.find(
-        (version) => version.versionNumber === selectedVersion
-      ) || null
-    : null;
+  const heroActions = (
+    <>
+      {isAuthorized && renderActionButtons()}
+      <DeployToHyperweaverButton
+        user={currentUser}
+        hyperweaverUrl={hyperweaverUrl}
+        organization={organization}
+        boxName={currentBox.name}
+        selectedVersion={selectedVersion}
+      />
+      {renderBackButton()}
+    </>
+  );
 
   return (
     <div className="list row">
@@ -1806,47 +1467,32 @@ const Box = ({ theme }) => {
       )}
       {currentBox.id ? (
         <>
-          <LatestDeprecatedBanner version={newestVersion} />
-          <div className="mb-4">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h4>{t("box.details")}</h4>
-              <div>
-                {isAuthorized && renderActionButtons()}
-                <DeployToHyperweaverButton
-                  user={currentUser}
-                  hyperweaverUrl={hyperweaverUrl}
-                  organization={organization}
-                  boxName={currentBox.name}
-                  selectedVersion={selectedVersion}
-                />
-                {renderBackButton()}
+          {editMode ? (
+            <div className="mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4>{t("box.details")}</h4>
+                <div>{heroActions}</div>
               </div>
+              {renderEditForm()}
             </div>
-            {editMode ? (
-              renderEditForm()
-            ) : (
-              <BoxDetailsView
-                box={currentBox}
-                artworkUrl={
-                  currentBox.artwork
-                    ? `${window.location.origin}/api/organization/${organization}/box/${name}/artwork`
-                    : null
-                }
-                watchControl={
-                  currentUser ? (
-                    <WatchStarButton
-                      watched={watched}
-                      disabled={watchBusy}
-                      onToggle={toggleWatch}
-                    />
-                  ) : null
-                }
-              >
-                {renderCicdIntegration()}
-              </BoxDetailsView>
-            )}
-          </div>
-          {currentBox.metadata && <BoxFacts metadata={currentBox.metadata} />}
+          ) : (
+            <BoxHero
+              organization={organization}
+              boxName={name}
+              box={currentBox}
+              watchControl={
+                currentUser ? (
+                  <WatchStarButton
+                    watched={watched}
+                    disabled={watchBusy}
+                    onToggle={toggleWatch}
+                  />
+                ) : null
+              }
+              actions={heroActions}
+              cicdBar={renderCicdBar()}
+            />
+          )}
           {versions.length > 0 && selectedVersion && (
             <UseThisBox
               organization={organization}
@@ -1857,10 +1503,23 @@ const Box = ({ theme }) => {
               onSelectVersion={setSelectedVersion}
             />
           )}
-          {currentBox.readme && <BoxReadme readme={currentBox.readme} />}
+          {(currentBox.metadata || currentBox.readme) && (
+            <div className="row g-3 mb-4 mx-0 px-0">
+              {currentBox.metadata && (
+                <div className="col-lg-5 col-xl-4">
+                  <BoxFacts metadata={currentBox.metadata} />
+                </div>
+              )}
+              {currentBox.readme && (
+                <div className="col">
+                  <BoxReadme readme={currentBox.readme} />
+                </div>
+              )}
+            </div>
+          )}
           <div className="list-table">
             <div className="d-flex justify-content-between align-items-center">
-              <h4>{t("box.versions", { name: currentBox.name })}</h4>
+              <h4>{t("box.versionsTitle")}</h4>
               {isAuthorized && (
                 <AddVersionControls
                   show={showAddVersionForm}
@@ -1911,14 +1570,6 @@ const Box = ({ theme }) => {
             </div>
           )}
 
-          {selectedVersionNode && (
-            <ProviderDownloads
-              organization={organization}
-              boxName={currentBox.name}
-              version={selectedVersionNode}
-            />
-          )}
-
           <Table striped className="table">
             <thead>
               <tr>
@@ -1931,55 +1582,46 @@ const Box = ({ theme }) => {
               </tr>
             </thead>
             <tbody>
-              {versions.map((version) => (
-                <Fragment key={version.id || version.versionNumber}>
-                  <tr>
-                    <td>
-                      <Link
-                        to={`/${organization}/${name}/${version.versionNumber}`}
-                      >
-                        {version.versionNumber}
-                      </Link>
-                      {readDeprecated(version) && (
-                        <span className="badge bg-danger ms-2">
-                          {t("version.deprecated")}
-                        </span>
-                      )}
-                    </td>
-                    <td>{version.description}</td>
-                    <td>
-                      {providers[version.versionNumber] &&
-                        providers[version.versionNumber].map((provider) => (
-                          <div key={provider.id || provider.name}>
-                            <Link
-                              to={`/${organization}/${name}/${version.versionNumber}/${provider.name}`}
-                            >
-                              {provider.name}
-                            </Link>
-                          </div>
-                        ))}
-                    </td>
-                    {isAuthorized && (
-                      <td>
-                        <button
-                          className="btn btn-danger"
-                          onClick={() =>
-                            handleVersionDeleteClick(version.versionNumber)
-                          }
-                        >
-                          {t("buttons.delete")}
-                        </button>
-                      </td>
+              {sortVersionsNewestFirst(versions).map((version) => (
+                <tr key={version.id || version.versionNumber}>
+                  <td>
+                    <Link
+                      to={`/${organization}/${name}/${version.versionNumber}`}
+                    >
+                      {version.versionNumber}
+                    </Link>
+                    {readDeprecated(version) && (
+                      <span className="badge bg-danger ms-2">
+                        {t("version.deprecated")}
+                      </span>
                     )}
-                  </tr>
-                  <VersionExtrasRow
-                    version={version}
-                    isAuthorized={isAuthorized}
-                    columnCount={isAuthorized ? 4 : 3}
-                    onSaveNotes={saveReleaseNotes}
-                    onToggleDeprecated={toggleVersionDeprecated}
-                  />
-                </Fragment>
+                  </td>
+                  <td>{version.description}</td>
+                  <td>
+                    {providers[version.versionNumber] &&
+                      providers[version.versionNumber].map((provider) => (
+                        <div key={provider.id || provider.name}>
+                          <Link
+                            to={`/${organization}/${name}/${version.versionNumber}/${provider.name}`}
+                          >
+                            {provider.name}
+                          </Link>
+                        </div>
+                      ))}
+                  </td>
+                  {isAuthorized && (
+                    <td>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() =>
+                          handleVersionDeleteClick(version.versionNumber)
+                        }
+                      >
+                        {t("buttons.delete")}
+                      </button>
+                    </td>
+                  )}
+                </tr>
               ))}
             </tbody>
           </Table>

@@ -12,6 +12,7 @@ import {
 } from "react-icons/fa6";
 
 import IsoService from "../services/iso.service";
+import { formatFileSize } from "../utils/fileSize";
 import { log } from "../utils/Logger";
 
 import ConfirmationModal from "./confirmation.component";
@@ -188,16 +189,6 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
         setMessage(t("messages.operationFailed"));
         setMessageType("danger");
       });
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) {
-      return "0 Bytes";
-    }
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const filteredIsos = isos.filter((iso) =>

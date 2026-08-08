@@ -15,6 +15,7 @@ import { sendVerificationMail } from '../mail.controller.js';
 import { generateEmailHash, generateOrgCode } from '../../utils/identity.js';
 import { getBcryptRounds, getPasswordPolicyError } from './helpers.js';
 import { loadConfig } from '../../utils/config-loader.js';
+import { notifyInvitationAccepted } from './invitation/notifications.js';
 
 const { Op } = Sequelize;
 
@@ -217,6 +218,7 @@ export const signup = async (req, res) => {
     // If signup was done with an invitation, mark it as accepted
     if (invitation) {
       await invitation.update({ accepted: true, accepted_at: new Date() });
+      await notifyInvitationAccepted(invitation, organization, user.email);
     }
 
     // Send verification email asynchronously

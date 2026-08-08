@@ -655,9 +655,11 @@
     "releaseNotes": "Release notes",
     "editReleaseNotes": "Edit release notes",
     "deprecated": "Deprecated",
+    "deprecatedBanner": "This version is deprecated",
     "deprecate": "Deprecate",
     "undeprecate": "Undeprecate",
-    "deprecationReason": "Deprecation reason"
+    "deprecationReason": "Deprecation reason",
+    "title": "Version {{version}}"
   },
   "architecture": {
     "deleted": "Architecture deleted successfully!",
@@ -718,6 +720,7 @@
     "publish": "Publish",
     "unpublish": "Unpublish",
     "versions": "Versions for Box: {{name}}",
+    "versionsTitle": "Versions",
     "create": "Create New Box",
     "createButton": "Create Box",
     "removeAll": "Remove All",
@@ -756,8 +759,6 @@
       "deployTitle": "Open Hyperweaver with this box pre-selected"
     },
     "readmeTitle": "README",
-    "downloadsFor": "Downloads for {{version}}",
-    "latestDeprecated": "The latest version ({{version}}) of this box is deprecated.",
     "organization": {
       "errors": {
         "retrievePublic": "Error retrieving public boxes.",

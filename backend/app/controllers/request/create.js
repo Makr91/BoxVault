@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { Request, UserOrg, organization: Organization } = db;
+import { notifyJoinRequestCreated } from './notifications.js';
+const { Request, UserOrg, organization: Organization, user: User } = db;
 
 /**
  * @swagger
@@ -122,6 +123,11 @@ export const createJoinRequest = async (req, res) => {
       organizationName: orgName,
       requestId: joinRequest.id,
     });
+
+    const requester = await User.findByPk(userId);
+    if (requester) {
+      await notifyJoinRequestCreated(organization, requester, joinRequest.id);
+    }
 
     return res.status(201).send({
       message: req.__('requests.submitted'),
