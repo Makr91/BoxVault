@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.50.0](https://github.com/Makr91/BoxVault/compare/v0.49.0...v0.50.0) (2026-08-08)
+
+
+### Features
+
+* BoxVault owns its OS toasts; notification dropdown redesign ([02e98a2](https://github.com/Makr91/BoxVault/commit/02e98a211b2532d22836c6f4539724d46e0046e5))
+
+
+### Bug Fixes
+
+* updating logo based on OS theme ([1493925](https://github.com/Makr91/BoxVault/commit/1493925c1fe599905ad908b1cbb99bf49548d09b))
+* updating package lock ([607a292](https://github.com/Makr91/BoxVault/commit/607a2921aeb0685d7c7af9e5dae621d2166f72f9))
+
 ## [0.49.0](https://github.com/Makr91/BoxVault/compare/v0.48.1...v0.49.0) (2026-08-08)
 
 
