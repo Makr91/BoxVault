@@ -2,6 +2,7 @@
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 import { listExternalInvites } from '../../../utils/externalInvites.js';
+import { extractOidcAccessToken } from '../../favorites/helpers.js';
 const { organization: Organization, invitation: Invitation } = db;
 
 /**
@@ -93,8 +94,12 @@ export const getActiveInvitations = async (req, res) => {
     // status enums, no created_at, and conditional accepted_at — normalize and
     // map defensively.
     if (organization.external_issuer) {
+      const oidcAccessToken = extractOidcAccessToken(req);
+      if (!oidcAccessToken) {
+        return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+      }
       try {
-        const externalInvites = await listExternalInvites(organization);
+        const externalInvites = await listExternalInvites(organization, oidcAccessToken);
         const mapped = externalInvites.map(invite => {
           const status = typeof invite.status === 'string' ? invite.status.toLowerCase() : '';
           return {

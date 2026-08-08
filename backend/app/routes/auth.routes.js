@@ -129,12 +129,13 @@ router.post(
 // bypass inside isOrgAdminOrOwner).
 router.get(
   '/invitations/active/:organization',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   getActiveInvitations
 );
 router.post(
   '/auth/invite',
   [
+    oidcTokenRefresh,
     authJwt.verifyToken,
     authJwt.isUser,
     // Resolves the org from req.body.organizationName (no :organization segment).
@@ -146,7 +147,13 @@ router.post(
 );
 router.delete(
   '/invitations/:invitationId',
-  [authJwt.verifyToken, authJwt.isUser, resolveInvitationOrg, verifyOrgAccess.isOrgAdminOrOwner],
+  [
+    oidcTokenRefresh,
+    authJwt.verifyToken,
+    authJwt.isUser,
+    resolveInvitationOrg,
+    verifyOrgAccess.isOrgAdminOrOwner,
+  ],
   deleteInvitation
 );
 

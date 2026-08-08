@@ -5,7 +5,65 @@ const { organization: Organization, invitation: Invitation, user: User, UserOrg 
 import { log } from '../../../utils/Logger.js';
 import { sendInvitationMail } from '../../mail.controller.js';
 import { loadConfig } from '../../../utils/config-loader.js';
-import { createExternalInvite, resolveInviterUuid } from '../../../utils/externalInvites.js';
+import { createExternalInvite } from '../../../utils/externalInvites.js';
+import { extractOidcAccessToken } from '../../favorites/helpers.js';
+
+// Parity with the auth-server rule: only org owners may invite admins — org
+// admins invite members only. Global admins arrive stamped as org 'owner' by
+// the route middleware; everyone else resolves from their own membership.
+const resolveInviterOrgRole = async (req, organization) => {
+  if (req.userOrgRole) {
+    return req.userOrgRole;
+  }
+  const inviterMembership = await UserOrg.findUserOrgRole(req.userId, organization.id);
+  return inviterMembership?.role || null;
+};
+
+const surfaceDelegationError = (req, res, delegationErr) => {
+  // Surface the auth server's own 400/403 (validation, Mode B RBAC) instead
+  // of masking it behind a generic transport error.
+  const upstreamStatus = delegationErr.response?.status;
+  const upstreamMessage =
+    delegationErr.response?.data?.message ||
+    delegationErr.response?.data?.detail ||
+    delegationErr.response?.data?.error;
+  if ((upstreamStatus === 400 || upstreamStatus === 403) && upstreamMessage) {
+    return res.status(upstreamStatus).send({ message: upstreamMessage });
+  }
+  log.error.error('Failed to delegate invitation to auth server:', delegationErr);
+  // Their pending-invite replacement makes a re-POST safe after any failure.
+  return res.status(502).send({ message: req.__('invitations.send.externalError') });
+};
+
+// Contract v2 Mode B: invites are human actions, so the call rides the acting
+// user's own OIDC access token — the auth server derives the actor from it.
+// Local accounts have no token there and cannot act.
+const sendDelegatedInvitation = async (req, res, organization, email, role) => {
+  if (!organization.external_org_id) {
+    log.error.error('External org has no external_org_id; cannot delegate invitation', {
+      organizationId: organization.id,
+    });
+    return res.status(500).send({ message: req.__('invitations.send.error') });
+  }
+
+  const oidcAccessToken = extractOidcAccessToken(req);
+  if (!oidcAccessToken) {
+    return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+  }
+
+  try {
+    const externalInvite = await createExternalInvite(organization, email, role, oidcAccessToken);
+    return res.status(200).send({
+      message: req.__('invitations.sent'),
+      invitationToken: null,
+      invitationTokenExpires: externalInvite?.expires_at || null,
+      organizationId: organization.id,
+      invitationLink: null,
+    });
+  } catch (delegationErr) {
+    return surfaceDelegationError(req, res, delegationErr);
+  }
+};
 
 /**
  * @swagger
@@ -90,16 +148,8 @@ export const sendInvitation = async (req, res) => {
       });
     }
 
-    // Parity with the auth-server rule: only org owners may invite admins —
-    // org admins invite members only. Global admins arrive stamped as org
-    // 'owner' by the route middleware; everyone else resolves from their
-    // own membership in this organization.
     if (role === 'admin') {
-      let inviterRole = req.userOrgRole;
-      if (!inviterRole) {
-        const inviterMembership = await UserOrg.findUserOrgRole(req.userId, organization.id);
-        inviterRole = inviterMembership?.role || null;
-      }
+      const inviterRole = await resolveInviterOrgRole(req, organization);
       if (inviterRole !== 'owner') {
         return res.status(403).send({
           message: req.__('invitations.adminInviteRequiresOwner'),
@@ -120,43 +170,7 @@ export const sendInvitation = async (req, res) => {
     // delegate instead of writing a local invitation. The invite token never
     // leaves the auth server, so token/link are null in the response.
     if (organization.external_issuer) {
-      if (!organization.external_org_id) {
-        log.error.error('External org has no external_org_id; cannot delegate invitation', {
-          organizationId: organization.id,
-        });
-        return res.status(500).send({ message: req.__('invitations.send.error') });
-      }
-      try {
-        const invitedByUserUuid = await resolveInviterUuid(
-          req.userId,
-          organization.external_issuer
-        );
-        const externalInvite = await createExternalInvite(
-          organization,
-          email,
-          role,
-          invitedByUserUuid
-        );
-        return res.status(200).send({
-          message: req.__('invitations.sent'),
-          invitationToken: null,
-          invitationTokenExpires: externalInvite?.expires_at || null,
-          organizationId: organization.id,
-          invitationLink: null,
-        });
-      } catch (delegationErr) {
-        // Surface the auth server's own 400 (e.g. inviter has no account
-        // there) instead of masking it behind a generic transport error.
-        const upstreamStatus = delegationErr.response?.status;
-        const upstreamMessage =
-          delegationErr.response?.data?.message || delegationErr.response?.data?.error;
-        if (upstreamStatus === 400 && upstreamMessage) {
-          return res.status(400).send({ message: upstreamMessage });
-        }
-        log.error.error('Failed to delegate invitation to auth server:', delegationErr);
-        // Their pending-invite replacement makes a re-POST safe after any failure.
-        return res.status(502).send({ message: req.__('invitations.send.externalError') });
-      }
+      return sendDelegatedInvitation(req, res, organization, email, role);
     }
 
     const invitationToken = randomBytes(20).toString('hex');

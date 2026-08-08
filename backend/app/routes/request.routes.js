@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authJwt, verifyOrgAccess } from '../middleware/index.js';
+import { authJwt, oidcTokenRefresh, verifyOrgAccess } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   createJoinRequest,
@@ -45,7 +45,7 @@ router.get(
 
 router.post(
   '/organization/:organization/requests/:requestId/approve',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   approveJoinRequest
 );
 

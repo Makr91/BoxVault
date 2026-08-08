@@ -2,6 +2,7 @@
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 import { deleteExternalInvite } from '../../../utils/externalInvites.js';
+import { extractOidcAccessToken } from '../../favorites/helpers.js';
 const { invitation: Invitation, organization: Organization } = db;
 
 /**
@@ -66,8 +67,12 @@ export const deleteInvitation = async (req, res) => {
         return res.status(404).send({ message: req.__('invitations.notFound') });
       }
 
+      const oidcAccessToken = extractOidcAccessToken(req);
+      if (!oidcAccessToken) {
+        return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+      }
       try {
-        await deleteExternalInvite(organization, inviteId);
+        await deleteExternalInvite(organization, inviteId, oidcAccessToken);
         return res.status(200).send({ message: req.__('invitations.deleted') });
       } catch (delegationErr) {
         if (delegationErr.response?.status === 404) {

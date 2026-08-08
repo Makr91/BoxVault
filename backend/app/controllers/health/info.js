@@ -181,8 +181,13 @@ const checkOidcProviders = async () => {
       const { providers } = authConfig.auth.oidc;
       for (const [key, provider] of Object.entries(providers)) {
         if (provider.enabled?.value && provider.issuer?.value) {
+          // Probe the discovery document OIDC actually depends on — issuer
+          // roots legitimately answer 4xx (login walls) without OIDC being down.
+          const issuerBase = provider.issuer.value.replace(/\/+$/, '');
           // eslint-disable-next-line no-await-in-loop
-          services[`oidc_${key}`] = await checkUrl(provider.issuer.value);
+          services[`oidc_${key}`] = await checkUrl(
+            `${issuerBase}/.well-known/openid-configuration`
+          );
         }
       }
     }

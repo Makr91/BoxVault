@@ -205,18 +205,8 @@ NotificationToggle.propTypes = {
   }).isRequired,
 };
 
-const BOXVAULT_SOURCE_PREFIX = "boxvault";
-
-const isBoxVaultNotification = (entry) =>
-  typeof entry.sourceClientId === "string" &&
-  entry.sourceClientId.startsWith(BOXVAULT_SOURCE_PREFIX);
-
-const extractInboxEntries = (data) => {
-  if (Array.isArray(data)) {
-    return data;
-  }
-  return Array.isArray(data?.items) ? data.items : [];
-};
+const extractInboxEntries = (data) =>
+  Array.isArray(data?.notifications) ? data.notifications : [];
 
 const NotificationInboxItem = ({ entry, onSelect }) => {
   const { i18n } = useTranslation();
@@ -245,7 +235,6 @@ NotificationInboxItem.propTypes = {
     navigate: PropTypes.string,
     createdAt: PropTypes.string,
     readAt: PropTypes.string,
-    sourceClientId: PropTypes.string,
   }).isRequired,
   onSelect: PropTypes.func.isRequired,
 };
@@ -288,9 +277,7 @@ const NotificationBell = () => {
         page: 0,
         size: 20,
       });
-      setEntries(
-        extractInboxEntries(response.data).filter(isBoxVaultNotification)
-      );
+      setEntries(extractInboxEntries(response.data));
     } catch (error) {
       log.api.error("Error loading notification inbox", {
         error: error.message,
@@ -317,7 +304,10 @@ const NotificationBell = () => {
         });
       }
     }
-    if (entry.navigate) {
+    if (
+      typeof entry.navigate === "string" &&
+      entry.navigate.startsWith("https://")
+    ) {
       window.location.assign(entry.navigate);
     }
   };
@@ -342,7 +332,7 @@ const NotificationBell = () => {
   return (
     <li className="nav-item dropdown">
       <button
-        className="nav-link position-relative"
+        className="nav-link"
         id="notificationBellDropdown"
         data-bs-toggle="dropdown"
         aria-expanded="false"
@@ -350,12 +340,14 @@ const NotificationBell = () => {
         title={t("inbox.title")}
         aria-label={t("inbox.unreadCount", { count: unreadCount })}
       >
-        <FaBell />
-        {unreadCount > 0 && (
-          <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-            {unreadCount}
-          </span>
-        )}
+        <span className="position-relative">
+          <FaBell />
+          {unreadCount > 0 && (
+            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+              {unreadCount}
+            </span>
+          )}
+        </span>
       </button>
       <ul
         className="dropdown-menu dropdown-menu-end overflow-auto"

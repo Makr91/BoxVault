@@ -262,6 +262,7 @@
     },
     "invalidRole": "Rol inválido. Las invitaciones solo pueden asignar roles de miembro o administrador.",
     "adminInviteRequiresOwner": "Solo los propietarios de la organización pueden invitar administradores.",
+    "requiresIdpAccount": "Esta organización es administrada por tu proveedor de identidad; inicia sesión a través de él para administrar sus invitaciones.",
     "sent": "¡Invitación enviada exitosamente!",
     "send": {
       "error": "Ocurrió un error al enviar la invitación.",

@@ -1,20 +1,19 @@
 // externalInvites.js — delegation caller for the auth server's org-invite API.
 //
 // Customer orgs (external_issuer set) are IdP-truth only: their invites live on
-// the auth server, never in BoxVault's invitations table. BoxVault calls
-// POST/GET/DELETE {issuer}/api/org/invites with a client_credentials token
-// (scope org:invite) minted for a DEDICATED service-to-service client
-// (auth.oidc.s2s_client_id / s2s_client_secret knobs — NOT the main login
-// client) against the issuer's standard token endpoint. The invite token
-// itself is never returned by their API.
+// the auth server, never in BoxVault's invitations table. Invite actions are
+// human actions (contract v2 Mode B): BoxVault calls POST/GET/DELETE
+// {issuer}/api/org/invites with the ACTING USER's own OIDC access token — the
+// auth server derives the actor from the token and enforces membership + role
+// server-side. The invite token itself is never returned by their API.
+// getS2sToken stays for genuinely machine-initiated work (notification
+// producers), minted for the DEDICATED service-to-service client
+// (auth.oidc.s2s_client_id / s2s_client_secret knobs — NOT the login client).
 import axios from 'axios';
 import { loadConfig } from './config-loader.js';
 import { log } from './Logger.js';
 import { findProviderByIssuer } from './oidcProviders.js';
 import { getOidcConfiguration } from '../auth/passport.js';
-import db from '../models/index.js';
-
-const INVITE_SCOPE = 'org:invite';
 
 // Fallbacks only for missing/malformed knobs — the real values live in the
 // auth YAML (auth.oidc.s2s_client_id / s2s_client_secret).
@@ -94,72 +93,43 @@ const getS2sToken = async (issuer, scope) => {
 const inviteApiBase = issuer => `${issuer.replace(/\/+$/, '')}/api/org/invites`;
 
 /**
- * Resolve a BoxVault user's auth-server UUID from their issuer-scoped
- * credential (the subject IS their UUID at that issuer). Pre-issuer rows
- * stored under the flat 'oidc' provider are claimed for the issuer via the
- * model's lazy backfill. Purely-local users have no credential -> null, and
- * the auth server's own 400 surfaces to the caller.
- * @param {number} userId - BoxVault user id of the inviter/approver
- * @param {string} issuer - The org's external_issuer
- * @returns {Promise<string|null>} Auth-server user UUID or null
- */
-const resolveInviterUuid = async (userId, issuer) => {
-  const { credential: Credential } = db;
-  const credential = await Credential.findOne({ where: { user_id: userId, provider: issuer } });
-  if (credential) {
-    return credential.subject;
-  }
-
-  const flat = await Credential.findOne({ where: { user_id: userId, provider: 'oidc' } });
-  if (flat) {
-    const backfilled = await Credential.findByIssuerAndSubject(issuer, flat.subject);
-    return backfilled ? backfilled.subject : null;
-  }
-
-  return null;
-};
-
-/**
- * Create an invite on the auth server for an externally-managed org.
- * Their 500-after-email-failure is retry-safe: re-POSTing replaces the pending
- * invite for the same address.
+ * Create an invite on the auth server for an externally-managed org as the
+ * acting user. Their 500-after-email-failure is retry-safe: re-POSTing
+ * replaces the pending invite for the same address.
  * @param {Object} organization - BoxVault org (external_issuer + external_org_id set)
  * @param {string} email - Invitee email
  * @param {string} role - Auth-server role, lowercase (member|admin)
- * @param {string|null} invitedByUserUuid - Auth-server UUID of the inviting
- *   user (their API requires it; null lets their 400 surface for purely-local
- *   admins with no credential at this issuer)
+ * @param {string} oidcAccessToken - The acting user's OIDC access token
  * @returns {Promise<Object>} Their invite record ({ invite_id, status, expires_at, ... })
  */
-const createExternalInvite = async (organization, email, role, invitedByUserUuid) => {
+const createExternalInvite = async (organization, email, role, oidcAccessToken) => {
   const issuer = organization.external_issuer;
-  const token = await getS2sToken(issuer, INVITE_SCOPE);
   const response = await axios.post(
     inviteApiBase(issuer),
     {
       email,
       org_uuid: organization.external_org_id,
       role,
-      invited_by_user_uuid: invitedByUserUuid,
     },
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Authorization: `Bearer ${oidcAccessToken}` } }
   );
   return response.data;
 };
 
 /**
- * List the auth server's invites for an externally-managed org. Records come
- * back with UPPERCASE status enums and without created_at; accepted_at and
- * invited_by_user_uuid are conditional — callers must map defensively.
+ * List the auth server's invites for an externally-managed org as the acting
+ * user. Records come back with UPPERCASE status enums and without created_at;
+ * accepted_at and invited_by_user_uuid are conditional — callers must map
+ * defensively.
  * @param {Object} organization - BoxVault org (external_issuer + external_org_id set)
+ * @param {string} oidcAccessToken - The acting user's OIDC access token
  * @returns {Promise<Object[]>} Their invite records
  */
-const listExternalInvites = async organization => {
+const listExternalInvites = async (organization, oidcAccessToken) => {
   const issuer = organization.external_issuer;
-  const token = await getS2sToken(issuer, INVITE_SCOPE);
   const response = await axios.get(inviteApiBase(issuer), {
     params: { org_uuid: organization.external_org_id },
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${oidcAccessToken}` },
   });
   const { data } = response;
   if (Array.isArray(data)) {
@@ -169,26 +139,20 @@ const listExternalInvites = async organization => {
 };
 
 /**
- * Delete an invite on the auth server. Their API requires the org_uuid query
- * parameter alongside the invite id; success is 204, a missing invite is
- * 404 {error:'not_found'}.
+ * Delete an invite on the auth server as the acting user. Their API requires
+ * the org_uuid query parameter alongside the invite id; success is 204, a
+ * missing invite is 404 {error:'not_found'}.
  * @param {Object} organization - BoxVault org (external_issuer + external_org_id set)
  * @param {string} inviteId - The auth server's invite_id
+ * @param {string} oidcAccessToken - The acting user's OIDC access token
  * @returns {Promise<void>}
  */
-const deleteExternalInvite = async (organization, inviteId) => {
+const deleteExternalInvite = async (organization, inviteId, oidcAccessToken) => {
   const issuer = organization.external_issuer;
-  const token = await getS2sToken(issuer, INVITE_SCOPE);
   await axios.delete(`${inviteApiBase(issuer)}/${encodeURIComponent(inviteId)}`, {
     params: { org_uuid: organization.external_org_id },
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${oidcAccessToken}` },
   });
 };
 
-export {
-  getS2sToken,
-  createExternalInvite,
-  listExternalInvites,
-  deleteExternalInvite,
-  resolveInviterUuid,
-};
+export { getS2sToken, createExternalInvite, listExternalInvites, deleteExternalInvite };

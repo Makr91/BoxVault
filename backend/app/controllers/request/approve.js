@@ -1,14 +1,16 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-import { createExternalInvite, resolveInviterUuid } from '../../utils/externalInvites.js';
+import { createExternalInvite } from '../../utils/externalInvites.js';
+import { extractOidcAccessToken } from '../favorites/helpers.js';
 const { Request, organization: Organization, user: User } = db;
 
 /**
  * Approve a join request on an SSO-managed org: membership is IdP-truth, so
  * instead of a local membership row the approval delegates an invite to the
- * auth server as boxvault_s2s — the membership then arrives via SCIM once the
- * user accepts at the provider. The request row is finalized as approved
- * (locally the approval is complete; the IdP owns the rest of the journey).
+ * auth server as the APPROVING USER (contract v2 Mode B, their token carries
+ * the actor) — the membership then arrives via SCIM once the user accepts at
+ * the provider. The request row is finalized as approved (locally the
+ * approval is complete; the IdP owns the rest of the journey).
  * @param {Object} req - Express request
  * @param {Object} res - Express response
  * @param {Object} params - { request, organization, assignedRole, reviewerId }
@@ -24,17 +26,23 @@ const approveViaIdpInvite = async (
     return res.status(404).send({ message: req.__('requests.notFound') });
   }
 
+  const oidcAccessToken = extractOidcAccessToken(req);
+  if (!oidcAccessToken) {
+    return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+  }
+
   try {
-    const invitedByUserUuid = await resolveInviterUuid(reviewerId, organization.external_issuer);
-    await createExternalInvite(organization, requester.email, assignedRole, invitedByUserUuid);
+    await createExternalInvite(organization, requester.email, assignedRole, oidcAccessToken);
   } catch (delegationErr) {
-    // Surface the auth server's own 400 (e.g. approver has no account there)
-    // instead of masking it behind a generic transport error.
+    // Surface the auth server's own 400/403 (validation, Mode B RBAC) instead
+    // of masking it behind a generic transport error.
     const upstreamStatus = delegationErr.response?.status;
     const upstreamMessage =
-      delegationErr.response?.data?.message || delegationErr.response?.data?.error;
-    if (upstreamStatus === 400 && upstreamMessage) {
-      return res.status(400).send({ message: upstreamMessage });
+      delegationErr.response?.data?.message ||
+      delegationErr.response?.data?.detail ||
+      delegationErr.response?.data?.error;
+    if ((upstreamStatus === 400 || upstreamStatus === 403) && upstreamMessage) {
+      return res.status(upstreamStatus).send({ message: upstreamMessage });
     }
     log.error.error('Failed to delegate join-request approval to auth server:', delegationErr);
     return res.status(502).send({ message: req.__('requests.approve.externalError') });
