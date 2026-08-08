@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.49.0](https://github.com/Makr91/BoxVault/compare/v0.48.1...v0.49.0) (2026-08-08)
+
+
+### Features
+
+* invites ride the acting user's token (contract v2 Mode B), OIDC health probes discovery endpoint, bell navigate https-only ([778ac3f](https://github.com/Makr91/BoxVault/commit/778ac3f2f2c10a75aa43560a2036cf62c9242590))
+* user-token invites, notification producers, box page redesign, ticket customer ID chain ([30c2025](https://github.com/Makr91/BoxVault/commit/30c2025255fa17e0489dcbd45369d5eb1e393c48))
+
 ## [0.48.1](https://github.com/Makr91/BoxVault/compare/v0.48.0...v0.48.1) (2026-08-07)
 
 
