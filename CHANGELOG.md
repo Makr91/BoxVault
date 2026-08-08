@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.1](https://github.com/Makr91/BoxVault/compare/v0.49.0...v0.49.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* updating logo based on OS theme ([1493925](https://github.com/Makr91/BoxVault/commit/1493925c1fe599905ad908b1cbb99bf49548d09b))
+
 ## [0.49.0](https://github.com/Makr91/BoxVault/compare/v0.48.1...v0.49.0) (2026-08-08)
 
 
