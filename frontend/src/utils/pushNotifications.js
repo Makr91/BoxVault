@@ -1,7 +1,5 @@
 import NotificationsService from "../services/notifications.service";
 
-import { resolveAuthServerUrl } from "./authServer";
-
 const PUSH_ENABLED_KEY = "boxvault_push_enabled";
 
 const isPushSupported = () =>
@@ -33,14 +31,10 @@ const ensureServiceWorker = async () => {
   return navigator.serviceWorker.ready;
 };
 
-const getVapidKey = async (accessToken) => {
-  const authServerUrl = await resolveAuthServerUrl(accessToken);
-
-  if (!authServerUrl) {
-    throw new Error("Could not resolve a trusted auth server URL");
-  }
-
-  const response = await fetch(`${authServerUrl}/api/notifications/vapid-key`);
+const getVapidKey = async () => {
+  const response = await fetch(
+    `${window.location.origin}/api/notifications/vapid-key`
+  );
 
   if (!response.ok) {
     throw new Error(`VAPID key request failed with status ${response.status}`);
@@ -50,9 +44,9 @@ const getVapidKey = async (accessToken) => {
   return data.publicKey;
 };
 
-const subscribePush = async (accessToken) => {
+const subscribePush = async () => {
   const registration = await ensureServiceWorker();
-  const vapidKey = await getVapidKey(accessToken);
+  const vapidKey = await getVapidKey();
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(vapidKey),
@@ -73,12 +67,37 @@ const unsubscribePush = async () => {
   await subscription.unsubscribe();
 };
 
+const matchesVapidKey = (subscription, vapidKey) => {
+  const current = subscription.options?.applicationServerKey;
+
+  if (!current) {
+    return false;
+  }
+
+  const expected = urlBase64ToUint8Array(vapidKey);
+  const actual = new Uint8Array(current);
+  return (
+    actual.length === expected.length &&
+    actual.every((byte, index) => byte === expected[index])
+  );
+};
+
 const syncSubscription = async () => {
   const registration = await ensureServiceWorker();
   const subscription = await registration.pushManager.getSubscription();
 
   if (!subscription) {
     return false;
+  }
+
+  // A push subscription is bound to the applicationServerKey it was created
+  // with, so one minted against a different key can never receive a message —
+  // it has to be replaced rather than re-registered.
+  const vapidKey = await getVapidKey();
+  if (!matchesVapidKey(subscription, vapidKey)) {
+    await subscription.unsubscribe();
+    await subscribePush();
+    return true;
   }
 
   await NotificationsService.createSubscription(subscription.toJSON());

@@ -115,6 +115,45 @@ email:
   from: "BoxVault <noreply@example.com>"
 ```
 
+## Notification Configuration
+
+BoxVault sends its own browser/OS toast notifications. They are signed with
+BoxVault's own VAPID keypair and delivered to push subscriptions registered on
+BoxVault's origin by `frontend/public/notification-sw.js`.
+
+This is deliberately independent of the auth server's notification hub. The hub
+supplies the in-page bell feed — the durable, cross-app record — and never
+raises an OS toast on BoxVault's behalf. Keeping the toast channel local means:
+
+- toasts carry BoxVault's identity, not the auth server's
+- clicking a toast can focus an already-open BoxVault tab (service worker
+  `clients.matchAll` is origin-scoped and cannot reach across origins)
+- one event cannot produce two toasts from two independent senders, which no
+  amount of `tag` or `Topic` deduplication can fix across origins
+- the notification permission the user grants is spent on the origin whose
+  content they are actually agreeing to receive
+- toasts keep working when the hub is unreachable
+
+```yaml
+notifications:
+  enabled: true # false disables OS toasts; the bell feed is unaffected
+  vapid_subject: "mailto:admin@example.com"
+  vapid_public_key: "" # generated on first start when empty
+  vapid_private_key: "" # generated on first start when empty
+```
+
+`vapid_subject` is the contact URI push services use to reach the operator about
+delivery problems. Use a real address in production.
+
+The keypair is generated automatically the first time BoxVault starts with these
+fields empty, and written back to `app.config.yaml`. **Replacing either key
+invalidates every existing subscription** — each browser must re-enable
+notifications, because a subscription is cryptographically bound to the public
+key it was created with.
+
+Toasts require a BoxVault session only, so local accounts receive them; the bell
+feed still requires an OIDC login because the feed lives on the hub.
+
 ## Logging Configuration
 
 Application logging settings:

@@ -322,7 +322,7 @@ const App = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    if (currentUser?.provider?.startsWith("oidc-") && isPushEnabled()) {
+    if (currentUser && isPushEnabled()) {
       syncSubscription().catch((error) => {
         log.app.error("Push subscription sync failed", {
           error: error.message,

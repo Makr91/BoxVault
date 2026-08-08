@@ -15,6 +15,9 @@ import {
   FaBook,
   FaBell,
   FaBellSlash,
+  FaShieldHalved,
+  FaEnvelope,
+  FaTriangleExclamation,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 
@@ -107,7 +110,7 @@ AppIcon.propTypes = {
   }).isRequired,
 };
 
-const NotificationToggle = ({ currentUser }) => {
+const NotificationToggle = () => {
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState(isPushEnabled());
   const [busy, setBusy] = useState(false);
@@ -128,7 +131,7 @@ const NotificationToggle = ({ currentUser }) => {
       return;
     }
 
-    await subscribePush(currentUser.accessToken);
+    await subscribePush();
     setPushEnabled(true);
     setEnabled(true);
     setFeedback({ tone: "success", text: t("notifications.enableSuccess") });
@@ -199,30 +202,54 @@ const NotificationToggle = ({ currentUser }) => {
   );
 };
 
-NotificationToggle.propTypes = {
-  currentUser: PropTypes.shape({
-    accessToken: PropTypes.string,
-  }).isRequired,
-};
-
 const extractInboxEntries = (data) =>
   Array.isArray(data?.notifications) ? data.notifications : [];
 
+const INBOX_TYPE_ICONS = {
+  SECURITY: FaShieldHalved,
+  SYSTEM: FaGear,
+  MESSAGE: FaEnvelope,
+  ALERT: FaTriangleExclamation,
+};
+
+const INBOX_SEVERITY_CLASSES = {
+  CRITICAL: "text-danger",
+  ERROR: "text-danger",
+  WARNING: "text-warning",
+  SUCCESS: "text-success",
+  INFO: "text-body-secondary",
+};
+
 const NotificationInboxItem = ({ entry, onSelect }) => {
   const { i18n } = useTranslation();
+  const Icon = INBOX_TYPE_ICONS[entry.type] || FaBell;
+  const unread = !entry.readAt;
+
   return (
     <button
       type="button"
-      className={`dropdown-item text-wrap ${entry.readAt ? "" : "fw-bold"}`}
+      className="dropdown-item notification-item"
       onClick={() => onSelect(entry)}
     >
-      <span className="d-block">{entry.title}</span>
-      {entry.body && (
-        <span className="d-block small text-muted fw-normal">{entry.body}</span>
-      )}
-      <span className="d-block small text-muted fw-normal">
-        {formatRelativeTime(entry.createdAt, i18n.language)}
+      <Icon
+        className={`notification-item-icon ${
+          INBOX_SEVERITY_CLASSES[entry.severity] || "text-body-secondary"
+        }`}
+      />
+      <span className="notification-item-body">
+        <span
+          className={`notification-item-title ${unread ? "fw-semibold" : ""}`}
+        >
+          {entry.title}
+        </span>
+        {entry.body && (
+          <span className="notification-item-text">{entry.body}</span>
+        )}
+        <span className="notification-item-time">
+          {formatRelativeTime(entry.createdAt, i18n.language)}
+        </span>
       </span>
+      {unread && <span className="notification-item-dot" />}
     </button>
   );
 };
@@ -232,6 +259,8 @@ NotificationInboxItem.propTypes = {
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     title: PropTypes.string,
     body: PropTypes.string,
+    type: PropTypes.string,
+    severity: PropTypes.string,
     navigate: PropTypes.string,
     createdAt: PropTypes.string,
     readAt: PropTypes.string,
@@ -350,11 +379,10 @@ const NotificationBell = () => {
         </span>
       </button>
       <ul
-        className="dropdown-menu dropdown-menu-end overflow-auto"
+        className="dropdown-menu dropdown-menu-end overflow-auto notification-menu"
         aria-labelledby="notificationBellDropdown"
-        style={{ minWidth: 320, maxHeight: 400 }}
       >
-        <li className="d-flex justify-content-between align-items-center px-3 py-1">
+        <li className="d-flex justify-content-between align-items-center notification-header">
           <strong>{t("inbox.title")}</strong>
           <button
             type="button"
@@ -365,7 +393,7 @@ const NotificationBell = () => {
           </button>
         </li>
         <li>
-          <hr className="dropdown-divider" />
+          <hr className="dropdown-divider m-0" />
         </li>
         {loadFailed && (
           <li>
@@ -376,7 +404,7 @@ const NotificationBell = () => {
         )}
         {!loadFailed && entries.length === 0 && (
           <li>
-            <span className="dropdown-item-text small text-muted">
+            <span className="dropdown-item-text small text-body-secondary">
               {t("inbox.empty")}
             </span>
           </li>
@@ -918,9 +946,7 @@ const Navbar = ({
                     {t("navbar.docs")}
                   </a>
                 </li>
-                {currentUser?.provider?.startsWith("oidc-") && (
-                  <NotificationToggle currentUser={currentUser} />
-                )}
+                <NotificationToggle />
                 {favoriteApps && favoriteApps.length > 0 && (
                   <>
                     <li>

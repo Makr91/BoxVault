@@ -531,3 +531,50 @@ rate_limiting:
     subsection_key: rateLimiting
     required: false
     order: 5
+notifications:
+  enabled:
+    type: boolean
+    value: true
+    description: >-
+      Send browser/OS toast notifications from BoxVault's own service worker,
+      signed with BoxVault's own VAPID keys. The notification hub on the auth
+      server is used only for the in-page bell feed.
+    section: Application
+    subsection: Notification Settings
+    subsection_key: notificationSettings
+    required: false
+    order: 1
+  vapid_subject:
+    type: string
+    value: mailto:admin@localhost
+    description: >-
+      Contact URI (mailto: or https:) sent to push services so they can reach
+      the operator about delivery problems.
+    section: Application
+    subsection: Notification Settings
+    subsection_key: notificationSettings
+    required: false
+    order: 2
+  vapid_public_key:
+    type: string
+    value: ""
+    description: >-
+      Public half of the VAPID keypair, handed to browsers when they subscribe.
+      Generated on first start when empty. Changing it invalidates every
+      existing subscription.
+    section: Application
+    subsection: Notification Settings
+    subsection_key: notificationSettings
+    required: false
+    order: 3
+  vapid_private_key:
+    type: password
+    value: ""
+    description: >-
+      Private half of the VAPID keypair, used to sign push messages. Generated
+      on first start when empty.
+    section: Application
+    subsection: Notification Settings
+    subsection_key: notificationSettings
+    required: false
+    order: 4

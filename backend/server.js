@@ -7,6 +7,7 @@ import responseTime from 'response-time';
 import { loadConfig, getConfigPath, getSetupTokenPath } from './app/utils/config-loader.js';
 import { log, morganMiddleware } from './app/utils/Logger.js';
 import { startNotificationSweeps } from './app/utils/notificationSweeps.js';
+import { ensureVapidKeys } from './app/utils/webPush.js';
 import { randomBytes, constants } from 'crypto';
 import { createServer } from 'http';
 import { createServer as _createServer } from 'https';
@@ -576,6 +577,7 @@ const initializeApp = async () => {
     log.app.info('Error handler middleware applied');
 
     if (process.env.NODE_ENV !== 'test') {
+      await ensureVapidKeys();
       startNotificationSweeps();
       log.app.info('Notification sweeps scheduled');
     }

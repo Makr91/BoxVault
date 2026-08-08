@@ -1,6 +1,7 @@
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { sendHubNotification } from '../../utils/notifyHub.js';
+import { sendPushToUsers } from '../../utils/webPush.js';
 import db from '../../models/index.js';
 
 const ORG_ROLES = ['owner', 'admin', 'member'];
@@ -48,13 +49,12 @@ const resolveWatcherRecipients = async (organization, watcherUserIds) => {
 
 const notifyBoxWatchers = async ({
   organization,
-  boxName,
+  watcherUserIds,
   notification,
   type,
   severity,
   idempotencyKeyBase,
 }) => {
-  const watcherUserIds = await findBoxWatcherUserIds(organization.id, boxName);
   const recipients = await resolveWatcherRecipients(organization, watcherUserIds);
   await Promise.all(
     recipients.map(({ issuer, uuid }) =>
@@ -70,6 +70,11 @@ const notifyBoxWatchers = async ({
   );
 };
 
+const findOrgMemberUserIds = async organizationId => {
+  const memberships = await db.UserOrg.findAll({ where: { organization_id: organizationId } });
+  return memberships.map(membership => membership.user_id);
+};
+
 const fanOutVersionEvent = async ({
   organization,
   boxName,
@@ -79,6 +84,8 @@ const fanOutVersionEvent = async ({
   severity,
   key,
 }) => {
+  const watcherUserIds = await findBoxWatcherUserIds(organization.id, boxName);
+
   if (isExternal) {
     await sendHubNotification({
       issuer: organization.external_issuer,
@@ -91,12 +98,15 @@ const fanOutVersionEvent = async ({
   }
   await notifyBoxWatchers({
     organization,
-    boxName,
+    watcherUserIds,
     notification,
     type,
     severity,
     idempotencyKeyBase: key,
   });
+
+  const orgMemberUserIds = await findOrgMemberUserIds(organization.id);
+  await sendPushToUsers([...watcherUserIds, ...orgMemberUserIds], notification);
 };
 
 /**

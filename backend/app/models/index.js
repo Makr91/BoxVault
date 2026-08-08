@@ -97,6 +97,10 @@ if (shouldSkipInitialization) {
   db.iso = (await import('./iso.model.js')).default(sequelize, Sequelize);
   db.scimGroup = (await import('./scim-group.model.js')).default(sequelize, Sequelize);
   db.boxWatcher = (await import('./box-watcher.model.js')).default(sequelize, Sequelize);
+  db.pushSubscription = (await import('./push-subscription.model.js')).default(
+    sequelize,
+    Sequelize
+  );
 
   // Define associations for new models
   db.UserOrg.associate = function (models) {

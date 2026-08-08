@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authJwt, oidcTokenRefresh } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
+  getVapidKey,
   createSubscription,
   deleteSubscription,
   listNotifications,
@@ -21,11 +22,17 @@ router.use((req, res, next) => {
   next();
 });
 
+// The bell feed lives on the notification hub, so those routes need a fresh
+// OIDC access token. Push subscriptions are BoxVault's own and work for local
+// accounts too, so they only need a BoxVault session.
 const notificationAuth = [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser];
+const subscriptionAuth = [authJwt.verifyToken, authJwt.isUser];
 
-router.post('/notifications/subscriptions', notificationAuth, createSubscription);
+router.get('/notifications/vapid-key', getVapidKey);
 
-router.delete('/notifications/subscriptions', notificationAuth, deleteSubscription);
+router.post('/notifications/subscriptions', subscriptionAuth, createSubscription);
+
+router.delete('/notifications/subscriptions', subscriptionAuth, deleteSubscription);
 
 router.get('/notifications', notificationAuth, listNotifications);
 
