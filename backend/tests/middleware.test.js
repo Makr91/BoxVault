@@ -150,6 +150,18 @@ jest.unstable_mockModule('../app/config/i18n.js', () => ({
   getDefaultLocale: jest.fn(() => 'en'),
 }));
 
+// express-rate-limit 8.x ships an ESM build whose default export Jest's VM-modules
+// CJS interop fails to surface (Node itself resolves it fine). The stub returns a
+// middleware exposing .options, which is all the suite reads — the handler under
+// test is still BoxVault's own.
+jest.unstable_mockModule('express-rate-limit', () => ({
+  default: options => {
+    const middleware = (req, res, next) => next();
+    middleware.options = options;
+    return middleware;
+  },
+}));
+
 const { uploadFile, uploadSSLFile } = await import('../app/middleware/upload.js');
 const { default: vagrantHandler } = await import('../app/middleware/vagrantHandler.js');
 const { default: verifySignUp } = await import('../app/middleware/verifySignUp.js');

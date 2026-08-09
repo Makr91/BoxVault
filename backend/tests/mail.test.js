@@ -47,6 +47,17 @@ const mockI18n = {
   },
   getDefaultLocale: () => 'en',
   getSupportedLocales: () => ['en'],
+  findBestMatchingLocale: (requestedLocale, supportedLocales) => {
+    if (!requestedLocale) {
+      return 'en';
+    }
+    const lowered = requestedLocale.toLowerCase();
+    if (supportedLocales.includes(lowered)) {
+      return lowered;
+    }
+    const [prefix] = lowered.split('-');
+    return supportedLocales.find(locale => locale.startsWith(prefix)) || 'en';
+  },
   initI18n: jest.fn(),
 };
 jest.unstable_mockModule('../app/config/i18n.js', () => mockI18n);

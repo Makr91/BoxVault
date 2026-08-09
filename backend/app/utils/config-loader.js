@@ -55,7 +55,7 @@ const getMockConfig = configName => {
         level: { value: isSilent ? 'silent' : 'error' },
         console_enabled: { value: !isSilent },
       },
-      rate_limiting: { window_minutes: { value: 15 }, max_requests: { value: 100 } },
+      rate_limiting: { window_minutes: { value: 15 }, max_requests: { value: 100000 } },
       gravatar: {
         enabled: { value: true },
         default: { value: 'identicon' },

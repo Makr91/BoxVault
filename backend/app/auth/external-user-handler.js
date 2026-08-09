@@ -126,6 +126,13 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
         },
         transaction,
       });
+
+      // The pointer survives the membership it names unless it is cleared here,
+      // and a dangling one is worse than none: it is published as the user's
+      // organization and seeds every org-scoped request, each of which then 403s.
+      if (staleOrgIds.includes(user.primary_organization_id)) {
+        await user.update({ primary_organization_id: null }, { transaction });
+      }
     }
 
     // Denormalized primary pointer. The claim's primary flag is authoritative
@@ -173,16 +180,25 @@ const assignDefaultRoleIfNeeded = async (user, db, authConfig) => {
 };
 
 /**
- * Resolve the primary org from an organizations claim, if one is present.
- * @param {Object} db - Database models
+ * Whether this login carries an authoritative org membership list. Presence of
+ * the claim decides it, never its contents: an empty array is the auth server
+ * stating the user belongs to no organization, while an absent claim is a
+ * provider that does not speak org membership at all.
  * @param {Object|null} profile - Token/userinfo claims
  * @param {string|null} issuer - Provider issuer (iss)
- * @returns {Promise<number|null>} Organization ID or null when no usable claim
+ * @returns {boolean}
+ */
+const hasOrganizationsClaim = (profile, issuer) =>
+  Boolean(issuer) && Array.isArray(profile?.organizations);
+
+/**
+ * Resolve the primary org from an organizations claim.
+ * @param {Object} db - Database models
+ * @param {Object} profile - Token/userinfo claims (claim already confirmed present)
+ * @param {string} issuer - Provider issuer (iss)
+ * @returns {Promise<number|null>} Organization ID, or null when the claim lists none
  */
 const resolveOrgFromClaim = async (db, profile, issuer) => {
-  if (!issuer || !Array.isArray(profile?.organizations) || !profile.organizations.length) {
-    return null;
-  }
   const primary = profile.organizations.find(o => o.primary) || profile.organizations[0];
   if (!primary?.uuid) {
     return null;
@@ -292,23 +308,22 @@ const applyProvisioningFallback = async (domain, db, authConfig) => {
 /**
  * Determine organization for external user.
  *
- * When the token carries an organizations claim, the auth-server is the source
- * of truth: resolve (and lazily create) the primary org from the claim BEFORE
- * the invite/domain/fallback machinery. Full membership reconciliation happens
- * separately in syncOrganizationsFromClaim.
+ * An organizations claim is the auth server's full desired state, so when one
+ * is present it is the ONLY answer and the invite/domain/fallback machinery is
+ * skipped entirely — a claim listing no orgs means the user has none here, and
+ * BoxVault never mints one on the auth server's behalf. Full membership
+ * reconciliation happens separately in syncOrganizationsFromClaim.
  *
  * @param {string} email - User email address
  * @param {Object} db - Database models
  * @param {Object} authConfig - Authentication configuration
  * @param {Object|null} profile - Token/userinfo claims
  * @param {string|null} issuer - Provider issuer (iss)
- * @returns {Promise<number>} Organization ID
+ * @returns {Promise<number|null>} Organization ID, or null for a user with none
  */
 const determineUserOrganization = async (email, db, authConfig, profile = null, issuer = null) => {
-  // 0. Claim-based (auth-server source of truth)
-  const claimOrgId = await resolveOrgFromClaim(db, profile, issuer);
-  if (claimOrgId) {
-    return claimOrgId;
+  if (hasOrganizationsClaim(profile, issuer)) {
+    return resolveOrgFromClaim(db, profile, issuer);
   }
 
   const [, domain] = email.split('@');
@@ -356,10 +371,12 @@ const handleExistingCredentialUser = async (credential, profile, email, db, auth
       profile,
       profile.iss || null
     );
-    await user.update({
-      primary_organization_id: organizationId,
-      linkedAt: new Date(),
-    });
+    if (organizationId) {
+      await user.update({
+        primary_organization_id: organizationId,
+        linkedAt: new Date(),
+      });
+    }
   }
 
   return user;
@@ -413,7 +430,7 @@ const handleExistingEmailUser = async (
       profile.iss || null
     );
     await user.update({
-      primary_organization_id: organizationId,
+      ...(organizationId ? { primary_organization_id: organizationId } : {}),
       authProvider: baseProvider,
       externalId: subject,
       linkedAt: new Date(),
@@ -522,12 +539,14 @@ const createNewExternalUser = async (
   // provisioning_default_role knob speaks the GLOBAL role vocabulary and only
   // feeds assignDefaultRoleIfNeeded; the per-org membership starts as member
   // (claim-based providers overwrite it in syncOrganizationsFromClaim).
-  await db.UserOrg.create({
-    user_id: user.id,
-    organization_id: organizationId,
-    role: 'member',
-    is_primary: true,
-  });
+  if (organizationId) {
+    await db.UserOrg.create({
+      user_id: user.id,
+      organization_id: organizationId,
+      role: 'member',
+      is_primary: true,
+    });
+  }
 
   await Credential.linkToUser(user.id, credentialProvider, { ...profile, subject });
 

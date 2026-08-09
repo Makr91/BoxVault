@@ -38,6 +38,27 @@ const subscribeToColorScheme = (onChange) => {
 
 const systemPrefersDark = () => window.matchMedia(DARK_SCHEME_QUERY).matches;
 
+// Every candidate is checked against the membership list because the primary
+// organization can name an org the user was just removed from — an unvalidated
+// one is then sent on every org-scoped request, which answers 403.
+const resolveActiveOrganization = (user, stored) => {
+  if (!user) {
+    return "";
+  }
+  if (!Array.isArray(user.organizations)) {
+    return stored || user.organization || "";
+  }
+
+  const names = user.organizations.map((org) => org.name).filter(Boolean);
+  if (stored && names.includes(stored)) {
+    return stored;
+  }
+  if (user.organization && names.includes(user.organization)) {
+    return user.organization;
+  }
+  return names[0] || "";
+};
+
 const App = () => {
   const { t, i18n } = useTranslation();
   const isDevelopment = import.meta.env.NODE_ENV === "development";
@@ -72,15 +93,12 @@ const App = () => {
   const [userOrganization, setUserOrganization] = useState(
     () => AuthService.getCurrentUser()?.organization || ""
   );
-  const [activeOrganization, setActiveOrganization] = useState(() => {
-    const user = AuthService.getCurrentUser();
-    if (!user) {
-      return "";
-    }
-    return (
-      localStorage.getItem("activeOrganization") || user.organization || ""
-    );
-  });
+  const [activeOrganization, setActiveOrganization] = useState(() =>
+    resolveActiveOrganization(
+      AuthService.getCurrentUser(),
+      localStorage.getItem("activeOrganization")
+    )
+  );
   // Tier one of the avatar contract: the stored avatar URL from the login
   // payload. The Gravatar email-hash fetch below stays as tier two.
   const [gravatarUrl, setGravatarUrl] = useState(
@@ -193,8 +211,10 @@ const App = () => {
     const user = AuthService.getCurrentUser();
 
     if (user) {
-      if (!localStorage.getItem("activeOrganization") && user.organization) {
-        localStorage.setItem("activeOrganization", user.organization);
+      if (activeOrganization) {
+        localStorage.setItem("activeOrganization", activeOrganization);
+      } else {
+        localStorage.removeItem("activeOrganization");
       }
 
       if (!user.avatarUrl && user.emailHash) {
@@ -203,7 +223,7 @@ const App = () => {
     } else {
       localStorage.removeItem("activeOrganization");
     }
-  }, [fetchGravatarUrl]);
+  }, [activeOrganization, fetchGravatarUrl]);
 
   // Handle organization switching
   const handleOrganizationSwitch = useCallback(
@@ -300,14 +320,10 @@ const App = () => {
       // The active-org state is seeded at mount, before any login has happened,
       // so it must be re-derived here or every org-scoped page renders with an
       // empty organization until the next full page load.
-      const stored = localStorage.getItem("activeOrganization");
-      const stillAMember =
-        stored &&
-        Array.isArray(userData.organizations) &&
-        userData.organizations.some((org) => org.name === stored);
-      const nextOrganization = stillAMember
-        ? stored
-        : userData.organization || "";
+      const nextOrganization = resolveActiveOrganization(
+        userData,
+        localStorage.getItem("activeOrganization")
+      );
 
       setActiveOrganization(nextOrganization);
       if (nextOrganization) {
