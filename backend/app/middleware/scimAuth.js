@@ -26,8 +26,20 @@ import { getOidcConfiguration } from '../auth/passport.js';
  * @param {string|null} scimType - SCIM detail error keyword (RFC 7644 §3.12)
  * @returns {Object} The response
  */
-const scimError = (res, status, detail, scimType = null) =>
-  res
+const scimError = (res, status, detail, scimType = null) => {
+  // The sender records only the HTTP status, so an unlogged rejection reason
+  // exists nowhere once the response is discarded.
+  if (status >= 400) {
+    log.auth.warn('SCIM: rejecting request', {
+      method: res.req?.method,
+      path: res.req?.originalUrl,
+      status,
+      scimType,
+      detail,
+    });
+  }
+
+  return res
     .status(status)
     .type('application/scim+json')
     .json({
@@ -36,6 +48,7 @@ const scimError = (res, status, detail, scimType = null) =>
       status: String(status),
       detail,
     });
+};
 
 const scimAuth = async (req, res, next) => {
   const authConfig = loadConfig('auth');

@@ -24,6 +24,10 @@ const Profile = ({ activeOrganization }) => {
   const [message, setMessage] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
+  const [displayName, setDisplayName] = useState(
+    AuthService.getCurrentUser()?.name || ""
+  );
+  const [displayNameMessage, setDisplayNameMessage] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
   const [passwordErrors, setPasswordErrors] = useState({});
   const [emailErrors, setEmailErrors] = useState({});
@@ -455,8 +459,56 @@ const Profile = ({ activeOrganization }) => {
     controller.abort();
   };
 
+  const handleDisplayNameChange = async (e) => {
+    e.preventDefault();
+    const controller = new AbortController();
+    setDisplayNameMessage("");
+    try {
+      await UserService.changeName(
+        currentUser.id,
+        displayName,
+        controller.signal
+      );
+      setDisplayNameMessage(t("profile.messages.nameChanged"));
+      await refreshUserData();
+    } catch (error) {
+      if (!error.name?.includes("Cancel")) {
+        setDisplayNameMessage(
+          error.response?.data?.message ||
+            t("profile.errors.changeNameFailed", { error: error.message })
+        );
+      }
+    }
+    controller.abort();
+  };
+
   const renderProfileTab = () => (
     <div className="tab-pane fade show active">
+      <form onSubmit={handleDisplayNameChange} className="mb-4">
+        <label htmlFor="displayName" className="form-label">
+          <strong>{t("profile.fields.displayName")}</strong>
+        </label>
+        <div className="col-md-4">
+          <input
+            type="text"
+            id="displayName"
+            className="form-control mb-2"
+            maxLength={255}
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder={currentUser.username}
+          />
+          <small className="form-text text-body-secondary d-block mb-2">
+            {t("profile.fields.displayNameHint")}
+          </small>
+          <button className="btn btn-primary" type="submit">
+            {t("buttons.save")}
+          </button>
+          {displayNameMessage && (
+            <div className="alert alert-info mt-2">{displayNameMessage}</div>
+          )}
+        </div>
+      </form>
       <p>
         <strong>{t("profile.fields.fullName")}:</strong>{" "}
         {gravatarProfile.first_name} {gravatarProfile.last_name}

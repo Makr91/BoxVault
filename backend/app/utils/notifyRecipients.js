@@ -15,7 +15,11 @@ const resolveUserRecipients = async (userIds, issuer = null) => {
   for (const credential of credentials) {
     if (!seenUserIds.has(credential.user_id)) {
       seenUserIds.add(credential.user_id);
-      recipients.push({ issuer: credential.provider, uuid: credential.subject });
+      recipients.push({
+        userId: credential.user_id,
+        issuer: credential.provider,
+        uuid: credential.subject,
+      });
     }
   }
   return recipients;

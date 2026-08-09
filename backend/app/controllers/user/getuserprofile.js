@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 const { sign } = jwt;
 
 import { loadConfig } from '../../utils/config-loader.js';
+import { getJwtClaimOptions } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { user: User, role: Role, organization: Organization, UserOrg } = db;
@@ -51,9 +52,10 @@ const { user: User, role: Role, organization: Organization, UserOrg } = db;
  *                 accessToken:
  *                   type: string
  *                   description: JWT access token
- *                 gravatarUrl:
+ *                 avatarUrl:
  *                   type: string
- *                   description: Gravatar URL
+ *                   nullable: true
+ *                   description: Stored avatar URL from the identity provider (clients fall back to the emailHash gravatar)
  *       404:
  *         description: User not found
  *         content:
@@ -93,6 +95,7 @@ export const getUserProfile = async (req, res) => {
 
     const token = sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
       expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
+      ...getJwtClaimOptions(),
     });
 
     const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
@@ -108,14 +111,17 @@ export const getUserProfile = async (req, res) => {
     return res.status(200).send({
       id: user.id,
       username: user.username,
+      name: user.name || null,
+      preferredLanguage: user.preferredLanguage || null,
+      preferredTheme: user.preferredTheme || null,
       email: user.email,
       verified: user.verified,
       emailHash: user.emailHash,
+      avatarUrl: user.avatar_url,
       roles: authorities,
       organization: user.primaryOrganization ? user.primaryOrganization.name : null,
       organizations,
       accessToken: token,
-      gravatarUrl: user.gravatarUrl,
     });
   } catch (error) {
     log.error.error('Error retrieving user profile:', error);

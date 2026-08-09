@@ -173,4 +173,11 @@ log.app.info('i18n module initialized', {
   defaultLocale,
 });
 
-export { getSupportedLocales, getDefaultLocale, i18nMiddleware, configAwareI18nMiddleware, t };
+export {
+  getSupportedLocales,
+  getDefaultLocale,
+  findBestMatchingLocale,
+  i18nMiddleware,
+  configAwareI18nMiddleware,
+  t,
+};

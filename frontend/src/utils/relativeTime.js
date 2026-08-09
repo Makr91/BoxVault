@@ -27,6 +27,19 @@ export const formatRelativeTime = (date, locale = undefined) => {
   const magnitude = Math.abs(diff);
   const match =
     UNITS.find(({ ms }) => magnitude >= ms) || UNITS[UNITS.length - 1];
-  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-  return formatter.format(Math.trunc(diff / match.ms), match.unit);
+  const value = Math.trunc(diff / match.ms);
+
+  try {
+    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(
+      value,
+      match.unit
+    );
+  } catch {
+    // i18next's "cimode" pseudo-locale is not a BCP 47 tag, and Intl throws a
+    // RangeError on it — which would take down whatever is rendering.
+    return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
+      value,
+      match.unit
+    );
+  }
 };

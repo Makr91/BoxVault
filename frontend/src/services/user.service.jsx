@@ -55,6 +55,24 @@ const changeEmail = (userId, newEmail, signal) =>
     }
   );
 
+const changeName = (userId, name, signal) =>
+  axios.put(
+    `${baseURL}/api/users/${userId}/change-name`,
+    { name },
+    {
+      headers: authHeader(),
+      signal,
+    }
+  );
+
+const getPreferences = () =>
+  axios.get(`${baseURL}/api/user/preferences`, { headers: authHeader() });
+
+const updatePreferences = (preferences) =>
+  axios.patch(`${baseURL}/api/user/preferences`, preferences, {
+    headers: authHeader(),
+  });
+
 const getUserRoles = () =>
   axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
 
@@ -102,6 +120,9 @@ const UserService = {
   resumeUser,
   changePassword,
   changeEmail,
+  changeName,
+  getPreferences,
+  updatePreferences,
   isOnlyUserInOrg,
   getUserOrganizations,
   leaveOrganization,

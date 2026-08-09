@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa6";
 
 import AuthService from "../services/auth.service";
+import { userDisplayName, userSecondaryLine } from "../utils/displayName";
 import { log } from "../utils/Logger";
 
 const UserCardActions = ({
@@ -97,6 +98,7 @@ const UserCard = ({
   user,
   currentUser,
   orgRole,
+  columnClass = "col-md-6 col-xl-4",
   onChangeRole,
   onSuspend,
   onResume,
@@ -176,39 +178,41 @@ const UserCard = ({
     );
   };
 
+  const displayName = userDisplayName(user);
+  const secondaryLine = userSecondaryLine(user);
+
   return (
-    <div className="col-md-6 col-xl-4 mb-3">
+    <div className={`${columnClass} mb-3`}>
       <div className={`card h-100 ${user.suspended ? "border-danger" : ""}`}>
         <div className="card-body">
           <div className="d-flex align-items-center mb-3">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt={user.username}
-                className="rounded-circle me-3"
+                alt={displayName}
+                className="rounded-circle flex-shrink-0 me-3"
                 style={{ width: 50, height: 50, objectFit: "cover" }}
               />
             ) : (
               <div
-                className="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3"
+                className="rounded-circle bg-secondary d-flex align-items-center justify-content-center flex-shrink-0 me-3"
                 style={{ width: 50, height: 50 }}
               >
                 <FaUser className="text-white fs-4" />
               </div>
             )}
             <div className="overflow-hidden">
-              <h5
-                className="card-title mb-0 text-truncate"
-                title={user.username}
-              >
-                {user.username}
-              </h5>
-              <small
-                className="text-muted text-truncate d-block"
-                title={user.email}
-              >
-                {user.email}
-              </small>
+              <h6 className="card-title mb-0 text-truncate" title={displayName}>
+                {displayName}
+              </h6>
+              {secondaryLine && (
+                <small
+                  className="text-body-secondary text-truncate d-block"
+                  title={secondaryLine}
+                >
+                  {secondaryLine}
+                </small>
+              )}
             </div>
           </div>
 
@@ -249,6 +253,7 @@ UserCard.propTypes = {
   user: PropTypes.object.isRequired,
   currentUser: PropTypes.object,
   orgRole: PropTypes.string,
+  columnClass: PropTypes.string,
   onChangeRole: PropTypes.func,
   onSuspend: PropTypes.func,
   onResume: PropTypes.func,

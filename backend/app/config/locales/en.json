@@ -221,6 +221,12 @@
     },
     "updated": "User updated successfully!",
     "emailChanged": "Email changed successfully!",
+    "nameChanged": "Display name changed successfully!",
+    "preferenceInvalid": "The value supplied for {{invalidField}} is not valid.",
+    "preferencesRequireIdpSession": "Sign in through your identity provider to change these preferences.",
+    "preferencesDelegationFailed": "Your identity provider could not be reached. Please try again.",
+    "nameInvalid": "Display name must be text.",
+    "nameTooLong": "Display name must be at most 255 characters.",
     "passwordChanged": "Password changed successfully!",
     "userDeleted": "User deleted successfully.",
     "adminBoard": "Admin Board.",
@@ -276,6 +282,25 @@
     "emailMismatch": "This invitation was sent to {{email}}. Please sign in with that account to accept it.",
     "accept": {
       "error": "Some error occurred while accepting the invitation."
+    }
+  },
+  "notifications": {
+    "versionCreated": {
+      "title": "New version of {{organization}}/{{box}}",
+      "body": "{{version}} was published."
+    },
+    "versionDeprecated": {
+      "title": "Version deprecated: {{organization}}/{{box}} {{version}}"
+    },
+    "serviceAccountExpiry": {
+      "title": "Service account expiring: {{username}}",
+      "bodyOne": "Expires in 1 day. Recreate it before automation breaks.",
+      "bodyOther": "Expires in {{days}} days. Recreate it before automation breaks."
+    },
+    "sslExpiry": {
+      "title": "BoxVault SSL certificate expiring",
+      "bodyOne": "The certificate expires in 1 day ({{expiry}}).",
+      "bodyOther": "The certificate expires in {{days}} days ({{expiry}})."
     }
   },
   "mail": {

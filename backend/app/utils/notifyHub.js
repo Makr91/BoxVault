@@ -21,18 +21,69 @@ const MAX_PAYLOAD_BYTES = 3800;
  * @param {Object} payload - Full hub payload ({ recipient, notification, ... })
  * @returns {string} JSON string at or under MAX_PAYLOAD_BYTES (best effort)
  */
+const byteLength = value => Buffer.byteLength(value, 'utf8');
+
+/**
+ * Drop characters from the end until at least `excess` BYTES are gone.
+ * Iterating code points rather than slicing by string length keeps this
+ * honest for non-ASCII text — the budget is measured in bytes, so trimming
+ * that many string positions would cut two to four times too much and can
+ * split a surrogate pair in half.
+ * @param {string} text - Body text
+ * @param {number} excess - Bytes that must be removed
+ * @returns {string} Trimmed text with an ellipsis
+ */
+const trimByBytes = (text, excess) => {
+  const characters = [...text.replace(/…$/, '')];
+  let removed = 0;
+  let kept = characters.length;
+
+  while (kept > 0 && removed < excess) {
+    kept -= 1;
+    removed += byteLength(characters[kept]);
+  }
+  return `${characters.slice(0, kept).join('')}…`;
+};
+
+/**
+ * Shorten a body that is either a plain string or a per-language map, keeping
+ * the two contract forms interchangeable everywhere else. Only the longest
+ * variant of a map is trimmed per pass: the overage is shared across the whole
+ * map, so charging every language the full excess would gut short translations
+ * that were never the problem.
+ * @param {string|Object} body - Notification body in either contract form
+ * @param {number} excess - Bytes over budget
+ * @returns {string|Object} The shortened body
+ */
+const shortenBody = (body, excess) => {
+  if (typeof body === 'string') {
+    return trimByBytes(body, excess);
+  }
+
+  const entries = Object.entries(body).filter(([, text]) => typeof text === 'string');
+  if (entries.length === 0) {
+    return body;
+  }
+
+  const [longest] = entries.reduce((a, b) => (byteLength(a[1]) >= byteLength(b[1]) ? a : b));
+  return { ...body, [longest]: trimByBytes(body[longest], excess) };
+};
+
 const serializeWithinBudget = payload => {
   const bounded = { ...payload, notification: { ...payload.notification } };
   let serialized = JSON.stringify(bounded);
-  let excess = Buffer.byteLength(serialized, 'utf8') - MAX_PAYLOAD_BYTES;
+  let excess = byteLength(serialized) - MAX_PAYLOAD_BYTES;
+  const { body } = bounded.notification;
+  const shortenable = typeof body === 'string' || (body && typeof body === 'object');
 
-  while (excess > 0 && typeof bounded.notification.body === 'string') {
-    const { body } = bounded.notification;
-    const keep = Math.max(0, body.replace(/…$/, '').length - excess);
-    bounded.notification.body = `${body.slice(0, keep)}…`;
+  while (excess > 0 && shortenable) {
+    const previousLength = serialized.length;
+    bounded.notification.body = shortenBody(bounded.notification.body, excess);
     serialized = JSON.stringify(bounded);
-    excess = Buffer.byteLength(serialized, 'utf8') - MAX_PAYLOAD_BYTES;
-    if (keep === 0) {
+    excess = byteLength(serialized) - MAX_PAYLOAD_BYTES;
+
+    // Nothing left to give — stop rather than spin.
+    if (serialized.length >= previousLength) {
       break;
     }
   }

@@ -221,6 +221,12 @@
     },
     "updated": "¡Usuario actualizado exitosamente!",
     "emailChanged": "¡Correo electrónico cambiado exitosamente!",
+    "nameChanged": "¡Nombre visible cambiado exitosamente!",
+    "preferenceInvalid": "El valor proporcionado para {{invalidField}} no es válido.",
+    "preferencesRequireIdpSession": "Inicia sesión con tu proveedor de identidad para cambiar estas preferencias.",
+    "preferencesDelegationFailed": "No se pudo contactar con tu proveedor de identidad. Inténtalo de nuevo.",
+    "nameInvalid": "El nombre visible debe ser texto.",
+    "nameTooLong": "El nombre visible debe tener como máximo 255 caracteres.",
     "passwordChanged": "¡Contraseña cambiada exitosamente!",
     "userDeleted": "Usuario eliminado exitosamente.",
     "adminBoard": "Panel de Administración.",
@@ -276,6 +282,25 @@
     "emailMismatch": "Esta invitación fue enviada a {{email}}. Por favor inicia sesión con esa cuenta para aceptarla.",
     "accept": {
       "error": "Ocurrió un error al aceptar la invitación."
+    }
+  },
+  "notifications": {
+    "versionCreated": {
+      "title": "Nueva versión de {{organization}}/{{box}}",
+      "body": "Se publicó la versión {{version}}."
+    },
+    "versionDeprecated": {
+      "title": "Versión obsoleta: {{organization}}/{{box}} {{version}}"
+    },
+    "serviceAccountExpiry": {
+      "title": "Cuenta de servicio por caducar: {{username}}",
+      "bodyOne": "Caduca en 1 día. Vuelve a crearla antes de que se rompa la automatización.",
+      "bodyOther": "Caduca en {{days}} días. Vuelve a crearla antes de que se rompa la automatización."
+    },
+    "sslExpiry": {
+      "title": "El certificado SSL de BoxVault está por caducar",
+      "bodyOne": "El certificado caduca en 1 día ({{expiry}}).",
+      "bodyOther": "El certificado caduca en {{days}} días ({{expiry}})."
     }
   },
   "mail": {

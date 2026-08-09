@@ -18,6 +18,9 @@ import {
   FaShieldHalved,
   FaEnvelope,
   FaTriangleExclamation,
+  FaXmark,
+  FaArrowUpRightFromSquare,
+  FaCircleHalfStroke,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 
@@ -27,7 +30,9 @@ import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
 import NotificationsService from "../services/notifications.service";
+import UserService from "../services/user.service";
 import { fetchTrustedIssuers, resolveIssuer } from "../utils/authServer";
+import { userDisplayName } from "../utils/displayName";
 import { log } from "../utils/Logger";
 import {
   isPushSupported,
@@ -220,37 +225,48 @@ const INBOX_SEVERITY_CLASSES = {
   INFO: "text-body-secondary",
 };
 
-const NotificationInboxItem = ({ entry, onSelect }) => {
-  const { i18n } = useTranslation();
+const NotificationInboxItem = ({ entry, onSelect, onDismiss }) => {
+  const { t, i18n } = useTranslation();
   const Icon = INBOX_TYPE_ICONS[entry.type] || FaBell;
   const unread = !entry.readAt;
 
   return (
-    <button
-      type="button"
-      className="dropdown-item notification-item"
-      onClick={() => onSelect(entry)}
-    >
-      <Icon
-        className={`notification-item-icon ${
-          INBOX_SEVERITY_CLASSES[entry.severity] || "text-body-secondary"
-        }`}
-      />
-      <span className="notification-item-body">
-        <span
-          className={`notification-item-title ${unread ? "fw-semibold" : ""}`}
-        >
-          {entry.title}
+    <div className="notification-row">
+      <button
+        type="button"
+        className="dropdown-item notification-item"
+        onClick={() => onSelect(entry)}
+      >
+        <Icon
+          className={`notification-item-icon ${
+            INBOX_SEVERITY_CLASSES[entry.severity] || "text-body-secondary"
+          }`}
+        />
+        <span className="notification-item-body">
+          <span
+            className={`notification-item-title ${unread ? "fw-semibold" : ""}`}
+          >
+            {entry.title}
+          </span>
+          {entry.body && (
+            <span className="notification-item-text">{entry.body}</span>
+          )}
+          <span className="notification-item-time">
+            {formatRelativeTime(entry.createdAt, i18n.language)}
+          </span>
         </span>
-        {entry.body && (
-          <span className="notification-item-text">{entry.body}</span>
-        )}
-        <span className="notification-item-time">
-          {formatRelativeTime(entry.createdAt, i18n.language)}
-        </span>
-      </span>
-      {unread && <span className="notification-item-dot" />}
-    </button>
+        {unread && <span className="notification-item-dot" />}
+      </button>
+      <button
+        type="button"
+        className="btn btn-sm notification-dismiss"
+        onClick={() => onDismiss(entry)}
+        title={t("inbox.dismiss")}
+        aria-label={t("inbox.dismiss")}
+      >
+        <FaXmark />
+      </button>
+    </div>
   );
 };
 
@@ -266,9 +282,10 @@ NotificationInboxItem.propTypes = {
     readAt: PropTypes.string,
   }).isRequired,
   onSelect: PropTypes.func.isRequired,
+  onDismiss: PropTypes.func.isRequired,
 };
 
-const NotificationBell = () => {
+const NotificationBell = ({ authServerUrl }) => {
   const { t } = useTranslation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [entries, setEntries] = useState([]);
@@ -338,6 +355,20 @@ const NotificationBell = () => {
       entry.navigate.startsWith("https://")
     ) {
       window.location.assign(entry.navigate);
+    }
+  };
+
+  const handleDismiss = async (entry) => {
+    try {
+      await NotificationsService.deleteNotification(entry.id);
+      setEntries((prev) => prev.filter((item) => item.id !== entry.id));
+      if (!entry.readAt) {
+        setUnreadCount((count) => Math.max(0, count - 1));
+      }
+    } catch (error) {
+      log.api.error("Error dismissing notification", {
+        error: error.message,
+      });
     }
   };
 
@@ -411,12 +442,33 @@ const NotificationBell = () => {
         )}
         {entries.map((entry) => (
           <li key={entry.id}>
-            <NotificationInboxItem entry={entry} onSelect={handleSelect} />
+            <NotificationInboxItem
+              entry={entry}
+              onSelect={handleSelect}
+              onDismiss={handleDismiss}
+            />
           </li>
         ))}
+        {authServerUrl && (
+          <li className="notification-footer">
+            <a
+              href={`${authServerUrl}/notifications`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dropdown-item text-center"
+            >
+              {t("inbox.viewAll")}
+              <FaArrowUpRightFromSquare className="ms-2" />
+            </a>
+          </li>
+        )}
       </ul>
     </li>
   );
+};
+
+NotificationBell.propTypes = {
+  authServerUrl: PropTypes.string,
 };
 
 const BrandLogo = ({ theme, className }) =>
@@ -492,6 +544,7 @@ const Navbar = ({
   showAdminBoard,
   showOrgConsole,
   theme,
+  themePreference,
   toggleTheme,
   logOut,
   logOutLocal,
@@ -499,6 +552,9 @@ const Navbar = ({
   onOrganizationSwitch,
 }) => {
   const { t, i18n } = useTranslation();
+  const themeIcons = { auto: FaCircleHalfStroke, light: FaSun, dark: FaMoon };
+  const ThemeIcon = themeIcons[themePreference] || FaCircleHalfStroke;
+  const themeToggleLabel = t(`theme.${themePreference}`);
   const [logoutEverywhere, setLogoutEverywhere] = useState(true);
   const [profileIsLocal, setProfileIsLocal] = useState(true);
   const [favoriteApps, setFavoriteApps] = useState([]);
@@ -512,6 +568,26 @@ const Navbar = ({
   const [activeOrgCode, setActiveOrgCode] = useState(null);
 
   const changeLanguage = async (lng) => {
+    if (currentUser) {
+      UserService.updatePreferences({ language: lng })
+        .then(() => {
+          // Keep the stored session in step, or the next mount would re-apply
+          // the language this choice just replaced.
+          const stored = AuthService.getCurrentUser();
+          if (stored) {
+            localStorage.setItem(
+              "user",
+              JSON.stringify({ ...stored, preferredLanguage: lng })
+            );
+          }
+        })
+        .catch((error) => {
+          log.component.error("Language preference not saved", {
+            error: error.message,
+          });
+        });
+    }
+
     log.component.debug("Changing language", {
       from: i18n.language,
       to: lng,
@@ -752,8 +828,7 @@ const Navbar = ({
 
   // Helper to get user name from claims or current user
   const getUserName = useCallback(
-    () =>
-      userClaims?.name || userClaims?.email || currentUser?.username || "User",
+    () => userClaims?.name || userDisplayName(currentUser) || "User",
     [userClaims, currentUser]
   );
 
@@ -868,7 +943,9 @@ const Navbar = ({
 
         {currentUser ? (
           <ul className="nav nav-pills ms-auto">
-            {currentUser?.provider?.startsWith("oidc-") && <NotificationBell />}
+            {currentUser?.provider?.startsWith("oidc-") && (
+              <NotificationBell authServerUrl={authServerUrl} />
+            )}
             <li className="nav-item dropdown">
               <button
                 className="nav-link dropdown-toggle"
@@ -877,7 +954,7 @@ const Navbar = ({
                 aria-expanded="false"
               >
                 {renderUserAvatar()}
-                {currentUser.username}
+                {userClaims?.name || userDisplayName(currentUser)}
               </button>
               <ul
                 className="dropdown-menu dropdown-menu-end"
@@ -1021,11 +1098,13 @@ const Navbar = ({
             </li>
             <li className="nav-item">
               <button
-                key={theme}
+                key={themePreference}
                 className="btn btn-link nav-link"
                 onClick={toggleTheme}
+                title={themeToggleLabel}
+                aria-label={themeToggleLabel}
               >
-                {theme === "light" ? <FaSun /> : <FaMoon />}
+                <ThemeIcon />
               </button>
             </li>
           </ul>
@@ -1061,11 +1140,13 @@ const Navbar = ({
             </li>
             <li className="nav-item">
               <button
-                key={theme}
+                key={themePreference}
                 className="btn btn-link nav-link"
                 onClick={toggleTheme}
+                title={themeToggleLabel}
+                aria-label={themeToggleLabel}
               >
-                {theme === "light" ? <FaSun /> : <FaMoon />}
+                <ThemeIcon />
               </button>
             </li>
           </ul>
@@ -1152,6 +1233,7 @@ Navbar.propTypes = {
   showAdminBoard: PropTypes.bool,
   showOrgConsole: PropTypes.bool,
   theme: PropTypes.string.isRequired,
+  themePreference: PropTypes.string.isRequired,
   toggleTheme: PropTypes.func.isRequired,
   logOut: PropTypes.func.isRequired,
   logOutLocal: PropTypes.func.isRequired,

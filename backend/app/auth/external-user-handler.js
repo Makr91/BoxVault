@@ -438,6 +438,38 @@ const handleExistingEmailUser = async (
 };
 
 /**
+ * Resolve the human display name from an external profile, trimmed. Absent or
+ * blank means no name (null) — username stays the render fallback.
+ * @param {Object} profile - User profile from external provider
+ * @returns {string|null}
+ */
+const resolveDisplayName = profile => {
+  const candidate = profile.name || profile.displayName || profile.cn;
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null;
+};
+
+const trimmedClaim = value => (typeof value === 'string' && value.trim() ? value.trim() : null);
+
+// Both claims carry the same BCP 47 tag by contract. `preferences.language`
+// is read first because the standard `locale` claim was hardcoded before the
+// provider's 1.6.0 and an older deployment would otherwise pin everyone to
+// one language.
+const resolvePreferredLanguage = profile =>
+  trimmedClaim(profile.preferences?.language) || trimmedClaim(profile.locale);
+
+// OIDC Core §5.1 zoneinfo — the IANA name, omitted when the user has none.
+const resolveTimezone = profile => trimmedClaim(profile.zoneinfo);
+
+// Variant only. The brand pack belongs to the site, never to the user, so a
+// composed value like "nomadservices-dark" is not a preference and is refused.
+const THEME_PREFERENCES = ['light', 'dark', 'auto'];
+
+const resolvePreferredTheme = profile => {
+  const candidate = profile.preferences?.theme;
+  return THEME_PREFERENCES.includes(candidate) ? candidate : null;
+};
+
+/**
  * Create new external user
  * @param {string} provider - Auth provider
  * @param {Object} profile - User profile
@@ -470,6 +502,10 @@ const createNewExternalUser = async (
 
   const user = await User.create({
     username: profile.displayName || profile.cn || email.split('@')[0],
+    name: resolveDisplayName(profile),
+    preferredLanguage: resolvePreferredLanguage(profile),
+    preferredTheme: resolvePreferredTheme(profile),
+    timezone: resolveTimezone(profile),
     email,
     password: 'external',
     emailHash: generateEmailHash(email),
@@ -612,6 +648,28 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
     // gravatar remains the render-time fallback when neither tier set a value.
     if (isHttpUrl(profile.picture) && user.avatar_url !== profile.picture) {
       await user.update({ avatar_url: profile.picture });
+    }
+
+    // Same tier rule for the display name: a name claim at login is fresher
+    // than the SCIM-provisioned value and overwrites it.
+    const displayName = resolveDisplayName(profile);
+    if (displayName && user.name !== displayName) {
+      await user.update({ name: displayName });
+    }
+
+    const preferredLanguage = resolvePreferredLanguage(profile);
+    if (preferredLanguage && user.preferredLanguage !== preferredLanguage) {
+      await user.update({ preferredLanguage });
+    }
+
+    const preferredTheme = resolvePreferredTheme(profile);
+    if (preferredTheme && user.preferredTheme !== preferredTheme) {
+      await user.update({ preferredTheme });
+    }
+
+    const timezone = resolveTimezone(profile);
+    if (timezone && user.timezone !== timezone) {
+      await user.update({ timezone });
     }
 
     // Reconcile all org memberships from the claim (auth-server source of truth).

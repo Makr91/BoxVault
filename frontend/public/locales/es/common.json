@@ -288,6 +288,8 @@
     },
     "fields": {
       "fullName": "Nombre Completo",
+      "displayName": "Nombre visible",
+      "displayNameHint": "Se muestra en BoxVault en lugar de tu nombre de usuario. Déjalo vacío para usar tu nombre de usuario. Las cuentas gestionadas por un proveedor de identidad se sobrescriben en la siguiente sincronización del proveedor.",
       "location": "Ubicación",
       "email": "Correo",
       "organization": "Organización",
@@ -353,6 +355,7 @@
       "serviceAccountCreated": "¡Cuenta de servicio creada exitosamente!",
       "passwordChanged": "¡Contraseña cambiada exitosamente!",
       "emailChanged": "¡Correo electrónico cambiado exitosamente!",
+      "nameChanged": "Nombre visible guardado.",
       "emailNotVerified": "Tu correo electrónico no está verificado."
     },
     "errors": {
@@ -364,6 +367,7 @@
       "resendVerificationFailed": "Error al enviar correo de verificación: {{error}}",
       "changePasswordFailed": "Error al cambiar contraseña: {{error}}",
       "changeEmailFailed": "Error al cambiar correo: {{error}}",
+      "changeNameFailed": "Error al cambiar el nombre visible: {{error}}",
       "leaveOrganization": "Error al dejar la organización: {{error}}"
     },
     "buttons": {
@@ -672,11 +676,18 @@
     "scopeMissing": "Tu cuenta aún no está autorizada para notificaciones. Pide a tu administrador que habilite el alcance de notificaciones.",
     "notSupported": "Este navegador no soporta notificaciones push."
   },
+  "theme": {
+    "auto": "Tema: seguir el sistema",
+    "light": "Tema: claro",
+    "dark": "Tema: oscuro"
+  },
   "inbox": {
     "title": "Notificaciones",
     "empty": "Aún no hay notificaciones.",
     "markAllRead": "Marcar todas como leídas",
     "unreadCount": "{{count}} notificaciones sin leer",
+    "dismiss": "Descartar",
+    "viewAll": "Ver todas las notificaciones",
     "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo."
   },
   "watch": {
@@ -688,6 +699,7 @@
   "orgConsole": {
     "pageTitle": "Consola de Org",
     "title": "Consola de la Organización",
+    "noActiveOrganization": "No hay una organización activa seleccionada. Elige una en el selector de organizaciones para administrarla.",
     "orgNameRequired": "El nombre de la organización es obligatorio.",
     "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos.",
     "orgEmailRequired": "El correo de la organización es obligatorio.",
@@ -732,6 +744,7 @@
     },
     "joinRequest": {
       "title": "Solicitudes de Unión Pendientes",
+      "user": "Usuario",
       "noRequests": "No hay solicitudes de unión pendientes.",
       "email": "Correo",
       "message": "Mensaje",
@@ -759,6 +772,7 @@
       "expired": "Caducado",
       "link": "Enlace de Invitación",
       "linkText": "Enlace de Invitación",
+      "managedByIdp": "Enviada por el proveedor de identidad",
       "actions": "Acciones",
       "token": "Token",
       "orgId": "ID de Organización",

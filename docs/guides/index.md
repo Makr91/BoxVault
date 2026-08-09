@@ -45,6 +45,10 @@ Integrate BoxVault with your existing infrastructure and CI/CD pipelines.
 
 Comprehensive examples for using the BoxVault REST API with curl commands and detailed responses.
 
+### [SCIM Provisioning](scim-provisioning/)
+
+How an identity provider provisions users and organizations into BoxVault, and what each rejection means.
+
 ## Quick Links
 
 - **[Configuration](../configuration/)** - Configure BoxVault settings

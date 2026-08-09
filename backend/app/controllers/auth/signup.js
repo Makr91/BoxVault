@@ -16,6 +16,7 @@ import { generateEmailHash, generateOrgCode } from '../../utils/identity.js';
 import { getBcryptRounds, getPasswordPolicyError } from './helpers.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import { notifyInvitationAccepted } from './invitation/notifications.js';
+import { toSupportedLanguage } from '../../utils/userLanguage.js';
 
 const { Op } = Sequelize;
 
@@ -117,7 +118,7 @@ const rejectInvalidInvitation = async (invitation, email, req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 export const signup = async (req, res) => {
-  const { username, email, password, invitationToken } = req.body || {};
+  const { username, email, password, invitationToken, name } = req.body || {};
 
   try {
     const authConfig = loadConfig('auth');
@@ -181,9 +182,13 @@ export const signup = async (req, res) => {
 
     const user = await User.create({
       username,
+      name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 255) : null,
       email,
       password: hashSync(password, getBcryptRounds()),
       emailHash,
+      // Registration is the only point a local account states a language, so
+      // the request locale is captured as the initial preference.
+      preferredLanguage: toSupportedLanguage(req.getLocale()),
       primary_organization_id: organization.id,
       verificationToken: randomBytes(20).toString('hex'),
       verificationTokenExpires:
@@ -226,7 +231,7 @@ export const signup = async (req, res) => {
       user,
       user.verificationToken,
       user.verificationTokenExpires,
-      req.getLocale()
+      user.preferredLanguage
     )
       .then(() => {
         log.app.info(`Verification email sent successfully to ${user.email}`);

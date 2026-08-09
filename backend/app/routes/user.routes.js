@@ -1,6 +1,6 @@
 // user.routes.js
 import { Router } from 'express';
-import { authJwt, verifySignUp, verifyOrgAccess } from '../middleware/index.js';
+import { authJwt, verifySignUp, verifyOrgAccess, oidcTokenRefresh } from '../middleware/index.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   allAccess,
@@ -9,8 +9,11 @@ import {
   getUserRoles,
   changePassword,
   changeEmail,
+  changeName,
   getUserProfile,
   getUserOrganizations,
+  getPreferences,
+  updatePreferences,
   leaveOrganization,
   getPrimaryOrganization,
   setPrimaryOrganization,
@@ -54,6 +57,11 @@ router.put(
   changeEmail
 );
 router.put(
+  '/users/:userId/change-name',
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  changeName
+);
+router.put(
   '/users/:userId/suspend',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   suspendUser
@@ -75,6 +83,16 @@ router.get(
   '/user/organizations',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
   getUserOrganizations
+);
+
+// Writes ride the acting user's OIDC token for federated accounts, so the
+// token has to be fresh before the controller reaches for it.
+router.get('/user/preferences', [authJwt.verifyToken, authJwt.isUser], getPreferences);
+
+router.patch(
+  '/user/preferences',
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  updatePreferences
 );
 
 router.get('/user/watches', [authJwt.verifyToken, authJwt.isUser], listUserWatches);

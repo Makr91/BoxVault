@@ -260,6 +260,188 @@ OrgProfileDisplay.propTypes = {
   orgIdpLink: PropTypes.string.isRequired,
 };
 
+// The accept URL IS the invitation credential, so the identity provider never
+// returns it for the orgs it manages — a console that displayed it would turn a
+// single-recipient email into a shared one. Those rows link to the provider
+// instead, and fall back to plain text when the org carries no provider link.
+const InvitationLinkCell = ({ invitation, orgIdpLink }) => {
+  const { t } = useTranslation();
+
+  if (invitation.token) {
+    return (
+      <a
+        href={`${window.location.origin}/invite/${encodeURIComponent(invitation.token)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {t("orgConsole.invitation.linkText")}
+      </a>
+    );
+  }
+
+  if (orgIdpLink) {
+    return (
+      <a href={orgIdpLink} target="_blank" rel="noopener noreferrer">
+        {t("orgConsole.organization.manageAtIdp")}
+      </a>
+    );
+  }
+
+  return (
+    <small className="text-body-secondary">
+      {t("orgConsole.invitation.managedByIdp")}
+    </small>
+  );
+};
+
+InvitationLinkCell.propTypes = {
+  invitation: PropTypes.shape({
+    token: PropTypes.string,
+  }).isRequired,
+  orgIdpLink: PropTypes.string,
+};
+
+const JoinRequestsTab = ({ joinRequests, onApprove, onDeny }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h4>{t("orgConsole.joinRequest.title")}</h4>
+      </div>
+      <div className="card-body">
+        {joinRequests.length === 0 ? (
+          <div className="alert alert-info">
+            {t("orgConsole.joinRequest.noRequests")}
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t("orgConsole.joinRequest.user")}</th>
+                  <th>{t("orgConsole.joinRequest.email")}</th>
+                  <th>{t("orgConsole.joinRequest.message")}</th>
+                  <th>{t("orgConsole.joinRequest.requested")}</th>
+                  <th>{t("orgConsole.joinRequest.actions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {joinRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td>
+                      <strong>{request.user.username}</strong>
+                    </td>
+                    <td>{request.user.email}</td>
+                    <td>
+                      {request.message || t("orgConsole.joinRequest.noMessage")}
+                    </td>
+                    <td>{new Date(request.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <div className="btn-group" role="group">
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => onApprove(request.id, "member")}
+                        >
+                          {t("orgConsole.joinRequest.approveAsMember")}
+                        </button>
+                        <button
+                          className="btn btn-warning btn-sm"
+                          onClick={() => onApprove(request.id, "admin")}
+                        >
+                          {t("orgConsole.joinRequest.approveAsAdmin")}
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => onDeny(request.id)}
+                        >
+                          {t("orgConsole.joinRequest.deny")}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+JoinRequestsTab.propTypes = {
+  joinRequests: PropTypes.array.isRequired,
+  onApprove: PropTypes.func.isRequired,
+  onDeny: PropTypes.func.isRequired,
+};
+
+const InvitationsTable = ({ invitations, orgIdpLink, onDelete }) => {
+  const { t } = useTranslation();
+
+  if (invitations.length === 0) {
+    return (
+      <div className="alert alert-info">
+        {t("orgConsole.invitation.noActive")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="table-responsive">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>{t("orgConsole.invitation.email")}</th>
+            <th>{t("orgConsole.invitation.expires")}</th>
+            <th>{t("orgConsole.invitation.accepted")}</th>
+            <th>{t("orgConsole.invitation.expired")}</th>
+            <th>{t("orgConsole.invitation.link")}</th>
+            <th>{t("orgConsole.invitation.actions")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invitations.map((invitation) => (
+            <tr key={invitation.id}>
+              <td>{invitation.email}</td>
+              <td>{new Date(invitation.expires).toLocaleString()}</td>
+              <td>
+                {invitation.accepted ? t("yes") : t("no")}
+                {invitation.accepted_at && (
+                  <small className="text-body-secondary d-block">
+                    {new Date(invitation.accepted_at).toLocaleString()}
+                  </small>
+                )}
+              </td>
+              <td>{invitation.expired ? t("yes") : t("no")}</td>
+              <td>
+                <InvitationLinkCell
+                  invitation={invitation}
+                  orgIdpLink={orgIdpLink}
+                />
+              </td>
+              <td>
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => onDelete(invitation)}
+                >
+                  {t("buttons.delete")}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+InvitationsTable.propTypes = {
+  invitations: PropTypes.array.isRequired,
+  orgIdpLink: PropTypes.string,
+  onDelete: PropTypes.func.isRequired,
+};
+
 const OrgConsole = ({ currentOrganization }) => {
   const { t } = useTranslation();
   useEffect(() => {
@@ -269,7 +451,7 @@ const OrgConsole = ({ currentOrganization }) => {
   const [users, setUsers] = useState([]);
   const [newOrgName, setNewOrgName] = useState("");
   const [updateMessage, setUpdateMessage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadedOrganization, setLoadedOrganization] = useState(null);
   const [email, setEmail] = useState("");
   const [invitationMessage, setInvitationMessage] = useState("");
   const [activeInvitations, setActiveInvitations] = useState([]);
@@ -320,82 +502,91 @@ const OrgConsole = ({ currentOrganization }) => {
     }
   };
 
+  // Derived rather than state: an effect that flips a loading flag has to write
+  // state synchronously on mount, and switching organizations has to flip it
+  // back. Comparing the loaded organization to the requested one expresses the
+  // same thing without either write.
+  const loading =
+    Boolean(currentOrganization) && loadedOrganization !== currentOrganization;
+
   useEffect(() => {
-    if (currentOrganization) {
-      const loadData = async () => {
-        // Each call settles independently so one failure cannot blank the
-        // data loaded by the other three.
-        const [
-          orgUsersResult,
-          invitationsResult,
-          orgDetailsResult,
-          joinRequestsResult,
-        ] = await Promise.allSettled([
-          OrganizationService.getOrganizationWithUsers(currentOrganization),
-          InvitationService.getActiveInvitations(currentOrganization),
-          OrganizationService.getOrganizationByName(currentOrganization),
-          RequestService.getOrgJoinRequests(currentOrganization),
-        ]);
-
-        const failures = [
-          { name: "orgUsers", result: orgUsersResult },
-          { name: "invitations", result: invitationsResult },
-          { name: "orgDetails", result: orgDetailsResult },
-          { name: "joinRequests", result: joinRequestsResult },
-        ].filter(({ result }) => result.status === "rejected");
-
-        failures.forEach(({ name, result }) => {
-          log.api.error("Error fetching org console data", {
-            organization: currentOrganization,
-            call: name,
-            error: result.reason?.message,
-          });
-        });
-
-        if (orgUsersResult.status === "fulfilled") {
-          setUsers(orgUsersResult.value.data);
-        }
-        if (invitationsResult.status === "fulfilled") {
-          setActiveInvitations(invitationsResult.value.data);
-        }
-        if (joinRequestsResult.status === "fulfilled") {
-          setJoinRequests(joinRequestsResult.value.data || []);
-        }
-        if (orgDetailsResult.status === "fulfilled") {
-          const details = extractOrgDetailsState(orgDetailsResult.value.data);
-          setNewOrgName(details.name);
-          setIsExternalOrg(details.isExternalOrg);
-          setOrgIdpLink(details.idpLink);
-          setOrgDisplayName(details.displayName);
-          setOrgEmail(details.email);
-          setOrgEmailHash(details.emailHash);
-          setOrgDescription(details.description);
-          setOrgAccessMode(details.accessMode);
-          setOrgDefaultRole(details.defaultRole);
-          loadedAccessRef.current = {
-            accessMode: details.accessMode,
-            defaultRole: details.defaultRole,
-          };
-          setOrgLogo(details.logo);
-          setOrgUrl(details.url);
-          setOrgTelephone(details.telephone);
-          setOrgLocale(details.locale);
-          setOrgTimezone(details.timezone);
-          setOrgAddress(details.address);
-        }
-
-        const unauthorized = failures.some(
-          ({ result }) => result.reason?.response?.status === 401
-        );
-        if (unauthorized) {
-          EventBus.dispatch("logout");
-        }
-
-        setLoading(false);
-      };
-
-      loadData();
+    if (!currentOrganization) {
+      return;
     }
+
+    const loadData = async () => {
+      // Each call settles independently so one failure cannot blank the
+      // data loaded by the other three.
+      const [
+        orgUsersResult,
+        invitationsResult,
+        orgDetailsResult,
+        joinRequestsResult,
+      ] = await Promise.allSettled([
+        OrganizationService.getOrganizationWithUsers(currentOrganization),
+        InvitationService.getActiveInvitations(currentOrganization),
+        OrganizationService.getOrganizationByName(currentOrganization),
+        RequestService.getOrgJoinRequests(currentOrganization),
+      ]);
+
+      const failures = [
+        { name: "orgUsers", result: orgUsersResult },
+        { name: "invitations", result: invitationsResult },
+        { name: "orgDetails", result: orgDetailsResult },
+        { name: "joinRequests", result: joinRequestsResult },
+      ].filter(({ result }) => result.status === "rejected");
+
+      failures.forEach(({ name, result }) => {
+        log.api.error("Error fetching org console data", {
+          organization: currentOrganization,
+          call: name,
+          error: result.reason?.message,
+        });
+      });
+
+      if (orgUsersResult.status === "fulfilled") {
+        setUsers(orgUsersResult.value.data);
+      }
+      if (invitationsResult.status === "fulfilled") {
+        setActiveInvitations(invitationsResult.value.data);
+      }
+      if (joinRequestsResult.status === "fulfilled") {
+        setJoinRequests(joinRequestsResult.value.data || []);
+      }
+      if (orgDetailsResult.status === "fulfilled") {
+        const details = extractOrgDetailsState(orgDetailsResult.value.data);
+        setNewOrgName(details.name);
+        setIsExternalOrg(details.isExternalOrg);
+        setOrgIdpLink(details.idpLink);
+        setOrgDisplayName(details.displayName);
+        setOrgEmail(details.email);
+        setOrgEmailHash(details.emailHash);
+        setOrgDescription(details.description);
+        setOrgAccessMode(details.accessMode);
+        setOrgDefaultRole(details.defaultRole);
+        loadedAccessRef.current = {
+          accessMode: details.accessMode,
+          defaultRole: details.defaultRole,
+        };
+        setOrgLogo(details.logo);
+        setOrgUrl(details.url);
+        setOrgTelephone(details.telephone);
+        setOrgLocale(details.locale);
+        setOrgTimezone(details.timezone);
+        setOrgAddress(details.address);
+      }
+
+      const unauthorized = failures.some(
+        ({ result }) => result.reason?.response?.status === 401
+      );
+      if (unauthorized) {
+        EventBus.dispatch("logout");
+      }
+
+      setLoadedOrganization(currentOrganization);
+    };
+
+    loadData();
   }, [currentOrganization]);
 
   const handleUpdateOrganization = async (e) => {
@@ -643,11 +834,12 @@ const OrgConsole = ({ currentOrganization }) => {
     }
   };
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter((user) => {
+    const term = searchTerm.toLowerCase();
+    return [user.name, user.username, user.email].some(
+      (field) => typeof field === "string" && field.toLowerCase().includes(term)
+    );
+  });
 
   const canManageMembership = canManageRoles && !isExternalOrg;
 
@@ -664,6 +856,12 @@ const OrgConsole = ({ currentOrganization }) => {
         orgAccessMode={orgAccessMode}
         joinRequestCount={joinRequests.length}
       />
+
+      {!loading && !currentOrganization && (
+        <div className="alert alert-warning mt-3">
+          {t("orgConsole.noActiveOrganization")}
+        </div>
+      )}
 
       {loading ? (
         <p>{t("loading")}</p>
@@ -883,85 +1081,11 @@ const OrgConsole = ({ currentOrganization }) => {
           )}
 
           {activeTab === "joinRequests" && (
-            <div className="card">
-              <div className="card-header">
-                <h4>{t("orgConsole.joinRequest.title")}</h4>
-              </div>
-              <div className="card-body">
-                {joinRequests.length === 0 ? (
-                  <div className="alert alert-info">
-                    {t("orgConsole.joinRequest.noRequests")}
-                  </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>User</th>
-                          <th>{t("orgConsole.joinRequest.email")}</th>
-                          <th>{t("orgConsole.joinRequest.message")}</th>
-                          <th>{t("orgConsole.joinRequest.requested")}</th>
-                          <th>{t("orgConsole.joinRequest.actions")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {joinRequests.map((request) => (
-                          <tr key={request.id}>
-                            <td>
-                              <strong>{request.user.username}</strong>
-                            </td>
-                            <td>{request.user.email}</td>
-                            <td>
-                              {request.message ||
-                                t("orgConsole.joinRequest.noMessage")}
-                            </td>
-                            <td>
-                              {new Date(
-                                request.created_at
-                              ).toLocaleDateString()}
-                            </td>
-                            <td>
-                              <div className="btn-group" role="group">
-                                <button
-                                  className="btn btn-success btn-sm"
-                                  onClick={() =>
-                                    handleApproveJoinRequest(
-                                      request.id,
-                                      "member"
-                                    )
-                                  }
-                                >
-                                  {t("orgConsole.joinRequest.approveAsMember")}
-                                </button>
-                                <button
-                                  className="btn btn-warning btn-sm"
-                                  onClick={() =>
-                                    handleApproveJoinRequest(
-                                      request.id,
-                                      "admin"
-                                    )
-                                  }
-                                >
-                                  {t("orgConsole.joinRequest.approveAsAdmin")}
-                                </button>
-                                <button
-                                  className="btn btn-danger btn-sm"
-                                  onClick={() =>
-                                    handleDenyJoinRequest(request.id)
-                                  }
-                                >
-                                  {t("orgConsole.joinRequest.deny")}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
+            <JoinRequestsTab
+              joinRequests={joinRequests}
+              onApprove={handleApproveJoinRequest}
+              onDeny={handleDenyJoinRequest}
+            />
           )}
 
           {activeTab === "invitations" && (
@@ -1022,65 +1146,11 @@ const OrgConsole = ({ currentOrganization }) => {
                 </div>
 
                 <h5>{t("orgConsole.invitation.activeTitle")}</h5>
-                {activeInvitations.length === 0 ? (
-                  <div className="alert alert-info">
-                    {t("orgConsole.invitation.noActive")}
-                  </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>{t("orgConsole.invitation.email")}</th>
-                          <th>{t("orgConsole.invitation.expires")}</th>
-                          <th>{t("orgConsole.invitation.accepted")}</th>
-                          <th>{t("orgConsole.invitation.expired")}</th>
-                          <th>{t("orgConsole.invitation.link")}</th>
-                          <th>{t("orgConsole.invitation.actions")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeInvitations.map((invitation) => (
-                          <tr key={invitation.id}>
-                            <td>{invitation.email}</td>
-                            <td>
-                              {new Date(invitation.expires).toLocaleString()}
-                            </td>
-                            <td>
-                              {invitation.accepted ? t("yes") : t("no")}
-                              {invitation.accepted &&
-                                invitation.accepted_at && (
-                                  <small className="text-muted d-block">
-                                    {new Date(
-                                      invitation.accepted_at
-                                    ).toLocaleString()}
-                                  </small>
-                                )}
-                            </td>
-                            <td>{invitation.expired ? t("yes") : t("no")}</td>
-                            <td>
-                              <a
-                                href={`${window.location.origin}/invite/${encodeURIComponent(invitation.token)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {t("orgConsole.invitation.linkText")}
-                              </a>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-danger btn-sm"
-                                onClick={() => handleDeleteClick(invitation)}
-                              >
-                                {t("buttons.delete")}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <InvitationsTable
+                  invitations={activeInvitations}
+                  orgIdpLink={orgIdpLink}
+                  onDelete={handleDeleteClick}
+                />
               </div>
             </div>
           )}

@@ -328,6 +328,9 @@ export const signin = async (req, res) => {
     return res.status(200).send({
       id: user.id,
       username: user.username,
+      name: isServiceAccount ? null : user.name || null,
+      preferredLanguage: isServiceAccount ? null : user.preferredLanguage || null,
+      preferredTheme: isServiceAccount ? null : user.preferredTheme || null,
       email: isServiceAccount ? null : user.email,
       verified: isServiceAccount ? null : user.verified,
       emailHash: isServiceAccount ? null : user.emailHash,

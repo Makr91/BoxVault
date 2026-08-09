@@ -201,12 +201,13 @@ axios.interceptors.response.use(
   }
 );
 
-const register = (username, email, password, invitationToken) =>
+const register = (username, email, password, invitationToken, name) =>
   axios.post(`${baseURL}/api/auth/signup`, {
     username,
     email,
     password,
     invitationToken,
+    name,
   });
 
 const validateInvitationToken = (token) =>
@@ -245,7 +246,11 @@ const refreshUserData = async () => {
     });
     if (response.data) {
       const user = getCurrentUser();
+      // Merged, not replaced: /api/user returns a profile, not a whole session,
+      // so overwriting would drop provider and the oidc_* context the OIDC
+      // surface is gated on.
       const userData = {
+        ...user,
         ...response.data,
         stayLoggedIn: user?.stayLoggedIn,
         tokenRefreshTime: user?.tokenRefreshTime,

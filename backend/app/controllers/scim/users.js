@@ -54,6 +54,53 @@ const extractAvatarUrl = body => {
 };
 
 /**
+ * Extract the human display name (RFC 7643 §4.1.1): prefer the top-level
+ * `displayName`, else the formatted form of the `name` complex attribute.
+ * Absent or blank means no name (null) — username stays the render fallback.
+ * @param {Object} body - SCIM User resource
+ * @returns {string|null}
+ */
+const extractDisplayName = body => {
+  if (typeof body.displayName === 'string' && body.displayName.trim()) {
+    return body.displayName.trim();
+  }
+  const formatted = body.name?.formatted;
+  if (typeof formatted === 'string' && formatted.trim()) {
+    return formatted.trim();
+  }
+  return null;
+};
+
+/**
+ * Extract a core string attribute (RFC 7643 §4.1.1), trimmed. Absent, blank,
+ * or non-string means no value (null) — full desired state, so a push without
+ * the attribute clears it.
+ * @param {Object} body - SCIM User resource
+ * @param {string} attribute - Attribute name
+ * @returns {string|null}
+ */
+const extractStringAttribute = (body, attribute, maxLength) => {
+  const value = body[attribute];
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) {
+    // The column would reject it and fail the whole push. Dropping one
+    // over-long optional attribute is the same outcome as the provider not
+    // sending it, and keeps the rest of the resource applying.
+    log.auth.warn('SCIM: ignoring over-long attribute', {
+      attribute,
+      length: trimmed.length,
+      maxLength,
+    });
+    return null;
+  }
+  return trimmed;
+};
+
+/**
  * Extract the core `entitlements` attribute (RFC 7643 §4.1.2): keep
  * value/type/display per entry (string `value` is required — entries without
  * one are dropped, other keys are dropped). Absent, non-array, or empty means
@@ -92,6 +139,10 @@ const parseScimUserState = body => {
   return {
     email,
     userName: typeof body.userName === 'string' && body.userName ? body.userName : email,
+    name: extractDisplayName(body),
+    preferredLanguage: extractStringAttribute(body, 'preferredLanguage', 35),
+    locale: extractStringAttribute(body, 'locale', 35),
+    timezone: extractStringAttribute(body, 'timezone', 64),
     suspended: body.active === false,
     emailVerified: typeof extension.emailVerified === 'boolean' ? extension.emailVerified : null,
     primaryOrgUuid:
@@ -120,6 +171,10 @@ const toScimUser = (req, user, externalId, primaryOrgUuid) => ({
   userName: user.username,
   active: !user.suspended,
   emails: [{ value: user.email, primary: true }],
+  ...(user.name ? { displayName: user.name } : {}),
+  ...(user.preferredLanguage ? { preferredLanguage: user.preferredLanguage } : {}),
+  ...(user.locale ? { locale: user.locale } : {}),
+  ...(user.timezone ? { timezone: user.timezone } : {}),
   // photos/entitlements are rendered only when stored (RFC 7643: no value = attribute absent)
   ...(user.avatar_url ? { photos: [{ value: user.avatar_url, type: 'photo' }] } : {}),
   ...(user.entitlements ? { entitlements: user.entitlements } : {}),
@@ -182,6 +237,10 @@ const provisionScimUser = async (externalId, issuer, state) => {
   } else {
     user = await User.create({
       username: state.userName,
+      name: state.name,
+      preferredLanguage: state.preferredLanguage,
+      locale: state.locale,
+      timezone: state.timezone,
       email: state.email,
       password: 'external',
       emailHash: generateEmailHash(state.email),
@@ -216,6 +275,14 @@ const buildUserPatch = (user, state) => {
   const patch = {};
   if (user.username !== state.userName) {
     patch.username = state.userName;
+  }
+  if (user.name !== state.name) {
+    patch.name = state.name;
+  }
+  for (const attribute of ['preferredLanguage', 'locale', 'timezone']) {
+    if (user[attribute] !== state[attribute]) {
+      patch[attribute] = state[attribute];
+    }
   }
   if (user.email !== state.email) {
     patch.email = state.email;
@@ -436,7 +503,40 @@ const putUser = async (req, res) => {
       return scimError(res, 404, 'User not found');
     }
     if (body.externalId && body.externalId !== credential.subject) {
-      return scimError(res, 400, 'externalId does not match the stored resource', 'mutability');
+      // An account that logged in over OIDC before it was ever SCIM-pushed is
+      // stored under the subject the login carried, which is not yet the user
+      // UUID the provisioner sends. Both identify the same person at the same
+      // issuer, so the pushed externalId is adopted as canonical rather than
+      // rejected.
+      //
+      // The stored email is the proof, and deliberately the ONLY proof: the
+      // extension's emailVerified is asserted by the very request asking to
+      // rebind, so accepting it would let any push repoint any credential.
+      const sameMailbox =
+        typeof state.email === 'string' && user.email?.toLowerCase() === state.email.toLowerCase();
+      if (!sameMailbox) {
+        return scimError(res, 400, 'externalId does not match the stored resource', 'mutability');
+      }
+
+      const claimedElsewhere = await Credential.findOne({
+        where: { provider: req.scimIssuer, subject: body.externalId },
+      });
+      if (claimedElsewhere) {
+        return scimError(
+          res,
+          409,
+          `externalId ${body.externalId} is already bound to another user at this issuer`,
+          'uniqueness'
+        );
+      }
+
+      log.auth.info('SCIM: adopting pushed externalId for an existing credential', {
+        userId: user.id,
+        issuer: req.scimIssuer,
+        previousSubject: credential.subject,
+        externalId: body.externalId,
+      });
+      await credential.update({ subject: body.externalId });
     }
 
     await applyUserState(user, req.scimIssuer, state);

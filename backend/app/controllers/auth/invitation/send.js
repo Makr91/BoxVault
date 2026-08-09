@@ -6,6 +6,7 @@ import { log } from '../../../utils/Logger.js';
 import { sendInvitationMail } from '../../mail.controller.js';
 import { loadConfig } from '../../../utils/config-loader.js';
 import { createExternalInvite } from '../../../utils/externalInvites.js';
+import { resolveEmailLanguage } from '../../../utils/userLanguage.js';
 import { extractOidcAccessToken } from '../../favorites/helpers.js';
 
 // Parity with the auth-server rule: only org owners may invite admins — org
@@ -177,23 +178,48 @@ export const sendInvitation = async (req, res) => {
     const invitationExpiryHours = authConfig.auth?.jwt?.invitation_token_expiry_hours?.value || 24;
     const invitationTokenExpires = Date.now() + invitationExpiryHours * 60 * 60 * 1000;
 
-    // Save the invitation details in the database
-    await Invitation.create({
-      email,
-      token: invitationToken,
-      expires: invitationTokenExpires,
-      organizationId: organization.id,
-      invited_role: role,
-      invited_by: req.userId,
+    // One live invitation per (organization, address), matching the identity
+    // provider's semantics for the orgs it manages: re-inviting replaces the
+    // pending invite rather than adding a second one, so the token in the
+    // superseded email stops working.
+    // Addresses are matched case-insensitively: the collation decides
+    // otherwise, so on SQLite and Postgres a differently-cased re-invite would
+    // slip past and leave two live tokens for the same mailbox.
+    const pendingInvitations = await Invitation.findAll({
+      where: { organizationId: organization.id, accepted: false },
     });
+    const pendingInvitation = pendingInvitations.find(
+      candidate => candidate.email?.toLowerCase() === email.toLowerCase()
+    );
 
-    // Send the invitation email and get the invitation link
+    if (pendingInvitation) {
+      await pendingInvitation.update({
+        token: invitationToken,
+        expires: invitationTokenExpires,
+        expired: false,
+        invited_role: role,
+        invited_by: req.userId,
+      });
+    } else {
+      await Invitation.create({
+        email,
+        token: invitationToken,
+        expires: invitationTokenExpires,
+        organizationId: organization.id,
+        invited_role: role,
+        invited_by: req.userId,
+      });
+    }
+
+    // The invitation is written FOR the invitee, so it renders in their
+    // language — not the inviter's request locale. An invitee with no account
+    // yet falls back to the organization's language.
     const invitationLink = await sendInvitationMail(
       email,
       invitationToken,
       organizationName,
       invitationTokenExpires,
-      req.getLocale()
+      await resolveEmailLanguage(email, organization)
     );
 
     return res.status(200).send({

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
@@ -23,12 +23,23 @@ import Setup from "./components/setup.component";
 import Version from "./components/version.component";
 import AuthService from "./services/auth.service";
 import SetupService from "./services/setup.service";
+import UserService from "./services/user.service";
 import { log } from "./utils/Logger";
 import { isOrgManager } from "./utils/permissions";
 import { isPushEnabled, syncSubscription } from "./utils/pushNotifications";
 
+const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
+
+const subscribeToColorScheme = (onChange) => {
+  const query = window.matchMedia(DARK_SCHEME_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
+const systemPrefersDark = () => window.matchMedia(DARK_SCHEME_QUERY).matches;
+
 const App = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isDevelopment = import.meta.env.NODE_ENV === "development";
 
   // Initialize Bootstrap
@@ -76,57 +87,39 @@ const App = () => {
     () => AuthService.getCurrentUser()?.avatarUrl || ""
   );
   const [gravatarFetched, setGravatarFetched] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      return savedTheme;
-    }
-
-    // Detect system theme preference
-    if (window.matchMedia) {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      return prefersDark ? "dark" : "light";
-    }
-
-    return "dark"; // Fallback to dark
-  });
+  // The account's stored preference outranks this browser's, so the same person
+  // gets the same colour scheme on every device. It is read here and at login
+  // rather than from an effect: an effect would re-assert a value that goes
+  // stale the moment the toggle is used, undoing the click.
+  const [themePreference, setThemePreference] = useState(
+    () =>
+      AuthService.getCurrentUser()?.preferredTheme ||
+      localStorage.getItem("theme") ||
+      "auto"
+  );
+  const prefersDark = useSyncExternalStore(
+    subscribeToColorScheme,
+    systemPrefersDark
+  );
+  // What gets stored is the PREFERENCE; what gets applied is the resolved
+  // light/dark. Keeping them separate is what lets "auto" keep tracking the OS
+  // instead of freezing at whatever it happened to resolve to on first load.
+  const theme =
+    themePreference === "auto"
+      ? (prefersDark && "dark") || "light"
+      : themePreference;
   const [setupComplete, setSetupComplete] = useState(null); // Initialize as null to indicate loading
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Update theme in DOM and localStorage
     document.documentElement.setAttribute("data-bs-theme", theme);
-    localStorage.setItem("theme", theme);
+    localStorage.setItem("theme", themePreference);
 
-    // Update favicon based on theme
     const favicon = document.getElementById("favicon");
     if (favicon) {
       favicon.href = theme === "dark" ? "/dark-favicon.ico" : "/favicon.ico";
     }
-  }, [theme]);
-
-  useEffect(() => {
-    // Listen to system theme changes only if user hasn't set a manual preference
-    const savedTheme = localStorage.getItem("theme");
-
-    if (!savedTheme && window.matchMedia) {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = (e) => {
-        const newTheme = e.matches ? "dark" : "light";
-        setTheme(newTheme);
-        log.app.debug("System theme changed", { newTheme });
-      };
-
-      mediaQuery.addEventListener("change", handleChange);
-      return () => {
-        mediaQuery.removeEventListener("change", handleChange);
-      };
-    }
-
-    return undefined;
-  }, []);
+  }, [theme, themePreference]);
 
   useEffect(() => {
     let mounted = true;
@@ -247,8 +240,44 @@ const App = () => {
     setGravatarFetched(false);
   }, []);
 
+  // The write-through is fire-and-forget: the toggle must feel instant, and a
+  // preference that failed to persist is worth a log line, not a blocked
+  // click. It lives here rather than inside the state updater because React
+  // may invoke an updater more than once for a single change.
+  const applyThemePreference = useCallback(
+    (preference, { persistRemotely = true } = {}) => {
+      setThemePreference(preference);
+
+      if (!persistRemotely || !AuthService.getCurrentUser()) {
+        return;
+      }
+
+      UserService.updatePreferences({ theme: preference })
+        .then(() => {
+          // Keep the stored session in step, or the next mount would re-apply
+          // the value this click just replaced.
+          const stored = AuthService.getCurrentUser();
+          if (stored) {
+            localStorage.setItem(
+              "user",
+              JSON.stringify({ ...stored, preferredTheme: preference })
+            );
+          }
+        })
+        .catch((error) => {
+          log.app.error("Theme preference not saved", { error: error.message });
+        });
+    },
+    []
+  );
+
+  // auto -> light -> dark -> auto
   const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+    const next =
+      (themePreference === "auto" && "light") ||
+      (themePreference === "light" && "dark") ||
+      "auto";
+    applyThemePreference(next);
   };
 
   useEffect(() => {
@@ -263,6 +292,29 @@ const App = () => {
         userData.roles && userData.roles.includes("ROLE_ADMIN")
       );
       setUserOrganization(userData.organization);
+
+      if (userData.preferredTheme) {
+        setThemePreference(userData.preferredTheme);
+      }
+
+      // The active-org state is seeded at mount, before any login has happened,
+      // so it must be re-derived here or every org-scoped page renders with an
+      // empty organization until the next full page load.
+      const stored = localStorage.getItem("activeOrganization");
+      const stillAMember =
+        stored &&
+        Array.isArray(userData.organizations) &&
+        userData.organizations.some((org) => org.name === stored);
+      const nextOrganization = stillAMember
+        ? stored
+        : userData.organization || "";
+
+      setActiveOrganization(nextOrganization);
+      if (nextOrganization) {
+        localStorage.setItem("activeOrganization", nextOrganization);
+      } else {
+        localStorage.removeItem("activeOrganization");
+      }
 
       if (userData.avatarUrl) {
         setGravatarUrl(userData.avatarUrl);
@@ -321,6 +373,17 @@ const App = () => {
     };
   }, [currentUser]);
 
+  // i18next is an external system, so pushing the account's language into it is
+  // exactly what an effect is for. It runs only while the two disagree, and the
+  // stored copy is kept current by the switcher, so this cannot fight a user's
+  // own choice.
+  useEffect(() => {
+    const preferred = currentUser?.preferredLanguage;
+    if (preferred && preferred !== i18n.language) {
+      i18n.changeLanguage(preferred);
+    }
+  }, [currentUser, i18n]);
+
   useEffect(() => {
     if (currentUser && isPushEnabled()) {
       syncSubscription().catch((error) => {
@@ -352,6 +415,7 @@ const App = () => {
           showAdminBoard={showAdminBoard}
           showOrgConsole={showOrgConsole}
           theme={theme}
+          themePreference={themePreference}
           toggleTheme={toggleTheme}
           logOut={logOut}
           logOutLocal={logOutLocal}

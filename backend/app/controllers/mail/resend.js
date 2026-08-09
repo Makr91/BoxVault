@@ -5,6 +5,7 @@ import db from '../../models/index.js';
 const { user: User } = db;
 import { sendVerificationMail } from './verification.js';
 import { loadConfig } from '../../utils/config-loader.js';
+import { resolveUserLanguage } from '../../utils/userLanguage.js';
 
 /**
  * @swagger
@@ -79,7 +80,7 @@ export const resendVerificationMail = async (req, res) => {
       user,
       user.verificationToken,
       user.verificationTokenExpires,
-      req.getLocale()
+      await resolveUserLanguage(user.id)
     );
     return res.send({ message: req.__('auth.verificationEmailResent') });
   } catch (err) {

@@ -5,9 +5,21 @@ import { loadConfig } from './config-loader.js';
 import { log } from './Logger.js';
 import { sendHubNotification } from './notifyHub.js';
 import { resolveGlobalAdminRecipients, resolveUserRecipients } from './notifyRecipients.js';
+import { getSupportedLocales, t } from '../config/i18n.js';
 import db from '../models/index.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Render one message key into every shipped language. The hub stores the map
+ * and resolves it per recipient, so a sweep never has to know who it is
+ * writing for.
+ * @param {string} key - i18n message key
+ * @param {Object} [replacements] - Interpolation values
+ * @returns {Object} BCP 47 tag -> rendered string
+ */
+const localize = (key, replacements = {}) =>
+  Object.fromEntries(getSupportedLocales().map(lang => [lang, t(key, lang, replacements)]));
 
 const daysUntil = date => Math.ceil((new Date(date).getTime() - Date.now()) / DAY_MS);
 
@@ -32,17 +44,25 @@ const sweepServiceAccountExpiry = async () => {
         return;
       }
       const recipients = await resolveUserRecipients([account.userId]);
+      const notification = {
+        title: localize('notifications.serviceAccountExpiry.title', {
+          username: account.username,
+        }),
+        body: localize(
+          daysLeft === 1
+            ? 'notifications.serviceAccountExpiry.bodyOne'
+            : 'notifications.serviceAccountExpiry.bodyOther',
+          { days: daysLeft }
+        ),
+        navigate: `${origin}/profile`,
+        tag: 'boxvault-sa-expiry',
+      };
       await Promise.all(
         recipients.map(({ issuer, uuid }) =>
           sendHubNotification({
             issuer,
             recipient: { user_uuid: uuid },
-            notification: {
-              title: `Service account expiring: ${account.username}`,
-              body: `Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Recreate it before automation breaks.`,
-              navigate: `${origin}/profile`,
-              tag: 'boxvault-sa-expiry',
-            },
+            notification,
             type: 'ACCOUNT',
             severity: daysLeft <= 1 ? 'DANGER' : 'WARNING',
             idempotencyKey: `boxvault:sa-expiry:${account.id}:${daysLeft}`,
@@ -81,17 +101,21 @@ const sweepSslExpiry = async () => {
   }
 
   const recipients = await resolveGlobalAdminRecipients();
+  const notification = {
+    title: localize('notifications.sslExpiry.title'),
+    body: localize(
+      daysLeft === 1 ? 'notifications.sslExpiry.bodyOne' : 'notifications.sslExpiry.bodyOther',
+      { days: daysLeft, expiry: cert.validTo }
+    ),
+    navigate: `${origin}/admin`,
+    tag: 'boxvault-ssl-expiry',
+  };
   await Promise.all(
     recipients.map(({ issuer, uuid }) =>
       sendHubNotification({
         issuer,
         recipient: { user_uuid: uuid },
-        notification: {
-          title: 'BoxVault SSL certificate expiring',
-          body: `The certificate expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${cert.validTo}).`,
-          navigate: `${origin}/admin`,
-          tag: 'boxvault-ssl-expiry',
-        },
+        notification,
         type: 'SYSTEM',
         severity: daysLeft <= 7 ? 'DANGER' : 'WARNING',
         idempotencyKey: `boxvault:ssl-expiry:${cert.validTo}:${daysLeft}`,

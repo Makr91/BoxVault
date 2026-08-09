@@ -35,10 +35,21 @@ const { organization: Organization, user: User, role: Role, box: Box, UserOrg } 
  *                   username:
  *                     type: string
  *                     description: Username
+ *                   name:
+ *                     type: string
+ *                     nullable: true
+ *                     description: Display name (null when unset; clients fall back to username)
  *                   email:
  *                     type: string
  *                     format: email
  *                     description: User email
+ *                   emailHash:
+ *                     type: string
+ *                     description: Hashed email for the Gravatar fallback
+ *                   avatar_url:
+ *                     type: string
+ *                     nullable: true
+ *                     description: Stored avatar URL from the identity provider
  *                   verified:
  *                     type: boolean
  *                     description: Email verification status
@@ -100,7 +111,10 @@ export const findOneWithUsers = async (req, res) => {
     const users = organization.members.map(user => ({
       id: user.id,
       username: user.username,
+      name: user.name || null,
       email: user.email,
+      emailHash: user.emailHash,
+      avatar_url: user.avatar_url,
       verified: user.verified,
       suspended: user.suspended,
       roles: user.roles.map(role => role.name),

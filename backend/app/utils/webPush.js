@@ -160,19 +160,19 @@ const serializeNotification = ({ title, body, navigate, tag, icon }) =>
  * @returns {Promise<number>} Count of successfully delivered messages
  */
 const sendPushToUsers = async (userIds, notification) => {
-  const recipients = [...new Set(userIds)].filter(Boolean);
-
-  if (recipients.length === 0) {
-    return 0;
-  }
-
-  const vapid = getVapidDetails();
-  if (!vapid) {
-    log.app.debug('Push notifications unavailable; skipping toast', { tag: notification.tag });
-    return 0;
-  }
-
   try {
+    const recipients = [...new Set(userIds || [])].filter(Boolean);
+
+    if (recipients.length === 0 || !notification) {
+      return 0;
+    }
+
+    const vapid = getVapidDetails();
+    if (!vapid) {
+      log.app.debug('Push notifications unavailable; skipping toast', { tag: notification.tag });
+      return 0;
+    }
+
     const { Op } = db.Sequelize;
     const subscriptions = await db.pushSubscription.findAll({
       where: { user_id: { [Op.in]: recipients } },
@@ -217,7 +217,7 @@ const sendPushToUsers = async (userIds, notification) => {
 
     return results.filter(Boolean).length;
   } catch (err) {
-    log.app.warn('Push fan-out failed', { error: err.message, tag: notification.tag });
+    log.app.warn('Push fan-out failed', { error: err.message, tag: notification?.tag });
     return 0;
   }
 };

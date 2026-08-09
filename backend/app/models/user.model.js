@@ -6,6 +6,12 @@ export default (sequelize, Sequelize) => {
     email: {
       type: Sequelize.STRING,
     },
+    name: {
+      type: Sequelize.STRING,
+      allowNull: true,
+      comment:
+        'Human display name. Optional: SCIM displayName/name.formatted at provision/PUT, then the OIDC name claim at login (fresher, overwrites), else null and username is the render-time fallback',
+    },
     password: {
       type: Sequelize.STRING,
     },
@@ -25,6 +31,31 @@ export default (sequelize, Sequelize) => {
     suspended: {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
+    },
+    preferredLanguage: {
+      type: Sequelize.STRING(35),
+      allowNull: true,
+      comment:
+        'RFC 7643 preferredLanguage: BCP 47 tag the user reads. Drives outbound mail and notification language. Null means unset and the org locale, then the configured default, apply',
+      field: 'preferred_language',
+    },
+    locale: {
+      type: Sequelize.STRING(35),
+      allowNull: true,
+      comment:
+        'RFC 7643 locale: BCP 47 tag for formatting (dates, numbers). Distinct from preferredLanguage and only a fallback for it',
+    },
+    preferredTheme: {
+      type: Sequelize.STRING(10),
+      allowNull: true,
+      comment:
+        'Colour-scheme preference: light, dark, or auto. Variant only — the brand pack is a property of the site, never of the user. Null means unset and the browser-local choice applies',
+      field: 'preferred_theme',
+    },
+    timezone: {
+      type: Sequelize.STRING(64),
+      allowNull: true,
+      comment: 'RFC 7643 timezone: Olson name, stored for consumers that need it',
     },
     sessionsInvalidAfter: {
       type: Sequelize.DATE,

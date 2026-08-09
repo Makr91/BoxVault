@@ -115,6 +115,89 @@ email:
   from: "BoxVault <noreply@example.com>"
 ```
 
+## User Profile Fields
+
+Beyond username and email, a BoxVault user carries five optional fields. All are
+nullable, and all follow the same three-tier contract:
+
+1. **SCIM** at provision/update — authoritative, full desired state, so an
+   absent attribute clears the stored value.
+2. **The OIDC claim at login** — fresher than the last SCIM push, so it
+   overwrites. A claim that is absent never clears anything.
+3. **Null**, with a documented render fallback.
+
+| field | SCIM attribute | OIDC claim | fallback when null |
+| --- | --- | --- | --- |
+| `name` | `displayName`, else `name.formatted` | `name` | the username |
+| `preferredLanguage` | `preferredLanguage` | `preferences.language` | the org's locale, then the configured default |
+| `locale` | `locale` | — | only a fallback for `preferredLanguage` |
+| `timezone` | `timezone` | — | — |
+| `preferredTheme` | — | `preferences.theme` | the browser-local choice |
+
+Local accounts have no provider, so both upper tiers are empty: `name` is set at
+registration or edited on the profile page, and `preferredLanguage` is captured
+from the request locale at registration.
+
+Two deliberate omissions:
+
+- The standard OIDC `locale` claim is **not** consumed. The identity provider
+  currently emits a hardcoded value there, so reading it would pin every user to
+  one language. `preferences.language` is the supported read path until the
+  provider announces otherwise.
+- `username` is not editable. For SCIM-managed accounts it mirrors the
+  provider's `userName` and is overwritten on every push, which is why `name`
+  exists as a separate, user-owned field.
+
+### Colour scheme
+
+`preferredTheme` holds `light`, `dark`, or `auto` — the **variant only**. The
+brand pack is a property of the site, not of the person, so a user who belongs to
+two tenants never drags one tenant's branding into the other. A composed value
+such as `nomadservices-dark` is not a valid preference and is rejected on read.
+
+`auto` is stored as `auto`, never resolved before storage: the resolved
+light/dark is computed at render time from `prefers-color-scheme` and tracks the
+operating system live. The stored preference and the applied value are
+deliberately separate — collapsing them is what makes a theme toggle freeze at
+whatever it happened to resolve to on first load.
+
+The account value is applied when it changes, not on every render, so using the
+in-app toggle afterwards still works.
+
+### Saving a preference
+
+`PATCH /api/user/preferences` accepts `language`, `theme`, and `timezone`, all
+optional. An omitted key is left unchanged; `null` or `""` clears it.
+
+Which store is authoritative depends on the account:
+
+- **Federated accounts** — the write is delegated to the identity provider's
+  own `PATCH /api/user/preferences` on the acting user's token, and the local
+  columns are updated only after that succeeds. The provider's SCIM push then
+  converges every other consumer. Writing locally first would be reverted on the
+  next push, which is why delegation comes first and a failure is surfaced
+  rather than swallowed.
+- **Local accounts** — there is no provider, so the BoxVault columns are the
+  whole story and the write applies directly.
+
+The language switcher and the theme toggle both write through automatically for
+signed-in users. Both are fire-and-forget: the interface changes immediately and
+a failed save is logged rather than blocking the click.
+
+### Which language a message is written in
+
+Anything BoxVault composes **for** someone else — notifications fanned out to box
+watchers, invitation and verification email — resolves the language from the
+recipient, never from whoever triggered it. The request locale answers the wrong
+question there: an invite sent by an English-speaking admin should still arrive
+in the invitee's language.
+
+The chain is: the recipient's `preferredLanguage`, then their `locale`, then the
+organization's `locale` (synced from the identity provider, and the only signal
+available for an invitee who has no account yet), then the configured default.
+Every result is narrowed by RFC 4647 lookup to a locale this deployment actually
+ships, so an unsupported tag degrades to the default rather than breaking.
+
 ## Notification Configuration
 
 BoxVault sends its own browser/OS toast notifications. They are signed with

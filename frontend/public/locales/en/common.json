@@ -280,6 +280,8 @@
     },
     "fields": {
       "fullName": "Full Name",
+      "displayName": "Display name",
+      "displayNameHint": "Shown across BoxVault instead of your username. Leave empty to use your username. Accounts managed by an identity provider have this overwritten on the provider's next sync.",
       "location": "Location",
       "email": "Email",
       "organization": "Organization",
@@ -345,6 +347,7 @@
       "serviceAccountCreated": "Service account created successfully!",
       "passwordChanged": "Password changed successfully!",
       "emailChanged": "Email changed successfully!",
+      "nameChanged": "Display name saved.",
       "emailNotVerified": "Your email is not verified."
     },
     "errors": {
@@ -355,7 +358,8 @@
       "createServiceAccountFailed": "Error creating service account: {{error}}",
       "resendVerificationFailed": "Error sending verification email: {{error}}",
       "changePasswordFailed": "Error changing password: {{error}}",
-      "changeEmailFailed": "Error changing email: {{error}}"
+      "changeEmailFailed": "Error changing email: {{error}}",
+      "changeNameFailed": "Error changing display name: {{error}}"
     },
     "buttons": {
       "leave": "Leave Organization",
@@ -399,11 +403,18 @@
     "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
     "notSupported": "Push notifications are not supported by this browser."
   },
+  "theme": {
+    "auto": "Theme: follow system",
+    "light": "Theme: light",
+    "dark": "Theme: dark"
+  },
   "inbox": {
     "title": "Notifications",
     "empty": "No notifications yet.",
     "markAllRead": "Mark all read",
     "unreadCount": "{{count}} unread notifications",
+    "dismiss": "Dismiss",
+    "viewAll": "View all notifications",
     "loadError": "Failed to load notifications. Please try again."
   },
   "watch": {
@@ -415,6 +426,7 @@
   "orgConsole": {
     "pageTitle": "Org Console",
     "title": "Organization Console",
+    "noActiveOrganization": "No active organization is selected. Pick one from the organization switcher to manage it.",
     "orgNameRequired": "Organization name is required.",
     "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
     "orgEmailRequired": "Organization email is required.",
@@ -459,6 +471,7 @@
     },
     "joinRequest": {
       "title": "Pending Join Requests",
+      "user": "User",
       "noRequests": "No pending join requests.",
       "email": "Email",
       "message": "Message",
@@ -486,6 +499,7 @@
       "expired": "Expired",
       "link": "Invitation Link",
       "linkText": "Invitation Link",
+      "managedByIdp": "Sent by identity provider",
       "actions": "Actions",
       "token": "Token",
       "orgId": "Organization ID",

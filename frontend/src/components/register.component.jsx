@@ -18,6 +18,7 @@ const Register = ({ theme }) => {
 
   const [formValues, setFormValues] = useState({
     username: "",
+    name: "",
     email: "",
     password: "",
   });
@@ -167,7 +168,8 @@ const Register = ({ theme }) => {
         formValues.username,
         formValues.email,
         formValues.password,
-        invitationToken
+        invitationToken,
+        formValues.name
       )
         .then((response) => {
           setStatus({ success: true, message: response.data.message });
@@ -254,6 +256,22 @@ const Register = ({ theme }) => {
                         {validationErrors.username}
                       </div>
                     )}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="name">{t("register.name")}</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="name"
+                      name="name"
+                      maxLength={255}
+                      value={formValues.name}
+                      onChange={handleInputChange}
+                    />
+                    <small className="form-text text-body-secondary">
+                      {t("register.nameHint")}
+                    </small>
                   </div>
 
                   <div className="form-group">

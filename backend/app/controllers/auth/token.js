@@ -103,6 +103,9 @@ export const refreshToken = async (req, res) => {
     return res.status(200).send({
       id: user.id,
       username: user.username,
+      name: user.name || null,
+      preferredLanguage: user.preferredLanguage || null,
+      preferredTheme: user.preferredTheme || null,
       email: user.email,
       verified: user.verified,
       emailHash: user.emailHash,
