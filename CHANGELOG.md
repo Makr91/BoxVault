@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/Makr91/BoxVault/compare/v0.50.0...v0.51.0) (2026-08-09)
+
+
+### Features
+
+* BoxVault owns its OS toasts, user preferences, and SCIM identity attributes ([4113c4f](https://github.com/Makr91/BoxVault/commit/4113c4fc26fcc95ce1620238649b49260f4263a8))
+
 ## [0.50.0](https://github.com/Makr91/BoxVault/compare/v0.49.0...v0.50.0) (2026-08-08)
 
 
