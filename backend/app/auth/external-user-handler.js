@@ -34,7 +34,13 @@ const upsertClaimOrg = (db, issuer, claimOrg, transaction) =>
   upsertExternalOrg(
     db,
     issuer,
-    { uuid: claimOrg.uuid, name: claimOrg.name, customerId: claimOrg.customer_id },
+    {
+      uuid: claimOrg.uuid,
+      name: claimOrg.name,
+      customerId: claimOrg.customer_id,
+      logo: claimOrg.logo,
+      description: claimOrg.description,
+    },
     transaction
   );
 

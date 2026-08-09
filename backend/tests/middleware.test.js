@@ -156,7 +156,11 @@ jest.unstable_mockModule('../app/config/i18n.js', () => ({
 // test is still BoxVault's own.
 jest.unstable_mockModule('express-rate-limit', () => ({
   default: options => {
-    const middleware = (req, res, next) => next();
+    const middleware = (req, res, next) => {
+      void req;
+      void res;
+      return next();
+    };
     middleware.options = options;
     return middleware;
   },

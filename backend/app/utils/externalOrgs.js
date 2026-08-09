@@ -12,7 +12,7 @@
 //   - a customer ID already held by a DIFFERENT org is a hard error, never
 //     papered over.
 import { log } from './Logger.js';
-import { generateOrgCode } from './identity.js';
+import { generateOrgCode, isHttpUrl } from './identity.js';
 
 const ORG_CODE_PATTERN = /^[0-9A-F]{6}$/;
 
@@ -130,7 +130,7 @@ const assertCustomerIdIsFree = async (Organization, customerId, selfOrgId, opts)
  * present (reconciled if it drifted), else a sequential local code.
  * @param {Object} db - Database models
  * @param {string} issuer - OIDC issuer
- * @param {Object} source - { uuid, name, customerId }
+ * @param {Object} source - { uuid, name, customerId, logo, description }
  * @param {Object|null} transaction
  * @returns {Promise<Object>} Organization instance
  */
@@ -138,6 +138,11 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
   const { organization: Organization } = db;
   const opts = transaction ? { transaction } : {};
   const customerId = normalizeCustomerId(source.customerId, source.uuid);
+  const logo = isHttpUrl(source.logo) ? source.logo : null;
+  const description =
+    typeof source.description === 'string' && source.description.trim()
+      ? source.description.trim()
+      : null;
 
   const org = await Organization.findOne({
     where: { external_issuer: issuer, external_org_id: source.uuid },
@@ -153,6 +158,8 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
       {
         name,
         display_name: source.name || name,
+        logo,
+        ...(description ? { description } : {}),
         external_issuer: issuer,
         external_org_id: source.uuid,
         org_code: customerId || (await generateOrgCode(db, transaction)),
@@ -166,6 +173,12 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
   const patch = {};
   if (source.name && org.display_name !== source.name) {
     patch.display_name = source.name;
+  }
+  if (logo && org.logo !== logo) {
+    patch.logo = logo;
+  }
+  if (description && org.description !== description) {
+    patch.description = description;
   }
   if (customerId && org.org_code !== customerId) {
     await assertCustomerIdIsFree(Organization, customerId, org.id, opts);
