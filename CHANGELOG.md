@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/Makr91/BoxVault/compare/v0.51.0...v0.52.0) (2026-08-09)
+
+
+### Features
+
+* mirror organization logo and description from the organizations claim ([0a2b578](https://github.com/Makr91/BoxVault/commit/0a2b578c957b1d266bf34deae8692c04593fefd4))
+
 ## [0.51.0](https://github.com/Makr91/BoxVault/compare/v0.50.0...v0.51.0) (2026-08-09)
 
 
