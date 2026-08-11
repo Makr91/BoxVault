@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/Makr91/BoxVault/compare/v0.52.0...v0.52.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* route every 401 to the login screen and stop the empty-whitelist warn ([80696a7](https://github.com/Makr91/BoxVault/commit/80696a7d424f248af0df0c9ecc51351dcb69b586))
+
 ## [0.52.0](https://github.com/Makr91/BoxVault/compare/v0.51.0...v0.52.0) (2026-08-09)
 
 
