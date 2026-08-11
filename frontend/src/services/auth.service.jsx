@@ -1,6 +1,5 @@
 import axios from "axios";
 
-import EventBus from "../common/EventBus";
 import { fetchWithDeduplication } from "../utils/GravatarCache";
 import { log } from "../utils/Logger";
 
@@ -177,25 +176,14 @@ axios.interceptors.response.use(
         }
       }
 
-      // Clear localStorage immediately
+      // The session is gone server-side (expiry, back-channel logout, or a
+      // revoke sweep), so every 401 means the same thing: clear the stored
+      // session and land on the login screen with a way back.
       localStorage.removeItem("user");
-
-      // Determine if this was an "action" vs "browsing"
-      const isActionRequest =
-        originalRequest.method !== "GET" || // POST/PUT/DELETE are actions
-        originalRequest.url.includes("/download") || // Downloads are actions
-        originalRequest.url.includes("/upload"); // Uploads are actions
-
-      if (isActionRequest) {
-        // For actions, redirect to login with return path
-        const returnTo = encodeURIComponent(
-          window.location.pathname + window.location.search
-        );
-        window.location.href = `/login?returnTo=${returnTo}`;
-      } else {
-        // For browsing (GET requests), just update UI state
-        EventBus.dispatch("logout", null);
-      }
+      const returnTo = encodeURIComponent(
+        window.location.pathname + window.location.search
+      );
+      window.location.href = `/login?returnTo=${returnTo}`;
     }
     return Promise.reject(error);
   }

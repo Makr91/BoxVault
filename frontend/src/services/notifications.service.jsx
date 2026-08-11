@@ -33,14 +33,22 @@ const getUnreadCount = () =>
   });
 
 const markRead = (id) =>
-  axios.post(`${baseURL}/api/notifications/${id}/read`, null, {
-    headers: authHeader(),
-  });
+  axios.post(
+    `${baseURL}/api/notifications/${id}/read`,
+    {},
+    {
+      headers: authHeader(),
+    }
+  );
 
 const markAllRead = () =>
-  axios.post(`${baseURL}/api/notifications/read-all`, null, {
-    headers: authHeader(),
-  });
+  axios.post(
+    `${baseURL}/api/notifications/read-all`,
+    {},
+    {
+      headers: authHeader(),
+    }
+  );
 
 const deleteNotification = (id) =>
   axios.delete(`${baseURL}/api/notifications/${id}`, {

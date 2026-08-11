@@ -496,7 +496,7 @@ const putUser = async (req, res) => {
   }
 
   try {
-    const credential =
+    let credential =
       userId === null ? null : await findCredentialByResourceId(req.scimIssuer, userId);
     const user = credential ? await User.findByPk(credential.user_id) : null;
     if (!user) {
@@ -521,7 +521,7 @@ const putUser = async (req, res) => {
       const claimedElsewhere = await Credential.findOne({
         where: { provider: req.scimIssuer, subject: body.externalId },
       });
-      if (claimedElsewhere) {
+      if (claimedElsewhere && claimedElsewhere.user_id !== user.id) {
         return scimError(
           res,
           409,
@@ -530,13 +530,24 @@ const putUser = async (req, res) => {
         );
       }
 
-      log.auth.info('SCIM: adopting pushed externalId for an existing credential', {
-        userId: user.id,
-        issuer: req.scimIssuer,
-        previousSubject: credential.subject,
-        externalId: body.externalId,
-      });
-      await credential.update({ subject: body.externalId });
+      if (claimedElsewhere) {
+        log.auth.info('SCIM: collapsing stale duplicate credential for the same user', {
+          userId: user.id,
+          issuer: req.scimIssuer,
+          staleSubject: credential.subject,
+          externalId: body.externalId,
+        });
+        await credential.destroy();
+        credential = claimedElsewhere;
+      } else {
+        log.auth.info('SCIM: adopting pushed externalId for an existing credential', {
+          userId: user.id,
+          issuer: req.scimIssuer,
+          previousSubject: credential.subject,
+          externalId: body.externalId,
+        });
+        await credential.update({ subject: body.externalId });
+      }
     }
 
     await applyUserState(user, req.scimIssuer, state);

@@ -309,7 +309,10 @@ app.use((req, res, next) => {
     json({ limit: maxSize })(req, res, err => {
       if (err) {
         log.error.error('JSON parsing error:', err);
-        return res.status(413).json({ error: 'Request too large' });
+        if (err.type === 'entity.too.large') {
+          return res.status(413).json({ error: 'Request too large' });
+        }
+        return res.status(400).json({ error: 'Invalid JSON body' });
       }
       return urlencoded({ extended: true, limit: maxSize })(req, res, next);
     });

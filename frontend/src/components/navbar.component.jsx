@@ -793,6 +793,7 @@ const Navbar = ({
       await fetchTicketConfig(mounted);
 
       if (
+        trustedIssuers.length > 0 &&
         currentUser?.provider?.startsWith("oidc-") &&
         currentUser?.accessToken
       ) {
@@ -815,6 +816,7 @@ const Navbar = ({
   }, [
     currentUser,
     extractAuthServerUrl,
+    trustedIssuers,
     activeOrganization,
     fetchTicketConfig,
     fetchOrgGravatar,
