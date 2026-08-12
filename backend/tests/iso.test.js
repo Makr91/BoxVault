@@ -14,6 +14,8 @@ import {
 import { getConfigPath } from '../app/utils/config-loader.js';
 import { log } from '../app/utils/Logger.js';
 
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 describe('ISO API', () => {
   let authToken;
   let adminToken;
@@ -25,6 +27,8 @@ describe('ISO API', () => {
   const orgName = `IsoOrg_${uniqueId}`;
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Create Organization
     org = await db.organization.create({
       name: orgName,
@@ -41,7 +45,7 @@ describe('ISO API', () => {
     const userRole = await db.role.findOne({ where: { name: 'user' } });
     await user.setRoles([userRole]);
     await db.UserOrg.create({ user_id: user.id, organization_id: org.id, role: 'member' });
-    authToken = jwt.sign({ id: user.id }, 'test-secret', { expiresIn: '1h' });
+    authToken = jwt.sign({ id: user.id }, 'test-secret', { expiresIn: '1h', ...TEST_JWT_CLAIMS });
 
     // Create Admin
     admin = await db.user.create({
@@ -53,7 +57,10 @@ describe('ISO API', () => {
     const adminRole = await db.role.findOne({ where: { name: 'admin' } });
     await admin.setRoles([adminRole]);
     await db.UserOrg.create({ user_id: admin.id, organization_id: org.id, role: 'owner' });
-    adminToken = jwt.sign({ id: admin.id }, 'test-secret', { expiresIn: '1h' });
+    adminToken = jwt.sign({ id: admin.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...TEST_JWT_CLAIMS,
+    });
 
     // Create ISO
     iso = await db.iso.create({
@@ -195,9 +202,9 @@ describe('ISO API', () => {
         .set('Content-Type', 'application/octet-stream')
         .send('malicious content');
 
-      // The controller ignores the filename provided in header for storage (uses checksum)
-      // So this succeeds (201) but stores safely.
-      expect(res.statusCode).toBe(201);
+      // Path traversal filenames are rejected outright by the upload allowlist
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBeDefined();
     });
 
     // Helper coverage via API trigger (upload)
@@ -251,16 +258,14 @@ describe('ISO API', () => {
     });
 
     it('should handle error during physical file deletion', async () => {
-      // Mock findByPk to return an ISO that throws on destroy (or mock destroy directly)
-      // But to test the controller catch block, we can mock findByPk to throw
-      const findSpy = jest.spyOn(db.iso, 'findByPk').mockRejectedValue(new Error('DB Error'));
+      const findSpy = jest.spyOn(db.iso, 'findOne').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/iso/${iso.id}`)
         .set('x-access-token', adminToken);
 
-      expect(res.statusCode).toBe(500);
       findSpy.mockRestore();
+      expect(res.statusCode).toBe(500);
     });
 
     it('should handle download error (500)', async () => {
@@ -312,7 +317,10 @@ describe('ISO API', () => {
         password: 'password',
         verified: true,
       });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/iso/${privIso.id}/download-link`)
@@ -325,8 +333,7 @@ describe('ISO API', () => {
     });
 
     it('should handle update error (500)', async () => {
-      // Mock findByPk to return object with throwing save
-      const findSpy = jest.spyOn(db.iso, 'findByPk').mockResolvedValue({
+      const findSpy = jest.spyOn(db.iso, 'findOne').mockResolvedValue({
         ...iso.toJSON(),
         save: jest.fn().mockRejectedValue(new Error('Save Error')),
       });
@@ -336,8 +343,8 @@ describe('ISO API', () => {
         .set('x-access-token', adminToken)
         .send({ name: 'New Name' });
 
-      expect(res.statusCode).toBe(500);
       findSpy.mockRestore();
+      expect(res.statusCode).toBe(500);
     });
 
     it('should handle upload cleanup on error', async () => {
@@ -486,7 +493,7 @@ describe('ISO API', () => {
           serviceAccountOrgId: org.id,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app)
@@ -515,7 +522,7 @@ describe('ISO API', () => {
           serviceAccountOrgId: org.id,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app)
@@ -744,14 +751,17 @@ describe('ISO API', () => {
         password: 'password',
         verified: true,
       });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/iso/${privIso.id}/download-link`)
         .set('x-access-token', token);
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('auth.forbidden');
+      expect(res.body.message).toContain('Access denied.');
 
       await privIso.destroy();
       await outsider.destroy();
@@ -767,7 +777,7 @@ describe('ISO API', () => {
 
       expect(res.statusCode).toBe(403);
       const msg = res.body.message;
-      const validMessages = ['auth.forbidden', 'Forbidden'];
+      const validMessages = ['Access denied.', 'Forbidden'];
       expect(validMessages.some(m => msg.includes(m))).toBe(true);
     });
 
@@ -803,14 +813,17 @@ describe('ISO API', () => {
         password: 'password',
         verified: true,
       });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/iso/${privIso.id}/download-link`)
         .set('x-access-token', token);
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('auth.forbidden');
+      expect(res.body.message).toContain('Access denied.');
 
       await privIso.destroy();
       await outsider.destroy();
@@ -926,9 +939,10 @@ describe('ISO API', () => {
           userId: user.id,
           isoId: iso.id,
           organization: orgName,
+          type: 'download',
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app).get(
@@ -946,9 +960,10 @@ describe('ISO API', () => {
           userId: user.id,
           isoId: iso.id + 999, // Wrong ISO ID
           organization: orgName,
+          type: 'download',
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app).get(
@@ -1153,7 +1168,10 @@ describe('ISO API', () => {
         password: 'password',
         verified: true,
       });
-      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .get(`/api/organization/${orgName}/iso/${privIso.id}/download`)
@@ -1237,7 +1255,10 @@ describe('ISO API', () => {
         password: 'password',
         verified: true,
       });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .get(`/api/organization/${orgName}/iso/name/${iso.name}/download`)
@@ -1305,7 +1326,10 @@ describe('ISO API', () => {
         password: 'password',
         verified: true,
       });
-      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       await request(app)
         .post(`/api/organization/${orgName}/iso/${privateIso.id}/download-link`)

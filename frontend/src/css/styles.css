@@ -1,10 +1,10 @@
-// Prevent FOUC
+/* Prevent FOUC */
 html {
   visibility: visible;
   opacity: 1;
 }
 
-// Custom styles
+/* Custom styles */
 .btn-dark {
   --bs-btn-border-color: #807769;
 }
@@ -15,14 +15,14 @@ html {
   margin: auto;
 }
 
-// Focus handling
+/* Focus handling */
 button:focus:not(:focus-visible),
 input:focus:not(:focus-visible) {
   outline: 0;
   box-shadow: none;
 }
 
-// Mobile text size handling
+/* Mobile text size handling */
 html,
 body {
   font-size: 16px;
@@ -30,29 +30,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-// Firefox button focus fix
+/* Firefox button focus fix */
 button::-moz-focus-inner {
   border: 0;
   padding: 0;
 }
 
-// Navbar dropdown icon alignment
+/* Navbar dropdown icon alignment */
 .navbar .dropdown-item:not(.notification-item) {
   display: flex !important;
   align-items: center;
-
-  svg,
-  img {
-    flex-shrink: 0; // Prevent icons from shrinking
-    line-height: 1; // Remove extra spacing
-  }
-
-  span {
-    line-height: 1; // Match text line-height to icon height
-  }
 }
 
-// Notification inbox dropdown
+.navbar .dropdown-item:not(.notification-item) svg,
+.navbar .dropdown-item:not(.notification-item) img {
+  flex-shrink: 0; /* Prevent icons from shrinking */
+  line-height: 1; /* Remove extra spacing */
+}
+
+.navbar .dropdown-item:not(.notification-item) span {
+  line-height: 1; /* Match text line-height to icon height */
+}
+
+/* Notification inbox dropdown */
 .notification-menu {
   min-width: 390px;
   max-height: 27rem;
@@ -106,11 +106,11 @@ button::-moz-focus-inner {
   position: sticky;
   bottom: 0;
   background-color: var(--bs-dropdown-bg);
+}
 
-  .dropdown-item {
-    justify-content: center;
-    padding: 0.5rem 1rem;
-  }
+.notification-footer .dropdown-item {
+  justify-content: center;
+  padding: 0.5rem 1rem;
 }
 
 .notification-item-icon {
@@ -150,12 +150,12 @@ button::-moz-focus-inner {
   background-color: var(--bs-primary);
 }
 
-// Modal backdrop overlay
+/* Modal backdrop overlay */
 .modal-backdrop-custom {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
-// Full viewport height
+/* Full viewport height */
 .min-vh-100-flex {
   min-height: 100vh;
   display: flex;
@@ -163,12 +163,12 @@ button::-moz-focus-inner {
   align-items: center;
 }
 
-// Cursor pointer utility
+/* Cursor pointer utility */
 .cursor-pointer {
   cursor: pointer;
 }
 
-// Logo/Icon standard sizes
+/* Logo/Icon standard sizes */
 .logo-sm {
   width: 16px;
   height: 16px;
@@ -189,7 +189,7 @@ button::-moz-focus-inner {
   height: 30px;
 }
 
-// Icon with margin-right
+/* Icon with margin-right */
 .icon-with-margin {
   margin-right: 8px;
 }
@@ -198,7 +198,7 @@ button::-moz-focus-inner {
   margin-right: 10px;
 }
 
-// Avatar sizing
+/* Avatar sizing */
 .avatar-sm {
   width: 16px;
   height: 16px;
@@ -214,65 +214,65 @@ button::-moz-focus-inner {
   height: 30px;
 }
 
-// Vertical align middle for inline elements
+/* Vertical align middle for inline elements */
 .v-align-middle {
   vertical-align: middle;
 }
 
-// Readonly input styling
+/* Readonly input styling */
 .readonly-input {
   background-color: #f8f9fa;
 }
 
-// Badge max height
+/* Badge max height */
 .badge-max-height {
   max-height: 20px;
 }
 
-// Clickable text decoration
+/* Clickable text decoration */
 .text-clickable {
   cursor: pointer;
   text-decoration: underline;
 }
 
-// Drag and drop opacity
+/* Drag and drop opacity */
 .dragging {
   opacity: 0.5;
 }
 
-// Small badge text
+/* Small badge text */
 .badge-xs {
   font-size: 0.7rem;
 }
 
-// OS chip on the box hero (mock accent green, distinct from bg-success)
+/* OS chip on the box hero (mock accent green, distinct from bg-success) */
 .badge-os {
   background-color: #91c54e;
   color: #16240a;
 }
 
-// Sortable table headers
+/* Sortable table headers */
 .sortable-header {
   cursor: pointer;
 }
 
-// Draggable items
+/* Draggable items */
 .draggable-item,
 .list-group-item[draggable="true"] {
   cursor: move;
 }
 
-// Flag icons in language selector
+/* Flag icons in language selector */
 .flag-icon-lg {
   font-size: 1.2em;
 }
 
-// Progress bar custom height
+/* Progress bar custom height */
 .progress-lg {
   height: 25px;
+}
 
-  .progress-bar span {
-    font-size: 0.9em;
-    font-weight: bold;
-  }
+.progress-lg .progress-bar span {
+  font-size: 0.9em;
+  font-weight: bold;
 }

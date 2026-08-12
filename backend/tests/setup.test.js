@@ -15,11 +15,21 @@ describe('Setup API', () => {
   const tempConfigDir = path.join(__dirname, 'temp_setup_config');
   let authorizedToken;
 
+  const reauthorize = async () => {
+    if (!fs.existsSync(setupTokenPath)) {
+      fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
+    }
+    const res = await request(app).post('/api/setup/verify-token').send({ token: setupToken });
+    authorizedToken = res.body.authorizedSetupToken;
+  };
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Create a dummy setup token file to simulate a fresh install
     // Ensure directory exists
     const dir = path.dirname(setupTokenPath);
@@ -193,6 +203,7 @@ describe('Setup API', () => {
     it('should handle database type updates', async () => {
       // Re-create setup token for this test since previous test deleted it
       fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
+      await reauthorize();
 
       const dbConfig = {
         db: {
@@ -214,6 +225,7 @@ describe('Setup API', () => {
       if (!fs.existsSync(setupTokenPath)) {
         fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
       }
+      await reauthorize();
 
       // Mock fs.readFile to fail during config read
       jest.spyOn(fs, 'readFile').mockImplementation((filePath, encoding, cb) => {
@@ -231,6 +243,7 @@ describe('Setup API', () => {
     });
 
     it('should succeed even if setup token is already deleted', async () => {
+      await reauthorize();
       // Ensure the token file is deleted before the test
       if (fs.existsSync(setupTokenPath)) {
         fs.unlinkSync(setupTokenPath);
@@ -245,6 +258,7 @@ describe('Setup API', () => {
     });
 
     it('should succeed even if setup token is already deleted', async () => {
+      await reauthorize();
       // Ensure the token file is deleted before the test
       if (fs.existsSync(setupTokenPath)) {
         fs.unlinkSync(setupTokenPath);
@@ -265,6 +279,7 @@ describe('Setup API', () => {
       if (!fs.existsSync(setupTokenPath)) {
         fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
       }
+      await reauthorize();
 
       const res = await request(app)
         .put('/api/setup')
@@ -275,6 +290,7 @@ describe('Setup API', () => {
     });
 
     it('should log warning if setup token deletion fails (coverage)', async () => {
+      await reauthorize();
       // Ensure token exists so we attempt to delete it
       if (!fs.existsSync(setupTokenPath)) {
         fs.writeFileSync(setupTokenPath, 'token');
@@ -311,6 +327,7 @@ describe('Setup API', () => {
     });
 
     it('should handle YAML parse errors in readConfig (helpers.js)', async () => {
+      await reauthorize();
       const readFileSpy = jest
         .spyOn(fs, 'readFile')
         .mockImplementation((filePath, encoding, cb) => {
@@ -333,6 +350,7 @@ describe('Setup API', () => {
       if (!fs.existsSync(setupTokenPath)) {
         fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
       }
+      await reauthorize();
 
       // Mock readFile to return config without sql block for db config
       const readFileSpy = jest.spyOn(fs, 'readFile').mockImplementation((pathArg, encoding, cb) => {
@@ -377,6 +395,7 @@ describe('Setup API', () => {
     });
 
     it('should handle upload of non-cert/key files (upload.js)', async () => {
+      await reauthorize();
       const res = await request(app)
         .post('/api/setup/upload-ssl')
         .set('Authorization', `Bearer ${authorizedToken}`)

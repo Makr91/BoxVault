@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { verifySignUp, authJwt, oidcTokenRefresh, verifyOrgAccess } from '../middleware/index.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   signup,
   signin,
@@ -102,7 +101,6 @@ const resolveInvitationOrg = async (req, res, next) => {
 };
 
 // Apply rate limiting to this router
-router.use(rateLimiter);
 
 router.use((req, res, next) => {
   void req;

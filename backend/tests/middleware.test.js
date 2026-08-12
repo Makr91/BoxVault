@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { EventEmitter } from 'events';
+import { PassThrough, Writable } from 'stream';
 import jwt from 'jsonwebtoken';
 
 // Mock express-rate-limit
@@ -56,18 +56,48 @@ const mockConfigLoader = {
 const JWT_CLAIM_OPTIONS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
 const createMockStream = () => {
-  const stream = new EventEmitter();
-  stream.write = jest.fn();
-  stream.end = jest.fn().mockImplementation(() => {
-    setTimeout(() => stream.emit('finish'), 0);
-  });
-  // Streaming chunk merge pipes read streams into the shared write stream and
-  // resolves on the read stream's 'end' event.
-  stream.pipe = jest.fn().mockImplementation(dest => {
-    setTimeout(() => stream.emit('end'), 0);
-    return dest;
-  });
+  const stream = new PassThrough();
+  stream.resume();
+  jest.spyOn(stream, 'write');
+  jest.spyOn(stream, 'end');
+  jest.spyOn(stream, 'pipe');
   return stream;
+};
+
+const createMockReadStream = (content = Buffer.from('content')) => {
+  const stream = new PassThrough();
+  jest.spyOn(stream, 'pipe');
+  stream.end(content);
+  return stream;
+};
+
+const createErroringStream = error => {
+  const stream = new PassThrough();
+  process.nextTick(() => stream.destroy(error));
+  return stream;
+};
+
+const createErroringWriteStream = error => {
+  const stream = new Writable({
+    write(chunk, encoding, callback) {
+      void chunk;
+      void encoding;
+      callback(error);
+    },
+    final(callback) {
+      callback(error);
+    },
+  });
+  jest.spyOn(stream, 'end');
+  return stream;
+};
+
+const createMockRequest = (props = {}) => {
+  const req = new PassThrough();
+  jest.spyOn(req, 'pipe');
+  jest.spyOn(req, 'on');
+  req.setTimeout = jest.fn();
+  return Object.assign(req, props);
 };
 
 // Mock fs module structure to support both default and named imports
@@ -75,7 +105,7 @@ const mockFs = {
   readdirSync: jest.fn(),
   statSync: jest.fn(),
   createWriteStream: jest.fn().mockImplementation(() => createMockStream()),
-  createReadStream: jest.fn().mockImplementation(() => createMockStream()),
+  createReadStream: jest.fn().mockImplementation(() => createMockReadStream()),
   readFileSync: jest.fn(),
   rmdirSync: jest.fn(),
   rmSync: jest.fn(),
@@ -197,7 +227,7 @@ describe('Middleware Tests', () => {
     jest.clearAllMocks();
     // Reset fs mocks to default implementation to avoid MaxListenersExceededWarning
     mockFs.createWriteStream.mockImplementation(() => createMockStream());
-    mockFs.createReadStream.mockImplementation(() => createMockStream());
+    mockFs.createReadStream.mockImplementation(() => createMockReadStream());
   });
 
   describe('Upload Middleware', () => {
@@ -205,7 +235,7 @@ describe('Middleware Tests', () => {
     let res;
 
     beforeEach(() => {
-      req = {
+      req = createMockRequest({
         method: 'POST',
         url: '/upload',
         headers: { 'content-length': '100' },
@@ -216,10 +246,7 @@ describe('Middleware Tests', () => {
           providerName: 'virtualbox',
           architectureName: 'amd64',
         },
-        setTimeout: jest.fn(),
-        pipe: jest.fn(),
-        on: jest.fn(),
-      };
+      });
       res = {
         setTimeout: jest.fn(),
         setHeader: jest.fn(),
@@ -242,13 +269,7 @@ describe('Middleware Tests', () => {
       mockDb.architectures.findOne.mockResolvedValue({ id: 1 });
       mockDb.files.findOne.mockResolvedValue(null); // New file
 
-      // Mock stream pipe
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => {
-          stream.emit('finish');
-        }, 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -267,24 +288,7 @@ describe('Middleware Tests', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ size: 100 });
 
-      // Mock createReadStream for checksum verification
-      mockFs.createReadStream.mockImplementation(() => {
-        const stream = new EventEmitter();
-        stream.pipe = jest.fn(dest => {
-          setTimeout(() => stream.emit('end'), 0);
-          return dest;
-        });
-        process.nextTick(() => {
-          stream.emit('data', Buffer.from('content'));
-          stream.emit('end');
-        });
-        return stream;
-      });
-
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -380,7 +384,12 @@ describe('Middleware Tests', () => {
       mockDb.service_account.findOne.mockResolvedValue({ user: { id: 1 } });
       await vagrantHandler(req, res, next);
       expect(mockDb.service_account.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ token: 'test-token' }) })
+        expect.objectContaining({
+          where: expect.objectContaining({
+            token: 'validchecksum',
+            expiresAt: { or: { gt: expect.any(Date), eq: null } },
+          }),
+        })
       );
     });
 
@@ -601,7 +610,7 @@ describe('Middleware Tests', () => {
     let res;
 
     beforeEach(() => {
-      req = {
+      req = createMockRequest({
         method: 'POST',
         url: '/upload',
         headers: {
@@ -616,13 +625,8 @@ describe('Middleware Tests', () => {
           providerName: 'virtualbox',
           architectureName: 'amd64',
         },
-        setTimeout: jest.fn(),
-        pipe: jest.fn().mockImplementation(stream => {
-          setTimeout(() => stream.emit('finish'), 0);
-          return stream;
-        }),
-        on: jest.fn(),
-      };
+      });
+      req.end(Buffer.from('chunk data'));
       res = {
         setTimeout: jest.fn(),
         setHeader: jest.fn(),
@@ -654,12 +658,6 @@ describe('Middleware Tests', () => {
       // Mock readdir to return chunk-0 and chunk-2 (count 2, but index 1 missing)
       // mergeChunks expects indices 0 and 1 for totalChunks=2
       mockFs.readdirSync.mockReturnValue(['chunk-0', 'chunk-2']);
-
-      // Mock stream to finish immediately
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
 
       // Mock mkdirSync for temp dir creation (called before merge)
       mockFs.mkdirSync.mockImplementation(() => {});
@@ -711,20 +709,6 @@ describe('Middleware Tests', () => {
 
       // Mock statSync for size check to pass
       mockFs.statSync.mockReturnValue({ size: 100 });
-
-      // Mock createReadStream to emit data for checksum calculation
-      mockFs.createReadStream.mockImplementation(() => {
-        const stream = new EventEmitter();
-        stream.pipe = jest.fn(dest => {
-          setTimeout(() => stream.emit('end'), 0);
-          return dest;
-        });
-        process.nextTick(() => {
-          stream.emit('data', Buffer.from('different content'));
-          stream.emit('end');
-        });
-        return stream;
-      });
 
       await uploadFile(req, res);
 
@@ -785,18 +769,9 @@ describe('Middleware Tests', () => {
       mockFs.mkdirSync.mockImplementation(() => {});
 
       // Mock createReadStream for checksum verification
-      mockFs.createReadStream.mockImplementation(() => {
-        const stream = new EventEmitter();
-        stream.pipe = jest.fn(dest => {
-          setTimeout(() => stream.emit('end'), 0);
-          return dest;
-        });
-        process.nextTick(() => {
-          stream.emit('data', Buffer.from('different content'));
-          stream.emit('end');
-        });
-        return stream;
-      });
+      mockFs.createReadStream.mockImplementation(() =>
+        createMockReadStream(Buffer.from('different content'))
+      );
 
       await uploadFile(req, res);
 
@@ -847,11 +822,6 @@ describe('Middleware Tests', () => {
       mockDb.architectures.findOne.mockResolvedValue({ id: 1 });
       mockDb.files.findOne.mockResolvedValue({ update: jest.fn() }); // Existing file for PUT
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
@@ -879,11 +849,6 @@ describe('Middleware Tests', () => {
       mockDb.files.findOne.mockResolvedValue(null);
       mockDb.files.create.mockResolvedValue({});
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
       await uploadFile(req, res);
       expect(res.status).toHaveBeenCalledWith(200);
     });
@@ -893,10 +858,9 @@ describe('Middleware Tests', () => {
       req.headers['x-total-chunks'] = '2';
 
       // Force error in main logic
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('error', new Error('Stream Error')), 0);
-        return stream;
-      });
+      mockFs.createWriteStream.mockImplementationOnce(() =>
+        createErroringWriteStream(new Error('Stream Error'))
+      );
 
       // Force error in cleanup (temp dir removal fails)
       mockFs.rmdirSync.mockImplementationOnce(() => {
@@ -933,8 +897,12 @@ describe('Middleware Tests', () => {
     });
 
     it('should handle request close event during single file upload', async () => {
-      delete req.headers['x-chunk-index'];
-      delete req.headers['x-total-chunks'];
+      req = createMockRequest({
+        method: 'POST',
+        url: '/upload',
+        headers: { 'content-length': '100' },
+        params: req.params,
+      });
 
       const mockStream = createMockStream();
       mockFs.createWriteStream.mockReturnValueOnce(mockStream);
@@ -942,16 +910,13 @@ describe('Middleware Tests', () => {
       const uploadPromise = uploadFile(req, res);
 
       // Simulate request close
-      const [, closeHandler] = req.on.mock.calls.find(call => call[0] === 'close');
-      if (closeHandler) {
-        closeHandler();
-      }
-
-      // Finish stream to resolve promise
-      mockStream.emit('finish');
+      req.destroy();
 
       await uploadPromise;
-      expect(mockStream.end).toHaveBeenCalled();
+      await new Promise(resolve => {
+        setImmediate(resolve);
+      });
+      expect(mockStream.destroyed).toBe(true);
     });
 
     it('should reject chunked upload if merged size exceeds limit', async () => {
@@ -1001,11 +966,6 @@ describe('Middleware Tests', () => {
       mockDb.files.findOne.mockResolvedValue(null);
       mockDb.files.create.mockResolvedValue({});
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
-
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
@@ -1017,10 +977,9 @@ describe('Middleware Tests', () => {
       req.headers['x-total-chunks'] = '2';
 
       // Mock stream to emit error
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('error', new Error('Write Error')), 0);
-        return stream;
-      });
+      mockFs.createWriteStream.mockImplementationOnce(() =>
+        createErroringWriteStream(new Error('Write Error'))
+      );
 
       // Mock cleanup
       mockFs.readdirSync.mockReturnValue(['chunk-0']);
@@ -1044,10 +1003,9 @@ describe('Middleware Tests', () => {
       req.headers['x-total-chunks'] = '2';
 
       // Mock stream to emit error
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('error', new Error('Upload Failed')), 0);
-        return stream;
-      });
+      mockFs.createWriteStream.mockImplementationOnce(() =>
+        createErroringWriteStream(new Error('Upload Failed'))
+      );
 
       // Ensure temp dir exists
       mockFs.existsSync.mockReturnValue(true);
@@ -1073,23 +1031,7 @@ describe('Middleware Tests', () => {
       mockFs.mkdirSync.mockImplementation(() => {});
 
       // Mock createReadStream for checksum verification
-      mockFs.createReadStream.mockImplementation(() => {
-        const stream = new EventEmitter();
-        stream.pipe = jest.fn(dest => {
-          setTimeout(() => stream.emit('end'), 0);
-          return dest;
-        });
-        process.nextTick(() => {
-          stream.emit('data', Buffer.from('content'));
-          stream.emit('end');
-        });
-        return stream;
-      });
-
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      mockFs.createReadStream.mockImplementation(() => createMockReadStream());
 
       await uploadFile(req, res);
 
@@ -1108,11 +1050,6 @@ describe('Middleware Tests', () => {
       mockDb.versions.findOne.mockResolvedValue({ id: 1 });
       mockDb.providers.findOne.mockResolvedValue({ id: 1 });
       mockDb.architectures.findOne.mockResolvedValue(null); // Architecture not found
-
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
 
       await uploadFile(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
@@ -1145,19 +1082,9 @@ describe('Middleware Tests', () => {
       mockFs.existsSync.mockReturnValue(true);
 
       // Mock createReadStream to error out
-      mockFs.createReadStream.mockImplementation(() => {
-        const stream = new EventEmitter();
-        stream.pipe = jest.fn(dest => dest);
-        process.nextTick(() => {
-          stream.emit('error', new Error('Checksum Read Error'));
-        });
-        return stream;
-      });
-
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      mockFs.createReadStream.mockImplementation(() =>
+        createErroringStream(new Error('Checksum Read Error'))
+      );
 
       await uploadFile(req, res);
 
@@ -1177,7 +1104,7 @@ describe('Middleware Tests', () => {
     let res;
 
     beforeEach(() => {
-      req = {
+      req = createMockRequest({
         method: 'POST',
         url: '/upload',
         headers: { 'content-length': '100' },
@@ -1188,10 +1115,7 @@ describe('Middleware Tests', () => {
           providerName: 'virtualbox',
           architectureName: 'amd64',
         },
-        setTimeout: jest.fn(),
-        pipe: jest.fn(),
-        on: jest.fn(),
-      };
+      });
       res = {
         setTimeout: jest.fn(),
         setHeader: jest.fn(),
@@ -1205,12 +1129,10 @@ describe('Middleware Tests', () => {
 
     it('should handle stream errors and cleanup', async () => {
       const error = new Error('Stream failed');
-      req.pipe.mockImplementation(stream => {
-        process.nextTick(() => stream.emit('error', error));
-        return stream;
-      });
 
-      await uploadFile(req, res);
+      const uploadPromise = uploadFile(req, res);
+      req.destroy(error);
+      await uploadPromise;
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
@@ -1229,10 +1151,7 @@ describe('Middleware Tests', () => {
       mockDb.architectures.findOne.mockResolvedValue({ id: 1 });
       mockDb.files.findOne.mockResolvedValue(null);
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadSSLFile(req, res);
 
@@ -1243,13 +1162,10 @@ describe('Middleware Tests', () => {
 
     it('should handle SSL upload errors', async () => {
       const error = new Error('SSL Upload failed');
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('error', error), 0);
-        process.nextTick(() => stream.emit('error', error));
-        return stream;
-      });
 
-      await uploadSSLFile(req, res);
+      const uploadPromise = uploadSSLFile(req, res);
+      req.destroy(error);
+      await uploadPromise;
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
@@ -1289,14 +1205,13 @@ describe('Middleware Tests', () => {
       const uploadPromise = uploadFile(req, res);
 
       // Simulate request close
-      const [, closeHandler] = req.on.mock.calls.find(call => call[0] === 'close');
-      closeHandler();
-
-      // Finish stream to resolve promise
-      mockStream.emit('finish');
+      req.destroy();
 
       await uploadPromise;
-      expect(mockStream.end).toHaveBeenCalled();
+      await new Promise(resolve => {
+        setImmediate(resolve);
+      });
+      expect(mockStream.destroyed).toBe(true);
     });
 
     it('uploadFile should use default max size and log error if config load fails', async () => {
@@ -1316,10 +1231,7 @@ describe('Middleware Tests', () => {
       mockDb.files.findOne.mockResolvedValue(null);
       mockDb.files.create.mockResolvedValue({});
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -1740,7 +1652,7 @@ describe('Middleware Tests', () => {
 
       await authJwt.verifyToken(req, res, next);
 
-      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.status).toHaveBeenCalledWith(503);
     });
   });
 
@@ -1764,14 +1676,20 @@ describe('Middleware Tests', () => {
 
     it('isOrgMember should allow service account if authorized', async () => {
       req.isServiceAccount = true;
-      mockDb.service_account.findOne.mockResolvedValue({ id: 1 });
+      mockDb.user.findByPk.mockResolvedValue({ id: 1 });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'member' });
       await isOrgMember(req, res, next);
       expect(next).toHaveBeenCalled();
+      expect(req.userOrgRole).toBe('member');
     });
 
     it('isOrgMember should deny service account if not authorized', async () => {
       req.isServiceAccount = true;
       mockDb.service_account.findOne.mockResolvedValue(null);
+      mockDb.user.findByPk.mockResolvedValue({ id: 1 });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue(null);
       await isOrgMember(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
     });
@@ -2110,7 +2028,7 @@ describe('Middleware Tests', () => {
     let next;
 
     beforeEach(() => {
-      req = {
+      req = createMockRequest({
         body: {},
         params: {},
         query: {},
@@ -2118,10 +2036,7 @@ describe('Middleware Tests', () => {
         method: 'POST',
         path: '/test',
         __: key => key,
-        pipe: jest.fn(),
-        on: jest.fn(),
-        setTimeout: jest.fn(),
-      };
+      });
       res = {
         status: jest.fn().mockReturnThis(),
         send: jest.fn(),
@@ -2851,11 +2766,7 @@ describe('Middleware Tests', () => {
       // Mock statSync to return different size
       mockFs.statSync.mockReturnValue({ size: 1048576 }); // 1MB. Diff = 4MB > 1MB tolerance
 
-      // Mock stream to finish
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -2878,10 +2789,7 @@ describe('Middleware Tests', () => {
       // Mock existsSync to return true for final path to trigger cleanup logic
       mockFs.existsSync.mockReturnValue(true);
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -2889,15 +2797,12 @@ describe('Middleware Tests', () => {
     });
 
     it('uploadFile should cleanup on premature close error', async () => {
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('error', new Error('closed prematurely')), 0);
-        return stream;
-      });
-
       // Mock existsSync to return true for cleanup
       mockFs.existsSync.mockReturnValue(true);
 
-      await uploadFile(req, res);
+      const uploadPromise = uploadFile(req, res);
+      req.destroy(new Error('closed prematurely'));
+      await uploadPromise;
 
       expect(mockFs.unlink).toHaveBeenCalled();
     });
@@ -2917,10 +2822,7 @@ describe('Middleware Tests', () => {
       // Mock DB lookups to return null for version
       mockDb.versions.findOne.mockResolvedValue(null);
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -2946,10 +2848,7 @@ describe('Middleware Tests', () => {
       mockDb.versions.findOne.mockResolvedValue({ id: 1 });
       mockDb.providers.findOne.mockResolvedValue(null);
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -2971,10 +2870,7 @@ describe('Middleware Tests', () => {
           throw new Error('Unlink Error');
         }); // Second call in uploadMiddleware catch (fails)
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -2992,10 +2888,7 @@ describe('Middleware Tests', () => {
 
       res.headersSent = true; // Headers sent
 
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
@@ -3021,10 +2914,7 @@ describe('Middleware Tests', () => {
       mockDb.files.create.mockResolvedValue({});
 
       mockFs.statSync.mockReturnValue({ size: 100 });
-      req.pipe.mockImplementation(stream => {
-        setTimeout(() => stream.emit('finish'), 0);
-        return stream;
-      });
+      req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
       expect(res.status).toHaveBeenCalledWith(200);

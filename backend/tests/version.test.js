@@ -23,6 +23,8 @@ describe('Version API', () => {
   };
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Ensure user exists
     const hashedPassword = await bcrypt.hash('SoomePass', 8);
     testUser = await db.user.create({
@@ -78,7 +80,11 @@ describe('Version API', () => {
       role: 'member',
       is_primary: false,
     });
-    regularUserToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
+    regularUserToken = jwt.sign({ id: regularUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      issuer: 'boxvault',
+      audience: 'boxvault-api',
+    });
   });
 
   afterAll(async () => {
@@ -373,7 +379,11 @@ describe('Version API', () => {
       });
       const userRole = await db.role.findOne({ where: { name: 'user' } });
       await nonMember.setRoles([userRole]);
-      nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
     });
 
     afterAll(async () => {

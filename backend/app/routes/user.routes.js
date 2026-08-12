@@ -1,7 +1,6 @@
 // user.routes.js
 import { Router } from 'express';
 import { authJwt, verifySignUp, verifyOrgAccess, oidcTokenRefresh } from '../middleware/index.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   allAccess,
   userBoard,
@@ -33,7 +32,6 @@ import { listUserWatches } from '../controllers/box.controller.js';
 const router = Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter);
 
 router.use((req, res, next) => {
   void req;

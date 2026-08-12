@@ -13,6 +13,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 describe('User API', () => {
   let userToken;
   let adminToken;
@@ -25,6 +27,8 @@ describe('User API', () => {
   const uniqueId = Date.now().toString(36);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     const hashedPassword = await bcrypt.hash('aSecurePassword123', 8);
 
     // Create Users
@@ -408,7 +412,10 @@ describe('User API', () => {
         is_primary: false,
       });
 
-      const tempToken = jwt.sign({ id: tempUser.id }, 'test-secret', { expiresIn: '1h' });
+      const tempToken = jwt.sign({ id: tempUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .post(`/api/user/leave/${orgOne.name}`)
@@ -425,33 +432,30 @@ describe('User API', () => {
       await db.user.destroy({ where: { id: tempUser.id } });
     });
 
-    it('should allow an admin to globally promote a user to orgAdmin', async () => {
+    it('should no longer expose the global promote endpoint', async () => {
       const res = await request(app)
         .put(`/api/users/${anotherUser.id}/promote`)
         .set('x-access-token', adminToken);
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.message).toContain('Promoted to orgAdmin');
+      expect(res.statusCode).toBe(404);
 
-      // Verify role change
+      // Verify no role change happened
       const user = await db.user.findByPk(anotherUser.id, { include: ['roles'] });
       const roleNames = user.roles.map(r => r.name);
-      expect(roleNames).toContain('admin');
+      expect(roleNames).not.toContain('admin');
     });
 
-    it('should allow an admin to globally demote a orgAdmin to user', async () => {
+    it('should no longer expose the global demote endpoint', async () => {
       const res = await request(app)
         .put(`/api/users/${anotherUser.id}/demote`)
         .set('x-access-token', adminToken);
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.message).toContain('Demoted to user');
+      expect(res.statusCode).toBe(404);
 
-      // Verify role change
+      // Verify roles unchanged
       const user = await db.user.findByPk(anotherUser.id, { include: ['roles'] });
       const roleNames = user.roles.map(r => r.name);
       expect(roleNames).toContain('user');
-      expect(roleNames).not.toContain('admin');
     });
 
     it('should not allow a regular user to change roles', async () => {
@@ -526,10 +530,15 @@ describe('User API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('message', 'User was deleted successfully!');
+      expect(res.body.message).toContain('removed from organization');
 
       const checkUser = await db.user.findByPk(tempUser.id);
-      expect(checkUser).toBeNull();
+      expect(checkUser).not.toBeNull();
+
+      const membership = await db.UserOrg.findUserOrgRole(tempUser.id, orgOne.id);
+      expect(membership).toBeNull();
+
+      await db.user.destroy({ where: { id: tempUser.id } });
     });
 
     it('should return 404 when deleting a user from a non-existent organization', async () => {
@@ -634,12 +643,13 @@ describe('User API', () => {
       expect(checkUser).toBeNull();
     });
 
-    it('should return 404 when changing email for non-existent user', async () => {
+    it('should return 403 when changing email for another user id', async () => {
       const res = await request(app)
         .put(`/api/users/999999/change-email`)
         .set('x-access-token', userToken)
         .send({ newEmail: 'fail@test.com' });
-      expect(res.statusCode).toBe(404);
+      expect(res.statusCode).toBe(403);
+      expect(res.body.message).toContain('Require Admin role or account ownership!');
     });
   });
 
@@ -810,11 +820,15 @@ describe('User API', () => {
       jest.restoreAllMocks();
     });
 
+    const mwUserMock = () => ({ id: 1, getRoles: () => Promise.resolve([{ name: 'user' }]) });
+    const mwAdminMock = () => ({ id: 1, getRoles: () => Promise.resolve([{ name: 'admin' }]) });
+
     it('GET /api/user - should handle database errors', async () => {
-      // Mock success for middleware, then failure for controller
+      // Mock success for token revocation check + middleware, then failure for controller
       jest
         .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'user' }]) })
+        .mockResolvedValueOnce(mwUserMock())
+        .mockResolvedValueOnce(mwUserMock())
         .mockRejectedValueOnce(new Error('DB Error'));
 
       const res = await request(app).get('/api/user').set('x-access-token', userToken);
@@ -823,10 +837,11 @@ describe('User API', () => {
     });
 
     it('GET /api/user - should handle user not found in controller', async () => {
-      // Mock success for middleware, then null for controller
+      // Mock success for token revocation check + middleware, then null for controller
       jest
         .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'user' }]) })
+        .mockResolvedValueOnce(mwUserMock())
+        .mockResolvedValueOnce(mwUserMock())
         .mockResolvedValueOnce(null);
 
       const res = await request(app).get('/api/user').set('x-access-token', userToken);
@@ -861,7 +876,8 @@ describe('User API', () => {
     it('GET /api/user - should return profile with null organization if no primary set', async () => {
       jest
         .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'user' }]) }) // Middleware
+        .mockResolvedValueOnce(mwUserMock()) // Token revocation check
+        .mockResolvedValueOnce(mwUserMock()) // Middleware
         .mockResolvedValueOnce({
           id: 1,
           username: 'test',
@@ -880,7 +896,8 @@ describe('User API', () => {
     it('GET /api/user - should return profile with no roles', async () => {
       jest
         .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'user' }]) }) // Middleware (needs valid role to pass)
+        .mockResolvedValueOnce(mwUserMock()) // Token revocation check
+        .mockResolvedValueOnce(mwUserMock()) // Middleware (needs valid role to pass)
         .mockResolvedValueOnce({
           id: 1,
           username: 'test',
@@ -908,7 +925,10 @@ describe('User API', () => {
       const userRole = await db.role.findOne({ where: { name: 'user' } });
       await noOrgUser.setRoles([userRole]);
 
-      const token = jwt.sign({ id: noOrgUser.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: noOrgUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .get('/api/user/primary-organization')
@@ -962,37 +982,30 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/change-password`)
         .set('x-access-token', userToken)
-        .send({ currentPassword: 'old', newPassword: 'new' });
+        .send({ currentPassword: 'old', newPassword: 'aPolicyCompliantPassword' });
       expect(res.statusCode).toBe(500);
     });
 
-    it('PUT /api/users/:userId/change-password - should handle user not found (404)', async () => {
+    it('PUT /api/users/:userId/change-password - should reject other user id (403)', async () => {
       const res = await request(app)
         .put(`/api/users/999999/change-password`)
         .set('x-access-token', userToken)
         .send({ newPassword: 'new' });
-      expect(res.statusCode).toBe(404);
+      expect(res.statusCode).toBe(403);
     });
 
-    it('PUT /api/users/:userId/demote - should handle errors', async () => {
-      // Mock user.removeRole to throw
-      jest.spyOn(db.user.prototype, 'removeRole').mockRejectedValue(new Error(''));
-
+    it('PUT /api/users/:userId/demote - endpoint removed (404)', async () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/demote`)
         .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(404);
     });
 
-    it('PUT /api/users/:userId/promote - should handle errors with fallback message', async () => {
-      // Mock user.addRole to throw error without message
-      jest.spyOn(db.user.prototype, 'addRole').mockRejectedValue({});
-      jest.spyOn(db.user.prototype, 'addRole').mockRejectedValue(new Error(''));
-
+    it('PUT /api/users/:userId/promote - endpoint removed (404)', async () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/promote`)
         .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(404);
     });
 
     it('PUT /api/users/:userId/promote - should handle user not found (404)', async () => {
@@ -1058,8 +1071,9 @@ describe('User API', () => {
     it('GET /api/users/roles - should handle errors', async () => {
       jest
         .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'admin' }]) }) // isUser middleware
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'admin' }]) }) // isAdmin middleware
+        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
+        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
+        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
         .mockRejectedValueOnce(new Error('')); // controller
 
       const res = await request(app).get('/api/users/roles').set('x-access-token', adminToken);
@@ -1069,8 +1083,9 @@ describe('User API', () => {
     it('GET /api/users/roles - should handle user not found in controller', async () => {
       jest
         .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'admin' }]) }) // isUser middleware
-        .mockResolvedValueOnce({ id: 1, getRoles: () => Promise.resolve([{ name: 'admin' }]) }) // isAdmin middleware
+        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
+        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
+        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
         .mockResolvedValueOnce(null);
 
       const res = await request(app).get('/api/users/roles').set('x-access-token', adminToken);
@@ -1138,7 +1153,12 @@ describe('User API', () => {
     });
 
     it('PUT /api/users/:userId/suspend - should handle database errors', async () => {
-      jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
+      jest
+        .spyOn(db.user, 'findByPk')
+        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
+        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
+        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
+        .mockRejectedValueOnce(new Error('DB Error'));
 
       const res = await request(app)
         .put(`/api/users/${testUser.id}/suspend`)
@@ -1148,7 +1168,12 @@ describe('User API', () => {
     });
 
     it('PUT /api/users/:userId/resume - should handle database errors', async () => {
-      jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
+      jest
+        .spyOn(db.user, 'findByPk')
+        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
+        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
+        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
+        .mockRejectedValueOnce(new Error('DB Error'));
 
       const res = await request(app)
         .put(`/api/users/${testUser.id}/resume`)
@@ -1184,7 +1209,7 @@ describe('User API', () => {
     });
 
     it('DELETE /api/users/:userId - should handle database errors', async () => {
-      jest.spyOn(db.user, 'destroy').mockRejectedValue(new Error('DB Error'));
+      jest.spyOn(db.user.prototype, 'destroy').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
         .delete(`/api/users/${testUser.id}`)
@@ -1207,10 +1232,10 @@ describe('User API', () => {
       expect(res.statusCode).toBe(404);
     });
 
-    it('DELETE /api/users/:userId - should return 200 with error message if user not found', async () => {
+    it('DELETE /api/users/:userId - should return 404 if user not found', async () => {
       const res = await request(app).delete('/api/users/999999').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body.message).toContain('Cannot delete User');
+      expect(res.statusCode).toBe(404);
+      expect(res.body.message).toBe('User not found.');
     });
 
     it('PUT /api/users/:userId/suspend - should handle error with no message (suspend.js line 56)', async () => {
@@ -1235,7 +1260,12 @@ describe('User API', () => {
         save: jest.fn().mockRejectedValue(new Error('')), // Fail with empty message
         suspended: true,
       };
-      jest.spyOn(db.user, 'findByPk').mockResolvedValue(mockUser);
+      jest
+        .spyOn(db.user, 'findByPk')
+        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
+        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
+        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
+        .mockResolvedValueOnce(mockUser); // controller
 
       const res = await request(app)
         .put(`/api/users/${testUser.id}/resume`)
@@ -1266,7 +1296,12 @@ describe('User API', () => {
         save: jest.fn().mockRejectedValue(new Error('')), // Fail with empty message
         suspended: true,
       };
-      jest.spyOn(db.user, 'findByPk').mockResolvedValue(mockUser);
+      jest
+        .spyOn(db.user, 'findByPk')
+        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
+        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
+        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
+        .mockResolvedValueOnce(mockUser); // controller
 
       const res = await request(app)
         .put(`/api/users/${testUser.id}/resume`)

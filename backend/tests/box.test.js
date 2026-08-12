@@ -14,6 +14,8 @@ import configLoader from '../app/utils/config-loader.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
 import { log } from '../app/utils/Logger.js';
 
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 describe('Box API', () => {
   let authToken;
   let user;
@@ -29,6 +31,8 @@ describe('Box API', () => {
   });
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // 1. Create User
     const hashedPassword = await bcrypt.hash('aSecurePassword', 8);
     user = await db.user.create({
@@ -132,7 +136,10 @@ describe('Box API', () => {
         password: 'password',
         verified: true,
       });
-      const regToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
+      const regToken = jwt.sign({ id: regularUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       // Create a box to try deleting
       await db.box.create({
@@ -493,7 +500,7 @@ describe('Box API', () => {
           isServiceAccount: true,
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app)
@@ -1106,7 +1113,9 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Details DB Error');
+      expect(res.body.message).toBe(
+        'Some error occurred while retrieving the organization details.'
+      );
 
       findSpy.mockRestore();
     });
@@ -1176,7 +1185,9 @@ describe('Box API', () => {
       const foundBox = res.body.find(b => b.id === box.id);
       expect(foundBox).toBeDefined();
       expect(foundBox.user).toBeDefined();
-      expect(foundBox.user.organization).toBeNull();
+      expect(foundBox.user.organization).toBeUndefined();
+      expect(foundBox.organization).toBeDefined();
+      expect(foundBox.organization.name).toBe(orgName);
 
       await box.destroy();
       await noOrgUser.destroy();
@@ -1238,7 +1249,10 @@ describe('Box API', () => {
         organization_id: organization.id,
         role: 'member',
       });
-      const memberToken = jwt.sign({ id: member.id }, 'test-secret', { expiresIn: '1h' });
+      const memberToken = jwt.sign({ id: member.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       // Create box owned by admin
       const adminBox = await db.box.create({
@@ -1404,7 +1418,9 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
       const found = res.body.find(b => b.name === box.name);
       expect(found).toBeDefined();
-      expect(found.user.primaryOrganization).toBeNull();
+      expect(found.user.primaryOrganization).toBeUndefined();
+      expect(found.organization).toBeDefined();
+      expect(found.organization.name).toBe(orgName);
 
       await box.destroy();
       await noPrimUser.destroy();
@@ -1431,7 +1447,10 @@ describe('Box API', () => {
         organization_id: organization.id,
         role: 'member',
       });
-      const token = jwt.sign({ id: member.id }, 'test-secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: member.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       // Create admin box
       const box = await db.box.create({
@@ -1590,14 +1609,14 @@ describe('Box API', () => {
 
       // Verify null checks
       const noOrgBox = res.body.find(b => b.name === 'no-org-box');
-      expect(noOrgBox.user.organization).toBeNull();
+      expect(noOrgBox.user.organization).toBeUndefined();
 
       const orphanBox = res.body.find(b => b.name === 'orphan-box');
       expect(orphanBox.user).toBeNull();
 
       const validBox = res.body.find(b => b.name === 'valid-box');
-      expect(validBox.user.organization).not.toBeNull();
-      expect(validBox.user.organization.name).toBe('ValidOrg');
+      expect(validBox.organization).toBeDefined();
+      expect(validBox.organization.name).toBe(orgName);
 
       // Test Authenticated Request (Member) to cover hasAccess=true via membership
       const resAuth = await request(app)
@@ -1706,7 +1725,9 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
       const found = res.body.find(b => b.name === box.name);
       expect(found).toBeDefined();
-      expect(found.user.primaryOrganization.emailHash).toBeNull();
+      expect(found.user.primaryOrganization).toBeUndefined();
+      expect(found.organization).toBeDefined();
+      expect(found.organization.emailHash).toBe('');
 
       await box.destroy();
       await emptyHashUser.destroy();
@@ -1848,7 +1869,7 @@ describe('Box API', () => {
       expect(res.body).toHaveLength(3);
       const [box1, box2, box3] = res.body;
       expect(box1.user.primaryOrganization.emailHash).toBe('valid');
-      expect(box2.user.primaryOrganization.emailHash).toBeNull();
+      expect(box2.user.primaryOrganization.emailHash).toBe('');
       expect(box3.user.primaryOrganization.emailHash).toBeNull();
 
       findAllSpy.mockRestore();
@@ -2016,12 +2037,15 @@ describe('Box API', () => {
         password: 'password',
         verified: true,
       });
-      const saOwnerToken = jwt.sign({ id: saOwner.id }, 'test-secret', { expiresIn: '1h' });
+      const saOwnerToken = jwt.sign({ id: saOwner.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       // 2. Create Org
       const saOrg = await db.organization.create({ name: `sa-org-det-${uniqueId}` });
 
-      // 3. Create Service Account
+      // 3. Create Service Account owned by saOwner
       const sa = await db.service_account.create({
         username: `sa-det-${uniqueId}`,
         token: `sa-token-det-${uniqueId}`,
@@ -2029,28 +2053,18 @@ describe('Box API', () => {
         userId: saOwner.id,
       });
 
-      // 4. Create Dummy User to satisfy Box FK (id = sa.id)
-      let dummyUser = await db.user.findByPk(sa.id);
-      if (!dummyUser) {
-        dummyUser = await db.user.create({
-          id: sa.id,
-          username: `dummy-sa-${sa.id}`,
-          email: `dummy-sa-${sa.id}@example.com`,
-          password: 'password',
-        });
-      }
-
-      // 5. Create Private Box linked to SA ID
+      // 4. Create Private Box - service accounts impersonate their owning
+      // user, so boxes they create carry the owning user's id
       const saBox = await db.box.create({
         name: `sa-box-det-${uniqueId}`,
         description: 'SA Created Box',
         isPublic: false,
         published: true,
         organizationId: saOrg.id,
-        userId: sa.id, // This links to dummyUser in DB, but controller treats as SA ID
+        userId: saOwner.id,
       });
 
-      // 6. Request details as saOwner
+      // 5. Request details as saOwner
       const res = await request(app)
         .get(`/api/organization/${saOrg.name}/box`)
         .set('x-access-token', saOwnerToken);
@@ -2061,9 +2075,6 @@ describe('Box API', () => {
 
       // Cleanup
       await db.box.destroy({ where: { id: saBox.id } });
-      if (dummyUser.username.startsWith('dummy-sa-')) {
-        await dummyUser.destroy();
-      }
       await sa.destroy();
       await saOrg.destroy();
       await saOwner.destroy();

@@ -25,6 +25,8 @@ describe('Organization API', () => {
   });
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // 1. Create Regular User
     const hashedPassword = await bcrypt.hash('password', 8);
     user = await db.user.create({
@@ -866,13 +868,14 @@ describe('Organization API', () => {
       await outsider.destroy();
     });
 
-    it('GET /api/organization/:organization/users/:userId/role - should handle database errors', async () => {
+    it('GET /api/organization/:organization/users/:userId/role - should reject auth when user lookups fail', async () => {
       jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
       const res = await request(app)
         .get(`/api/organization/${orgName}/users/${user.id}/role`)
         .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('GET /api/organization/:organization/users/:userId/role - should get a user role in an org', async () => {
@@ -920,13 +923,14 @@ describe('Organization API', () => {
       await outsider.destroy();
     });
 
-    it('GET /api/organization/:organization/users/:userId/role - should handle database errors', async () => {
+    it('GET /api/organization/:organization/users/:userId/role - should reject auth when user lookups fail', async () => {
       jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
       const res = await request(app)
         .get(`/api/organization/${orgName}/users/${user.id}/role`)
         .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('DELETE /api/organization/:organization/members/:userId - should remove a user from an organization', async () => {
@@ -1035,16 +1039,16 @@ describe('Organization API', () => {
       await otherOrg.destroy();
     });
 
-    it('DELETE /api/organization/:organization/members/:userId - should handle database errors', async () => {
+    it('DELETE /api/organization/:organization/members/:userId - should reject auth when user lookups fail', async () => {
       jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/members/${user.id}`)
         .set('x-access-token', adminToken);
 
-      expect(res.statusCode).toBe(500);
-
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('DELETE /api/organization/:organization/members/:userId - should return 404 if user not found (removeuser.js)', async () => {
@@ -1131,7 +1135,11 @@ describe('Organization API', () => {
         organization_id: organization.id,
         role: 'member',
       });
-      const boxUserToken = jwt.sign({ id: boxUser.id }, 'test-secret', { expiresIn: '1h' });
+      const boxUserToken = jwt.sign({ id: boxUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
 
       const privBox = await db.box.create({
         name: `priv-box-count-${uniqueId}`,
@@ -1336,17 +1344,16 @@ describe('Organization API', () => {
       jest.restoreAllMocks();
     });
 
-    it('DELETE /api/organization/:organization/members/:userId - should handle controller errors', async () => {
-      // Mock User.findByPk to throw error (called inside controller)
+    it('DELETE /api/organization/:organization/members/:userId - should reject auth when controller user lookup fails', async () => {
       jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('Controller Error'));
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/members/${user.id}`)
         .set('x-access-token', adminToken);
 
-      expect(res.statusCode).toBe(500);
-
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('GET /api/organization/:organization/users - should handle database errors (findOneWithUsers)', async () => {
@@ -1431,7 +1438,7 @@ describe('Organization API', () => {
       jest.restoreAllMocks();
     });
 
-    it('PUT /api/organization/:organization/users/:userId/role - should handle database errors', async () => {
+    it('PUT /api/organization/:organization/users/:userId/role - should reject auth when user lookups fail', async () => {
       jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
@@ -1439,8 +1446,9 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken)
         .send({ role: 'admin' });
 
-      expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('PUT /api/organization/:organization/users/:userId/role - should handle database errors during update', async () => {
@@ -1524,7 +1532,7 @@ describe('Organization API', () => {
       jest.restoreAllMocks();
     });
 
-    it('PUT /api/organization/:organization/users/:userId/role - should handle database errors', async () => {
+    it('PUT /api/organization/:organization/users/:userId/role - should reject auth when user lookups fail', async () => {
       jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
@@ -1532,8 +1540,9 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken)
         .send({ role: 'admin' });
 
-      expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('should calculate totalBoxes correctly including private boxes for self', async () => {
@@ -1570,7 +1579,11 @@ describe('Organization API', () => {
         organization_id: organization.id,
         role: 'member',
       });
-      const boxUserToken = jwt.sign({ id: boxUser.id }, 'test-secret', { expiresIn: '1h' });
+      const boxUserToken = jwt.sign({ id: boxUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
 
       const privBox = await db.box.create({
         name: `priv-box-count-${uniqueId}`,

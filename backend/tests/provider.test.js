@@ -34,6 +34,8 @@ describe('Provider API', () => {
   };
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Setup User
     const userRole = await db.role.findOne({ where: { name: 'user' } });
     const hashedPassword = await bcrypt.hash('SoomePass', 8);
@@ -82,7 +84,11 @@ describe('Provider API', () => {
       organization_id: org.id,
       role: 'member', // Standard member role
     });
-    regularToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
+    regularToken = jwt.sign({ id: regularUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      issuer: 'boxvault',
+      audience: 'boxvault-api',
+    });
 
     // Setup Outsider User (Not a member)
     const outsiderUser = await db.user.create({
@@ -91,7 +97,11 @@ describe('Provider API', () => {
       password: hashedPassword,
       verified: true,
     });
-    outsiderToken = jwt.sign({ id: outsiderUser.id }, 'test-secret', { expiresIn: '1h' });
+    outsiderToken = jwt.sign({ id: outsiderUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      issuer: 'boxvault',
+      audience: 'boxvault-api',
+    });
 
     // Create test box
     await request(app)

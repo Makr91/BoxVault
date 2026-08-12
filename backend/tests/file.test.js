@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
-import { EventEmitter } from 'events';
+import { Readable, PassThrough } from 'stream';
 
 import app from '../server.js';
 import db from '../app/models/index.js';
@@ -44,6 +44,8 @@ describe('File API', () => {
   });
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Create User
     testUser = await User.create({
       username: `filetestuser-${uniqueId}`,
@@ -165,10 +167,10 @@ describe('File API', () => {
         `bytes ${rangeStart}-${rangeEnd}/${fileContent.length}`
       );
       expect(res.headers['content-length']).toBe(String(rangeEnd - rangeStart + 1));
-      expect(Buffer.from(res.text, 'binary')).toEqual(fileContent.slice(rangeStart, rangeEnd + 1));
+      expect(res.body).toEqual(fileContent.slice(rangeStart, rangeEnd + 1));
     });
 
-    it('should return 416 for unsatisfiable range', async () => {
+    it('should return 416 with generic error for unsatisfiable range', async () => {
       const res = await request(app)
         .get(
           `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download`
@@ -177,10 +179,10 @@ describe('File API', () => {
         .set('Range', `bytes=1000-2000`);
 
       expect(res.statusCode).toBe(416);
-      expect(res.body).toHaveProperty('error', 'RANGE_NOT_SATISFIABLE');
+      expect(res.body).toHaveProperty('message', 'Some error occurred while downloading the file.');
     });
 
-    it('should return 416 for invalid range (start > end)', async () => {
+    it('should return 416 with generic error for invalid range (start > end)', async () => {
       const res = await request(app)
         .get(
           `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download`
@@ -189,7 +191,7 @@ describe('File API', () => {
         .set('Range', `bytes=5-4`);
 
       expect(res.statusCode).toBe(416);
-      expect(res.body).toHaveProperty('error', 'RANGE_NOT_SATISFIABLE');
+      expect(res.body).toHaveProperty('message', 'Some error occurred while downloading the file.');
     });
   });
 
@@ -467,7 +469,7 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Database connection failed');
+      expect(res.body.message).toBe('Some error occurred while retrieving the file information.');
     });
 
     it('POST /file/get-download-link - should handle database errors', async () => {
@@ -485,7 +487,7 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Database error');
+      expect(res.body.message).toBe('Some error occurred while generating the download link.');
 
       spy.mockRestore();
     });
@@ -969,17 +971,14 @@ describe('File API', () => {
         fs.writeFileSync(filePath, fileContent);
       }
 
-      // Mock fs.createReadStream to emit error
-      const streamMock = {
-        pipe: jest.fn(),
-        on: jest.fn((event, handler) => {
-          if (event === 'error') {
-            handler(new Error('Stream Error'));
-          }
-          return streamMock;
-        }),
-      };
-      jest.spyOn(fs, 'createReadStream').mockReturnValue(streamMock);
+      jest.spyOn(fs, 'createReadStream').mockImplementation(
+        () =>
+          new Readable({
+            read() {
+              this.destroy(new Error('Stream Error'));
+            },
+          })
+      );
 
       const res = await request(app)
         .get(
@@ -987,10 +986,8 @@ describe('File API', () => {
         )
         .set('x-access-token', userToken);
 
-      // Since headers are sent (200 OK) before the error, the status might remain 200
-      // or change to 500 depending on when the error is caught.
-      // The content-type will be octet-stream, so we check res.text.
-      expect(res.text).toContain('Stream Error');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream errors (Range)', async () => {
@@ -1010,18 +1007,14 @@ describe('File API', () => {
         fs.writeFileSync(filePath, fileContent);
       }
 
-      // Mock fs.createReadStream to trigger error handler immediately upon registration
-      // This avoids timing issues with async emits in integration tests
-      const streamMock = {
-        pipe: jest.fn(),
-        on: jest.fn().mockImplementation(function (event, handler) {
-          if (event === 'error') {
-            handler(new Error('Range Stream Error'));
-          }
-          return this;
-        }),
-      };
-      jest.spyOn(fs, 'createReadStream').mockReturnValue(streamMock);
+      jest.spyOn(fs, 'createReadStream').mockImplementation(
+        () =>
+          new Readable({
+            read() {
+              this.destroy(new Error('Range Stream Error'));
+            },
+          })
+      );
 
       const res = await request(app)
         .get(
@@ -1031,7 +1024,7 @@ describe('File API', () => {
         .set('Range', 'bytes=0-10');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Range Stream Error');
+      expect(res.body.message).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream creation errors (Range)', async () => {
@@ -1051,9 +1044,14 @@ describe('File API', () => {
         fs.writeFileSync(filePath, fileContent);
       }
 
-      jest.spyOn(fs, 'createReadStream').mockImplementation(() => {
-        throw new Error('Sync Stream Error');
-      });
+      jest.spyOn(fs, 'createReadStream').mockImplementation(
+        () =>
+          new Readable({
+            read() {
+              this.destroy(new Error('Sync Stream Error'));
+            },
+          })
+      );
 
       const res = await request(app)
         .get(
@@ -1063,7 +1061,7 @@ describe('File API', () => {
         .set('Range', 'bytes=0-10');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Sync Stream Error');
+      expect(res.body.message).toBe('Some error occurred while downloading the file.');
     });
 
     it('POST /file/upload - should handle upload middleware error', async () => {
@@ -1168,15 +1166,13 @@ describe('File API', () => {
     });
 
     it('GET /file/download - should handle stream error after headers sent (standard)', async () => {
-      const mockStream = new EventEmitter();
-      mockStream.pipe = dest => {
-        dest.write('some data');
-        // Emit error asynchronously to allow headers to be sent and flushed. Increased delay slightly.
+      const mockStream = new PassThrough();
+      mockStream.write('some data');
+      mockStream.once('resume', () => {
         setTimeout(() => {
-          mockStream.emit('error', new Error('Late Stream Error'));
+          mockStream.destroy(new Error('Late Stream Error'));
         }, 10);
-        return dest;
-      };
+      });
 
       jest.spyOn(fs, 'createReadStream').mockReturnValue(mockStream);
       const logSpy = jest.spyOn(log.error, 'error');
@@ -1203,7 +1199,7 @@ describe('File API', () => {
       );
     });
 
-    it('GET /file/download - should handle invalid range (NaN)', async () => {
+    it('GET /file/download - should ignore malformed range (NaN) and return full content', async () => {
       const res = await request(app)
         .get(
           `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download`
@@ -1211,18 +1207,19 @@ describe('File API', () => {
         .set('x-access-token', userToken)
         .set('Range', 'bytes=abc-');
 
-      expect(res.statusCode).toBe(416);
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['content-range']).toBeUndefined();
     });
 
     it('GET /file/download - should handle stream creation error during range request', async () => {
-      // Mock createReadStream to throw ONLY when options are passed (range request)
-      const originalCreateReadStream = fs.createReadStream;
-      jest.spyOn(fs, 'createReadStream').mockImplementation((filePath, options) => {
-        if (options && (options.start !== undefined || options.end !== undefined)) {
-          throw new Error('Range Stream Creation Error');
-        }
-        return originalCreateReadStream(filePath, options);
-      });
+      jest.spyOn(fs, 'createReadStream').mockImplementation(
+        () =>
+          new Readable({
+            read() {
+              this.destroy(new Error('Range Stream Creation Error'));
+            },
+          })
+      );
 
       const res = await request(app)
         .get(
@@ -1232,18 +1229,18 @@ describe('File API', () => {
         .set('Range', 'bytes=0-10');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Range Stream Creation Error');
+      expect(res.body.message).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream creation error (Standard)', async () => {
-      // Mock createReadStream to throw for standard request (no options or empty options)
-      const originalCreateReadStream = fs.createReadStream;
-      jest.spyOn(fs, 'createReadStream').mockImplementation((filePath, options) => {
-        if (!options || (options.start === undefined && options.end === undefined)) {
-          throw new Error('Sync Stream Error Standard');
-        }
-        return originalCreateReadStream(filePath, options);
-      });
+      jest.spyOn(fs, 'createReadStream').mockImplementation(
+        () =>
+          new Readable({
+            read() {
+              this.destroy(new Error('Sync Stream Error Standard'));
+            },
+          })
+      );
 
       const res = await request(app)
         .get(
@@ -1252,7 +1249,7 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Sync Stream Error Standard');
+      expect(res.body.message).toBe('Some error occurred while downloading the file.');
     });
 
     it('DELETE /file/delete - should handle permission check error', async () => {
@@ -1265,7 +1262,7 @@ describe('File API', () => {
       expect(res.statusCode).toBe(500);
     });
 
-    it('POST /file/get-download-link - should return error object in response', async () => {
+    it('POST /file/get-download-link - should return generic error message in response', async () => {
       const err = new Error('Test Error');
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockRejectedValue(err);
 
@@ -1276,7 +1273,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body).toHaveProperty('error');
+      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body).not.toHaveProperty('error');
     });
 
     it('POST /file/get-download-link - should handle non-Error object thrown', async () => {
@@ -1289,7 +1287,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('String Error');
+      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body).not.toHaveProperty('error');
     });
 
     it('GET /file/info - should return 404 if file missing for private box (member)', async () => {
@@ -1320,7 +1319,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.code).toBe('UNKNOWN_ERROR');
+      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body).not.toHaveProperty('code');
     });
 
     it('GET /file/download - should clamp range end if larger than file size', async () => {
@@ -1362,8 +1362,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
-      expect(res.body.error).toBeDefined(); // Verify error object is returned (link.js line 104)
+      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body).not.toHaveProperty('error');
     });
 
     it('PUT /file/upload - should handle error with fallback code', async () => {
@@ -1381,7 +1381,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.code).toBe('UNKNOWN_ERROR');
+      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body).not.toHaveProperty('code');
     });
 
     it('PUT /file/upload - should handle error with specific code', async () => {
@@ -1398,7 +1399,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.code).toBe('SPECIFIC_CODE');
+      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body).not.toHaveProperty('code');
     });
 
     it('POST /file/upload - should handle error with fallback code', async () => {
@@ -1416,7 +1418,9 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.details.code).toBe('UNKNOWN_ERROR');
+      expect(res.body.error).toBe('UPLOAD_ERROR');
+      expect(res.body.message).toBe('Could not upload the file');
+      expect(res.body.details).not.toHaveProperty('code');
     });
 
     it('POST /file/upload - should handle error with specific code', async () => {
@@ -1433,7 +1437,9 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.details.code).toBe('SPECIFIC_CODE');
+      expect(res.body.error).toBe('UPLOAD_ERROR');
+      expect(res.body.message).toBe('Could not upload the file');
+      expect(res.body.details).not.toHaveProperty('code');
     });
 
     it('POST /file/get-download-link - should return 403 for private box without token', async () => {
@@ -1730,6 +1736,7 @@ describe('File API', () => {
         end: jest.fn(),
         removeHeader: jest.fn(),
         writeHead: jest.fn(),
+        download: jest.fn(),
         headersSent: false,
         writableEnded: false,
       };
@@ -1739,35 +1746,31 @@ describe('File API', () => {
       jest.spyOn(db.files, 'findOne').mockResolvedValue({ increment: jest.fn() });
     });
 
-    // 1. Sync stream error during range request (headers NOT sent) -> Lines 241-248
-    it('download controller - should handle async stream error during range request (headers NOT sent)', async () => {
-      req.headers.range = 'bytes=0-10';
+    it('download controller - should handle res.download errors (headers NOT sent)', async () => {
       res.headersSent = false;
-
-      let stream;
-      jest.spyOn(fs, 'createReadStream').mockImplementation(() => {
-        stream = new EventEmitter();
-        stream.pipe = jest.fn();
-        return stream;
+      res.download = jest.fn((filePath, fileName, options, cb) => {
+        void filePath;
+        void fileName;
+        void options;
+        cb(new Error('Download Error'));
       });
 
       await downloadController(req, res);
-      stream.emit('error', new Error('Async Range Error'));
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Async Range Error' })
+        expect.objectContaining({ message: 'files.download.genericError' })
       );
     });
 
-    // 2. Sync stream creation error during range request (headers SENT) -> Line 263
-    it('download controller - should handle sync stream error during range request (headers SENT)', async () => {
-      req.headers.range = 'bytes=0-10';
+    it('download controller - should handle res.download errors (headers SENT)', async () => {
       res.headersSent = true;
       res.writableEnded = false;
-
-      jest.spyOn(fs, 'createReadStream').mockImplementation(() => {
-        throw new Error('Sync Range Error');
+      res.download = jest.fn((filePath, fileName, options, cb) => {
+        void filePath;
+        void fileName;
+        void options;
+        cb(new Error('Download Error'));
       });
 
       await downloadController(req, res);
@@ -1775,24 +1778,20 @@ describe('File API', () => {
       expect(res.end).toHaveBeenCalled();
     });
 
-    // 3. Async stream error during standard download (headers SENT) -> Line 284
-    it('download controller - should handle async stream error during standard download (headers NOT sent)', async () => {
-      res.headersSent = false;
-
-      let stream;
-      jest.spyOn(fs, 'createReadStream').mockImplementation(() => {
-        stream = new EventEmitter();
-        stream.pipe = jest.fn();
-        return stream;
-      });
+    it('download controller - should stream the file via res.download', async () => {
+      const increment = jest.fn();
+      db.files.findOne.mockResolvedValue({ increment, fileName: 'vagrant.box', downloadCount: 0 });
 
       await downloadController(req, res);
-      stream.emit('error', new Error('Async Standard Error'));
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Async Standard Error' })
+      expect(res.setHeader).toHaveBeenCalledWith('Accept-Ranges', 'bytes');
+      expect(res.download).toHaveBeenCalledWith(
+        expect.stringContaining('vagrant.box'),
+        'vagrant.box',
+        { headers: { 'Content-Type': 'application/octet-stream' } },
+        expect.any(Function)
       );
+      expect(increment).toHaveBeenCalledWith('downloadCount');
     });
 
     // 4. Main catch block (headers NOT sent) -> Line 318
@@ -1805,7 +1804,9 @@ describe('File API', () => {
       expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json');
       expect(res.removeHeader).toHaveBeenCalledWith('Content-Disposition');
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test Error' }));
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'files.download.genericError' })
+      );
     });
 
     // 5. Main catch block (headers SENT) -> Lines 320-321
@@ -1865,7 +1866,9 @@ describe('File API', () => {
       await downloadController(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ message: 'String Error' }));
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'files.download.genericError' })
+      );
     });
   });
 });

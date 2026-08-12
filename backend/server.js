@@ -414,16 +414,19 @@ const initializeApp = async () => {
       })
     );
 
-    // Wait for database sync
-    try {
-      await db.sequelize.sync({ alter: true });
-      log.app.info('Database synced');
-    } catch (error) {
-      log.app.warn('Database sync with alter failed, falling back to standard sync', {
-        error: error.message,
-      });
-      await db.sequelize.sync();
-      log.app.info('Database synced (fallback)');
+    // Wait for database sync. The test harness owns schema creation, so the
+    // app-level sync must not race it.
+    if (process.env.NODE_ENV !== 'test') {
+      try {
+        await db.sequelize.sync({ alter: true });
+        log.app.info('Database synced');
+      } catch (error) {
+        log.app.warn('Database sync with alter failed, falling back to standard sync', {
+          error: error.message,
+        });
+        await db.sequelize.sync();
+        log.app.info('Database synced (fallback)');
+      }
     }
 
     // Sync session store

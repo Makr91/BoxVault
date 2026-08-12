@@ -51,6 +51,14 @@ const appConfig = {
     enabled: { value: true },
     url: { value: 'https://example.com/ticket' },
   },
+  rate_limiting: {
+    window_minutes: { value: 15 },
+    max_requests: { value: 1000000 },
+    file_operations_max_requests: { value: 1000000 },
+    download_max_requests: { value: 1000000 },
+    download_link_max_requests: { value: 1000000 },
+    architecture_operations_max_requests: { value: 1000000 },
+  },
 };
 
 const authConfig = {
@@ -227,6 +235,24 @@ afterAll(async () => {
 
 // Helper functions for tests
 global.testHelpers = {
+  async waitForAppReady(app) {
+    const { default: request } = await import('supertest');
+    const probe = async attempt => {
+      if (attempt >= 250) {
+        throw new Error('Application routes never mounted');
+      }
+      const res = await request(app).get('/api/health');
+      if (res.statusCode !== 404) {
+        return undefined;
+      }
+      await new Promise(resolve => {
+        setTimeout(resolve, 100);
+      });
+      return probe(attempt + 1);
+    };
+    return probe(0);
+  },
+
   // Create a test box with version, provider, and architecture
   async createTestBox(boxData, versionData, providerData, architectureData) {
     const box = await db.box.create(boxData);

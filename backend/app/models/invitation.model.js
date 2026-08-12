@@ -1,52 +1,63 @@
 export default (sequelize, Sequelize) => {
-  const Invitation = sequelize.define('invitations', {
-    email: {
-      type: Sequelize.STRING,
-      allowNull: false,
-    },
-    token: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    expires: {
-      type: Sequelize.DATE,
-      allowNull: false,
-    },
-    accepted: {
-      type: Sequelize.BOOLEAN,
-      defaultValue: false,
-    },
-    accepted_at: {
-      type: Sequelize.DATE,
-      allowNull: true,
-      comment: 'When the invitation was accepted',
-      field: 'accepted_at',
-    },
-    expired: {
-      type: Sequelize.BOOLEAN,
-      defaultValue: false,
-    },
-    organizationId: {
-      type: Sequelize.INTEGER,
-      references: {
-        model: 'organizations',
-        key: 'id',
+  const Invitation = sequelize.define(
+    'invitations',
+    {
+      email: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      token: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      expires: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+      accepted: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      accepted_at: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: 'When the invitation was accepted',
+        field: 'accepted_at',
+      },
+      expired: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      organizationId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'organizations',
+          key: 'id',
+        },
+      },
+      invited_role: {
+        type: Sequelize.ENUM('member', 'admin'),
+        allowNull: false,
+        defaultValue: 'member',
+        comment: 'Role to assign when invitation is accepted',
+        field: 'invited_role',
+      },
+      invited_by: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        field: 'invited_by',
       },
     },
-    invited_role: {
-      type: Sequelize.ENUM('member', 'admin'),
-      allowNull: false,
-      defaultValue: 'member',
-      comment: 'Role to assign when invitation is accepted',
-      field: 'invited_role',
-    },
-    invited_by: {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-      field: 'invited_by',
-    },
-  });
+    {
+      indexes: [
+        {
+          unique: true,
+          fields: ['token'],
+          name: 'token',
+        },
+      ],
+    }
+  );
 
   Invitation.associate = function (models) {
     Invitation.belongsTo(models.organization, {

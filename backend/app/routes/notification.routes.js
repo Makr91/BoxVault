@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh } from '../middleware/index.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   getVapidKey,
   createSubscription,
@@ -11,10 +10,9 @@ import {
   markAllNotificationsRead,
   deleteNotification,
 } from '../controllers/notification.controller.js';
+import { openSessionEventStream } from '../utils/sessionEvents.js';
 
 const router = Router();
-
-router.use(rateLimiter);
 
 router.use((req, res, next) => {
   void req;
@@ -29,6 +27,8 @@ const notificationAuth = [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser]
 const subscriptionAuth = [authJwt.verifyToken, authJwt.isUser];
 
 router.get('/notifications/vapid-key', getVapidKey);
+
+router.get('/notifications/events', subscriptionAuth, openSessionEventStream);
 
 router.post('/notifications/subscriptions', subscriptionAuth, createSubscription);
 

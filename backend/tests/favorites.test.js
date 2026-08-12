@@ -101,7 +101,17 @@ const mockConfigLoader = {
   }),
   getConfigPath: jest.fn(),
   getSetupTokenPath: jest.fn(),
-  getRateLimitConfig: jest.fn().mockReturnValue({ window_minutes: 15, max_requests: 1000 }),
+  getRateLimitConfig: jest.fn().mockReturnValue({
+    window_minutes: 15,
+    max_requests: 1000,
+    message: 'Too many requests from this IP, please try again later.',
+    skip_successful_requests: false,
+    skip_failed_requests: false,
+    file_operations_max_requests: 1000,
+    download_max_requests: 1000,
+    download_link_max_requests: 1000,
+    architecture_operations_max_requests: 1000,
+  }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
   loadConfigs: jest.fn(),
 };
@@ -136,6 +146,8 @@ const app = (await import('../server.js')).default;
 const db = (await import('../app/models/index.js')).default;
 const bcrypt = (await import('bcryptjs')).default;
 
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 describe('Favorites API', () => {
   let localUserToken;
   let oidcUserToken;
@@ -158,6 +170,7 @@ describe('Favorites API', () => {
     // Token for a local user (no OIDC info)
     localUserToken = jwt.sign({ id: testUser.id, provider: 'local' }, 'test-secret', {
       expiresIn: '1h',
+      ...TEST_JWT_CLAIMS,
     });
 
     // Token for an OIDC user (contains OIDC info)
@@ -168,7 +181,7 @@ describe('Favorites API', () => {
         oidc_access_token: 'valid-oidc-token',
       },
       'test-secret',
-      { expiresIn: '1h' }
+      { expiresIn: '1h', ...TEST_JWT_CLAIMS }
     );
   });
 
@@ -376,7 +389,7 @@ describe('Favorites API', () => {
           oidc_access_token: 'token',
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       // Should fail in getAuthServerUrl because provider config is missing
@@ -399,7 +412,7 @@ describe('Favorites API', () => {
           oidc_access_token: 'token',
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       const res = await request(app).get('/api/favorites').set('x-access-token', noProviderToken);
@@ -438,6 +451,20 @@ describe('Favorites API', () => {
         return {};
       });
 
+      mockConfigLoader.loadConfig.mockImplementationOnce(name => {
+        if (name === 'auth') {
+          return mockConfig.auth;
+        }
+        return {};
+      });
+
+      mockConfigLoader.loadConfig.mockImplementationOnce(name => {
+        if (name === 'auth') {
+          return mockConfig.auth;
+        }
+        return {};
+      });
+
       // 3. helper function (failure)
       mockConfigLoader.loadConfig.mockImplementationOnce(() => {
         throw new Error('Config Load Error');
@@ -465,7 +492,7 @@ describe('Favorites API', () => {
           oidc_expires_at: Date.now() + 5000, // Expiring in 5 seconds
         },
         'test-secret',
-        { expiresIn: '1h' }
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
       // Mock the refresh call

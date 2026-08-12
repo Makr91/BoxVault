@@ -142,6 +142,8 @@ const jwt = (await import('jsonwebtoken')).default;
 const bcrypt = (await import('bcryptjs')).default;
 const { sendVerificationMail } = await import('../app/controllers/mail/verification.js');
 
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
 describe('Mail API', () => {
   let adminToken;
   let userToken;
@@ -152,6 +154,8 @@ describe('Mail API', () => {
   const uniqueId = Date.now().toString(36);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     const hashedPassword = await bcrypt.hash('password', 8);
 
     // Create Org
@@ -192,8 +196,14 @@ describe('Mail API', () => {
     });
 
     // Get tokens
-    adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', { expiresIn: '1h' });
-    userToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
+    adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...TEST_JWT_CLAIMS,
+    });
+    userToken = jwt.sign({ id: regularUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...TEST_JWT_CLAIMS,
+    });
   });
 
   afterAll(async () => {
@@ -243,7 +253,8 @@ describe('Mail API', () => {
         .send({ testEmail: 'test@example.com' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('SMTP Connection Failed');
+      expect(res.body.message).toBe('mail.errorSendingEmail');
+      expect(res.body.error).toBeUndefined();
     });
 
     it('should handle SMTP errors with response object', async () => {
@@ -257,7 +268,8 @@ describe('Mail API', () => {
         .send({ testEmail: 'test@example.com' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('SMTP Error with Response');
+      expect(res.body.message).toBe('mail.errorSendingEmail');
+      expect(res.body.error).toBeUndefined();
     });
 
     it('should handle SMTP errors with response object', async () => {
@@ -271,7 +283,8 @@ describe('Mail API', () => {
         .send({ testEmail: 'test@example.com' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('SMTP Error with Response');
+      expect(res.body.message).toBe('mail.errorSendingEmail');
+      expect(res.body.error).toBeUndefined();
     });
 
     it('should handle invalid SMTP config', async () => {
@@ -289,11 +302,11 @@ describe('Mail API', () => {
         .set('x-access-token', adminToken)
         .send({ testEmail: 'test@example.com' });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.error).toContain('SMTP configuration is missing or invalid');
-
-      // Restore original mock
       mockableConfigLoader.loadConfig = originalLoadConfig;
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('mail.errorSendingEmail');
+      expect(res.body.error).toBeUndefined();
     });
 
     it('should handle partially invalid SMTP config (missing connect/auth)', async () => {
@@ -312,9 +325,11 @@ describe('Mail API', () => {
         .set('x-access-token', adminToken)
         .send({ testEmail: 'test@example.com' });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.error).toContain('SMTP configuration is missing or invalid');
       mockableConfigLoader.loadConfig = originalLoadConfig;
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('mail.errorSendingEmail');
+      expect(res.body.error).toBeUndefined();
     });
   });
 
@@ -353,52 +368,61 @@ describe('Mail API', () => {
     });
 
     it('should handle database errors', async () => {
-      jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
+      const findSpy = jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
+      findSpy.mockRestore();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('should handle database errors', async () => {
-      jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
+      const findSpy = jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
 
       const res = await request(app)
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
+      findSpy.mockRestore();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
-    it('should return 404 if user does not exist in DB', async () => {
-      const nonExistentUserToken = jwt.sign({ id: 999999 }, 'test-secret', { expiresIn: '1h' });
+    it('should return 401 if user does not exist in DB', async () => {
+      const nonExistentUserToken = jwt.sign({ id: 999999 }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
       const res = await request(app)
         .post('/api/auth/resend-verification')
         .set('x-access-token', nonExistentUserToken);
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Error checking user permissions');
+      expect(res.statusCode).toBe(401);
+      expect(res.body.message).toContain('User not found!');
     });
 
-    it('should return 404 if user has no primary organization', async () => {
-      // Create a user without a primary org
+    it('should return 403 if user has no roles', async () => {
       const noPrimOrgUser = await db.user.create({
         username: `no-prim-org-${uniqueId}`,
         email: `no-prim-org-${uniqueId}@example.com`,
         password: 'password',
         verified: false,
-        primary_organization_id: null, // Explicitly null
+        primary_organization_id: null,
       });
-      const noPrimOrgToken = jwt.sign({ id: noPrimOrgUser.id }, 'test-secret', { expiresIn: '1h' });
+      const noPrimOrgToken = jwt.sign({ id: noPrimOrgUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
 
       const res = await request(app)
         .post('/api/auth/resend-verification')
         .set('x-access-token', noPrimOrgToken);
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Error checking user permissions');
+      expect(res.statusCode).toBe(403);
+      expect(res.body.message).toContain('Require User or Admin Role!');
 
       await noPrimOrgUser.destroy();
     });
@@ -411,9 +435,9 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Error checking user permissions');
       findSpy.mockRestore();
+      expect(res.statusCode).toBe(503);
+      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('should handle mail config loading failure', async () => {
@@ -447,7 +471,7 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(503);
       expect(res.body.message).toContain('Error verifying authentication');
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });

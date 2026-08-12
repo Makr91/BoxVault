@@ -34,6 +34,8 @@ describe('Config API', () => {
   const uniqueId = Date.now().toString(36);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     const hashedPassword = await bcrypt.hash('password', 8);
 
     // Create Admin User
@@ -73,12 +75,10 @@ describe('Config API', () => {
   });
 
   describe('GET /api/config/gravatar', () => {
-    it('should get Gravatar configuration', async () => {
+    it('should reject unauthenticated access to gravatar config', async () => {
       const res = await request(app).get('/api/config/gravatar');
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('gravatar');
-      expect(res.body.gravatar).toHaveProperty('enabled');
-      expect(res.body.gravatar).toHaveProperty('default');
+      expect(res.statusCode).toBe(403);
+      expect(res.body.message).toBe('No token provided!');
     });
   });
 
@@ -296,7 +296,7 @@ auth:
       }
     });
 
-    it('GET /api/config/gravatar - should return 404 if gravatar config is missing', async () => {
+    it('GET /api/config/gravatar - should reject non-whitelisted config name', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
 
@@ -318,8 +318,8 @@ auth:
         const res = await request(app)
           .get('/api/config/gravatar')
           .set('x-access-token', adminToken);
-        expect(res.statusCode).toBe(404);
-        expect(res.body.message).toBe('Gravatar configuration not found.');
+        expect(res.statusCode).toBe(500);
+        expect(res.body.message).toBe('Operation failed.');
       } finally {
         process.env.NODE_ENV = originalEnv;
         readFileSyncSpy.mockRestore();
@@ -560,8 +560,7 @@ rate_limiting:
         const config = getRateLimitConfig();
 
         expect(config.window_minutes).toBe(30);
-        // Code enforces min 5000 if value is lower
-        expect(config.max_requests).toBe(5000);
+        expect(config.max_requests).toBe(500);
         expect(config.message).toBe('Slow down');
       });
 
@@ -577,7 +576,7 @@ rate_limiting:
         const config = getRateLimitConfig();
 
         expect(config.window_minutes).toBe(15);
-        expect(config.max_requests).toBe(5000);
+        expect(config.max_requests).toBe(1000);
         expect(console.warn).toHaveBeenCalled();
       });
 
@@ -587,7 +586,7 @@ rate_limiting:
 
         const config = getRateLimitConfig();
         expect(config.window_minutes).toBe(15);
-        expect(config.max_requests).toBe(5000);
+        expect(config.max_requests).toBe(1000);
       });
     });
 
@@ -893,7 +892,7 @@ logging:
 
       const config = getRateLimitConfig();
       expect(config.window_minutes).toBe(15);
-      expect(config.max_requests).toBe(5000);
+      expect(config.max_requests).toBe(100000);
 
       consoleWarnSpy.mockRestore();
     });

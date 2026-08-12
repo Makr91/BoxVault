@@ -9,7 +9,6 @@ export default (sequelize, Sequelize) => {
       },
       name: {
         type: Sequelize.STRING,
-        unique: true,
       },
       email: {
         type: Sequelize.STRING,
@@ -57,7 +56,6 @@ export default (sequelize, Sequelize) => {
       },
       org_code: {
         type: Sequelize.STRING(10),
-        unique: true,
         allowNull: true,
         comment: 'Organization code/identifier (e.g., A55D94)',
         field: 'org_code',
@@ -105,6 +103,18 @@ export default (sequelize, Sequelize) => {
     },
     {
       defaultScope: {},
+      indexes: [
+        {
+          unique: true,
+          fields: ['name'],
+          name: 'name',
+        },
+        {
+          unique: true,
+          fields: ['org_code'],
+          name: 'org_code',
+        },
+      ],
     }
   );
 

@@ -56,8 +56,9 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
+    let decoded;
     try {
-      const decoded = await new Promise((resolve, reject) => {
+      decoded = await new Promise((resolve, reject) => {
         jwt.verify(
           token,
           authConfig.auth.jwt.jwt_secret.value,
@@ -71,75 +72,7 @@ const verifyToken = async (req, res, next) => {
           }
         );
       });
-
-      req.userId = decoded.id;
-      req.isServiceAccount = decoded.isServiceAccount;
-      req.stayLoggedIn = decoded.stayLoggedIn;
-
-      // If this is a refresh token request, attach the full user object
-      // Check path instead of originalUrl to handle query parameters correctly
-      if (req.path.endsWith('/auth/refresh-token')) {
-        if (decoded.isServiceAccount) {
-          return res.status(403).send({ message: 'Service accounts cannot refresh tokens' });
-        }
-
-        const user = await User.findByPk(decoded.id, {
-          include: [
-            {
-              model: Role,
-              as: 'roles',
-              attributes: ['name'],
-              through: { attributes: [] },
-            },
-            {
-              model: organization,
-              as: 'primaryOrganization',
-              attributes: ['name'],
-            },
-          ],
-        });
-
-        if (!user) {
-          return res.status(401).send({ message: 'User not found' });
-        }
-
-        if (user.suspended) {
-          return res.status(403).send({ message: req.__('auth.accountSuspended') });
-        }
-
-        if (isTokenRevoked(decoded, user.sessionsInvalidAfter)) {
-          return res.status(401).send({
-            message: 'Unauthorized!',
-            error: 'TOKEN_INVALID',
-          });
-        }
-
-        req.user = user;
-      } else if (!decoded.isServiceAccount && decoded.iat) {
-        const revocationRow = await User.findByPk(decoded.id, {
-          attributes: ['sessionsInvalidAfter'],
-        });
-        if (revocationRow && isTokenRevoked(decoded, revocationRow.sessionsInvalidAfter)) {
-          return res.status(401).send({
-            message: 'Unauthorized!',
-            error: 'TOKEN_INVALID',
-          });
-        }
-      }
-
-      // Attach JWT context for service accounts
-      if (decoded.isServiceAccount && decoded.serviceAccountId) {
-        req.serviceAccountId = decoded.serviceAccountId;
-      }
-
-      // Attach user's organizations from JWT for frontend
-      if (decoded.organizations) {
-        req.userOrganizations = decoded.organizations;
-      }
-
-      return next();
     } catch (jwtError) {
-      // Not a valid JWT — try it as a raw service-account key
       if (canFallbackToServiceAccount && (await applyServiceAccountAuth(req, bearerToken, token))) {
         return next();
       }
@@ -153,12 +86,79 @@ const verifyToken = async (req, res, next) => {
         error: 'TOKEN_INVALID',
       });
     }
+
+    req.userId = decoded.id;
+    req.isServiceAccount = decoded.isServiceAccount;
+    req.stayLoggedIn = decoded.stayLoggedIn;
+
+    // If this is a refresh token request, attach the full user object
+    // Check path instead of originalUrl to handle query parameters correctly
+    if (req.path.endsWith('/auth/refresh-token')) {
+      if (decoded.isServiceAccount) {
+        return res.status(403).send({ message: 'Service accounts cannot refresh tokens' });
+      }
+
+      const user = await User.findByPk(decoded.id, {
+        include: [
+          {
+            model: Role,
+            as: 'roles',
+            attributes: ['name'],
+            through: { attributes: [] },
+          },
+          {
+            model: organization,
+            as: 'primaryOrganization',
+            attributes: ['name'],
+          },
+        ],
+      });
+
+      if (!user) {
+        return res.status(401).send({ message: 'User not found' });
+      }
+
+      if (user.suspended) {
+        return res.status(403).send({ message: req.__('auth.accountSuspended') });
+      }
+
+      if (isTokenRevoked(decoded, user.sessionsInvalidAfter)) {
+        return res.status(401).send({
+          message: 'Unauthorized!',
+          error: 'TOKEN_INVALID',
+        });
+      }
+
+      req.user = user;
+    } else if (!decoded.isServiceAccount && decoded.iat) {
+      const revocationRow = await User.findByPk(decoded.id, {
+        attributes: ['sessionsInvalidAfter'],
+      });
+      if (revocationRow && isTokenRevoked(decoded, revocationRow.sessionsInvalidAfter)) {
+        return res.status(401).send({
+          message: 'Unauthorized!',
+          error: 'TOKEN_INVALID',
+        });
+      }
+    }
+
+    // Attach JWT context for service accounts
+    if (decoded.isServiceAccount && decoded.serviceAccountId) {
+      req.serviceAccountId = decoded.serviceAccountId;
+    }
+
+    // Attach user's organizations from JWT for frontend
+    if (decoded.organizations) {
+      req.userOrganizations = decoded.organizations;
+    }
+
+    return next();
   } catch (err) {
     log.error.error('Token verification error:', {
       error: err.message,
       stack: err.stack,
     });
-    return res.status(500).send({
+    return res.status(503).send({
       message: 'Error verifying authentication',
     });
   }

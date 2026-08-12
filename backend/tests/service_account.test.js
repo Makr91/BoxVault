@@ -24,6 +24,8 @@ describe('Service Account API', () => {
   const orgName = `SAOrg_${uniqueId}`;
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Ensure roles exist
     const roles = ['user', 'admin'].map(name => ({ name }));
     await Role.bulkCreate(roles, { ignoreDuplicates: true });

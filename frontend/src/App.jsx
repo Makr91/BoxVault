@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
-import "./scss/styles.scss";
+import "./css/styles.css";
 import ErrorBoundary from "./common/ErrorBoundary";
 import EventBus from "./common/EventBus";
 import About from "./components/about.component";
@@ -27,6 +27,7 @@ import UserService from "./services/user.service";
 import { log } from "./utils/Logger";
 import { isOrgManager } from "./utils/permissions";
 import { isPushEnabled, syncSubscription } from "./utils/pushNotifications";
+import { subscribeSessionEvents } from "./utils/sessionEvents";
 
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 
@@ -408,6 +409,13 @@ const App = () => {
         });
       });
     }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser?.accessToken) {
+      return undefined;
+    }
+    return subscribeSessionEvents(currentUser.accessToken);
   }, [currentUser]);
 
   if (setupComplete === null) {

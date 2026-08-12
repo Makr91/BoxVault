@@ -434,6 +434,92 @@ describe('SCIM Users receiver', () => {
     });
   });
 
+  describe('putUser externalId adoption', () => {
+    const PUSHED_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    let staleCredential;
+
+    beforeEach(() => {
+      staleCredential = {
+        subject: 'stored@example.com',
+        user_id: 7,
+        update: jest.fn(function (patch) {
+          Object.assign(this, patch);
+          return Promise.resolve(this);
+        }),
+        destroy: jest.fn().mockResolvedValue(undefined),
+      };
+    });
+
+    const wireCredentialLookups = claimedElsewhere => {
+      mockDb.credential.findOne.mockImplementation(({ where }) => {
+        if (where.user_id !== undefined) {
+          return Promise.resolve(staleCredential);
+        }
+        if (where.subject === PUSHED_UUID) {
+          return Promise.resolve(claimedElsewhere);
+        }
+        return Promise.resolve(null);
+      });
+    };
+
+    it('should collapse a same-user duplicate pair onto the row already holding the UUID', async () => {
+      const uuidCredential = {
+        subject: PUSHED_UUID,
+        user_id: 7,
+        update: jest.fn(),
+        destroy: jest.fn(),
+      };
+      wireCredentialLookups(uuidCredential);
+      const res = buildResponse();
+
+      await putUser(buildRequest(matchingBody({ externalId: PUSHED_UUID })), res);
+
+      expect(staleCredential.destroy).toHaveBeenCalledTimes(1);
+      expect(staleCredential.update).not.toHaveBeenCalled();
+      expect(uuidCredential.destroy).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ id: '7', externalId: PUSHED_UUID })
+      );
+    });
+
+    it('should still 409 when the pushed externalId is bound to another user', async () => {
+      const otherUsersCredential = {
+        subject: PUSHED_UUID,
+        user_id: 8,
+        update: jest.fn(),
+        destroy: jest.fn(),
+      };
+      wireCredentialLookups(otherUsersCredential);
+      const res = buildResponse();
+
+      await putUser(buildRequest(matchingBody({ externalId: PUSHED_UUID })), res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ scimType: 'uniqueness', status: '409' })
+      );
+      expect(staleCredential.destroy).not.toHaveBeenCalled();
+      expect(staleCredential.update).not.toHaveBeenCalled();
+      expect(otherUsersCredential.destroy).not.toHaveBeenCalled();
+      expect(storedUser.update).not.toHaveBeenCalled();
+    });
+
+    it('should adopt the pushed externalId onto the addressed credential when the subject is free', async () => {
+      wireCredentialLookups(null);
+      const res = buildResponse();
+
+      await putUser(buildRequest(matchingBody({ externalId: PUSHED_UUID })), res);
+
+      expect(staleCredential.update).toHaveBeenCalledWith({ subject: PUSHED_UUID });
+      expect(staleCredential.destroy).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ id: '7', externalId: PUSHED_UUID })
+      );
+    });
+  });
+
   describe('POST /scim/v2/Users', () => {
     it('should provision the parsed desired state verbatim', async () => {
       mockDb.user.create.mockImplementation(attributes => {

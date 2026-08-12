@@ -168,6 +168,8 @@ const app = (await import('../server.js')).default;
 const db = (await import('../app/models/index.js')).default;
 const bcrypt = (await import('bcryptjs')).default;
 const externalUserHandler = (await import('../app/auth/external-user-handler.js')).default;
+const { hashServiceAccountToken } = await import('../app/utils/serviceAccountAuth.js');
+const { generateOrgCode } = await import('../app/utils/identity.js');
 const {
   buildAuthorizationUrl,
   handleOidcCallback,
@@ -195,6 +197,7 @@ describe('Authentication API', () => {
   });
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
     await db.user.destroy({ where: { username: testUsername } });
   });
   afterAll(async () => {
@@ -244,7 +247,7 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body).toHaveProperty('message', 'Invalid Password!');
+      expect(res.body).toHaveProperty('message', 'Invalid username or password.');
     });
 
     it('should fail for non-existent user', async () => {
@@ -253,8 +256,8 @@ describe('Authentication API', () => {
         password: 'anypassword',
       });
 
-      expect(res.statusCode).toBe(404);
-      expect(res.body).toHaveProperty('message', 'User Not found.');
+      expect(res.statusCode).toBe(401);
+      expect(res.body).toHaveProperty('message', 'Invalid username or password.');
     });
 
     it('should handle user with no primary organization (fallback logic)', async () => {
@@ -284,7 +287,7 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.organization).toBeUndefined();
+      expect(res.body.organization).toBeNull();
 
       await noPrimUser.destroy();
       await org.destroy();
@@ -424,7 +427,7 @@ describe('Authentication API', () => {
 
       serviceAccount = await db.service_account.create({
         username: saUsername,
-        token: saToken,
+        token: hashServiceAccountToken(saToken),
         description: 'Test Service Account',
         organization_id: org.id,
         userId: owner.id,
@@ -461,14 +464,16 @@ describe('Authentication API', () => {
         password: 'wrong-token',
       });
 
-      expect(res.statusCode).toBe(404);
+      expect(res.statusCode).toBe(401);
+      expect(res.body).toHaveProperty('message', 'Invalid username or password.');
     });
 
     it('should fail with expired service account token', async () => {
       const org = await db.organization.findOne({ where: { name: `SA-Org-${uniqueId}` } });
+      const expiredRawToken = `expired-token-${uniqueId}`;
       const expiredSA = await db.service_account.create({
         username: `expired-sa-${uniqueId}`,
-        token: `expired-token-${uniqueId}`,
+        token: hashServiceAccountToken(expiredRawToken),
         organization_id: org.id,
         userId: 1, // Dummy user ID
         expiresAt: new Date(Date.now() - 10000), // Expired
@@ -476,7 +481,7 @@ describe('Authentication API', () => {
 
       const res = await request(app).post('/api/auth/signin').send({
         username: expiredSA.username,
-        password: expiredSA.token,
+        password: expiredRawToken,
       });
 
       expect(res.statusCode).toBe(401);
@@ -1191,7 +1196,8 @@ describe('Authentication API', () => {
 
       await signup(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(500);
+      // Missing body fails the password policy check before anything else runs
+      expect(res.status).toHaveBeenCalledWith(400);
       createSpy.mockRestore();
     });
 
@@ -1689,7 +1695,15 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=authcode&state=mock-state');
 
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('/auth/callback?token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
+
+          // The JWT never rides in the URL; redeem the one-time handoff code
+          const handoffCode = new URL(res.headers.location, 'http://localhost').searchParams.get(
+            'code'
+          );
+          const exchange = await agent.post('/api/auth/oidc/exchange').send({ code: handoffCode });
+          expect(exchange.statusCode).toBe(200);
+          expect(exchange.body.token).toBeDefined();
         } finally {
           restore();
           // Cleanup created user
@@ -1866,7 +1880,8 @@ describe('Authentication API', () => {
       it('should handle domain mapping for organization assignment', async () => {
         const agent = request.agent(app);
         const orgName = `MappedOrg-${Date.now()}`;
-        const org = await db.organization.create({ name: orgName });
+        const orgCode = `A${Date.now().toString(16).toUpperCase().slice(-5)}`;
+        const org = await db.organization.create({ name: orgName, org_code: orgCode });
 
         const restore = updateConfig('auth', config => {
           if (!config.auth.oidc) {
@@ -1881,8 +1896,9 @@ describe('Authentication API', () => {
             },
           };
           config.auth.external.domain_mapping_enabled = { value: true };
+          // Mappings are keyed by org_code (stable identity key), not org name
           config.auth.external.domain_mappings = {
-            value: JSON.stringify({ [orgName]: ['mapped.com'] }),
+            value: JSON.stringify({ [orgCode]: ['mapped.com'] }),
           };
           return config;
         });
@@ -1891,7 +1907,7 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider'); // Use agent to persist session
 
         mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'mapped-user', email: 'user@mapped.com' }),
+          claims: () => ({ sub: 'mapped-user', email: 'user@mapped.com', email_verified: true }),
         });
 
         try {
@@ -1943,7 +1959,7 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider'); // Use agent to persist session
 
         mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'linked-sub', email }),
+          claims: () => ({ sub: 'linked-sub', email, email_verified: true }),
         });
 
         try {
@@ -2237,7 +2253,7 @@ describe('Authentication API', () => {
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('/auth/callback?token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
         } finally {
           restore();
           await db.user.destroy({ where: { email: 'no-exp@test.com' } });
@@ -2453,7 +2469,7 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider');
 
         mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'new-sub-123', email }),
+          claims: () => ({ sub: 'new-sub-123', email, email_verified: true }),
         });
 
         try {
@@ -2470,9 +2486,8 @@ describe('Authentication API', () => {
         }
       });
 
-      it('should generate random org code', () => {
-        const { generateOrgCode } = externalUserHandler;
-        const code = generateOrgCode();
+      it('should generate a sequential org code', async () => {
+        const code = await generateOrgCode(db);
         expect(code).toHaveLength(6);
         expect(/^[0-9A-F]{6}$/.test(code)).toBe(true);
       });
@@ -2561,7 +2576,7 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider');
 
         mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'new-sub-for-email', email }),
+          claims: () => ({ sub: 'new-sub-for-email', email, email_verified: true }),
         });
 
         try {
@@ -2819,7 +2834,7 @@ describe('Authentication API', () => {
           verified: true,
         });
 
-        const profile = { sub: 'non-oidc-exist-sub', email };
+        const profile = { sub: 'non-oidc-exist-sub', email, email_verified: true };
         const authConfig = {
           auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
         };
@@ -3310,7 +3325,7 @@ describe('Authentication API', () => {
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('/auth/callback?token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
         } finally {
           restore();
           await db.user.destroy({ where: { email: 'expiryundef@test.com' } });
@@ -3514,7 +3529,11 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider');
 
         const mockTokens = {
-          claims: () => ({ sub: 'verify-exp', email: 'verifyexp@test.com' }),
+          claims: () => ({
+            sub: 'verify-exp',
+            email: 'verifyexp@test.com',
+            iss: 'https://oidc.example.com',
+          }),
           id_token: 'id-token',
           access_token: 'access-token',
           refresh_token: 'refresh-token',
@@ -3539,10 +3558,13 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
 
-          // Extract token and verify exp
+          // Redeem the one-time handoff code for the JWT, then verify exp
           const { location } = res.headers;
-          const token = new URL(location, 'http://localhost').searchParams.get('token');
-          const decoded = jwt.decode(token);
+          expect(location).toContain('/auth/callback?code=');
+          const handoffCode = new URL(location, 'http://localhost').searchParams.get('code');
+          const exchange = await agent.post('/api/auth/oidc/exchange').send({ code: handoffCode });
+          expect(exchange.statusCode).toBe(200);
+          const decoded = jwt.decode(exchange.body.token);
 
           // Expect exp to be roughly now + 30 minutes
           const expectedExp = Date.now() + 30 * 60 * 1000;
@@ -3724,8 +3746,10 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
 
           const { location } = res.headers;
-          const token = new URL(location, 'http://localhost').searchParams.get('token');
-          const decoded = jwt.decode(token);
+          const handoffCode = new URL(location, 'http://localhost').searchParams.get('code');
+          const exchange = await agent.post('/api/auth/oidc/exchange').send({ code: handoffCode });
+          expect(exchange.statusCode).toBe(200);
+          const decoded = jwt.decode(exchange.body.token);
 
           expect(decoded.oidc_expires_at).toBe(expTime * 1000);
         } finally {
@@ -3810,7 +3834,7 @@ describe('Authentication API', () => {
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
 
           const user = await db.user.findOne({ where: { email } });
           expect(user.primary_organization_id).toBe(org.id);
@@ -3854,7 +3878,7 @@ describe('Authentication API', () => {
           // Should fall back to create_org without crashing
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
         } finally {
           restore();
           await db.user.destroy({ where: { email: 'user@badjson.com' } });
@@ -3985,7 +4009,7 @@ describe('Authentication API', () => {
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
 
           const updatedUser = await db.user.findByPk(user.id);
           expect(updatedUser.primary_organization_id).not.toBeNull();
@@ -4025,13 +4049,13 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider');
 
         mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'existing-org-sub', email }),
+          claims: () => ({ sub: 'existing-org-sub', email, email_verified: true }),
         });
 
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('token=');
+          expect(res.headers.location).toContain('/auth/callback?code=');
 
           const updatedUser = await db.user.findByPk(user.id);
           expect(updatedUser.authProvider).toBe('oidc');

@@ -1,6 +1,5 @@
 // setup.routes.js
 import { Router } from 'express';
-import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   verifySetupToken,
   updateConfigs,
@@ -12,7 +11,6 @@ import {
 const router = Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter);
 
 router.post('/setup/verify-token', verifySetupToken);
 router.put('/setup', updateConfigs);

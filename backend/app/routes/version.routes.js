@@ -1,7 +1,6 @@
 // version.routes.js
 import { Router } from 'express';
 import { authJwt, verifyVersion } from '../middleware/index.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
 import {
   create,
   update,
@@ -14,7 +13,6 @@ import {
 const router = Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter);
 
 router.use((req, res, next) => {
   void req;

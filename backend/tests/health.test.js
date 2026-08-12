@@ -248,10 +248,15 @@ const app = (await import('../server.js')).default;
 const db = (await import('../app/models/index.js')).default;
 const http = (await import('http')).default;
 const https = (await import('https')).default;
+const { log } = await import('../app/utils/Logger.js');
 // Import nodemailer to ensure mock is used (though we use the mock object directly)
 await import('nodemailer');
 
 describe('Health API Integration Tests', () => {
+  beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+  });
+
   beforeEach(() => {
     jest.restoreAllMocks();
     mockSendMail.mockClear();
@@ -865,15 +870,15 @@ describe('Health API Integration Tests', () => {
       return {};
     });
 
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(log.app, 'warn').mockImplementation(() => {});
 
     await request(app).get('/api/health');
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('[ALERT] High disk usage detected')
     );
 
-    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it('should handle missing statfs (unsupported platform)', async () => {
@@ -922,11 +927,11 @@ describe('Health API Integration Tests', () => {
       mockRes.statusCode = 200;
       mockRes.headers = {};
       mockRes.resume = jest.fn();
-      if (url === 'https://good.com') {
+      if (String(url).startsWith('https://good.com')) {
         mockRes.statusCode = 200;
-      } else if (url === 'https://bad.com') {
+      } else if (String(url).startsWith('https://bad.com')) {
         mockRes.statusCode = 500;
-      } else if (url === 'https://warn.com') {
+      } else if (String(url).startsWith('https://warn.com')) {
         mockRes.statusCode = 404;
       }
 
@@ -1181,12 +1186,12 @@ describe('Health API Integration Tests', () => {
     });
 
     mockSendMail.mockRejectedValueOnce(new Error('SMTP Error'));
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(log.error, 'error').mockImplementation(() => {});
 
     await request(app).get('/api/health');
 
-    expect(consoleSpy).toHaveBeenCalledWith('Failed to send alert email', expect.any(Error));
-    consoleSpy.mockRestore();
+    expect(errorSpy).toHaveBeenCalledWith('Failed to send alert email', expect.any(Error));
+    errorSpy.mockRestore();
   });
 
   it('should report OIDC warning for rate limited provider', async () => {
@@ -1224,7 +1229,7 @@ describe('Health API Integration Tests', () => {
       mockRes.headers = {};
       mockRes.resume = jest.fn();
 
-      if (url === 'https://warn.com') {
+      if (String(url).startsWith('https://warn.com')) {
         mockRes.statusCode = 429;
       }
 
@@ -1398,13 +1403,13 @@ describe('Health API Integration Tests', () => {
       return {};
     });
 
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(log.app, 'warn').mockImplementation(() => {});
 
     // Should not throw and should attempt to alert (since default frequency is 24h and lastAlertTime is 0)
     await request(app).get('/api/health');
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[ALERT]'));
-    consoleSpy.mockRestore();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[ALERT]'));
+    warnSpy.mockRestore();
     dateSpy.mockRestore();
   });
 

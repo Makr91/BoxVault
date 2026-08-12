@@ -165,6 +165,9 @@ export const findOne = async (req, res) => {
     }
 
     // If the box is private, check if the user is member of the organization
+    if (!req.userId) {
+      return res.status(403).send({ message: req.__('architectures.unauthorized') });
+    }
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('architectures.unauthorized') });

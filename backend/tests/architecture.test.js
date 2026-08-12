@@ -30,6 +30,8 @@ describe('Architecture API', () => {
   };
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Setup User
     const hashedPassword = await bcrypt.hash('SoomePass', 8);
     const user = await db.user.create({
@@ -549,7 +551,17 @@ describe('Architecture API', () => {
 
         // Regular user IS a member, so they SHOULD have access to private box.
         // To test 403, we need a non-member.
-        const nonMemberToken = jwt.sign({ id: 999999 }, 'test-secret', { expiresIn: '1h' });
+        const nonMemberUser = await db.user.create({
+          username: `nonmem-findone-${uniqueId}`,
+          email: `nonmem-findone-${uniqueId}@example.com`,
+          password: 'password',
+          verified: true,
+        });
+        const nonMemberToken = jwt.sign({ id: nonMemberUser.id }, 'test-secret', {
+          expiresIn: '1h',
+          issuer: 'boxvault',
+          audience: 'boxvault-api',
+        });
 
         const res = await request(app)
           .get(
@@ -558,6 +570,8 @@ describe('Architecture API', () => {
           .set('x-access-token', nonMemberToken);
 
         expect(res.statusCode).toBe(403);
+
+        await nonMemberUser.destroy();
       });
     });
   });
@@ -1109,7 +1123,11 @@ describe('Architecture API', () => {
       });
       const userRole = await db.role.findOne({ where: { name: 'user' } });
       await nonMember.setRoles([userRole]);
-      const nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', { expiresIn: '1h' });
+      const nonMemberToken = jwt.sign({ id: nonMember.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
 
       const res = await request(app)
         .get(
@@ -1157,6 +1175,8 @@ describe('Architecture API', () => {
 
       serviceAccountToken = jwt.sign({ id: user.id, isServiceAccount: true }, 'test-secret', {
         expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
       });
     });
 
@@ -1347,7 +1367,11 @@ describe('Architecture API', () => {
       await outsider.setRoles([userRole]);
       // Don't add to organization - test permission for non-member attempting to create
 
-      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', { expiresIn: '1h' });
+      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
 
       // Mock UserOrg.findUserOrgRole to return null (non-member)
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue(null);
@@ -1654,24 +1678,12 @@ describe('Architecture API', () => {
 
       // Mock fs to simulate old directory still existing after rename
       const originalExistsSync = fs.existsSync;
-      let callCount = 0;
       const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        callCount++;
         if (typeof pathArg === 'string') {
-          // First call for newFilePath check (line 179)
-          if (callCount === 1 && pathArg.includes(newName)) {
+          if (pathArg.includes(newName)) {
             return false;
           }
-          // Second call for oldFilePath check (line 181)
-          if (callCount === 2 && pathArg.includes(oldName)) {
-            return true;
-          }
-          // Third call for newFilePath exists (line 183) - return false to skip rmSync
-          if (callCount === 3 && pathArg.includes(newName)) {
-            return false;
-          }
-          // Fourth call for oldFilePath cleanup check (line 189)
-          if (callCount === 4 && pathArg.includes(oldName)) {
+          if (pathArg.includes(oldName)) {
             return true;
           }
         }

@@ -49,6 +49,8 @@ describe('SSL API', () => {
   const tempConfigDir = path.join(__dirname, `temp_ssl_config_${uniqueId}`);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Create Admin User
     const hashedPassword = await bcrypt.hash('password', 8);
     adminUser = await db.user.create({

@@ -25,7 +25,8 @@ const handleError = (req, res, err) => {
   res.removeHeader('Content-Range');
   res.removeHeader('Accept-Ranges');
 
-  return res.status(500).send({ message: req.__('files.download.genericError') });
+  const status = Number.isInteger(err?.status) && err.status >= 400 ? err.status : 500;
+  return res.status(status).send({ message: req.__('files.download.genericError') });
 };
 
 /**
@@ -221,11 +222,16 @@ const download = (req, res) => {
       res.setHeader('Accept-Ranges', 'bytes');
 
       // Use res.download for optimized streaming, range support, and headers
-      res.download(filePath, fileName, err => {
-        if (err) {
-          handleError(req, res, err);
+      res.download(
+        filePath,
+        fileName,
+        { headers: { 'Content-Type': 'application/octet-stream' } },
+        err => {
+          if (err) {
+            handleError(req, res, err);
+          }
         }
-      });
+      );
       return undefined;
     };
 

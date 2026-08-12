@@ -147,6 +147,8 @@ describe('Invitation API', () => {
   const inviteeEmail = `invitee-${uniqueId}@example.com`;
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     const hashedPassword = await bcrypt.hash('password', 8);
 
     // Create Org
@@ -265,14 +267,24 @@ describe('Invitation API', () => {
       expect(res.statusCode).toBe(400);
     });
 
+    it('should return 400 when organization name is missing', async () => {
+      const res = await request(app)
+        .post('/api/auth/invite')
+        .set('x-access-token', adminToken)
+        .send({});
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe('Organization parameter required!');
+    });
+
     it('should handle database errors', async () => {
       jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error('DB Error'));
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
-        .send({});
-      expect(res.statusCode).toBe(500);
+        .send({ email: inviteeEmail, organizationName: orgName });
       jest.restoreAllMocks();
+      expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('Error checking organization permissions');
     });
 
     it('should handle app config loading failure', async () => {
@@ -497,7 +509,7 @@ describe('Invitation API', () => {
       await validateInvitationToken(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Error validating invitation.' })
+        expect.objectContaining({ message: 'invitations.validate.error' })
       );
     });
   });

@@ -103,6 +103,8 @@ describe('System API', () => {
   const uniqueId = Date.now().toString(36);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     const hashedPassword = await bcrypt.hash('password', 8);
 
     // Create Admin User
@@ -126,8 +128,15 @@ describe('System API', () => {
     await regularUser.setRoles([userRole]);
 
     // Get tokens
-    adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', { expiresIn: '1h' });
-    userToken = jwt.sign({ id: regularUser.id }, 'test-secret', { expiresIn: '1h' });
+    const claimOptions = { issuer: 'boxvault', audience: 'boxvault-api' };
+    adminToken = jwt.sign({ id: adminUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...claimOptions,
+    });
+    userToken = jwt.sign({ id: regularUser.id }, 'test-secret', {
+      expiresIn: '1h',
+      ...claimOptions,
+    });
   });
 
   afterAll(async () => {

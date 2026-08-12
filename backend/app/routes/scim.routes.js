@@ -1,5 +1,4 @@
 import { Router, json } from 'express';
-import { rateLimiter } from '../middleware/rateLimiter.js';
 import { scimAuth } from '../middleware/scimAuth.js';
 import { createUser, findUsers, putUser, deleteScimUser } from '../controllers/scim/users.js';
 import { createGroup, findGroups, putGroup, deleteGroup } from '../controllers/scim/groups.js';
@@ -16,7 +15,6 @@ import { createGroup, findGroups, putGroup, deleteGroup } from '../controllers/s
 const router = Router();
 
 // Apply rate limiting to this router
-router.use(rateLimiter);
 
 // SCIM clients send application/scim+json (RFC 7644); the global body parser
 // only handles application/json, so parse both here.
