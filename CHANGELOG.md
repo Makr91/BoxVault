@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/Makr91/BoxVault/compare/v0.52.1...v0.53.0) (2026-08-12)
+
+
+### Features
+
+* instant session-termination push, hardened auth errors, green test suite ([bfbb027](https://github.com/Makr91/BoxVault/commit/bfbb02733a381818c5ce08fb62c46538bccfa8fe))
+
 ## [0.52.1](https://github.com/Makr91/BoxVault/compare/v0.52.0...v0.52.1) (2026-08-11)
 
 
