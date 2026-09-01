@@ -113,25 +113,6 @@ const putIdentityMismatch = (body, extension, row) => {
 };
 
 /**
- * Map upsert failures onto SCIM error responses. Customer-ID problems are
- * contract violations of the request, not server faults: malformed -> 400
- * invalidValue, collision with a different org -> 409 uniqueness; anything
- * else is a 500.
- * @param {Error} err - The thrown error
- * @param {string} fallbackDetail - Detail for the 500 case
- * @returns {{status: number, detail: string, scimType: string|null}}
- */
-const upsertFailure = (err, fallbackDetail) => {
-  if (err.message.startsWith('Invalid customer ID')) {
-    return { status: 400, detail: err.message, scimType: 'invalidValue' };
-  }
-  if (err.message.startsWith('Customer ID')) {
-    return { status: 409, detail: err.message, scimType: 'uniqueness' };
-  }
-  return { status: 500, detail: fallbackDetail, scimType: null };
-};
-
-/**
  * POST /scim/v2/Groups — create the SCIM resource for one role group. Identity
  * arrives ONLY in externalId (`<org-uuid>:<owner|admin|member>`); BoxVault
  * assigns the resource id and returns 201 with the full resource (including id
@@ -214,8 +195,7 @@ const createGroup = async (req, res) => {
   } catch (err) {
     await transaction.rollback();
     log.error.error('SCIM: group POST failed', { externalId: body.externalId, error: err.message });
-    const failure = upsertFailure(err, 'Failed to create SCIM group');
-    return scimError(res, failure.status, failure.detail, failure.scimType);
+    return scimError(res, 500, 'Failed to create SCIM group');
   }
 };
 
@@ -319,8 +299,7 @@ const putGroup = async (req, res) => {
   } catch (err) {
     await transaction.rollback();
     log.error.error('SCIM: group PUT failed', { scimId: req.params.id, error: err.message });
-    const failure = upsertFailure(err, 'Failed to apply SCIM group state');
-    return scimError(res, failure.status, failure.detail, failure.scimType);
+    return scimError(res, 500, 'Failed to apply SCIM group state');
   }
 };
 
