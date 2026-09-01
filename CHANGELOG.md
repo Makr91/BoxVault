@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.1](https://github.com/Makr91/BoxVault/compare/v0.55.0...v0.55.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* converge the header cluster with the catalog reference ([85906b7](https://github.com/Makr91/BoxVault/commit/85906b7bbe4fce54eb9a378bf995c50e24c80c81))
+
 ## [0.55.0](https://github.com/Makr91/BoxVault/compare/v0.54.1...v0.55.0) (2026-09-01)
 
 
