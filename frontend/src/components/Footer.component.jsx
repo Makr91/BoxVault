@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { OverlayTrigger, Popover } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
-import { FaHeartPulse, FaCircle } from "react-icons/fa6";
+import { FaHeartPulse, FaCircle, FaGithub } from "react-icons/fa6";
+
+import version from "../version.json";
 
 const Footer = () => {
   const { t } = useTranslation(["common", "auth"]);
@@ -92,10 +94,10 @@ const Footer = () => {
   };
 
   return (
-    <footer className="footer mt-auto py-3 bg-body-tertiary border-top">
+    <footer className="footer mt-auto bg-body-tertiary border-top">
       <div className="container-fluid position-relative d-flex align-items-center">
         {/* Left: Copyright */}
-        <div className="position-absolute start-0 ms-4">
+        <div className="footer-edge-start">
           <span className="text-muted">
             BoxVault &copy; {new Date().getFullYear()}
           </span>
@@ -125,8 +127,17 @@ const Footer = () => {
           </a>
         </div>
 
-        {/* Right: System Status Icon */}
-        <div className="position-absolute end-0 me-4">
+        {/* Right: Status cluster */}
+        <div className="footer-edge-end d-flex align-items-center">
+          <a
+            href="https://github.com/Makr91/BoxVault"
+            target="_blank"
+            rel="noreferrer"
+            className="text-decoration-none text-body-secondary me-3"
+          >
+            <FaGithub className="me-1" />
+            BoxVault v{version.version}
+          </a>
           <OverlayTrigger
             placement="top"
             delay={{ show: 250, hide: 400 }}

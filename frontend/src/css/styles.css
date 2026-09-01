@@ -180,6 +180,33 @@ button::-moz-focus-inner {
   min-width: 0;
 }
 
+.navbar {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.navbar > .container-fluid,
+.footer > .container-fluid {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.footer {
+  font-size: 13px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.footer-edge-start {
+  position: absolute;
+  left: 20px;
+}
+
+.footer-edge-end {
+  position: absolute;
+  right: 20px;
+}
+
 /* Modal backdrop overlay */
 .modal-backdrop-custom {
   background-color: rgba(0, 0, 0, 0.5);
