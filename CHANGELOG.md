@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.1](https://github.com/Makr91/BoxVault/compare/v0.53.0...v0.53.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* AI just never listens ([f2b6521](https://github.com/Makr91/BoxVault/commit/f2b652177f156c5cdf4c3080c9336dc295b45b77))
+
 ## [0.53.0](https://github.com/Makr91/BoxVault/compare/v0.52.1...v0.53.0) (2026-08-12)
 
 
