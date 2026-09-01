@@ -6,6 +6,14 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const originalFs = require('fs');
 
+const hostnameOf = value => {
+  try {
+    return new URL(String(value)).hostname;
+  } catch {
+    return '';
+  }
+};
+
 // Define FS Mockss
 const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
@@ -927,11 +935,11 @@ describe('Health API Integration Tests', () => {
       mockRes.statusCode = 200;
       mockRes.headers = {};
       mockRes.resume = jest.fn();
-      if (String(url).startsWith('https://good.com')) {
+      if (hostnameOf(url) === 'good.com') {
         mockRes.statusCode = 200;
-      } else if (String(url).startsWith('https://bad.com')) {
+      } else if (hostnameOf(url) === 'bad.com') {
         mockRes.statusCode = 500;
-      } else if (String(url).startsWith('https://warn.com')) {
+      } else if (hostnameOf(url) === 'warn.com') {
         mockRes.statusCode = 404;
       }
 
@@ -1229,7 +1237,7 @@ describe('Health API Integration Tests', () => {
       mockRes.headers = {};
       mockRes.resume = jest.fn();
 
-      if (String(url).startsWith('https://warn.com')) {
+      if (hostnameOf(url) === 'warn.com') {
         mockRes.statusCode = 429;
       }
 
