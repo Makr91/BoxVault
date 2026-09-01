@@ -1,21 +1,23 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import EventBus from "../common/EventBus";
-import BoxVaultLight from "../images/BoxVault.svg?react";
-import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import { log } from "../utils/Logger";
-import { sanitizeProvider } from "../utils/providers";
+import {
+  redirectToProvider,
+  sortMethodsByDefault,
+  readStoredLoginMethod,
+  storeLoginMethod,
+} from "../utils/providers";
+
+import AuthShell, { AuthAlert, AuthSpinner } from "./AuthShell.component";
+import ProviderButtons from "./ProviderButtons.component";
 
 const SILENT_SSO_FLAG = "boxvault_silent_sso_attempted";
-
-const redirectToProvider = (provider, query = "") => {
-  const safeProvider = sanitizeProvider(provider);
-  window.location.href = `/api/auth/oidc/${safeProvider}${query}`;
-};
 
 const rememberIntendedUrl = () => {
   if (window.location.pathname !== "/login") {
@@ -49,22 +51,6 @@ const getOidcErrorMessage = (error, t) => {
   }
 };
 
-const sortMethodsByDefault = (methods, defaultProvider) => {
-  if (!defaultProvider) {
-    return methods;
-  }
-  const defaultId = `oidc-${defaultProvider}`;
-  return [...methods].sort((a, b) => {
-    if (a.id === defaultId) {
-      return -1;
-    }
-    if (b.id === defaultId) {
-      return 1;
-    }
-    return 0;
-  });
-};
-
 const filterVisibleOidcMethods = (oidcMethods, providerParam) => {
   if (providerParam === "local") {
     return [];
@@ -90,152 +76,106 @@ const hasSilentBlockingParams = (urlParams) =>
     urlParams.get("logout")
   );
 
+const resolveInitialMode = ({ providerParam, hasOidc, localEnabled }) => {
+  if (!localEnabled) {
+    return "sso";
+  }
+  if (!hasOidc || providerParam === "local") {
+    return "password";
+  }
+  return readStoredLoginMethod();
+};
+
 const deriveLoginView = ({
-  methodsLoading,
+  mode,
+  localEnabled,
   providerParam,
   oidcMethods,
   visibleOidcMethods,
-  localEnabled,
-  showLocalForm,
 }) => {
+  const hasOidc = visibleOidcMethods.length > 0;
   const isGated =
     !!providerParam &&
     providerParam !== "local" &&
-    visibleOidcMethods.length > 0 &&
+    hasOidc &&
     visibleOidcMethods.length < oidcMethods.length;
-
-  const localVisible =
-    localEnabled &&
-    (providerParam === "local" ||
-      visibleOidcMethods.length === 0 ||
-      showLocalForm);
-
-  const hasButtons = !methodsLoading && visibleOidcMethods.length > 0;
+  const passwordMode = mode === "password" && localEnabled;
 
   return {
-    showButtons: hasButtons,
-    showEscapeHatch: hasButtons && localEnabled && !localVisible,
-    showGatedLink: !methodsLoading && isGated,
-    showLocalForm: !methodsLoading && localVisible,
-    showDivider: visibleOidcMethods.length > 0,
+    showNoMethods: !hasOidc && !localEnabled,
+    showLocalForm: passwordMode,
+    showDivider: passwordMode && hasOidc,
+    showButtons: hasOidc,
+    showPasswordToggle: !passwordMode && localEnabled,
+    showSsoToggle: passwordMode && hasOidc,
+    showGatedLink: isGated,
   };
 };
 
-const SilentCheckScreen = () => {
+const LocalLoginForm = ({ formValues, onChange, onSubmit, loading }) => {
   const { t } = useTranslation(["auth"]);
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
-    <div className="col-md-12">
-      <div className="container col-md-3 text-center mt-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">{t("login.checkingSession")}</span>
+    <form className="auth-form" onSubmit={onSubmit} noValidate>
+      <div className="auth-field">
+        <label className="auth-field-label" htmlFor="login-username">
+          {t("login.username")}
+        </label>
+        <div className="auth-input-wrap">
+          <input
+            id="login-username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            value={formValues.username}
+            onChange={onChange}
+          />
         </div>
-        <p className="mt-3">{t("login.checkingSession")}</p>
       </div>
-    </div>
-  );
-};
 
-const OidcProviderButtons = ({
-  methods,
-  defaultProvider,
-  loading,
-  onSelect,
-}) => (
-  <div className="d-grid gap-2 mt-4">
-    {methods.map((method) => {
-      const providerName = method.id.replace("oidc-", "");
-      const isPrimary =
-        methods.length === 1 ||
-        (defaultProvider && method.id === `oidc-${defaultProvider}`);
-      return (
-        <button
-          key={method.id}
-          type="button"
-          className={`btn ${isPrimary ? "btn-primary" : "btn-outline-primary"}`}
-          disabled={loading}
-          onClick={() => onSelect(providerName)}
-        >
-          {loading && (
-            <span className="spinner-border spinner-border-sm me-2" />
-          )}
-          {method.name}
-        </button>
-      );
-    })}
-  </div>
-);
-
-OidcProviderButtons.propTypes = {
-  methods: PropTypes.arrayOf(PropTypes.object).isRequired,
-  defaultProvider: PropTypes.string,
-  loading: PropTypes.bool.isRequired,
-  onSelect: PropTypes.func.isRequired,
-};
-
-const LocalLoginForm = ({
-  formValues,
-  onChange,
-  onSubmit,
-  loading,
-  showDivider,
-}) => {
-  const { t } = useTranslation(["auth"]);
-  return (
-    <form onSubmit={onSubmit} noValidate>
-      {showDivider && (
-        <div className="d-flex align-items-center my-3">
-          <hr className="flex-grow-1" />
-          <span className="px-2 text-muted small">
-            {t("login.orSeparator")}
-          </span>
-          <hr className="flex-grow-1" />
+      <div className="auth-field">
+        <label className="auth-field-label" htmlFor="login-password">
+          {t("login.password")}
+        </label>
+        <div className="auth-input-wrap auth-input-wrap--password">
+          <input
+            id="login-password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            value={formValues.password}
+            onChange={onChange}
+          />
+          <button
+            type="button"
+            className="auth-reveal"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={
+              showPassword ? t("login.hidePassword") : t("login.showPassword")
+            }
+          >
+            {showPassword ? <FaEyeSlash /> : <FaEye />}
+          </button>
         </div>
-      )}
-
-      <div className="form-group">
-        <label htmlFor="username">{t("login.username")}</label>
-        <input
-          type="text"
-          className="form-control"
-          name="username"
-          value={formValues.username}
-          onChange={onChange}
-        />
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="password">{t("login.password")}</label>
-        <input
-          type="password"
-          className="form-control"
-          name="password"
-          value={formValues.password}
-          onChange={onChange}
-        />
-      </div>
-
-      <div className="form-group mt-3">
-        <div className="form-check">
+        <label className="auth-check">
           <input
             type="checkbox"
-            className="form-check-input"
             name="stayLoggedIn"
-            id="stayLoggedIn"
             checked={formValues.stayLoggedIn}
             onChange={onChange}
           />
-          <label className="form-check-label" htmlFor="stayLoggedIn">
-            {t("login.stayLoggedIn")}
-          </label>
-        </div>
+          <span>{t("login.stayLoggedIn")}</span>
+        </label>
       </div>
 
-      <div className="d-grid gap-2 col-6 mx-auto mt-3">
-        <button className="btn btn-primary btn-block" disabled={loading}>
-          {loading && <span className="spinner-border spinner-border-sm" />}
-          <span>{t("login.loginButton")}</span>
-        </button>
-      </div>
+      <button
+        type="submit"
+        className={`auth-btn auth-btn-primary auth-btn-block${loading ? " is-loading" : ""}`}
+        disabled={loading}
+      >
+        {t("login.signIn")}
+      </button>
     </form>
   );
 };
@@ -249,10 +189,99 @@ LocalLoginForm.propTypes = {
   onChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
-  showDivider: PropTypes.bool.isRequired,
 };
 
-const Login = ({ theme }) => {
+const LoginMethods = ({
+  view,
+  visibleOidcMethods,
+  defaultProvider,
+  loading,
+  formValues,
+  onChange,
+  onSubmit,
+  onSelectProvider,
+  onSwitchMode,
+}) => {
+  const { t } = useTranslation(["auth"]);
+  const hasLinks =
+    view.showPasswordToggle || view.showSsoToggle || view.showGatedLink;
+
+  return (
+    <>
+      {view.showNoMethods && (
+        <AuthAlert tone="info">{t("login.noMethods")}</AuthAlert>
+      )}
+      {view.showLocalForm && (
+        <LocalLoginForm
+          formValues={formValues}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          loading={loading}
+        />
+      )}
+      {view.showDivider && (
+        <div className="auth-or">{t("login.orSeparator")}</div>
+      )}
+      {view.showButtons && (
+        <ProviderButtons
+          methods={visibleOidcMethods}
+          defaultProvider={defaultProvider}
+          loading={loading}
+          onSelect={onSelectProvider}
+        />
+      )}
+      {hasLinks && (
+        <div className="auth-links">
+          {view.showPasswordToggle && (
+            <button
+              type="button"
+              className="auth-link auth-link-muted"
+              onClick={() => onSwitchMode("password")}
+            >
+              {t("login.usePassword")}
+            </button>
+          )}
+          {view.showSsoToggle && (
+            <button
+              type="button"
+              className="auth-link auth-link-muted"
+              onClick={() => onSwitchMode("sso")}
+            >
+              {t("login.useSso")}
+            </button>
+          )}
+          {view.showGatedLink && (
+            <Link to="/login" className="auth-link auth-link-muted">
+              {t("login.otherOptions")}
+            </Link>
+          )}
+        </div>
+      )}
+    </>
+  );
+};
+
+LoginMethods.propTypes = {
+  view: PropTypes.shape({
+    showNoMethods: PropTypes.bool.isRequired,
+    showLocalForm: PropTypes.bool.isRequired,
+    showDivider: PropTypes.bool.isRequired,
+    showButtons: PropTypes.bool.isRequired,
+    showPasswordToggle: PropTypes.bool.isRequired,
+    showSsoToggle: PropTypes.bool.isRequired,
+    showGatedLink: PropTypes.bool.isRequired,
+  }).isRequired,
+  visibleOidcMethods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  defaultProvider: PropTypes.string,
+  loading: PropTypes.bool.isRequired,
+  formValues: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  onSelectProvider: PropTypes.func.isRequired,
+  onSwitchMode: PropTypes.func.isRequired,
+};
+
+const Login = () => {
   const { t } = useTranslation(["auth", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -266,14 +295,17 @@ const Login = ({ theme }) => {
     password: "",
     stayLoggedIn: false,
   });
-
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState(
+    location.state?.error || ""
+  );
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
   const [defaultProvider, setDefaultProvider] = useState(null);
   const [silentLogin, setSilentLogin] = useState(false);
-  const [showLocalForm, setShowLocalForm] = useState(false);
+  const [localRegistrationEnabled, setLocalRegistrationEnabled] =
+    useState(false);
+  const [chosenMode, setChosenMode] = useState(null);
 
   const urlParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -311,25 +343,27 @@ const Login = ({ theme }) => {
     [oidcMethods, providerParam]
   );
 
+  const mode =
+    chosenMode ||
+    resolveInitialMode({
+      providerParam,
+      hasOidc: visibleOidcMethods.length > 0,
+      localEnabled,
+    });
+
   const view = useMemo(
     () =>
       deriveLoginView({
-        methodsLoading,
+        mode,
+        localEnabled,
         providerParam,
         oidcMethods,
         visibleOidcMethods,
-        localEnabled,
-        showLocalForm,
       }),
-    [
-      methodsLoading,
-      providerParam,
-      oidcMethods,
-      visibleOidcMethods,
-      localEnabled,
-      showLocalForm,
-    ]
+    [mode, localEnabled, providerParam, oidcMethods, visibleOidcMethods]
   );
+
+  const registrationOpen = localRegistrationEnabled || oidcMethods.length > 0;
 
   const shouldAttemptSilent = useMemo(() => {
     if (methodsLoading || !silentLogin || !defaultProvider) {
@@ -364,23 +398,17 @@ const Login = ({ theme }) => {
         if (cancelled) {
           return;
         }
-
-        if (result.methods && result.methods.length > 0) {
-          setAuthMethods(result.methods);
-        } else {
-          setAuthMethods([
-            { id: "local", name: t("login.localAccount"), enabled: true },
-          ]);
-        }
+        setAuthMethods(result.methods || []);
         setDefaultProvider(result.default_provider || null);
         setSilentLogin(!!result.silent_login);
+        setLocalRegistrationEnabled(!!result.local_registration_enabled);
       } catch (error) {
         if (!cancelled) {
           log.auth.error("Error loading auth methods", {
             error: error.message,
           });
           setAuthMethods([
-            { id: "local", name: "Local Account", enabled: true },
+            { id: "local", name: t("login.localAccount"), enabled: true },
           ]);
         }
       } finally {
@@ -410,6 +438,11 @@ const Login = ({ theme }) => {
       });
     }
   }, [shouldAttemptSilent, defaultProvider]);
+
+  const handleSwitchMode = (next) => {
+    setChosenMode(next);
+    storeLoginMethod(next);
+  };
 
   const handleOidcLogin = (provider) => {
     rememberIntendedUrl();
@@ -461,80 +494,43 @@ const Login = ({ theme }) => {
   };
 
   if (shouldAttemptSilent) {
-    return <SilentCheckScreen />;
+    return (
+      <AuthShell title={t("login.checkingSession")}>
+        <AuthSpinner label={t("login.checkingSession")} />
+      </AuthShell>
+    );
   }
 
   return (
-    <div className="col-md-12">
-      <div className="container col-md-3">
-        {theme === "light" ? (
-          <BoxVaultLight className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
-        ) : (
-          <BoxVaultDark className="rounded mx-auto d-block img-fluid w-50 mt-5 mb-3" />
-        )}
-        <h2 className="fs-1 text-center mt-4">{t("login.title")}</h2>
+    <AuthShell title={t("login.headline")}>
+      {message && <AuthAlert tone="danger">{message}</AuthAlert>}
 
-        {methodsLoading && (
-          <div className="text-center mt-4">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">{t("common:loading")}</span>
-            </div>
-          </div>
-        )}
+      {methodsLoading ? (
+        <AuthSpinner label={t("common:loading")} />
+      ) : (
+        <LoginMethods
+          view={view}
+          visibleOidcMethods={visibleOidcMethods}
+          defaultProvider={defaultProvider}
+          loading={loading}
+          formValues={formValues}
+          onChange={handleInputChange}
+          onSubmit={handleLogin}
+          onSelectProvider={handleOidcLogin}
+          onSwitchMode={handleSwitchMode}
+        />
+      )}
 
-        {view.showButtons && (
-          <OidcProviderButtons
-            methods={visibleOidcMethods}
-            defaultProvider={defaultProvider}
-            loading={loading}
-            onSelect={handleOidcLogin}
-          />
-        )}
-
-        {view.showEscapeHatch && (
-          <div className="text-center mt-3">
-            <button
-              type="button"
-              className="btn btn-link btn-sm"
-              onClick={() => setShowLocalForm(true)}
-            >
-              {t("login.useLocalAccount")}
-            </button>
-          </div>
-        )}
-
-        {view.showGatedLink && (
-          <div className="text-center mt-2">
-            <Link to="/login" className="btn btn-link btn-sm">
-              {t("login.otherOptions")}
-            </Link>
-          </div>
-        )}
-
-        {view.showLocalForm && (
-          <LocalLoginForm
-            formValues={formValues}
-            onChange={handleInputChange}
-            onSubmit={handleLogin}
-            loading={loading}
-            showDivider={view.showDivider}
-          />
-        )}
-
-        {message && (
-          <div className="form-group mt-3">
-            <div className="alert alert-danger" role="alert">
-              {message}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      {!methodsLoading && registrationOpen && (
+        <p className="auth-foot">
+          {t("login.newHere")}{" "}
+          <Link to="/register" className="auth-link">
+            {t("login.createAccount")}
+          </Link>
+        </p>
+      )}
+    </AuthShell>
   );
-};
-
-Login.propTypes = {
-  theme: PropTypes.string.isRequired,
 };
 
 export default Login;

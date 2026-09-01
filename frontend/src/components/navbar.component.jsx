@@ -9,17 +9,14 @@ import {
   FaUser,
   FaCircleInfo,
   FaGear,
-  FaIdBadge,
+  FaSliders,
   FaHouseLock,
   FaBridgeLock,
   FaBook,
-  FaBell,
-  FaBellSlash,
-  FaShieldHalved,
-  FaEnvelope,
-  FaTriangleExclamation,
-  FaXmark,
-  FaArrowUpRightFromSquare,
+  FaBuilding,
+  FaChevronRight,
+  FaRightToBracket,
+  FaStar,
   FaCircleHalfStroke,
 } from "react-icons/fa6";
 import { Link } from "react-router-dom";
@@ -29,23 +26,16 @@ import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
 import AuthService from "../services/auth.service";
 import FavoritesService from "../services/favorites.service";
-import NotificationsService from "../services/notifications.service";
 import UserService from "../services/user.service";
 import { fetchTrustedIssuers, resolveIssuer } from "../utils/authServer";
-import { userDisplayName } from "../utils/displayName";
+import { userDisplayName, userSecondaryLine } from "../utils/displayName";
 import { log } from "../utils/Logger";
-import {
-  isPushSupported,
-  isPushEnabled,
-  setPushEnabled,
-  subscribePush,
-  unsubscribePush,
-} from "../utils/pushNotifications";
-import { formatRelativeTime } from "../utils/relativeTime";
 
+import NotificationsItem from "./NotificationsItem.component";
 import OrganizationSwitcher from "./OrganizationSwitcher.component";
 
-// Helper to get language display name
+const THEME_ICONS = { auto: FaCircleHalfStroke, light: FaSun, dark: FaMoon };
+
 const getLanguageDisplayName = (languageCode) => {
   const code = languageCode || "en";
 
@@ -62,50 +52,67 @@ const getLanguageDisplayName = (languageCode) => {
   }
 };
 
+const getLanguageFlag = (languageCode) => {
+  const code = languageCode || "en";
+
+  if (code === "cimode") {
+    return "🔧";
+  }
+
+  try {
+    const locale = new Intl.Locale(code);
+    const region = locale.region || locale.maximize().region;
+
+    if (region) {
+      return <CountryFlag countryCode={region} svg title={region} />;
+    }
+  } catch {
+    return "🌐";
+  }
+
+  return "🌐";
+};
+
+const hasNotificationsScope = (claims) =>
+  []
+    .concat(claims?.scope || [])
+    .join(" ")
+    .split(/\s+/)
+    .includes("notifications");
+
+const isOidcSession = (user) => !!user?.provider?.startsWith("oidc-");
+
+const resolveFaviconUrl = (homeUrl) => {
+  if (!homeUrl) {
+    return "";
+  }
+  try {
+    return `${new URL(homeUrl).origin}/favicon.ico`;
+  } catch (error) {
+    log.component.debug("Invalid URL for favicon", {
+      url: homeUrl,
+      error: error.message,
+    });
+    return "";
+  }
+};
+
 const AppIcon = ({ app }) => {
-  if (app.iconUrl && app.iconUrl !== "") {
-    return (
-      <img
-        src={app.iconUrl}
-        className="logo-md icon-with-margin"
-        alt=""
-        onError={(e) => {
-          e.target.style.display = "none";
-        }}
-      />
-    );
+  const [failed, setFailed] = useState(false);
+  const iconUrl = app.iconUrl || resolveFaviconUrl(app.homeUrl);
+
+  if (!iconUrl || failed) {
+    return <FaStar className="text-warning logo-md icon-with-margin" />;
   }
 
-  // Note: Favicon logic removed from here to simplify, or can be kept if needed.
-  // For simplicity and complexity reduction, we'll rely on the parent or simplify this component.
-  // Re-implementing the logic from renderAppIcon:
-
-  if (app.homeUrl && app.homeUrl !== "") {
-    let faviconUrl = null;
-    try {
-      faviconUrl = `${new URL(app.homeUrl).origin}/favicon.ico`;
-    } catch (e) {
-      log.component.debug("Invalid URL for favicon", {
-        url: app.homeUrl,
-        error: e.message,
-      });
-    }
-
-    if (faviconUrl) {
-      return (
-        <img
-          src={faviconUrl}
-          className="logo-md icon-with-margin"
-          alt=""
-          onError={(e) => {
-            e.target.style.display = "none";
-          }}
-        />
-      );
-    }
-  }
-
-  return null;
+  return (
+    <img
+      src={iconUrl}
+      className="logo-md icon-with-margin"
+      alt=""
+      onError={() => setFailed(true)}
+    />
+  );
 };
 
 AppIcon.propTypes = {
@@ -113,362 +120,6 @@ AppIcon.propTypes = {
     iconUrl: PropTypes.string,
     homeUrl: PropTypes.string,
   }).isRequired,
-};
-
-const NotificationToggle = () => {
-  const { t } = useTranslation();
-  const [enabled, setEnabled] = useState(isPushEnabled());
-  const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState(null);
-
-  const enableNotifications = async () => {
-    if (!isPushSupported()) {
-      setFeedback({ tone: "danger", text: t("notifications.notSupported") });
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      setFeedback({
-        tone: "danger",
-        text: t("notifications.permissionDenied"),
-      });
-      return;
-    }
-
-    await subscribePush();
-    setPushEnabled(true);
-    setEnabled(true);
-    setFeedback({ tone: "success", text: t("notifications.enableSuccess") });
-  };
-
-  const disableNotifications = async () => {
-    await unsubscribePush();
-    setPushEnabled(false);
-    setEnabled(false);
-    setFeedback({ tone: "success", text: t("notifications.disableSuccess") });
-  };
-
-  const describeToggleError = (error) => {
-    if (error.response?.status === 403) {
-      return t("notifications.scopeMissing");
-    }
-    return enabled
-      ? t("notifications.disableError")
-      : t("notifications.enableError");
-  };
-
-  const handleToggle = async (e) => {
-    e.stopPropagation();
-    setBusy(true);
-    setFeedback(null);
-
-    try {
-      if (enabled) {
-        await disableNotifications();
-      } else {
-        await enableNotifications();
-      }
-    } catch (error) {
-      log.component.error("Notification toggle failed", {
-        error: error.message,
-      });
-      setFeedback({ tone: "danger", text: describeToggleError(error) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <li>
-        <button
-          type="button"
-          className="dropdown-item d-flex align-items-center"
-          onClick={handleToggle}
-          disabled={busy}
-        >
-          {enabled ? (
-            <FaBell className="me-2" />
-          ) : (
-            <FaBellSlash className="me-2" />
-          )}
-          {enabled ? t("notifications.disable") : t("notifications.enable")}
-        </button>
-      </li>
-      {feedback && (
-        <li>
-          <span className={`dropdown-item-text small text-${feedback.tone}`}>
-            {feedback.text}
-          </span>
-        </li>
-      )}
-    </>
-  );
-};
-
-const extractInboxEntries = (data) =>
-  Array.isArray(data?.notifications) ? data.notifications : [];
-
-const INBOX_TYPE_ICONS = {
-  SECURITY: FaShieldHalved,
-  SYSTEM: FaGear,
-  MESSAGE: FaEnvelope,
-  ALERT: FaTriangleExclamation,
-};
-
-const INBOX_SEVERITY_CLASSES = {
-  CRITICAL: "text-danger",
-  ERROR: "text-danger",
-  WARNING: "text-warning",
-  SUCCESS: "text-success",
-  INFO: "text-body-secondary",
-};
-
-const NotificationInboxItem = ({ entry, onSelect, onDismiss }) => {
-  const { t, i18n } = useTranslation();
-  const Icon = INBOX_TYPE_ICONS[entry.type] || FaBell;
-  const unread = !entry.readAt;
-
-  return (
-    <div className="notification-row">
-      <button
-        type="button"
-        className="dropdown-item notification-item"
-        onClick={() => onSelect(entry)}
-      >
-        <Icon
-          className={`notification-item-icon ${
-            INBOX_SEVERITY_CLASSES[entry.severity] || "text-body-secondary"
-          }`}
-        />
-        <span className="notification-item-body">
-          <span
-            className={`notification-item-title ${unread ? "fw-semibold" : ""}`}
-          >
-            {entry.title}
-          </span>
-          {entry.body && (
-            <span className="notification-item-text">{entry.body}</span>
-          )}
-          <span className="notification-item-time">
-            {formatRelativeTime(entry.createdAt, i18n.language)}
-          </span>
-        </span>
-        {unread && <span className="notification-item-dot" />}
-      </button>
-      <button
-        type="button"
-        className="btn btn-sm notification-dismiss"
-        onClick={() => onDismiss(entry)}
-        title={t("inbox.dismiss")}
-        aria-label={t("inbox.dismiss")}
-      >
-        <FaXmark />
-      </button>
-    </div>
-  );
-};
-
-NotificationInboxItem.propTypes = {
-  entry: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    title: PropTypes.string,
-    body: PropTypes.string,
-    type: PropTypes.string,
-    severity: PropTypes.string,
-    navigate: PropTypes.string,
-    createdAt: PropTypes.string,
-    readAt: PropTypes.string,
-  }).isRequired,
-  onSelect: PropTypes.func.isRequired,
-  onDismiss: PropTypes.func.isRequired,
-};
-
-const NotificationBell = ({ authServerUrl }) => {
-  const { t } = useTranslation();
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [entries, setEntries] = useState([]);
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadUnreadCount = async () => {
-      try {
-        const response = await NotificationsService.getUnreadCount();
-        if (active) {
-          setUnreadCount(response.data?.count || 0);
-        }
-      } catch (error) {
-        log.api.error("Error loading unread notification count", {
-          error: error.message,
-        });
-      }
-    };
-
-    loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 60000);
-
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  const loadEntries = async () => {
-    try {
-      setLoadFailed(false);
-      const response = await NotificationsService.listNotifications({
-        page: 0,
-        size: 20,
-      });
-      setEntries(extractInboxEntries(response.data));
-    } catch (error) {
-      log.api.error("Error loading notification inbox", {
-        error: error.message,
-      });
-      setLoadFailed(true);
-    }
-  };
-
-  const handleSelect = async (entry) => {
-    if (!entry.readAt) {
-      try {
-        await NotificationsService.markRead(entry.id);
-        setUnreadCount((count) => Math.max(0, count - 1));
-        setEntries((prev) =>
-          prev.map((item) =>
-            item.id === entry.id
-              ? { ...item, readAt: new Date().toISOString() }
-              : item
-          )
-        );
-      } catch (error) {
-        log.api.error("Error marking notification read", {
-          error: error.message,
-        });
-      }
-    }
-    if (
-      typeof entry.navigate === "string" &&
-      entry.navigate.startsWith("https://")
-    ) {
-      window.location.assign(entry.navigate);
-    }
-  };
-
-  const handleDismiss = async (entry) => {
-    try {
-      await NotificationsService.deleteNotification(entry.id);
-      setEntries((prev) => prev.filter((item) => item.id !== entry.id));
-      if (!entry.readAt) {
-        setUnreadCount((count) => Math.max(0, count - 1));
-      }
-    } catch (error) {
-      log.api.error("Error dismissing notification", {
-        error: error.message,
-      });
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await NotificationsService.markAllRead();
-      setUnreadCount(0);
-      setEntries((prev) =>
-        prev.map((item) =>
-          item.readAt ? item : { ...item, readAt: new Date().toISOString() }
-        )
-      );
-    } catch (error) {
-      log.api.error("Error marking all notifications read", {
-        error: error.message,
-      });
-      setLoadFailed(true);
-    }
-  };
-
-  return (
-    <li className="nav-item dropdown">
-      <button
-        className="nav-link"
-        id="notificationBellDropdown"
-        data-bs-toggle="dropdown"
-        aria-expanded="false"
-        onClick={loadEntries}
-        title={t("inbox.title")}
-        aria-label={t("inbox.unreadCount", { count: unreadCount })}
-      >
-        <span className="position-relative">
-          <FaBell />
-          {unreadCount > 0 && (
-            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-              {unreadCount}
-            </span>
-          )}
-        </span>
-      </button>
-      <ul
-        className="dropdown-menu dropdown-menu-end overflow-auto notification-menu"
-        aria-labelledby="notificationBellDropdown"
-      >
-        <li className="d-flex justify-content-between align-items-center notification-header">
-          <strong>{t("inbox.title")}</strong>
-          <button
-            type="button"
-            className="btn btn-sm btn-link p-0"
-            onClick={handleMarkAllRead}
-          >
-            {t("inbox.markAllRead")}
-          </button>
-        </li>
-        <li>
-          <hr className="dropdown-divider m-0" />
-        </li>
-        {loadFailed && (
-          <li>
-            <span className="dropdown-item-text small text-danger">
-              {t("inbox.loadError")}
-            </span>
-          </li>
-        )}
-        {!loadFailed && entries.length === 0 && (
-          <li>
-            <span className="dropdown-item-text small text-body-secondary">
-              {t("inbox.empty")}
-            </span>
-          </li>
-        )}
-        {entries.map((entry) => (
-          <li key={entry.id}>
-            <NotificationInboxItem
-              entry={entry}
-              onSelect={handleSelect}
-              onDismiss={handleDismiss}
-            />
-          </li>
-        ))}
-        {authServerUrl && (
-          <li className="notification-footer">
-            <a
-              href={`${authServerUrl}/notifications`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="dropdown-item text-center"
-            >
-              {t("inbox.viewAll")}
-              <FaArrowUpRightFromSquare className="ms-2" />
-            </a>
-          </li>
-        )}
-      </ul>
-    </li>
-  );
-};
-
-NotificationBell.propTypes = {
-  authServerUrl: PropTypes.string,
 };
 
 const BrandLogo = ({ theme, className }) =>
@@ -483,59 +134,251 @@ BrandLogo.propTypes = {
   className: PropTypes.string.isRequired,
 };
 
-const ProfileMenuItem = ({
-  profileIsLocal,
-  authServerUrl,
-  onToggle,
-  onToggleKeyPress,
-}) => {
-  const { t } = useTranslation();
-  const icon = (
-    <span
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onToggle(e);
-      }}
-      onKeyPress={onToggleKeyPress}
-      role="button"
-      tabIndex={0}
-      title="Switch profile mode"
-      className="cursor-pointer"
-    >
-      {profileIsLocal ? (
-        <FaUser className="me-2" />
-      ) : (
-        <FaIdBadge className="me-2" />
-      )}
-    </span>
-  );
-  if (profileIsLocal || !authServerUrl) {
+const UserAvatar = ({ gravatarUrl, theme, size }) => {
+  if (gravatarUrl) {
     return (
-      <Link to="/profile" className="dropdown-item d-flex align-items-center">
-        {icon}
-        {t("navbar.profile")}
-      </Link>
+      <img
+        src={gravatarUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-circle flex-shrink-0"
+      />
+    );
+  }
+  return <BrandLogo theme={theme} className="logo-xl flex-shrink-0" />;
+};
+
+UserAvatar.propTypes = {
+  gravatarUrl: PropTypes.string,
+  theme: PropTypes.string.isRequired,
+  size: PropTypes.number.isRequired,
+};
+
+const IdentityCard = ({ displayName, email, gravatarUrl, theme, idpUrl }) => {
+  const body = (
+    <>
+      <UserAvatar gravatarUrl={gravatarUrl} theme={theme} size={36} />
+      <span className="flex-grow-1 min-width-0">
+        <span className="d-block fw-semibold text-truncate">{displayName}</span>
+        {email && (
+          <small className="d-block text-body-secondary text-truncate">
+            {email}
+          </small>
+        )}
+      </span>
+      <FaChevronRight className="text-body-secondary flex-shrink-0" />
+    </>
+  );
+  const className = "dropdown-item user-card d-flex align-items-center gap-3";
+
+  if (idpUrl) {
+    return (
+      <a
+        href={`${idpUrl}/user/profile`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {body}
+      </a>
     );
   }
   return (
-    <a
-      href={`${authServerUrl}/user/profile`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="dropdown-item d-flex align-items-center"
-    >
-      {icon}
-      {t("navbar.profile")}
-    </a>
+    <Link to="/profile" className={className}>
+      {body}
+    </Link>
   );
 };
 
-ProfileMenuItem.propTypes = {
-  profileIsLocal: PropTypes.bool.isRequired,
-  authServerUrl: PropTypes.string.isRequired,
-  onToggle: PropTypes.func.isRequired,
-  onToggleKeyPress: PropTypes.func.isRequired,
+IdentityCard.propTypes = {
+  displayName: PropTypes.string.isRequired,
+  email: PropTypes.string.isRequired,
+  gravatarUrl: PropTypes.string,
+  theme: PropTypes.string.isRequired,
+  idpUrl: PropTypes.string.isRequired,
+};
+
+const LogoutRow = ({ oidc, onLogout }) => {
+  const { t } = useTranslation();
+  const [everywhere, setEverywhere] = useState(true);
+  const ScopeIcon = everywhere ? FaBridgeLock : FaHouseLock;
+
+  const toggleScope = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setEverywhere((current) => !current);
+  };
+
+  const toggleScopeKey = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      toggleScope(event);
+    }
+  };
+
+  return (
+    <button
+      className="dropdown-item d-flex align-items-center text-danger"
+      onClick={() => onLogout(oidc && everywhere)}
+    >
+      {oidc ? (
+        <span
+          role="button"
+          tabIndex={0}
+          className="d-inline-flex me-2 logout-scope"
+          onClick={toggleScope}
+          onKeyDown={toggleScopeKey}
+          title={
+            everywhere
+              ? t("navbar.logoutEverywhereTitle")
+              : t("navbar.logoutLocalTitle")
+          }
+        >
+          <ScopeIcon />
+        </span>
+      ) : (
+        <FaHouseLock className="me-2" />
+      )}
+      <span>{t("navbar.logout")}</span>
+    </button>
+  );
+};
+
+LogoutRow.propTypes = {
+  oidc: PropTypes.bool.isRequired,
+  onLogout: PropTypes.func.isRequired,
+};
+
+const FavoriteRows = ({ apps }) => {
+  const { t } = useTranslation();
+  if (!apps || apps.length === 0) {
+    return null;
+  }
+  const sorted = [...apps].sort((a, b) => (a.order || 0) - (b.order || 0));
+  return (
+    <>
+      <li>
+        <hr className="dropdown-divider" />
+      </li>
+      <li className="dropdown-header py-0">{t("navbar.favorites")}</li>
+      {sorted.map((app) => (
+        <li key={app.clientId}>
+          <a
+            href={app.homeUrl || "#"}
+            className="dropdown-item"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <AppIcon app={app} />
+            {app.customLabel || app.clientName || app.clientId}
+          </a>
+        </li>
+      ))}
+    </>
+  );
+};
+
+FavoriteRows.propTypes = {
+  apps: PropTypes.arrayOf(
+    PropTypes.shape({
+      clientId: PropTypes.string.isRequired,
+      clientName: PropTypes.string,
+      customLabel: PropTypes.string,
+      iconUrl: PropTypes.string,
+      homeUrl: PropTypes.string,
+      order: PropTypes.number,
+    })
+  ),
+};
+
+const LanguageModal = ({ show, current, languages, onPick, onClose }) => {
+  const { t } = useTranslation();
+  if (!show) {
+    return null;
+  }
+  return (
+    <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">
+              <i className="bi bi-globe me-2" />
+              {t("language.changeLanguage")}
+            </h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={onClose}
+              aria-label="Close"
+            />
+          </div>
+          <div className="modal-body">
+            <div className="list-group">
+              {languages.map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                    current === lang ? "border-primary border-2" : ""
+                  }`}
+                  onClick={() => onPick(lang)}
+                >
+                  <span>
+                    <span className="me-2 flag-icon-lg">
+                      {getLanguageFlag(lang)}
+                    </span>
+                    {getLanguageDisplayName(lang)}
+                  </span>
+                  {current === lang && (
+                    <i className="bi bi-check-circle text-success" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+LanguageModal.propTypes = {
+  show: PropTypes.bool.isRequired,
+  current: PropTypes.string.isRequired,
+  languages: PropTypes.arrayOf(PropTypes.string).isRequired,
+  onPick: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
+
+const resolveMemberships = (user) =>
+  Array.isArray(user?.organizations) ? user.organizations : [];
+
+const resolveDisplayName = (userClaims, user) =>
+  userClaims?.name || userDisplayName(user);
+
+const knobValue = (config, key) => config?.[key]?.value || "";
+
+const firstValue = (...values) => values.find((value) => !!value) || "";
+
+const buildTicketUrl = ({ ticketConfig, activeOrgCode, userClaims, user }) => {
+  if (!knobValue(ticketConfig, "enabled")) {
+    return null;
+  }
+
+  const claims = userClaims || {};
+  const params = new URLSearchParams({
+    req: firstValue(knobValue(ticketConfig, "req_type"), "sso"),
+    customerId: firstValue(
+      activeOrgCode,
+      claims.customer_id,
+      knobValue(ticketConfig, "fallback_customer_id")
+    ),
+    user: firstValue(claims.name, userDisplayName(user)),
+    email: firstValue(claims.email, user?.email),
+    context: knobValue(ticketConfig, "context"),
+  });
+
+  return `${knobValue(ticketConfig, "base_url")}&${params.toString()}`;
 };
 
 const Navbar = ({
@@ -552,11 +395,9 @@ const Navbar = ({
   onOrganizationSwitch,
 }) => {
   const { t, i18n } = useTranslation();
-  const themeIcons = { auto: FaCircleHalfStroke, light: FaSun, dark: FaMoon };
-  const ThemeIcon = themeIcons[themePreference] || FaCircleHalfStroke;
+  const ThemeIcon = THEME_ICONS[themePreference] || FaCircleHalfStroke;
   const themeToggleLabel = t(`theme.${themePreference}`);
-  const [logoutEverywhere, setLogoutEverywhere] = useState(true);
-  const [profileIsLocal, setProfileIsLocal] = useState(true);
+  const languageLabel = `${t("language.changeLanguage")}: ${getLanguageDisplayName(i18n.language)}`;
   const [favoriteApps, setFavoriteApps] = useState([]);
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
@@ -566,6 +407,10 @@ const Navbar = ({
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [activeOrgGravatar, setActiveOrgGravatar] = useState(null);
   const [activeOrgCode, setActiveOrgCode] = useState(null);
+
+  const oidc = isOidcSession(currentUser);
+  const memberships = resolveMemberships(currentUser);
+  const supportedLanguages = getSupportedLanguages();
 
   const changeLanguage = async (lng) => {
     if (currentUser) {
@@ -588,76 +433,15 @@ const Navbar = ({
         });
     }
 
-    log.component.debug("Changing language", {
-      from: i18n.language,
-      to: lng,
-      currentLocalStorage: localStorage.getItem("i18nextLng"),
-    });
-
     await i18n.changeLanguage(lng);
-
-    log.component.debug("Language changed", {
-      newLanguage: i18n.language,
-      localStorage: localStorage.getItem("i18nextLng"),
-    });
-
     setShowLanguageModal(false);
   };
 
-  // Get flag icon for language
-  const getLanguageFlag = (languageCode) => {
-    const code = languageCode || "en";
-
-    if (code === "cimode") {
-      return "🔧";
-    }
-
-    try {
-      const locale = new Intl.Locale(code);
-      const region = locale.region || locale.maximize().region;
-
-      if (region) {
-        return <CountryFlag countryCode={region} svg title={region} />;
-      }
-    } catch {
-      // Ignore errors
-    }
-
-    return "🌐";
-  };
-
-  // Get supported languages from i18n
-  const supportedLanguages = getSupportedLanguages();
-
-  const handleLogout = () => {
-    if (currentUser?.provider?.startsWith("oidc-") && logoutEverywhere) {
+  const handleLogout = (everywhere) => {
+    if (everywhere) {
       logOut();
     } else {
       logOutLocal();
-    }
-  };
-
-  const handleLogoutToggle = (e) => {
-    e.stopPropagation();
-    setLogoutEverywhere(!logoutEverywhere);
-  };
-
-  const handleProfileToggle = (e) => {
-    e.stopPropagation();
-    setProfileIsLocal(!profileIsLocal);
-  };
-
-  const handleLogoutToggleKeyPress = (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handleLogoutToggle(e);
-    }
-  };
-
-  const handleProfileToggleKeyPress = (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handleProfileToggle(e);
     }
   };
 
@@ -669,7 +453,6 @@ const Navbar = ({
         const issuers = await fetchTrustedIssuers();
         if (mounted) {
           setTrustedIssuers(issuers);
-          log.auth.debug("Trusted issuers loaded", { count: issuers.length });
         }
       } catch (error) {
         log.auth.error("Failed to load trusted issuers", {
@@ -690,29 +473,28 @@ const Navbar = ({
 
   useEffect(() => {
     let mounted = true;
-    const controller = new AbortController();
 
     const loadUserData = async () => {
-      if (currentUser?.provider?.startsWith("oidc-")) {
-        try {
-          const response = await FavoritesService.getUserInfoClaims();
-          if (mounted) {
-            setUserClaims(response.data);
-            setFavoriteApps(response.data?.favorite_apps || []);
-          }
-        } catch (error) {
-          if (
-            !error.name?.includes("Cancel") &&
-            !error.message?.includes("aborted")
-          ) {
-            log.api.error("Error loading user claims", {
-              error: error.message,
-            });
-          }
-        }
-      } else {
+      if (!isOidcSession(currentUser)) {
         setFavoriteApps([]);
         setUserClaims(null);
+        return;
+      }
+      try {
+        const response = await FavoritesService.getUserInfoClaims();
+        if (mounted) {
+          setUserClaims(response.data);
+          setFavoriteApps(response.data?.favorite_apps || []);
+        }
+      } catch (error) {
+        if (
+          !error.name?.includes("Cancel") &&
+          !error.message?.includes("aborted")
+        ) {
+          log.api.error("Error loading user claims", {
+            error: error.message,
+          });
+        }
       }
     };
 
@@ -720,14 +502,8 @@ const Navbar = ({
 
     return () => {
       mounted = false;
-      controller.abort();
     };
   }, [currentUser]);
-
-  const extractAuthServerUrl = useCallback(
-    (accessToken) => resolveIssuer(accessToken, trustedIssuers),
-    [trustedIssuers]
-  );
 
   const fetchTicketConfig = useCallback(async (mounted) => {
     try {
@@ -794,10 +570,13 @@ const Navbar = ({
 
       if (
         trustedIssuers.length > 0 &&
-        currentUser?.provider?.startsWith("oidc-") &&
+        isOidcSession(currentUser) &&
         currentUser?.accessToken
       ) {
-        const issuerUrl = extractAuthServerUrl(currentUser.accessToken);
+        const issuerUrl = resolveIssuer(
+          currentUser.accessToken,
+          trustedIssuers
+        );
         if (issuerUrl && mounted) {
           setAuthServerUrl(issuerUrl);
         }
@@ -815,74 +594,21 @@ const Navbar = ({
     };
   }, [
     currentUser,
-    extractAuthServerUrl,
     trustedIssuers,
     activeOrganization,
     fetchTicketConfig,
     fetchOrgGravatar,
   ]);
 
-  // Helper to get customer ID with priority logic
-  const getCustomerId = useCallback(
-    () => activeOrgCode || userClaims?.customer_id || "A55DF1",
-    [userClaims, activeOrgCode]
-  );
+  const ticketUrl = buildTicketUrl({
+    ticketConfig,
+    activeOrgCode,
+    userClaims,
+    user: currentUser,
+  });
 
-  // Helper to get user name from claims or current user
-  const getUserName = useCallback(
-    () => userClaims?.name || userDisplayName(currentUser) || "User",
-    [userClaims, currentUser]
-  );
-
-  // Helper to get email from claims or current user
-  const getUserEmail = useCallback(
-    () => userClaims?.email || currentUser?.email || "",
-    [userClaims, currentUser]
-  );
-
-  const buildTicketUrl = useCallback(() => {
-    if (!ticketConfig || !ticketConfig.enabled?.value) {
-      return null;
-    }
-
-    const baseUrl = ticketConfig.base_url?.value || "";
-    const req = ticketConfig.req_type?.value || "sso";
-    const context = ticketConfig.context?.value || "";
-
-    const params = new URLSearchParams({
-      req,
-      customerId: getCustomerId(),
-      user: getUserName(),
-      email: getUserEmail(),
-      context,
-    });
-
-    return `${baseUrl}&${params.toString()}`;
-  }, [ticketConfig, getCustomerId, getUserName, getUserEmail]);
-
-  const ticketUrl = buildTicketUrl();
-
-  const handleFavoriteClick = (app, event) => {
-    event.preventDefault();
-    if (app.homeUrl && app.homeUrl !== "") {
-      window.open(app.homeUrl, "_blank", "noopener,noreferrer");
-    }
-  };
-
-  const renderUserAvatar = () => {
-    if (gravatarUrl) {
-      return (
-        <img
-          src={gravatarUrl}
-          alt="User Avatar"
-          className="rounded-circle avatar-lg icon-with-margin-sm v-align-middle"
-        />
-      );
-    }
-
-    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return <LogoComponent className="logo-xl icon-with-margin-sm" />;
-  };
+  const displayName = resolveDisplayName(userClaims, currentUser);
+  const email = userSecondaryLine({ ...currentUser, name: displayName });
 
   const renderOrgIcon = () => {
     if (activeOrgGravatar) {
@@ -894,37 +620,134 @@ const Navbar = ({
         />
       );
     }
-    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
-    return <LogoComponent className="logo-sm me-2" />;
+    return <BrandLogo theme={theme} className="logo-sm me-2" />;
   };
 
-  const renderLogoutIcon = () => {
-    if (currentUser?.provider?.startsWith("oidc-")) {
-      if (logoutEverywhere) {
-        return (
-          <FaBridgeLock
-            className="me-2 text-danger cursor-pointer"
-            onClick={handleLogoutToggle}
-            onKeyPress={handleLogoutToggleKeyPress}
-            role="button"
-            tabIndex={0}
-            title="Click to logout locally only"
+  const renderAppSection = () => (
+    <>
+      <li>
+        <hr className="dropdown-divider" />
+      </li>
+      <li className="dropdown-header py-0">{t("navbar.boxvault")}</li>
+      {showAdminBoard && (
+        <li>
+          <Link to="/admin" className="dropdown-item">
+            <FaGear className="me-2" />
+            {t("navbar.admin")}
+          </Link>
+        </li>
+      )}
+      {showOrgConsole && (
+        <li>
+          <Link to="/org-console" className="dropdown-item">
+            <FaBuilding className="me-2" />
+            {t("navbar.orgConsole")}
+          </Link>
+        </li>
+      )}
+      <li>
+        <Link to="/profile" className="dropdown-item">
+          <FaUser className="me-2" />
+          {t("navbar.profile")}
+        </Link>
+      </li>
+      <li>
+        <Link to="/about" className="dropdown-item">
+          <FaCircleInfo className="me-2" />
+          {t("navbar.about")}
+        </Link>
+      </li>
+      <li>
+        <a href="/docs" className="dropdown-item">
+          <FaBook className="me-2" />
+          {t("navbar.docs")}
+        </a>
+      </li>
+    </>
+  );
+
+  const renderUserMenu = () => (
+    <li className="nav-item dropdown user-menu">
+      <button
+        className="nav-link dropdown-toggle d-flex align-items-center gap-2"
+        id="navbarDropdown"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+        aria-label={t("navbar.accountMenu")}
+      >
+        <span className="fw-semibold">{displayName}</span>
+        <UserAvatar gravatarUrl={gravatarUrl} theme={theme} size={30} />
+      </button>
+      <ul
+        className="dropdown-menu dropdown-menu-end"
+        aria-labelledby="navbarDropdown"
+      >
+        <li>
+          <IdentityCard
+            displayName={displayName}
+            email={email}
+            gravatarUrl={gravatarUrl}
+            theme={theme}
+            idpUrl={oidc ? authServerUrl : ""}
           />
-        );
-      }
-      return (
-        <FaHouseLock
-          className="me-2 text-danger cursor-pointer"
-          onClick={handleLogoutToggle}
-          onKeyPress={handleLogoutToggleKeyPress}
-          role="button"
-          tabIndex={0}
-          title="Click to logout everywhere"
-        />
-      );
-    }
-    return <FaHouseLock className="me-2 text-danger" />;
-  };
+        </li>
+        {memberships.length >= 2 && activeOrganization && (
+          <li>
+            <button
+              type="button"
+              className="dropdown-item d-flex align-items-center"
+              onClick={() => setShowOrgModal(true)}
+            >
+              {renderOrgIcon()}
+              <span className="text-truncate">{activeOrganization}</span>
+            </button>
+          </li>
+        )}
+        {oidc && authServerUrl && (
+          <li>
+            <a
+              href={`${authServerUrl}/user/profile#preferences`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dropdown-item"
+            >
+              <FaSliders className="me-2" />
+              {t("navbar.preferences")}
+            </a>
+          </li>
+        )}
+        <FavoriteRows apps={favoriteApps} />
+        {renderAppSection()}
+        {(hasNotificationsScope(userClaims) || ticketUrl) && (
+          <li>
+            <hr className="dropdown-divider" />
+          </li>
+        )}
+        {hasNotificationsScope(userClaims) && (
+          <NotificationsItem authServerUrl={authServerUrl} />
+        )}
+        {ticketUrl && (
+          <li>
+            <a
+              href={ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dropdown-item"
+            >
+              <FaTicket className="me-2" />
+              {t("navbar.help")}
+            </a>
+          </li>
+        )}
+        <li>
+          <hr className="dropdown-divider" />
+        </li>
+        <li>
+          <LogoutRow oidc={oidc} onLogout={handleLogout} />
+        </li>
+      </ul>
+    </li>
+  );
 
   return (
     <nav className="navbar navbar-expand-lg">
@@ -941,276 +764,68 @@ const Navbar = ({
               </Link>
             </li>
           )}
+          {!currentUser && (
+            <>
+              <li className="nav-item">
+                <Link to="/about" className="nav-link">
+                  {t("navbar.about")}
+                </Link>
+              </li>
+              <li className="nav-item">
+                <a href="/docs" className="nav-link">
+                  {t("navbar.docs")}
+                </a>
+              </li>
+            </>
+          )}
         </ul>
 
-        {currentUser ? (
-          <ul className="nav nav-pills ms-auto">
-            {currentUser?.provider?.startsWith("oidc-") && (
-              <NotificationBell authServerUrl={authServerUrl} />
-            )}
-            <li className="nav-item dropdown">
-              <button
-                className="nav-link dropdown-toggle"
-                id="navbarDropdown"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                {renderUserAvatar()}
-                {userClaims?.name || userDisplayName(currentUser)}
-              </button>
-              <ul
-                className="dropdown-menu dropdown-menu-end"
-                aria-labelledby="navbarDropdown"
-              >
-                {showAdminBoard && (
-                  <>
-                    <li>
-                      <Link to="/admin" className="dropdown-item">
-                        <FaGear className="me-2" />
-                        {t("navbar.admin")}
-                      </Link>
-                    </li>
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-                  </>
-                )}
-                {showOrgConsole && (
-                  <li>
-                    <Link
-                      to="/org-console"
-                      className="dropdown-item d-flex align-items-center"
-                    >
-                      <span
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setShowOrgModal(true);
-                        }}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowOrgModal(true);
-                          }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        title="Switch organization"
-                        className="cursor-pointer"
-                      >
-                        {renderOrgIcon()}
-                      </span>
-                      {t("navbar.organization")}
-                    </Link>
-                  </li>
-                )}
-                <li>
-                  <ProfileMenuItem
-                    profileIsLocal={profileIsLocal}
-                    authServerUrl={authServerUrl}
-                    onToggle={handleProfileToggle}
-                    onToggleKeyPress={handleProfileToggleKeyPress}
-                  />
-                </li>
-                <li>
-                  <Link to="/about" className="dropdown-item">
-                    <FaCircleInfo className="me-2" />
-                    {t("navbar.about")}
-                  </Link>
-                </li>
-                <li>
-                  <a href="/docs" className="dropdown-item">
-                    <FaBook className="me-2" />
-                    {t("navbar.docs")}
-                  </a>
-                </li>
-                <NotificationToggle />
-                {favoriteApps && favoriteApps.length > 0 && (
-                  <>
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-                    <li className="dropdown-header py-0">
-                      {t("navbar.favorites")}
-                    </li>
-                    {favoriteApps
-                      .sort((a, b) => (a.order || 0) - (b.order || 0))
-                      .map((app) => (
-                        <li key={app.clientId}>
-                          <a
-                            href={app.homeUrl || "#"}
-                            onClick={(e) => handleFavoriteClick(app, e)}
-                            className="dropdown-item"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <AppIcon app={app} />
-                            {app.customLabel || app.clientName || app.clientId}
-                          </a>
-                        </li>
-                      ))}
-                  </>
-                )}
-                {ticketUrl && (
-                  <>
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-                    <li>
-                      <a
-                        href={ticketUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="dropdown-item"
-                      >
-                        <FaTicket className="me-2" />
-                        {t("navbar.help")}
-                      </a>
-                    </li>
-                  </>
-                )}
-                <li>
-                  <hr className="dropdown-divider" />
-                </li>
-                <li>
-                  <button
-                    className="dropdown-item d-flex align-items-center"
-                    onClick={() => setShowLanguageModal(true)}
-                  >
-                    <span className="me-2">
-                      {getLanguageFlag(i18n.language)}
-                    </span>
-                    <span>{getLanguageDisplayName(i18n.language)}</span>
-                  </button>
-                </li>
-                <li>
-                  <hr className="dropdown-divider" />
-                </li>
-                <li>
-                  <button
-                    className="dropdown-item d-flex align-items-center"
-                    onClick={handleLogout}
-                  >
-                    {renderLogoutIcon()}
-                    <span className="text-danger">{t("navbar.logout")}</span>
-                  </button>
-                </li>
-              </ul>
-            </li>
+        <ul className="nav nav-pills ms-auto align-items-center">
+          <li className="nav-item">
+            <button
+              key={themePreference}
+              className="btn btn-link nav-link"
+              onClick={toggleTheme}
+              title={themeToggleLabel}
+              aria-label={themeToggleLabel}
+            >
+              <ThemeIcon />
+            </button>
+          </li>
+          <li className="nav-item">
+            <button
+              className="btn btn-link nav-link"
+              onClick={() => setShowLanguageModal(true)}
+              title={languageLabel}
+              aria-label={languageLabel}
+            >
+              {getLanguageFlag(i18n.language)}
+            </button>
+          </li>
+          {currentUser ? (
+            renderUserMenu()
+          ) : (
             <li className="nav-item">
-              <button
-                key={themePreference}
-                className="btn btn-link nav-link"
-                onClick={toggleTheme}
-                title={themeToggleLabel}
-                aria-label={themeToggleLabel}
+              <Link
+                to="/login"
+                className="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
               >
-                <ThemeIcon />
-              </button>
-            </li>
-          </ul>
-        ) : (
-          <ul className="nav nav-pills ms-auto">
-            <li className="nav-item">
-              <Link to="/login" className="nav-link">
-                {t("navbar.login")}
+                <FaRightToBracket />
+                {t("navbar.signIn")}
               </Link>
             </li>
-            <li className="nav-item">
-              <Link to="/register" className="nav-link">
-                {t("navbar.signup")}
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link to="/about" className="nav-link">
-                {t("navbar.about")}
-              </Link>
-            </li>
-            <li className="nav-item">
-              <a href="/docs" className="nav-link">
-                {t("navbar.docs")}
-              </a>
-            </li>
-            <li className="nav-item">
-              <button
-                className="btn btn-link nav-link"
-                onClick={() => setShowLanguageModal(true)}
-              >
-                {getLanguageFlag(i18n.language)}
-              </button>
-            </li>
-            <li className="nav-item">
-              <button
-                key={themePreference}
-                className="btn btn-link nav-link"
-                onClick={toggleTheme}
-                title={themeToggleLabel}
-                aria-label={themeToggleLabel}
-              >
-                <ThemeIcon />
-              </button>
-            </li>
-          </ul>
-        )}
+          )}
+        </ul>
       </div>
 
-      {/* Language Selection Modal */}
-      {showLanguageModal && (
-        <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  <i className="bi bi-globe me-2" />
-                  {t("language.changeLanguage")}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowLanguageModal(false)}
-                  aria-label="Close"
-                />
-              </div>
-              <div className="modal-body">
-                <div className="list-group">
-                  {supportedLanguages.map((lang) => (
-                    <button
-                      key={lang}
-                      type="button"
-                      className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                        i18n.language === lang ? "border-primary border-2" : ""
-                      }`}
-                      onClick={() => changeLanguage(lang)}
-                    >
-                      <span>
-                        <span className="me-2 flag-icon-lg">
-                          {getLanguageFlag(lang)}
-                        </span>
-                        {getLanguageDisplayName(lang)}
-                      </span>
-                      {i18n.language === lang && (
-                        <i className="bi bi-check-circle text-success" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowLanguageModal(false)}
-                >
-                  {t("buttons.cancel")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <LanguageModal
+        show={showLanguageModal}
+        current={i18n.language}
+        languages={supportedLanguages}
+        onPick={changeLanguage}
+        onClose={() => setShowLanguageModal(false)}
+      />
 
-      {/* Organization Switcher Modal */}
       <OrganizationSwitcher
         currentUser={currentUser}
         activeOrganization={activeOrganization}
@@ -1226,10 +841,12 @@ const Navbar = ({
 Navbar.propTypes = {
   currentUser: PropTypes.shape({
     username: PropTypes.string,
+    name: PropTypes.string,
     provider: PropTypes.string,
     accessToken: PropTypes.string,
     email: PropTypes.string,
     organization: PropTypes.string,
+    organizations: PropTypes.arrayOf(PropTypes.object),
   }),
   gravatarUrl: PropTypes.string,
   showAdminBoard: PropTypes.bool,

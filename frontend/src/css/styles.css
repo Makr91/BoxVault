@@ -67,7 +67,7 @@ button::-moz-focus-inner {
   position: relative;
 }
 
-.navbar .dropdown-item.notification-item {
+.dropdown-item.notification-item {
   display: grid;
   grid-template-columns: 1.25rem 1fr 1.25rem;
   column-gap: 0.75rem;
@@ -148,6 +148,36 @@ button::-moz-focus-inner {
   margin-top: 0.4rem;
   border-radius: 50%;
   background-color: var(--bs-primary);
+}
+
+.notification-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.user-menu .dropdown-menu {
+  min-width: 20rem;
+}
+
+.user-card {
+  margin: 0.25rem 0.5rem 0.5rem;
+  width: auto;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-sm);
+  background-color: var(--bs-tertiary-bg);
+  padding: 0.6rem 0.75rem;
+}
+
+.user-card:hover {
+  border-color: var(--bs-primary);
+}
+
+.logout-scope {
+  cursor: pointer;
+}
+
+.min-width-0 {
+  min-width: 0;
 }
 
 /* Modal backdrop overlay */

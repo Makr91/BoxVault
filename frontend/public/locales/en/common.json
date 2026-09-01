@@ -382,22 +382,29 @@
   },
   "navbar": {
     "logout": "Logout",
-    "login": "Login",
-    "signup": "Sign Up",
+    "logoutEverywhereTitle": "Logging out everywhere — click to log out of this app only",
+    "logoutLocalTitle": "Logging out of this app only — click to log out everywhere",
+    "signIn": "Sign in",
+    "accountMenu": "Account menu",
     "about": "About",
     "docs": "Docs",
     "admin": "Admin",
     "organization": "Organization",
+    "orgConsole": "Organization console",
+    "preferences": "Preferences",
+    "boxvault": "BoxVault",
     "profile": "Profile",
     "favorites": "Favorites",
     "help": "Help"
   },
+  "sessionEnded": {
+    "title": "You were signed out.",
+    "body": "Your single sign-on session ended on another device or app. Sign in again to continue where you were.",
+    "signIn": "Sign in"
+  },
   "notifications": {
-    "enable": "Enable notifications",
-    "disable": "Disable notifications",
-    "enableSuccess": "Notifications enabled successfully!",
+    "pushSwitch": "Browser notifications on this device",
     "enableError": "Failed to enable notifications. Please try again.",
-    "disableSuccess": "Notifications disabled.",
     "disableError": "Failed to disable notifications. Please try again.",
     "permissionDenied": "Notification permission was denied by the browser.",
     "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
@@ -412,7 +419,6 @@
     "title": "Notifications",
     "empty": "No notifications yet.",
     "markAllRead": "Mark all read",
-    "unreadCount": "{{count}} unread notifications",
     "dismiss": "Dismiss",
     "viewAll": "View all notifications",
     "loadError": "Failed to load notifications. Please try again."
@@ -568,6 +574,10 @@
           "code_id_token": "Code + ID Token"
         },
         "hint": "OAuth flow type. Use \"code\" for most providers."
+      },
+      "iconUrl": {
+        "label": "Icon URL",
+        "hint": "Optional image shown on this provider's sign-in button"
       },
       "enabled": {
         "label": "Enable this provider for user authentication"

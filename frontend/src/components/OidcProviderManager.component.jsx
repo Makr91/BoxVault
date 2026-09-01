@@ -23,6 +23,7 @@ const OidcProviderManager = ({
     clientSecret: "",
     scope: "openid profile email",
     responseType: "code",
+    iconUrl: "",
     enabled: true,
   });
   const [oidcProviderLoading, setOidcProviderLoading] = useState(false);
@@ -39,6 +40,7 @@ const OidcProviderManager = ({
       clientSecret: "",
       scope: "openid profile email",
       responseType: "code",
+      iconUrl: "",
       enabled: true,
     });
   };
@@ -60,6 +62,7 @@ const OidcProviderManager = ({
       clientSecret: providerConfig.client_secret?.value || "",
       scope: providerConfig.scope?.value || "openid profile email",
       responseType: providerConfig.response_type?.value || "code",
+      iconUrl: providerConfig.icon_url?.value || "",
       enabled:
         providerConfig.enabled?.value !== undefined
           ? providerConfig.enabled.value
@@ -97,6 +100,7 @@ const OidcProviderManager = ({
       clientSecret,
       scope,
       responseType,
+      iconUrl,
       enabled,
     } = oidcProviderForm;
 
@@ -169,6 +173,11 @@ const OidcProviderManager = ({
           type: "string",
           value: "",
           description: "Optional prompt parameter",
+        },
+        icon_url: {
+          type: "string",
+          value: iconUrl,
+          description: "Icon shown on the login button",
         },
       };
 
@@ -556,6 +565,31 @@ const OidcProviderManager = ({
                         </select>
                         <small className="form-text text-muted">
                           {t("oidc.form.responseType.hint")}
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="col-md-12">
+                      <div className="form-group mb-3">
+                        <label htmlFor="iconUrl">
+                          {t("oidc.form.iconUrl.label")}
+                        </label>
+                        <input
+                          type="url"
+                          className="form-control"
+                          id="iconUrl"
+                          placeholder="https://example.com/logo.svg"
+                          value={oidcProviderForm.iconUrl}
+                          onChange={(e) =>
+                            handleOidcProviderFormChange(
+                              "iconUrl",
+                              e.target.value
+                            )
+                          }
+                          disabled={oidcProviderLoading}
+                        />
+                        <small className="form-text text-muted">
+                          {t("oidc.form.iconUrl.hint")}
                         </small>
                       </div>
                     </div>

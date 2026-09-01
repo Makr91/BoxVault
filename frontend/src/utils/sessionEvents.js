@@ -1,14 +1,7 @@
 import { log } from "./Logger";
+import { endSession } from "./sessionEnded";
 
 const RETRY_DELAY_MS = 15000;
-
-const redirectToLogin = () => {
-  localStorage.removeItem("user");
-  const returnTo = encodeURIComponent(
-    window.location.pathname + window.location.search
-  );
-  window.location.href = `/login?returnTo=${returnTo}`;
-};
 
 const pump = async (reader, decoder) => {
   const { done, value } = await reader.read();
@@ -36,7 +29,7 @@ export const subscribeSessionEvents = (accessToken) => {
         }
       );
       if (response.status === 401) {
-        redirectToLogin();
+        endSession();
         return;
       }
       if (!response.ok || !response.body) {
@@ -47,7 +40,7 @@ export const subscribeSessionEvents = (accessToken) => {
         new TextDecoder()
       );
       if (terminated) {
-        redirectToLogin();
+        endSession();
         return;
       }
     } catch (error) {

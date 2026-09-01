@@ -22,7 +22,7 @@ import { getJwtClaimOptions } from '../utils/auth.js';
 import { log } from '../utils/Logger.js';
 import db from '../models/index.js';
 
-const { invitation: Invitation, organization: Organization } = db;
+const { invitation: Invitation, organization: Organization, user: User } = db;
 
 const router = Router();
 
@@ -257,23 +257,36 @@ router.get('/auth/oidc/issuers', (req, res) => {
  *                         type: boolean
  *                         description: Whether method is enabled
  *                         example: true
+ *                       icon_url:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Icon rendered on the provider's login button (OIDC methods only)
+ *                 default_provider:
+ *                   type: string
+ *                   nullable: true
+ *                   description: OIDC provider featured as the primary sign-in option
+ *                 silent_login:
+ *                   type: boolean
+ *                   description: Whether the login page attempts a silent sign-in with the default provider
+ *                 local_registration_enabled:
+ *                   type: boolean
+ *                   description: Whether a local account can be self-registered without an invitation
  *       500:
  *         description: Internal server error
  */
-router.get('/auth/methods', (req, res) => {
+router.get('/auth/methods', async (req, res) => {
   void req;
   try {
     const authConfig = loadConfig('auth');
-    const methods = [];
+    const localEnabled = authConfig.auth?.jwt?.local_enabled?.value !== false;
+    const methods = [
+      {
+        id: 'local',
+        name: 'Local Account',
+        enabled: localEnabled,
+      },
+    ];
 
-    // Local authentication
-    methods.push({
-      id: 'local',
-      name: 'Local Account',
-      enabled: true,
-    });
-
-    // OIDC providers
     const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
 
     Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
@@ -282,6 +295,7 @@ router.get('/auth/methods', (req, res) => {
           id: `oidc-${providerName}`,
           name: providerConfig.display_name.value,
           enabled: true,
+          icon_url: providerConfig.icon_url?.value || null,
         });
       }
     });
@@ -293,11 +307,16 @@ router.get('/auth/methods', (req, res) => {
 
     const defaultProvider = authConfig.auth?.oidc?.default_provider?.value || null;
     const silentLogin = !!authConfig.auth?.oidc?.silent_login?.value;
+    const userCount = await User.count();
+    const localRegistrationEnabled =
+      localEnabled &&
+      (userCount === 0 || !!authConfig.auth?.local?.local_allow_new_organizations?.value);
 
     return res.json({
       methods,
       default_provider: defaultProvider,
       silent_login: silentLogin,
+      local_registration_enabled: localRegistrationEnabled,
     });
   } catch (error) {
     log.auth.error('Get auth methods error', {

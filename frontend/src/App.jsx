@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { FaTriangleExclamation } from "react-icons/fa6";
+import { Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
 
 import "./css/styles.css";
+import "./css/fonts.css";
+import "./css/auth.css";
 import ErrorBoundary from "./common/ErrorBoundary";
 import EventBus from "./common/EventBus";
 import About from "./components/about.component";
@@ -128,6 +131,7 @@ const App = () => {
       ? (prefersDark && "dark") || "light"
       : themePreference;
   const [setupComplete, setSetupComplete] = useState(null); // Initialize as null to indicate loading
+  const [sessionEnded, setSessionEnded] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -307,7 +311,17 @@ const App = () => {
       logOut();
     });
 
+    const sessionEndedCleanup = EventBus.on("sessionEnded", (detail) => {
+      setCurrentUser(undefined);
+      setShowAdminBoard(false);
+      setUserOrganization("");
+      setGravatarUrl("");
+      setGravatarFetched(false);
+      setSessionEnded({ returnTo: detail?.returnTo || "/" });
+    });
+
     const loginCleanup = EventBus.on("login", (userData) => {
+      setSessionEnded(null);
       setCurrentUser(userData);
       setShowAdminBoard(
         userData.roles && userData.roles.includes("ROLE_ADMIN")
@@ -360,6 +374,7 @@ const App = () => {
 
     return () => {
       logoutCleanup();
+      sessionEndedCleanup();
       loginCleanup();
       organizationUpdateCleanup();
     };
@@ -444,6 +459,25 @@ const App = () => {
           logOut={logOut}
           logOutLocal={logOutLocal}
         />
+        {sessionEnded && (
+          <div
+            className="alert alert-warning d-flex align-items-center gap-3 mx-3 mt-3 mb-0"
+            role="alert"
+          >
+            <FaTriangleExclamation className="flex-shrink-0" />
+            <div className="flex-grow-1">
+              <strong>{t("sessionEnded.title")}</strong>
+              <div className="small">{t("sessionEnded.body")}</div>
+            </div>
+            <Link
+              to={`/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`}
+              className="btn btn-primary btn-sm"
+              onClick={() => setSessionEnded(null)}
+            >
+              {t("sessionEnded.signIn")}
+            </Link>
+          </div>
+        )}
         <div className="container-fluid mt-3 flex-grow-1">
           <Routes>
             <Route
@@ -463,9 +497,9 @@ const App = () => {
                   path="/organizations/discover"
                   element={<OrganizationDiscovery theme={theme} />}
                 />
-                <Route path="/login" element={<Login theme={theme} />} />
+                <Route path="/login" element={<Login />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/register" element={<Register theme={theme} />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/invite/:token" element={<InviteAccept />} />
                 <Route
                   path="/profile"

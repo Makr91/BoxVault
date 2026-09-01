@@ -2,6 +2,7 @@ import axios from "axios";
 
 import { fetchWithDeduplication } from "../utils/GravatarCache";
 import { log } from "../utils/Logger";
+import { endSession } from "../utils/sessionEnded";
 
 import authHeader from "./auth-header";
 
@@ -178,12 +179,8 @@ axios.interceptors.response.use(
 
       // The session is gone server-side (expiry, back-channel logout, or a
       // revoke sweep), so every 401 means the same thing: clear the stored
-      // session and land on the login screen with a way back.
-      localStorage.removeItem("user");
-      const returnTo = encodeURIComponent(
-        window.location.pathname + window.location.search
-      );
-      window.location.href = `/login?returnTo=${returnTo}`;
+      // session and show the signed-out header with a way back.
+      endSession();
     }
     return Promise.reject(error);
   }

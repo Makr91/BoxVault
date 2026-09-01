@@ -655,22 +655,29 @@
   },
   "navbar": {
     "logout": "Cerrar Sesión",
-    "login": "Iniciar Sesión",
-    "signup": "Registrarse",
+    "logoutEverywhereTitle": "Cerrando sesión en todas partes — haz clic para cerrar solo esta aplicación",
+    "logoutLocalTitle": "Cerrando sesión solo en esta aplicación — haz clic para cerrar en todas partes",
+    "signIn": "Iniciar sesión",
+    "accountMenu": "Menú de cuenta",
     "about": "Acerca de",
     "docs": "Documentación",
     "admin": "Admin",
     "organization": "Organización",
+    "orgConsole": "Consola de la organización",
+    "preferences": "Preferencias",
+    "boxvault": "BoxVault",
     "profile": "Perfil",
     "favorites": "Favoritos",
     "help": "Ayuda"
   },
+  "sessionEnded": {
+    "title": "Se cerró tu sesión.",
+    "body": "Tu sesión de inicio único terminó en otro dispositivo o aplicación. Inicia sesión de nuevo para continuar donde estabas.",
+    "signIn": "Iniciar sesión"
+  },
   "notifications": {
-    "enable": "Activar notificaciones",
-    "disable": "Desactivar notificaciones",
-    "enableSuccess": "¡Notificaciones activadas exitosamente!",
+    "pushSwitch": "Notificaciones del navegador en este dispositivo",
     "enableError": "Error al activar las notificaciones. Por favor intenta de nuevo.",
-    "disableSuccess": "Notificaciones desactivadas.",
     "disableError": "Error al desactivar las notificaciones. Por favor intenta de nuevo.",
     "permissionDenied": "El navegador denegó el permiso de notificaciones.",
     "scopeMissing": "Tu cuenta aún no está autorizada para notificaciones. Pide a tu administrador que habilite el alcance de notificaciones.",
@@ -685,7 +692,6 @@
     "title": "Notificaciones",
     "empty": "Aún no hay notificaciones.",
     "markAllRead": "Marcar todas como leídas",
-    "unreadCount": "{{count}} notificaciones sin leer",
     "dismiss": "Descartar",
     "viewAll": "Ver todas las notificaciones",
     "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo."
@@ -841,6 +847,10 @@
           "code_id_token": "Código + Token ID"
         },
         "hint": "Tipo de flujo OAuth. Usa \"code\" para la mayoría de los proveedores."
+      },
+      "iconUrl": {
+        "label": "URL del icono",
+        "hint": "Imagen opcional mostrada en el botón de inicio de sesión de este proveedor"
       },
       "enabled": {
         "label": "Habilitar este proveedor para autenticación de usuarios"

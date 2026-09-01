@@ -1,7 +1,10 @@
 // claims.js
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 import { log } from '../../utils/Logger.js';
 import { getAuthServerUrl, extractOidcAccessToken } from './helpers.js';
+
+const { decode } = jwt;
 
 /**
  * @swagger
@@ -45,6 +48,11 @@ import { getAuthServerUrl, extractOidcAccessToken } from './helpers.js';
  *                         type: string
  *                       order:
  *                         type: integer
+ *                 scope:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: Scopes granted on the OIDC access token BoxVault holds for this session (absent for local sessions)
  *       401:
  *         description: Not authenticated or OIDC access token not available
  *       500:
@@ -77,7 +85,8 @@ export const getUserInfoClaims = async (req, res) => {
       },
     });
 
-    return res.status(200).json(response.data);
+    const scope = decode(oidcAccessToken)?.scope;
+    return res.status(200).json({ ...response.data, ...(scope ? { scope } : {}) });
   } catch (error) {
     log.error.error('Error fetching claims from auth server:', {
       error: error.message,

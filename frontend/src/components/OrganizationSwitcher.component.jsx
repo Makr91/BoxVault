@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { FaBuilding, FaCheck } from "react-icons/fa6";
+import { FaBuilding, FaCheck, FaCrown } from "react-icons/fa6";
 
 import BoxVaultLight from "../images/BoxVault.svg?react";
 import BoxVaultDark from "../images/BoxVaultDark.svg?react";
@@ -192,11 +192,6 @@ const OrganizationSwitcher = ({
                             {orgDesc && (
                               <small className="text-muted">{orgDesc}</small>
                             )}
-                            {isPrimary && (
-                              <small className="text-primary d-block">
-                                {t("orgSwitcher.primaryOrg")}
-                              </small>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -206,6 +201,13 @@ const OrganizationSwitcher = ({
                         >
                           {t(`roles.${org.role}`)}
                         </span>
+                        {isPrimary && (
+                          <FaCrown
+                            className="text-warning me-2"
+                            title={t("orgSwitcher.primaryOrg")}
+                            aria-label={t("orgSwitcher.primaryOrg")}
+                          />
+                        )}
                         {activeOrganization === orgName && (
                           <FaCheck className="text-success" />
                         )}
@@ -215,15 +217,6 @@ const OrganizationSwitcher = ({
                 })}
               </div>
             )}
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleModalClose}
-            >
-              {t("buttons.cancel")}
-            </button>
           </div>
         </div>
       </div>
