@@ -1262,7 +1262,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               to="/organizations/discover"
               className="btn btn-sm btn-outline-primary"
             >
-              {t("navbar.organization")}
+              {t("discovery.discoverButton")}
             </Link>
           )}
           {showJoinAsAdmin && (

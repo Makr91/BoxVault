@@ -593,6 +593,7 @@
     }
   },
   "discovery": {
+    "discoverButton": "Descubrir organizaciones",
     "title": "Descubrir Organizaciones",
     "description": "Explora organizaciones públicas y solicita unirte a ellas.",
     "searchPlaceholder": "Buscar organizaciones...",
@@ -662,7 +663,6 @@
     "about": "Acerca de",
     "docs": "Documentación",
     "admin": "Admin",
-    "organization": "Organización",
     "orgConsole": "Consola de la organización",
     "preferences": "Preferencias",
     "boxvault": "BoxVault",

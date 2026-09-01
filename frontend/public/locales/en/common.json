@@ -389,7 +389,6 @@
     "about": "About",
     "docs": "Docs",
     "admin": "Admin",
-    "organization": "Organization",
     "orgConsole": "Organization console",
     "preferences": "Preferences",
     "boxvault": "BoxVault",
@@ -842,6 +841,7 @@
     }
   },
   "discovery": {
+    "discoverButton": "Discover organizations",
     "title": "Discover Organizations",
     "description": "Browse public organizations and request to join them.",
     "searchPlaceholder": "Search organizations...",
