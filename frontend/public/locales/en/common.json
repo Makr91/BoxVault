@@ -394,6 +394,7 @@
     "preferences": "Preferences",
     "boxvault": "BoxVault",
     "profile": "Profile",
+    "profileModeTitle": "Switch between identity provider and local profile",
     "favorites": "Favorites",
     "help": "Help"
   },

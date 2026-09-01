@@ -1,3 +1,12 @@
+// TESTING RULE FOR THIS REPO — tests exercise the real code against real
+// resources. Anything reachable live is used live: the dev auth server with
+// its OIDC, SCIM push and S2S invite API, the real database, real SMTP, the
+// real filesystem. Nothing BoxVault consumes is re-implemented or stubbed
+// inside the tests, and the target amount of simulation is zero: an error
+// path is exercised by causing the real condition (revoke the token, remove
+// the permission, corrupt the checksum), never by stubbing the layer that
+// fails. The mocks still present are legacy from before this rule; builds do
+// not gate on tests, so they are replaced as the affected areas are touched.
 import { jest } from '@jest/globals';
 import yaml from 'js-yaml';
 import fs from 'fs';

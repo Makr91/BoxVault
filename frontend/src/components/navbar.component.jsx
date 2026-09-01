@@ -7,6 +7,7 @@ import {
   FaSun,
   FaTicket,
   FaUser,
+  FaIdBadge,
   FaCircleInfo,
   FaGear,
   FaSliders,
@@ -156,6 +157,22 @@ UserAvatar.propTypes = {
 };
 
 const IdentityCard = ({ displayName, email, gravatarUrl, theme, idpUrl }) => {
+  const { t } = useTranslation();
+  const [useLocal, setUseLocal] = useState(false);
+  const external = !!idpUrl && !useLocal;
+
+  const flipTarget = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setUseLocal((current) => !current);
+  };
+
+  const flipTargetKey = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      flipTarget(event);
+    }
+  };
+
   const body = (
     <>
       <UserAvatar gravatarUrl={gravatarUrl} theme={theme} size={36} />
@@ -167,12 +184,24 @@ const IdentityCard = ({ displayName, email, gravatarUrl, theme, idpUrl }) => {
           </small>
         )}
       </span>
+      {idpUrl && (
+        <span
+          role="button"
+          tabIndex={0}
+          className="d-inline-flex text-body-secondary flex-shrink-0 cursor-pointer"
+          onClick={flipTarget}
+          onKeyDown={flipTargetKey}
+          title={t("navbar.profileModeTitle")}
+        >
+          {external ? <FaIdBadge /> : <FaUser />}
+        </span>
+      )}
       <FaChevronRight className="text-body-secondary flex-shrink-0" />
     </>
   );
   const className = "dropdown-item user-card d-flex align-items-center gap-3";
 
-  if (idpUrl) {
+  if (external) {
     return (
       <a
         href={`${idpUrl}/user/profile`}

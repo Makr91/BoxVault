@@ -667,6 +667,7 @@
     "preferences": "Preferencias",
     "boxvault": "BoxVault",
     "profile": "Perfil",
+    "profileModeTitle": "Cambiar entre el perfil del proveedor de identidad y el perfil local",
     "favorites": "Favoritos",
     "help": "Ayuda"
   },
