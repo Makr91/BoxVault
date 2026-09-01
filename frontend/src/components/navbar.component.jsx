@@ -692,14 +692,14 @@ const Navbar = ({
   const renderUserMenu = () => (
     <li className="nav-item dropdown user-menu">
       <button
-        className="nav-link dropdown-toggle d-flex align-items-center gap-2"
+        className="nav-link d-flex align-items-center gap-2 text-body"
         id="navbarDropdown"
         data-bs-toggle="dropdown"
         aria-expanded="false"
         aria-label={t("navbar.accountMenu")}
       >
         <span className="fw-semibold">{displayName}</span>
-        <UserAvatar gravatarUrl={gravatarUrl} theme={theme} size={30} />
+        <UserAvatar gravatarUrl={gravatarUrl} theme={theme} size={34} />
       </button>
       <ul
         className="dropdown-menu dropdown-menu-end"
@@ -773,10 +773,13 @@ const Navbar = ({
   );
 
   return (
-    <nav className="navbar navbar-expand-lg">
+    <nav className="navbar navbar-expand-lg bg-body-tertiary border-bottom">
       <div className="container-fluid">
         <Link to="/" className="navbar-brand">
-          <BrandLogo theme={theme} className="logo-xl icon-with-margin-sm" />
+          <BrandLogo
+            theme={theme}
+            className="logo-cluster icon-with-margin-sm"
+          />
           BoxVault
         </Link>
         <ul className="nav nav-pills me-auto">
@@ -807,7 +810,7 @@ const Navbar = ({
           <li className="nav-item">
             <button
               key={themePreference}
-              className="btn btn-link nav-link"
+              className="btn btn-link nav-link cluster-btn"
               onClick={toggleTheme}
               title={themeToggleLabel}
               aria-label={themeToggleLabel}
@@ -817,7 +820,7 @@ const Navbar = ({
           </li>
           <li className="nav-item">
             <button
-              className="btn btn-link nav-link"
+              className="btn btn-link nav-link cluster-btn"
               onClick={() => setShowLanguageModal(true)}
               title={languageLabel}
               aria-label={languageLabel}
