@@ -1,7 +1,1 @@
-{
-  "1119441": {
-    "active": true,
-    "notes": "uuid <11.1.1 missing buffer bounds check in v3/v5/v6 (GHSA-w5hq-g745-h8pq) - moderate, transitive via sequelize 6 which pins an old uuid. uuid 11 is ESM-only and incompatible with sequelize 6 (CommonJS); awaits sequelize bumping its uuid dep.",
-    "expiry": "2026-09-01"
-  }
-}
+{}
