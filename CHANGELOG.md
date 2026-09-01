@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.1](https://github.com/Makr91/BoxVault/compare/v0.54.0...v0.54.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* healt tests ([ad60319](https://github.com/Makr91/BoxVault/commit/ad60319a1bf21c7d1d61ade3799b4d2d993cef22))
+
 ## [0.54.0](https://github.com/Makr91/BoxVault/compare/v0.53.1...v0.54.0) (2026-09-01)
 
 
