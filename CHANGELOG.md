@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.56.0](https://github.com/Makr91/BoxVault/compare/v0.55.1...v0.56.0) (2026-09-01)
+
+
+### Features
+
+* ship the estate typefaces with the catalog ([4c606c4](https://github.com/Makr91/BoxVault/commit/4c606c4125d94d048333918d49224cd46a6d1b0a))
+
+
+### Bug Fixes
+
+* update the organization button to be Discover Button ([650f789](https://github.com/Makr91/BoxVault/commit/650f7898d59f8920267faaca40eee5263c507fe8))
+
 ## [0.55.1](https://github.com/Makr91/BoxVault/compare/v0.55.0...v0.55.1) (2026-09-01)
 
 
