@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.0](https://github.com/Makr91/BoxVault/compare/v0.54.1...v0.55.0) (2026-09-01)
+
+
+### Features
+
+* close the last navbar-contract gaps ([931c724](https://github.com/Makr91/BoxVault/commit/931c724238056ef5d737a4b2c6b6d1e98c80455a))
+
 ## [0.54.1](https://github.com/Makr91/BoxVault/compare/v0.54.0...v0.54.1) (2026-09-01)
 
 
