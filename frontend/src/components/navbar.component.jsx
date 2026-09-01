@@ -692,7 +692,7 @@ const Navbar = ({
   const renderUserMenu = () => (
     <li className="nav-item dropdown user-menu">
       <button
-        className="nav-link d-flex align-items-center gap-2 text-body"
+        className="nav-link py-0 d-flex align-items-center gap-2 text-body"
         id="navbarDropdown"
         data-bs-toggle="dropdown"
         aria-expanded="false"
@@ -773,9 +773,9 @@ const Navbar = ({
   );
 
   return (
-    <nav className="navbar navbar-expand-lg bg-body-tertiary border-bottom">
+    <nav className="navbar navbar-expand-lg sticky-top shadow-sm bg-body-tertiary border-bottom">
       <div className="container-fluid">
-        <Link to="/" className="navbar-brand">
+        <Link to="/" className="navbar-brand p-0 d-flex align-items-center">
           <BrandLogo
             theme={theme}
             className="logo-cluster icon-with-margin-sm"
@@ -785,7 +785,7 @@ const Navbar = ({
         <ul className="nav nav-pills me-auto">
           {currentUser && activeOrganization && (
             <li className="nav-item">
-              <Link to={`/${activeOrganization}`} className="nav-link">
+              <Link to={`/${activeOrganization}`} className="nav-link py-0">
                 {activeOrganization}
               </Link>
             </li>

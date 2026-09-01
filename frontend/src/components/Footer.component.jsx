@@ -144,7 +144,7 @@ const Footer = () => {
             overlay={renderPopover}
           >
             <div className="d-flex align-items-center cursor-pointer">
-              <FaHeartPulse className={`fs-5 ${getOverallStatusColor()}`} />
+              <FaHeartPulse className={getOverallStatusColor()} />
             </div>
           </OverlayTrigger>
         </div>
