@@ -38,10 +38,18 @@ self.addEventListener("pushsubscriptionchange", (event) => {
     return;
   }
 
+  const oldEndpoint = event.oldSubscription?.endpoint || null;
+
   event.waitUntil(
-    self.registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey,
-    })
+    self.registration.pushManager
+      .subscribe({ userVisibleOnly: true, applicationServerKey })
+      .then(() =>
+        self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      )
+      .then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: "pushsubscriptionchange", oldEndpoint });
+        });
+      })
   );
 });

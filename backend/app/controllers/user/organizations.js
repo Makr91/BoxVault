@@ -1,6 +1,28 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { UserOrg, service_account: ServiceAccount, organization: Organization, user: User } = db;
+const {
+  UserOrg,
+  service_account: ServiceAccount,
+  organization: Organization,
+  user: User,
+  scimGroup: ScimGroup,
+} = db;
+
+/**
+ * Org UUIDs the auth server marks as personal, among the given mirrored orgs.
+ * @param {string[]} orgUuids - external_org_id values (nulls filtered)
+ * @returns {Promise<Set<string>>}
+ */
+const findPersonalOrgUuids = async orgUuids => {
+  if (orgUuids.length === 0) {
+    return new Set();
+  }
+  const rows = await ScimGroup.findAll({
+    where: { org_uuid: orgUuids, personal: true },
+    attributes: ['org_uuid'],
+  });
+  return new Set(rows.map(row => row.org_uuid));
+};
 
 /**
  * @swagger
@@ -40,6 +62,9 @@ const { UserOrg, service_account: ServiceAccount, organization: Organization, us
  *                   isPrimary:
  *                     type: boolean
  *                     description: Whether this is the user's primary organization
+ *                   personal:
+ *                     type: boolean
+ *                     description: Whether the identity provider marks this organization as a personal org
  *                   joinedAt:
  *                     type: string
  *                     format: date-time
@@ -110,6 +135,9 @@ const getUserOrganizations = async (req, res) => {
       User.findByPk(userId, { attributes: ['primary_organization_id'] }),
     ]);
     const primaryOrganizationId = userRow?.primary_organization_id ?? null;
+    const personalOrgUuids = await findPersonalOrgUuids(
+      userOrganizations.map(userOrg => userOrg.organization.external_org_id).filter(Boolean)
+    );
 
     // Format response for frontend
     const organizations = userOrganizations.map(userOrg => ({
@@ -125,6 +153,7 @@ const getUserOrganizations = async (req, res) => {
       },
       role: userOrg.role,
       isPrimary: userOrg.organization.id === primaryOrganizationId,
+      personal: personalOrgUuids.has(userOrg.organization.external_org_id),
       joinedAt: userOrg.joined_at,
     }));
 

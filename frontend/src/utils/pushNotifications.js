@@ -104,6 +104,30 @@ const syncSubscription = async () => {
   return true;
 };
 
+const listenForSubscriptionChange = (onError) => {
+  if (!isPushSupported()) {
+    return () => {};
+  }
+
+  const handleMessage = async (event) => {
+    if (event.data?.type !== "pushsubscriptionchange") {
+      return;
+    }
+    try {
+      if (event.data.oldEndpoint) {
+        await NotificationsService.deleteSubscription(event.data.oldEndpoint);
+      }
+      await syncSubscription();
+    } catch (error) {
+      onError(error);
+    }
+  };
+
+  navigator.serviceWorker.addEventListener("message", handleMessage);
+  return () =>
+    navigator.serviceWorker.removeEventListener("message", handleMessage);
+};
+
 export {
   isPushSupported,
   isPushEnabled,
@@ -114,4 +138,5 @@ export {
   subscribePush,
   unsubscribePush,
   syncSubscription,
+  listenForSubscriptionChange,
 };

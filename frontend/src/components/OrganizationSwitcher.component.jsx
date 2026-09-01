@@ -39,7 +39,9 @@ const OrganizationSwitcher = ({
         if (cancelled) {
           return;
         }
-        const orgs = response.data || [];
+        const orgs = [...(response.data || [])].sort(
+          (a, b) => Number(!!a.personal) - Number(!!b.personal)
+        );
         setUserOrganizations(orgs);
 
         // Fetch gravatars for all orgs in parallel

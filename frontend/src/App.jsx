@@ -29,7 +29,11 @@ import SetupService from "./services/setup.service";
 import UserService from "./services/user.service";
 import { log } from "./utils/Logger";
 import { isOrgManager } from "./utils/permissions";
-import { isPushEnabled, syncSubscription } from "./utils/pushNotifications";
+import {
+  isPushEnabled,
+  syncSubscription,
+  listenForSubscriptionChange,
+} from "./utils/pushNotifications";
 import { subscribeSessionEvents } from "./utils/sessionEvents";
 
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
@@ -417,13 +421,16 @@ const App = () => {
   }, [currentUser, i18n]);
 
   useEffect(() => {
-    if (currentUser && isPushEnabled()) {
-      syncSubscription().catch((error) => {
-        log.app.error("Push subscription sync failed", {
-          error: error.message,
-        });
-      });
+    if (!currentUser || !isPushEnabled()) {
+      return undefined;
     }
+    const reportSyncFailure = (error) => {
+      log.app.error("Push subscription sync failed", {
+        error: error.message,
+      });
+    };
+    syncSubscription().catch(reportSyncFailure);
+    return listenForSubscriptionChange(reportSyncFailure);
   }, [currentUser]);
 
   useEffect(() => {
