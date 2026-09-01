@@ -675,12 +675,6 @@ const Navbar = ({
         </li>
       )}
       <li>
-        <Link to="/profile" className="dropdown-item">
-          <FaUser className="me-2" />
-          {t("navbar.profile")}
-        </Link>
-      </li>
-      <li>
         <Link to="/about" className="dropdown-item">
           <FaCircleInfo className="me-2" />
           {t("navbar.about")}
