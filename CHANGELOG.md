@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.54.0](https://github.com/Makr91/BoxVault/compare/v0.53.1...v0.54.0) (2026-09-01)
+
+
+### Features
+
+* align header and footer chrome with the estate contract ([5eb0c10](https://github.com/Makr91/BoxVault/commit/5eb0c1047a4f20c0bd5dff13bdf63ed01fa75769))
+
+
+### Bug Fixes
+
+* AI just never listens ([3ed6647](https://github.com/Makr91/BoxVault/commit/3ed6647dd0fbfb978c3394689d5fe8768d5dea5f))
+
 ## [0.53.1](https://github.com/Makr91/BoxVault/compare/v0.53.0...v0.53.1) (2026-09-01)
 
 
