@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import { FaList, FaTableCellsLarge } from 'react-icons/fa6';
+import { FaGlobe, FaList, FaLock, FaTableCellsLarge } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
 
 import { OrgLogo, collectionPath } from '../chrome';
@@ -136,7 +136,8 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
   const [noticeNode, notify] = useNotice();
   const [nonce, setNonce] = useState(0);
   const [data, setData] = useState({ key: '', byCollection: {} });
-  const key = `${org}|${member}|${nonce}|${collections.map(c => c.key).join(',')}`;
+  const signedIn = Boolean(context.user);
+  const key = `${org}|${member}|${signedIn}|${nonce}|${collections.map(c => c.key).join(',')}`;
   const ready = data.key === key;
   const reload = () => setNonce(current => current + 1);
 
@@ -171,7 +172,7 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
     collections,
     itemsByCollection: data.byCollection,
     org,
-    signedIn: Boolean(context.user),
+    signedIn,
     watchedIds: watches.ids,
     prefsKey: `${context.prefsPrefix}_${org || 'home'}`,
   });
@@ -211,63 +212,89 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
     );
   };
 
-  const renderGrouped = () => {
+  const single = collections.length === 1;
+
+  const sectionsFor = visibility => {
     const sections = new Map();
     collections.forEach(collection => {
-      groupByOrganization(filtered[collection.key] || []).forEach(group => {
+      const items = (filtered[collection.key] || []).filter(item =>
+        visibility === 'private' ? item.isPublic === false : item.isPublic !== false
+      );
+      groupByOrganization(items).forEach(group => {
         if (!sections.has(group.organization.name)) {
           sections.set(group.organization.name, { organization: group.organization, parts: [] });
         }
         sections.get(group.organization.name).parts.push({ collection, items: group.items });
       });
     });
-    const single = collections.length === 1;
+    return [...sections.values()];
+  };
+
+  const renderSection = section => (
+    <div className="mb-4" key={section.organization.name}>
+      <div className="d-flex align-items-center gap-2 mb-2">
+        <OrgLogo
+          org={section.organization}
+          size={30}
+          className="rounded-circle avatar-lg"
+          fallback={context.orgMark}
+        />
+        <h5 className="mb-0">
+          <Link to={`/${section.organization.name}`}>{section.organization.name}</Link>
+        </h5>
+        {section.parts.map(part => (
+          <span key={part.collection.key} className="badge bg-secondary bg-opacity-50">
+            {t('pages.countOf', {
+              count: part.items.length,
+              collection: t(part.collection.labelKey),
+            })}
+          </span>
+        ))}
+      </div>
+      {section.parts.map(part => (
+        <div key={part.collection.key} className="mb-3">
+          {single ? null : (
+            <CollectionHeading
+              collection={part.collection}
+              count={part.items.length}
+              org={section.organization.name}
+              linkAll
+              small
+              toggle={toggleFor(part.collection)}
+            />
+          )}
+          {listOf(part.collection, part.items)}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderGrouped = () => {
+    const publicSections = sectionsFor('public');
+    const privateSections = sectionsFor('private');
+    const split = privateSections.length > 0;
     return (
       <>
         {single ? (
           <div className="d-flex justify-content-end mb-2">{toggleFor(collections[0])}</div>
         ) : null}
-        {sections.size === 0 ? (
+        {publicSections.length === 0 && privateSections.length === 0 ? (
           <Alert variant="secondary">{filtering ? t('pages.noMatches') : t('pages.empty')}</Alert>
         ) : null}
-        {[...sections.values()].map(section => (
-          <div className="mb-4" key={section.organization.name}>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <OrgLogo
-                org={section.organization}
-                size={30}
-                className="rounded-circle avatar-lg"
-                fallback={context.orgMark}
-              />
-              <h5 className="mb-0">
-                <Link to={`/${section.organization.name}`}>{section.organization.name}</Link>
-              </h5>
-              {section.parts.map(part => (
-                <span key={part.collection.key} className="badge bg-secondary bg-opacity-50">
-                  {t('pages.countOf', {
-                    count: part.items.length,
-                    collection: t(part.collection.labelKey),
-                  })}
-                </span>
-              ))}
-            </div>
-            {section.parts.map(part => (
-              <div key={part.collection.key} className="mb-3">
-                {single ? null : (
-                  <CollectionHeading
-                    collection={part.collection}
-                    count={part.items.length}
-                    org={section.organization.name}
-                    linkAll
-                    small
-                    toggle={toggleFor(part.collection)}
-                  />
-                )}
-                {listOf(part.collection, part.items)}
-              </div>
-            ))}
-          </div>
-        ))}
+        {split ? (
+          <h4 className="d-flex align-items-center gap-2 section-title">
+            <FaLock aria-hidden />
+            {t('pages.group.private')}
+          </h4>
+        ) : null}
+        {privateSections.map(renderSection)}
+        {split && publicSections.length > 0 ? (
+          <h4 className="d-flex align-items-center gap-2 section-title">
+            <FaGlobe aria-hidden />
+            {t('pages.group.public')}
+          </h4>
+        ) : null}
+        {publicSections.map(renderSection)}
       </>
     );
   };

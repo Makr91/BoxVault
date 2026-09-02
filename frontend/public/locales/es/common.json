@@ -697,6 +697,10 @@
       "table": "Vista de lista",
       "cards": "Vista de tarjetas"
     },
+    "group": {
+      "public": "Público",
+      "private": "Privado"
+    },
     "table": {
       "name": "Nombre",
       "os": "SO",
@@ -753,6 +757,7 @@
     },
     "version": {
       "title": "Versión {{version}}",
+      "released": "Publicado",
       "edit": "Editar versión",
       "releaseNotes": "Notas de la versión",
       "deprecatedBanner": "Esta versión está obsoleta",

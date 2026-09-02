@@ -147,15 +147,16 @@ const VersionsTable = ({ collection, item, org, ctx }) => {
   const versions = sortVersionsNewestFirst(item.versions || []);
   const hasReleased = versions.some(version => version.createdAt);
   const hasDetails = versions.some(version => version.description);
+  const hasProviders = versions.some(version => (version.providers || []).length > 0);
   const hasArtifacts = versions.some(version => (version.artifacts || []).length > 0);
   return (
     <Table striped className="table">
       <thead>
         <tr>
           <th>{t('pages.table.version')}</th>
-          {hasReleased ? <th>{t('pages.table.released')}</th> : null}
+          {hasReleased ? <th>{t('pages.version.released')}</th> : null}
           {hasDetails ? <th>{t('pages.table.details')}</th> : null}
-          <th>{t('pages.table.providers')}</th>
+          {hasProviders ? <th>{t('pages.table.providers')}</th> : null}
           {hasArtifacts ? <th>{t('pages.version.artifacts')}</th> : null}
           {VersionRowActions ? <th>{t('pages.table.actions')}</th> : null}
         </tr>
@@ -175,17 +176,19 @@ const VersionsTable = ({ collection, item, org, ctx }) => {
               <td>{version.createdAt ? new Date(version.createdAt).toLocaleDateString() : ''}</td>
             ) : null}
             {hasDetails ? <td>{version.description}</td> : null}
-            <td>
-              {(version.providers || []).map(provider => (
-                <Link
-                  key={provider.name}
-                  to={providerPath(collection, org, item.name, version.version, provider.name)}
-                  className="badge bg-secondary bg-opacity-50 text-body text-decoration-none me-1"
-                >
-                  {provider.name}
-                </Link>
-              ))}
-            </td>
+            {hasProviders ? (
+              <td>
+                {(version.providers || []).map(provider => (
+                  <Link
+                    key={provider.name}
+                    to={providerPath(collection, org, item.name, version.version, provider.name)}
+                    className="badge bg-secondary bg-opacity-50 text-body text-decoration-none me-1"
+                  >
+                    {provider.name}
+                  </Link>
+                ))}
+              </td>
+            ) : null}
             {hasArtifacts ? (
               <td>
                 <ArtifactLinks artifacts={version.artifacts || []} />

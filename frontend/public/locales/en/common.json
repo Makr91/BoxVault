@@ -423,6 +423,10 @@
       "table": "List view",
       "cards": "Card view"
     },
+    "group": {
+      "public": "Public",
+      "private": "Private"
+    },
     "table": {
       "name": "Name",
       "os": "OS",
@@ -479,6 +483,7 @@
     },
     "version": {
       "title": "Version {{version}}",
+      "released": "Released",
       "edit": "Edit version",
       "releaseNotes": "Release notes",
       "deprecatedBanner": "This version is deprecated",
