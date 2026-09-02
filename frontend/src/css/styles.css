@@ -485,3 +485,27 @@ button::-moz-focus-inner {
   background-color: #e5e4e2 !important;
   color: #212529;
 }
+
+.tier-diamond {
+  background-color: #b9f2ff !important;
+  color: #212529;
+}
+
+.provider-chip {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.provider-all {
+  background-color: var(--bs-success) !important;
+  color: #fff;
+}
+
+.provider-some {
+  background-color: var(--bs-warning) !important;
+  color: #212529;
+}
+
+.provider-one {
+  background-color: var(--bs-danger) !important;
+  color: #fff;
+}
