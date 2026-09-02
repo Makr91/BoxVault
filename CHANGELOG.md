@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.1](https://github.com/Makr91/BoxVault/compare/v0.57.0...v0.57.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* identity card target glyph in a fixed slot, no truncation ([5415745](https://github.com/Makr91/BoxVault/commit/541574520fa02503ca0a33c1ee773c89d3407fd9))
+
 ## [0.57.0](https://github.com/Makr91/BoxVault/compare/v0.56.1...v0.57.0) (2026-09-02)
 
 
