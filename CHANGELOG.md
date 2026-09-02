@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.1](https://github.com/Makr91/BoxVault/compare/v0.59.0...v0.59.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* plain org crumb again, Boxes and ISOs as routed tabs in the page ([c564fac](https://github.com/Makr91/BoxVault/commit/c564facbd19d00c499c7e529d81ac4585a837d0b))
+
 ## [0.59.0](https://github.com/Makr91/BoxVault/compare/v0.58.0...v0.59.0) (2026-09-02)
 
 
