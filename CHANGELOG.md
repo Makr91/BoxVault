@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.0](https://github.com/Makr91/BoxVault/compare/v0.60.0...v0.61.0) (2026-09-02)
+
+
+### Features
+
+* foldable organization groups, shared Visibility filter and the aligned home table ([64f77f3](https://github.com/Makr91/BoxVault/commit/64f77f3fa9ff53ce6ae041ac4ef194278d8856c5))
+
 ## [0.60.0](https://github.com/Makr91/BoxVault/compare/v0.59.1...v0.60.0) (2026-09-02)
 
 
