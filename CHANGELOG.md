@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.2](https://github.com/Makr91/BoxVault/compare/v0.57.1...v0.57.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* language and organization modals close on backdrop, icons render, orgs sorted by name ([7052823](https://github.com/Makr91/BoxVault/commit/7052823be6a48e04794f0d4750f25525857aab2e))
+
 ## [0.57.1](https://github.com/Makr91/BoxVault/compare/v0.57.0...v0.57.1) (2026-09-02)
 
 
