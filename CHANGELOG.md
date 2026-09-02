@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.1](https://github.com/Makr91/BoxVault/compare/v0.56.0...v0.56.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* land the header on the contract's 62px and make it sticky ([6dc0e12](https://github.com/Makr91/BoxVault/commit/6dc0e124b84904b3a0c103df10ab3295b68aa8b8))
+
 ## [0.56.0](https://github.com/Makr91/BoxVault/compare/v0.55.1...v0.56.0) (2026-09-01)
 
 
