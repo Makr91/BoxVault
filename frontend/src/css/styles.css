@@ -722,3 +722,10 @@ button::-moz-focus-inner {
   height: 24px;
   object-fit: contain;
 }
+
+.table > tbody > tr.table-group-row > td {
+  --bs-table-accent-bg: transparent;
+  background-color: var(--bs-tertiary-bg);
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}

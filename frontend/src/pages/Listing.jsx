@@ -5,10 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { FaGlobe, FaList, FaLock, FaTableCellsLarge } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
 
-import { OrgLogo, collectionPath } from '../chrome';
+import { collectionPath } from '../chrome';
 
+import { CollapseButton } from './GroupHeading';
 import ItemCards from './ItemCards';
-import { collectionShape, pageContextShape } from './itemShape';
+import { collectionShape, isPrivate, pageContextShape } from './itemShape';
 import ItemsTable from './ItemsTable';
 import { useCatalogSearch } from './useCatalogSearch';
 import { useNotice } from './useNotice';
@@ -18,7 +19,7 @@ const groupByOrganization = items => {
   items.forEach(item => {
     const key = item.organization.name;
     if (!groups.has(key)) {
-      groups.set(key, { organization: item.organization, items: [] });
+      groups.set(key, { key: `org:${key}`, organization: item.organization, items: [] });
     }
     groups.get(key).items.push(item);
   });
@@ -131,6 +132,23 @@ CollectionHeading.propTypes = {
   toggle: PropTypes.node,
 };
 
+const VisibilityHeading = ({ visibility, collapsed, onToggle }) => {
+  const { t } = useTranslation();
+  return (
+    <h4 className="d-flex align-items-center gap-2 section-title">
+      <CollapseButton collapsed={collapsed} onToggle={onToggle} />
+      {visibility === 'private' ? <FaLock aria-hidden /> : <FaGlobe aria-hidden />}
+      {t(`pages.group.${visibility}`)}
+    </h4>
+  );
+};
+
+VisibilityHeading.propTypes = {
+  visibility: PropTypes.oneOf(['public', 'private']).isRequired,
+  collapsed: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
+
 const Listing = ({ collections, org, member, grouped, context, header }) => {
   const { t, i18n } = useTranslation();
   const [noticeNode, notify] = useNotice();
@@ -168,7 +186,7 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
   }, [key, collections, org, member, notify, t]);
 
   const watches = useWatches({ collections, user: context.user, notify });
-  const { filtered, filtering, sort, setSort, view, setView } = useCatalogSearch({
+  const search = useCatalogSearch({
     collections,
     itemsByCollection: data.byCollection,
     org,
@@ -176,6 +194,7 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
     watchedIds: watches.ids,
     prefsKey: `${context.prefsPrefix}_${org || 'home'}`,
   });
+  const { filtered, filtering, sort, setSort, view, setView, collapsed, toggleCollapsed } = search;
 
   const ctxFor = collection => ({
     ...context,
@@ -193,10 +212,13 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
     <ViewToggle view={view[collection.key]} onChange={next => setView(collection.key, next)} />
   );
 
-  const listOf = (collection, items) => {
+  const listOf = (collection, items, groups) => {
     const shared = {
       collection,
       items,
+      groups,
+      collapsed,
+      onToggleGroup: toggleCollapsed,
       watches: watches.available && collection.adapter.watches ? watches : null,
       ctx: ctxFor(collection),
     };
@@ -214,89 +236,79 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
 
   const single = collections.length === 1;
 
-  const sectionsFor = visibility => {
-    const sections = new Map();
-    collections.forEach(collection => {
-      const items = (filtered[collection.key] || []).filter(item =>
-        visibility === 'private' ? item.isPublic === false : item.isPublic !== false
-      );
-      groupByOrganization(items).forEach(group => {
-        if (!sections.has(group.organization.name)) {
-          sections.set(group.organization.name, { organization: group.organization, parts: [] });
-        }
-        sections.get(group.organization.name).parts.push({ collection, items: group.items });
-      });
-    });
-    return [...sections.values()];
+  const renderVisibility = visibility => {
+    const parts = collections
+      .map(collection => ({
+        collection,
+        items: (filtered[collection.key] || []).filter(item =>
+          visibility === 'private' ? isPrivate(item) : !isPrivate(item)
+        ),
+      }))
+      .filter(part => part.items.length > 0);
+    if (parts.length === 0) {
+      return null;
+    }
+    const groupKey = `visibility:${visibility}`;
+    return (
+      <div key={visibility} className="mb-4">
+        <VisibilityHeading
+          visibility={visibility}
+          collapsed={Boolean(collapsed[groupKey])}
+          onToggle={() => toggleCollapsed(groupKey)}
+        />
+        {collapsed[groupKey]
+          ? null
+          : parts.map(part => (
+              <div key={part.collection.key} className="mb-3">
+                {single ? null : (
+                  <CollectionHeading
+                    collection={part.collection}
+                    count={part.items.length}
+                    org=""
+                    linkAll={Boolean(part.collection.segment)}
+                    small
+                    toggle={toggleFor(part.collection)}
+                  />
+                )}
+                {listOf(part.collection, part.items, groupByOrganization(part.items))}
+              </div>
+            ))}
+      </div>
+    );
   };
 
-  const renderSection = section => (
-    <div className="mb-4" key={section.organization.name}>
-      <div className="d-flex align-items-center gap-2 mb-2">
-        <OrgLogo
-          org={section.organization}
-          size={30}
-          className="rounded-circle avatar-lg"
-          fallback={context.orgMark}
-        />
-        <h5 className="mb-0">
-          <Link to={`/${section.organization.name}`}>{section.organization.name}</Link>
-        </h5>
-        {section.parts.map(part => (
-          <span key={part.collection.key} className="badge bg-secondary bg-opacity-50">
-            {t('pages.countOf', {
-              count: part.items.length,
-              collection: t(part.collection.labelKey),
-            })}
-          </span>
-        ))}
-      </div>
-      {section.parts.map(part => (
-        <div key={part.collection.key} className="mb-3">
+  const renderGrouped = () => {
+    const anyPrivate = collections.some(collection =>
+      (filtered[collection.key] || []).some(isPrivate)
+    );
+    const empty = collections.every(collection => (filtered[collection.key] || []).length === 0);
+    if (empty) {
+      return (
+        <Alert variant="secondary">{filtering ? t('pages.noMatches') : t('pages.empty')}</Alert>
+      );
+    }
+    if (!anyPrivate) {
+      return collections.map(collection => (
+        <div key={collection.key} className="mb-4">
           {single ? null : (
             <CollectionHeading
-              collection={part.collection}
-              count={part.items.length}
-              org={section.organization.name}
-              linkAll
-              small
-              toggle={toggleFor(part.collection)}
+              collection={collection}
+              count={(filtered[collection.key] || []).length}
+              org=""
+              linkAll={Boolean(collection.segment)}
+              small={false}
+              toggle={toggleFor(collection)}
             />
           )}
-          {listOf(part.collection, part.items)}
+          {listOf(
+            collection,
+            filtered[collection.key] || [],
+            groupByOrganization(filtered[collection.key] || [])
+          )}
         </div>
-      ))}
-    </div>
-  );
-
-  const renderGrouped = () => {
-    const publicSections = sectionsFor('public');
-    const privateSections = sectionsFor('private');
-    const split = privateSections.length > 0;
-    return (
-      <>
-        {single ? (
-          <div className="d-flex justify-content-end mb-2">{toggleFor(collections[0])}</div>
-        ) : null}
-        {publicSections.length === 0 && privateSections.length === 0 ? (
-          <Alert variant="secondary">{filtering ? t('pages.noMatches') : t('pages.empty')}</Alert>
-        ) : null}
-        {split ? (
-          <h4 className="d-flex align-items-center gap-2 section-title">
-            <FaLock aria-hidden />
-            {t('pages.group.private')}
-          </h4>
-        ) : null}
-        {privateSections.map(renderSection)}
-        {split && publicSections.length > 0 ? (
-          <h4 className="d-flex align-items-center gap-2 section-title">
-            <FaGlobe aria-hidden />
-            {t('pages.group.public')}
-          </h4>
-        ) : null}
-        {publicSections.map(renderSection)}
-      </>
-    );
+      ));
+    }
+    return ['private', 'public'].map(renderVisibility);
   };
 
   const renderFlat = () =>
@@ -334,6 +346,9 @@ const Listing = ({ collections, org, member, grouped, context, header }) => {
     <div className="list row">
       {noticeNode}
       {header}
+      {grouped && single ? (
+        <div className="d-flex justify-content-end mb-2">{toggleFor(collections[0])}</div>
+      ) : null}
       {renderBody()}
     </div>
   );

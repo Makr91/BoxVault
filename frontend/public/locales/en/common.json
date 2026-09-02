@@ -427,6 +427,7 @@
       "public": "Public",
       "private": "Private"
     },
+    "toggle": "Show or hide",
     "table": {
       "name": "Name",
       "os": "OS",

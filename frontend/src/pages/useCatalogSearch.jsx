@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 
 import { useNavbarSearchBinding } from '../chrome';
 
-import { defaultMatches } from './itemShape';
+import { defaultMatches, filterGroupsOf } from './itemShape';
 import { emptyFilters, readPrefs, toggleIn, writePrefs } from './prefs';
 
-const groupShown = (group, { signedIn, org }) =>
+const groupShown = (group, { signedIn, org, items }) =>
   (!group.signedInOnly || signedIn) &&
   (!group.homeOnly || !org) &&
-  (!group.orgOnly || Boolean(org));
+  (!group.orgOnly || Boolean(org)) &&
+  (!group.shownFor || group.shownFor(items));
 
 const orderedCounts = (counts, order) => {
   const keys = Object.keys(counts);
@@ -68,8 +69,8 @@ const nextSort = (current, column) => {
 /**
  * Registers one navbar search binding for a page that lists one or more
  * collections, and returns the filtered, sorted items per collection. The
- * query, the active filters and the sort are persisted per page under the
- * app's prefs prefix.
+ * active filters, the sort, the view and the collapsed groups are persisted
+ * per page under the app's prefs prefix.
  */
 export const useCatalogSearch = ({
   collections,
@@ -96,7 +97,9 @@ export const useCatalogSearch = ({
 
   collections.forEach(collection => {
     const items = itemsByCollection[collection.key] || [];
-    const shown = collection.filterGroups.filter(group => groupShown(group, { signedIn, org }));
+    const shown = filterGroupsOf(collection).filter(group =>
+      groupShown(group, { signedIn, org, items })
+    );
     const filters = prefs.filters[collection.key];
     const passing = items.filter(item => itemPasses(item, collection, shown, filters, needle, ctx));
     filtered[collection.key] = sortItems(passing, prefs.sort[collection.key], collection.columns);
@@ -154,5 +157,20 @@ export const useCatalogSearch = ({
   const setView = (collectionKey, view) =>
     setPrefs(current => ({ ...current, view: { ...current.view, [collectionKey]: view } }));
 
-  return { filtered, filtering, sort: prefs.sort, setSort, view: prefs.view, setView };
+  const toggleCollapsed = groupKey =>
+    setPrefs(current => ({
+      ...current,
+      collapsed: { ...current.collapsed, [groupKey]: !current.collapsed[groupKey] },
+    }));
+
+  return {
+    filtered,
+    filtering,
+    sort: prefs.sort,
+    setSort,
+    view: prefs.view,
+    setView,
+    collapsed: prefs.collapsed,
+    toggleCollapsed,
+  };
 };

@@ -3,6 +3,7 @@ import { Table } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { FaRegStar, FaSort, FaSortDown, FaSortUp, FaStar } from 'react-icons/fa6';
 
+import GroupHeading, { groupShape } from './GroupHeading';
 import { collectionShape, itemShape } from './itemShape';
 
 const WatchStar = ({ watched, onToggle }) => {
@@ -39,18 +40,98 @@ SortIcon.propTypes = {
   sort: PropTypes.shape({ column: PropTypes.string, direction: PropTypes.string }).isRequired,
 };
 
-const ItemsTable = ({ collection, items, sort, onSort, watches, ctx }) => {
+const ItemRow = ({ item, columns, watches, RowActions, ctx }) => (
+  <tr>
+    {watches ? (
+      <td className="text-center align-middle">
+        <WatchStar watched={watches.ids.has(item.id)} onToggle={() => watches.toggle(item)} />
+      </td>
+    ) : null}
+    {columns.map(column => (
+      <td key={column.key}>{column.render(item, ctx)}</td>
+    ))}
+    {RowActions ? (
+      <td>
+        <RowActions item={item} ctx={ctx} />
+      </td>
+    ) : null}
+  </tr>
+);
+
+ItemRow.propTypes = {
+  item: itemShape.isRequired,
+  columns: PropTypes.array.isRequired,
+  watches: PropTypes.object,
+  RowActions: PropTypes.elementType,
+  ctx: PropTypes.object.isRequired,
+};
+
+const ItemsTable = ({
+  collection,
+  items,
+  groups,
+  collapsed,
+  onToggleGroup,
+  sort,
+  onSort,
+  watches,
+  ctx,
+}) => {
   const { t } = useTranslation();
   const columns = collection.columns.filter(column => !column.when || column.when(ctx));
   const { RowActions } = collection.slots;
-  const showWatch = Boolean(watches);
-  const columnCount = columns.length + (showWatch ? 1 : 0) + (RowActions ? 1 : 0);
+  const columnCount = columns.length + (watches ? 1 : 0) + (RowActions ? 1 : 0);
+  const rowProps = { columns, watches, RowActions, ctx };
+
+  const body = () => {
+    if (items.length === 0) {
+      return (
+        <tbody>
+          <tr>
+            <td colSpan={columnCount} className="text-center">
+              {ctx.filtering ? t('pages.noMatches') : t('pages.empty')}
+            </td>
+          </tr>
+        </tbody>
+      );
+    }
+    if (!groups) {
+      return (
+        <tbody>
+          {items.map(item => (
+            <ItemRow key={item.id} item={item} {...rowProps} />
+          ))}
+        </tbody>
+      );
+    }
+    return groups.map(group => (
+      <tbody key={group.key}>
+        <tr className="table-group-row">
+          <td colSpan={columnCount}>
+            <GroupHeading
+              group={group}
+              collapsed={Boolean(collapsed[group.key])}
+              onToggle={() => onToggleGroup(group.key)}
+              countLabel={t('pages.countOf', {
+                count: group.items.length,
+                collection: t(collection.labelKey),
+              })}
+              orgMark={ctx.orgMark}
+            />
+          </td>
+        </tr>
+        {collapsed[group.key]
+          ? null
+          : group.items.map(item => <ItemRow key={item.id} item={item} {...rowProps} />)}
+      </tbody>
+    ));
+  };
 
   return (
     <Table striped className="table">
       <thead>
         <tr>
-          {showWatch ? <th aria-label={t('pages.watch.filterWatched')} /> : null}
+          {watches ? <th aria-label={t('pages.watch.filterWatched')} /> : null}
           {columns.map(column => (
             <th
               key={column.key}
@@ -64,36 +145,7 @@ const ItemsTable = ({ collection, items, sort, onSort, watches, ctx }) => {
           {RowActions ? <th>{t('pages.table.actions')}</th> : null}
         </tr>
       </thead>
-      <tbody>
-        {items.length === 0 ? (
-          <tr>
-            <td colSpan={columnCount} className="text-center">
-              {ctx.filtering ? t('pages.noMatches') : t('pages.empty')}
-            </td>
-          </tr>
-        ) : (
-          items.map(item => (
-            <tr key={item.id}>
-              {showWatch ? (
-                <td className="text-center align-middle">
-                  <WatchStar
-                    watched={watches.ids.has(item.id)}
-                    onToggle={() => watches.toggle(item)}
-                  />
-                </td>
-              ) : null}
-              {columns.map(column => (
-                <td key={column.key}>{column.render(item, ctx)}</td>
-              ))}
-              {RowActions ? (
-                <td>
-                  <RowActions item={item} ctx={ctx} />
-                </td>
-              ) : null}
-            </tr>
-          ))
-        )}
-      </tbody>
+      {body()}
     </Table>
   );
 };
@@ -101,6 +153,9 @@ const ItemsTable = ({ collection, items, sort, onSort, watches, ctx }) => {
 ItemsTable.propTypes = {
   collection: collectionShape.isRequired,
   items: PropTypes.arrayOf(itemShape).isRequired,
+  groups: PropTypes.arrayOf(groupShape),
+  collapsed: PropTypes.object.isRequired,
+  onToggleGroup: PropTypes.func.isRequired,
   sort: PropTypes.shape({ column: PropTypes.string, direction: PropTypes.string }).isRequired,
   onSort: PropTypes.func.isRequired,
   watches: PropTypes.shape({

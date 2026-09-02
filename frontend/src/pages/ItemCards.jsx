@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 import { OrgLogo, itemPath } from '../chrome';
 
+import GroupHeading, { groupShape } from './GroupHeading';
 import { collectionShape, itemShape, statusOf, visibilityOf } from './itemShape';
 import StatusChips from './StatusChips';
 
@@ -105,7 +106,24 @@ ItemCard.propTypes = {
   ctx: PropTypes.object.isRequired,
 };
 
-const ItemCards = ({ collection, items, watches, ctx }) => {
+const CardGrid = ({ collection, items, watches, ctx }) => (
+  <Row xs={1} md={2} xl={3} className="g-3 mb-3">
+    {items.map(item => (
+      <Col key={item.id}>
+        <ItemCard collection={collection} item={item} watches={watches} ctx={ctx} />
+      </Col>
+    ))}
+  </Row>
+);
+
+CardGrid.propTypes = {
+  collection: collectionShape.isRequired,
+  items: PropTypes.arrayOf(itemShape).isRequired,
+  watches: PropTypes.object,
+  ctx: PropTypes.object.isRequired,
+};
+
+const ItemCards = ({ collection, items, groups, collapsed, onToggleGroup, watches, ctx }) => {
   const { t } = useTranslation();
   if (items.length === 0) {
     return (
@@ -114,20 +132,36 @@ const ItemCards = ({ collection, items, watches, ctx }) => {
       </div>
     );
   }
-  return (
-    <Row xs={1} md={2} xl={3} className="g-3 mb-3">
-      {items.map(item => (
-        <Col key={item.id}>
-          <ItemCard collection={collection} item={item} watches={watches} ctx={ctx} />
-        </Col>
-      ))}
-    </Row>
-  );
+  if (!groups) {
+    return <CardGrid collection={collection} items={items} watches={watches} ctx={ctx} />;
+  }
+  return groups.map(group => (
+    <div key={group.key} className="mb-3">
+      <div className="mb-2">
+        <GroupHeading
+          group={group}
+          collapsed={Boolean(collapsed[group.key])}
+          onToggle={() => onToggleGroup(group.key)}
+          countLabel={t('pages.countOf', {
+            count: group.items.length,
+            collection: t(collection.labelKey),
+          })}
+          orgMark={ctx.orgMark}
+        />
+      </div>
+      {collapsed[group.key] ? null : (
+        <CardGrid collection={collection} items={group.items} watches={watches} ctx={ctx} />
+      )}
+    </div>
+  ));
 };
 
 ItemCards.propTypes = {
   collection: collectionShape.isRequired,
   items: PropTypes.arrayOf(itemShape).isRequired,
+  groups: PropTypes.arrayOf(groupShape),
+  collapsed: PropTypes.object.isRequired,
+  onToggleGroup: PropTypes.func.isRequired,
   watches: PropTypes.shape({
     ids: PropTypes.instanceOf(Set).isRequired,
     toggle: PropTypes.func.isRequired,

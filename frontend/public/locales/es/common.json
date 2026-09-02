@@ -701,6 +701,7 @@
       "public": "Público",
       "private": "Privado"
     },
+    "toggle": "Mostrar u ocultar",
     "table": {
       "name": "Nombre",
       "os": "SO",

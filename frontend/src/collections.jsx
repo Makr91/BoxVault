@@ -130,14 +130,6 @@ export const isos = {
   adapter: isosAdapter,
   filterGroups: [
     {
-      key: 'visibility',
-      labelKey: 'pages.table.visibility',
-      values: item => [item.isPublic ? 'public' : 'private'],
-      activeClass: 'bg-info',
-      labelFor: (value, t) => t(`pages.status.${value}`),
-      orgOnly: true,
-    },
-    {
       key: 'organization',
       labelKey: 'pages.table.organization',
       values: item => [item.organization.name],

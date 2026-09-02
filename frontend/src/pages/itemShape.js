@@ -70,7 +70,25 @@ export const filterGroupShape = PropTypes.shape({
   signedInOnly: PropTypes.bool,
   homeOnly: PropTypes.bool,
   orgOnly: PropTypes.bool,
+  shownFor: PropTypes.func,
 });
+
+export const VISIBILITY_GROUP = {
+  key: 'visibility',
+  labelKey: 'pages.table.visibility',
+  values: item => [item.isPublic === false ? 'private' : 'public'],
+  activeClass: 'bg-info',
+  labelFor: (value, t) => t(`pages.status.${value}`),
+  order: ['public', 'private'],
+  shownFor: items => items.some(item => item.isPublic === false),
+};
+
+export const filterGroupsOf = collection => [
+  VISIBILITY_GROUP,
+  ...collection.filterGroups.filter(group => group.key !== VISIBILITY_GROUP.key),
+];
+
+export const isPrivate = item => item.isPublic === false;
 
 export const columnShape = PropTypes.shape({
   key: PropTypes.string.isRequired,
