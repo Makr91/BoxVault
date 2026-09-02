@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.0](https://github.com/Makr91/BoxVault/compare/v0.56.1...v0.57.0) (2026-09-02)
+
+
+### Features
+
+* share the native theme files with the catalog byte for byte ([3291aa3](https://github.com/Makr91/BoxVault/commit/3291aa31b0b2f31ec119a0cb7c32df9d214d6f9f))
+
 ## [0.56.1](https://github.com/Makr91/BoxVault/compare/v0.56.0...v0.56.1) (2026-09-01)
 
 
