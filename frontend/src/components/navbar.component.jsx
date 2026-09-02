@@ -2,18 +2,10 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { Dropdown } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import {
-  FaBook,
-  FaBuilding,
-  FaCircleInfo,
-  FaCompactDisc,
-  FaCube,
-  FaGear,
-  FaGlobe,
-} from 'react-icons/fa6';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { FaBook, FaBuilding, FaCircleInfo, FaGear } from 'react-icons/fa6';
+import { Link } from 'react-router-dom';
 
-import { Header, OrgLogo } from '../chrome';
+import { Header } from '../chrome';
 import {
   BrandLogo,
   buildTicketUrl,
@@ -34,100 +26,6 @@ import { log } from '../utils/Logger';
 const resolveMemberships = user => (Array.isArray(user?.organizations) ? user.organizations : []);
 
 const resolveDisplayName = (userClaims, user) => userClaims?.name || userDisplayName(user);
-
-const RESERVED_ROUTES = new Set([
-  'about',
-  'organizations',
-  'login',
-  'auth',
-  'register',
-  'invite',
-  'profile',
-  'admin',
-  'org-console',
-  'setup',
-  'isos',
-]);
-
-const KIND_ICONS = { boxes: FaCube, isos: FaCompactDisc };
-
-const parseLocation = pathname => {
-  const [first = '', second = ''] = pathname.split('/').filter(Boolean);
-  return {
-    routeOrg: RESERVED_ROUTES.has(first) ? '' : first,
-    kind: first === 'isos' || second === 'isos' ? 'isos' : 'boxes',
-  };
-};
-
-const kindPath = (kind, org) => `${org ? `/${org}` : ''}${kind === 'isos' ? '/isos' : ''}` || '/';
-
-const orgCrumbIcon = (current, routeOrg, orgMark) => {
-  if (current) {
-    return (
-      <OrgLogo org={current} size={16} className="rounded-circle avatar-sm" fallback={orgMark} />
-    );
-  }
-  return routeOrg ? <FaBuilding aria-hidden /> : <FaGlobe aria-hidden />;
-};
-
-const buildCrumbs = ({
-  t,
-  kind,
-  routeOrg,
-  organizations,
-  orgMark,
-  rowMark,
-  navigate,
-  onPickOrg,
-}) => {
-  const KindIcon = KIND_ICONS[kind];
-  const current = organizations.find(org => org.name === routeOrg);
-  return [
-    {
-      key: 'kind',
-      icon: <KindIcon aria-hidden />,
-      label: t(`navbar.${kind}Crumb`),
-      picker: Object.keys(KIND_ICONS).map(value => {
-        const Icon = KIND_ICONS[value];
-        return {
-          key: value,
-          icon: <Icon className="me-2" />,
-          label: t(`navbar.${value}Crumb`),
-          active: value === kind,
-          onPick: () => navigate(kindPath(value, routeOrg)),
-        };
-      }),
-    },
-    {
-      key: 'org',
-      icon: orgCrumbIcon(current, routeOrg, orgMark),
-      label: routeOrg || t('navbar.allOrgsCrumb'),
-      picker: [
-        {
-          key: 'all',
-          icon: <FaGlobe className="me-2" />,
-          label: t('navbar.allOrgsCrumb'),
-          active: !routeOrg,
-          onPick: () => navigate(kindPath(kind, '')),
-        },
-        ...organizations.map(org => ({
-          key: org.name,
-          icon: (
-            <OrgLogo
-              org={org}
-              size={16}
-              className="rounded-circle avatar-sm me-2"
-              fallback={rowMark}
-            />
-          ),
-          label: org.name,
-          active: org.name === routeOrg,
-          onPick: () => onPickOrg(org.name),
-        })),
-      ],
-    },
-  ];
-};
 
 const AppRows = ({ showAdminBoard, showOrgConsole }) => {
   const { t } = useTranslation();
@@ -176,8 +74,6 @@ const Navbar = ({
   onOrganizationSwitch,
 }) => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
   const [favoriteApps, setFavoriteApps] = useState([]);
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
@@ -360,21 +256,23 @@ const Navbar = ({
       logo: name === activeOrganization ? activeOrgGravatar || '' : '',
     }));
 
-  const { routeOrg, kind } = parseLocation(pathname);
-  const onPickOrg = name => onOrganizationSwitch(name, kindPath(kind, name));
+  const orgCrumbIcon = activeOrgGravatar ? (
+    <img src={activeOrgGravatar} alt="" className="rounded-circle avatar-sm" />
+  ) : (
+    <BrandLogo theme={theme} className="logo-sm" />
+  );
 
-  const crumbs = currentUser
-    ? buildCrumbs({
-        t,
-        kind,
-        routeOrg,
-        organizations,
-        orgMark: <BrandLogo theme={theme} className="logo-sm" />,
-        rowMark: <BrandLogo theme={theme} className="logo-sm me-2" />,
-        navigate,
-        onPickOrg,
-      })
-    : [];
+  const crumbs =
+    currentUser && activeOrganization
+      ? [
+          {
+            key: 'org',
+            icon: orgCrumbIcon,
+            label: activeOrganization,
+            to: `/${activeOrganization}`,
+          },
+        ]
+      : [];
 
   const userMenu = currentUser
     ? {
@@ -386,7 +284,7 @@ const Navbar = ({
         localProfile: { to: '/profile', LinkComponent: Link },
         organizations,
         activeOrgUuid: activeOrganization || '',
-        onPickOrg,
+        onPickOrg: onOrganizationSwitch,
         loadOrganizations,
         orgMark: <BrandLogo theme={theme} className="logo-md icon-with-margin" />,
         favorites: favoriteApps,

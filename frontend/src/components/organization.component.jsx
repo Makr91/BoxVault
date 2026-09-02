@@ -1273,9 +1273,11 @@ BoxesList.propTypes = {
 };
 
 const Organization = ({ showOnlyPublic, kind, theme }) => {
+  const { t } = useTranslation();
   const { organization: routeOrganization } = useParams();
   const currentUser = AuthService.getCurrentUser();
   const organization = routeOrganization || (currentUser ? currentUser.organization : null);
+  const base = showOnlyPublic ? '' : `/${routeOrganization}`;
 
   const isMember = useMemo(
     () => isOrgMember(currentUser, organization),
@@ -1289,6 +1291,19 @@ const Organization = ({ showOnlyPublic, kind, theme }) => {
 
   return (
     <div className="list row">
+      <ul className="nav nav-tabs mb-3">
+        <li className="nav-item">
+          <Link className={`nav-link${kind === 'boxes' ? ' active' : ''}`} to={base || '/'}>
+            {t('box.organization.tabs.boxes')}
+          </Link>
+        </li>
+        <li className="nav-item">
+          <Link className={`nav-link${kind === 'isos' ? ' active' : ''}`} to={`${base}/isos`}>
+            {t('box.organization.tabs.isos')}
+          </Link>
+        </li>
+      </ul>
+
       {kind === 'isos' ? (
         <IsoList
           key={organization || 'public'}

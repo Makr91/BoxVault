@@ -212,7 +212,7 @@ const App = () => {
 
   // Handle organization switching
   const handleOrganizationSwitch = useCallback(
-    (newOrgName, path) => {
+    newOrgName => {
       setActiveOrganization(newOrgName);
       localStorage.setItem('activeOrganization', newOrgName);
 
@@ -221,7 +221,7 @@ const App = () => {
         to: newOrgName,
       });
 
-      navigate(path);
+      navigate(`/${newOrgName}`);
     },
     [activeOrganization, navigate]
   );

@@ -394,10 +394,7 @@
     "boxvault": "BoxVault",
     "profileModeTitle": "Switch between identity provider and local profile",
     "favorites": "Favorites",
-    "help": "Help",
-    "boxesCrumb": "Boxes",
-    "isosCrumb": "ISOs",
-    "allOrgsCrumb": "All organizations"
+    "help": "Help"
   },
   "iso": {
     "upload": {
@@ -823,6 +820,10 @@
       "headers": {
         "createNewBox": "Create New Box",
         "templateList": "Template List"
+      },
+      "tabs": {
+        "boxes": "Boxes",
+        "isos": "ISOs"
       },
       "group": {
         "boxCount": "{{count}} box",

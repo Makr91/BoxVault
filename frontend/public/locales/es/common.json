@@ -557,6 +557,10 @@
         "createNewBox": "Crear Nueva Box",
         "templateList": "Lista de Plantillas"
       },
+      "tabs": {
+        "boxes": "Boxes",
+        "isos": "ISOs"
+      },
       "group": {
         "boxCount": "{{count}} box",
         "boxCount_plural": "{{count}} boxes"
@@ -668,10 +672,7 @@
     "boxvault": "BoxVault",
     "profileModeTitle": "Cambiar entre el perfil del proveedor de identidad y el perfil local",
     "favorites": "Favoritos",
-    "help": "Ayuda",
-    "boxesCrumb": "Boxes",
-    "isosCrumb": "ISOs",
-    "allOrgsCrumb": "Todas las organizaciones"
+    "help": "Ayuda"
   },
   "iso": {
     "upload": {
