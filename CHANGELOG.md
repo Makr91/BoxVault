@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.60.0](https://github.com/Makr91/BoxVault/compare/v0.59.1...v0.60.0) (2026-09-02)
+
+
+### Features
+
+* list or card view per collection with the shared pages ([9a960e2](https://github.com/Makr91/BoxVault/commit/9a960e2d6de0b56ff971f48d872e7d5348392e56))
+
+
+### Bug Fixes
+
+* hide the empty providers column and label the version release date ([507bfe5](https://github.com/Makr91/BoxVault/commit/507bfe5c118b475c96643bf96fef9af87782da1d))
+
 ## [0.59.1](https://github.com/Makr91/BoxVault/compare/v0.59.0...v0.59.1) (2026-09-02)
 
 
