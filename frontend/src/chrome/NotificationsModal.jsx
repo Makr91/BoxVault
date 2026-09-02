@@ -1,27 +1,34 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
-import { Modal, Form } from 'react-bootstrap';
+import { Form, Modal } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import {
-  FaBell,
-  FaGear,
-  FaEnvelope,
-  FaTriangleExclamation,
-  FaShieldHalved,
-  FaXmark,
   FaArrowUpRightFromSquare,
+  FaBell,
+  FaEnvelope,
+  FaGear,
+  FaShieldHalved,
+  FaTriangleExclamation,
+  FaXmark,
 } from 'react-icons/fa6';
 
-import NotificationsService from '../services/notifications.service';
-import { log } from '../utils/Logger';
-import {
-  isPushSupported,
-  isPushEnabled,
-  setPushEnabled,
-  subscribePush,
-  unsubscribePush,
-} from '../utils/pushNotifications';
-import { formatRelativeTime } from '../utils/relativeTime';
+import { formatRelativeTime } from './relativeTime';
+
+export const notificationsAdapterShape = PropTypes.shape({
+  list: PropTypes.func.isRequired,
+  unreadCount: PropTypes.func.isRequired,
+  markRead: PropTypes.func.isRequired,
+  markAllRead: PropTypes.func.isRequired,
+  remove: PropTypes.func.isRequired,
+});
+
+export const pushAdapterShape = PropTypes.shape({
+  isSupported: PropTypes.func.isRequired,
+  isEnabled: PropTypes.func.isRequired,
+  setEnabled: PropTypes.func.isRequired,
+  subscribe: PropTypes.func.isRequired,
+  unsubscribe: PropTypes.func.isRequired,
+});
 
 const TYPE_ICONS = {
   SECURITY: FaShieldHalved,
@@ -57,20 +64,18 @@ const NotificationRow = ({ entry, onSelect, onDismiss }) => {
         onClick={() => onSelect(entry)}
       >
         <Icon
-          className={`notification-item-icon ${
-            SEVERITY_CLASSES[entry.severity] || 'text-body-secondary'
-          }`}
+          className={`notification-item-icon ${SEVERITY_CLASSES[entry.severity] || 'text-body-secondary'}`}
         />
         <span className="notification-item-body">
           <span className={`notification-item-title ${unread ? 'fw-semibold' : ''}`}>
             {entry.title}
           </span>
-          {entry.body && <span className="notification-item-text">{entry.body}</span>}
+          {entry.body ? <span className="notification-item-text">{entry.body}</span> : null}
           <span className="notification-item-time">
             {formatRelativeTime(entry.createdAt, i18n.language)}
           </span>
         </span>
-        {unread && <span className="notification-item-dot" />}
+        {unread ? <span className="notification-item-dot" /> : null}
       </button>
       <button
         type="button"
@@ -100,14 +105,14 @@ NotificationRow.propTypes = {
   onDismiss: PropTypes.func.isRequired,
 };
 
-const PushSwitch = () => {
+const PushSwitch = ({ push }) => {
   const { t } = useTranslation();
-  const [enabled, setEnabled] = useState(isPushEnabled());
+  const [enabled, setEnabled] = useState(push.isEnabled());
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
   const enablePush = async () => {
-    if (!isPushSupported()) {
+    if (!push.isSupported()) {
       setFeedback(t('notifications.notSupported'));
       return;
     }
@@ -116,8 +121,8 @@ const PushSwitch = () => {
       setFeedback(t('notifications.permissionDenied'));
       return;
     }
-    await subscribePush();
-    setPushEnabled(true);
+    await push.subscribe();
+    push.setEnabled(true);
     setEnabled(true);
   };
 
@@ -133,16 +138,13 @@ const PushSwitch = () => {
     setFeedback('');
     try {
       if (enabled) {
-        await unsubscribePush();
-        setPushEnabled(false);
+        await push.unsubscribe();
+        push.setEnabled(false);
         setEnabled(false);
       } else {
         await enablePush();
       }
     } catch (error) {
-      log.component.error('Notification toggle failed', {
-        error: error.message,
-      });
       setFeedback(describeError(error));
     } finally {
       setBusy(false);
@@ -159,12 +161,16 @@ const PushSwitch = () => {
         disabled={busy}
         onChange={handleToggle}
       />
-      {feedback && <small className="text-danger">{feedback}</small>}
+      {feedback ? <small className="text-danger">{feedback}</small> : null}
     </span>
   );
 };
 
-const NotificationsModal = ({ show, onHide, authServerUrl, onUnreadDelta }) => {
+PushSwitch.propTypes = {
+  push: pushAdapterShape.isRequired,
+};
+
+const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, viewAllUrl }) => {
   const { t } = useTranslation();
   const [entries, setEntries] = useState([]);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -173,33 +179,27 @@ const NotificationsModal = ({ show, onHide, authServerUrl, onUnreadDelta }) => {
     if (!show) {
       return;
     }
-    NotificationsService.listNotifications({ page: 0, size: 20 })
-      .then(response => {
+    notifications
+      .list({ page: 0, size: 20 })
+      .then(data => {
         setLoadFailed(false);
-        setEntries(extractEntries(response.data));
+        setEntries(extractEntries(data));
       })
-      .catch(error => {
-        log.api.error('Error loading notification inbox', {
-          error: error.message,
-        });
-        setLoadFailed(true);
-      });
-  }, [show]);
+      .catch(() => setLoadFailed(true));
+  }, [show, notifications]);
 
   const handleSelect = async entry => {
     if (!entry.readAt) {
       try {
-        await NotificationsService.markRead(entry.id);
+        await notifications.markRead(entry.id);
         onUnreadDelta(-1);
         setEntries(prev =>
           prev.map(item =>
             item.id === entry.id ? { ...item, readAt: new Date().toISOString() } : item
           )
         );
-      } catch (error) {
-        log.api.error('Error marking notification read', {
-          error: error.message,
-        });
+      } catch {
+        setLoadFailed(true);
       }
     }
     if (typeof entry.navigate === 'string' && entry.navigate.startsWith('https://')) {
@@ -209,48 +209,43 @@ const NotificationsModal = ({ show, onHide, authServerUrl, onUnreadDelta }) => {
 
   const handleDismiss = async entry => {
     try {
-      await NotificationsService.deleteNotification(entry.id);
+      await notifications.remove(entry.id);
       setEntries(prev => prev.filter(item => item.id !== entry.id));
       if (!entry.readAt) {
         onUnreadDelta(-1);
       }
-    } catch (error) {
-      log.api.error('Error dismissing notification', {
-        error: error.message,
-      });
+    } catch {
+      setLoadFailed(true);
     }
   };
 
   const handleMarkAllRead = async () => {
     try {
-      await NotificationsService.markAllRead();
+      await notifications.markAllRead();
       onUnreadDelta(-Infinity);
       setEntries(prev =>
         prev.map(item => (item.readAt ? item : { ...item, readAt: new Date().toISOString() }))
       );
-    } catch (error) {
-      log.api.error('Error marking all notifications read', {
-        error: error.message,
-      });
+    } catch {
       setLoadFailed(true);
     }
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered>
+    <Modal show={show} onHide={onHide} centered dialogClassName="notifications-modal">
       <Modal.Header closeButton>
-        <Modal.Title className="d-flex align-items-center gap-3">
+        <Modal.Title as="h5" className="flex-grow-1">
           {t('inbox.title')}
-          <button type="button" className="btn btn-link btn-sm p-0" onClick={handleMarkAllRead}>
-            {t('inbox.markAllRead')}
-          </button>
         </Modal.Title>
+        <button type="button" className="btn btn-link btn-sm p-0 me-3" onClick={handleMarkAllRead}>
+          {t('inbox.markAllRead')}
+        </button>
       </Modal.Header>
       <Modal.Body className="p-0">
-        {loadFailed && <p className="small text-danger m-3">{t('inbox.loadError')}</p>}
-        {!loadFailed && entries.length === 0 && (
+        {loadFailed ? <p className="small text-danger m-3">{t('inbox.loadError')}</p> : null}
+        {!loadFailed && entries.length === 0 ? (
           <p className="small text-body-secondary m-3">{t('inbox.empty')}</p>
-        )}
+        ) : null}
         <div className="notification-list">
           {entries.map(entry => (
             <NotificationRow
@@ -262,19 +257,14 @@ const NotificationsModal = ({ show, onHide, authServerUrl, onUnreadDelta }) => {
           ))}
         </div>
       </Modal.Body>
-      <Modal.Footer className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <PushSwitch />
-        {authServerUrl && (
-          <a
-            href={`${authServerUrl}/notifications`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="small"
-          >
+      <Modal.Footer className="d-flex justify-content-between align-items-center flex-nowrap gap-3 small">
+        <PushSwitch push={push} />
+        {viewAllUrl ? (
+          <a href={viewAllUrl} target="_blank" rel="noopener noreferrer" className="text-nowrap">
             {t('inbox.viewAll')}
             <FaArrowUpRightFromSquare className="ms-2" />
           </a>
-        )}
+        ) : null}
       </Modal.Footer>
     </Modal>
   );
@@ -283,8 +273,10 @@ const NotificationsModal = ({ show, onHide, authServerUrl, onUnreadDelta }) => {
 NotificationsModal.propTypes = {
   show: PropTypes.bool.isRequired,
   onHide: PropTypes.func.isRequired,
-  authServerUrl: PropTypes.string,
   onUnreadDelta: PropTypes.func.isRequired,
+  notifications: notificationsAdapterShape.isRequired,
+  push: pushAdapterShape.isRequired,
+  viewAllUrl: PropTypes.string.isRequired,
 };
 
 export default NotificationsModal;

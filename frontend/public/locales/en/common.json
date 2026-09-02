@@ -428,6 +428,16 @@
     "filterWatched": "Watched",
     "error": "Failed to update the box watch. Please try again."
   },
+  "search": {
+    "open": "Search",
+    "filters": "Filters",
+    "clear": "Clear search and filters",
+    "clearFilters": "Clear filters",
+    "activeFilters_one": "{{count}} filter active",
+    "activeFilters_other": "{{count}} filters active",
+    "boxes": "Search boxes",
+    "isos": "Search ISOs"
+  },
   "orgConsole": {
     "pageTitle": "Org Console",
     "title": "Organization Console",

@@ -4,11 +4,14 @@ import { Table } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { FaTrash, FaDownload, FaPen, FaCheck, FaXmark, FaCopy } from 'react-icons/fa6';
 
+import { useNavbarSearchBinding } from '../chrome';
 import IsoService from '../services/iso.service';
 import { formatFileSize } from '../utils/fileSize';
 import { log } from '../utils/Logger';
 
 import ConfirmationModal from './confirmation.component';
+
+const noFilters = () => {};
 
 const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const { t } = useTranslation();
@@ -186,6 +189,16 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     iso.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  useNavbarSearchBinding({
+    query: searchTerm,
+    onQueryChange: setSearchTerm,
+    placeholder: t('search.isos'),
+    matched: filteredIsos.length,
+    total: isos.length,
+    groups: [],
+    onClearFilters: noFilters,
+  });
+
   const renderTableBody = () => {
     if (loading) {
       return (
@@ -315,22 +328,7 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
 
   return (
     <div className="list row">
-      <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-        {/* Left: Search */}
-        <div className="input-group input-group-sm" style={{ maxWidth: '300px' }}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder={t('actions.search')}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-          <button className="btn btn-outline-secondary" type="button">
-            {t('actions.search')}
-          </button>
-        </div>
-
-        {/* Right: Action Buttons */}
+      <div className="d-flex justify-content-end align-items-center mb-3 gap-2 flex-wrap">
         <div className="d-flex gap-2 align-items-center">
           {canManage && (
             <div className="d-flex align-items-center gap-2">

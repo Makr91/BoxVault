@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 
 import App from './App';
+import { NavbarSearchProvider } from './chrome';
 import i18n, { i18nPromise } from './i18n';
 import { log } from './utils/Logger';
 import version from './version.json';
@@ -22,9 +23,11 @@ i18nPromise.then(() => {
   root.render(
     <I18nextProvider i18n={i18n}>
       <Suspense fallback="Loading...">
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <NavbarSearchProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </NavbarSearchProvider>
       </Suspense>
     </I18nextProvider>
   );

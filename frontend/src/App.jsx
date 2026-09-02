@@ -1,18 +1,25 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaTriangleExclamation } from 'react-icons/fa6';
 import { Routes, Route, Navigate, useNavigate, Link } from 'react-router-dom';
 
 import './css/styles.css';
 import './css/fonts.css';
 import './css/auth.css';
+import { Footer, SessionEndedBanner, useTheme } from './chrome';
+import {
+  APP_NAME,
+  APP_VERSION,
+  POWERED_BY,
+  REPO_URL,
+  fetchHealth,
+  persistTheme,
+} from './chromeProps';
 import ErrorBoundary from './common/ErrorBoundary';
 import EventBus from './common/EventBus';
 import About from './components/about.component';
 import Admin from './components/admin.component';
 import AuthCallback from './components/AuthCallback';
 import Box from './components/box.component';
-import Footer from './components/Footer.component';
 import InviteAccept from './components/InviteAccept.component';
 import Login from './components/login.component';
 import Navbar from './components/navbar.component';
@@ -26,7 +33,6 @@ import Setup from './components/setup.component';
 import Version from './components/version.component';
 import AuthService from './services/auth.service';
 import SetupService from './services/setup.service';
-import UserService from './services/user.service';
 import { log } from './utils/Logger';
 import { isOrgManager } from './utils/permissions';
 import {
@@ -35,16 +41,6 @@ import {
   listenForSubscriptionChange,
 } from './utils/pushNotifications';
 import { subscribeSessionEvents } from './utils/sessionEvents';
-
-const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
-
-const subscribeToColorScheme = onChange => {
-  const query = window.matchMedia(DARK_SCHEME_QUERY);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
-};
-
-const systemPrefersDark = () => window.matchMedia(DARK_SCHEME_QUERY).matches;
 
 // Every candidate is checked against the membership list because the primary
 // organization can name an org the user was just removed from — an unvalidated
@@ -111,31 +107,25 @@ const App = () => {
     () => AuthService.getCurrentUser()?.avatarUrl || ''
   );
   const [gravatarFetched, setGravatarFetched] = useState(false);
-  // The account's stored preference outranks this browser's, so the same person
-  // gets the same colour scheme on every device. It is read here and at login
-  // rather than from an effect: an effect would re-assert a value that goes
-  // stale the moment the toggle is used, undoing the click.
-  const [themePreference, setThemePreference] = useState(
-    () => AuthService.getCurrentUser()?.preferredTheme || localStorage.getItem('theme') || 'auto'
-  );
-  const prefersDark = useSyncExternalStore(subscribeToColorScheme, systemPrefersDark);
-  // What gets stored is the PREFERENCE; what gets applied is the resolved
-  // light/dark. Keeping them separate is what lets "auto" keep tracking the OS
-  // instead of freezing at whatever it happened to resolve to on first load.
-  const theme = themePreference === 'auto' ? (prefersDark && 'dark') || 'light' : themePreference;
+  const {
+    theme,
+    preference: themePreference,
+    setPreference: setThemePreference,
+    toggleTheme,
+  } = useTheme({
+    initialPreference: AuthService.getCurrentUser()?.preferredTheme || '',
+    onPersist: persistTheme,
+  });
   const [setupComplete, setSetupComplete] = useState(null); // Initialize as null to indicate loading
   const [sessionEnded, setSessionEnded] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-bs-theme', theme);
-    localStorage.setItem('theme', themePreference);
-
     const favicon = document.getElementById('favicon');
     if (favicon) {
       favicon.href = theme === 'dark' ? '/dark-favicon.ico' : '/favicon.ico';
     }
-  }, [theme, themePreference]);
+  }, [theme]);
 
   useEffect(() => {
     let mounted = true;
@@ -255,38 +245,6 @@ const App = () => {
     setGravatarFetched(false);
   }, []);
 
-  // The write-through is fire-and-forget: the toggle must feel instant, and a
-  // preference that failed to persist is worth a log line, not a blocked
-  // click. It lives here rather than inside the state updater because React
-  // may invoke an updater more than once for a single change.
-  const applyThemePreference = useCallback((preference, { persistRemotely = true } = {}) => {
-    setThemePreference(preference);
-
-    if (!persistRemotely || !AuthService.getCurrentUser()) {
-      return;
-    }
-
-    UserService.updatePreferences({ theme: preference })
-      .then(() => {
-        // Keep the stored session in step, or the next mount would re-apply
-        // the value this click just replaced.
-        const stored = AuthService.getCurrentUser();
-        if (stored) {
-          localStorage.setItem('user', JSON.stringify({ ...stored, preferredTheme: preference }));
-        }
-      })
-      .catch(error => {
-        log.app.error('Theme preference not saved', { error: error.message });
-      });
-  }, []);
-
-  // auto -> light -> dark -> auto
-  const toggleTheme = () => {
-    const next =
-      (themePreference === 'auto' && 'light') || (themePreference === 'light' && 'dark') || 'auto';
-    applyThemePreference(next);
-  };
-
   useEffect(() => {
     // Set up EventBus listeners independently of user state
     const logoutCleanup = EventBus.on('logout', () => {
@@ -309,7 +267,7 @@ const App = () => {
       setUserOrganization(userData.organization);
 
       if (userData.preferredTheme) {
-        setThemePreference(userData.preferredTheme);
+        setThemePreference(userData.preferredTheme, { persist: false });
       }
 
       // The active-org state is seeded at mount, before any login has happened,
@@ -355,7 +313,7 @@ const App = () => {
       loginCleanup();
       organizationUpdateCleanup();
     };
-  }, [fetchGravatarUrl, logOut, logOutLocal]);
+  }, [fetchGravatarUrl, logOut, logOutLocal, setThemePreference]);
 
   useEffect(() => {
     let mounted = true;
@@ -440,23 +398,11 @@ const App = () => {
           logOutLocal={logOutLocal}
         />
         {sessionEnded && (
-          <div
-            className="alert alert-warning d-flex align-items-center gap-3 mx-3 mt-3 mb-0"
-            role="alert"
-          >
-            <FaTriangleExclamation className="flex-shrink-0" />
-            <div className="flex-grow-1">
-              <strong>{t('sessionEnded.title')}</strong>
-              <div className="small">{t('sessionEnded.body')}</div>
-            </div>
-            <Link
-              to={`/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`}
-              className="btn btn-primary btn-sm"
-              onClick={() => setSessionEnded(null)}
-            >
-              {t('sessionEnded.signIn')}
-            </Link>
-          </div>
+          <SessionEndedBanner
+            signInTo={`/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`}
+            LinkComponent={Link}
+            onSignIn={() => setSessionEnded(null)}
+          />
         )}
         <div className="container-fluid mt-3 flex-grow-1">
           <Routes>
@@ -499,7 +445,13 @@ const App = () => {
             )}
           </Routes>
         </div>
-        <Footer />
+        <Footer
+          appName={APP_NAME}
+          version={APP_VERSION}
+          repoUrl={REPO_URL}
+          poweredBy={POWERED_BY}
+          fetchHealth={fetchHealth}
+        />
       </div>
     </ErrorBoundary>
   );

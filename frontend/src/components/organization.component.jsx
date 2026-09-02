@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { FaSortUp, FaSortDown, FaSort, FaStar, FaRegStar } from 'react-icons/fa6';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
+import { formatRelativeTime, useNavbarSearchBinding } from '../chrome';
 import EventBus from '../common/EventBus';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
@@ -14,7 +15,6 @@ import OrganizationService from '../services/organization.service';
 import { getDistroIconUrl, getOsDisplayName } from '../utils/DistroIcons';
 import { log } from '../utils/Logger';
 import { isGlobalAdmin, isOrgMember, isOrgManager } from '../utils/permissions';
-import { formatRelativeTime } from '../utils/relativeTime';
 
 import ConfirmationModal from './confirmation.component';
 import IsoList from './iso-list.component';
@@ -47,33 +47,46 @@ const getLatestReleaseTime = box => {
   return latest || null;
 };
 
-// One clickable filter-pill group (providers / architectures / OS).
-const FilterPillGroup = ({ entries, activeSet, activeClass, onToggle }) =>
-  Object.entries(entries).map(([value, count]) => (
-    <span
-      key={value}
-      className={`badge rounded-pill badge-xs cursor-pointer ${
-        activeSet.has(value) ? activeClass : 'bg-secondary bg-opacity-25'
-      }`}
-      onClick={() => onToggle(value)}
-      onKeyPress={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggle(value);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      {value} ({count})
-    </span>
-  ));
-
-FilterPillGroup.propTypes = {
-  entries: PropTypes.objectOf(PropTypes.number).isRequired,
-  activeSet: PropTypes.instanceOf(Set).isRequired,
-  activeClass: PropTypes.string.isRequired,
-  onToggle: PropTypes.func.isRequired,
+const buildBoxGroups = ({ t, isSignedIn, watched, providers, architectures, os }) => {
+  const groups = [];
+  if (isSignedIn) {
+    groups.push({
+      key: 'watched',
+      label: t('watch.filterWatched'),
+      entries: { watched: watched.count },
+      activeSet: new Set(watched.active ? ['watched'] : []),
+      activeClass: 'bg-warning text-dark',
+      labelFor: () => t('watch.filterWatched'),
+      onToggle: watched.toggle,
+    });
+  }
+  groups.push(
+    {
+      key: 'provider',
+      label: t('box.organization.table.providers'),
+      entries: providers.entries,
+      activeSet: providers.active,
+      activeClass: 'bg-primary',
+      onToggle: providers.toggle,
+    },
+    {
+      key: 'architecture',
+      label: t('box.organization.table.architectures'),
+      entries: architectures.entries,
+      activeSet: architectures.active,
+      activeClass: 'bg-info',
+      onToggle: architectures.toggle,
+    },
+    {
+      key: 'os',
+      label: t('box.organization.table.os'),
+      entries: os.entries,
+      activeSet: os.active,
+      activeClass: 'bg-success',
+      onToggle: os.toggle,
+    }
+  );
+  return groups;
 };
 
 // OS cell: round distro icon plus readable OS name; empty without metadata.
@@ -121,34 +134,6 @@ const WatchStarCell = ({ watched, onToggle }) => {
 
 WatchStarCell.propTypes = {
   watched: PropTypes.bool.isRequired,
-  onToggle: PropTypes.func.isRequired,
-};
-
-const WatchedFilterPill = ({ active, count, onToggle }) => {
-  const { t } = useTranslation();
-  return (
-    <span
-      className={`badge rounded-pill badge-xs cursor-pointer ${
-        active ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25'
-      }`}
-      onClick={onToggle}
-      onKeyPress={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggle();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      {t('watch.filterWatched')} ({count})
-    </span>
-  );
-};
-
-WatchedFilterPill.propTypes = {
-  active: PropTypes.bool.isRequired,
-  count: PropTypes.number.isRequired,
   onToggle: PropTypes.func.isRequired,
 };
 
@@ -666,6 +651,36 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     getArchitectureNames,
   ]);
 
+  useNavbarSearchBinding({
+    query: searchName,
+    onQueryChange: setSearchName,
+    placeholder: t('search.boxes'),
+    matched: processedBoxes.length,
+    total: boxes.length,
+    groups: buildBoxGroups({
+      t,
+      isSignedIn,
+      watched: {
+        count: watchedBoxIds.size,
+        active: watchedOnly,
+        toggle: () => setWatchedOnly(current => !current),
+      },
+      providers: { entries: allProviders, active: activeProviders, toggle: toggleProviderFilter },
+      architectures: {
+        entries: allArchitectures,
+        active: activeArchitectures,
+        toggle: toggleArchitectureFilter,
+      },
+      os: { entries: allOs, active: activeOs, toggle: toggleOsFilter },
+    }),
+    onClearFilters: () => {
+      setActiveProviders(new Set());
+      setActiveArchitectures(new Set());
+      setActiveOs(new Set());
+      setWatchedOnly(false);
+    },
+  });
+
   const fetchGravatarUrl = useCallback(async emailHash => {
     try {
       const profile = await AuthService.getGravatarProfile(emailHash);
@@ -897,11 +912,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     });
   };
 
-  const onChangeSearchName = e => {
-    const searchValue = e.target.value;
-    setSearchName(searchValue);
-  };
-
   const refreshList = () => {
     retrieveBoxes();
     setCurrentIndex(-1);
@@ -953,50 +963,6 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const handleConfirmDelete = () => {
     removeAllBoxes();
   };
-
-  const findByName = useCallback(() => {
-    if (searchName.trim() === '') {
-      retrieveBoxes();
-      return;
-    }
-
-    const filterBoxes = boxesData =>
-      boxesData.filter(box => box.name.toLowerCase().includes(searchName.toLowerCase()));
-
-    const fetchAndFilterBoxes = async () => {
-      try {
-        let response;
-        if (showOnlyPublic) {
-          response = await BoxDataService.discoverAll();
-        } else if (organization) {
-          response = await BoxDataService.getAll(organization);
-        }
-
-        if (isMountedRef.current) {
-          let allBoxes = [];
-          if (showOnlyPublic) {
-            allBoxes = Array.isArray(response.data) ? response.data : [];
-          } else {
-            allBoxes = Array.isArray(response.data) ? response.data : [];
-          }
-          const filteredBoxes = filterBoxes(allBoxes);
-          setBoxes(filteredBoxes);
-        }
-      } catch (e) {
-        log.api.error('Error filtering boxes', {
-          searchName,
-          error: e.message,
-        });
-        if (isMountedRef.current) {
-          setBoxes([]);
-        }
-        setMessage(t('box.organization.errors.filter'));
-        setMessageType('danger');
-      }
-    };
-
-    fetchAndFilterBoxes();
-  }, [searchName, showOnlyPublic, organization, retrieveBoxes, t]);
 
   const handleInputChange = event => {
     const { name: fieldName, value } = event.target;
@@ -1141,93 +1107,39 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           {message}
         </div>
       )}
-      <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-        {/* Left: Search */}
-        <div className="input-group input-group-sm" style={{ maxWidth: '300px' }}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder={t('common:actions.search')}
-            id="search"
-            name="search"
-            value={searchName}
-            onChange={onChangeSearchName}
-          />
-          <button className="btn btn-outline-secondary" type="button" onClick={findByName}>
-            {t('common:actions.search')}
-          </button>
-        </div>
-
-        {/* Center: Tag Cloud Pills (compact, inline) */}
-        {(isSignedIn ||
-          Object.keys(allProviders).length > 0 ||
-          Object.keys(allArchitectures).length > 0 ||
-          Object.keys(allOs).length > 0) && (
-          <div className="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
-            <small className="text-muted">{t('box.filter')}:</small>
-            {isSignedIn && (
-              <WatchedFilterPill
-                active={watchedOnly}
-                count={watchedBoxIds.size}
-                onToggle={() => setWatchedOnly(!watchedOnly)}
-              />
-            )}
-            <FilterPillGroup
-              entries={allProviders}
-              activeSet={activeProviders}
-              activeClass="bg-primary"
-              onToggle={toggleProviderFilter}
-            />
-            <FilterPillGroup
-              entries={allArchitectures}
-              activeSet={activeArchitectures}
-              activeClass="bg-info"
-              onToggle={toggleArchitectureFilter}
-            />
-            <FilterPillGroup
-              entries={allOs}
-              activeSet={activeOs}
-              activeClass="bg-success"
-              onToggle={toggleOsFilter}
-            />
-          </div>
+      <div className="d-flex justify-content-end align-items-center mb-3 gap-2 flex-wrap">
+        {showOnlyPublic && (
+          <Link to="/organizations/discover" className="btn btn-sm btn-outline-primary">
+            {t('discovery.discoverButton')}
+          </Link>
         )}
-
-        {/* Right: Action Buttons */}
-        <div className="d-flex gap-2">
-          {showOnlyPublic && (
-            <Link to="/organizations/discover" className="btn btn-sm btn-outline-primary">
-              {t('discovery.discoverButton')}
-            </Link>
-          )}
-          {showJoinAsAdmin && (
-            <button className="btn btn-sm btn-outline-warning" onClick={handleJoinAsAdmin}>
-              {t('box.organization.buttons.joinAsAdmin')}
-            </button>
-          )}
-          {!showOnlyPublic && canEditBoxes({ organization }) && (
-            <BoxManageButtons
-              showCreateForm={showCreateForm}
-              onCreateBox={createBox}
-              onCancelCreate={() => {
-                setShowCreateForm(false);
-                setNewBox({ name: '', description: '', isPublic: false });
-                setValidationErrors({});
-              }}
-              createDisabled={!!validationErrors.name}
-              canManage={isOrgManager(currentUser, organization)}
-              onRemoveAll={handleDeleteClick}
-              showRemoveModal={showModal}
-              onCloseRemoveModal={handleCloseModal}
-              onConfirmRemoveAll={handleConfirmDelete}
-            />
-          )}
-          {!showOnlyPublic && (
-            <button className="btn btn-sm btn-outline-primary" onClick={() => navigate('/')}>
-              {t('actions.back')}
-            </button>
-          )}
-        </div>
+        {showJoinAsAdmin && (
+          <button className="btn btn-sm btn-outline-warning" onClick={handleJoinAsAdmin}>
+            {t('box.organization.buttons.joinAsAdmin')}
+          </button>
+        )}
+        {!showOnlyPublic && canEditBoxes({ organization }) && (
+          <BoxManageButtons
+            showCreateForm={showCreateForm}
+            onCreateBox={createBox}
+            onCancelCreate={() => {
+              setShowCreateForm(false);
+              setNewBox({ name: '', description: '', isPublic: false });
+              setValidationErrors({});
+            }}
+            createDisabled={!!validationErrors.name}
+            canManage={isOrgManager(currentUser, organization)}
+            onRemoveAll={handleDeleteClick}
+            showRemoveModal={showModal}
+            onCloseRemoveModal={handleCloseModal}
+            onConfirmRemoveAll={handleConfirmDelete}
+          />
+        )}
+        {!showOnlyPublic && (
+          <button className="btn btn-sm btn-outline-primary" onClick={() => navigate('/')}>
+            {t('actions.back')}
+          </button>
+        )}
       </div>
 
       {showCreateForm && (

@@ -1,5 +1,3 @@
-// Shared relative-time formatting built on Intl.RelativeTimeFormat.
-// Picks the largest sensible unit (e.g. "3 weeks ago", "2 hours ago").
 const UNITS = [
   { unit: 'year', ms: 365 * 24 * 60 * 60 * 1000 },
   { unit: 'month', ms: 30 * 24 * 60 * 60 * 1000 },
@@ -31,8 +29,6 @@ export const formatRelativeTime = (date, locale = undefined) => {
   try {
     return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(value, match.unit);
   } catch {
-    // i18next's "cimode" pseudo-locale is not a BCP 47 tag, and Intl throws a
-    // RangeError on it — which would take down whatever is rendering.
     return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(value, match.unit);
   }
 };

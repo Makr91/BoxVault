@@ -702,6 +702,16 @@
     "filterWatched": "Seguidas",
     "error": "Error al actualizar el seguimiento de la box. Por favor intenta de nuevo."
   },
+  "search": {
+    "open": "Buscar",
+    "filters": "Filtros",
+    "clear": "Borrar búsqueda y filtros",
+    "clearFilters": "Quitar filtros",
+    "activeFilters_one": "{{count}} filtro activo",
+    "activeFilters_other": "{{count}} filtros activos",
+    "boxes": "Buscar boxes",
+    "isos": "Buscar ISOs"
+  },
   "orgConsole": {
     "pageTitle": "Consola de Org",
     "title": "Consola de la Organización",
