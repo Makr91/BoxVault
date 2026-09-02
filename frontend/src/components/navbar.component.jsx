@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
+import { Modal } from 'react-bootstrap';
 import CountryFlag from 'react-country-flag';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,6 +20,8 @@ import {
   FaRightToBracket,
   FaStar,
   FaCircleHalfStroke,
+  FaGlobe,
+  FaCircleCheck,
 } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
 
@@ -320,43 +323,35 @@ FavoriteRows.propTypes = {
 
 const LanguageModal = ({ show, current, languages, onPick, onClose }) => {
   const { t } = useTranslation();
-  if (!show) {
-    return null;
-  }
   return (
-    <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              <i className="bi bi-globe me-2" />
-              {t('language.changeLanguage')}
-            </h5>
-            <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
-          </div>
-          <div className="modal-body">
-            <div className="list-group">
-              {languages.map(lang => (
-                <button
-                  key={lang}
-                  type="button"
-                  className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                    current === lang ? 'border-primary border-2' : ''
-                  }`}
-                  onClick={() => onPick(lang)}
-                >
-                  <span>
-                    <span className="me-2 flag-icon-lg">{getLanguageFlag(lang)}</span>
-                    {getLanguageDisplayName(lang)}
-                  </span>
-                  {current === lang && <i className="bi bi-check-circle text-success" />}
-                </button>
-              ))}
-            </div>
-          </div>
+    <Modal show={show} onHide={onClose} centered>
+      <Modal.Header closeButton>
+        <Modal.Title as="h5">
+          <FaGlobe className="me-2" />
+          {t('language.changeLanguage')}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <div className="list-group">
+          {languages.map(lang => (
+            <button
+              key={lang}
+              type="button"
+              className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                current === lang ? 'border-primary border-2' : ''
+              }`}
+              onClick={() => onPick(lang)}
+            >
+              <span>
+                <span className="me-2 flag-icon-lg">{getLanguageFlag(lang)}</span>
+                {getLanguageDisplayName(lang)}
+              </span>
+              {current === lang && <FaCircleCheck className="text-success" />}
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 };
 

@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
+import { Modal } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { FaBuilding, FaCheck, FaCrown } from 'react-icons/fa6';
 
@@ -40,7 +41,11 @@ const OrganizationSwitcher = ({
           return;
         }
         const orgs = [...(response.data || [])].sort(
-          (a, b) => Number(!!a.personal) - Number(!!b.personal)
+          (a, b) =>
+            Number(!!a.personal) - Number(!!b.personal) ||
+            (a.name || a.organization?.name || '').localeCompare(
+              b.name || b.organization?.name || ''
+            )
         );
         setUserOrganizations(orgs);
 
@@ -133,85 +138,71 @@ const OrganizationSwitcher = ({
     return <LogoComponent className="logo-md icon-with-margin" />;
   };
 
-  if (!showModal) {
-    return null;
-  }
-
   return (
-    <div className="modal show d-block modal-backdrop-custom" tabIndex="-1">
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              <FaBuilding className="me-2" />
-              {t('orgSwitcher.title')}
-            </h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={handleModalClose}
-              aria-label="Close"
-            />
+    <Modal show={showModal} onHide={handleModalClose} centered>
+      <Modal.Header closeButton>
+        <Modal.Title as="h5">
+          <FaBuilding className="me-2" />
+          {t('orgSwitcher.title')}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {loading && (
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">{t('loading')}</span>
+            </div>
           </div>
-          <div className="modal-body">
-            {loading && (
-              <div className="text-center">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">{t('loading')}</span>
-                </div>
-              </div>
-            )}
-            {!loading && userOrganizations.length === 0 && (
-              <div className="alert alert-info">{t('orgSwitcher.noOrgsFound')}</div>
-            )}
-            {!loading && userOrganizations.length > 0 && (
-              <div className="list-group">
-                {userOrganizations.map(org => {
-                  const orgName = org.name || org.organization?.name;
-                  const orgDesc = org.description || org.organization?.description;
-                  const isPrimary = !!org.isPrimary;
-                  const orgId = org.id || org.organization?.id;
+        )}
+        {!loading && userOrganizations.length === 0 && (
+          <div className="alert alert-info">{t('orgSwitcher.noOrgsFound')}</div>
+        )}
+        {!loading && userOrganizations.length > 0 && (
+          <div className="list-group">
+            {userOrganizations.map(org => {
+              const orgName = org.name || org.organization?.name;
+              const orgDesc = org.description || org.organization?.description;
+              const isPrimary = !!org.isPrimary;
+              const orgId = org.id || org.organization?.id;
 
-                  return (
-                    <button
-                      key={orgId}
-                      type="button"
-                      className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                        activeOrganization === orgName ? 'border-primary border-2' : ''
-                      }`}
-                      onClick={() => handleOrganizationClick(orgName)}
-                    >
+              return (
+                <button
+                  key={orgId}
+                  type="button"
+                  className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                    activeOrganization === orgName ? 'border-primary border-2' : ''
+                  }`}
+                  onClick={() => handleOrganizationClick(orgName)}
+                >
+                  <div>
+                    <div className="d-flex align-items-center">
+                      {renderOrgIcon(org, orgName)}
                       <div>
-                        <div className="d-flex align-items-center">
-                          {renderOrgIcon(org, orgName)}
-                          <div>
-                            <div className="fw-bold">{orgName}</div>
-                            {orgDesc && <small className="text-muted">{orgDesc}</small>}
-                          </div>
-                        </div>
+                        <div className="fw-bold">{orgName}</div>
+                        {orgDesc && <small className="text-muted">{orgDesc}</small>}
                       </div>
-                      <div className="d-flex align-items-center">
-                        <span className={`badge ${getRoleBadgeClass(org.role)} me-2`}>
-                          {t(`roles.${org.role}`)}
-                        </span>
-                        {isPrimary && (
-                          <FaCrown
-                            className="text-warning me-2"
-                            title={t('orgSwitcher.primaryOrg')}
-                            aria-label={t('orgSwitcher.primaryOrg')}
-                          />
-                        )}
-                        {activeOrganization === orgName && <FaCheck className="text-success" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <span className={`badge ${getRoleBadgeClass(org.role)} me-2`}>
+                      {t(`roles.${org.role}`)}
+                    </span>
+                    {isPrimary && (
+                      <FaCrown
+                        className="text-warning me-2"
+                        title={t('orgSwitcher.primaryOrg')}
+                        aria-label={t('orgSwitcher.primaryOrg')}
+                      />
+                    )}
+                    {activeOrganization === orgName && <FaCheck className="text-success" />}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </Modal.Body>
+    </Modal>
   );
 };
 
