@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.58.0](https://github.com/Makr91/BoxVault/compare/v0.57.2...v0.58.0) (2026-09-02)
+
+
+### Features
+
+* mount the shared chrome folder for header, menu, modals, footer and search ([a8276d0](https://github.com/Makr91/BoxVault/commit/a8276d0f37e85650cb0f8cf0b079bf4286bf97cb))
+* sync shared stylesheet with catalog tier and provider chip classes ([f495e31](https://github.com/Makr91/BoxVault/commit/f495e31d1fddac67ef3060cd8b2b20949ab2ba93))
+
 ## [0.57.2](https://github.com/Makr91/BoxVault/compare/v0.57.1...v0.57.2) (2026-09-02)
 
 
