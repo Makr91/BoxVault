@@ -1272,11 +1272,10 @@ BoxesList.propTypes = {
   theme: PropTypes.string.isRequired,
 };
 
-const Organization = ({ showOnlyPublic, theme }) => {
+const Organization = ({ showOnlyPublic, kind, theme }) => {
   const { organization: routeOrganization } = useParams();
   const currentUser = AuthService.getCurrentUser();
   const organization = routeOrganization || (currentUser ? currentUser.organization : null);
-  const [activeTab, setActiveTab] = useState('boxes');
 
   const isMember = useMemo(
     () => isOrgMember(currentUser, organization),
@@ -1290,27 +1289,7 @@ const Organization = ({ showOnlyPublic, theme }) => {
 
   return (
     <div className="list row">
-      <ul className="nav nav-tabs mb-3">
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === 'boxes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('boxes')}
-          >
-            Boxes
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === 'isos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('isos')}
-          >
-            ISOs
-          </button>
-        </li>
-      </ul>
-
-      {activeTab === 'boxes' && <BoxesList showOnlyPublic={showOnlyPublic} theme={theme} />}
-      {activeTab === 'isos' && (
+      {kind === 'isos' ? (
         <IsoList
           key={organization || 'public'}
           organization={organization}
@@ -1318,6 +1297,8 @@ const Organization = ({ showOnlyPublic, theme }) => {
           canManage={canManage}
           showOnlyPublic={showOnlyPublic}
         />
+      ) : (
+        <BoxesList showOnlyPublic={showOnlyPublic} theme={theme} />
       )}
     </div>
   );
@@ -1325,6 +1306,7 @@ const Organization = ({ showOnlyPublic, theme }) => {
 
 Organization.propTypes = {
   showOnlyPublic: PropTypes.bool.isRequired,
+  kind: PropTypes.oneOf(['boxes', 'isos']).isRequired,
   theme: PropTypes.string.isRequired,
 };
 

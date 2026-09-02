@@ -394,7 +394,16 @@
     "boxvault": "BoxVault",
     "profileModeTitle": "Switch between identity provider and local profile",
     "favorites": "Favorites",
-    "help": "Help"
+    "help": "Help",
+    "boxesCrumb": "Boxes",
+    "isosCrumb": "ISOs",
+    "allOrgsCrumb": "All organizations"
+  },
+  "iso": {
+    "upload": {
+      "drop": "Drop an ISO here or click to choose one",
+      "uploading": "Uploading… {{percent}}%"
+    }
   },
   "sessionEnded": {
     "title": "You were signed out.",

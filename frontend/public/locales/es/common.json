@@ -668,7 +668,16 @@
     "boxvault": "BoxVault",
     "profileModeTitle": "Cambiar entre el perfil del proveedor de identidad y el perfil local",
     "favorites": "Favoritos",
-    "help": "Ayuda"
+    "help": "Ayuda",
+    "boxesCrumb": "Boxes",
+    "isosCrumb": "ISOs",
+    "allOrgsCrumb": "Todas las organizaciones"
+  },
+  "iso": {
+    "upload": {
+      "drop": "Suelta una ISO aquí o haz clic para elegir una",
+      "uploading": "Subiendo… {{percent}}%"
+    }
   },
   "sessionEnded": {
     "title": "Se cerró tu sesión.",

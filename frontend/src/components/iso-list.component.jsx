@@ -1,8 +1,18 @@
 import PropTypes from 'prop-types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Table } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import { FaTrash, FaDownload, FaPen, FaCheck, FaXmark, FaCopy } from 'react-icons/fa6';
+import {
+  FaTrash,
+  FaDownload,
+  FaPen,
+  FaCheck,
+  FaXmark,
+  FaCopy,
+  FaGlobe,
+  FaLock,
+  FaUpload,
+} from 'react-icons/fa6';
 
 import { useNavbarSearchBinding } from '../chrome';
 import IsoService from '../services/iso.service';
@@ -11,7 +21,224 @@ import { log } from '../utils/Logger';
 
 import ConfirmationModal from './confirmation.component';
 
-const noFilters = () => {};
+const HOVER_DWELL_MS = 400;
+const PREFS_PREFIX = 'boxvault_iso_prefs_';
+
+const emptyFilters = () => ({ visibility: new Set(), organizations: new Set() });
+
+const readPrefs = key => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`${PREFS_PREFIX}${key}`) || 'null');
+    return {
+      visibility: new Set(saved?.visibility || []),
+      organizations: new Set(saved?.organizations || []),
+    };
+  } catch {
+    return emptyFilters();
+  }
+};
+
+const writePrefs = (key, filters) => {
+  localStorage.setItem(
+    `${PREFS_PREFIX}${key}`,
+    JSON.stringify({
+      visibility: [...filters.visibility],
+      organizations: [...filters.organizations],
+    })
+  );
+};
+
+const toggleIn = (set, value) => {
+  const next = new Set(set);
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+  return next;
+};
+
+const visibilityOf = iso => (iso.isPublic ? 'public' : 'private');
+const orgOf = iso => iso.organization?.name || '';
+
+const countBy = (isos, pick) => {
+  const counts = {};
+  isos.forEach(iso => {
+    const value = pick(iso);
+    if (value) {
+      counts[value] = (counts[value] || 0) + 1;
+    }
+  });
+  return counts;
+};
+
+const matchesFilters = (iso, filters) =>
+  (filters.visibility.size === 0 || filters.visibility.has(visibilityOf(iso))) &&
+  (filters.organizations.size === 0 || filters.organizations.has(orgOf(iso)));
+
+const buildIsoGroups = ({ t, isos, showOnlyPublic, filters, updateFilters }) =>
+  showOnlyPublic
+    ? [
+        {
+          key: 'organization',
+          label: t('table.organization'),
+          entries: countBy(isos, orgOf),
+          activeSet: filters.organizations,
+          activeClass: 'bg-primary',
+          onToggle: value =>
+            updateFilters(current => ({
+              ...current,
+              organizations: toggleIn(current.organizations, value),
+            })),
+        },
+      ]
+    : [
+        {
+          key: 'visibility',
+          label: t('table.visibility'),
+          entries: countBy(isos, visibilityOf),
+          activeSet: filters.visibility,
+          activeClass: 'bg-info',
+          labelFor: value => t(`box.organization.visibility.${value}`),
+          onToggle: value =>
+            updateFilters(current => ({
+              ...current,
+              visibility: toggleIn(current.visibility, value),
+            })),
+        },
+      ];
+
+const IsoUploadZone = ({ uploading, progress, onFile }) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [over, setOver] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
+  const dwell = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(dwell.current), []);
+
+  const startDwell = () => {
+    clearTimeout(dwell.current);
+    dwell.current = setTimeout(() => setOpen(true), HOVER_DWELL_MS);
+  };
+
+  const stopDwell = () => clearTimeout(dwell.current);
+
+  const pick = file => {
+    if (file) {
+      onFile(file, isPublic);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="btn btn-sm btn-primary d-inline-flex align-items-center gap-2"
+        onClick={() => setOpen(true)}
+        onMouseEnter={startDwell}
+        onMouseLeave={stopDwell}
+      >
+        <FaUpload />
+        {t('buttons.upload')}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      role="presentation"
+      className={`upload-zone w-100${over ? ' over' : ''}`}
+      onDragOver={event => {
+        event.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={event => {
+        event.preventDefault();
+        setOver(false);
+        pick(event.dataTransfer.files[0]);
+      }}
+    >
+      <button
+        type="button"
+        className="navbar-search-tool upload-zone-close"
+        onClick={() => setOpen(false)}
+        disabled={uploading}
+        title={t('buttons.close')}
+        aria-label={t('buttons.close')}
+      >
+        <FaXmark />
+      </button>
+      <button
+        type="button"
+        className="upload-zone-target"
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={event => {
+          if (event.key === 'Escape' && !uploading) {
+            setOpen(false);
+          }
+        }}
+        disabled={uploading}
+      >
+        <FaUpload className="upload-zone-icon" aria-hidden />
+        <span>
+          {uploading ? t('iso.upload.uploading', { percent: progress }) : t('iso.upload.drop')}
+        </span>
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        hidden
+        accept=".iso"
+        disabled={uploading}
+        onChange={event => {
+          pick(event.target.files[0]);
+          event.target.value = '';
+        }}
+      />
+      <div className="form-check form-switch mb-0">
+        <input
+          className="form-check-input"
+          type="checkbox"
+          role="switch"
+          id="isoUploadPublic"
+          checked={isPublic}
+          disabled={uploading}
+          onChange={event => setIsPublic(event.target.checked)}
+        />
+        <label
+          className="form-check-label d-inline-flex align-items-center gap-2"
+          htmlFor="isoUploadPublic"
+        >
+          {isPublic ? <FaGlobe /> : <FaLock />}
+          {t(
+            isPublic ? 'box.organization.visibility.public' : 'box.organization.visibility.private'
+          )}
+        </label>
+      </div>
+      {uploading ? (
+        <div className="progress upload-zone-progress">
+          <div
+            className="progress-bar progress-bar-striped progress-bar-animated"
+            role="progressbar"
+            style={{ width: `${progress}%` }}
+            aria-valuenow={progress}
+            aria-valuemin="0"
+            aria-valuemax="100"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+IsoUploadZone.propTypes = {
+  uploading: PropTypes.bool.isRequired,
+  progress: PropTypes.number.isRequired,
+  onFile: PropTypes.func.isRequired,
+};
 
 const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const { t } = useTranslation();
@@ -23,11 +250,16 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const [messageType, setMessageType] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isoToDelete, setIsoToDelete] = useState(null);
-  const [isPublicUpload, setIsPublicUpload] = useState(false);
   const [editingIsoId, setEditingIsoId] = useState(null);
   const [editName, setEditName] = useState('');
   const [copiedChecksum, setCopiedChecksum] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const prefsKey = showOnlyPublic ? 'home' : organization || 'home';
+  const [filters, setFilters] = useState(() => readPrefs(prefsKey));
+
+  useEffect(() => {
+    writePrefs(prefsKey, filters);
+  }, [prefsKey, filters]);
 
   useEffect(() => {
     let mounted = true;
@@ -59,17 +291,12 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     };
   }, [organization, showOnlyPublic, isMember]);
 
-  const handleFileUpload = event => {
-    const [file] = event.target.files;
-    if (!file) {
-      return;
-    }
-
+  const uploadFile = (file, isPublic) => {
     setUploading(true);
     setUploadProgress(0);
     setMessage('');
 
-    IsoService.upload(organization, file, isPublicUpload, progressEvent => {
+    IsoService.upload(organization, file, isPublic, progressEvent => {
       setUploadProgress(Math.round((100 * progressEvent.loaded) / progressEvent.total));
     })
       .then(response => {
@@ -112,7 +339,6 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const handleDownloadClick = async (e, iso) => {
     e.preventDefault();
     try {
-      // If public, we can try direct download, but getting a link is safer/consistent
       const orgName = iso.organization?.name || organization;
       const response = await IsoService.getDownloadLink(orgName, iso.id);
       window.location.assign(response.data.downloadUrl);
@@ -146,7 +372,7 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
       .writeText(checksum)
       .then(() => {
         setCopiedChecksum(isoId);
-        setTimeout(() => setCopiedChecksum(null), 2000); // Reset after 2 seconds
+        setTimeout(() => setCopiedChecksum(null), 2000);
       })
       .catch(err => {
         log.app.error('Failed to copy checksum', { error: err });
@@ -185,8 +411,8 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
       });
   };
 
-  const filteredIsos = isos.filter(iso =>
-    iso.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredIsos = isos.filter(
+    iso => iso.name.toLowerCase().includes(searchTerm.toLowerCase()) && matchesFilters(iso, filters)
   );
 
   useNavbarSearchBinding({
@@ -195,8 +421,8 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     placeholder: t('search.isos'),
     matched: filteredIsos.length,
     total: isos.length,
-    groups: [],
-    onClearFilters: noFilters,
+    groups: buildIsoGroups({ t, isos, showOnlyPublic, filters, updateFilters: setFilters }),
+    onClearFilters: () => setFilters(emptyFilters()),
   });
 
   const renderTableBody = () => {
@@ -328,55 +554,15 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
 
   return (
     <div className="list row">
-      <div className="d-flex justify-content-end align-items-center mb-3 gap-2 flex-wrap">
-        <div className="d-flex gap-2 align-items-center">
-          {canManage && (
-            <div className="d-flex align-items-center gap-2">
-              <div className="form-check mb-0">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="publicUploadCheck"
-                  checked={isPublicUpload}
-                  onChange={e => setIsPublicUpload(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="publicUploadCheck">
-                  Public
-                </label>
-              </div>
-              <label className={`btn btn-sm btn-primary ${uploading ? 'disabled' : ''}`}>
-                {uploading ? `Uploading ${uploadProgress}%` : t('buttons.upload')}
-                <input
-                  type="file"
-                  hidden
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  accept=".iso"
-                />
-              </label>
-            </div>
-          )}
+      {canManage && (
+        <div className="d-flex justify-content-end align-items-center mb-3 gap-2 flex-wrap">
+          <IsoUploadZone uploading={uploading} progress={uploadProgress} onFile={uploadFile} />
         </div>
-      </div>
+      )}
 
       {message && (
         <div className={`alert alert-${messageType}`} role="alert">
           {message}
-        </div>
-      )}
-
-      {uploading && (
-        <div className="progress mb-3">
-          <div
-            className="progress-bar progress-bar-striped progress-bar-animated"
-            role="progressbar"
-            style={{ width: `${uploadProgress}%` }}
-            aria-valuenow={uploadProgress}
-            aria-valuemin="0"
-            aria-valuemax="100"
-          >
-            {uploadProgress}%
-          </div>
         </div>
       )}
 

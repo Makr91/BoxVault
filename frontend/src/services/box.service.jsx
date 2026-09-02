@@ -49,9 +49,13 @@ const removeAll = organization =>
   });
 
 const watch = (organization, name) =>
-  axios.post(`${baseURL}/api/organization/${organization}/box/${name}/watch`, null, {
-    headers: authHeader(),
-  });
+  axios.post(
+    `${baseURL}/api/organization/${organization}/box/${name}/watch`,
+    {},
+    {
+      headers: authHeader(),
+    }
+  );
 
 const unwatch = (organization, name) =>
   axios.delete(`${baseURL}/api/organization/${organization}/box/${name}/watch`, {

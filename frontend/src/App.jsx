@@ -212,7 +212,7 @@ const App = () => {
 
   // Handle organization switching
   const handleOrganizationSwitch = useCallback(
-    newOrgName => {
+    (newOrgName, path) => {
       setActiveOrganization(newOrgName);
       localStorage.setItem('activeOrganization', newOrgName);
 
@@ -221,8 +221,7 @@ const App = () => {
         to: newOrgName,
       });
 
-      // Navigate to the new organization's page
-      navigate(`/${newOrgName}`);
+      navigate(path);
     },
     [activeOrganization, navigate]
   );
@@ -269,6 +268,9 @@ const App = () => {
       if (userData.preferredTheme) {
         setThemePreference(userData.preferredTheme, { persist: false });
       }
+      if (userData.preferredLanguage && userData.preferredLanguage !== i18n.language) {
+        i18n.changeLanguage(userData.preferredLanguage);
+      }
 
       // The active-org state is seeded at mount, before any login has happened,
       // so it must be re-derived here or every org-scoped page renders with an
@@ -313,7 +315,7 @@ const App = () => {
       loginCleanup();
       organizationUpdateCleanup();
     };
-  }, [fetchGravatarUrl, logOut, logOutLocal, setThemePreference]);
+  }, [fetchGravatarUrl, i18n, logOut, logOutLocal, setThemePreference]);
 
   useEffect(() => {
     let mounted = true;
@@ -339,17 +341,6 @@ const App = () => {
       }
     };
   }, [currentUser]);
-
-  // i18next is an external system, so pushing the account's language into it is
-  // exactly what an effect is for. It runs only while the two disagree, and the
-  // stored copy is kept current by the switcher, so this cannot fight a user's
-  // own choice.
-  useEffect(() => {
-    const preferred = currentUser?.preferredLanguage;
-    if (preferred && preferred !== i18n.language) {
-      i18n.changeLanguage(preferred);
-    }
-  }, [currentUser, i18n]);
 
   useEffect(() => {
     if (!currentUser || !isPushEnabled()) {
@@ -412,7 +403,14 @@ const App = () => {
             />
             {setupComplete ? (
               <>
-                <Route path="/" element={<Organization showOnlyPublic theme={theme} />} />
+                <Route
+                  path="/"
+                  element={<Organization showOnlyPublic kind="boxes" theme={theme} />}
+                />
+                <Route
+                  path="/isos"
+                  element={<Organization showOnlyPublic kind="isos" theme={theme} />}
+                />
                 <Route path="/about" element={<About />} />
                 <Route
                   path="/organizations/discover"
@@ -433,7 +431,11 @@ const App = () => {
                 />
                 <Route
                   path="/:organization"
-                  element={<Organization showOnlyPublic={false} theme={theme} />}
+                  element={<Organization showOnlyPublic={false} kind="boxes" theme={theme} />}
+                />
+                <Route
+                  path="/:organization/isos"
+                  element={<Organization showOnlyPublic={false} kind="isos" theme={theme} />}
                 />
                 <Route path="/:organization/:name" element={<Box theme={theme} />} />
                 <Route path="/:organization/:name/:version" element={<Version />} />
