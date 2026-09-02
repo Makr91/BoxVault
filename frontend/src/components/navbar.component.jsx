@@ -176,23 +176,29 @@ const IdentityCard = ({ displayName, email, gravatarUrl, theme, idpUrl }) => {
   const body = (
     <>
       <UserAvatar gravatarUrl={gravatarUrl} theme={theme} size={36} />
-      <span className="flex-grow-1 min-width-0">
-        <span className="d-block fw-semibold text-truncate">{displayName}</span>
-        {email && <small className="d-block text-body-secondary text-truncate">{email}</small>}
+      <span className="flex-grow-1">
+        <span className="d-block fw-semibold">{displayName}</span>
+        {email && <small className="d-block text-body-secondary">{email}</small>}
       </span>
-      {idpUrl && (
-        <span
-          role="button"
-          tabIndex={0}
-          className="d-inline-flex text-body-secondary flex-shrink-0 cursor-pointer"
-          onClick={flipTarget}
-          onKeyDown={flipTargetKey}
-          title={t('navbar.profileModeTitle')}
-        >
-          {external ? <FaIdBadge /> : <FaUser />}
-        </span>
-      )}
-      <FaChevronRight className="text-body-secondary flex-shrink-0" />
+      <span className="user-card-actions">
+        {idpUrl ? (
+          <span
+            role="button"
+            tabIndex={0}
+            className="d-inline-flex text-body-secondary flex-shrink-0 cursor-pointer"
+            onClick={flipTarget}
+            onKeyDown={flipTargetKey}
+            title={t('navbar.profileModeTitle')}
+          >
+            {external ? <FaIdBadge /> : <FaUser />}
+          </span>
+        ) : (
+          <span className="d-inline-flex text-body-secondary flex-shrink-0">
+            <FaUser />
+          </span>
+        )}
+        <FaChevronRight className="text-body-secondary flex-shrink-0" />
+      </span>
     </>
   );
   const className = 'dropdown-item user-card d-flex align-items-center gap-3';

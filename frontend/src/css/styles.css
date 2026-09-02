@@ -193,6 +193,15 @@ button::-moz-focus-inner {
   border-color: var(--bs-primary);
 }
 
+.user-card-actions {
+  width: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
 .logout-scope {
   cursor: pointer;
 }
