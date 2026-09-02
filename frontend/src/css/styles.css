@@ -711,3 +711,14 @@ button::-moz-focus-inner {
   max-width: 420px;
   height: 6px;
 }
+
+.item-artwork {
+  width: 236px;
+  max-width: 100%;
+}
+
+.prov-icon-sm {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}

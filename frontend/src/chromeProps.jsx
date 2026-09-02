@@ -94,7 +94,7 @@ export const buildTicketUrl = ({ ticketConfig, activeOrgCode, userClaims, user }
   return `${knobValue(ticketConfig, 'base_url')}&${params.toString()}`;
 };
 
-const organizationLogo = async org => {
+export const organizationLogo = async org => {
   const logo = org.logo || org.organization?.logo;
   if (logo) {
     return logo;
@@ -110,6 +110,23 @@ const organizationLogo = async org => {
     log.api.error('Error fetching org gravatar', { error: error.message });
     return '';
   }
+};
+
+export const fetchOrganization = async name => {
+  const user = AuthService.getCurrentUser();
+  const response = await fetch(`${window.location.origin}/api/organization/${name}`, {
+    headers: user?.accessToken ? { 'x-access-token': user.accessToken } : {},
+  });
+  if (!response.ok) {
+    throw new Error(`organization ${name} answered ${response.status}`);
+  }
+  const data = await response.json();
+  return {
+    name,
+    logo: await organizationLogo(data),
+    description: data.description || '',
+    orgCode: data.external_issuer ? data.org_code || '' : '',
+  };
 };
 
 export const loadOrganizations = async () => {

@@ -3,12 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dropdown } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaBuilding, FaCircleInfo, FaGear } from 'react-icons/fa6';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
-import { Header } from '../chrome';
+import { Header, OrgLogo, buildRouteCrumbs, parseRoute } from '../chrome';
 import {
   BrandLogo,
   buildTicketUrl,
+  fetchOrganization,
   hasNotificationsScope,
   isOidcSession,
   loadOrganizations,
@@ -16,6 +17,7 @@ import {
   persistLanguage,
   pushAdapter,
 } from '../chromeProps';
+import { collections } from '../collections';
 import { getSupportedLanguages } from '../i18n';
 import AuthService from '../services/auth.service';
 import FavoritesService from '../services/favorites.service';
@@ -26,6 +28,19 @@ import { log } from '../utils/Logger';
 const resolveMemberships = user => (Array.isArray(user?.organizations) ? user.organizations : []);
 
 const resolveDisplayName = (userClaims, user) => userClaims?.name || userDisplayName(user);
+
+const RESERVED_ROUTES = [
+  'about',
+  'organizations',
+  'login',
+  'auth',
+  'register',
+  'invite',
+  'profile',
+  'admin',
+  'org-console',
+  'setup',
+];
 
 const AppRows = ({ showAdminBoard, showOrgConsole }) => {
   const { t } = useTranslation();
@@ -74,6 +89,7 @@ const Navbar = ({
   onOrganizationSwitch,
 }) => {
   const { t, i18n } = useTranslation();
+  const { pathname } = useLocation();
   const [favoriteApps, setFavoriteApps] = useState([]);
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
@@ -81,9 +97,29 @@ const Navbar = ({
   const [trustedIssuers, setTrustedIssuers] = useState([]);
   const [activeOrgGravatar, setActiveOrgGravatar] = useState(null);
   const [activeOrgCode, setActiveOrgCode] = useState(null);
+  const [routeOrgLogo, setRouteOrgLogo] = useState({ name: '', logo: '' });
 
   const oidc = isOidcSession(currentUser);
   const memberships = resolveMemberships(currentUser);
+  const route = parseRoute(pathname, { reserved: RESERVED_ROUTES, collections });
+  const routeOrg = route?.org || '';
+
+  useEffect(() => {
+    if (!routeOrg || !currentUser) {
+      return undefined;
+    }
+    let mounted = true;
+    fetchOrganization(routeOrg)
+      .then(organization => {
+        if (mounted) {
+          setRouteOrgLogo({ name: routeOrg, logo: organization.logo });
+        }
+      })
+      .catch(() => null);
+    return () => {
+      mounted = false;
+    };
+  }, [routeOrg, currentUser]);
 
   const changeLanguage = async lng => {
     if (currentUser) {
@@ -256,23 +292,16 @@ const Navbar = ({
       logo: name === activeOrganization ? activeOrgGravatar || '' : '',
     }));
 
-  const orgCrumbIcon = activeOrgGravatar ? (
-    <img src={activeOrgGravatar} alt="" className="rounded-circle avatar-sm" />
-  ) : (
-    <BrandLogo theme={theme} className="logo-sm" />
+  const orgIcon = (
+    <OrgLogo
+      org={{ logo: routeOrgLogo.name === routeOrg ? routeOrgLogo.logo : '' }}
+      size={16}
+      className="rounded-circle avatar-sm"
+      fallback={<BrandLogo theme={theme} className="logo-sm" />}
+    />
   );
 
-  const crumbs =
-    currentUser && activeOrganization
-      ? [
-          {
-            key: 'org',
-            icon: orgCrumbIcon,
-            label: activeOrganization,
-            to: `/${activeOrganization}`,
-          },
-        ]
-      : [];
+  const crumbs = currentUser ? buildRouteCrumbs({ route, t, orgIcon }) : [];
 
   const userMenu = currentUser
     ? {

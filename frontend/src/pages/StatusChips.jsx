@@ -1,27 +1,22 @@
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
-const StatusChips = ({ status, visibility, osLabel, deprecated }) => {
+const StatusChips = ({ status = null, visibility = null, osLabel = null, deprecated = false }) => {
   const { t } = useTranslation();
-
   return (
     <>
-      {status && (
+      {status ? (
         <span className={`badge ${status === 'published' ? 'bg-success' : 'bg-warning'}`}>
-          {status === 'published'
-            ? t('box.organization.status.published')
-            : t('box.organization.status.pending')}
+          {t(status === 'published' ? 'pages.status.published' : 'pages.status.pending')}
         </span>
-      )}
-      {visibility && (
+      ) : null}
+      {visibility ? (
         <span className={`badge ${visibility === 'public' ? 'bg-info' : 'bg-secondary'}`}>
-          {visibility === 'public'
-            ? t('box.organization.visibility.public')
-            : t('box.organization.visibility.private')}
+          {t(visibility === 'public' ? 'pages.status.public' : 'pages.status.private')}
         </span>
-      )}
-      {osLabel && <span className="badge badge-os">{osLabel}</span>}
-      {deprecated && <span className="badge bg-danger">{t('version.deprecated')}</span>}
+      ) : null}
+      {osLabel ? <span className="badge badge-os">{osLabel}</span> : null}
+      {deprecated ? <span className="badge bg-danger">{t('pages.status.deprecated')}</span> : null}
     </>
   );
 };

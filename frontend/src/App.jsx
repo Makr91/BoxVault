@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Routes, Route, Navigate, useNavigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
 
 import './css/styles.css';
 import './css/fonts.css';
@@ -9,32 +9,40 @@ import { Footer, SessionEndedBanner, useTheme } from './chrome';
 import {
   APP_NAME,
   APP_VERSION,
+  BrandLogo,
   POWERED_BY,
   REPO_URL,
   fetchHealth,
   persistTheme,
 } from './chromeProps';
+import { boxes, collections, isos } from './collections';
 import ErrorBoundary from './common/ErrorBoundary';
 import EventBus from './common/EventBus';
 import About from './components/about.component';
 import Admin from './components/admin.component';
 import AuthCallback from './components/AuthCallback';
-import Box from './components/box.component';
 import InviteAccept from './components/InviteAccept.component';
 import Login from './components/login.component';
 import Navbar from './components/navbar.component';
 import OrgConsole from './components/org-console.component';
 import OrganizationDiscovery from './components/organization-discovery.component';
-import Organization from './components/organization.component';
 import Profile from './components/profile.component';
-import Provider from './components/provider.component';
 import Register from './components/register.component';
 import Setup from './components/setup.component';
-import Version from './components/version.component';
+import {
+  CollectionPage,
+  HomePage,
+  ItemPage,
+  OrgPage,
+  ProviderPage,
+  VersionPage,
+  pageContextShape,
+} from './pages';
 import AuthService from './services/auth.service';
 import SetupService from './services/setup.service';
+import { formatFileSize } from './utils/fileSize';
 import { log } from './utils/Logger';
-import { isOrgManager } from './utils/permissions';
+import { isOrgManager, isOrgMember } from './utils/permissions';
 import {
   isPushEnabled,
   syncSubscription,
@@ -42,9 +50,8 @@ import {
 } from './utils/pushNotifications';
 import { subscribeSessionEvents } from './utils/sessionEvents';
 
-// Every candidate is checked against the membership list because the primary
-// organization can name an org the user was just removed from — an unvalidated
-// one is then sent on every org-scoped request, which answers 403.
+const PREFS_PREFIX = 'boxvault_table_prefs';
+
 const resolveActiveOrganization = (user, stored) => {
   if (!user) {
     return '';
@@ -63,11 +70,97 @@ const resolveActiveOrganization = (user, stored) => {
   return names[0] || '';
 };
 
+const DiscoverLink = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="d-flex justify-content-end mb-3">
+      <Link to="/organizations/discover" className="btn btn-sm btn-outline-primary">
+        {t('discovery.discoverButton')}
+      </Link>
+    </div>
+  );
+};
+
+const OrgRoute = ({ context }) => {
+  const { organization } = useParams();
+  return (
+    <OrgPage
+      collections={collections}
+      org={organization}
+      member={isOrgMember(context.user, organization)}
+      context={context}
+    />
+  );
+};
+
+OrgRoute.propTypes = {
+  context: pageContextShape.isRequired,
+};
+
+const OrgIsosRoute = ({ context }) => {
+  const { organization } = useParams();
+  return (
+    <CollectionPage
+      collection={isos}
+      org={organization}
+      member={isOrgMember(context.user, organization)}
+      context={context}
+    />
+  );
+};
+
+OrgIsosRoute.propTypes = {
+  context: pageContextShape.isRequired,
+};
+
+const ItemRoute = ({ context }) => {
+  const { organization, name } = useParams();
+  return <ItemPage collection={boxes} org={organization} name={name} context={context} />;
+};
+
+ItemRoute.propTypes = {
+  context: pageContextShape.isRequired,
+};
+
+const VersionRoute = ({ context }) => {
+  const { organization, name, version } = useParams();
+  return (
+    <VersionPage
+      collection={boxes}
+      org={organization}
+      name={name}
+      version={version}
+      context={context}
+    />
+  );
+};
+
+VersionRoute.propTypes = {
+  context: pageContextShape.isRequired,
+};
+
+const ProviderRoute = ({ context }) => {
+  const { organization, name, version, providerName } = useParams();
+  return (
+    <ProviderPage
+      collection={boxes}
+      org={organization}
+      name={name}
+      version={version}
+      provider={providerName}
+      context={context}
+    />
+  );
+};
+
+ProviderRoute.propTypes = {
+  context: pageContextShape.isRequired,
+};
+
 const App = () => {
   const { t, i18n } = useTranslation();
   const isDevelopment = import.meta.env.NODE_ENV === 'development';
 
-  // Initialize Bootstrap
   useEffect(() => {
     let bootstrap;
     const loadBootstrap = async () => {
@@ -75,7 +168,6 @@ const App = () => {
     };
     loadBootstrap();
     return () => {
-      // Clean up Bootstrap
       if (bootstrap && bootstrap.Modal) {
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modal => {
@@ -101,8 +193,6 @@ const App = () => {
       localStorage.getItem('activeOrganization')
     )
   );
-  // Tier one of the avatar contract: the stored avatar URL from the login
-  // payload. The Gravatar email-hash fetch below stays as tier two.
   const [gravatarUrl, setGravatarUrl] = useState(
     () => AuthService.getCurrentUser()?.avatarUrl || ''
   );
@@ -116,7 +206,7 @@ const App = () => {
     initialPreference: AuthService.getCurrentUser()?.preferredTheme || '',
     onPersist: persistTheme,
   });
-  const [setupComplete, setSetupComplete] = useState(null); // Initialize as null to indicate loading
+  const [setupComplete, setSetupComplete] = useState(null);
   const [sessionEnded, setSessionEnded] = useState(null);
   const navigate = useNavigate();
 
@@ -189,9 +279,6 @@ const App = () => {
     [gravatarFetched]
   );
 
-  // Organization context side effects: persist the default active org and load
-  // the user's avatar. Initial state is derived in the useState initializers
-  // above, so this effect performs no synchronous state updates.
   useEffect(() => {
     const user = AuthService.getCurrentUser();
 
@@ -210,7 +297,6 @@ const App = () => {
     }
   }, [activeOrganization, fetchGravatarUrl]);
 
-  // Handle organization switching
   const handleOrganizationSwitch = useCallback(
     newOrgName => {
       setActiveOrganization(newOrgName);
@@ -245,7 +331,6 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    // Set up EventBus listeners independently of user state
     const logoutCleanup = EventBus.on('logout', () => {
       logOut();
     });
@@ -272,9 +357,6 @@ const App = () => {
         i18n.changeLanguage(userData.preferredLanguage);
       }
 
-      // The active-org state is seeded at mount, before any login has happened,
-      // so it must be re-derived here or every org-scoped page renders with an
-      // empty organization until the next full page load.
       const nextOrganization = resolveActiveOrganization(
         userData,
         localStorage.getItem('activeOrganization')
@@ -296,10 +378,8 @@ const App = () => {
 
     const organizationUpdateCleanup = EventBus.on('organizationUpdated', data => {
       setUserOrganization(data.newName);
-      // Use functional update to avoid stale closure
       setCurrentUser(c => (c ? { ...c, organization: data.newName } : c));
 
-      // Update activeOrganization if it matches the renamed organization
       setActiveOrganization(currentActive => {
         if (currentActive === data.oldName) {
           localStorage.setItem('activeOrganization', data.newName);
@@ -322,7 +402,6 @@ const App = () => {
     let intervalId;
 
     if (currentUser) {
-      // Refresh token at 80% of its lifetime (24 hours * 0.8 = 19.2 hours)
       intervalId = setInterval(() => {
         if (mounted) {
           AuthService.refreshUserData().then(updatedUser => {
@@ -331,7 +410,7 @@ const App = () => {
             }
           });
         }
-      }, 69120000); // 19.2 hours in milliseconds
+      }, 69120000);
     }
 
     return () => {
@@ -363,13 +442,22 @@ const App = () => {
   }, [currentUser]);
 
   if (setupComplete === null) {
-    // Show a loading indicator while checking setup status
     return <div>{t('loading')}</div>;
   }
 
-  // The organization-management board is gated per-org (org admin/owner of
-  // the active organization, or global admin) — mirrors verifyOrgAccess.
   const showOrgConsole = isOrgManager(currentUser, activeOrganization);
+
+  const context = {
+    user: currentUser || null,
+    orgMark: <BrandLogo theme={theme} className="logo-xl icon-with-margin-sm" />,
+    prefsPrefix: PREFS_PREFIX,
+    appName: APP_NAME,
+    formatFileSize,
+  };
+
+  const homeElement = (
+    <HomePage collections={collections} context={context} header={<DiscoverLink />} />
+  );
 
   return (
     <ErrorBoundary showErrorDetails={isDevelopment}>
@@ -403,13 +491,12 @@ const App = () => {
             />
             {setupComplete ? (
               <>
-                <Route
-                  path="/"
-                  element={<Organization showOnlyPublic kind="boxes" theme={theme} />}
-                />
+                <Route path="/" element={homeElement} />
                 <Route
                   path="/isos"
-                  element={<Organization showOnlyPublic kind="isos" theme={theme} />}
+                  element={
+                    <CollectionPage collection={isos} org="" member={false} context={context} />
+                  }
                 />
                 <Route path="/about" element={<About />} />
                 <Route
@@ -429,17 +516,17 @@ const App = () => {
                   path="/org-console"
                   element={<OrgConsole currentOrganization={activeOrganization} />}
                 />
+                <Route path="/:organization" element={<OrgRoute context={context} />} />
+                <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />
+                <Route path="/:organization/:name" element={<ItemRoute context={context} />} />
                 <Route
-                  path="/:organization"
-                  element={<Organization showOnlyPublic={false} kind="boxes" theme={theme} />}
+                  path="/:organization/:name/:version"
+                  element={<VersionRoute context={context} />}
                 />
                 <Route
-                  path="/:organization/isos"
-                  element={<Organization showOnlyPublic={false} kind="isos" theme={theme} />}
+                  path="/:organization/:name/:version/:providerName"
+                  element={<ProviderRoute context={context} />}
                 />
-                <Route path="/:organization/:name" element={<Box theme={theme} />} />
-                <Route path="/:organization/:name/:version" element={<Version />} />
-                <Route path="/:organization/:name/:version/:providerName" element={<Provider />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </>
             ) : (

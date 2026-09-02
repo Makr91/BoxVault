@@ -127,6 +127,7 @@
     "searchFailed": "Búsqueda fallida",
     "uploadFailed": "Carga fallida",
     "deleteFailed": "Eliminación fallida",
+    "copyFailed": "Copia fallida",
     "operationSuccessful": "Operación completada exitosamente",
     "operationFailed": "Operación fallida",
     "confirmAction": "¿Estás seguro?",
@@ -557,10 +558,6 @@
         "createNewBox": "Crear Nueva Box",
         "templateList": "Lista de Plantillas"
       },
-      "tabs": {
-        "boxes": "Boxes",
-        "isos": "ISOs"
-      },
       "group": {
         "boxCount": "{{count}} box",
         "boxCount_plural": "{{count}} boxes"
@@ -678,6 +675,106 @@
     "upload": {
       "drop": "Suelta una ISO aquí o haz clic para elegir una",
       "uploading": "Subiendo… {{percent}}%"
+    },
+    "deleteTitle": "Eliminar ISO",
+    "deleteMessage": "¿Seguro que quieres eliminar {{name}}?"
+  },
+  "collections": {
+    "boxes": "Boxes",
+    "isos": "ISOs",
+    "provisioners": "Provisioners"
+  },
+  "pages": {
+    "loading": "Cargando…",
+    "notFound": "No encontrado.",
+    "empty": "Aún no hay nada aquí.",
+    "noMatches": "Nada coincide.",
+    "all": "Todos: {{collection}}",
+    "countOf": "{{count}} {{collection}}",
+    "searchAll": "Buscar…",
+    "view": {
+      "label": "Vista",
+      "table": "Vista de lista",
+      "cards": "Vista de tarjetas"
+    },
+    "table": {
+      "name": "Nombre",
+      "os": "SO",
+      "status": "Estado",
+      "public": "Público",
+      "visibility": "Visibilidad",
+      "organization": "Organización",
+      "created": "Creado",
+      "released": "Último lanzamiento",
+      "downloads": "Descargas",
+      "versions": "# Versiones",
+      "providers": "Proveedores",
+      "architectures": "Arquitecturas",
+      "actions": "Acciones",
+      "size": "Tamaño",
+      "checksum": "Suma de comprobación",
+      "uploaded": "Subido",
+      "version": "Versión",
+      "details": "Detalles",
+      "download": "Descargar",
+      "defaultBox": "Box predeterminada",
+      "fileSize": "Tamaño de archivo",
+      "checksumType": "Tipo de checksum"
+    },
+    "status": {
+      "published": "Publicado",
+      "pending": "Pendiente",
+      "public": "Público",
+      "private": "Privado",
+      "deprecated": "Obsoleta"
+    },
+    "item": {
+      "details": "Detalles",
+      "facts": "Datos",
+      "readme": "README",
+      "versions": "Versiones"
+    },
+    "facts": {
+      "os": "SO",
+      "type": "Tipo",
+      "username": "Usuario",
+      "password": "Contraseña",
+      "communicator": "Comunicador",
+      "cpus": "CPUs",
+      "memory": "Memoria",
+      "disks": "Discos",
+      "providers": "Proveedores",
+      "built": "Compilada",
+      "driver": "Driver",
+      "desktop": "Escritorio",
+      "server": "Servidor",
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "version": {
+      "title": "Versión {{version}}",
+      "edit": "Editar versión",
+      "releaseNotes": "Notas de la versión",
+      "deprecatedBanner": "Esta versión está obsoleta",
+      "description": "Descripción",
+      "createdAt": "Creado",
+      "updatedAt": "Actualizado",
+      "providersFor": "Proveedores para la versión {{version}}",
+      "artifacts": "Artefactos"
+    },
+    "provider": {
+      "edit": "Editar proveedor",
+      "architecturesFor": "Arquitecturas para el proveedor {{provider}}",
+      "clickToCopy": "Clic para copiar el checksum",
+      "checksumCopied": "Checksum copiado al portapapeles.",
+      "copyFailed": "No se pudo copiar el checksum."
+    },
+    "watch": {
+      "watch": "Seguir",
+      "unwatch": "Dejar de seguir",
+      "filterWatched": "Seguidas",
+      "watched": "Seguidas",
+      "error": "Error al actualizar el seguimiento. Por favor intenta de nuevo."
     }
   },
   "sessionEnded": {

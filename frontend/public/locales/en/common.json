@@ -127,6 +127,7 @@
     "searchFailed": "Search Failed",
     "uploadFailed": "Upload failed",
     "deleteFailed": "Delete failed",
+    "copyFailed": "Copy failed",
     "operationSuccessful": "Operation completed successfully",
     "operationFailed": "Operation failed",
     "confirmAction": "Are you sure?",
@@ -400,6 +401,106 @@
     "upload": {
       "drop": "Drop an ISO here or click to choose one",
       "uploading": "Uploading… {{percent}}%"
+    },
+    "deleteTitle": "Delete ISO",
+    "deleteMessage": "Are you sure you want to delete {{name}}?"
+  },
+  "collections": {
+    "boxes": "Boxes",
+    "isos": "ISOs",
+    "provisioners": "Provisioners"
+  },
+  "pages": {
+    "loading": "Loading…",
+    "notFound": "Not found.",
+    "empty": "Nothing here yet.",
+    "noMatches": "Nothing matches.",
+    "all": "All {{collection}}",
+    "countOf": "{{count}} {{collection}}",
+    "searchAll": "Search…",
+    "view": {
+      "label": "View",
+      "table": "List view",
+      "cards": "Card view"
+    },
+    "table": {
+      "name": "Name",
+      "os": "OS",
+      "status": "Status",
+      "public": "Public",
+      "visibility": "Visibility",
+      "organization": "Organization",
+      "created": "Created",
+      "released": "Latest release",
+      "downloads": "Downloads",
+      "versions": "# Versions",
+      "providers": "Providers",
+      "architectures": "Architectures",
+      "actions": "Actions",
+      "size": "Size",
+      "checksum": "Checksum",
+      "uploaded": "Uploaded",
+      "version": "Version",
+      "details": "Details",
+      "download": "Download",
+      "defaultBox": "Default box",
+      "fileSize": "File size",
+      "checksumType": "Checksum type"
+    },
+    "status": {
+      "published": "Published",
+      "pending": "Pending",
+      "public": "Public",
+      "private": "Private",
+      "deprecated": "Deprecated"
+    },
+    "item": {
+      "details": "Details",
+      "facts": "Facts",
+      "readme": "README",
+      "versions": "Versions"
+    },
+    "facts": {
+      "os": "OS",
+      "type": "Type",
+      "username": "Username",
+      "password": "Password",
+      "communicator": "Communicator",
+      "cpus": "CPUs",
+      "memory": "Memory",
+      "disks": "Disks",
+      "providers": "Providers",
+      "built": "Built",
+      "driver": "Driver",
+      "desktop": "Desktop",
+      "server": "Server",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "version": {
+      "title": "Version {{version}}",
+      "edit": "Edit version",
+      "releaseNotes": "Release notes",
+      "deprecatedBanner": "This version is deprecated",
+      "description": "Description",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "providersFor": "Providers for version {{version}}",
+      "artifacts": "Artifacts"
+    },
+    "provider": {
+      "edit": "Edit provider",
+      "architecturesFor": "Architectures for provider {{provider}}",
+      "clickToCopy": "Click to copy checksum",
+      "checksumCopied": "Checksum copied to clipboard.",
+      "copyFailed": "Could not copy the checksum."
+    },
+    "watch": {
+      "watch": "Watch",
+      "unwatch": "Stop watching",
+      "filterWatched": "Watched",
+      "watched": "Watched",
+      "error": "Failed to update the watch. Please try again."
     }
   },
   "sessionEnded": {
@@ -820,10 +921,6 @@
       "headers": {
         "createNewBox": "Create New Box",
         "templateList": "Template List"
-      },
-      "tabs": {
-        "boxes": "Boxes",
-        "isos": "ISOs"
       },
       "group": {
         "boxCount": "{{count}} box",

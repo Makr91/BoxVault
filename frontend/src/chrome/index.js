@@ -31,6 +31,14 @@ export {
   organizationShape,
 } from './OrgSwitcherModal';
 export { formatRelativeTime } from './relativeTime';
+export {
+  buildRouteCrumbs,
+  collectionPath,
+  itemPath,
+  parseRoute,
+  providerPath,
+  versionPath,
+} from './routeCrumbs';
 export { default as SessionEndedBanner } from './SessionEndedBanner';
 export { default as UserMenu, SignInButton } from './UserMenu';
 export { isThemePreference, useTheme } from './useTheme';
