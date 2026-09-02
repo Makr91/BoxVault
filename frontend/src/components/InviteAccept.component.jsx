@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import AuthService from "../services/auth.service";
-import { isOrgMember } from "../utils/permissions";
+import AuthService from '../services/auth.service';
+import { isOrgMember } from '../utils/permissions';
 
 /**
  * InviteAccept - landing page for organization invitation links (/invite/:token).
@@ -19,12 +19,12 @@ const InviteAccept = () => {
 
   const [loading, setLoading] = useState(true);
   const [invitation, setInvitation] = useState(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    document.title = t("inviteAccept.title");
+    document.title = t('inviteAccept.title');
   }, [t]);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ const InviteAccept = () => {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.response?.data?.message || t("inviteAccept.invalid"));
+          setError(err.response?.data?.message || t('inviteAccept.invalid'));
         }
       } finally {
         if (!cancelled) {
@@ -56,24 +56,24 @@ const InviteAccept = () => {
 
   const handleAccept = async () => {
     setAccepting(true);
-    setMessage("");
+    setMessage('');
     try {
       const response = await AuthService.acceptInvitation(token);
       const org = response.data.organization;
       // Refresh the JWT so the new membership appears in the org switcher/claims.
       await AuthService.forceTokenRefresh();
-      localStorage.setItem("activeOrganization", org);
+      localStorage.setItem('activeOrganization', org);
       window.location.href = `/${org}`;
     } catch (err) {
       setAccepting(false);
-      setMessage(err.response?.data?.message || t("inviteAccept.error"));
+      setMessage(err.response?.data?.message || t('inviteAccept.error'));
     }
   };
 
   const handleSignIn = () => {
     const target = `/invite/${token}`;
     // Honored by both the local login (returnTo) and the OIDC callback (intended url).
-    localStorage.setItem("boxvault_intended_url", target);
+    localStorage.setItem('boxvault_intended_url', target);
     navigate(`/login?returnTo=${encodeURIComponent(target)}`);
   };
 
@@ -82,9 +82,9 @@ const InviteAccept = () => {
       return (
         <div className="text-center">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">{t("loading")}</span>
+            <span className="visually-hidden">{t('loading')}</span>
           </div>
-          <p className="mt-3">{t("inviteAccept.validating")}</p>
+          <p className="mt-3">{t('inviteAccept.validating')}</p>
         </div>
       );
     }
@@ -92,28 +92,28 @@ const InviteAccept = () => {
     if (error || !invitation) {
       return (
         <div className="alert alert-danger" role="alert">
-          {error || t("inviteAccept.invalid")}
+          {error || t('inviteAccept.invalid')}
         </div>
       );
     }
 
     const orgName = invitation.organizationName;
-    const roleLabel = t(`roles.${invitation.invitedRole || "member"}`);
+    const roleLabel = t(`roles.${invitation.invitedRole || 'member'}`);
 
     // Not signed in -> sign in (existing account) or register (new account) to accept.
     if (!currentUser) {
       return (
         <>
-          <p>{t("inviteAccept.signInPrompt", { organization: orgName })}</p>
+          <p>{t('inviteAccept.signInPrompt', { organization: orgName })}</p>
           <div className="d-grid gap-2 col-8 mx-auto">
             <button className="btn btn-primary" onClick={handleSignIn}>
-              {t("inviteAccept.signIn")}
+              {t('inviteAccept.signIn')}
             </button>
           </div>
           <p className="text-center mt-3 text-muted">
-            {t("inviteAccept.registerPrompt")}{" "}
+            {t('inviteAccept.registerPrompt')}{' '}
             <Link to={`/register?token=${encodeURIComponent(token)}`}>
-              {t("inviteAccept.register")}
+              {t('inviteAccept.register')}
             </Link>
           </p>
         </>
@@ -130,14 +130,14 @@ const InviteAccept = () => {
       return (
         <>
           <div className="alert alert-warning" role="alert">
-            {t("inviteAccept.emailMismatch", {
+            {t('inviteAccept.emailMismatch', {
               email: invitation.email,
               current: currentUser.email,
             })}
           </div>
           <div className="d-grid gap-2 col-8 mx-auto">
             <button className="btn btn-outline-primary" onClick={handleSignIn}>
-              {t("inviteAccept.signIn")}
+              {t('inviteAccept.signIn')}
             </button>
           </div>
         </>
@@ -149,11 +149,11 @@ const InviteAccept = () => {
       return (
         <>
           <div className="alert alert-info" role="alert">
-            {t("inviteAccept.alreadyMember", { organization: orgName })}
+            {t('inviteAccept.alreadyMember', { organization: orgName })}
           </div>
           <div className="d-grid gap-2 col-8 mx-auto">
             <Link to={`/${orgName}`} className="btn btn-primary">
-              {t("inviteAccept.goToOrg", { organization: orgName })}
+              {t('inviteAccept.goToOrg', { organization: orgName })}
             </Link>
           </div>
         </>
@@ -164,7 +164,7 @@ const InviteAccept = () => {
     return (
       <>
         <p>
-          {t("inviteAccept.invitedAs", {
+          {t('inviteAccept.invitedAs', {
             organization: orgName,
             role: roleLabel,
           })}
@@ -175,15 +175,9 @@ const InviteAccept = () => {
           </div>
         )}
         <div className="d-grid gap-2 col-8 mx-auto">
-          <button
-            className="btn btn-primary"
-            onClick={handleAccept}
-            disabled={accepting}
-          >
-            {accepting && (
-              <span className="spinner-border spinner-border-sm me-2" />
-            )}
-            {accepting ? t("inviteAccept.accepting") : t("inviteAccept.accept")}
+          <button className="btn btn-primary" onClick={handleAccept} disabled={accepting}>
+            {accepting && <span className="spinner-border spinner-border-sm me-2" />}
+            {accepting ? t('inviteAccept.accepting') : t('inviteAccept.accept')}
           </button>
         </div>
       </>
@@ -193,9 +187,7 @@ const InviteAccept = () => {
   return (
     <div className="col-md-12">
       <div className="container col-md-4">
-        <h2 className="fs-2 text-center mt-5 mb-4">
-          {t("inviteAccept.title")}
-        </h2>
+        <h2 className="fs-2 text-center mt-5 mb-4">{t('inviteAccept.title')}</h2>
         {renderBody()}
       </div>
     </div>

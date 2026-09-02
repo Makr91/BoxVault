@@ -1,6 +1,6 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
@@ -23,13 +23,7 @@ const getProvider = (organization, boxId, versionNumber, providerName) =>
     { headers: authHeader() }
   );
 
-const updateProvider = (
-  organization,
-  boxId,
-  versionNumber,
-  providerName,
-  data
-) =>
+const updateProvider = (organization, boxId, versionNumber, providerName, data) =>
   axios.put(
     `${baseURL}/api/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}`,
     data,

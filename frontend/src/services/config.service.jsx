@@ -1,10 +1,10 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
-const getConfig = (configName) =>
+const getConfig = configName =>
   axios.get(`${baseURL}/api/config/${configName}`, { headers: authHeader() });
 
 const updateConfig = (configName, configData) =>
@@ -15,12 +15,8 @@ const updateConfig = (configName, configData) =>
 const restartServer = () =>
   axios.post(`${baseURL}/api/config/restart`, {}, { headers: authHeader() });
 
-const testSmtp = (email) =>
-  axios.post(
-    `${baseURL}/api/mail/test-smtp`,
-    { testEmail: email },
-    { headers: authHeader() }
-  );
+const testSmtp = email =>
+  axios.post(`${baseURL}/api/mail/test-smtp`, { testEmail: email }, { headers: authHeader() });
 
 const ConfigService = {
   getConfig,

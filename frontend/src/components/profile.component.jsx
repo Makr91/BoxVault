@@ -1,42 +1,38 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-import AuthService from "../services/auth.service";
-import RequestService from "../services/request.service";
-import ServiceAccountService from "../services/service_account.service";
-import UserService from "../services/user.service";
-import { log } from "../utils/Logger";
+import AuthService from '../services/auth.service';
+import RequestService from '../services/request.service';
+import ServiceAccountService from '../services/service_account.service';
+import UserService from '../services/user.service';
+import { log } from '../utils/Logger';
 
-import ConfirmationModal from "./confirmation.component";
+import ConfirmationModal from './confirmation.component';
 
 const Profile = ({ activeOrganization }) => {
   const { t } = useTranslation();
   useEffect(() => {
-    document.title = t("profile.pageTitle");
+    document.title = t('profile.pageTitle');
   }, [t]);
 
   const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
   const [gravatarProfile, setGravatarProfile] = useState({});
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [emailMessage, setEmailMessage] = useState("");
-  const [displayName, setDisplayName] = useState(
-    AuthService.getCurrentUser()?.name || ""
-  );
-  const [displayNameMessage, setDisplayNameMessage] = useState("");
-  const [activeTab, setActiveTab] = useState("profile");
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [displayName, setDisplayName] = useState(AuthService.getCurrentUser()?.name || '');
+  const [displayNameMessage, setDisplayNameMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('profile');
   const [passwordErrors, setPasswordErrors] = useState({});
   const [emailErrors, setEmailErrors] = useState({});
-  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationMessage, setVerificationMessage] = useState('');
   const [serviceAccounts, setServiceAccounts] = useState([]);
-  const [newServiceAccountDescription, setNewServiceAccountDescription] =
-    useState("");
-  const [newServiceAccountExpiration, setNewServiceAccountExpiration] =
-    useState(30);
+  const [newServiceAccountDescription, setNewServiceAccountDescription] = useState('');
+  const [newServiceAccountExpiration, setNewServiceAccountExpiration] = useState(30);
   const [newServiceAccountToken, setNewServiceAccountToken] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userOrganizations, setUserOrganizations] = useState([]);
@@ -46,55 +42,51 @@ const Profile = ({ activeOrganization }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLeaveOrganization = async (orgName) => {
+  const handleLeaveOrganization = async orgName => {
     try {
       await UserService.leaveOrganization(orgName);
-      setMessage(t("profile.messages.leftOrganization", { orgName }));
+      setMessage(t('profile.messages.leftOrganization', { orgName }));
 
       // Refresh organizations list
       const response = await UserService.getUserOrganizations();
       setUserOrganizations(response.data || []);
     } catch (error) {
-      log.api.error("Error leaving organization", {
+      log.api.error('Error leaving organization', {
         orgName,
         error: error.message,
       });
-      setMessage(
-        t("profile.errors.leaveOrganization", { error: error.message })
-      );
+      setMessage(t('profile.errors.leaveOrganization', { error: error.message }));
     }
   };
 
-  const handleCancelJoinRequest = async (requestId) => {
+  const handleCancelJoinRequest = async requestId => {
     try {
       await RequestService.cancelJoinRequest(requestId);
-      setMessage(t("profile.messages.requestCancelled"));
+      setMessage(t('profile.messages.requestCancelled'));
 
       // Refresh join requests list
       const response = await RequestService.getUserJoinRequests();
       setJoinRequests(response.data || []);
     } catch (error) {
-      log.api.error("Error cancelling join request", {
+      log.api.error('Error cancelling join request', {
         requestId,
         error: error.message,
       });
-      setMessage(
-        t("profile.messages.cancelRequestError", { error: error.message })
-      );
+      setMessage(t('profile.messages.cancelRequestError', { error: error.message }));
     }
   };
 
-  const getRoleBadgeClass = (role) => {
-    if (role === "owner") {
-      return "bg-danger";
+  const getRoleBadgeClass = role => {
+    if (role === 'owner') {
+      return 'bg-danger';
     }
-    if (role === "admin") {
-      return "bg-warning";
+    if (role === 'admin') {
+      return 'bg-warning';
     }
-    return "bg-secondary";
+    return 'bg-secondary';
   };
 
-  const isValidEmail = (email) => {
+  const isValidEmail = email => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
@@ -102,14 +94,14 @@ const Profile = ({ activeOrganization }) => {
   const validatePasswordForm = () => {
     const errors = {};
     if (!newPassword) {
-      errors.newPassword = t("errors.fieldRequired", { ns: "auth" });
+      errors.newPassword = t('errors.fieldRequired', { ns: 'auth' });
     } else if (newPassword.length < 6 || newPassword.length > 40) {
-      errors.newPassword = t("errors.passwordLength", { ns: "auth" });
+      errors.newPassword = t('errors.passwordLength', { ns: 'auth' });
     }
     if (!confirmPassword) {
-      errors.confirmPassword = t("errors.fieldRequired", { ns: "auth" });
+      errors.confirmPassword = t('errors.fieldRequired', { ns: 'auth' });
     } else if (confirmPassword !== newPassword) {
-      errors.confirmPassword = t("profile.errors.passwordsDoNotMatch");
+      errors.confirmPassword = t('profile.errors.passwordsDoNotMatch');
     }
     return errors;
   };
@@ -117,33 +109,33 @@ const Profile = ({ activeOrganization }) => {
   const validateEmailForm = () => {
     const errors = {};
     if (!newEmail) {
-      errors.newEmail = t("errors.fieldRequired", { ns: "auth" });
+      errors.newEmail = t('errors.fieldRequired', { ns: 'auth' });
     } else if (!isValidEmail(newEmail)) {
-      errors.newEmail = t("errors.invalidEmail", { ns: "auth" });
+      errors.newEmail = t('errors.invalidEmail', { ns: 'auth' });
     }
     return errors;
   };
 
   const resetFormStates = useCallback(() => {
-    setMessage("");
-    setEmailMessage("");
+    setMessage('');
+    setEmailMessage('');
     setPasswordErrors({});
     setEmailErrors({});
-    setNewPassword("");
-    setConfirmPassword("");
-    setNewEmail("");
+    setNewPassword('');
+    setConfirmPassword('');
+    setNewEmail('');
   }, []);
 
   const resetServiceAccountStates = useCallback(() => {
-    setMessage("");
+    setMessage('');
     setNewServiceAccountToken(null);
-    setNewServiceAccountDescription("");
+    setNewServiceAccountDescription('');
     setNewServiceAccountExpiration(30);
   }, []);
 
   const handleTabChange = useCallback(
-    (tab) => {
-      if (tab === "serviceAccounts") {
+    tab => {
+      if (tab === 'serviceAccounts') {
         resetServiceAccountStates();
       } else {
         resetFormStates();
@@ -157,16 +149,14 @@ const Profile = ({ activeOrganization }) => {
     try {
       await UserService.deleteUser(currentUser.id);
       AuthService.logout();
-      navigate("/login");
+      navigate('/login');
     } catch (error) {
-      log.auth.error("Error deleting account", {
+      log.auth.error('Error deleting account', {
         userId: currentUser.id,
         error: error.message,
       });
       // Surface the server's refusal reason (e.g. sole-owner guard) when present
-      setMessage(
-        error.response?.data?.message || t("profile.errors.deleteAccountFailed")
-      );
+      setMessage(error.response?.data?.message || t('profile.errors.deleteAccountFailed'));
     }
   };
 
@@ -174,7 +164,7 @@ const Profile = ({ activeOrganization }) => {
   const closeDeleteModal = () => setShowDeleteModal(false);
 
   const refreshUserData = useCallback(() => {
-    AuthService.refreshUserData().then((updatedUser) => {
+    AuthService.refreshUserData().then(updatedUser => {
       if (updatedUser) {
         setCurrentUser(updatedUser);
       }
@@ -183,22 +173,21 @@ const Profile = ({ activeOrganization }) => {
 
   const checkEmailVerification = useCallback(() => {
     const searchParams = new URLSearchParams(location.search);
-    const token = searchParams.get("token");
+    const token = searchParams.get('token');
 
     if (token) {
       AuthService.verifyMail(token)
-        .then((response) => {
+        .then(response => {
           setVerificationMessage(response.data.message);
           refreshUserData();
         })
-        .catch((error) => {
+        .catch(error => {
           setVerificationMessage(
-            error.response?.data?.message ||
-              t("profile.errors.verificationFailed")
+            error.response?.data?.message || t('profile.errors.verificationFailed')
           );
         })
         .finally(() => {
-          navigate("/profile", { replace: true });
+          navigate('/profile', { replace: true });
         });
     }
   }, [location.search, navigate, refreshUserData, t]);
@@ -214,8 +203,8 @@ const Profile = ({ activeOrganization }) => {
         setGravatarProfile(profile);
       }
     } catch (error) {
-      if (!error.name?.includes("Cancel") && !error.name?.includes("Abort")) {
-        log.api.error("Error loading Gravatar profile", {
+      if (!error.name?.includes('Cancel') && !error.name?.includes('Abort')) {
+        log.api.error('Error loading Gravatar profile', {
           emailHash,
           error: error.message,
         });
@@ -234,7 +223,7 @@ const Profile = ({ activeOrganization }) => {
           await loadGravatarProfile(emailHash, controller.signal);
         }
       } else {
-        navigate("/login");
+        navigate('/login');
       }
     };
 
@@ -251,26 +240,20 @@ const Profile = ({ activeOrganization }) => {
     const controller = new AbortController();
 
     const loadData = async () => {
-      if (activeTab === "serviceAccounts") {
+      if (activeTab === 'serviceAccounts') {
         try {
-          const response = await ServiceAccountService.getServiceAccounts(
-            controller.signal
-          );
+          const response = await ServiceAccountService.getServiceAccounts(controller.signal);
           if (mounted) {
             setServiceAccounts(response.data);
           }
         } catch (error) {
-          if (
-            mounted &&
-            !error.message?.includes("aborted") &&
-            !error.name?.includes("Cancel")
-          ) {
-            log.api.error("Error loading service accounts", {
+          if (mounted && !error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+            log.api.error('Error loading service accounts', {
               error: error.message,
             });
           }
         }
-      } else if (activeTab === "organizations") {
+      } else if (activeTab === 'organizations') {
         setOrganizationsLoading(true);
         try {
           const [orgsResponse, requestsResponse] = await Promise.all([
@@ -282,12 +265,8 @@ const Profile = ({ activeOrganization }) => {
             setJoinRequests(requestsResponse.data || []);
           }
         } catch (error) {
-          if (
-            mounted &&
-            !error.message?.includes("aborted") &&
-            !error.name?.includes("Cancel")
-          ) {
-            log.api.error("Error loading organizations", {
+          if (mounted && !error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+            log.api.error('Error loading organizations', {
               error: error.message,
             });
           }
@@ -299,7 +278,7 @@ const Profile = ({ activeOrganization }) => {
       }
     };
 
-    if (activeTab === "serviceAccounts" || activeTab === "organizations") {
+    if (activeTab === 'serviceAccounts' || activeTab === 'organizations') {
       loadData();
     }
 
@@ -309,35 +288,29 @@ const Profile = ({ activeOrganization }) => {
     };
   }, [activeTab]);
 
-  const loadServiceAccounts = async (signal) => {
+  const loadServiceAccounts = async signal => {
     try {
       const response = await ServiceAccountService.getServiceAccounts(signal);
       setServiceAccounts(response.data);
     } catch (error) {
-      if (
-        !error.message?.includes("aborted") &&
-        !error.name?.includes("Cancel")
-      ) {
-        log.api.error("Error loading service accounts", {
+      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+        log.api.error('Error loading service accounts', {
           error: error.message,
         });
       }
     }
   };
 
-  const handleCreateServiceAccount = async (e) => {
+  const handleCreateServiceAccount = async e => {
     e.preventDefault();
     const controller = new AbortController();
     try {
       // Get organizations where user can create service accounts
-      const orgsResponse =
-        await ServiceAccountService.getAvailableOrganizations();
-      const activeOrg = orgsResponse.data?.find(
-        (org) => org.name === activeOrganization
-      );
+      const orgsResponse = await ServiceAccountService.getAvailableOrganizations();
+      const activeOrg = orgsResponse.data?.find(org => org.name === activeOrganization);
 
       if (!activeOrg) {
-        setMessage(t("profile.errors.activeOrgNotFound"));
+        setMessage(t('profile.errors.activeOrgNotFound'));
         return;
       }
 
@@ -347,21 +320,18 @@ const Profile = ({ activeOrganization }) => {
         activeOrg.id
       );
       await loadServiceAccounts(controller.signal);
-      setNewServiceAccountDescription("");
+      setNewServiceAccountDescription('');
       setNewServiceAccountExpiration(30);
       // The raw token is returned only by this response — show it once
       setNewServiceAccountToken(createResponse.data?.token || null);
-      setMessage(t("profile.messages.serviceAccountCreated"));
+      setMessage(t('profile.messages.serviceAccountCreated'));
     } catch (error) {
-      if (
-        !error.message?.includes("aborted") &&
-        !error.name?.includes("Cancel")
-      ) {
-        log.api.error("Error creating service account", {
+      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+        log.api.error('Error creating service account', {
           error: error.message,
         });
         setMessage(
-          t("profile.errors.createServiceAccountFailed", {
+          t('profile.errors.createServiceAccountFailed', {
             error: error.response?.data?.message || error.message,
           })
         );
@@ -370,17 +340,14 @@ const Profile = ({ activeOrganization }) => {
     controller.abort();
   };
 
-  const handleDeleteServiceAccount = async (id) => {
+  const handleDeleteServiceAccount = async id => {
     const controller = new AbortController();
     try {
       await ServiceAccountService.deleteServiceAccount(id);
       await loadServiceAccounts(controller.signal);
     } catch (error) {
-      if (
-        !error.message?.includes("aborted") &&
-        !error.name?.includes("Cancel")
-      ) {
-        log.api.error("Error deleting service account", {
+      if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
+        log.api.error('Error deleting service account', {
           serviceAccountId: id,
           error: error.message,
         });
@@ -391,91 +358,73 @@ const Profile = ({ activeOrganization }) => {
 
   const handleResendVerificationMail = async () => {
     const controller = new AbortController();
-    setVerificationMessage("");
+    setVerificationMessage('');
     try {
-      const response = await AuthService.resendVerificationMail(
-        controller.signal
-      );
+      const response = await AuthService.resendVerificationMail(controller.signal);
       setVerificationMessage(response.data.message);
       await refreshUserData();
     } catch (error) {
-      if (!error.name?.includes("Cancel")) {
+      if (!error.name?.includes('Cancel')) {
         setVerificationMessage(
-          t("profile.errors.resendVerificationFailed", { error: error.message })
+          t('profile.errors.resendVerificationFailed', { error: error.message })
         );
       }
     }
     controller.abort();
   };
 
-  const handlePasswordChange = async (e) => {
+  const handlePasswordChange = async e => {
     e.preventDefault();
     const controller = new AbortController();
-    setMessage("");
+    setMessage('');
     const errors = validatePasswordForm();
     setPasswordErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
-        await UserService.changePassword(
-          currentUser.id,
-          newPassword,
-          controller.signal
-        );
-        setMessage(t("profile.messages.passwordChanged"));
+        await UserService.changePassword(currentUser.id, newPassword, controller.signal);
+        setMessage(t('profile.messages.passwordChanged'));
       } catch (error) {
-        if (!error.name?.includes("Cancel")) {
-          setMessage(
-            t("profile.errors.changePasswordFailed", { error: error.message })
-          );
+        if (!error.name?.includes('Cancel')) {
+          setMessage(t('profile.errors.changePasswordFailed', { error: error.message }));
         }
       }
     }
     controller.abort();
   };
 
-  const handleEmailChange = async (e) => {
+  const handleEmailChange = async e => {
     e.preventDefault();
     const controller = new AbortController();
-    setEmailMessage("");
+    setEmailMessage('');
     const errors = validateEmailForm();
     setEmailErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
-        await UserService.changeEmail(
-          currentUser.id,
-          newEmail,
-          controller.signal
-        );
-        setEmailMessage(t("profile.messages.emailChanged"));
+        await UserService.changeEmail(currentUser.id, newEmail, controller.signal);
+        setEmailMessage(t('profile.messages.emailChanged'));
         await refreshUserData();
       } catch (error) {
-        if (!error.name?.includes("Cancel")) {
-          setEmailMessage(
-            t("profile.errors.changeEmailFailed", { error: error.message })
-          );
+        if (!error.name?.includes('Cancel')) {
+          setEmailMessage(t('profile.errors.changeEmailFailed', { error: error.message }));
         }
       }
     }
     controller.abort();
   };
 
-  const handleDisplayNameChange = async (e) => {
+  const handleDisplayNameChange = async e => {
     e.preventDefault();
     const controller = new AbortController();
-    setDisplayNameMessage("");
+    setDisplayNameMessage('');
     try {
-      await UserService.changeName(
-        currentUser.id,
-        displayName,
-        controller.signal
-      );
-      setDisplayNameMessage(t("profile.messages.nameChanged"));
+      await UserService.changeName(currentUser.id, displayName, controller.signal);
+      setDisplayNameMessage(t('profile.messages.nameChanged'));
       await refreshUserData();
     } catch (error) {
-      if (!error.name?.includes("Cancel")) {
+      if (!error.name?.includes('Cancel')) {
         setDisplayNameMessage(
           error.response?.data?.message ||
-            t("profile.errors.changeNameFailed", { error: error.message })
+            t('profile.errors.changeNameFailed', { error: error.message })
         );
       }
     }
@@ -486,7 +435,7 @@ const Profile = ({ activeOrganization }) => {
     <div className="tab-pane fade show active">
       <form onSubmit={handleDisplayNameChange} className="mb-4">
         <label htmlFor="displayName" className="form-label">
-          <strong>{t("profile.fields.displayName")}</strong>
+          <strong>{t('profile.fields.displayName')}</strong>
         </label>
         <div className="col-md-4">
           <input
@@ -495,68 +444,58 @@ const Profile = ({ activeOrganization }) => {
             className="form-control mb-2"
             maxLength={255}
             value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
+            onChange={event => setDisplayName(event.target.value)}
             placeholder={currentUser.username}
           />
           <small className="form-text text-body-secondary d-block mb-2">
-            {t("profile.fields.displayNameHint")}
+            {t('profile.fields.displayNameHint')}
           </small>
           <button className="btn btn-primary" type="submit">
-            {t("buttons.save")}
+            {t('buttons.save')}
           </button>
-          {displayNameMessage && (
-            <div className="alert alert-info mt-2">{displayNameMessage}</div>
-          )}
+          {displayNameMessage && <div className="alert alert-info mt-2">{displayNameMessage}</div>}
         </div>
       </form>
       <p>
-        <strong>{t("profile.fields.fullName")}:</strong>{" "}
-        {gravatarProfile.first_name} {gravatarProfile.last_name}
+        <strong>{t('profile.fields.fullName')}:</strong> {gravatarProfile.first_name}{' '}
+        {gravatarProfile.last_name}
       </p>
       <p>
-        <strong>{t("profile.fields.location")}:</strong>{" "}
-        {gravatarProfile.location || t("profile.noLocation")}
+        <strong>{t('profile.fields.location')}:</strong>{' '}
+        {gravatarProfile.location || t('profile.noLocation')}
       </p>
       <p>
-        <strong>{t("profile.fields.email")}:</strong> {currentUser.email}
+        <strong>{t('profile.fields.email')}:</strong> {currentUser.email}
       </p>
       <p>
-        <strong>{t("profile.fields.organization")}:</strong>{" "}
-        {currentUser.organization}
+        <strong>{t('profile.fields.organization')}:</strong> {currentUser.organization}
       </p>
       <p>
-        <strong>{t("profile.fields.roles")}:</strong>{" "}
-        {currentUser.roles
-          ? currentUser.roles.join(", ")
-          : t("profile.noRoles")}
+        <strong>{t('profile.fields.roles')}:</strong>{' '}
+        {currentUser.roles ? currentUser.roles.join(', ') : t('profile.noRoles')}
       </p>
       <p>
-        <strong>{t("profile.fields.profileUrl")}:</strong>{" "}
-        <a
-          href={gravatarProfile.profile_url}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <strong>{t('profile.fields.profileUrl')}:</strong>{' '}
+        <a href={gravatarProfile.profile_url} target="_blank" rel="noopener noreferrer">
           {gravatarProfile.profile_url}
         </a>
       </p>
       <p>
-        <strong>{t("profile.fields.verifiedAccounts")}:</strong>{" "}
+        <strong>{t('profile.fields.verifiedAccounts')}:</strong>{' '}
         {gravatarProfile.number_verified_accounts}
       </p>
       <p>
-        <strong>{t("profile.fields.registrationDate")}:</strong>{" "}
+        <strong>{t('profile.fields.registrationDate')}:</strong>{' '}
         {new Date(gravatarProfile.registration_date).toLocaleDateString()}
       </p>
       <p>
-        <strong>{t("profile.fields.emailHash")}:</strong>{" "}
-        {currentUser.emailHash}
+        <strong>{t('profile.fields.emailHash')}:</strong> {currentUser.emailHash}
       </p>
       <p>
-        <strong>{t("profile.fields.userId")}:</strong> {currentUser.id}
+        <strong>{t('profile.fields.userId')}:</strong> {currentUser.id}
       </p>
       <p>
-        <strong>{t("profile.fields.accessToken")}:</strong>{" "}
+        <strong>{t('profile.fields.accessToken')}:</strong>{' '}
         {currentUser.accessToken.substring(0, 20)}...
       </p>
     </div>
@@ -565,68 +504,56 @@ const Profile = ({ activeOrganization }) => {
   const renderSecurityTab = () => (
     <div className="tab-pane fade show active">
       <form onSubmit={handlePasswordChange}>
-        <h5>{t("profile.security.changePassword.title")}</h5>
+        <h5>{t('profile.security.changePassword.title')}</h5>
         <div className="form-group col-md-3 mb-3">
           <input
             type="password"
             className="form-control"
-            placeholder={t(
-              "profile.security.changePassword.newPasswordPlaceholder"
-            )}
+            placeholder={t('profile.security.changePassword.newPasswordPlaceholder')}
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={e => setNewPassword(e.target.value)}
           />
           {passwordErrors.newPassword && (
-            <div className="alert alert-danger">
-              {passwordErrors.newPassword}
-            </div>
+            <div className="alert alert-danger">{passwordErrors.newPassword}</div>
           )}
         </div>
         <div className="form-group col-md-3 mb-3">
           <input
             type="password"
             className="form-control"
-            placeholder={t(
-              "profile.security.changePassword.confirmPasswordPlaceholder"
-            )}
+            placeholder={t('profile.security.changePassword.confirmPasswordPlaceholder')}
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={e => setConfirmPassword(e.target.value)}
           />
           {passwordErrors.confirmPassword && (
-            <div className="alert alert-danger">
-              {passwordErrors.confirmPassword}
-            </div>
+            <div className="alert alert-danger">{passwordErrors.confirmPassword}</div>
           )}
         </div>
         <button className="btn btn-primary mb-3">
-          {t("profile.security.changePassword.button")}
+          {t('profile.security.changePassword.button')}
         </button>
         {message && <p className="mt-3">{message}</p>}
       </form>
       <form onSubmit={handleEmailChange} noValidate>
-        <h5>{t("profile.security.changeEmail.title")}</h5>
+        <h5>{t('profile.security.changeEmail.title')}</h5>
         <div className="form-group col-md-3 mb-3">
           <input
             type="email"
             className="form-control"
-            placeholder={t("profile.security.changeEmail.newEmailPlaceholder")}
+            placeholder={t('profile.security.changeEmail.newEmailPlaceholder')}
             value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
+            onChange={e => setNewEmail(e.target.value)}
           />
-          {emailErrors.newEmail && (
-            <div className="alert alert-danger">{emailErrors.newEmail}</div>
-          )}
+          {emailErrors.newEmail && <div className="alert alert-danger">{emailErrors.newEmail}</div>}
         </div>
-        <button className="btn btn-primary mb-3">
-          {t("profile.security.changeEmail.button")}
-        </button>
+        <button className="btn btn-primary mb-3">{t('profile.security.changeEmail.button')}</button>
         {emailMessage && <p className="mt-3">{emailMessage}</p>}
       </form>
       <div className="mt-3">
-        <h4>{t("profile.security.deleteAccount.title")}</h4>
-        <p>{t("profile.security.deleteAccount.warning")}</p>
+        <h4>{t('profile.security.deleteAccount.title')}</h4>
+        <p>{t('profile.security.deleteAccount.warning')}</p>
         <button className="btn btn-danger" onClick={openDeleteModal}>
-          {t("profile.security.deleteAccount.button")}
+          {t('profile.security.deleteAccount.button')}
         </button>
       </div>
     </div>
@@ -634,7 +561,7 @@ const Profile = ({ activeOrganization }) => {
 
   const renderOrganizationsTab = () => (
     <div className="tab-pane fade show active">
-      <h3>{t("profile.organizations.title")}</h3>
+      <h3>{t('profile.organizations.title')}</h3>
 
       {organizationsLoading ? (
         <div className="text-center">
@@ -646,19 +573,16 @@ const Profile = ({ activeOrganization }) => {
         <>
           <div className="card mb-4">
             <div className="card-header">
-              <h5>{t("profile.organizations.belongToTitle")}</h5>
+              <h5>{t('profile.organizations.belongToTitle')}</h5>
             </div>
             <div className="card-body">
               {userOrganizations.length === 0 ? (
-                <div className="alert alert-info">
-                  {t("profile.organizations.noOrgs")}
-                </div>
+                <div className="alert alert-info">{t('profile.organizations.noOrgs')}</div>
               ) : (
                 <ul className="list-group">
-                  {userOrganizations.map((org) => {
+                  {userOrganizations.map(org => {
                     const orgName = org.name || org.organization?.name;
-                    const orgDesc =
-                      org.description || org.organization?.description;
+                    const orgDesc = org.description || org.organization?.description;
                     const isPrimary = !!org.isPrimary;
                     const orgId = org.id || org.organization?.id;
 
@@ -671,27 +595,21 @@ const Profile = ({ activeOrganization }) => {
                                 <strong>{orgName}</strong>
                                 {isPrimary && (
                                   <span className="badge bg-primary ms-2">
-                                    {t("profile.organizations.primary")}
+                                    {t('profile.organizations.primary')}
                                   </span>
                                 )}
                                 <br />
-                                {orgDesc && (
-                                  <small className="text-muted">
-                                    {orgDesc}
-                                  </small>
-                                )}
+                                {orgDesc && <small className="text-muted">{orgDesc}</small>}
                                 <br />
                                 <small className="text-muted">
-                                  {t("profile.organizations.joined")}:{" "}
+                                  {t('profile.organizations.joined')}:{' '}
                                   {new Date(org.joinedAt).toLocaleDateString()}
                                 </small>
                               </div>
                             </div>
                           </div>
                           <div className="d-flex align-items-center">
-                            <span
-                              className={`badge ${getRoleBadgeClass(org.role)} me-3`}
-                            >
+                            <span className={`badge ${getRoleBadgeClass(org.role)} me-3`}>
                               {t(`roles.${org.role}`)}
                             </span>
                             {userOrganizations.length > 1 && (
@@ -699,7 +617,7 @@ const Profile = ({ activeOrganization }) => {
                                 className="btn btn-outline-danger btn-sm"
                                 onClick={() => handleLeaveOrganization(orgName)}
                               >
-                                {t("buttons.leave")}
+                                {t('buttons.leave')}
                               </button>
                             )}
                           </div>
@@ -715,36 +633,32 @@ const Profile = ({ activeOrganization }) => {
           {joinRequests.length > 0 && (
             <div className="card">
               <div className="card-header">
-                <h5>{t("profile.organizations.pendingRequestsTitle")}</h5>
+                <h5>{t('profile.organizations.pendingRequestsTitle')}</h5>
               </div>
               <div className="card-body">
                 <ul className="list-group">
-                  {joinRequests.map((request) => (
+                  {joinRequests.map(request => (
                     <li key={request.id} className="list-group-item">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
                           <strong>{request.organization.name}</strong>
                           <br />
                           {request.organization.description && (
-                            <small className="text-muted">
-                              {request.organization.description}
-                            </small>
+                            <small className="text-muted">{request.organization.description}</small>
                           )}
                           <br />
                           <small className="text-muted">
-                            {t("profile.organizations.requested")}:{" "}
+                            {t('profile.organizations.requested')}:{' '}
                             {new Date(request.created_at).toLocaleDateString()}
                           </small>
                         </div>
                         <div>
-                          <span className="badge bg-warning me-3">
-                            {t("status.pending")}
-                          </span>
+                          <span className="badge bg-warning me-3">{t('status.pending')}</span>
                           <button
                             className="btn btn-outline-secondary btn-sm"
                             onClick={() => handleCancelJoinRequest(request.id)}
                           >
-                            {t("buttons.cancel")}
+                            {t('buttons.cancel')}
                           </button>
                         </div>
                       </div>
@@ -761,15 +675,15 @@ const Profile = ({ activeOrganization }) => {
 
   const renderServiceAccountsTab = () => (
     <div className="tab-pane fade show active">
-      <h3>{t("profile.serviceAccounts.title")}</h3>
+      <h3>{t('profile.serviceAccounts.title')}</h3>
       <form onSubmit={handleCreateServiceAccount}>
         <div className="form-group col-md-3 mb-3">
           <input
             type="text"
             className="form-control"
-            placeholder={t("profile.serviceAccounts.descriptionPlaceholder")}
+            placeholder={t('profile.serviceAccounts.descriptionPlaceholder')}
             value={newServiceAccountDescription}
-            onChange={(e) => setNewServiceAccountDescription(e.target.value)}
+            onChange={e => setNewServiceAccountDescription(e.target.value)}
             required
           />
         </div>
@@ -777,50 +691,40 @@ const Profile = ({ activeOrganization }) => {
           <select
             className="form-control"
             value={newServiceAccountExpiration}
-            onChange={(e) =>
-              setNewServiceAccountExpiration(Number(e.target.value))
-            }
+            onChange={e => setNewServiceAccountExpiration(Number(e.target.value))}
           >
-            <option value={30}>
-              {t("profile.serviceAccounts.expiration.30")}
-            </option>
-            <option value={60}>
-              {t("profile.serviceAccounts.expiration.60")}
-            </option>
-            <option value={90}>
-              {t("profile.serviceAccounts.expiration.90")}
-            </option>
-            <option value={365}>
-              {t("profile.serviceAccounts.expiration.365")}
-            </option>
+            <option value={30}>{t('profile.serviceAccounts.expiration.30')}</option>
+            <option value={60}>{t('profile.serviceAccounts.expiration.60')}</option>
+            <option value={90}>{t('profile.serviceAccounts.expiration.90')}</option>
+            <option value={365}>{t('profile.serviceAccounts.expiration.365')}</option>
           </select>
         </div>
         <button className="btn btn-primary mb-3" type="submit">
-          {t("profile.serviceAccounts.createButton")}
+          {t('profile.serviceAccounts.createButton')}
         </button>
       </form>
       {newServiceAccountToken && (
         <div className="alert alert-warning">
-          <strong>{t("profile.serviceAccounts.token")}:</strong>{" "}
+          <strong>{t('profile.serviceAccounts.token')}:</strong>{' '}
           <code>{newServiceAccountToken}</code>
           <br />
-          <small>{t("profile.serviceAccounts.tokenShownOnce")}</small>
+          <small>{t('profile.serviceAccounts.tokenShownOnce')}</small>
         </div>
       )}
       <ul className="list-group">
-        {serviceAccounts.map((account) => (
+        {serviceAccounts.map(account => (
           <li key={account.id} className="list-group-item">
             <div className="d-flex justify-content-between align-items-center">
               <div>
                 <strong>{account.username}</strong> - {account.description}
                 <br />
                 <small>
-                  {t("profile.serviceAccounts.organization")}:{" "}
-                  {account.organization?.name || t("unknown")}
+                  {t('profile.serviceAccounts.organization')}:{' '}
+                  {account.organization?.name || t('unknown')}
                 </small>
                 <br />
                 <small>
-                  {t("profile.serviceAccounts.expires")}:{" "}
+                  {t('profile.serviceAccounts.expires')}:{' '}
                   {new Date(account.expiresAt).toLocaleDateString()}
                 </small>
               </div>
@@ -829,7 +733,7 @@ const Profile = ({ activeOrganization }) => {
                   className="btn btn-danger btn-sm"
                   onClick={() => handleDeleteServiceAccount(account.id)}
                 >
-                  {t("buttons.delete")}
+                  {t('buttons.delete')}
                 </button>
               </div>
             </div>
@@ -845,18 +749,14 @@ const Profile = ({ activeOrganization }) => {
         <div className="card mt-2 mb-2">
           <div className="card-header text-center">
             <img
-              src={currentUser.avatarUrl || gravatarProfile.avatar_url || ""}
+              src={currentUser.avatarUrl || gravatarProfile.avatar_url || ''}
               alt="User Avatar"
               className="rounded-circle"
               width="100"
               height="100"
             />
-            <h3 className="mt-3">
-              {gravatarProfile.display_name || currentUser.username}
-            </h3>
-            <p className="text-muted">
-              {gravatarProfile.job_title || t("profile.noJobTitle")}
-            </p>
+            <h3 className="mt-3">{gravatarProfile.display_name || currentUser.username}</h3>
+            <p className="text-muted">{gravatarProfile.job_title || t('profile.noJobTitle')}</p>
           </div>
           <div className="card-body">
             {verificationMessage && (
@@ -866,54 +766,51 @@ const Profile = ({ activeOrganization }) => {
             )}
             {!currentUser.verified && (
               <div className="alert alert-warning" role="alert">
-                {t("profile.messages.emailNotVerified")}
-                <button
-                  className="btn btn-link"
-                  onClick={handleResendVerificationMail}
-                >
-                  {t("profile.buttons.resendVerification")}
+                {t('profile.messages.emailNotVerified')}
+                <button className="btn btn-link" onClick={handleResendVerificationMail}>
+                  {t('profile.buttons.resendVerification')}
                 </button>
               </div>
             )}
             <ul className="nav nav-tabs">
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === "profile" ? "active" : ""}`}
-                  onClick={() => handleTabChange("profile")}
+                  className={`nav-link ${activeTab === 'profile' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('profile')}
                 >
-                  {t("profile.tabs.profile")}
+                  {t('profile.tabs.profile')}
                 </button>
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === "organizations" ? "active" : ""}`}
-                  onClick={() => handleTabChange("organizations")}
+                  className={`nav-link ${activeTab === 'organizations' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('organizations')}
                 >
-                  {t("profile.tabs.organizations")}
+                  {t('profile.tabs.organizations')}
                 </button>
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === "security" ? "active" : ""}`}
-                  onClick={() => handleTabChange("security")}
+                  className={`nav-link ${activeTab === 'security' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('security')}
                 >
-                  {t("profile.tabs.security")}
+                  {t('profile.tabs.security')}
                 </button>
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === "serviceAccounts" ? "active" : ""}`}
-                  onClick={() => handleTabChange("serviceAccounts")}
+                  className={`nav-link ${activeTab === 'serviceAccounts' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('serviceAccounts')}
                 >
-                  {t("profile.tabs.serviceAccounts")}
+                  {t('profile.tabs.serviceAccounts')}
                 </button>
               </li>
             </ul>
             <div className="tab-content mt-3">
-              {activeTab === "profile" && renderProfileTab()}
-              {activeTab === "organizations" && renderOrganizationsTab()}
-              {activeTab === "security" && renderSecurityTab()}
-              {activeTab === "serviceAccounts" && renderServiceAccountsTab()}
+              {activeTab === 'profile' && renderProfileTab()}
+              {activeTab === 'organizations' && renderOrganizationsTab()}
+              {activeTab === 'security' && renderSecurityTab()}
+              {activeTab === 'serviceAccounts' && renderServiceAccountsTab()}
             </div>
           </div>
         </div>
@@ -922,8 +819,8 @@ const Profile = ({ activeOrganization }) => {
         show={showDeleteModal}
         handleClose={closeDeleteModal}
         handleConfirm={handleDeleteAccount}
-        title={t("profile.deleteModal.title")}
-        message={t("profile.deleteModal.message")}
+        title={t('profile.deleteModal.title')}
+        message={t('profile.deleteModal.message')}
       />
     </div>
   );

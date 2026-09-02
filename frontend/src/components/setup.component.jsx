@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { FaEye, FaEyeSlash } from "react-icons/fa6";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaEye, FaEyeSlash } from 'react-icons/fa6';
+import { useNavigate } from 'react-router-dom';
 
-import SetupService from "../services/setup.service";
-import { log } from "../utils/Logger";
+import SetupService from '../services/setup.service';
+import { log } from '../utils/Logger';
 
 const SetupComponent = () => {
   const { t } = useTranslation();
@@ -15,83 +15,77 @@ const SetupComponent = () => {
     mail: {},
   });
   const [setupComplete, setSetupComplete] = useState(false);
-  const [setupToken, setSetupToken] = useState("");
-  const [authorizedSetupToken, setAuthorizedSetupToken] = useState("");
-  const [message, setMessage] = useState("");
-  const [activeTab, setActiveTab] = useState("db");
+  const [setupToken, setSetupToken] = useState('');
+  const [authorizedSetupToken, setAuthorizedSetupToken] = useState('');
+  const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('db');
   const [validationErrors, setValidationErrors] = useState({});
   const [showPasswords, setShowPasswords] = useState({});
   const [isFormValid, setIsFormValid] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = t("setup.title");
+    document.title = t('setup.title');
   }, [t]);
 
   useEffect(() => {
     SetupService.isSetupComplete()
-      .then((response) => {
+      .then(response => {
         setSetupComplete(response.data.setupComplete);
       })
-      .catch((error) => {
-        log.api.error("Error checking setup status", {
+      .catch(error => {
+        log.api.error('Error checking setup status', {
           error: error.message,
         });
       });
   }, []);
 
   // Helper: Validate URL
-  const validateUrl = (value) => {
+  const validateUrl = value => {
     try {
       new URL(value);
       return null;
     } catch {
-      return t("validation.invalidUrl");
+      return t('validation.invalidUrl');
     }
   };
 
   // Helper: Validate host (IP, FQDN, or localhost)
-  const validateHost = (value) => {
-    if (value === "localhost" || value === "127.0.0.1") {
+  const validateHost = value => {
+    if (value === 'localhost' || value === '127.0.0.1') {
       return null;
     }
     const ipRegex =
       /^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    const fqdnRegex =
-      /^(?!:\/\/)(?=.{1,255}$)(?:(?:.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
+    const fqdnRegex = /^(?!:\/\/)(?=.{1,255}$)(?:(?:.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
     if (ipRegex.test(value) || fqdnRegex.test(value)) {
       return null;
     }
-    return t("validation.invalidHost");
+    return t('validation.invalidHost');
   };
 
   // Helper: Validate other field types
   const validateOtherTypes = (type, value) => {
     switch (type) {
-      case "integer": {
-        return Number.isInteger(Number(value))
-          ? null
-          : t("validation.integerRequired");
+      case 'integer': {
+        return Number.isInteger(Number(value)) ? null : t('validation.integerRequired');
       }
-      case "boolean": {
-        return typeof value === "boolean"
-          ? null
-          : t("validation.booleanRequired");
+      case 'boolean': {
+        return typeof value === 'boolean' ? null : t('validation.booleanRequired');
       }
-      case "password": {
-        return value.length >= 6 ? null : t("validation.passwordLength");
+      case 'password': {
+        return value.length >= 6 ? null : t('validation.passwordLength');
       }
-      case "email": {
-        const emailRegex =
-          /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-        return emailRegex.test(value) ? null : t("validation.invalidEmail");
+      case 'email': {
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+        return emailRegex.test(value) ? null : t('validation.invalidEmail');
       }
-      case "port": {
+      case 'port': {
         const port = Number(value);
-        return port >= 1 && port <= 65535 ? null : t("validation.portRange");
+        return port >= 1 && port <= 65535 ? null : t('validation.portRange');
       }
-      case "string": {
-        return value.trim() !== "" ? null : t("validation.valueRequired");
+      case 'string': {
+        return value.trim() !== '' ? null : t('validation.valueRequired');
       }
       default:
         return null;
@@ -104,43 +98,40 @@ const SetupComponent = () => {
       return null;
     }
 
-    if (value === null || value === undefined || value === "") {
-      return t("validation.valueRequired");
+    if (value === null || value === undefined || value === '') {
+      return t('validation.valueRequired');
     }
 
-    if (type === "url") {
+    if (type === 'url') {
       return validateUrl(value);
     }
-    if (type === "host") {
+    if (type === 'host') {
       return validateHost(value);
     }
     return validateOtherTypes(type, value);
   };
 
-  const updateFormValidity = (errors) => {
-    const hasErrors = ["db", "app", "auth", "mail"].some((configName) =>
-      Object.values(errors[configName] || {}).some((error) => error !== null)
+  const updateFormValidity = errors => {
+    const hasErrors = ['db', 'app', 'auth', 'mail'].some(configName =>
+      Object.values(errors[configName] || {}).some(error => error !== null)
     );
     setIsFormValid(!hasErrors);
   };
 
   const validateField = (configName, path, value) => {
-    const field = path.reduce(
-      (acc, key) => acc && acc[key],
-      configs[configName]
-    );
+    const field = path.reduce((acc, key) => acc && acc[key], configs[configName]);
     const isReadonly = field && field.readonly;
     const error =
       field && field.type
         ? getValidationError(field.type, value, isReadonly)
-        : t("validation.invalidFieldStructure");
+        : t('validation.invalidFieldStructure');
 
-    setValidationErrors((prevErrors) => {
+    setValidationErrors(prevErrors => {
       const newErrors = {
         ...prevErrors,
         [configName]: {
           ...prevErrors[configName],
-          [path.join(".")]: error,
+          [path.join('.')]: error,
         },
       };
       updateFormValidity(newErrors);
@@ -150,10 +141,10 @@ const SetupComponent = () => {
 
   const handleVerifyToken = () => {
     SetupService.verifySetupToken(setupToken)
-      .then((tokenResponse) => {
+      .then(tokenResponse => {
         setAuthorizedSetupToken(tokenResponse.data.authorizedSetupToken);
         SetupService.getConfigs(tokenResponse.data.authorizedSetupToken)
-          .then((configResponse) => {
+          .then(configResponse => {
             const newConfigs = configResponse.data.configs;
 
             // Auto-populate dialect on initial load if database_type is set but dialect is empty
@@ -166,8 +157,7 @@ const SetupComponent = () => {
               const dbType = newConfigs.db.database_type.value;
               if (
                 dbType &&
-                (!newConfigs.db.sql.dialect.value ||
-                  newConfigs.db.sql.dialect.value.trim() === "")
+                (!newConfigs.db.sql.dialect.value || newConfigs.db.sql.dialect.value.trim() === '')
               ) {
                 newConfigs.db.sql.dialect.value = dbType;
               }
@@ -177,16 +167,19 @@ const SetupComponent = () => {
 
             // Perform initial validation
             const errors = {};
-            Object.keys(newConfigs).forEach((configName) => {
+            Object.keys(newConfigs).forEach(configName => {
               errors[configName] = {};
               const validateFields = (obj, path = []) => {
                 Object.entries(obj).forEach(([key, value]) => {
                   const currentPath = [...path, key];
-                  if (typeof value === "object" && value !== null) {
-                    if ("type" in value && "value" in value) {
+                  if (typeof value === 'object' && value !== null) {
+                    if ('type' in value && 'value' in value) {
                       const isReadonly = value.readonly || false;
-                      errors[configName][currentPath.join(".")] =
-                        getValidationError(value.type, value.value, isReadonly);
+                      errors[configName][currentPath.join('.')] = getValidationError(
+                        value.type,
+                        value.value,
+                        isReadonly
+                      );
                     } else {
                       validateFields(value, currentPath);
                     }
@@ -198,22 +191,22 @@ const SetupComponent = () => {
             setValidationErrors(errors);
             updateFormValidity(errors);
           })
-          .catch((error) => {
-            log.api.error("Error fetching configs", {
+          .catch(error => {
+            log.api.error('Error fetching configs', {
               error: error.message,
             });
           });
       })
-      .catch((error) => {
-        log.api.error("Error verifying setup token", {
+      .catch(error => {
+        log.api.error('Error verifying setup token', {
           error: error.message,
         });
-        setMessage(t("setup.invalidToken"));
+        setMessage(t('setup.invalidToken'));
       });
   };
 
   const handleConfigChange = (configName, path, value) => {
-    setConfigs((prevConfigs) => {
+    setConfigs(prevConfigs => {
       const newConfigs = { ...prevConfigs };
       let current = newConfigs[configName];
       for (let i = 0; i < path.length - 1; i++) {
@@ -229,7 +222,7 @@ const SetupComponent = () => {
       }
 
       // Auto-populate dialect when database_type changes
-      if (configName === "db" && path.join(".") === "database_type") {
+      if (configName === 'db' && path.join('.') === 'database_type') {
         if (newConfigs.db.sql && newConfigs.db.sql.dialect) {
           newConfigs.db.sql.dialect.value = value;
         }
@@ -241,8 +234,8 @@ const SetupComponent = () => {
     validateField(configName, path, value);
 
     // Also validate dialect field when database type changes
-    if (configName === "db" && path.join(".") === "database_type") {
-      validateField(configName, ["sql", "dialect"], value);
+    if (configName === 'db' && path.join('.') === 'database_type') {
+      validateField(configName, ['sql', 'dialect'], value);
     }
   };
 
@@ -253,67 +246,54 @@ const SetupComponent = () => {
       return null;
     }
     const storageError =
-      validationErrors[configName] &&
-      validationErrors[configName]["sql.storage"];
+      validationErrors[configName] && validationErrors[configName]['sql.storage'];
     return (
       <div className="form-group" key="sql.storage">
-        <label htmlFor="sql-storage">{t("setup.sqlitePath")}</label>
+        <label htmlFor="sql-storage">{t('setup.sqlitePath')}</label>
         <input
           id="sql-storage"
           type="text"
-          className={`form-control ${storageError ? "is-invalid" : ""}`}
-          value={storageEntry.value || ""}
-          onChange={(e) =>
-            handleConfigChange(configName, ["sql", "storage"], e.target.value)
-          }
+          className={`form-control ${storageError ? 'is-invalid' : ''}`}
+          value={storageEntry.value || ''}
+          onChange={e => handleConfigChange(configName, ['sql', 'storage'], e.target.value)}
         />
-        <small className="form-text text-muted">
-          {storageEntry.description}
-        </small>
+        <small className="form-text text-muted">{storageEntry.description}</small>
         {storageError && <div className="invalid-feedback">{storageError}</div>}
       </div>
     );
   };
 
   // Helper: Render OIDC provider info
-  const renderOidcInfo = (errorKey) => (
+  const renderOidcInfo = errorKey => (
     <div key={errorKey} className="col-md-12 mb-3">
       <div className="alert alert-info">
         <h6>
           <i className="fas fa-info-circle me-2" />
-          {t("oidc.title")}
+          {t('oidc.title')}
         </h6>
-        <p className="mb-0">{t("setup.oidcNote")}</p>
+        <p className="mb-0">{t('setup.oidcNote')}</p>
       </div>
     </div>
   );
 
   // Helper: Render form input field
-  const renderInputField = (
-    configName,
-    currentPath,
-    entry,
-    errorKey,
-    error
-  ) => {
+  const renderInputField = (configName, currentPath, entry, errorKey, error) => {
     const { type, value, description, options } = entry;
-    const inputValue = value === null || value === undefined ? "" : value;
+    const inputValue = value === null || value === undefined ? '' : value;
     const fieldId = `field-${errorKey}`;
 
-    if (type === "select") {
+    if (type === 'select') {
       return (
         <div className="form-group" key={errorKey}>
           <label htmlFor={fieldId}>{currentPath[currentPath.length - 1]}</label>
           <select
             id={fieldId}
-            className={`form-control ${error ? "is-invalid" : ""}`}
+            className={`form-control ${error ? 'is-invalid' : ''}`}
             value={inputValue}
-            onChange={(e) =>
-              handleConfigChange(configName, currentPath, e.target.value)
-            }
+            onChange={e => handleConfigChange(configName, currentPath, e.target.value)}
           >
             {options &&
-              options.map((option) => (
+              options.map(option => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -325,25 +305,23 @@ const SetupComponent = () => {
       );
     }
 
-    if (type === "password") {
+    if (type === 'password') {
       return (
         <div className="form-group" key={errorKey}>
           <label htmlFor={fieldId}>{currentPath[currentPath.length - 1]}</label>
           <div className="input-group">
             <input
               id={fieldId}
-              type={showPasswords[errorKey] ? "text" : "password"}
-              className={`form-control ${error ? "is-invalid" : ""}`}
+              type={showPasswords[errorKey] ? 'text' : 'password'}
+              className={`form-control ${error ? 'is-invalid' : ''}`}
               value={inputValue}
-              onChange={(e) =>
-                handleConfigChange(configName, currentPath, e.target.value)
-              }
+              onChange={e => handleConfigChange(configName, currentPath, e.target.value)}
             />
             <button
               className="btn btn-outline-secondary"
               type="button"
               onClick={() =>
-                setShowPasswords((prev) => ({
+                setShowPasswords(prev => ({
                   ...prev,
                   [errorKey]: !prev[errorKey],
                 }))
@@ -364,11 +342,9 @@ const SetupComponent = () => {
         <input
           id={fieldId}
           type="text"
-          className={`form-control ${error ? "is-invalid" : ""} ${entry.readonly ? "readonly-input" : ""}`}
+          className={`form-control ${error ? 'is-invalid' : ''} ${entry.readonly ? 'readonly-input' : ''}`}
           value={inputValue}
-          onChange={(e) =>
-            handleConfigChange(configName, currentPath, e.target.value)
-          }
+          onChange={e => handleConfigChange(configName, currentPath, e.target.value)}
           readOnly={entry.readonly}
         />
         <small className="form-text text-muted">{description}</small>
@@ -377,62 +353,48 @@ const SetupComponent = () => {
     );
   };
 
-  const renderConfigFields = (configName) => {
+  const renderConfigFields = configName => {
     const renderFields = (obj, path = []) =>
-      Object.keys(obj).map((key) => {
+      Object.keys(obj).map(key => {
         const currentPath = [...path, key];
         const entry = obj[key];
-        const errorKey = currentPath.join(".");
-        const error =
-          validationErrors[configName] &&
-          validationErrors[configName][errorKey];
+        const errorKey = currentPath.join('.');
+        const error = validationErrors[configName] && validationErrors[configName][errorKey];
 
         // Handle database type conditional visibility
-        if (configName === "db") {
-          const databaseType = configs.db.database_type?.value || "mysql";
+        if (configName === 'db') {
+          const databaseType = configs.db.database_type?.value || 'mysql';
 
-          if (key === "sql") {
-            if (databaseType === "sqlite") {
+          if (key === 'sql') {
+            if (databaseType === 'sqlite') {
               return renderSqliteStorage(configName, entry);
             }
           }
 
           // Hide mysql_pool section when SQLite is selected
-          if (key === "mysql_pool" && databaseType === "sqlite") {
+          if (key === 'mysql_pool' && databaseType === 'sqlite') {
             return null;
           }
         }
 
-        if (
-          typeof entry === "object" &&
-          entry !== null &&
-          !("type" in entry && "value" in entry)
-        ) {
+        if (typeof entry === 'object' && entry !== null && !('type' in entry && 'value' in entry)) {
           return (
             <div key={errorKey} className="col-md-6 mb-3">
               <div className="card">
                 <div className="card-header">
                   <h5>{key}</h5>
                 </div>
-                <div className="card-body">
-                  {renderFields(entry, currentPath)}
-                </div>
+                <div className="card-body">{renderFields(entry, currentPath)}</div>
               </div>
             </div>
           );
         }
 
-        if (key === "oidc_providers" && entry.type === "object") {
+        if (key === 'oidc_providers' && entry.type === 'object') {
           return renderOidcInfo(errorKey);
         }
 
-        return renderInputField(
-          configName,
-          currentPath,
-          entry,
-          errorKey,
-          error
-        );
+        return renderInputField(configName, currentPath, entry, errorKey, error);
       });
 
     return renderFields(configs[configName]);
@@ -440,38 +402,38 @@ const SetupComponent = () => {
 
   const handleSubmit = () => {
     if (!isFormValid) {
-      setMessage(t("validation.fixErrors"));
+      setMessage(t('validation.fixErrors'));
       return;
     }
 
     SetupService.updateConfigs(authorizedSetupToken, configs)
       .then(() => {
-        setMessage(t("setup.updateSuccess"));
+        setMessage(t('setup.updateSuccess'));
 
         // Set a 5-second delay before navigating
         setTimeout(() => {
-          navigate("/register");
+          navigate('/register');
         }, 5000);
       })
-      .catch((error) => {
-        log.api.error("Error updating configuration", {
+      .catch(error => {
+        log.api.error('Error updating configuration', {
           error: error.message,
         });
-        setMessage(t("setup.updateError"));
+        setMessage(t('setup.updateError'));
       });
   };
 
   useEffect(() => {
     if (authorizedSetupToken) {
       SetupService.getConfigs(authorizedSetupToken)
-        .then((response) => {
-          log.component.debug("Fetched configs", {
+        .then(response => {
+          log.component.debug('Fetched configs', {
             configs: response.data.configs,
           });
           setConfigs(response.data.configs);
         })
-        .catch((error) => {
-          log.api.error("Error fetching configs", {
+        .catch(error => {
+          log.api.error('Error fetching configs', {
             error: error.message,
           });
         });
@@ -479,42 +441,37 @@ const SetupComponent = () => {
   }, [authorizedSetupToken]);
 
   // Helper: Get tab validation status class
-  const getTabStatusClass = (configName) => {
+  const getTabStatusClass = configName => {
     if (!validationErrors[configName]) {
-      return "";
+      return '';
     }
-    const hasErrors = Object.values(validationErrors[configName]).some(
-      (error) => error !== null
-    );
-    return hasErrors ? "" : "text-success";
+    const hasErrors = Object.values(validationErrors[configName]).some(error => error !== null);
+    return hasErrors ? '' : 'text-success';
   };
 
   return (
     <div className="container mt-5">
-      <h2 className="text-center mb-4">{t("setup.title")}</h2>
+      <h2 className="text-center mb-4">{t('setup.title')}</h2>
       {setupComplete ? (
         <div className="alert alert-success" role="alert">
-          {t("setup.alreadyComplete")}
+          {t('setup.alreadyComplete')}
         </div>
       ) : (
         <>
           {!authorizedSetupToken ? (
             <div className="card">
               <div className="card-body">
-                <h5 className="card-title">{t("setup.enterToken")}</h5>
+                <h5 className="card-title">{t('setup.enterToken')}</h5>
                 <div className="input-group mb-3">
                   <input
                     type="text"
                     className="form-control"
-                    placeholder={t("setup.tokenPlaceholder")}
+                    placeholder={t('setup.tokenPlaceholder')}
                     value={setupToken}
-                    onChange={(e) => setSetupToken(e.target.value)}
+                    onChange={e => setSetupToken(e.target.value)}
                   />
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleVerifyToken}
-                  >
-                    {t("setup.verifyToken")}
+                  <button className="btn btn-primary" onClick={handleVerifyToken}>
+                    {t('setup.verifyToken')}
                   </button>
                 </div>
               </div>
@@ -522,34 +479,33 @@ const SetupComponent = () => {
           ) : (
             <div>
               <ul className="nav nav-tabs mb-4 d-flex">
-                {["db", "app", "auth", "mail"].map((configName) => (
+                {['db', 'app', 'auth', 'mail'].map(configName => (
                   <li className="nav-item" key={configName}>
                     <button
-                      className={`nav-link ${activeTab === configName ? "active" : ""} ${getTabStatusClass(configName)}`}
+                      className={`nav-link ${activeTab === configName ? 'active' : ''} ${getTabStatusClass(configName)}`}
                       onClick={() => setActiveTab(configName)}
                     >
-                      {configName.charAt(0).toUpperCase() + configName.slice(1)}{" "}
-                      Config
+                      {configName.charAt(0).toUpperCase() + configName.slice(1)} Config
                     </button>
                   </li>
                 ))}
                 <li className="nav-item ms-auto">
                   <button
                     type="button"
-                    className={`nav-link ${!isFormValid ? "disabled" : "cursor-pointer"}`}
+                    className={`nav-link ${!isFormValid ? 'disabled' : 'cursor-pointer'}`}
                     onClick={handleSubmit}
                     disabled={!isFormValid}
                   >
-                    {t("setup.submitAll")}
+                    {t('setup.submitAll')}
                   </button>
                 </li>
               </ul>
 
               <div className="tab-content">
-                {["db", "app", "auth", "mail"].map((configName) => (
+                {['db', 'app', 'auth', 'mail'].map(configName => (
                   <div
                     key={configName}
-                    className={`tab-pane ${activeTab === configName ? "active" : ""}`}
+                    className={`tab-pane ${activeTab === configName ? 'active' : ''}`}
                   >
                     <div className="row">{renderConfigFields(configName)}</div>
                   </div>

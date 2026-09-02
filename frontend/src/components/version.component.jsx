@@ -1,23 +1,23 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useRef } from "react";
-import Table from "react-bootstrap/Table";
-import { useTranslation } from "react-i18next";
-import Markdown from "react-markdown";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useRef } from 'react';
+import Table from 'react-bootstrap/Table';
+import { useTranslation } from 'react-i18next';
+import Markdown from 'react-markdown';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
-import ArchitectureService from "../services/architecture.service";
-import BoxDataService from "../services/box.service";
-import FileService from "../services/file.service";
-import ProviderService from "../services/provider.service";
-import VersionDataService from "../services/version.service";
-import { log } from "../utils/Logger";
-import { canManageBox } from "../utils/permissions";
-import { readDeprecated, readReleaseNotes } from "../utils/versionFields";
+import ArchitectureService from '../services/architecture.service';
+import BoxDataService from '../services/box.service';
+import FileService from '../services/file.service';
+import ProviderService from '../services/provider.service';
+import VersionDataService from '../services/version.service';
+import { log } from '../utils/Logger';
+import { canManageBox } from '../utils/permissions';
+import { readDeprecated, readReleaseNotes } from '../utils/versionFields';
 
-import BoxPageHeader from "./BoxPageHeader.component";
-import ConfirmationModal from "./confirmation.component";
-import DeprecationBanner from "./DeprecationBanner.component";
-import StatusChips from "./StatusChips.component";
+import BoxPageHeader from './BoxPageHeader.component';
+import ConfirmationModal from './confirmation.component';
+import DeprecationBanner from './DeprecationBanner.component';
+import StatusChips from './StatusChips.component';
 
 const ReleaseNotesEditor = ({ initialNotes, onSave, onCancel }) => {
   const { t } = useTranslation();
@@ -29,22 +29,14 @@ const ReleaseNotesEditor = ({ initialNotes, onSave, onCancel }) => {
         className="form-control mb-2"
         rows="4"
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder={t("version.releaseNotes")}
+        onChange={e => setDraft(e.target.value)}
+        placeholder={t('version.releaseNotes')}
       />
-      <button
-        type="button"
-        className="btn btn-sm btn-success me-2"
-        onClick={() => onSave(draft)}
-      >
-        {t("buttons.save")}
+      <button type="button" className="btn btn-sm btn-success me-2" onClick={() => onSave(draft)}>
+        {t('buttons.save')}
       </button>
-      <button
-        type="button"
-        className="btn btn-sm btn-secondary"
-        onClick={onCancel}
-      >
-        {t("buttons.cancel")}
+      <button type="button" className="btn btn-sm btn-secondary" onClick={onCancel}>
+        {t('buttons.cancel')}
       </button>
     </div>
   );
@@ -59,7 +51,7 @@ ReleaseNotesEditor.propTypes = {
 const DeprecateButton = ({ onDeprecate }) => {
   const { t } = useTranslation();
   const [askingReason, setAskingReason] = useState(false);
-  const [reasonDraft, setReasonDraft] = useState("");
+  const [reasonDraft, setReasonDraft] = useState('');
 
   if (!askingReason) {
     return (
@@ -68,7 +60,7 @@ const DeprecateButton = ({ onDeprecate }) => {
         className="btn btn-sm btn-outline-danger"
         onClick={() => setAskingReason(true)}
       >
-        {t("version.deprecate")}
+        {t('version.deprecate')}
       </button>
     );
   }
@@ -79,8 +71,8 @@ const DeprecateButton = ({ onDeprecate }) => {
         type="text"
         className="form-control form-control-sm w-auto"
         value={reasonDraft}
-        onChange={(e) => setReasonDraft(e.target.value)}
-        placeholder={t("version.deprecationReason")}
+        onChange={e => setReasonDraft(e.target.value)}
+        placeholder={t('version.deprecationReason')}
       />
       <button
         type="button"
@@ -90,18 +82,18 @@ const DeprecateButton = ({ onDeprecate }) => {
           const ok = await onDeprecate(reasonDraft.trim());
           if (ok) {
             setAskingReason(false);
-            setReasonDraft("");
+            setReasonDraft('');
           }
         }}
       >
-        {t("version.deprecate")}
+        {t('version.deprecate')}
       </button>
       <button
         type="button"
         className="btn btn-sm btn-secondary"
         onClick={() => setAskingReason(false)}
       >
-        {t("buttons.cancel")}
+        {t('buttons.cancel')}
       </button>
     </div>
   );
@@ -130,12 +122,12 @@ const ReleaseNotesCard = ({
   return (
     <div className="card mb-3">
       <div className="card-header">
-        <h5 className="mb-0">{t("version.releaseNotes")}</h5>
+        <h5 className="mb-0">{t('version.releaseNotes')}</h5>
       </div>
       <div className="card-body">
         {editingNotes ? (
           <ReleaseNotesEditor
-            initialNotes={notes || ""}
+            initialNotes={notes || ''}
             onSave={onSaveNotes}
             onCancel={onStopEditing}
           />
@@ -149,11 +141,9 @@ const ReleaseNotesCard = ({
                   className="btn btn-sm btn-outline-primary"
                   onClick={onStartEditing}
                 >
-                  {t("version.editReleaseNotes")}
+                  {t('version.editReleaseNotes')}
                 </button>
-                {!readDeprecated(version) && (
-                  <DeprecateButton onDeprecate={onDeprecate} />
-                )}
+                {!readDeprecated(version) && <DeprecateButton onDeprecate={onDeprecate} />}
               </div>
             )}
           </>
@@ -175,21 +165,19 @@ ReleaseNotesCard.propTypes = {
 
 const VersionMetaRow = ({ version }) => {
   const { t } = useTranslation();
-  const formatDate = (value) =>
-    value ? new Date(value).toLocaleDateString() : "";
+  const formatDate = value => (value ? new Date(value).toLocaleDateString() : '');
 
   return (
     <div className="d-flex flex-wrap gap-4 text-muted small mb-3">
       <span>
-        {t("provider.description")}:{" "}
-        <strong className="text-body">{version.description}</strong>
+        {t('provider.description')}: <strong className="text-body">{version.description}</strong>
       </span>
       <span>
-        {t("version.createdAt")}:{" "}
+        {t('version.createdAt')}:{' '}
         <strong className="text-body">{formatDate(version.createdAt)}</strong>
       </span>
       <span>
-        {t("version.updatedAt")}:{" "}
+        {t('version.updatedAt')}:{' '}
         <strong className="text-body">{formatDate(version.updatedAt)}</strong>
       </span>
     </div>
@@ -206,20 +194,20 @@ const Version = () => {
   const navigate = useNavigate();
 
   const [providers, setProviders] = useState([]);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const [currentVersion, setCurrentVersion] = useState({
     id: null,
-    version: "",
-    description: "",
+    version: '',
+    description: '',
     boxId: null,
-    createdAt: "",
-    updatedAt: "",
+    createdAt: '',
+    updatedAt: '',
   });
   const [editMode, setEditMode] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [architectures, setArchitectures] = useState({});
-  const [newProvider, setNewProvider] = useState({ name: "", description: "" });
+  const [newProvider, setNewProvider] = useState({ name: '', description: '' });
   const [showAddProviderForm, setShowAddProviderForm] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [allVersions, setAllVersions] = useState([]);
@@ -229,67 +217,51 @@ const Version = () => {
 
   const form = useRef();
 
-  const updateVersionFields = async (fields) => {
+  const updateVersionFields = async fields => {
     try {
-      await VersionDataService.updateVersion(
-        organization,
-        name,
-        version,
-        fields
-      );
-      const versionResponse = await VersionDataService.getVersion(
-        organization,
-        name,
-        version
-      );
+      await VersionDataService.updateVersion(organization, name, version, fields);
+      const versionResponse = await VersionDataService.getVersion(organization, name, version);
       setCurrentVersion(versionResponse.data);
-      setMessage(t("version.updated"));
-      setMessageType("success");
+      setMessage(t('version.updated'));
+      setMessageType('success');
       return true;
     } catch (e) {
-      log.api.error("Error updating version", {
+      log.api.error('Error updating version', {
         versionNumber: version,
         error: e.message,
       });
       setMessage(
         e.response && e.response.data && e.response.data.message
           ? e.response.data.message
-          : t("version.updateError")
+          : t('version.updateError')
       );
-      setMessageType("danger");
+      setMessageType('danger');
       return false;
     }
   };
 
-  const saveReleaseNotes = (releaseNotes) =>
-    updateVersionFields({ release_notes: releaseNotes });
+  const saveReleaseNotes = releaseNotes => updateVersionFields({ release_notes: releaseNotes });
 
   const toggleDeprecated = (deprecated, reason) =>
     updateVersionFields({ deprecated, deprecation_reason: reason });
 
-  const required = (value) => (value ? undefined : t("validation.required"));
+  const required = value => (value ? undefined : t('validation.required'));
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) =>
-    validCharsRegex.test(value) ? undefined : t("validation.invalidName");
+  const validateName = value =>
+    validCharsRegex.test(value) ? undefined : t('validation.invalidName');
 
   const deleteFilesForArchitecture = (providerName, architectureName) =>
-    FileService.delete(
-      organization,
-      name,
-      version,
-      providerName,
-      architectureName
-    ).catch((e) => {
-      log.file.error("Error deleting files for architecture", {
+    FileService.delete(organization, name, version, providerName, architectureName).catch(e => {
+      log.file.error('Error deleting files for architecture', {
         architectureName,
         error: e.message,
       });
       throw e;
     });
 
-  const deleteArchitecturesForProvider = async (providerName) => {
+  const deleteArchitecturesForProvider = async providerName => {
     const architecturesToDelete = architectures[providerName] || [];
     for (const architecture of architecturesToDelete) {
       // eslint-disable-next-line no-await-in-loop
@@ -301,8 +273,8 @@ const Version = () => {
         version,
         providerName,
         architecture.name
-      ).catch((e) => {
-        log.component.error("Error deleting architecture", {
+      ).catch(e => {
+        log.component.error('Error deleting architecture', {
           architectureName: architecture.name,
           error: e.message,
         });
@@ -311,52 +283,45 @@ const Version = () => {
     }
   };
 
-  const deleteProvider = async (providerName) => {
+  const deleteProvider = async providerName => {
     try {
       await deleteArchitecturesForProvider(providerName);
-      await ProviderService.deleteProvider(
-        organization,
-        name,
-        version,
-        providerName
-      );
-      setMessage(t("provider.deleted"));
-      setMessageType("success");
-      setProviders(
-        providers.filter((provider) => provider.name !== providerName)
-      );
+      await ProviderService.deleteProvider(organization, name, version, providerName);
+      setMessage(t('provider.deleted'));
+      setMessageType('success');
+      setProviders(providers.filter(provider => provider.name !== providerName));
     } catch (e) {
-      log.component.error("Error deleting provider", {
+      log.component.error('Error deleting provider', {
         providerName,
         error: e.message,
       });
-      setMessage(t("provider.deleteError"));
-      setMessageType("danger");
+      setMessage(t('provider.deleteError'));
+      setMessageType('danger');
     }
   };
 
   const deleteVersion = () => {
     VersionDataService.deleteVersion(organization, name, version)
       .then(() => {
-        setMessage(t("version.deleted"));
-        setMessageType("success");
+        setMessage(t('version.deleted'));
+        setMessageType('success');
         navigate(`/${organization}/${name}`);
       })
-      .catch((e) => {
-        log.component.error("Error deleting version", {
+      .catch(e => {
+        log.component.error('Error deleting version', {
           versionNumber: version,
           error: e.message,
         });
       });
   };
 
-  const handleProviderDeleteClick = (providerName) => {
-    setItemToDelete({ type: "provider", name: providerName });
+  const handleProviderDeleteClick = providerName => {
+    setItemToDelete({ type: 'provider', name: providerName });
     setShowDeleteModal(true);
   };
 
   const handleVersionDeleteClick = () => {
-    setItemToDelete({ type: "version", name: currentVersion.versionNumber });
+    setItemToDelete({ type: 'version', name: currentVersion.versionNumber });
     setShowDeleteModal(true);
   };
 
@@ -367,9 +332,9 @@ const Version = () => {
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      if (itemToDelete.type === "provider") {
+      if (itemToDelete.type === 'provider') {
         deleteProvider(itemToDelete.name);
-      } else if (itemToDelete.type === "version") {
+      } else if (itemToDelete.type === 'version') {
         deleteVersion();
       }
       handleCloseDeleteModal();
@@ -383,12 +348,12 @@ const Version = () => {
     const fetchData = async () => {
       // Authorization mirrors the backend: box owner or org admin/owner.
       // Fetch the box so we know its owner.
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = JSON.parse(localStorage.getItem('user'));
       try {
         const boxResponse = await BoxDataService.get(organization, name);
         setIsAuthorized(canManageBox(user, organization, boxResponse.data));
       } catch (e) {
-        log.api.error("Error checking box authorization", {
+        log.api.error('Error checking box authorization', {
           boxName: name,
           error: e.message,
         });
@@ -396,100 +361,86 @@ const Version = () => {
       }
 
       try {
-        const providerResponse = await ProviderService.getProviders(
-          organization,
-          name,
-          version
-        );
+        const providerResponse = await ProviderService.getProviders(organization, name, version);
         setProviders(providerResponse.data);
 
         // Fetch architectures for all providers in parallel
-        const architecturePromises = providerResponse.data.map(
-          async (provider) => {
-            try {
-              const archResponse = await ArchitectureService.getArchitectures(
-                organization,
-                name,
-                version,
-                provider.name
-              );
-              const architecturesWithInfo = await Promise.all(
-                archResponse.data.map(async (architecture) => {
-                  try {
-                    const downloadLink = await FileService.getDownloadLink(
-                      organization,
-                      name,
-                      version,
-                      provider.name,
-                      architecture.name
-                    );
-                    return {
-                      ...architecture,
-                      downloadUrl: downloadLink,
-                    };
-                  } catch (e) {
-                    log.api.error("Error fetching download link", {
-                      architectureName: architecture.name,
-                      error: e.message,
-                    });
-                    return {
-                      ...architecture,
-                      downloadUrl: null,
-                    };
-                  }
-                })
-              );
-              return { providerName: provider.name, architecturesWithInfo };
-            } catch (e) {
-              log.api.error("Error fetching architectures", {
-                providerName: provider.name,
-                error: e.message,
-              });
-              return { providerName: provider.name, architecturesWithInfo: [] };
-            }
+        const architecturePromises = providerResponse.data.map(async provider => {
+          try {
+            const archResponse = await ArchitectureService.getArchitectures(
+              organization,
+              name,
+              version,
+              provider.name
+            );
+            const architecturesWithInfo = await Promise.all(
+              archResponse.data.map(async architecture => {
+                try {
+                  const downloadLink = await FileService.getDownloadLink(
+                    organization,
+                    name,
+                    version,
+                    provider.name,
+                    architecture.name
+                  );
+                  return {
+                    ...architecture,
+                    downloadUrl: downloadLink,
+                  };
+                } catch (e) {
+                  log.api.error('Error fetching download link', {
+                    architectureName: architecture.name,
+                    error: e.message,
+                  });
+                  return {
+                    ...architecture,
+                    downloadUrl: null,
+                  };
+                }
+              })
+            );
+            return { providerName: provider.name, architecturesWithInfo };
+          } catch (e) {
+            log.api.error('Error fetching architectures', {
+              providerName: provider.name,
+              error: e.message,
+            });
+            return { providerName: provider.name, architecturesWithInfo: [] };
           }
-        );
+        });
 
         const results = await Promise.all(architecturePromises);
         const architecturesByProvider = {};
-        results.forEach((result) => {
-          architecturesByProvider[result.providerName] =
-            result.architecturesWithInfo;
+        results.forEach(result => {
+          architecturesByProvider[result.providerName] = result.architecturesWithInfo;
         });
 
         setArchitectures(architecturesByProvider);
       } catch (e) {
-        log.api.error("Error fetching providers", {
+        log.api.error('Error fetching providers', {
           versionNumber: version,
           error: e.message,
         });
       }
 
       try {
-        const versionResponse = await VersionDataService.getVersion(
-          organization,
-          name,
-          version
-        );
+        const versionResponse = await VersionDataService.getVersion(organization, name, version);
         setCurrentVersion(versionResponse.data);
       } catch (e) {
-        log.api.error("Error fetching version", {
+        log.api.error('Error fetching version', {
           versionNumber: version,
           error: e.message,
         });
         setCurrentVersion(null);
-        setMessage(t("version.notFound"));
-        setMessageType("danger");
+        setMessage(t('version.notFound'));
+        setMessageType('danger');
       }
 
       try {
-        const versionsResponse = await VersionDataService.getVersions(
-          organization,
-          name
-        );
+        const versionsResponse = await VersionDataService.getVersions(organization, name);
         setAllVersions(versionsResponse.data);
       } catch (e) {
-        log.api.error("Error fetching all versions", {
+        log.api.error('Error fetching all versions', {
           boxName: name,
           error: e.message,
         });
@@ -499,32 +450,30 @@ const Version = () => {
     fetchData();
   }, [organization, name, version, navigate, t]);
 
-  const handleProviderInputChange = (event) => {
+  const handleProviderInputChange = event => {
     const { name: fieldName, value } = event.target;
     setNewProvider({ ...newProvider, [fieldName]: value });
 
     // Validate the provider name field
-    if (fieldName === "name") {
+    if (fieldName === 'name') {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, providerName: error });
     }
   };
 
-  const addProvider = async (event) => {
+  const addProvider = async event => {
     event.preventDefault();
 
     if (required(newProvider.name) || validateName(newProvider.name)) {
-      setMessage(t("validation.fixErrors"));
-      setMessageType("danger");
+      setMessage(t('validation.fixErrors'));
+      setMessageType('danger');
       return;
     }
 
-    const providerExists = providers.some(
-      (provider) => provider.name === newProvider.name
-    );
+    const providerExists = providers.some(provider => provider.name === newProvider.name);
     if (providerExists) {
-      setMessage(t("provider.exists"));
-      setMessageType("danger");
+      setMessage(t('provider.exists'));
+      setMessageType('danger');
       return;
     }
 
@@ -535,52 +484,50 @@ const Version = () => {
         version,
         newProvider
       );
-      setMessage(t("provider.created"));
-      setMessageType("success");
+      setMessage(t('provider.created'));
+      setMessageType('success');
       setProviders([...providers, response.data]);
       setShowAddProviderForm(false);
-      setNewProvider({ name: "", description: "" });
+      setNewProvider({ name: '', description: '' });
     } catch (e) {
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
-        setMessage(t("provider.createError"));
+        setMessage(t('provider.createError'));
       }
-      setMessageType("danger");
+      setMessageType('danger');
     }
   };
 
-  const handleInputChange = (event) => {
+  const handleInputChange = event => {
     const { name: fieldName, value } = event.target;
     setCurrentVersion({ ...currentVersion, [fieldName]: value });
 
     // Validate the version number field
-    if (fieldName === "versionNumber") {
+    if (fieldName === 'versionNumber') {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, versionNumber: error });
     }
   };
 
-  const saveVersion = async (event) => {
+  const saveVersion = async event => {
     event.preventDefault();
 
     // Check for validation errors
     if (validationErrors.versionNumber) {
       setMessage(validationErrors.versionNumber);
-      setMessageType("danger");
+      setMessageType('danger');
       return;
     }
 
     // Check for duplicate version number, excluding the current version
     if (currentVersion.versionNumber !== version) {
       const versionExists = allVersions.some(
-        (v) =>
-          v.version === currentVersion.versionNumber &&
-          v.id !== currentVersion.id
+        v => v.version === currentVersion.versionNumber && v.id !== currentVersion.id
       );
       if (versionExists) {
-        setMessage(t("version.exists"));
-        setMessageType("danger");
+        setMessage(t('version.exists'));
+        setMessageType('danger');
         return;
       }
     }
@@ -592,8 +539,8 @@ const Version = () => {
 
     try {
       await VersionDataService.updateVersion(organization, name, version, data);
-      setMessage(t("version.updated"));
-      setMessageType("success");
+      setMessage(t('version.updated'));
+      setMessageType('success');
       setEditMode(false);
 
       if (version !== currentVersion.versionNumber) {
@@ -603,9 +550,9 @@ const Version = () => {
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
-        setMessage(t("version.updateError"));
+        setMessage(t('version.updateError'));
       }
-      setMessageType("danger");
+      setMessageType('danger');
     }
   };
 
@@ -617,22 +564,16 @@ const Version = () => {
     <>
       {isAuthorized ? (
         <>
-          <button
-            className="btn btn-primary me-2"
-            onClick={() => setEditMode(true)}
-          >
-            {t("buttons.edit")}
+          <button className="btn btn-primary me-2" onClick={() => setEditMode(true)}>
+            {t('buttons.edit')}
           </button>
-          <button
-            className="btn btn-danger me-2"
-            onClick={handleVersionDeleteClick}
-          >
-            {t("buttons.delete")}
+          <button className="btn btn-danger me-2" onClick={handleVersionDeleteClick}>
+            {t('buttons.delete')}
           </button>
         </>
       ) : null}
       <Link className="btn btn-dark me-2" to={`/${organization}/${name}`}>
-        {t("actions.back")}
+        {t('actions.back')}
       </Link>
     </>
   );
@@ -651,32 +592,25 @@ const Version = () => {
               <div>
                 <form onSubmit={saveVersion} ref={form}>
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h4>{t("version.edit")}</h4>
+                    <h4>{t('version.edit')}</h4>
                     <div>
                       <button
                         type="submit"
                         className="btn btn-success me-2"
                         disabled={!!validationErrors.versionNumber}
                       >
-                        {t("buttons.save")}
+                        {t('buttons.save')}
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary me-2"
-                        onClick={cancelEdit}
-                      >
-                        {t("buttons.cancel")}
+                      <button type="button" className="btn btn-secondary me-2" onClick={cancelEdit}>
+                        {t('buttons.cancel')}
                       </button>
-                      <Link
-                        className="btn btn-dark me-2"
-                        to={`/${organization}/${name}`}
-                      >
-                        {t("actions.back")}
+                      <Link className="btn btn-dark me-2" to={`/${organization}/${name}`}>
+                        {t('actions.back')}
                       </Link>
                     </div>
                   </div>
                   <div className="form-group col-md-3">
-                    <label htmlFor="versionNumber">{t("version.number")}</label>
+                    <label htmlFor="versionNumber">{t('version.number')}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -687,15 +621,11 @@ const Version = () => {
                       required
                     />
                     {validationErrors.versionNumber ? (
-                      <div className="text-danger">
-                        {validationErrors.versionNumber}
-                      </div>
+                      <div className="text-danger">{validationErrors.versionNumber}</div>
                     ) : null}
                   </div>
                   <div className="form-group">
-                    <label htmlFor="description">
-                      {t("provider.description")}
-                    </label>
+                    <label htmlFor="description">{t('provider.description')}</label>
                     <textarea
                       className="form-control"
                       id="description"
@@ -715,14 +645,10 @@ const Version = () => {
                     { label: currentVersion.versionNumber || version },
                   ]}
                   actions={viewActions}
-                  title={t("version.title", {
+                  title={t('version.title', {
                     version: currentVersion.versionNumber || version,
                   })}
-                  chips={
-                    readDeprecated(currentVersion) ? (
-                      <StatusChips deprecated />
-                    ) : null
-                  }
+                  chips={readDeprecated(currentVersion) ? <StatusChips deprecated /> : null}
                 />
                 <DeprecationBanner version={currentVersion}>
                   {isAuthorized && (
@@ -731,7 +657,7 @@ const Version = () => {
                       className="btn btn-sm btn-outline-success"
                       onClick={() => toggleDeprecated(false, null)}
                     >
-                      {t("version.undeprecate")}
+                      {t('version.undeprecate')}
                     </button>
                   )}
                 </DeprecationBanner>
@@ -741,13 +667,13 @@ const Version = () => {
                   editingNotes={editingNotes}
                   onStartEditing={() => setEditingNotes(true)}
                   onStopEditing={() => setEditingNotes(false)}
-                  onSaveNotes={async (draft) => {
+                  onSaveNotes={async draft => {
                     const ok = await saveReleaseNotes(draft);
                     if (ok) {
                       setEditingNotes(false);
                     }
                   }}
-                  onDeprecate={(reason) => toggleDeprecated(true, reason)}
+                  onDeprecate={reason => toggleDeprecated(true, reason)}
                 />
                 <VersionMetaRow version={currentVersion} />
               </div>
@@ -755,30 +681,24 @@ const Version = () => {
           </div>
           <div className="list-table">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h4>{t("version.providers", { version })}</h4>
+              <h4>{t('version.providers', { version })}</h4>
               <div>
                 {isAuthorized ? (
                   <>
                     <button
-                      className={`btn ${showAddProviderForm ? "btn-secondary" : "btn-outline-success"} me-2`}
-                      onClick={() =>
-                        setShowAddProviderForm(!showAddProviderForm)
-                      }
+                      className={`btn ${showAddProviderForm ? 'btn-secondary' : 'btn-outline-success'} me-2`}
+                      onClick={() => setShowAddProviderForm(!showAddProviderForm)}
                     >
-                      {showAddProviderForm
-                        ? t("buttons.cancel")
-                        : t("provider.add")}
+                      {showAddProviderForm ? t('buttons.cancel') : t('provider.add')}
                     </button>
                     {showAddProviderForm ? (
                       <button
                         type="submit"
                         className="btn btn-success me-2"
-                        disabled={
-                          !newProvider.name || !!validationErrors.providerName
-                        }
+                        disabled={!newProvider.name || !!validationErrors.providerName}
                         onClick={addProvider}
                       >
-                        {t("buttons.save")}
+                        {t('buttons.save')}
                       </button>
                     ) : null}
                   </>
@@ -789,7 +709,7 @@ const Version = () => {
               <form onSubmit={addProvider} ref={form}>
                 <div className="add-provider-form">
                   <div className="form-group col-md-3">
-                    <label htmlFor="providerName">{t("provider.name")}</label>
+                    <label htmlFor="providerName">{t('provider.name')}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -800,15 +720,11 @@ const Version = () => {
                       required
                     />
                     {validationErrors.providerName ? (
-                      <div className="text-danger">
-                        {validationErrors.providerName}
-                      </div>
+                      <div className="text-danger">{validationErrors.providerName}</div>
                     ) : null}
                   </div>
                   <div className="form-group">
-                    <label htmlFor="providerDescription">
-                      {t("provider.description")}
-                    </label>
+                    <label htmlFor="providerDescription">{t('provider.description')}</label>
                     <textarea
                       className="form-control"
                       id="providerDescription"
@@ -823,26 +739,24 @@ const Version = () => {
             <Table striped className="table">
               <thead>
                 <tr>
-                  <th>{t("provider.name")}</th>
-                  <th>{t("provider.description")}</th>
-                  <th>{t("buttons.download")}</th>
-                  {isAuthorized ? <th>{t("buttons.delete")}</th> : null}
+                  <th>{t('provider.name')}</th>
+                  <th>{t('provider.description')}</th>
+                  <th>{t('buttons.download')}</th>
+                  {isAuthorized ? <th>{t('buttons.delete')}</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {providers.map((provider) => (
+                {providers.map(provider => (
                   <tr key={provider.name}>
                     <td>
-                      <Link
-                        to={`/${organization}/${name}/${version}/${provider.name}`}
-                      >
+                      <Link to={`/${organization}/${name}/${version}/${provider.name}`}>
                         {provider.name}
                       </Link>
                     </td>
                     <td>{provider.description}</td>
                     <td>
                       {architectures[provider.name]
-                        ? architectures[provider.name].map((architecture) => (
+                        ? architectures[provider.name].map(architecture => (
                             <div key={architecture.name}>
                               {architecture.downloadUrl ? (
                                 <a
@@ -851,7 +765,7 @@ const Version = () => {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
-                                  {t("buttons.download")} {architecture.name}
+                                  {t('buttons.download')} {architecture.name}
                                 </a>
                               ) : null}
                             </div>
@@ -862,11 +776,9 @@ const Version = () => {
                       <td>
                         <button
                           className="btn btn-danger"
-                          onClick={() =>
-                            handleProviderDeleteClick(provider.name)
-                          }
+                          onClick={() => handleProviderDeleteClick(provider.name)}
                         >
-                          {t("buttons.delete")}
+                          {t('buttons.delete')}
                         </button>
                       </td>
                     ) : null}
@@ -885,7 +797,7 @@ const Version = () => {
         <div>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <button className="btn btn-dark me-2" onClick={() => navigate(`/`)}>
-              {t("actions.backToFiles")}
+              {t('actions.backToFiles')}
             </button>
           </div>
         </div>

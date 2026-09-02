@@ -1,47 +1,47 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
-import { useTranslation } from "react-i18next";
-import { FaTriangleExclamation } from "react-icons/fa6";
-import { Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaTriangleExclamation } from 'react-icons/fa6';
+import { Routes, Route, Navigate, useNavigate, Link } from 'react-router-dom';
 
-import "./css/styles.css";
-import "./css/fonts.css";
-import "./css/auth.css";
-import ErrorBoundary from "./common/ErrorBoundary";
-import EventBus from "./common/EventBus";
-import About from "./components/about.component";
-import Admin from "./components/admin.component";
-import AuthCallback from "./components/AuthCallback";
-import Box from "./components/box.component";
-import Footer from "./components/Footer.component";
-import InviteAccept from "./components/InviteAccept.component";
-import Login from "./components/login.component";
-import Navbar from "./components/navbar.component";
-import OrgConsole from "./components/org-console.component";
-import OrganizationDiscovery from "./components/organization-discovery.component";
-import Organization from "./components/organization.component";
-import Profile from "./components/profile.component";
-import Provider from "./components/provider.component";
-import Register from "./components/register.component";
-import Setup from "./components/setup.component";
-import Version from "./components/version.component";
-import AuthService from "./services/auth.service";
-import SetupService from "./services/setup.service";
-import UserService from "./services/user.service";
-import { log } from "./utils/Logger";
-import { isOrgManager } from "./utils/permissions";
+import './css/styles.css';
+import './css/fonts.css';
+import './css/auth.css';
+import ErrorBoundary from './common/ErrorBoundary';
+import EventBus from './common/EventBus';
+import About from './components/about.component';
+import Admin from './components/admin.component';
+import AuthCallback from './components/AuthCallback';
+import Box from './components/box.component';
+import Footer from './components/Footer.component';
+import InviteAccept from './components/InviteAccept.component';
+import Login from './components/login.component';
+import Navbar from './components/navbar.component';
+import OrgConsole from './components/org-console.component';
+import OrganizationDiscovery from './components/organization-discovery.component';
+import Organization from './components/organization.component';
+import Profile from './components/profile.component';
+import Provider from './components/provider.component';
+import Register from './components/register.component';
+import Setup from './components/setup.component';
+import Version from './components/version.component';
+import AuthService from './services/auth.service';
+import SetupService from './services/setup.service';
+import UserService from './services/user.service';
+import { log } from './utils/Logger';
+import { isOrgManager } from './utils/permissions';
 import {
   isPushEnabled,
   syncSubscription,
   listenForSubscriptionChange,
-} from "./utils/pushNotifications";
-import { subscribeSessionEvents } from "./utils/sessionEvents";
+} from './utils/pushNotifications';
+import { subscribeSessionEvents } from './utils/sessionEvents';
 
-const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
+const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 
-const subscribeToColorScheme = (onChange) => {
+const subscribeToColorScheme = onChange => {
   const query = window.matchMedia(DARK_SCHEME_QUERY);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
 };
 
 const systemPrefersDark = () => window.matchMedia(DARK_SCHEME_QUERY).matches;
@@ -51,38 +51,38 @@ const systemPrefersDark = () => window.matchMedia(DARK_SCHEME_QUERY).matches;
 // one is then sent on every org-scoped request, which answers 403.
 const resolveActiveOrganization = (user, stored) => {
   if (!user) {
-    return "";
+    return '';
   }
   if (!Array.isArray(user.organizations)) {
-    return stored || user.organization || "";
+    return stored || user.organization || '';
   }
 
-  const names = user.organizations.map((org) => org.name).filter(Boolean);
+  const names = user.organizations.map(org => org.name).filter(Boolean);
   if (stored && names.includes(stored)) {
     return stored;
   }
   if (user.organization && names.includes(user.organization)) {
     return user.organization;
   }
-  return names[0] || "";
+  return names[0] || '';
 };
 
 const App = () => {
   const { t, i18n } = useTranslation();
-  const isDevelopment = import.meta.env.NODE_ENV === "development";
+  const isDevelopment = import.meta.env.NODE_ENV === 'development';
 
   // Initialize Bootstrap
   useEffect(() => {
     let bootstrap;
     const loadBootstrap = async () => {
-      bootstrap = await import("bootstrap/dist/js/bootstrap.bundle.min.js");
+      bootstrap = await import('bootstrap/dist/js/bootstrap.bundle.min.js');
     };
     loadBootstrap();
     return () => {
       // Clean up Bootstrap
       if (bootstrap && bootstrap.Modal) {
-        const modals = document.querySelectorAll(".modal");
-        modals.forEach((modal) => {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
           const instance = bootstrap.Modal.getInstance(modal);
           if (instance) {
             instance.dispose();
@@ -93,24 +93,22 @@ const App = () => {
   }, []);
 
   const [showAdminBoard, setShowAdminBoard] = useState(() =>
-    Boolean(AuthService.getCurrentUser()?.roles?.includes("ROLE_ADMIN"))
+    Boolean(AuthService.getCurrentUser()?.roles?.includes('ROLE_ADMIN'))
   );
-  const [currentUser, setCurrentUser] = useState(
-    () => AuthService.getCurrentUser() || undefined
-  );
+  const [currentUser, setCurrentUser] = useState(() => AuthService.getCurrentUser() || undefined);
   const [userOrganization, setUserOrganization] = useState(
-    () => AuthService.getCurrentUser()?.organization || ""
+    () => AuthService.getCurrentUser()?.organization || ''
   );
   const [activeOrganization, setActiveOrganization] = useState(() =>
     resolveActiveOrganization(
       AuthService.getCurrentUser(),
-      localStorage.getItem("activeOrganization")
+      localStorage.getItem('activeOrganization')
     )
   );
   // Tier one of the avatar contract: the stored avatar URL from the login
   // payload. The Gravatar email-hash fetch below stays as tier two.
   const [gravatarUrl, setGravatarUrl] = useState(
-    () => AuthService.getCurrentUser()?.avatarUrl || ""
+    () => AuthService.getCurrentUser()?.avatarUrl || ''
   );
   const [gravatarFetched, setGravatarFetched] = useState(false);
   // The account's stored preference outranks this browser's, so the same person
@@ -118,33 +116,24 @@ const App = () => {
   // rather than from an effect: an effect would re-assert a value that goes
   // stale the moment the toggle is used, undoing the click.
   const [themePreference, setThemePreference] = useState(
-    () =>
-      AuthService.getCurrentUser()?.preferredTheme ||
-      localStorage.getItem("theme") ||
-      "auto"
+    () => AuthService.getCurrentUser()?.preferredTheme || localStorage.getItem('theme') || 'auto'
   );
-  const prefersDark = useSyncExternalStore(
-    subscribeToColorScheme,
-    systemPrefersDark
-  );
+  const prefersDark = useSyncExternalStore(subscribeToColorScheme, systemPrefersDark);
   // What gets stored is the PREFERENCE; what gets applied is the resolved
   // light/dark. Keeping them separate is what lets "auto" keep tracking the OS
   // instead of freezing at whatever it happened to resolve to on first load.
-  const theme =
-    themePreference === "auto"
-      ? (prefersDark && "dark") || "light"
-      : themePreference;
+  const theme = themePreference === 'auto' ? (prefersDark && 'dark') || 'light' : themePreference;
   const [setupComplete, setSetupComplete] = useState(null); // Initialize as null to indicate loading
   const [sessionEnded, setSessionEnded] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-bs-theme", theme);
-    localStorage.setItem("theme", themePreference);
+    document.documentElement.setAttribute('data-bs-theme', theme);
+    localStorage.setItem('theme', themePreference);
 
-    const favicon = document.getElementById("favicon");
+    const favicon = document.getElementById('favicon');
     if (favicon) {
-      favicon.href = theme === "dark" ? "/dark-favicon.ico" : "/favicon.ico";
+      favicon.href = theme === 'dark' ? '/dark-favicon.ico' : '/favicon.ico';
     }
   }, [theme, themePreference]);
 
@@ -160,13 +149,13 @@ const App = () => {
 
         setSetupComplete(response.data.setupComplete);
         if (!response.data.setupComplete) {
-          navigate("/setup");
+          navigate('/setup');
         }
       } catch (error) {
         if (!mounted) {
           return;
         }
-        log.app.error("Error checking setup status", { error: error.message });
+        log.app.error('Error checking setup status', { error: error.message });
       }
     };
 
@@ -178,23 +167,20 @@ const App = () => {
   }, [navigate]);
 
   const fetchGravatarUrl = useCallback(
-    (emailHash) => {
+    emailHash => {
       const controller = new AbortController();
 
       const loadGravatar = async () => {
         if (!gravatarFetched) {
           try {
-            const profile = await AuthService.getGravatarProfile(
-              emailHash,
-              controller.signal
-            );
+            const profile = await AuthService.getGravatarProfile(emailHash, controller.signal);
             if (profile?.avatar_url) {
               setGravatarUrl(profile.avatar_url);
             }
             setGravatarFetched(true);
           } catch (error) {
-            if (error.name !== "AbortError") {
-              log.api.error("Error fetching Gravatar", {
+            if (error.name !== 'AbortError') {
+              log.api.error('Error fetching Gravatar', {
                 emailHash,
                 error: error.message,
               });
@@ -221,26 +207,26 @@ const App = () => {
 
     if (user) {
       if (activeOrganization) {
-        localStorage.setItem("activeOrganization", activeOrganization);
+        localStorage.setItem('activeOrganization', activeOrganization);
       } else {
-        localStorage.removeItem("activeOrganization");
+        localStorage.removeItem('activeOrganization');
       }
 
       if (!user.avatarUrl && user.emailHash) {
         fetchGravatarUrl(user.emailHash);
       }
     } else {
-      localStorage.removeItem("activeOrganization");
+      localStorage.removeItem('activeOrganization');
     }
   }, [activeOrganization, fetchGravatarUrl]);
 
   // Handle organization switching
   const handleOrganizationSwitch = useCallback(
-    (newOrgName) => {
+    newOrgName => {
       setActiveOrganization(newOrgName);
-      localStorage.setItem("activeOrganization", newOrgName);
+      localStorage.setItem('activeOrganization', newOrgName);
 
-      log.app.info("Organization switched", {
+      log.app.info('Organization switched', {
         from: activeOrganization,
         to: newOrgName,
       });
@@ -255,8 +241,8 @@ const App = () => {
     AuthService.logout();
     setShowAdminBoard(false);
     setCurrentUser(undefined);
-    setUserOrganization("");
-    setGravatarUrl("");
+    setUserOrganization('');
+    setGravatarUrl('');
     setGravatarFetched(false);
   }, []);
 
@@ -264,8 +250,8 @@ const App = () => {
     AuthService.logoutLocal();
     setShowAdminBoard(false);
     setCurrentUser(undefined);
-    setUserOrganization("");
-    setGravatarUrl("");
+    setUserOrganization('');
+    setGravatarUrl('');
     setGravatarFetched(false);
   }, []);
 
@@ -273,63 +259,53 @@ const App = () => {
   // preference that failed to persist is worth a log line, not a blocked
   // click. It lives here rather than inside the state updater because React
   // may invoke an updater more than once for a single change.
-  const applyThemePreference = useCallback(
-    (preference, { persistRemotely = true } = {}) => {
-      setThemePreference(preference);
+  const applyThemePreference = useCallback((preference, { persistRemotely = true } = {}) => {
+    setThemePreference(preference);
 
-      if (!persistRemotely || !AuthService.getCurrentUser()) {
-        return;
-      }
+    if (!persistRemotely || !AuthService.getCurrentUser()) {
+      return;
+    }
 
-      UserService.updatePreferences({ theme: preference })
-        .then(() => {
-          // Keep the stored session in step, or the next mount would re-apply
-          // the value this click just replaced.
-          const stored = AuthService.getCurrentUser();
-          if (stored) {
-            localStorage.setItem(
-              "user",
-              JSON.stringify({ ...stored, preferredTheme: preference })
-            );
-          }
-        })
-        .catch((error) => {
-          log.app.error("Theme preference not saved", { error: error.message });
-        });
-    },
-    []
-  );
+    UserService.updatePreferences({ theme: preference })
+      .then(() => {
+        // Keep the stored session in step, or the next mount would re-apply
+        // the value this click just replaced.
+        const stored = AuthService.getCurrentUser();
+        if (stored) {
+          localStorage.setItem('user', JSON.stringify({ ...stored, preferredTheme: preference }));
+        }
+      })
+      .catch(error => {
+        log.app.error('Theme preference not saved', { error: error.message });
+      });
+  }, []);
 
   // auto -> light -> dark -> auto
   const toggleTheme = () => {
     const next =
-      (themePreference === "auto" && "light") ||
-      (themePreference === "light" && "dark") ||
-      "auto";
+      (themePreference === 'auto' && 'light') || (themePreference === 'light' && 'dark') || 'auto';
     applyThemePreference(next);
   };
 
   useEffect(() => {
     // Set up EventBus listeners independently of user state
-    const logoutCleanup = EventBus.on("logout", () => {
+    const logoutCleanup = EventBus.on('logout', () => {
       logOut();
     });
 
-    const sessionEndedCleanup = EventBus.on("sessionEnded", (detail) => {
+    const sessionEndedCleanup = EventBus.on('sessionEnded', detail => {
       setCurrentUser(undefined);
       setShowAdminBoard(false);
-      setUserOrganization("");
-      setGravatarUrl("");
+      setUserOrganization('');
+      setGravatarUrl('');
       setGravatarFetched(false);
-      setSessionEnded({ returnTo: detail?.returnTo || "/" });
+      setSessionEnded({ returnTo: detail?.returnTo || '/' });
     });
 
-    const loginCleanup = EventBus.on("login", (userData) => {
+    const loginCleanup = EventBus.on('login', userData => {
       setSessionEnded(null);
       setCurrentUser(userData);
-      setShowAdminBoard(
-        userData.roles && userData.roles.includes("ROLE_ADMIN")
-      );
+      setShowAdminBoard(userData.roles && userData.roles.includes('ROLE_ADMIN'));
       setUserOrganization(userData.organization);
 
       if (userData.preferredTheme) {
@@ -341,14 +317,14 @@ const App = () => {
       // empty organization until the next full page load.
       const nextOrganization = resolveActiveOrganization(
         userData,
-        localStorage.getItem("activeOrganization")
+        localStorage.getItem('activeOrganization')
       );
 
       setActiveOrganization(nextOrganization);
       if (nextOrganization) {
-        localStorage.setItem("activeOrganization", nextOrganization);
+        localStorage.setItem('activeOrganization', nextOrganization);
       } else {
-        localStorage.removeItem("activeOrganization");
+        localStorage.removeItem('activeOrganization');
       }
 
       if (userData.avatarUrl) {
@@ -358,23 +334,20 @@ const App = () => {
       }
     });
 
-    const organizationUpdateCleanup = EventBus.on(
-      "organizationUpdated",
-      (data) => {
-        setUserOrganization(data.newName);
-        // Use functional update to avoid stale closure
-        setCurrentUser((c) => (c ? { ...c, organization: data.newName } : c));
+    const organizationUpdateCleanup = EventBus.on('organizationUpdated', data => {
+      setUserOrganization(data.newName);
+      // Use functional update to avoid stale closure
+      setCurrentUser(c => (c ? { ...c, organization: data.newName } : c));
 
-        // Update activeOrganization if it matches the renamed organization
-        setActiveOrganization((currentActive) => {
-          if (currentActive === data.oldName) {
-            localStorage.setItem("activeOrganization", data.newName);
-            return data.newName;
-          }
-          return currentActive;
-        });
-      }
-    );
+      // Update activeOrganization if it matches the renamed organization
+      setActiveOrganization(currentActive => {
+        if (currentActive === data.oldName) {
+          localStorage.setItem('activeOrganization', data.newName);
+          return data.newName;
+        }
+        return currentActive;
+      });
+    });
 
     return () => {
       logoutCleanup();
@@ -392,7 +365,7 @@ const App = () => {
       // Refresh token at 80% of its lifetime (24 hours * 0.8 = 19.2 hours)
       intervalId = setInterval(() => {
         if (mounted) {
-          AuthService.refreshUserData().then((updatedUser) => {
+          AuthService.refreshUserData().then(updatedUser => {
             if (mounted && updatedUser) {
               setCurrentUser(updatedUser);
             }
@@ -424,8 +397,8 @@ const App = () => {
     if (!currentUser || !isPushEnabled()) {
       return undefined;
     }
-    const reportSyncFailure = (error) => {
-      log.app.error("Push subscription sync failed", {
+    const reportSyncFailure = error => {
+      log.app.error('Push subscription sync failed', {
         error: error.message,
       });
     };
@@ -442,7 +415,7 @@ const App = () => {
 
   if (setupComplete === null) {
     // Show a loading indicator while checking setup status
-    return <div>{t("loading")}</div>;
+    return <div>{t('loading')}</div>;
   }
 
   // The organization-management board is gated per-org (org admin/owner of
@@ -473,15 +446,15 @@ const App = () => {
           >
             <FaTriangleExclamation className="flex-shrink-0" />
             <div className="flex-grow-1">
-              <strong>{t("sessionEnded.title")}</strong>
-              <div className="small">{t("sessionEnded.body")}</div>
+              <strong>{t('sessionEnded.title')}</strong>
+              <div className="small">{t('sessionEnded.body')}</div>
             </div>
             <Link
               to={`/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`}
               className="btn btn-primary btn-sm"
               onClick={() => setSessionEnded(null)}
             >
-              {t("sessionEnded.signIn")}
+              {t('sessionEnded.signIn')}
             </Link>
           </div>
         )}
@@ -489,16 +462,11 @@ const App = () => {
           <Routes>
             <Route
               path="/setup"
-              element={
-                setupComplete ? <Navigate to="/register" replace /> : <Setup />
-              }
+              element={setupComplete ? <Navigate to="/register" replace /> : <Setup />}
             />
             {setupComplete ? (
               <>
-                <Route
-                  path="/"
-                  element={<Organization showOnlyPublic theme={theme} />}
-                />
+                <Route path="/" element={<Organization showOnlyPublic theme={theme} />} />
                 <Route path="/about" element={<About />} />
                 <Route
                   path="/organizations/discover"
@@ -515,28 +483,15 @@ const App = () => {
                 <Route path="/admin" element={<Admin />} />
                 <Route
                   path="/org-console"
-                  element={
-                    <OrgConsole currentOrganization={activeOrganization} />
-                  }
+                  element={<OrgConsole currentOrganization={activeOrganization} />}
                 />
                 <Route
                   path="/:organization"
-                  element={
-                    <Organization showOnlyPublic={false} theme={theme} />
-                  }
+                  element={<Organization showOnlyPublic={false} theme={theme} />}
                 />
-                <Route
-                  path="/:organization/:name"
-                  element={<Box theme={theme} />}
-                />
-                <Route
-                  path="/:organization/:name/:version"
-                  element={<Version />}
-                />
-                <Route
-                  path="/:organization/:name/:version/:providerName"
-                  element={<Provider />}
-                />
+                <Route path="/:organization/:name" element={<Box theme={theme} />} />
+                <Route path="/:organization/:name/:version" element={<Version />} />
+                <Route path="/:organization/:name/:version/:providerName" element={<Provider />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </>
             ) : (

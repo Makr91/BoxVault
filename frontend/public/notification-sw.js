@@ -1,4 +1,4 @@
-self.addEventListener("push", (event) => {
+self.addEventListener('push', event => {
   if (!event.data) {
     return;
   }
@@ -13,7 +13,7 @@ self.addEventListener("push", (event) => {
   const { title, body, icon, tag, data, actions } = payload;
 
   event.waitUntil(
-    self.registration.showNotification(title || "BoxVault", {
+    self.registration.showNotification(title || 'BoxVault', {
       body,
       icon,
       tag,
@@ -23,16 +23,13 @@ self.addEventListener("push", (event) => {
   );
 });
 
-self.addEventListener("notificationclick", (event) => {
+self.addEventListener('notificationclick', event => {
   event.notification.close();
-  event.waitUntil(
-    self.clients.openWindow(event.notification.data?.navigate || "/")
-  );
+  event.waitUntil(self.clients.openWindow(event.notification.data?.navigate || '/'));
 });
 
-self.addEventListener("pushsubscriptionchange", (event) => {
-  const applicationServerKey =
-    event.oldSubscription?.options?.applicationServerKey;
+self.addEventListener('pushsubscriptionchange', event => {
+  const applicationServerKey = event.oldSubscription?.options?.applicationServerKey;
 
   if (!applicationServerKey) {
     return;
@@ -43,12 +40,10 @@ self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil(
     self.registration.pushManager
       .subscribe({ userVisibleOnly: true, applicationServerKey })
-      .then(() =>
-        self.clients.matchAll({ type: "window", includeUncontrolled: true })
-      )
-      .then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: "pushsubscriptionchange", oldEndpoint });
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'pushsubscriptionchange', oldEndpoint });
         });
       })
   );

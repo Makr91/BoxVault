@@ -1,4 +1,4 @@
-import logger from "loglevel";
+import logger from 'loglevel';
 
 let configLoaded = false;
 let configPromise = null;
@@ -18,16 +18,16 @@ const loadConfig = () => {
       return data;
     } catch {
       return {
-        environment: "development",
+        environment: 'development',
         frontend_logging: {
           enabled: true,
-          level: "debug",
+          level: 'debug',
           categories: {
-            app: "debug",
-            auth: "debug",
-            api: "debug",
-            file: "debug",
-            component: "debug",
+            app: 'debug',
+            auth: 'debug',
+            api: 'debug',
+            file: 'debug',
+            component: 'debug',
           },
         },
       };
@@ -37,15 +37,15 @@ const loadConfig = () => {
   return configPromise;
 };
 
-const mapLoglevelToMethod = (level) => {
+const mapLoglevelToMethod = level => {
   const mapping = {
-    error: "error",
-    warn: "warn",
-    info: "info",
-    debug: "debug",
-    trace: "trace",
+    error: 'error',
+    warn: 'warn',
+    info: 'info',
+    debug: 'debug',
+    trace: 'trace',
   };
-  return mapping[level] || "info";
+  return mapping[level] || 'info';
 };
 
 const initializeLoggers = async () => {
@@ -56,18 +56,18 @@ const initializeLoggers = async () => {
   const config = await loadConfig();
   const loggingConfig = config.frontend_logging || {
     enabled: true,
-    level: "debug",
+    level: 'debug',
     categories: {
-      app: "debug",
-      auth: "debug",
-      api: "debug",
-      file: "debug",
-      component: "debug",
+      app: 'debug',
+      auth: 'debug',
+      api: 'debug',
+      file: 'debug',
+      component: 'debug',
     },
   };
 
   if (!loggingConfig.enabled) {
-    logger.setLevel("silent");
+    logger.setLevel('silent');
     return;
   }
 
@@ -75,12 +75,12 @@ const initializeLoggers = async () => {
   logger.setLevel(defaultLevel);
 
   const categoryLoggers = {
-    app: logger.getLogger("app"),
-    auth: logger.getLogger("auth"),
-    api: logger.getLogger("api"),
-    file: logger.getLogger("file"),
-    component: logger.getLogger("component"),
-    error: logger.getLogger("error"),
+    app: logger.getLogger('app'),
+    auth: logger.getLogger('auth'),
+    api: logger.getLogger('api'),
+    file: logger.getLogger('file'),
+    component: logger.getLogger('component'),
+    error: logger.getLogger('error'),
   };
 
   Object.entries(loggingConfig.categories).forEach(([category, level]) => {
@@ -93,17 +93,14 @@ const initializeLoggers = async () => {
   configLoaded = true;
 };
 
-const createLazyLogger = (category) => {
+const createLazyLogger = category => {
   const categoryLogger = logger.getLogger(category);
 
   return {
     trace: (message, metadata) => {
       initializeLoggers().then(() => {
         if (metadata && Object.keys(metadata).length > 0) {
-          categoryLogger.trace(
-            `[${category.toUpperCase()}] ${message}`,
-            metadata
-          );
+          categoryLogger.trace(`[${category.toUpperCase()}] ${message}`, metadata);
         } else {
           categoryLogger.trace(`[${category.toUpperCase()}] ${message}`);
         }
@@ -112,10 +109,7 @@ const createLazyLogger = (category) => {
     debug: (message, metadata) => {
       initializeLoggers().then(() => {
         if (metadata && Object.keys(metadata).length > 0) {
-          categoryLogger.debug(
-            `[${category.toUpperCase()}] ${message}`,
-            metadata
-          );
+          categoryLogger.debug(`[${category.toUpperCase()}] ${message}`, metadata);
         } else {
           categoryLogger.debug(`[${category.toUpperCase()}] ${message}`);
         }
@@ -124,10 +118,7 @@ const createLazyLogger = (category) => {
     info: (message, metadata) => {
       initializeLoggers().then(() => {
         if (metadata && Object.keys(metadata).length > 0) {
-          categoryLogger.info(
-            `[${category.toUpperCase()}] ${message}`,
-            metadata
-          );
+          categoryLogger.info(`[${category.toUpperCase()}] ${message}`, metadata);
         } else {
           categoryLogger.info(`[${category.toUpperCase()}] ${message}`);
         }
@@ -136,10 +127,7 @@ const createLazyLogger = (category) => {
     warn: (message, metadata) => {
       initializeLoggers().then(() => {
         if (metadata && Object.keys(metadata).length > 0) {
-          categoryLogger.warn(
-            `[${category.toUpperCase()}] ${message}`,
-            metadata
-          );
+          categoryLogger.warn(`[${category.toUpperCase()}] ${message}`, metadata);
         } else {
           categoryLogger.warn(`[${category.toUpperCase()}] ${message}`);
         }
@@ -148,10 +136,7 @@ const createLazyLogger = (category) => {
     error: (message, metadata) => {
       initializeLoggers().then(() => {
         if (metadata && Object.keys(metadata).length > 0) {
-          categoryLogger.error(
-            `[${category.toUpperCase()}] ${message}`,
-            metadata
-          );
+          categoryLogger.error(`[${category.toUpperCase()}] ${message}`, metadata);
         } else {
           categoryLogger.error(`[${category.toUpperCase()}] ${message}`);
         }
@@ -161,12 +146,12 @@ const createLazyLogger = (category) => {
 };
 
 export const log = {
-  app: createLazyLogger("app"),
-  auth: createLazyLogger("auth"),
-  api: createLazyLogger("api"),
-  file: createLazyLogger("file"),
-  component: createLazyLogger("component"),
-  error: createLazyLogger("error"),
+  app: createLazyLogger('app'),
+  auth: createLazyLogger('auth'),
+  api: createLazyLogger('api'),
+  file: createLazyLogger('file'),
+  component: createLazyLogger('component'),
+  error: createLazyLogger('error'),
 };
 
 export default log;

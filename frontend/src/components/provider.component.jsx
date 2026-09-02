@@ -1,50 +1,50 @@
-import { useState, useEffect } from "react";
-import Table from "react-bootstrap/Table";
-import { useTranslation } from "react-i18next";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import Table from 'react-bootstrap/Table';
+import { useTranslation } from 'react-i18next';
+import { useParams, useNavigate } from 'react-router-dom';
 
-import ArchitectureService from "../services/architecture.service";
-import BoxDataService from "../services/box.service";
-import FileService from "../services/file.service";
-import ProviderService from "../services/provider.service";
-import { formatFileSize } from "../utils/fileSize";
-import { log } from "../utils/Logger";
-import { canManageBox } from "../utils/permissions";
+import ArchitectureService from '../services/architecture.service';
+import BoxDataService from '../services/box.service';
+import FileService from '../services/file.service';
+import ProviderService from '../services/provider.service';
+import { formatFileSize } from '../utils/fileSize';
+import { log } from '../utils/Logger';
+import { canManageBox } from '../utils/permissions';
 
-import BoxPageHeader from "./BoxPageHeader.component";
-import ConfirmationModal from "./confirmation.component";
+import BoxPageHeader from './BoxPageHeader.component';
+import ConfirmationModal from './confirmation.component';
 
 const Provider = () => {
   const { t } = useTranslation();
   const { organization, name, version, providerName } = useParams();
   const navigate = useNavigate();
-  const [originalProviderName, setOriginalProviderName] = useState("");
+  const [originalProviderName, setOriginalProviderName] = useState('');
   const [architectures, setArchitectures] = useState([]);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const [currentProvider, setCurrentProvider] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [showAddArchitectureForm, setShowAddArchitectureForm] = useState(false);
   const [newArchitecture, setNewArchitecture] = useState({
-    name: "",
+    name: '',
     defaultBox: false,
   });
   const [selectedFiles, setSelectedFiles] = useState(undefined);
   const [progress, setProgress] = useState(0);
-  const [checksumType, setChecksumType] = useState("NULL");
-  const [checksum, setChecksum] = useState("");
+  const [checksumType, setChecksumType] = useState('NULL');
+  const [checksum, setChecksum] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
-  const checksumTypes = ["NULL", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"];
+  const checksumTypes = ['NULL', 'MD5', 'SHA1', 'SHA256', 'SHA384', 'SHA512'];
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const required = (value) => (value ? undefined : t("validation.required"));
+  const required = value => (value ? undefined : t('validation.required'));
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) =>
-    validCharsRegex.test(value) ? undefined : t("validation.invalidName");
+  const validateName = value =>
+    validCharsRegex.test(value) ? undefined : t('validation.invalidName');
 
   const validateChecksum = (checksumValue, type) => {
     const checksumPatterns = {
@@ -55,28 +55,28 @@ const Provider = () => {
       SHA512: /^[a-fA-F0-9]{128}$/,
     };
 
-    if (type === "NULL") {
+    if (type === 'NULL') {
       return undefined;
     }
 
     const pattern = checksumPatterns[type];
     if (!pattern) {
-      return t("validation.unsupportedChecksum");
+      return t('validation.unsupportedChecksum');
     }
 
     return pattern.test(checksumValue)
       ? undefined
-      : t("validation.invalidChecksumFormat", { type });
+      : t('validation.invalidChecksumFormat', { type });
   };
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = text => {
     navigator.clipboard.writeText(text).then(
       () => {
-        setMessage(t("architecture.checksumCopied"));
-        setMessageType("success");
+        setMessage(t('architecture.checksumCopied'));
+        setMessageType('success');
       },
-      (err) => {
-        log.component.error("Could not copy text to clipboard", {
+      err => {
+        log.component.error('Could not copy text to clipboard', {
           error: err.message,
         });
       }
@@ -85,15 +85,10 @@ const Provider = () => {
 
   const checkProviderExists = async (org, boxName, versionNum, provider) => {
     try {
-      const response = await ProviderService.getProvider(
-        org,
-        boxName,
-        versionNum,
-        provider
-      );
+      const response = await ProviderService.getProvider(org, boxName, versionNum, provider);
       return !!response.data;
     } catch (error) {
-      log.api.error("Error checking provider existence", {
+      log.api.error('Error checking provider existence', {
         provider,
         error: error.message,
       });
@@ -104,19 +99,19 @@ const Provider = () => {
   const deleteProvider = () => {
     ProviderService.deleteProvider(organization, name, version, providerName)
       .then(() => {
-        setMessage(t("provider.deleted"));
-        setMessageType("success");
+        setMessage(t('provider.deleted'));
+        setMessageType('success');
         navigate(`/${organization}/${name}/${version}`);
       })
-      .catch((e) => {
-        log.api.error("Error deleting provider", {
+      .catch(e => {
+        log.api.error('Error deleting provider', {
           providerName,
           error: e.message,
         });
       });
   };
 
-  const deleteArchitecture = async (architectureName) => {
+  const deleteArchitecture = async architectureName => {
     try {
       await ArchitectureService.deleteArchitecture(
         organization,
@@ -125,37 +120,31 @@ const Provider = () => {
         providerName,
         architectureName
       );
-      setMessage(t("architecture.deleted"));
-      setMessageType("success");
-      setArchitectures(
-        architectures.filter((arch) => arch.name !== architectureName)
-      );
+      setMessage(t('architecture.deleted'));
+      setMessageType('success');
+      setArchitectures(architectures.filter(arch => arch.name !== architectureName));
     } catch (error) {
-      log.component.error("Error deleting architecture", {
+      log.component.error('Error deleting architecture', {
         architectureName,
         error: error.message,
       });
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
+      if (error.response && error.response.data && error.response.data.message) {
         setMessage(error.response.data.message);
-        setMessageType("danger");
+        setMessageType('danger');
       } else {
-        setMessage(t("architecture.deleteError"));
-        setMessageType("danger");
+        setMessage(t('architecture.deleteError'));
+        setMessageType('danger');
       }
     }
   };
 
   const handleProviderDeleteClick = () => {
-    setItemToDelete({ type: "provider", name: providerName });
+    setItemToDelete({ type: 'provider', name: providerName });
     setShowDeleteModal(true);
   };
 
-  const handleArchitectureDeleteClick = (architectureName) => {
-    setItemToDelete({ type: "architecture", name: architectureName });
+  const handleArchitectureDeleteClick = architectureName => {
+    setItemToDelete({ type: 'architecture', name: architectureName });
     setShowDeleteModal(true);
   };
 
@@ -166,9 +155,9 @@ const Provider = () => {
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      if (itemToDelete.type === "provider") {
+      if (itemToDelete.type === 'provider') {
         deleteProvider();
-      } else if (itemToDelete.type === "architecture") {
+      } else if (itemToDelete.type === 'architecture') {
         deleteArchitecture(itemToDelete.name);
       }
       handleCloseDeleteModal();
@@ -181,12 +170,12 @@ const Provider = () => {
 
     const loadData = async () => {
       // Authorization mirrors the backend: box owner or org admin/owner.
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = JSON.parse(localStorage.getItem('user'));
       try {
         const boxResponse = await BoxDataService.get(organization, name);
         setIsAuthorized(canManageBox(user, organization, boxResponse.data));
       } catch (e) {
-        log.api.error("Error checking box authorization", {
+        log.api.error('Error checking box authorization', {
           boxName: name,
           error: e.message,
         });
@@ -203,13 +192,13 @@ const Provider = () => {
         setCurrentProvider(response.data);
         setOriginalProviderName(response.data.name);
       } catch (e) {
-        log.api.error("Error fetching provider", {
+        log.api.error('Error fetching provider', {
           providerName,
           error: e.message,
         });
         setCurrentProvider(null);
-        setMessage(t("provider.notFound"));
-        setMessageType("danger");
+        setMessage(t('provider.notFound'));
+        setMessageType('danger');
       }
 
       try {
@@ -220,16 +209,10 @@ const Provider = () => {
           providerName
         );
         const architecturesWithInfo = await Promise.all(
-          response.data.map(async (architecture) => {
+          response.data.map(async architecture => {
             try {
               const [fileInfo, downloadLink] = await Promise.all([
-                FileService.info(
-                  organization,
-                  name,
-                  version,
-                  providerName,
-                  architecture.name
-                ),
+                FileService.info(organization, name, version, providerName, architecture.name),
                 FileService.getDownloadLink(
                   organization,
                   name,
@@ -248,7 +231,7 @@ const Provider = () => {
                 downloadCount: fileInfo.data.downloadCount,
               };
             } catch (error) {
-              log.api.error("Error fetching file info", {
+              log.api.error('Error fetching file info', {
                 architectureName: architecture.name,
                 error: error.message,
               });
@@ -266,7 +249,7 @@ const Provider = () => {
         );
         setArchitectures(architecturesWithInfo);
       } catch (e) {
-        log.api.error("Error fetching architectures", {
+        log.api.error('Error fetching architectures', {
           providerName,
           error: e.message,
         });
@@ -276,49 +259,48 @@ const Provider = () => {
     loadData();
   }, [organization, name, version, providerName, t]);
 
-  const handleInputChange = (event) => {
+  const handleInputChange = event => {
     const { name: fieldName, value } = event.target;
     setCurrentProvider({ ...currentProvider, [fieldName]: value });
 
-    if (fieldName === "name") {
+    if (fieldName === 'name') {
       const error = required(value) || validateName(value);
       setValidationErrors({ ...validationErrors, name: error });
     }
   };
 
-  const handleArchitectureInputChange = (event) => {
+  const handleArchitectureInputChange = event => {
     const { name: fieldName, value } = event.target;
     setNewArchitecture({ ...newArchitecture, [fieldName]: value });
 
-    if (fieldName === "name") {
+    if (fieldName === 'name') {
       const error = required(value) || validateName(value);
-      setValidationErrors((prevErrors) => ({
+      setValidationErrors(prevErrors => ({
         ...prevErrors,
         architectureName: error,
       }));
     }
   };
 
-  const handleChecksumChange = (event) => {
+  const handleChecksumChange = event => {
     const { value } = event.target;
     setChecksum(value);
 
-    if (checksumType !== "NULL") {
+    if (checksumType !== 'NULL') {
       const error = required(value) || validateChecksum(value, checksumType);
-      setValidationErrors((prevErrors) => ({ ...prevErrors, checksum: error }));
+      setValidationErrors(prevErrors => ({ ...prevErrors, checksum: error }));
     }
   };
 
-  const handleChecksumTypeChange = (event) => {
+  const handleChecksumTypeChange = event => {
     const selectedType = event.target.value;
     setChecksumType(selectedType);
 
-    if (selectedType !== "NULL") {
-      const error =
-        required(checksum) || validateChecksum(checksum, selectedType);
-      setValidationErrors((prevErrors) => ({ ...prevErrors, checksum: error }));
+    if (selectedType !== 'NULL') {
+      const error = required(checksum) || validateChecksum(checksum, selectedType);
+      setValidationErrors(prevErrors => ({ ...prevErrors, checksum: error }));
     } else {
-      setValidationErrors((prevErrors) => {
+      setValidationErrors(prevErrors => {
         const newErrors = { ...prevErrors };
         delete newErrors.checksum;
         return newErrors;
@@ -326,11 +308,11 @@ const Provider = () => {
     }
   };
 
-  const selectFile = (event) => {
+  const selectFile = event => {
     setSelectedFiles(event.target.files);
   };
 
-  const saveProvider = async (event) => {
+  const saveProvider = async event => {
     event.preventDefault();
 
     if (currentProvider.name !== originalProviderName) {
@@ -341,8 +323,8 @@ const Provider = () => {
         currentProvider.name
       );
       if (providerExists) {
-        setMessage(t("provider.exists"));
-        setMessageType("danger");
+        setMessage(t('provider.exists'));
+        setMessageType('danger');
         return;
       }
     }
@@ -353,45 +335,39 @@ const Provider = () => {
     };
 
     try {
-      await ProviderService.updateProvider(
-        organization,
-        name,
-        version,
-        providerName,
-        data
-      );
-      setMessage(t("provider.updated"));
-      setMessageType("success");
+      await ProviderService.updateProvider(organization, name, version, providerName, data);
+      setMessage(t('provider.updated'));
+      setMessageType('success');
       setEditMode(false);
       if (providerName !== currentProvider.name) {
         navigate(`/${organization}/${name}/${version}/${currentProvider.name}`);
       }
     } catch (e) {
-      log.api.error("Error updating provider", {
+      log.api.error('Error updating provider', {
         providerName: currentProvider.name,
         error: e.message,
       });
       if (e.response && e.response.data && e.response.data.message) {
         setMessage(e.response.data.message);
       } else {
-        setMessage(t("provider.updateError"));
+        setMessage(t('provider.updateError'));
       }
-      setMessageType("danger");
+      setMessageType('danger');
     }
   };
 
-  const handleProgressUpdate = (progressEvent) => {
-    if (progressEvent.status === "assembling") {
+  const handleProgressUpdate = progressEvent => {
+    if (progressEvent.status === 'assembling') {
       setProgress(100);
-      setMessage(t("architecture.assembling"));
-      setMessageType("info");
+      setMessage(t('architecture.assembling'));
+      setMessageType('info');
       return;
     }
 
-    if (progressEvent.status === "complete") {
+    if (progressEvent.status === 'complete') {
       setProgress(100);
-      setMessage(t("architecture.uploadComplete"));
-      setMessageType("success");
+      setMessage(t('architecture.uploadComplete'));
+      setMessageType('success');
       return;
     }
 
@@ -400,29 +376,29 @@ const Provider = () => {
     }
   };
 
-  const addArchitecture = async (event) => {
+  const addArchitecture = async event => {
     event.preventDefault();
-    setMessage("");
+    setMessage('');
     setProgress(0);
 
     try {
       if (!selectedFiles || selectedFiles.length === 0) {
-        throw new Error(t("architecture.selectFile"));
+        throw new Error(t('architecture.selectFile'));
       }
 
       if (!newArchitecture.name) {
-        throw new Error(t("architecture.enterName"));
+        throw new Error(t('architecture.enterName'));
       }
 
       const [currentFile] = selectedFiles;
-      log.file.info("Starting upload process", {
+      log.file.info('Starting upload process', {
         fileName: currentFile.name,
         fileSize: currentFile.size,
         architectureName: newArchitecture.name,
       });
 
-      setMessage(t("architecture.uploadStarting"));
-      setMessageType("info");
+      setMessage(t('architecture.uploadStarting'));
+      setMessageType('info');
 
       const architectureData = {
         ...newArchitecture,
@@ -452,14 +428,14 @@ const Provider = () => {
         handleProgressUpdate
       );
 
-      log.file.info("Upload completed", {
+      log.file.info('Upload completed', {
         uploadResult,
         status: uploadResult.details?.status,
       });
 
-      if (uploadResult.details?.status === "assembling") {
-        setMessage(t("architecture.uploadAssembling"));
-        setMessageType("info");
+      if (uploadResult.details?.status === 'assembling') {
+        setMessage(t('architecture.uploadAssembling'));
+        setMessageType('info');
       }
 
       const updatedArchitectures = await ArchitectureService.getArchitectures(
@@ -471,18 +447,18 @@ const Provider = () => {
 
       setArchitectures(updatedArchitectures.data);
       setShowAddArchitectureForm(false);
-      setNewArchitecture({ name: "", defaultBox: false });
-      setChecksum("");
-      setChecksumType("NULL");
+      setNewArchitecture({ name: '', defaultBox: false });
+      setChecksum('');
+      setChecksumType('NULL');
       setSelectedFiles(undefined);
       setProgress(0);
     } catch (error) {
-      log.file.error("Upload failed", {
+      log.file.error('Upload failed', {
         error: error.message,
         stack: error.stack,
       });
       setMessage(error.response?.data?.message || t(error.message));
-      setMessageType("danger");
+      setMessageType('danger');
     }
   };
 
@@ -490,12 +466,12 @@ const Provider = () => {
     setEditMode(false);
   };
 
-  const handleChecksumClick = (checksumText) => {
+  const handleChecksumClick = checksumText => {
     copyToClipboard(checksumText);
   };
 
   const handleChecksumKeyPress = (event, checksumText) => {
-    if (event.key === "Enter" || event.key === " ") {
+    if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       copyToClipboard(checksumText);
     }
@@ -504,7 +480,7 @@ const Provider = () => {
   const renderProviderEditForm = () => (
     <form onSubmit={saveProvider}>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>{t("provider.edit")}</h4>
+        <h4>{t('provider.edit')}</h4>
         <div>
           {isAuthorized && (
             <>
@@ -513,14 +489,10 @@ const Provider = () => {
                 className="btn btn-success me-2"
                 disabled={!!validationErrors.name}
               >
-                {t("buttons.save")}
+                {t('buttons.save')}
               </button>
-              <button
-                type="button"
-                className="btn btn-secondary me-2"
-                onClick={cancelEdit}
-              >
-                {t("buttons.cancel")}
+              <button type="button" className="btn btn-secondary me-2" onClick={cancelEdit}>
+                {t('buttons.cancel')}
               </button>
             </>
           )}
@@ -528,12 +500,12 @@ const Provider = () => {
             className="btn btn-dark me-2"
             onClick={() => navigate(`/${organization}/${name}/${version}`)}
           >
-            {t("actions.back")}
+            {t('actions.back')}
           </button>
         </div>
       </div>
       <div className="form-group col-md-3">
-        <label htmlFor="name">{t("provider.name")}</label>
+        <label htmlFor="name">{t('provider.name')}</label>
         <input
           type="text"
           className="form-control"
@@ -543,12 +515,10 @@ const Provider = () => {
           name="name"
           required
         />
-        {validationErrors.name && (
-          <div className="text-danger">{validationErrors.name}</div>
-        )}
+        {validationErrors.name && <div className="text-danger">{validationErrors.name}</div>}
       </div>
       <div className="form-group">
-        <label htmlFor="description">{t("provider.description")}</label>
+        <label htmlFor="description">{t('provider.description')}</label>
         <textarea
           className="form-control"
           id="description"
@@ -565,17 +535,11 @@ const Provider = () => {
       <>
         {isAuthorized && (
           <>
-            <button
-              className="btn btn-primary me-2"
-              onClick={() => setEditMode(true)}
-            >
-              {t("buttons.edit")}
+            <button className="btn btn-primary me-2" onClick={() => setEditMode(true)}>
+              {t('buttons.edit')}
             </button>
-            <button
-              className="btn btn-danger me-2"
-              onClick={handleProviderDeleteClick}
-            >
-              {t("buttons.delete")}
+            <button className="btn btn-danger me-2" onClick={handleProviderDeleteClick}>
+              {t('buttons.delete')}
             </button>
           </>
         )}
@@ -583,7 +547,7 @@ const Provider = () => {
           className="btn btn-dark me-2"
           onClick={() => navigate(`/${organization}/${name}/${version}`)}
         >
-          {t("actions.back")}
+          {t('actions.back')}
         </button>
       </>
     );
@@ -621,7 +585,7 @@ const Provider = () => {
             name="defaultBox"
           />
           <label className="form-check-label" htmlFor="defaultBoxSwitch">
-            {t("architecture.defaultBox")}
+            {t('architecture.defaultBox')}
           </label>
         </div>
         <div className="mb-3">
@@ -632,12 +596,12 @@ const Provider = () => {
               className="d-none"
               accept=".box,application/octet-stream"
             />
-            {t("architecture.chooseFile")}
+            {t('architecture.chooseFile')}
           </label>
           {selectedFiles && selectedFiles[0] && (
             <div className="mt-2">
               <small className="text-muted">
-                {t("architecture.selected", {
+                {t('architecture.selected', {
                   name: selectedFiles[0].name,
                   size: formatFileSize(selectedFiles[0].size),
                 })}
@@ -663,23 +627,17 @@ const Provider = () => {
               {selectedFiles[0] && (
                 <div className="upload-stats d-flex justify-content-between">
                   <small>
-                    <strong>{t("architecture.fileSize")}:</strong>{" "}
+                    <strong>{t('architecture.fileSize')}:</strong>{' '}
                     {formatFileSize(selectedFiles[0].size)}
                   </small>
                   <small>
-                    <strong>{t("architecture.uploaded")}:</strong>{" "}
-                    {formatFileSize(
-                      Math.round((progress / 100) * selectedFiles[0].size)
-                    )}{" "}
-                    ({progress}%)
+                    <strong>{t('architecture.uploaded')}:</strong>{' '}
+                    {formatFileSize(Math.round((progress / 100) * selectedFiles[0].size))} (
+                    {progress}%)
                   </small>
                   <small>
-                    <strong>{t("architecture.remaining")}:</strong>{" "}
-                    {formatFileSize(
-                      Math.round(
-                        ((100 - progress) / 100) * selectedFiles[0].size
-                      )
-                    )}
+                    <strong>{t('architecture.remaining')}:</strong>{' '}
+                    {formatFileSize(Math.round(((100 - progress) / 100) * selectedFiles[0].size))}
                   </small>
                 </div>
               )}
@@ -687,7 +645,7 @@ const Provider = () => {
           </div>
         )}
         <div className="form-group col-md-3">
-          <label htmlFor="architectureName">{t("architecture.name")}</label>
+          <label htmlFor="architectureName">{t('architecture.name')}</label>
           <input
             type="text"
             className="form-control"
@@ -698,13 +656,11 @@ const Provider = () => {
             required
           />
           {validationErrors.architectureName && (
-            <div className="text-danger">
-              {validationErrors.architectureName}
-            </div>
+            <div className="text-danger">{validationErrors.architectureName}</div>
           )}
         </div>
         <div className="form-group col-md-3">
-          <label htmlFor="checksumType">{t("architecture.checksumType")}</label>
+          <label htmlFor="checksumType">{t('architecture.checksumType')}</label>
           <select
             className="form-control"
             id="checksumType"
@@ -712,16 +668,16 @@ const Provider = () => {
             onChange={handleChecksumTypeChange}
             name="checksumType"
           >
-            {checksumTypes.map((type) => (
+            {checksumTypes.map(type => (
               <option key={type} value={type}>
                 {type}
               </option>
             ))}
           </select>
         </div>
-        {checksumType !== "NULL" && (
+        {checksumType !== 'NULL' && (
           <div className="form-group">
-            <label htmlFor="checksum">{t("architecture.checksum")}</label>
+            <label htmlFor="checksum">{t('architecture.checksum')}</label>
             <input
               type="text"
               className="form-control"
@@ -748,17 +704,12 @@ const Provider = () => {
       )}
       <div className="provider-form">
         {currentProvider ? (
-          <div>
-            {editMode ? renderProviderEditForm() : renderProviderDetails()}
-          </div>
+          <div>{editMode ? renderProviderEditForm() : renderProviderDetails()}</div>
         ) : (
           <div>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <button
-                className="btn btn-dark me-2"
-                onClick={() => navigate(`/`)}
-              >
-                {t("actions.back")}
+              <button className="btn btn-dark me-2" onClick={() => navigate(`/`)}>
+                {t('actions.back')}
               </button>
             </div>
           </div>
@@ -767,18 +718,14 @@ const Provider = () => {
       {currentProvider && (
         <div className="list-table mt-4">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4>{t("provider.architectures", { providerName })}</h4>
+            <h4>{t('provider.architectures', { providerName })}</h4>
             {isAuthorized && (
               <div>
                 <button
-                  className={`btn ${showAddArchitectureForm ? "btn-secondary" : "btn-outline-success"} me-2`}
-                  onClick={() =>
-                    setShowAddArchitectureForm(!showAddArchitectureForm)
-                  }
+                  className={`btn ${showAddArchitectureForm ? 'btn-secondary' : 'btn-outline-success'} me-2`}
+                  onClick={() => setShowAddArchitectureForm(!showAddArchitectureForm)}
                 >
-                  {showAddArchitectureForm
-                    ? t("buttons.cancel")
-                    : t("architecture.add")}
+                  {showAddArchitectureForm ? t('buttons.cancel') : t('architecture.add')}
                 </button>
                 {showAddArchitectureForm && (
                   <button
@@ -788,10 +735,10 @@ const Provider = () => {
                       !!validationErrors.architectureName ||
                       !selectedFiles ||
                       selectedFiles.length === 0 ||
-                      (checksumType !== "NULL" && !checksum)
+                      (checksumType !== 'NULL' && !checksum)
                     }
                   >
-                    {t("buttons.save")}
+                    {t('buttons.save')}
                   </button>
                 )}
               </div>
@@ -801,49 +748,39 @@ const Provider = () => {
           <Table striped className="table">
             <thead>
               <tr>
-                <th>{t("architecture.name")}</th>
-                <th>{t("architecture.defaultBox")}</th>
-                <th>{t("architecture.fileSize")}</th>
-                <th>{t("architecture.checksum")}</th>
-                <th>{t("architecture.checksumType")}</th>
-                <th>{t("buttons.download")}</th>
-                {isAuthorized && <th>{t("buttons.delete")}</th>}
+                <th>{t('architecture.name')}</th>
+                <th>{t('architecture.defaultBox')}</th>
+                <th>{t('architecture.fileSize')}</th>
+                <th>{t('architecture.checksum')}</th>
+                <th>{t('architecture.checksumType')}</th>
+                <th>{t('buttons.download')}</th>
+                {isAuthorized && <th>{t('buttons.delete')}</th>}
               </tr>
             </thead>
             <tbody>
-              {architectures.map((architecture) => (
+              {architectures.map(architecture => (
                 <tr key={architecture.name}>
                   <td>{architecture.name}</td>
-                  <td>{architecture.defaultBox ? t("yes") : t("no")}</td>
-                  <td>
-                    {architecture.fileSize
-                      ? formatFileSize(architecture.fileSize)
-                      : "N/A"}
-                  </td>
+                  <td>{architecture.defaultBox ? t('yes') : t('no')}</td>
+                  <td>{architecture.fileSize ? formatFileSize(architecture.fileSize) : 'N/A'}</td>
                   <td>
                     {architecture.checksum ? (
                       <span
-                        onClick={() =>
-                          handleChecksumClick(architecture.checksum)
-                        }
-                        onKeyPress={(e) =>
-                          handleChecksumKeyPress(e, architecture.checksum)
-                        }
+                        onClick={() => handleChecksumClick(architecture.checksum)}
+                        onKeyPress={e => handleChecksumKeyPress(e, architecture.checksum)}
                         role="button"
                         tabIndex={0}
-                        title={t("architecture.clickToCopy")}
+                        title={t('architecture.clickToCopy')}
                         className="text-clickable"
                       >
                         {architecture.checksum.substring(0, 20)}...
-                        {architecture.checksum.substring(
-                          architecture.checksum.length - 20
-                        )}
+                        {architecture.checksum.substring(architecture.checksum.length - 20)}
                       </span>
                     ) : (
-                      "N/A"
+                      'N/A'
                     )}
                   </td>
-                  <td>{architecture.checksumType || "N/A"}</td>
+                  <td>{architecture.checksumType || 'N/A'}</td>
                   <td>
                     {architecture.downloadUrl && (
                       <a
@@ -852,8 +789,7 @@ const Provider = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {t("buttons.download")} (
-                        {architecture.downloadCount || 0})
+                        {t('buttons.download')} ({architecture.downloadCount || 0})
                       </a>
                     )}
                   </td>
@@ -861,11 +797,9 @@ const Provider = () => {
                     <td>
                       <button
                         className="btn btn-danger me-2"
-                        onClick={() =>
-                          handleArchitectureDeleteClick(architecture.name)
-                        }
+                        onClick={() => handleArchitectureDeleteClick(architecture.name)}
                       >
-                        {t("buttons.delete")}
+                        {t('buttons.delete')}
                       </button>
                     </td>
                   )}

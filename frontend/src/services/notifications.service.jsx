@@ -1,27 +1,27 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
-const createSubscription = (subscription) =>
+const createSubscription = subscription =>
   axios.post(`${baseURL}/api/notifications/subscriptions`, subscription, {
     headers: {
       ...authHeader(),
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
   });
 
-const deleteSubscription = (endpoint) =>
+const deleteSubscription = endpoint =>
   axios.delete(`${baseURL}/api/notifications/subscriptions`, {
     headers: {
       ...authHeader(),
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     data: { endpoint },
   });
 
-const listNotifications = (params) =>
+const listNotifications = params =>
   axios.get(`${baseURL}/api/notifications`, {
     headers: authHeader(),
     params,
@@ -32,7 +32,7 @@ const getUnreadCount = () =>
     headers: authHeader(),
   });
 
-const markRead = (id) =>
+const markRead = id =>
   axios.post(
     `${baseURL}/api/notifications/${id}/read`,
     {},
@@ -50,7 +50,7 @@ const markAllRead = () =>
     }
   );
 
-const deleteNotification = (id) =>
+const deleteNotification = id =>
   axios.delete(`${baseURL}/api/notifications/${id}`, {
     headers: authHeader(),
   });

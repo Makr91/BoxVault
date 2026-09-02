@@ -1,7 +1,7 @@
-import PropTypes from "prop-types";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { FaEye, FaEyeSlash } from "react-icons/fa6";
+import PropTypes from 'prop-types';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 
 /**
  * ConfigFieldRenderer - Renders individual configuration fields with appropriate input types
@@ -12,18 +12,17 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
 
   const fieldProps = {
     key: field.path,
-    value: currentValue || "",
-    onChange: (e) => {
-      const value =
-        field.type === "boolean" ? e.target.checked : e.target.value;
+    value: currentValue || '',
+    onChange: e => {
+      const value = field.type === 'boolean' ? e.target.checked : e.target.value;
       onFieldChange(field.path, value);
     },
     placeholder: field.placeholder,
     required: field.required,
   };
 
-  const togglePasswordVisibility = (path) => {
-    setShowPasswords((prev) => ({
+  const togglePasswordVisibility = path => {
+    setShowPasswords(prev => ({
       ...prev,
       [path]: !prev[path],
     }));
@@ -31,7 +30,7 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
 
   const renderInputElement = () => {
     switch (field.type) {
-      case "boolean":
+      case 'boolean':
         return (
           <div className="form-check">
             <input
@@ -43,11 +42,11 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
             <label className="form-check-label">{field.label}</label>
           </div>
         );
-      case "select":
+      case 'select':
         return (
           <select className="form-select" {...fieldProps}>
             {field.options
-              ? field.options.map((option) => (
+              ? field.options.map(option => (
                   <option key={option} value={option}>
                     {option}
                   </option>
@@ -55,11 +54,11 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
               : null}
           </select>
         );
-      case "password":
+      case 'password':
         return (
           <div className="input-group">
             <input
-              type={showPasswords[field.path] ? "text" : "password"}
+              type={showPasswords[field.path] ? 'text' : 'password'}
               className="form-control"
               {...fieldProps}
             />
@@ -72,21 +71,19 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
             </button>
           </div>
         );
-      case "textarea":
+      case 'textarea':
         return <textarea className="form-control" {...fieldProps} rows={3} />;
-      case "array": {
+      case 'array': {
         const arrayValue = Array.isArray(currentValue)
-          ? currentValue.join(",")
-          : currentValue || "";
+          ? currentValue.join(',')
+          : currentValue || '';
         return (
           <input
             type="text"
             className="form-control"
             value={arrayValue}
-            onChange={(e) =>
-              onFieldChange(field.path, e.target.value.split(","))
-            }
-            placeholder={t("configField.commaSeparated")}
+            onChange={e => onFieldChange(field.path, e.target.value.split(','))}
+            placeholder={t('configField.commaSeparated')}
           />
         );
       }
@@ -97,15 +94,13 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
 
   return (
     <div className="mb-3" key={field.path}>
-      {field.type !== "boolean" ? (
+      {field.type !== 'boolean' ? (
         <label className="form-label" htmlFor={field.path}>
           {field.label}
         </label>
       ) : null}
       {renderInputElement()}
-      {field.description ? (
-        <div className="form-text">{field.description}</div>
-      ) : null}
+      {field.description ? <div className="form-text">{field.description}</div> : null}
     </div>
   );
 };

@@ -1,13 +1,13 @@
-import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { FaBuilding, FaCheck, FaCrown } from "react-icons/fa6";
+import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaBuilding, FaCheck, FaCrown } from 'react-icons/fa6';
 
-import BoxVaultLight from "../images/BoxVault.svg?react";
-import BoxVaultDark from "../images/BoxVaultDark.svg?react";
-import AuthService from "../services/auth.service";
-import UserService from "../services/user.service";
-import { log } from "../utils/Logger";
+import BoxVaultLight from '../images/BoxVault.svg?react';
+import BoxVaultDark from '../images/BoxVaultDark.svg?react';
+import AuthService from '../services/auth.service';
+import UserService from '../services/user.service';
+import { log } from '../utils/Logger';
 
 /**
  * OrganizationSwitcher - Modal component for switching active organization
@@ -46,15 +46,15 @@ const OrganizationSwitcher = ({
 
         // Fetch gravatars for all orgs in parallel
         const gravatarPromises = orgs
-          .filter((org) => org.emailHash || org.organization?.emailHash)
-          .map(async (org) => {
+          .filter(org => org.emailHash || org.organization?.emailHash)
+          .map(async org => {
             const name = org.name || org.organization?.name;
             try {
               const emailHash = org.emailHash || org.organization?.emailHash;
               const profile = await AuthService.getGravatarProfile(emailHash);
               return { name, url: profile?.avatar_url };
             } catch (error) {
-              log.api.error("Error fetching org gravatar", {
+              log.api.error('Error fetching org gravatar', {
                 orgName: name,
                 error: error.message,
               });
@@ -67,7 +67,7 @@ const OrganizationSwitcher = ({
           return;
         }
         const gravatars = {};
-        gravatarResults.forEach((result) => {
+        gravatarResults.forEach(result => {
           if (result.url) {
             gravatars[result.name] = result.url;
           }
@@ -75,7 +75,7 @@ const OrganizationSwitcher = ({
         setOrgGravatars(gravatars);
       } catch (error) {
         if (!cancelled) {
-          log.api.error("Error loading user organizations", {
+          log.api.error('Error loading user organizations', {
             error: error.message,
           });
           setUserOrganizations([]);
@@ -94,7 +94,7 @@ const OrganizationSwitcher = ({
     };
   }, [showModal, currentUser]);
 
-  const handleOrganizationClick = (orgName) => {
+  const handleOrganizationClick = orgName => {
     onOrganizationSwitch(orgName);
     setShowModal(false);
   };
@@ -103,15 +103,15 @@ const OrganizationSwitcher = ({
     setShowModal(false);
   };
 
-  const getRoleBadgeClass = (role) => {
+  const getRoleBadgeClass = role => {
     switch (role) {
-      case "owner":
-        return "bg-danger";
-      case "admin":
-        return "bg-warning";
-      case "member":
+      case 'owner':
+        return 'bg-danger';
+      case 'admin':
+        return 'bg-warning';
+      case 'member':
       default:
-        return "bg-secondary";
+        return 'bg-secondary';
     }
   };
 
@@ -129,7 +129,7 @@ const OrganizationSwitcher = ({
         />
       );
     }
-    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
+    const LogoComponent = theme === 'light' ? BoxVaultLight : BoxVaultDark;
     return <LogoComponent className="logo-md icon-with-margin" />;
   };
 
@@ -144,7 +144,7 @@ const OrganizationSwitcher = ({
           <div className="modal-header">
             <h5 className="modal-title">
               <FaBuilding className="me-2" />
-              {t("orgSwitcher.title")}
+              {t('orgSwitcher.title')}
             </h5>
             <button
               type="button"
@@ -157,21 +157,18 @@ const OrganizationSwitcher = ({
             {loading && (
               <div className="text-center">
                 <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">{t("loading")}</span>
+                  <span className="visually-hidden">{t('loading')}</span>
                 </div>
               </div>
             )}
             {!loading && userOrganizations.length === 0 && (
-              <div className="alert alert-info">
-                {t("orgSwitcher.noOrgsFound")}
-              </div>
+              <div className="alert alert-info">{t('orgSwitcher.noOrgsFound')}</div>
             )}
             {!loading && userOrganizations.length > 0 && (
               <div className="list-group">
-                {userOrganizations.map((org) => {
+                {userOrganizations.map(org => {
                   const orgName = org.name || org.organization?.name;
-                  const orgDesc =
-                    org.description || org.organization?.description;
+                  const orgDesc = org.description || org.organization?.description;
                   const isPrimary = !!org.isPrimary;
                   const orgId = org.id || org.organization?.id;
 
@@ -180,9 +177,7 @@ const OrganizationSwitcher = ({
                       key={orgId}
                       type="button"
                       className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                        activeOrganization === orgName
-                          ? "border-primary border-2"
-                          : ""
+                        activeOrganization === orgName ? 'border-primary border-2' : ''
                       }`}
                       onClick={() => handleOrganizationClick(orgName)}
                     >
@@ -191,28 +186,22 @@ const OrganizationSwitcher = ({
                           {renderOrgIcon(org, orgName)}
                           <div>
                             <div className="fw-bold">{orgName}</div>
-                            {orgDesc && (
-                              <small className="text-muted">{orgDesc}</small>
-                            )}
+                            {orgDesc && <small className="text-muted">{orgDesc}</small>}
                           </div>
                         </div>
                       </div>
                       <div className="d-flex align-items-center">
-                        <span
-                          className={`badge ${getRoleBadgeClass(org.role)} me-2`}
-                        >
+                        <span className={`badge ${getRoleBadgeClass(org.role)} me-2`}>
                           {t(`roles.${org.role}`)}
                         </span>
                         {isPrimary && (
                           <FaCrown
                             className="text-warning me-2"
-                            title={t("orgSwitcher.primaryOrg")}
-                            aria-label={t("orgSwitcher.primaryOrg")}
+                            title={t('orgSwitcher.primaryOrg')}
+                            aria-label={t('orgSwitcher.primaryOrg')}
                           />
                         )}
-                        {activeOrganization === orgName && (
-                          <FaCheck className="text-success" />
-                        )}
+                        {activeOrganization === orgName && <FaCheck className="text-success" />}
                       </div>
                     </button>
                   );

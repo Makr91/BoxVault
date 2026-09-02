@@ -1,6 +1,6 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
@@ -23,7 +23,7 @@ const getUserJoinRequests = () =>
 /**
  * Cancel user's own join request
  */
-const cancelJoinRequest = (requestId) =>
+const cancelJoinRequest = requestId =>
   axios.delete(`${baseURL}/api/user/requests/${requestId}`, {
     headers: authHeader(),
   });
@@ -31,7 +31,7 @@ const cancelJoinRequest = (requestId) =>
 /**
  * Get pending join requests for organization (admin/owner only)
  */
-const getOrgJoinRequests = (orgName) =>
+const getOrgJoinRequests = orgName =>
   axios.get(`${baseURL}/api/organization/${orgName}/requests`, {
     headers: authHeader(),
   });
@@ -39,7 +39,7 @@ const getOrgJoinRequests = (orgName) =>
 /**
  * Approve a join request (admin/owner only)
  */
-const approveJoinRequest = (orgName, requestId, assignedRole = "member") =>
+const approveJoinRequest = (orgName, requestId, assignedRole = 'member') =>
   axios.post(
     `${baseURL}/api/organization/${orgName}/requests/${requestId}/approve`,
     { assignedRole },

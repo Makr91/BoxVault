@@ -1,42 +1,39 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import AuthService from "../services/auth.service";
-import ConfigService from "../services/config.service";
-import { processConfig } from "../utils/ConfigProcessorUtils";
-import { log } from "../utils/Logger";
+import AuthService from '../services/auth.service';
+import ConfigService from '../services/config.service';
+import { processConfig } from '../utils/ConfigProcessorUtils';
+import { log } from '../utils/Logger';
 
-import ConfigFieldRenderer from "./ConfigFieldRenderer.component";
-import OidcProviderManager from "./OidcProviderManager.component";
+import ConfigFieldRenderer from './ConfigFieldRenderer.component';
+import OidcProviderManager from './OidcProviderManager.component';
 
 /**
  * ConfigurationManager - Manages system configuration
  */
 const ConfigurationManager = ({ setMessage, setMessageType }) => {
   const { t } = useTranslation();
-  const [selectedConfig, setSelectedConfig] = useState("app");
+  const [selectedConfig, setSelectedConfig] = useState('app');
   const [config, setConfig] = useState({});
   const [sections, setSections] = useState({});
   const [values, setValues] = useState({});
   const [collapsedSubsections, setCollapsedSubsections] = useState({});
-  const [submitError, setSubmitError] = useState("");
-  const [testEmail, setTestEmail] = useState("");
+  const [submitError, setSubmitError] = useState('');
+  const [testEmail, setTestEmail] = useState('');
 
   const fetchConfig = useCallback(
-    (configName) => {
+    configName => {
       ConfigService.getConfig(configName).then(
-        (response) => {
+        response => {
           setConfig(response.data);
-          const { extractedValues, organizedSections } = processConfig(
-            response.data,
-            configName
-          );
+          const { extractedValues, organizedSections } = processConfig(response.data, configName);
           setValues(extractedValues);
           setSections(organizedSections);
         },
-        (error) => {
-          log.api.error("Error fetching config", {
+        error => {
+          log.api.error('Error fetching config', {
             configName,
             error: error.message,
           });
@@ -51,7 +48,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   }, [selectedConfig, fetchConfig]);
 
   const handleFieldChange = (fieldPath, value) => {
-    setValues((prev) => ({
+    setValues(prev => ({
       ...prev,
       [fieldPath]: value,
     }));
@@ -59,7 +56,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
   const toggleSubsection = (sectionName, subsectionName) => {
     const key = `${sectionName}-${subsectionName}`;
-    setCollapsedSubsections((prev) => ({
+    setCollapsedSubsections(prev => ({
       ...prev,
       [key]: !prev[key],
     }));
@@ -71,14 +68,14 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
   };
 
   const shouldShowSubsection = (subsection, subsectionName) => {
-    if (subsectionName === "oidcProviders") {
+    if (subsectionName === 'oidcProviders') {
       return true;
     }
     // Hide individual OIDC provider subsections
     if (
       subsectionName &&
-      subsectionName.toLowerCase().includes("oidc") &&
-      subsectionName !== "oidcProviders"
+      subsectionName.toLowerCase().includes('oidc') &&
+      subsectionName !== 'oidcProviders'
     ) {
       return false;
     }
@@ -91,16 +88,12 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
     // Helper function to recursively update the 'value' property in the config object
     const updateValueInObject = (obj, path, newValue) => {
-      const keys = path.split(".");
+      const keys = path.split('.');
       let current = obj;
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
         if (i === keys.length - 1) {
-          if (
-            current &&
-            typeof current[key] === "object" &&
-            current[key] !== null
-          ) {
+          if (current && typeof current[key] === 'object' && current[key] !== null) {
             current[key].value = newValue;
           }
         } else {
@@ -120,51 +113,49 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
     ConfigService.updateConfig(selectedConfig, newConfig).then(
       () => {
-        setMessage(t("configManager.updateSuccess"));
-        setMessageType("success");
-        setSubmitError("");
+        setMessage(t('configManager.updateSuccess'));
+        setMessageType('success');
+        setSubmitError('');
         // Re-fetch config to ensure UI is in sync with the saved state
         fetchConfig(selectedConfig);
       },
-      (error) => {
-        log.component.error("Error updating config", {
+      error => {
+        log.component.error('Error updating config', {
           configName: selectedConfig,
           error: error.message,
         });
-        setMessage(t("configManager.updateError"));
-        setMessageType("danger");
+        setMessage(t('configManager.updateError'));
+        setMessageType('danger');
       }
     );
   };
 
-  const handleConfigUpdate = (newConfig) => {
-    ConfigService.updateConfig("auth", newConfig);
+  const handleConfigUpdate = newConfig => {
+    ConfigService.updateConfig('auth', newConfig);
     setConfig(newConfig);
   };
 
   const handleTestSmtp = () => {
     if (!testEmail) {
-      setMessage("Please provide an email address for the test.");
-      setMessageType("warning");
+      setMessage('Please provide an email address for the test.');
+      setMessageType('warning');
       return;
     }
 
-    setMessage(t("configManager.testingSmtp"));
-    setMessageType("info");
+    setMessage(t('configManager.testingSmtp'));
+    setMessageType('info');
     ConfigService.testSmtp(testEmail)
-      .then((response) => {
-        setMessage(response.data.message || t("configManager.testSmtpSuccess"));
-        setMessageType("success");
+      .then(response => {
+        setMessage(response.data.message || t('configManager.testSmtpSuccess'));
+        setMessageType('success');
       })
-      .catch((error) => {
+      .catch(error => {
         const resMessage =
-          (error.response &&
-            error.response.data &&
-            error.response.data.message) ||
+          (error.response && error.response.data && error.response.data.message) ||
           error.message ||
           error.toString();
-        setMessage(`${t("configManager.testSmtpError")}: ${resMessage}`);
-        setMessageType("danger");
+        setMessage(`${t('configManager.testSmtpError')}: ${resMessage}`);
+        setMessageType('danger');
       });
   };
 
@@ -175,8 +166,8 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
     const user = AuthService.getCurrentUser();
     if (!user || !user.accessToken) {
-      setMessage(t("error.unexpectedErrorOccurred"));
-      setMessageType("danger");
+      setMessage(t('error.unexpectedErrorOccurred'));
+      setMessageType('danger');
       return;
     }
 
@@ -184,10 +175,10 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
       const response = await fetch(
         `/api/config/ssl/upload?targetPath=${encodeURIComponent(targetPath)}`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "x-access-token": user.accessToken,
-            "Content-Type": "application/octet-stream",
+            'x-access-token': user.accessToken,
+            'Content-Type': 'application/octet-stream',
           },
           body: file,
         }
@@ -197,19 +188,17 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
         throw new Error(`Upload failed: ${response.statusText}`);
       }
 
-      setMessage(
-        `${t("messages.operationSuccessful")}. ${t("configManager.restartInitiated")}`
-      );
-      setMessageType("success");
+      setMessage(`${t('messages.operationSuccessful')}. ${t('configManager.restartInitiated')}`);
+      setMessageType('success');
     } catch (error) {
-      log.component.error("Error uploading file", { error: error.message });
-      setMessage(t("messages.uploadFailed"));
-      setMessageType("danger");
+      log.component.error('Error uploading file', { error: error.message });
+      setMessage(t('messages.uploadFailed'));
+      setMessageType('danger');
     }
   };
 
   const renderConfigSections = () => {
-    if (selectedConfig === "auth") {
+    if (selectedConfig === 'auth') {
       // Special rendering for auth config with OIDC provider management
       return (
         <>
@@ -219,10 +208,10 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                 <div className="card mb-4">
                   <div className="card-header">
                     <h5 className="mb-0">
-                      <i className={`${section.icon} me-2`} />{" "}
+                      <i className={`${section.icon} me-2`} />{' '}
                       {t(`configManager.sections.${section.key}`)}
                       <span className="badge bg-light text-dark ms-2">
-                        {t("configManager.settingsCount", {
+                        {t('configManager.settingsCount', {
                           count: section.fields.length,
                         })}
                       </span>
@@ -230,11 +219,9 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                   </div>
                   <div className="card-body">
                     <div className="row">
-                      {section.fields.map((field) => {
+                      {section.fields.map(field => {
                         const currentValue =
-                          values[field.path] !== undefined
-                            ? values[field.path]
-                            : field.value;
+                          values[field.path] !== undefined ? values[field.path] : field.value;
 
                         if (field.upload) {
                           return (
@@ -242,40 +229,28 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                               <div className="mb-3">
                                 <label className="form-label">
                                   {field.label}
-                                  {field.required && (
-                                    <span className="text-danger">*</span>
-                                  )}
+                                  {field.required && <span className="text-danger">*</span>}
                                 </label>
                                 <div className="input-group">
                                   <input
                                     type="text"
                                     className="form-control"
                                     value={currentValue}
-                                    onChange={(e) =>
-                                      handleFieldChange(
-                                        field.path,
-                                        e.target.value
-                                      )
-                                    }
+                                    onChange={e => handleFieldChange(field.path, e.target.value)}
                                     placeholder={field.placeholder}
                                   />
                                   <label className="btn btn-outline-secondary">
-                                    {t("buttons.upload")}
+                                    {t('buttons.upload')}
                                     <input
                                       type="file"
                                       hidden
-                                      onChange={(e) =>
-                                        handleFileUpload(
-                                          e.target.files[0],
-                                          currentValue
-                                        )
+                                      onChange={e =>
+                                        handleFileUpload(e.target.files[0], currentValue)
                                       }
                                     />
                                   </label>
                                 </div>
-                                <small className="form-text text-muted">
-                                  {field.description}
-                                </small>
+                                <small className="form-text text-muted">{field.description}</small>
                               </div>
                             </div>
                           );
@@ -285,10 +260,9 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                           <div
                             key={field.path}
                             className={
-                              field.type === "textarea" ||
-                              field.type === "array"
-                                ? "col-12"
-                                : "col-md-6"
+                              field.type === 'textarea' || field.type === 'array'
+                                ? 'col-12'
+                                : 'col-md-6'
                             }
                           >
                             <ConfigFieldRenderer
@@ -305,136 +279,118 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
               )}
 
               {/* Render subsections */}
-              {Object.entries(section.subsections || {}).map(
-                ([subsectionName, subsection]) => {
-                  if (!shouldShowSubsection(subsection, subsectionName)) {
-                    return null;
-                  }
+              {Object.entries(section.subsections || {}).map(([subsectionName, subsection]) => {
+                if (!shouldShowSubsection(subsection, subsectionName)) {
+                  return null;
+                }
 
-                  if (subsectionName === "oidcProviders") {
-                    return (
-                      <OidcProviderManager
-                        key={subsectionName}
-                        config={config}
-                        onConfigUpdate={handleConfigUpdate}
-                        setMessage={setMessage}
-                        setMessageType={setMessageType}
-                      />
-                    );
-                  }
-
-                  const isCollapsed = isSubsectionCollapsed(
-                    sectionName,
-                    subsectionName
-                  );
-
+                if (subsectionName === 'oidcProviders') {
                   return (
-                    <div key={subsectionName} className="card mb-4">
-                      <div
-                        className="card-header cursor-pointer"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          toggleSubsection(sectionName, subsectionName)
-                        }
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            toggleSubsection(sectionName, subsectionName);
-                          }
-                        }}
-                      >
-                        <h6 className="mb-0">
-                          <i
-                            className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}
-                          />
-                          <i className={`${section.icon} me-2`} />{" "}
-                          {t(`configManager.subsections.${subsection.key}`)}
-                          <span className="badge bg-light text-dark ms-2">
-                            {t("configManager.settingsCount", {
-                              count: subsection.fields.length,
-                            })}
-                          </span>
-                        </h6>
-                      </div>
-                      {!isCollapsed && (
-                        <div className="card-body">
-                          <div className="row">
-                            {subsection.fields.map((field) => {
-                              const currentValue =
-                                values[field.path] !== undefined
-                                  ? values[field.path]
-                                  : field.value;
-
-                              if (field.upload) {
-                                return (
-                                  <div key={field.path} className="col-md-6">
-                                    <div className="mb-3">
-                                      <label className="form-label">
-                                        {field.label}
-                                        {field.required && (
-                                          <span className="text-danger">*</span>
-                                        )}
-                                      </label>
-                                      <div className="input-group">
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={currentValue}
-                                          onChange={(e) =>
-                                            handleFieldChange(
-                                              field.path,
-                                              e.target.value
-                                            )
-                                          }
-                                          placeholder={field.placeholder}
-                                        />
-                                        <label className="btn btn-outline-secondary">
-                                          {t("buttons.upload")}
-                                          <input
-                                            type="file"
-                                            hidden
-                                            onChange={(e) =>
-                                              handleFileUpload(
-                                                e.target.files[0],
-                                                currentValue
-                                              )
-                                            }
-                                          />
-                                        </label>
-                                      </div>
-                                      <small className="form-text text-muted">
-                                        {field.description}
-                                      </small>
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <div
-                                  key={field.path}
-                                  className={
-                                    field.type === "textarea" ||
-                                    field.type === "array"
-                                      ? "col-12"
-                                      : "col-md-6"
-                                  }
-                                >
-                                  <ConfigFieldRenderer
-                                    field={field}
-                                    currentValue={currentValue}
-                                    onFieldChange={handleFieldChange}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <OidcProviderManager
+                      key={subsectionName}
+                      config={config}
+                      onConfigUpdate={handleConfigUpdate}
+                      setMessage={setMessage}
+                      setMessageType={setMessageType}
+                    />
                   );
                 }
-              )}
+
+                const isCollapsed = isSubsectionCollapsed(sectionName, subsectionName);
+
+                return (
+                  <div key={subsectionName} className="card mb-4">
+                    <div
+                      className="card-header cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleSubsection(sectionName, subsectionName)}
+                      onKeyPress={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          toggleSubsection(sectionName, subsectionName);
+                        }
+                      }}
+                    >
+                      <h6 className="mb-0">
+                        <i
+                          className={`fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} me-2`}
+                        />
+                        <i className={`${section.icon} me-2`} />{' '}
+                        {t(`configManager.subsections.${subsection.key}`)}
+                        <span className="badge bg-light text-dark ms-2">
+                          {t('configManager.settingsCount', {
+                            count: subsection.fields.length,
+                          })}
+                        </span>
+                      </h6>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="card-body">
+                        <div className="row">
+                          {subsection.fields.map(field => {
+                            const currentValue =
+                              values[field.path] !== undefined ? values[field.path] : field.value;
+
+                            if (field.upload) {
+                              return (
+                                <div key={field.path} className="col-md-6">
+                                  <div className="mb-3">
+                                    <label className="form-label">
+                                      {field.label}
+                                      {field.required && <span className="text-danger">*</span>}
+                                    </label>
+                                    <div className="input-group">
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        value={currentValue}
+                                        onChange={e =>
+                                          handleFieldChange(field.path, e.target.value)
+                                        }
+                                        placeholder={field.placeholder}
+                                      />
+                                      <label className="btn btn-outline-secondary">
+                                        {t('buttons.upload')}
+                                        <input
+                                          type="file"
+                                          hidden
+                                          onChange={e =>
+                                            handleFileUpload(e.target.files[0], currentValue)
+                                          }
+                                        />
+                                      </label>
+                                    </div>
+                                    <small className="form-text text-muted">
+                                      {field.description}
+                                    </small>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div
+                                key={field.path}
+                                className={
+                                  field.type === 'textarea' || field.type === 'array'
+                                    ? 'col-12'
+                                    : 'col-md-6'
+                                }
+                              >
+                                <ConfigFieldRenderer
+                                  field={field}
+                                  currentValue={currentValue}
+                                  onFieldChange={handleFieldChange}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </>
@@ -448,10 +404,10 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           <div className="card mb-4">
             <div className="card-header">
               <h5 className="mb-0">
-                <i className={`${section.icon} me-2`} />{" "}
+                <i className={`${section.icon} me-2`} />{' '}
                 {t(`configManager.sections.${section.key}`)}
                 <span className="badge bg-light text-dark ms-2">
-                  {t("configManager.settingsCount", {
+                  {t('configManager.settingsCount', {
                     count: section.fields.length,
                   })}
                 </span>
@@ -459,11 +415,9 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             </div>
             <div className="card-body">
               <div className="row">
-                {section.fields.map((field) => {
+                {section.fields.map(field => {
                   const currentValue =
-                    values[field.path] !== undefined
-                      ? values[field.path]
-                      : field.value;
+                    values[field.path] !== undefined ? values[field.path] : field.value;
 
                   if (field.upload) {
                     return (
@@ -471,37 +425,26 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                         <div className="mb-3">
                           <label className="form-label">
                             {field.label}
-                            {field.required && (
-                              <span className="text-danger">*</span>
-                            )}
+                            {field.required && <span className="text-danger">*</span>}
                           </label>
                           <div className="input-group">
                             <input
                               type="text"
                               className="form-control"
                               value={currentValue}
-                              onChange={(e) =>
-                                handleFieldChange(field.path, e.target.value)
-                              }
+                              onChange={e => handleFieldChange(field.path, e.target.value)}
                               placeholder={field.placeholder}
                             />
                             <label className="btn btn-outline-secondary">
-                              {t("buttons.upload")}
+                              {t('buttons.upload')}
                               <input
                                 type="file"
                                 hidden
-                                onChange={(e) =>
-                                  handleFileUpload(
-                                    e.target.files[0],
-                                    currentValue
-                                  )
-                                }
+                                onChange={e => handleFileUpload(e.target.files[0], currentValue)}
                               />
                             </label>
                           </div>
-                          <small className="form-text text-muted">
-                            {field.description}
-                          </small>
+                          <small className="form-text text-muted">{field.description}</small>
                         </div>
                       </div>
                     );
@@ -511,9 +454,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                     <div
                       key={field.path}
                       className={
-                        field.type === "textarea" || field.type === "array"
-                          ? "col-12"
-                          : "col-md-6"
+                        field.type === 'textarea' || field.type === 'array' ? 'col-12' : 'col-md-6'
                       }
                     >
                       <ConfigFieldRenderer
@@ -529,122 +470,102 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           </div>
         )}
 
-        {Object.entries(section.subsections || {}).map(
-          ([subsectionName, subsection]) => {
-            if (!shouldShowSubsection(subsection, subsectionName)) {
-              return null;
-            }
+        {Object.entries(section.subsections || {}).map(([subsectionName, subsection]) => {
+          if (!shouldShowSubsection(subsection, subsectionName)) {
+            return null;
+          }
 
-            const isCollapsed = isSubsectionCollapsed(
-              sectionName,
-              subsectionName
-            );
+          const isCollapsed = isSubsectionCollapsed(sectionName, subsectionName);
 
-            return (
-              <div key={subsectionName} className="card mb-4">
-                <div
-                  className="card-header cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => toggleSubsection(sectionName, subsectionName)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      toggleSubsection(sectionName, subsectionName);
-                    }
-                  }}
-                >
-                  <h6 className="mb-0">
-                    <i
-                      className={`fas ${isCollapsed ? "fa-chevron-right" : "fa-chevron-down"} me-2`}
-                    />
-                    <i className={`${section.icon} me-2`} />{" "}
-                    {t(`configManager.subsections.${subsection.key}`)}
-                    <span className="badge bg-light text-dark ms-2">
-                      {t("configManager.settingsCount", {
-                        count: subsection.fields.length,
-                      })}
-                    </span>
-                  </h6>
-                </div>
-                {!isCollapsed && (
-                  <div className="card-body">
-                    <div className="row">
-                      {subsection.fields.map((field) => {
-                        const currentValue =
-                          values[field.path] !== undefined
-                            ? values[field.path]
-                            : field.value;
+          return (
+            <div key={subsectionName} className="card mb-4">
+              <div
+                className="card-header cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleSubsection(sectionName, subsectionName)}
+                onKeyPress={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    toggleSubsection(sectionName, subsectionName);
+                  }
+                }}
+              >
+                <h6 className="mb-0">
+                  <i
+                    className={`fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} me-2`}
+                  />
+                  <i className={`${section.icon} me-2`} />{' '}
+                  {t(`configManager.subsections.${subsection.key}`)}
+                  <span className="badge bg-light text-dark ms-2">
+                    {t('configManager.settingsCount', {
+                      count: subsection.fields.length,
+                    })}
+                  </span>
+                </h6>
+              </div>
+              {!isCollapsed && (
+                <div className="card-body">
+                  <div className="row">
+                    {subsection.fields.map(field => {
+                      const currentValue =
+                        values[field.path] !== undefined ? values[field.path] : field.value;
 
-                        if (field.upload) {
-                          return (
-                            <div key={field.path} className="col-md-6">
-                              <div className="mb-3">
-                                <label className="form-label">
-                                  {field.label}
-                                  {field.required && (
-                                    <span className="text-danger">*</span>
-                                  )}
-                                </label>
-                                <div className="input-group">
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={currentValue}
-                                    onChange={(e) =>
-                                      handleFieldChange(
-                                        field.path,
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder={field.placeholder}
-                                  />
-                                  <label className="btn btn-outline-secondary">
-                                    {t("buttons.upload")}
-                                    <input
-                                      type="file"
-                                      hidden
-                                      onChange={(e) =>
-                                        handleFileUpload(
-                                          e.target.files[0],
-                                          currentValue
-                                        )
-                                      }
-                                    />
-                                  </label>
-                                </div>
-                                <small className="form-text text-muted">
-                                  {field.description}
-                                </small>
-                              </div>
-                            </div>
-                          );
-                        }
-
+                      if (field.upload) {
                         return (
-                          <div
-                            key={field.path}
-                            className={
-                              field.type === "textarea" ||
-                              field.type === "array"
-                                ? "col-12"
-                                : "col-md-6"
-                            }
-                          >
-                            <ConfigFieldRenderer
-                              field={field}
-                              currentValue={currentValue}
-                              onFieldChange={handleFieldChange}
-                            />
+                          <div key={field.path} className="col-md-6">
+                            <div className="mb-3">
+                              <label className="form-label">
+                                {field.label}
+                                {field.required && <span className="text-danger">*</span>}
+                              </label>
+                              <div className="input-group">
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={currentValue}
+                                  onChange={e => handleFieldChange(field.path, e.target.value)}
+                                  placeholder={field.placeholder}
+                                />
+                                <label className="btn btn-outline-secondary">
+                                  {t('buttons.upload')}
+                                  <input
+                                    type="file"
+                                    hidden
+                                    onChange={e =>
+                                      handleFileUpload(e.target.files[0], currentValue)
+                                    }
+                                  />
+                                </label>
+                              </div>
+                              <small className="form-text text-muted">{field.description}</small>
+                            </div>
                           </div>
                         );
-                      })}
-                    </div>
+                      }
+
+                      return (
+                        <div
+                          key={field.path}
+                          className={
+                            field.type === 'textarea' || field.type === 'array'
+                              ? 'col-12'
+                              : 'col-md-6'
+                          }
+                        >
+                          <ConfigFieldRenderer
+                            field={field}
+                            currentValue={currentValue}
+                            onFieldChange={handleFieldChange}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
-            );
-          }
-        )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     ));
   };
@@ -654,43 +575,39 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
       <ul className="nav nav-tabs d-flex">
         <li className="nav-item">
           <button
-            className={`nav-link ${selectedConfig === "app" ? "active" : ""}`}
-            onClick={() => setSelectedConfig("app")}
+            className={`nav-link ${selectedConfig === 'app' ? 'active' : ''}`}
+            onClick={() => setSelectedConfig('app')}
           >
-            {t("configManager.tabs.app")}
+            {t('configManager.tabs.app')}
           </button>
         </li>
         <li className="nav-item">
           <button
-            className={`nav-link ${selectedConfig === "auth" ? "active" : ""}`}
-            onClick={() => setSelectedConfig("auth")}
+            className={`nav-link ${selectedConfig === 'auth' ? 'active' : ''}`}
+            onClick={() => setSelectedConfig('auth')}
           >
-            {t("configManager.tabs.auth")}
+            {t('configManager.tabs.auth')}
           </button>
         </li>
         <li className="nav-item">
           <button
-            className={`nav-link ${selectedConfig === "db" ? "active" : ""}`}
-            onClick={() => setSelectedConfig("db")}
+            className={`nav-link ${selectedConfig === 'db' ? 'active' : ''}`}
+            onClick={() => setSelectedConfig('db')}
           >
-            {t("configManager.tabs.db")}
+            {t('configManager.tabs.db')}
           </button>
         </li>
         <li className="nav-item">
           <button
-            className={`nav-link ${selectedConfig === "mail" ? "active" : ""}`}
-            onClick={() => setSelectedConfig("mail")}
+            className={`nav-link ${selectedConfig === 'mail' ? 'active' : ''}`}
+            onClick={() => setSelectedConfig('mail')}
           >
-            {t("configManager.tabs.mail")}
+            {t('configManager.tabs.mail')}
           </button>
         </li>
         <li className="nav-item ms-auto">
-          <button
-            type="button"
-            className="nav-link cursor-pointer"
-            onClick={updateConfig}
-          >
-            {t("configManager.buttons.update")}
+          <button type="button" className="nav-link cursor-pointer" onClick={updateConfig}>
+            {t('configManager.buttons.update')}
           </button>
         </li>
         <li className="nav-item">
@@ -700,16 +617,16 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             onClick={() => {
               ConfigService.restartServer()
                 .then(() => {
-                  setMessage(t("configManager.restartInitiated"));
-                  setMessageType("success");
+                  setMessage(t('configManager.restartInitiated'));
+                  setMessageType('success');
                 })
                 .catch(() => {
-                  setMessage(t("configManager.restartFailed"));
-                  setMessageType("danger");
+                  setMessage(t('configManager.restartFailed'));
+                  setMessageType('danger');
                 });
             }}
           >
-            {t("configManager.buttons.restart")}
+            {t('configManager.buttons.restart')}
           </button>
         </li>
       </ul>
@@ -720,7 +637,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
       )}
       <div className="config-container mt-3">
         <div>{renderConfigSections()}</div>
-        {selectedConfig === "mail" && (
+        {selectedConfig === 'mail' && (
           <div className="card mb-4">
             <div className="card-header">
               <h5 className="mb-0">
@@ -739,7 +656,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                     className="form-control"
                     id="testEmail"
                     value={testEmail}
-                    onChange={(e) => setTestEmail(e.target.value)}
+                    onChange={e => setTestEmail(e.target.value)}
                     placeholder="Enter email address"
                   />
                   <button

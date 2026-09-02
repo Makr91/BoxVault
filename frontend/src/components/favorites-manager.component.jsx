@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { FaStar, FaXmark, FaGripVertical, FaPlus } from "react-icons/fa6";
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaStar, FaXmark, FaGripVertical, FaPlus } from 'react-icons/fa6';
 
-import FavoritesService from "../services/favorites.service";
-import { log } from "../utils/Logger";
+import FavoritesService from '../services/favorites.service';
+import { log } from '../utils/Logger';
 
 const FavoritesManager = () => {
   const { t } = useTranslation();
@@ -11,9 +11,9 @@ const FavoritesManager = () => {
   const [enrichedFavorites, setEnrichedFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [newClientId, setNewClientId] = useState("");
-  const [newCustomLabel, setNewCustomLabel] = useState("");
+  const [message, setMessage] = useState('');
+  const [newClientId, setNewClientId] = useState('');
+  const [newCustomLabel, setNewCustomLabel] = useState('');
   const [draggedIndex, setDraggedIndex] = useState(null);
 
   useEffect(() => {
@@ -33,8 +33,8 @@ const FavoritesManager = () => {
         setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
       } catch (error) {
         if (!cancelled) {
-          log.api.error("Error loading favorites", { error: error.message });
-          setMessage(t("favorites.loadFailed"));
+          log.api.error('Error loading favorites', { error: error.message });
+          setMessage(t('favorites.loadFailed'));
         }
       } finally {
         if (!cancelled) {
@@ -50,32 +50,32 @@ const FavoritesManager = () => {
     };
   }, [t]);
 
-  const saveFavorites = async (newFavorites) => {
+  const saveFavorites = async newFavorites => {
     setSaving(true);
-    setMessage("");
+    setMessage('');
     try {
       await FavoritesService.saveFavorites(newFavorites);
-      setMessage(t("favorites.saveSuccess"));
+      setMessage(t('favorites.saveSuccess'));
       setFavorites(newFavorites);
       const enrichedResponse = await FavoritesService.getUserInfoClaims();
       setEnrichedFavorites(enrichedResponse.data?.favorite_apps || []);
     } catch (error) {
-      log.api.error("Error saving favorites", { error: error.message });
-      setMessage(t("favorites.saveFailed"));
+      log.api.error('Error saving favorites', { error: error.message });
+      setMessage(t('favorites.saveFailed'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAddFavorite = (e) => {
+  const handleAddFavorite = e => {
     e.preventDefault();
     if (!newClientId.trim()) {
-      setMessage(t("favorites.clientIdRequired"));
+      setMessage(t('favorites.clientIdRequired'));
       return;
     }
 
-    if (favorites.some((f) => f.clientId === newClientId)) {
-      setMessage(t("favorites.alreadyFavorite"));
+    if (favorites.some(f => f.clientId === newClientId)) {
+      setMessage(t('favorites.alreadyFavorite'));
       return;
     }
 
@@ -85,23 +85,23 @@ const FavoritesManager = () => {
       newCustomLabel.trim() || null
     );
     saveFavorites(updated);
-    setNewClientId("");
-    setNewCustomLabel("");
+    setNewClientId('');
+    setNewCustomLabel('');
   };
 
-  const handleRemoveFavorite = (clientId) => {
+  const handleRemoveFavorite = clientId => {
     const updated = FavoritesService.removeFavorite(favorites, clientId);
     saveFavorites(updated);
   };
 
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = e => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = (e, dropIndex) => {
@@ -110,11 +110,7 @@ const FavoritesManager = () => {
       return;
     }
 
-    const updated = FavoritesService.reorderFavorites(
-      favorites,
-      draggedIndex,
-      dropIndex
-    );
+    const updated = FavoritesService.reorderFavorites(favorites, draggedIndex, dropIndex);
     setDraggedIndex(null);
     saveFavorites(updated);
   };
@@ -123,24 +119,23 @@ const FavoritesManager = () => {
     setDraggedIndex(null);
   };
 
-  const getEnrichedData = (clientId) =>
-    enrichedFavorites.find((ef) => ef.clientId === clientId) || {};
+  const getEnrichedData = clientId => enrichedFavorites.find(ef => ef.clientId === clientId) || {};
 
-  const renderAppIcon = (app) => {
-    if (app.iconUrl && app.iconUrl !== "") {
+  const renderAppIcon = app => {
+    if (app.iconUrl && app.iconUrl !== '') {
       return (
         <img
           src={app.iconUrl}
           className="logo-md icon-with-margin"
           alt=""
-          onError={(e) => {
-            e.target.style.display = "none";
+          onError={e => {
+            e.target.style.display = 'none';
           }}
         />
       );
     }
 
-    if (app.homeUrl && app.homeUrl !== "") {
+    if (app.homeUrl && app.homeUrl !== '') {
       try {
         const faviconUrl = `${new URL(app.homeUrl).origin}/favicon.ico`;
         return (
@@ -148,13 +143,13 @@ const FavoritesManager = () => {
             src={faviconUrl}
             className="logo-md icon-with-margin"
             alt=""
-            onError={(e) => {
-              e.target.style.display = "none";
+            onError={e => {
+              e.target.style.display = 'none';
             }}
           />
         );
       } catch (err) {
-        log.component.debug("Invalid URL for favicon", {
+        log.component.debug('Invalid URL for favicon', {
           url: app.homeUrl,
           error: err.message,
         });
@@ -177,70 +172,59 @@ const FavoritesManager = () => {
 
   return (
     <div>
-      <h3>{t("favorites.title")}</h3>
-      <p className="text-muted">{t("favorites.description")}</p>
+      <h3>{t('favorites.title')}</h3>
+      <p className="text-muted">{t('favorites.description')}</p>
 
       {message && (
-        <div
-          className={`alert ${message.includes("success") ? "alert-success" : "alert-danger"}`}
-        >
+        <div className={`alert ${message.includes('success') ? 'alert-success' : 'alert-danger'}`}>
           {message}
         </div>
       )}
 
       <div className="card mb-4">
         <div className="card-header">
-          <FaPlus className="me-2" /> {t("favorites.add.title")}
+          <FaPlus className="me-2" /> {t('favorites.add.title')}
         </div>
         <div className="card-body">
           <form onSubmit={handleAddFavorite}>
             <div className="row">
               <div className="col-md-5 mb-3">
                 <label htmlFor="clientId" className="form-label">
-                  {t("favorites.add.clientIdLabel")}{" "}
-                  <span className="text-danger">*</span>
+                  {t('favorites.add.clientIdLabel')} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
                   className="form-control"
                   id="clientId"
                   value={newClientId}
-                  onChange={(e) => setNewClientId(e.target.value)}
+                  onChange={e => setNewClientId(e.target.value)}
                   placeholder="e.g., boxvault, armor, web-terminal"
                   required
                 />
-                <small className="form-text text-muted">
-                  {t("favorites.add.clientIdHint")}
-                </small>
+                <small className="form-text text-muted">{t('favorites.add.clientIdHint')}</small>
               </div>
               <div className="col-md-5 mb-3">
                 <label htmlFor="customLabel" className="form-label">
-                  {t("favorites.add.customLabelLabel")}
+                  {t('favorites.add.customLabelLabel')}
                 </label>
                 <input
                   type="text"
                   className="form-control"
                   id="customLabel"
                   value={newCustomLabel}
-                  onChange={(e) => setNewCustomLabel(e.target.value)}
+                  onChange={e => setNewCustomLabel(e.target.value)}
                   placeholder="e.g., My App Name"
                 />
-                <small className="form-text text-muted">
-                  {t("favorites.add.customLabelHint")}
-                </small>
+                <small className="form-text text-muted">{t('favorites.add.customLabelHint')}</small>
               </div>
               <div className="col-md-2 mb-3 d-flex align-items-end">
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100"
-                  disabled={saving}
-                >
+                <button type="submit" className="btn btn-primary w-100" disabled={saving}>
                   {saving ? (
                     <span className="spinner-border spinner-border-sm me-2" />
                   ) : (
                     <FaPlus className="me-2" />
                   )}
-                  {t("buttons.add")}
+                  {t('buttons.add')}
                 </button>
               </div>
             </div>
@@ -250,40 +234,38 @@ const FavoritesManager = () => {
 
       <div className="card">
         <div className="card-header">
-          <FaStar className="me-2 text-warning" />{" "}
-          {t("favorites.yourFavorites")}
+          <FaStar className="me-2 text-warning" /> {t('favorites.yourFavorites')}
           {favorites.length > 0 && (
             <span className="badge bg-primary ms-2">{favorites.length}</span>
           )}
         </div>
         <div className="card-body">
           {favorites.length === 0 ? (
-            <p className="text-muted">{t("favorites.noFavorites")}</p>
+            <p className="text-muted">{t('favorites.noFavorites')}</p>
           ) : (
             <div className="list-group">
               {favorites
                 .sort((a, b) => (a.order || 0) - (b.order || 0))
                 .map((fav, index) => {
                   const enriched = getEnrichedData(fav.clientId);
-                  const displayName =
-                    fav.customLabel || enriched.clientName || fav.clientId;
+                  const displayName = fav.customLabel || enriched.clientName || fav.clientId;
 
                   return (
                     <div
                       key={fav.clientId}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragStart={e => handleDragStart(e, index)}
                       onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, index)}
+                      onDrop={e => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
                       role="button"
                       tabIndex={0}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
+                      onKeyPress={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                         }
                       }}
-                      className={`list-group-item ${draggedIndex === index ? "dragging" : ""}`}
+                      className={`list-group-item ${draggedIndex === index ? 'dragging' : ''}`}
                     >
                       <div className="d-flex justify-content-between align-items-center">
                         <div className="d-flex align-items-center">
@@ -294,9 +276,7 @@ const FavoritesManager = () => {
                             {enriched.clientName &&
                               fav.customLabel &&
                               enriched.clientName !== fav.customLabel && (
-                                <small className="text-muted d-block">
-                                  {enriched.clientName}
-                                </small>
+                                <small className="text-muted d-block">{enriched.clientName}</small>
                               )}
                             {enriched.homeUrl && (
                               <small className="text-muted d-block">
@@ -318,7 +298,7 @@ const FavoritesManager = () => {
                           disabled={saving}
                         >
                           <FaXmark className="me-1" />
-                          {t("buttons.remove")}
+                          {t('buttons.remove')}
                         </button>
                       </div>
                     </div>
@@ -328,7 +308,7 @@ const FavoritesManager = () => {
           )}
           <div className="mt-3">
             <small className="text-muted">
-              <FaGripVertical className="me-1" /> {t("favorites.dragHint")}
+              <FaGripVertical className="me-1" /> {t('favorites.dragHint')}
             </small>
           </div>
         </div>
@@ -336,23 +316,20 @@ const FavoritesManager = () => {
 
       <div className="card mt-3">
         <div className="card-body">
-          <h6>{t("favorites.commonApps.title")}</h6>
-          <p className="text-muted small mb-2">
-            {t("favorites.commonApps.description")}
-          </p>
+          <h6>{t('favorites.commonApps.title')}</h6>
+          <p className="text-muted small mb-2">{t('favorites.commonApps.description')}</p>
           <ul className="list-unstyled small">
             <li>
-              <code>boxvault</code> - {t("favorites.commonApps.boxvault")}
+              <code>boxvault</code> - {t('favorites.commonApps.boxvault')}
             </li>
             <li>
-              <code>armor</code> - {t("favorites.commonApps.armor")}
+              <code>armor</code> - {t('favorites.commonApps.armor')}
             </li>
             <li>
-              <code>web-terminal</code> -{" "}
-              {t("favorites.commonApps.webTerminal")}
+              <code>web-terminal</code> - {t('favorites.commonApps.webTerminal')}
             </li>
           </ul>
-          <p className="text-muted small">{t("favorites.commonApps.note")}</p>
+          <p className="text-muted small">{t('favorites.commonApps.note')}</p>
         </div>
       </div>
     </div>

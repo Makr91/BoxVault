@@ -13,30 +13,29 @@
     <script>
       (function () {
         try {
-          var session = JSON.parse(localStorage.getItem("user") || "null");
+          var session = JSON.parse(localStorage.getItem('user') || 'null');
           var preference =
-            (session && session.preferredTheme) ||
-            localStorage.getItem("theme") ||
-            "auto";
+            (session && session.preferredTheme) || localStorage.getItem('theme') || 'auto';
           var resolved =
-            preference === "auto"
-              ? window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light"
+            preference === 'auto'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
               : preference;
-          document.documentElement.setAttribute("data-bs-theme", resolved);
+          document.documentElement.setAttribute('data-bs-theme', resolved);
+          var lang = localStorage.getItem('i18nextLng');
+          if (lang) {
+            document.documentElement.lang = lang;
+          }
         } catch (error) {
-          document.documentElement.setAttribute("data-bs-theme", "light");
+          document.documentElement.setAttribute('data-bs-theme', 'light');
         }
       })();
     </script>
     <link rel="icon" href="/favicon.ico" type="image/x-icon" id="favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="BoxVault -- BoxVault Web administrator panel"
-    />
+    <meta name="description" content="BoxVault -- BoxVault Web administrator panel" />
     <title>BoxVault</title>
   </head>
   <body>

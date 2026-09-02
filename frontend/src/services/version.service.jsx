@@ -1,27 +1,23 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
 const getVersions = (organization, boxId) =>
-  axios.get(
-    `${baseURL}/api/organization/${organization}/box/${boxId}/version`,
-    { headers: authHeader() }
-  );
+  axios.get(`${baseURL}/api/organization/${organization}/box/${boxId}/version`, {
+    headers: authHeader(),
+  });
 
 const createVersion = (organization, name, data) =>
-  axios.post(
-    `${baseURL}/api/organization/${organization}/box/${name}/version`,
-    data,
-    { headers: authHeader() }
-  );
+  axios.post(`${baseURL}/api/organization/${organization}/box/${name}/version`, data, {
+    headers: authHeader(),
+  });
 
 const getVersion = (organization, boxId, versionNumber) =>
-  axios.get(
-    `${baseURL}/api/organization/${organization}/box/${boxId}/version/${versionNumber}`,
-    { headers: authHeader() }
-  );
+  axios.get(`${baseURL}/api/organization/${organization}/box/${boxId}/version/${versionNumber}`, {
+    headers: authHeader(),
+  });
 
 const updateVersion = (organization, boxId, versionNumber, data) =>
   axios.put(

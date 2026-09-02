@@ -1,15 +1,10 @@
-import PropTypes from "prop-types";
+import PropTypes from 'prop-types';
 
 const ALERT_ICONS = {
   danger: (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M8 4.5v4M8 11h.01"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+      <path d="M8 4.5v4M8 11h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   ),
   success: (
@@ -27,12 +22,7 @@ const ALERT_ICONS = {
   info: (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M8 7.5v4M8 5h.01"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+      <path d="M8 7.5v4M8 5h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   ),
 };
@@ -45,22 +35,14 @@ export const AuthAlert = ({ tone, children }) => (
 );
 
 AuthAlert.propTypes = {
-  tone: PropTypes.oneOf(["danger", "success", "info"]).isRequired,
+  tone: PropTypes.oneOf(['danger', 'success', 'info']).isRequired,
   children: PropTypes.node.isRequired,
 };
 
 export const InboxIcon = () => (
   <div className="auth-icon-circle success" aria-hidden="true">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-      <rect
-        x="3"
-        y="5"
-        width="18"
-        height="14"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
+      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
       <path
         d="m4 7 8 6 8-6"
         stroke="currentColor"

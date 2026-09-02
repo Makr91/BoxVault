@@ -1,7 +1,7 @@
-import PropTypes from "prop-types";
-import { useTranslation } from "react-i18next";
+import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
 
-import { readDeprecated, readDeprecationReason } from "../utils/versionFields";
+import { readDeprecated, readDeprecationReason } from '../utils/versionFields';
 
 const DeprecationBanner = ({ version, children }) => {
   const { t } = useTranslation();
@@ -11,13 +11,10 @@ const DeprecationBanner = ({ version, children }) => {
   const reason = readDeprecationReason(version);
 
   return (
-    <div
-      className="alert alert-danger d-flex align-items-center flex-wrap gap-2"
-      role="alert"
-    >
+    <div className="alert alert-danger d-flex align-items-center flex-wrap gap-2" role="alert">
       <span>
-        <strong>{t("version.deprecatedBanner")}</strong>
-        {reason ? ` — ${reason}` : ""}
+        <strong>{t('version.deprecatedBanner')}</strong>
+        {reason ? ` — ${reason}` : ''}
       </span>
       {children && <span className="ms-auto">{children}</span>}
     </div>

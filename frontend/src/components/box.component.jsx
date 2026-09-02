@@ -1,28 +1,28 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useRef } from "react";
-import { Table } from "react-bootstrap";
-import { useTranslation } from "react-i18next";
-import { FaStar, FaRegStar, FaRocket } from "react-icons/fa6";
-import Markdown from "react-markdown";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useRef } from 'react';
+import { Table } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
+import { FaStar, FaRegStar, FaRocket } from 'react-icons/fa6';
+import Markdown from 'react-markdown';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 
-import ArchitectureService from "../services/architecture.service";
-import AuthService from "../services/auth.service";
-import BoxDataService from "../services/box.service";
-import FileService from "../services/file.service";
-import ProviderService from "../services/provider.service";
-import VersionDataService from "../services/version.service";
-import { getDistroIconUrl, getOsDisplayName } from "../utils/DistroIcons";
-import { log } from "../utils/Logger";
-import { canManageBox } from "../utils/permissions";
-import { readDeprecated } from "../utils/versionFields";
+import ArchitectureService from '../services/architecture.service';
+import AuthService from '../services/auth.service';
+import BoxDataService from '../services/box.service';
+import FileService from '../services/file.service';
+import ProviderService from '../services/provider.service';
+import VersionDataService from '../services/version.service';
+import { getDistroIconUrl, getOsDisplayName } from '../utils/DistroIcons';
+import { log } from '../utils/Logger';
+import { canManageBox } from '../utils/permissions';
+import { readDeprecated } from '../utils/versionFields';
 
-import BoxPageHeader from "./BoxPageHeader.component";
-import ConfirmationModal from "./confirmation.component";
-import StatusChips from "./StatusChips.component";
+import BoxPageHeader from './BoxPageHeader.component';
+import ConfirmationModal from './confirmation.component';
+import StatusChips from './StatusChips.component';
 
 // metadata.memory_mb display: GB when >= 1024, MB below.
-const formatMemoryDisplay = (memoryMb) => {
+const formatMemoryDisplay = memoryMb => {
   const mb = Number(memoryMb);
   if (mb >= 1024) {
     const gb = mb / 1024;
@@ -32,42 +32,41 @@ const formatMemoryDisplay = (memoryMb) => {
 };
 
 // Hosts.yml memory format ("8G" style, like the core_provisioner examples).
-const formatHostsMemory = (memoryMb) => {
+const formatHostsMemory = memoryMb => {
   const mb = Number(memoryMb);
   return mb % 1024 === 0 ? `${mb / 1024}G` : `${mb}M`;
 };
 
 // One disk/cdrom entry as "name · size · controller" (present parts only).
-const formatDiskEntry = (entry) => {
-  if (typeof entry === "string") {
+const formatDiskEntry = entry => {
+  if (typeof entry === 'string') {
     return entry;
   }
-  if (!entry || typeof entry !== "object") {
-    return String(entry ?? "");
+  if (!entry || typeof entry !== 'object') {
+    return String(entry ?? '');
   }
-  return [entry.name, entry.size, entry.controller].filter(Boolean).join(" · ");
+  return [entry.name, entry.size, entry.controller].filter(Boolean).join(' · ');
 };
 
-const hasHyperweaverEntitlement = (user) =>
+const hasHyperweaverEntitlement = user =>
   Array.isArray(user?.entitlements) &&
   user.entitlements.some(
-    (entitlement) =>
-      typeof entitlement.value === "string" &&
-      entitlement.value.startsWith("hyperweaver")
+    entitlement =>
+      typeof entitlement.value === 'string' && entitlement.value.startsWith('hyperweaver')
   );
 
-const sortVersionsNewestFirst = (versionList) =>
+const sortVersionsNewestFirst = versionList =>
   [...versionList].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
 // Default picker choice: latest non-deprecated version, else latest.
-const pickDefaultVersion = (versionList) => {
+const pickDefaultVersion = versionList => {
   if (!Array.isArray(versionList) || versionList.length === 0) {
     return null;
   }
   const sorted = sortVersionsNewestFirst(versionList);
-  const active = sorted.find((version) => !readDeprecated(version));
+  const active = sorted.find(version => !readDeprecated(version));
   return (active || sorted[0]).versionNumber;
 };
 
@@ -147,10 +146,10 @@ end
 const buildStarterHostsYml = ({ boxTag, origin, versionPin, metadata }) => {
   const meta = metadata || {};
   const lines = [
-    "---",
-    "hosts:",
-    "  -",
-    "    settings:",
+    '---',
+    'hosts:',
+    '  -',
+    '    settings:',
     `      box: '${boxTag}'`,
     `      box_url: '${origin}'`,
     `      box_version: ${versionPin}`,
@@ -172,14 +171,14 @@ const buildStarterHostsYml = ({ boxTag, origin, versionPin, metadata }) => {
   if (driverVersion) {
     lines.push(`      driver_version: ${driverVersion}`);
   }
-  return `${lines.join("\n")}\n`;
+  return `${lines.join('\n')}\n`;
 };
 
 // Save a generated text file via a temporary object-URL anchor.
 const downloadTextFile = (fileName, content) => {
-  const blob = new Blob([content], { type: "text/plain" });
+  const blob = new Blob([content], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
   document.body.appendChild(link);
@@ -198,8 +197,8 @@ const CopyButton = ({ text }) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       },
-      (error) => {
-        log.component.error("Could not copy text to clipboard", {
+      error => {
+        log.component.error('Could not copy text to clipboard', {
           error: error.message,
         });
       }
@@ -209,10 +208,10 @@ const CopyButton = ({ text }) => {
   return (
     <button
       type="button"
-      className={`btn btn-sm ${copied ? "btn-success" : "btn-outline-light"}`}
+      className={`btn btn-sm ${copied ? 'btn-success' : 'btn-outline-light'}`}
       onClick={handleCopy}
     >
-      {copied ? t("box.useThisBox.copied") : t("buttons.copy")}
+      {copied ? t('box.useThisBox.copied') : t('buttons.copy')}
     </button>
   );
 };
@@ -236,7 +235,7 @@ const CodeBlock = ({ code, downloadFileName }) => {
             className="btn btn-sm btn-outline-light"
             onClick={() => downloadTextFile(downloadFileName, code)}
           >
-            {t("buttons.download")}
+            {t('buttons.download')}
           </button>
         )}
       </div>
@@ -269,15 +268,15 @@ const PasswordFactRow = ({ password }) => {
 
   return (
     <div className="row mb-1">
-      <dt className="col-sm-4">{t("box.facts.password")}</dt>
+      <dt className="col-sm-4">{t('box.facts.password')}</dt>
       <dd className="col-sm-8 mb-1">
-        <code className="me-2">{show ? password : "••••••••"}</code>
+        <code className="me-2">{show ? password : '••••••••'}</code>
         <button
           type="button"
           className="btn btn-sm btn-outline-secondary"
           onClick={() => setShow(!show)}
         >
-          {show ? t("box.facts.hide") : t("box.facts.show")}
+          {show ? t('box.facts.hide') : t('box.facts.show')}
         </button>
       </dd>
     </div>
@@ -295,7 +294,7 @@ const buildBoxFactRows = (metadata, t) => {
   const osIconUrl = getDistroIconUrl(metadata.distro);
   if (osIconUrl || osLabel) {
     rows.push({
-      key: "os",
+      key: 'os',
       content: (
         <>
           {osIconUrl && (
@@ -312,32 +311,28 @@ const buildBoxFactRows = (metadata, t) => {
     });
   }
   let desktopLabel = null;
-  if (typeof metadata.desktop === "boolean") {
-    desktopLabel = t(
-      metadata.desktop ? "box.facts.desktop" : "box.facts.server"
-    );
+  if (typeof metadata.desktop === 'boolean') {
+    desktopLabel = t(metadata.desktop ? 'box.facts.desktop' : 'box.facts.server');
   }
-  const typeValue = [metadata.vm_type, desktopLabel]
-    .filter(Boolean)
-    .join(" · ");
+  const typeValue = [metadata.vm_type, desktopLabel].filter(Boolean).join(' · ');
   if (typeValue) {
-    rows.push({ key: "type", content: typeValue });
+    rows.push({ key: 'type', content: typeValue });
   }
   if (metadata.username) {
-    rows.push({ key: "username", content: <code>{metadata.username}</code> });
+    rows.push({ key: 'username', content: <code>{metadata.username}</code> });
   }
   if (metadata.password) {
-    rows.push({ key: "password", value: metadata.password });
+    rows.push({ key: 'password', value: metadata.password });
   }
   if (metadata.communicator) {
-    rows.push({ key: "communicator", content: metadata.communicator });
+    rows.push({ key: 'communicator', content: metadata.communicator });
   }
   if (metadata.cpus) {
-    rows.push({ key: "cpus", content: metadata.cpus });
+    rows.push({ key: 'cpus', content: metadata.cpus });
   }
   if (metadata.memory_mb) {
     rows.push({
-      key: "memory",
+      key: 'memory',
       content: formatMemoryDisplay(metadata.memory_mb),
     });
   }
@@ -346,20 +341,19 @@ const buildBoxFactRows = (metadata, t) => {
   const diskEntries = [...disks, ...cdroms].map(formatDiskEntry);
   if (diskEntries.length > 0) {
     rows.push({
-      key: "disks",
-      content: diskEntries.map((entry) => <div key={entry}>{entry}</div>),
+      key: 'disks',
+      content: diskEntries.map(entry => <div key={entry}>{entry}</div>),
     });
   }
   if (Array.isArray(metadata.providers) && metadata.providers.length > 0) {
-    rows.push({ key: "providers", content: metadata.providers.join(", ") });
+    rows.push({ key: 'providers', content: metadata.providers.join(', ') });
   }
   if (metadata.built) {
-    rows.push({ key: "built", content: metadata.built });
+    rows.push({ key: 'built', content: metadata.built });
   }
-  const driverValue =
-    metadata.core_provisioner_version || metadata.driver_version;
+  const driverValue = metadata.core_provisioner_version || metadata.driver_version;
   if (driverValue) {
-    rows.push({ key: "driver", content: driverValue });
+    rows.push({ key: 'driver', content: driverValue });
   }
   return rows;
 };
@@ -375,12 +369,12 @@ const BoxFacts = ({ metadata }) => {
   return (
     <div className="card h-100">
       <div className="card-header">
-        <h5 className="mb-0">{t("box.facts.title")}</h5>
+        <h5 className="mb-0">{t('box.facts.title')}</h5>
       </div>
       <div className="card-body">
         <dl className="mb-0">
-          {rows.map((row) =>
-            row.key === "password" ? (
+          {rows.map(row =>
+            row.key === 'password' ? (
               <PasswordFactRow key="password" password={row.value} />
             ) : (
               <BoxFactRow key={row.key} label={t(`box.facts.${row.key}`)}>
@@ -412,16 +406,16 @@ const UseThisBox = ({
   const { origin } = window.location;
   const boxTag = `${organization}/${boxName}`;
   const metadataUrl = `${origin}/${organization}/boxes/${boxName}`;
-  const versionPin = selectedVersion.replace(/^v/, "");
+  const versionPin = selectedVersion.replace(/^v/, '');
   const initCommand = `vagrant init ${boxTag} ${metadataUrl}\nvagrant up`;
   const pinnedVagrantfile = [
     `Vagrant.configure("2") do |config|`,
     `  config.vm.box = "${boxTag}"`,
     `  config.vm.box_url = "${metadataUrl}"`,
     `  config.vm.box_version = "${versionPin}"`,
-    "end",
-    "",
-  ].join("\n");
+    'end',
+    '',
+  ].join('\n');
   const hostsYml = buildStarterHostsYml({
     boxTag,
     origin,
@@ -433,26 +427,23 @@ const UseThisBox = ({
     <div className="bg-dark text-light rounded p-3 mb-4">
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <span className="text-uppercase small fw-semibold text-white-50">
-          {t("box.useThisBox.title")}
+          {t('box.useThisBox.title')}
         </span>
         <label
           className="mb-0 small text-white-50 d-flex align-items-center gap-2"
           htmlFor="useThisBoxVersion"
         >
-          {t("box.useThisBox.version")}
+          {t('box.useThisBox.version')}
           <select
             id="useThisBoxVersion"
             className="form-select form-select-sm w-auto"
             value={selectedVersion}
-            onChange={(e) => onSelectVersion(e.target.value)}
+            onChange={e => onSelectVersion(e.target.value)}
           >
-            {versions.map((version) => (
-              <option
-                key={version.id || version.versionNumber}
-                value={version.versionNumber}
-              >
+            {versions.map(version => (
+              <option key={version.id || version.versionNumber} value={version.versionNumber}>
                 {version.versionNumber}
-                {readDeprecated(version) ? ` (${t("version.deprecated")})` : ""}
+                {readDeprecated(version) ? ` (${t('version.deprecated')})` : ''}
               </option>
             ))}
           </select>
@@ -460,23 +451,20 @@ const UseThisBox = ({
       </div>
       <CodeBlock code={initCommand} />
       <details className="mb-2">
-        <summary>{t("box.useThisBox.option2")}</summary>
+        <summary>{t('box.useThisBox.option2')}</summary>
         <div className="mt-2">
           <CodeBlock code={pinnedVagrantfile} />
         </div>
       </details>
       <details>
-        <summary>{t("box.useThisBox.starterKit")}</summary>
+        <summary>{t('box.useThisBox.starterKit')}</summary>
         <div className="mt-2">
-          <p className="mb-1">{t("box.useThisBox.starterStep1")}</p>
+          <p className="mb-1">{t('box.useThisBox.starterStep1')}</p>
           <CodeBlock code={`vagrant box add ${boxTag} ${metadataUrl}`} />
           <p className="mb-1">
             <code>Vagrantfile</code>
           </p>
-          <CodeBlock
-            code={STARTER_VAGRANTFILE}
-            downloadFileName="Vagrantfile"
-          />
+          <CodeBlock code={STARTER_VAGRANTFILE} downloadFileName="Vagrantfile" />
           <p className="mb-1">
             <code>Hosts.yml</code>
           </p>
@@ -503,7 +491,7 @@ const BoxReadme = ({ readme }) => {
   return (
     <div className="card h-100">
       <div className="card-header">
-        <h5 className="mb-0">{t("box.readmeTitle")}</h5>
+        <h5 className="mb-0">{t('box.readmeTitle')}</h5>
       </div>
       <div className="card-body">
         <Markdown>{readme}</Markdown>
@@ -524,11 +512,7 @@ const DeployToHyperweaverButton = ({
   selectedVersion,
 }) => {
   const { t } = useTranslation();
-  const eligible =
-    user &&
-    hyperweaverUrl &&
-    selectedVersion &&
-    hasHyperweaverEntitlement(user);
+  const eligible = user && hyperweaverUrl && selectedVersion && hasHyperweaverEntitlement(user);
   if (!eligible) {
     return null;
   }
@@ -539,10 +523,10 @@ const DeployToHyperweaverButton = ({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      title={t("box.hyperweaver.deployTitle")}
+      title={t('box.hyperweaver.deployTitle')}
     >
       <FaRocket className="me-2" />
-      {t("box.hyperweaver.deploy")}
+      {t('box.hyperweaver.deploy')}
     </a>
   );
 };
@@ -557,7 +541,7 @@ DeployToHyperweaverButton.propTypes = {
 
 const WatchStarButton = ({ watched, disabled, onToggle }) => {
   const { t } = useTranslation();
-  const label = watched ? t("watch.unwatch") : t("watch.watch");
+  const label = watched ? t('watch.unwatch') : t('watch.watch');
   return (
     <button
       type="button"
@@ -579,45 +563,33 @@ WatchStarButton.propTypes = {
   onToggle: PropTypes.func.isRequired,
 };
 
-const BoxHero = ({
-  organization,
-  boxName,
-  box,
-  watchControl,
-  actions,
-  cicdBar,
-}) => {
+const BoxHero = ({ organization, boxName, box, watchControl, actions, cicdBar }) => {
   const osLabel = getOsDisplayName(box.metadata);
   const media = box.artwork ? (
     <img
       src={`${window.location.origin}/api/organization/${organization}/box/${boxName}/artwork`}
       alt=""
       className="rounded"
-      style={{ width: 236, maxWidth: "100%" }}
+      style={{ width: 236, maxWidth: '100%' }}
     />
   ) : null;
   const title = (
     <>
       {box.name}
-      {watchControl && (
-        <span className="ms-2 align-middle">{watchControl}</span>
-      )}
+      {watchControl && <span className="ms-2 align-middle">{watchControl}</span>}
     </>
   );
   const chips = (
     <StatusChips
-      status={box.published ? "published" : "pending"}
-      visibility={box.isPublic ? "public" : "private"}
+      status={box.published ? 'published' : 'pending'}
+      visibility={box.isPublic ? 'public' : 'private'}
       osLabel={osLabel || null}
     />
   );
 
   return (
     <BoxPageHeader
-      crumbs={[
-        { label: organization, to: `/${organization}` },
-        { label: box.name },
-      ]}
+      crumbs={[{ label: organization, to: `/${organization}` }, { label: box.name }]}
       actions={actions}
       media={media}
       title={title}
@@ -642,32 +614,20 @@ BoxHero.propTypes = {
 };
 
 // Add-version header controls (toggle + save), shown to managers only.
-const AddVersionControls = ({
-  show,
-  onToggleShow,
-  onSave,
-  newVersion,
-  validationErrors,
-}) => {
+const AddVersionControls = ({ show, onToggleShow, onSave, newVersion, validationErrors }) => {
   const { t } = useTranslation();
-  const saveDisabled =
-    !newVersion.versionNumber || !!validationErrors.versionNumber;
+  const saveDisabled = !newVersion.versionNumber || !!validationErrors.versionNumber;
   return (
     <div>
       <button
-        className={`btn ${show ? "btn-secondary" : "btn-outline-success"} me-2`}
+        className={`btn ${show ? 'btn-secondary' : 'btn-outline-success'} me-2`}
         onClick={onToggleShow}
       >
-        {show ? t("buttons.cancel") : t("version.add")}
+        {show ? t('buttons.cancel') : t('version.add')}
       </button>
       {show && (
-        <button
-          type="button"
-          className="btn btn-success"
-          onClick={onSave}
-          disabled={saveDisabled}
-        >
-          {t("buttons.save")}
+        <button type="button" className="btn btn-success" onClick={onSave} disabled={saveDisabled}>
+          {t('buttons.save')}
         </button>
       )}
     </div>
@@ -686,67 +646,63 @@ const Box = ({ theme }) => {
   const { t } = useTranslation();
   const { organization, name } = useParams();
   const [versions, setVersions] = useState([]);
-  const [originalName, setOriginalName] = useState("");
+  const [originalName, setOriginalName] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState(null);
   const navigate = useNavigate();
-  log.component.debug("Box component theme", { theme });
+  log.component.debug('Box component theme', { theme });
   const initialBoxState = {
     id: null,
-    name: "",
-    description: "",
+    name: '',
+    description: '',
     published: false,
     isPublic: false,
     userId: null,
     organization: null,
-    githubRepo: "",
-    workflowFile: "",
-    cicdUrl: "",
+    githubRepo: '',
+    workflowFile: '',
+    cicdUrl: '',
   };
 
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBox, setCurrentBox] = useState(initialBoxState);
   const [boxOrganization, setBoxOrganization] = useState(null);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [showAddVersionForm, setShowAddVersionForm] = useState(false);
   const [newVersion, setNewVersion] = useState({
-    versionNumber: "",
-    description: "",
+    versionNumber: '',
+    description: '',
   });
   const [providers, setProviders] = useState({});
   const [allVersions, setAllVersions] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [selectedVersion, setSelectedVersion] = useState("");
+  const [selectedVersion, setSelectedVersion] = useState('');
   const [watched, setWatched] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
-  const [hyperweaverUrl, setHyperweaverUrl] = useState("");
+  const [hyperweaverUrl, setHyperweaverUrl] = useState('');
 
   const form = useRef();
 
-  const required = (value) => (value ? undefined : t("validation.required"));
+  const required = value => (value ? undefined : t('validation.required'));
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) =>
-    validCharsRegex.test(value) ? undefined : t("validation.invalidName");
+  const validateName = value =>
+    validCharsRegex.test(value) ? undefined : t('validation.invalidName');
 
-  const deleteFilesForArchitecture = async (
-    providerName,
-    versionNumber,
-    architectureName
-  ) => {
+  const deleteFilesForArchitecture = async (providerName, versionNumber, architectureName) => {
     await FileService.delete(
       organization,
       currentBox.name,
       versionNumber,
       providerName,
       architectureName
-    ).catch((e) => {
-      log.file.error("Error deleting files for architecture", {
+    ).catch(e => {
+      log.file.error('Error deleting files for architecture', {
         architectureName,
         error: e.message,
       });
@@ -754,10 +710,7 @@ const Box = ({ theme }) => {
     });
   };
 
-  const deleteArchitecturesForProvider = async (
-    providerName,
-    versionNumber
-  ) => {
+  const deleteArchitecturesForProvider = async (providerName, versionNumber) => {
     const architectures = await ArchitectureService.getArchitectures(
       organization,
       currentBox.name,
@@ -765,16 +718,12 @@ const Box = ({ theme }) => {
       providerName
     );
     for (const architecture of architectures.data) {
-      log.component.debug("Deleting architecture", {
+      log.component.debug('Deleting architecture', {
         architectureName: architecture.name,
         provider: providerName,
       });
       // eslint-disable-next-line no-await-in-loop
-      await deleteFilesForArchitecture(
-        providerName,
-        versionNumber,
-        architecture.name
-      );
+      await deleteFilesForArchitecture(providerName, versionNumber, architecture.name);
       // eslint-disable-next-line no-await-in-loop
       await ArchitectureService.deleteArchitecture(
         organization,
@@ -782,8 +731,8 @@ const Box = ({ theme }) => {
         versionNumber,
         providerName,
         architecture.name
-      ).catch((e) => {
-        log.component.error("Error deleting architecture", {
+      ).catch(e => {
+        log.component.error('Error deleting architecture', {
           architectureName: architecture.name,
           error: e.message,
         });
@@ -792,14 +741,14 @@ const Box = ({ theme }) => {
     }
   };
 
-  const deleteProvidersForVersion = async (versionNumber) => {
+  const deleteProvidersForVersion = async versionNumber => {
     const versionProviders = await ProviderService.getProviders(
       organization,
       currentBox.name,
       versionNumber
     );
     for (const provider of versionProviders.data) {
-      log.component.debug("Deleting provider", {
+      log.component.debug('Deleting provider', {
         providerName: provider.name,
         version: versionNumber,
       });
@@ -811,8 +760,8 @@ const Box = ({ theme }) => {
         currentBox.name,
         versionNumber,
         provider.name
-      ).catch((e) => {
-        log.component.error("Error deleting provider", {
+      ).catch(e => {
+        log.component.error('Error deleting provider', {
           providerName: provider.name,
           error: e.message,
         });
@@ -821,36 +770,28 @@ const Box = ({ theme }) => {
     }
   };
 
-  const deleteVersion = async (versionNumber) => {
+  const deleteVersion = async versionNumber => {
     try {
       await deleteProvidersForVersion(versionNumber);
-      await VersionDataService.deleteVersion(
-        organization,
-        currentBox.name,
-        versionNumber
-      );
-      setMessage(t("version.deleted"));
-      setMessageType("success");
-      const remaining = versions.filter(
-        (version) => version.versionNumber !== versionNumber
-      );
+      await VersionDataService.deleteVersion(organization, currentBox.name, versionNumber);
+      setMessage(t('version.deleted'));
+      setMessageType('success');
+      const remaining = versions.filter(version => version.versionNumber !== versionNumber);
       setVersions(remaining);
-      setSelectedVersion((current) =>
-        current === versionNumber
-          ? pickDefaultVersion(remaining) || ""
-          : current
+      setSelectedVersion(current =>
+        current === versionNumber ? pickDefaultVersion(remaining) || '' : current
       );
     } catch (e) {
-      log.component.error("Error deleting version", {
+      log.component.error('Error deleting version', {
         versionNumber,
         error: e.message,
       });
       const errorMessage =
         e.response && e.response.data && e.response.data.message
           ? e.response.data.message
-          : t("version.deleteError");
+          : t('version.deleteError');
       setMessage(errorMessage);
-      setMessageType("danger");
+      setMessageType('danger');
     }
   };
 
@@ -865,10 +806,10 @@ const Box = ({ theme }) => {
         await BoxDataService.unwatch(organization, currentBox.name);
       }
     } catch (e) {
-      log.api.error("Error toggling box watch", { error: e.message });
+      log.api.error('Error toggling box watch', { error: e.message });
       setWatched(!nextWatched);
-      setMessage(t("watch.error"));
-      setMessageType("danger");
+      setMessage(t('watch.error'));
+      setMessageType('danger');
     } finally {
       setWatchBusy(false);
     }
@@ -901,13 +842,9 @@ const Box = ({ theme }) => {
           if (user) {
             try {
               const watchesResponse = await BoxDataService.getUserWatches();
-              setWatched(
-                (watchesResponse.data || []).some(
-                  (entry) => entry.boxId === boxData.id
-                )
-              );
+              setWatched((watchesResponse.data || []).some(entry => entry.boxId === boxData.id));
             } catch (watchError) {
-              log.api.error("Error loading watched boxes", {
+              log.api.error('Error loading watched boxes', {
                 error: watchError.message,
               });
             }
@@ -915,41 +852,34 @@ const Box = ({ theme }) => {
 
           // Viewing is authorized by the backend (membership or public box),
           // so always fetch versions and let the API decide.
-          const versionsResponse = await VersionDataService.getVersions(
-            organization,
-            name
-          );
+          const versionsResponse = await VersionDataService.getVersions(organization, name);
           setVersions(versionsResponse.data);
           setAllVersions(versionsResponse.data);
-          setSelectedVersion(pickDefaultVersion(versionsResponse.data) || "");
+          setSelectedVersion(pickDefaultVersion(versionsResponse.data) || '');
 
-          versionsResponse.data.forEach((version) => {
-            ProviderService.getProviders(
-              organization,
-              name,
-              version.versionNumber
-            )
-              .then((providerResponse) => {
-                setProviders((prev) => ({
+          versionsResponse.data.forEach(version => {
+            ProviderService.getProviders(organization, name, version.versionNumber)
+              .then(providerResponse => {
+                setProviders(prev => ({
                   ...prev,
                   [version.versionNumber]: providerResponse.data,
                 }));
               })
-              .catch((e) => {
-                log.api.error("Error fetching providers", {
+              .catch(e => {
+                log.api.error('Error fetching providers', {
                   versionNumber: version.versionNumber,
                   error: e.message,
                 });
               });
           });
         } catch (e) {
-          log.api.error("Error loading box data", {
+          log.api.error('Error loading box data', {
             organization,
             boxName: name,
             error: e.message,
           });
-          setMessage(t("box.notFound"));
-          setMessageType("danger");
+          setMessage(t('box.notFound'));
+          setMessageType('danger');
         }
       }
     };
@@ -962,18 +892,16 @@ const Box = ({ theme }) => {
 
     const loadHyperweaverConfig = async () => {
       try {
-        const response = await fetch(
-          `${window.location.origin}/api/config/hyperweaver`
-        );
+        const response = await fetch(`${window.location.origin}/api/config/hyperweaver`);
         if (response.ok) {
           const data = await response.json();
           const url = data?.hyperweaver?.url?.value;
           if (mounted && url) {
-            setHyperweaverUrl(url.replace(/\/+$/, ""));
+            setHyperweaverUrl(url.replace(/\/+$/, ''));
           }
         }
       } catch (error) {
-        log.api.error("Error fetching hyperweaver config", {
+        log.api.error('Error fetching hyperweaver config', {
           error: error.message,
         });
       }
@@ -994,13 +922,13 @@ const Box = ({ theme }) => {
   }, [currentBox.name]);
 
   const convertFieldValue = (fieldName, value) => {
-    if (fieldName === "isPublic") {
-      return value === "true" ? 1 : 0;
+    if (fieldName === 'isPublic') {
+      return value === 'true' ? 1 : 0;
     }
     return value;
   };
 
-  const handleInputChange = (event) => {
+  const handleInputChange = event => {
     const { name: fieldName, value } = event.target;
     setCurrentBox({
       ...currentBox,
@@ -1008,18 +936,18 @@ const Box = ({ theme }) => {
     });
     setNewVersion({ ...newVersion, [fieldName]: value });
 
-    if (fieldName === "name") {
+    if (fieldName === 'name') {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, name: error });
     }
 
-    if (fieldName === "versionNumber") {
+    if (fieldName === 'versionNumber') {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, versionNumber: error });
     }
   };
 
-  const updateRelease = (status) => {
+  const updateRelease = status => {
     const data = {
       id: currentBox.id,
       name: currentBox.name,
@@ -1028,68 +956,66 @@ const Box = ({ theme }) => {
       published: status,
     };
 
-    BoxDataService.update(organization, currentBox.name, data).then(
-      (response) => {
-        setCurrentBox({ ...currentBox, published: status });
-        log.api.debug("Box release status updated", {
-          boxName: currentBox.name,
-          published: status,
-          response: response.data,
-        });
-      }
-    );
+    BoxDataService.update(organization, currentBox.name, data).then(response => {
+      setCurrentBox({ ...currentBox, published: status });
+      log.api.debug('Box release status updated', {
+        boxName: currentBox.name,
+        published: status,
+        response: response.data,
+      });
+    });
   };
 
   const updateBox = () => {
     if (currentBox.name !== originalName) {
-      const boxExists = allVersions.some((v) => v.name === currentBox.name);
+      const boxExists = allVersions.some(v => v.name === currentBox.name);
       if (boxExists) {
-        setMessage(t("box.exists"));
-        setMessageType("danger");
+        setMessage(t('box.exists'));
+        setMessageType('danger');
         return;
       }
     }
 
     BoxDataService.update(organization, originalName, currentBox)
       .then(() => {
-        setMessage(t("box.updated"));
-        setMessageType("success");
+        setMessage(t('box.updated'));
+        setMessageType('success');
         setEditMode(false);
 
         if (originalName !== currentBox.name) {
           navigate(`/${organization}/${currentBox.name}`);
         }
       })
-      .catch((e) => {
-        log.api.error("Error updating box", {
+      .catch(e => {
+        log.api.error('Error updating box', {
           boxName: currentBox.name,
           error: e.message,
         });
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
         } else {
-          setMessage(t("box.updateError"));
+          setMessage(t('box.updateError'));
         }
-        setMessageType("danger");
+        setMessageType('danger');
       });
   };
 
   const deleteBox = () => {
     BoxDataService.remove(organization, currentBox.name)
-      .then((response) => {
-        log.api.debug("Box deleted successfully", {
+      .then(response => {
+        log.api.debug('Box deleted successfully', {
           boxName: currentBox.name,
           response: response.data,
         });
         navigate(`/${organization}`);
       })
-      .catch((e) => {
-        log.api.error("Error deleting box", {
+      .catch(e => {
+        log.api.error('Error deleting box', {
           boxName: currentBox.name,
           error: e.message,
         });
-        setMessage(t("box.deleteError"));
-        setMessageType("danger");
+        setMessage(t('box.deleteError'));
+        setMessageType('danger');
       });
   };
 
@@ -1099,42 +1025,39 @@ const Box = ({ theme }) => {
     setValidationErrors({});
   };
 
-  const addVersion = (event) => {
+  const addVersion = event => {
     event.preventDefault();
 
     const versionNumberError =
-      required(newVersion.versionNumber) ||
-      validateName(newVersion.versionNumber);
+      required(newVersion.versionNumber) || validateName(newVersion.versionNumber);
     if (versionNumberError) {
       setMessage(versionNumberError);
-      setMessageType("danger");
+      setMessageType('danger');
       return;
     }
 
-    const versionExists = versions.some(
-      (v) => v.versionNumber === newVersion.versionNumber
-    );
+    const versionExists = versions.some(v => v.versionNumber === newVersion.versionNumber);
     if (versionExists) {
-      setMessage(t("version.exists"));
-      setMessageType("danger");
+      setMessage(t('version.exists'));
+      setMessageType('danger');
       return;
     }
 
     VersionDataService.createVersion(organization, currentBox.name, newVersion)
-      .then((response) => {
-        setMessage(t("version.added"));
-        setMessageType("success");
+      .then(response => {
+        setMessage(t('version.added'));
+        setMessageType('success');
         setVersions([...versions, response.data]);
         setShowAddVersionForm(false);
-        setNewVersion({ versionNumber: "", description: "" });
+        setNewVersion({ versionNumber: '', description: '' });
       })
-      .catch((e) => {
+      .catch(e => {
         if (e.response && e.response.data && e.response.data.message) {
           setMessage(e.response.data.message);
         } else {
-          setMessage(t("version.addError"));
+          setMessage(t('version.addError'));
         }
-        setMessageType("danger");
+        setMessageType('danger');
       });
   };
 
@@ -1150,7 +1073,7 @@ const Box = ({ theme }) => {
     deleteBox();
   };
 
-  const handleVersionDeleteClick = (versionNumber) => {
+  const handleVersionDeleteClick = versionNumber => {
     setVersionToDelete(versionNumber);
     setShowVersionModal(true);
   };
@@ -1169,7 +1092,7 @@ const Box = ({ theme }) => {
 
   const renderBackButton = () => (
     <Link className="btn btn-dark me-2" to={`/${boxOrganization}`}>
-      {t("actions.backToFiles")}
+      {t('actions.backToFiles')}
     </Link>
   );
 
@@ -1182,16 +1105,13 @@ const Box = ({ theme }) => {
       <div className="d-flex align-items-center gap-2 mt-2 small">
         {currentBox.githubRepo && currentBox.workflowFile && (
           <a
-            href={
-              currentBox.cicdUrl ||
-              `https://github.com/${currentBox.githubRepo}/actions`
-            }
+            href={currentBox.cicdUrl || `https://github.com/${currentBox.githubRepo}/actions`}
             target="_blank"
             rel="noopener noreferrer"
           >
             <img
               src={`https://github.com/${currentBox.githubRepo}/actions/workflows/${currentBox.workflowFile}/badge.svg`}
-              alt={t("box.cicd.buildStatus")}
+              alt={t('box.cicd.buildStatus')}
               className="badge-max-height"
             />
           </a>
@@ -1206,12 +1126,8 @@ const Box = ({ theme }) => {
           </a>
         )}
         {!currentBox.githubRepo && currentBox.cicdUrl && (
-          <a
-            href={currentBox.cicdUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t("box.cicd.viewPipeline")}
+          <a href={currentBox.cicdUrl} target="_blank" rel="noopener noreferrer">
+            {t('box.cicd.viewPipeline')}
           </a>
         )}
       </div>
@@ -1221,11 +1137,8 @@ const Box = ({ theme }) => {
   const renderPublishButton = () => {
     if (currentBox.published) {
       return (
-        <button
-          className="btn btn-warning me-2"
-          onClick={() => updateRelease(false)}
-        >
-          {t("box.unpublish")}
+        <button className="btn btn-warning me-2" onClick={() => updateRelease(false)}>
+          {t('box.unpublish')}
         </button>
       );
     }
@@ -1237,7 +1150,7 @@ const Box = ({ theme }) => {
           onClick={() => updateRelease(true)}
           disabled={!!validationErrors.name}
         >
-          {t("box.publish")}
+          {t('box.publish')}
         </button>
       );
     }
@@ -1249,7 +1162,7 @@ const Box = ({ theme }) => {
     <div className="edit-form">
       <form ref={form}>
         <div className="mb-1">
-          <strong>{t("box.name")}:</strong>
+          <strong>{t('box.name')}:</strong>
         </div>
         <div className="form-group row align-items-center">
           <div className="col-auto pe-0">
@@ -1258,7 +1171,7 @@ const Box = ({ theme }) => {
               className="form-control"
               id="organization"
               name="organization"
-              value={currentUser ? organization : ""}
+              value={currentUser ? organization : ''}
               onChange={handleInputChange}
               disabled
             />
@@ -1278,21 +1191,17 @@ const Box = ({ theme }) => {
             />
           </div>
         </div>
-        {validationErrors.name && (
-          <div className="text-danger">{validationErrors.name}</div>
-        )}
-        <small className="form-text text-muted">
-          {t("box.shortDescription")}
-        </small>
+        {validationErrors.name && <div className="text-danger">{validationErrors.name}</div>}
+        <small className="form-text text-muted">{t('box.shortDescription')}</small>
         <div className="form-group mt-2">
           <label htmlFor="boxStatus">
-            <strong>{t("box.status")}: </strong>
+            <strong>{t('box.status')}: </strong>
           </label>
-          {currentBox.published ? t("status.completed") : t("status.pending")}
+          {currentBox.published ? t('status.completed') : t('status.pending')}
         </div>
         <div className="form-group mt-2">
           <label htmlFor="boxVisibility">
-            <strong>{t("box.visibility")}:</strong>
+            <strong>{t('box.visibility')}:</strong>
           </label>
           <div className="d-flex">
             <div className="form-check me-3">
@@ -1306,7 +1215,7 @@ const Box = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="visibilityPrivate">
-                {t("box.organization.visibility.private")}
+                {t('box.organization.visibility.private')}
               </label>
             </div>
             <div className="form-check">
@@ -1320,17 +1229,15 @@ const Box = ({ theme }) => {
                 onChange={handleInputChange}
               />
               <label className="form-check-label" htmlFor="visibilityPublic">
-                {t("box.organization.visibility.public")}
+                {t('box.organization.visibility.public')}
               </label>
             </div>
           </div>
-          <small className="form-text text-muted">
-            {t("box.visibilityHint")}
-          </small>
+          <small className="form-text text-muted">{t('box.visibilityHint')}</small>
         </div>
         <div className="form-group mt-2">
           <label className="mb-1" htmlFor="description">
-            <strong>{t("box.description")}:</strong> {t("box.optional")}
+            <strong>{t('box.description')}:</strong> {t('box.optional')}
           </label>
           <textarea
             className="form-control"
@@ -1340,66 +1247,58 @@ const Box = ({ theme }) => {
             onChange={handleInputChange}
             name="description"
             rows="4"
-            placeholder={t("box.shortDescription")}
+            placeholder={t('box.shortDescription')}
           />
         </div>
         <div className="form-group mt-3">
           <h5>
-            <strong>{t("box.cicd.title")}</strong> {t("box.optional")}
+            <strong>{t('box.cicd.title')}</strong> {t('box.optional')}
           </h5>
-          <small className="form-text text-muted mb-3">
-            {t("box.cicd.connect")}
-          </small>
+          <small className="form-text text-muted mb-3">{t('box.cicd.connect')}</small>
           <div className="form-group mt-2">
             <label className="mb-1" htmlFor="githubRepo">
-              <strong>{t("box.cicd.repository")}:</strong> {t("box.optional")}
+              <strong>{t('box.cicd.repository')}:</strong> {t('box.optional')}
             </label>
             <input
               type="text"
               className="form-control"
               id="githubRepo"
               name="githubRepo"
-              value={currentBox.githubRepo || ""}
+              value={currentBox.githubRepo || ''}
               onChange={handleInputChange}
-              placeholder={t("box.cicd.repositoryPlaceholder")}
+              placeholder={t('box.cicd.repositoryPlaceholder')}
             />
-            <small className="form-text text-muted">
-              {t("box.cicd.repositoryHint")}
-            </small>
+            <small className="form-text text-muted">{t('box.cicd.repositoryHint')}</small>
           </div>
           <div className="form-group mt-2">
             <label className="mb-1" htmlFor="workflowFile">
-              <strong>{t("box.cicd.workflow")}:</strong> {t("box.optional")}
+              <strong>{t('box.cicd.workflow')}:</strong> {t('box.optional')}
             </label>
             <input
               type="text"
               className="form-control"
               id="workflowFile"
               name="workflowFile"
-              value={currentBox.workflowFile || ""}
+              value={currentBox.workflowFile || ''}
               onChange={handleInputChange}
-              placeholder={t("box.cicd.workflowPlaceholder")}
+              placeholder={t('box.cicd.workflowPlaceholder')}
             />
-            <small className="form-text text-muted">
-              {t("box.cicd.workflowHint")}
-            </small>
+            <small className="form-text text-muted">{t('box.cicd.workflowHint')}</small>
           </div>
           <div className="form-group mt-2">
             <label className="mb-1" htmlFor="cicdUrl">
-              <strong>{t("box.cicd.pipelineUrl")}:</strong> {t("box.optional")}
+              <strong>{t('box.cicd.pipelineUrl')}:</strong> {t('box.optional')}
             </label>
             <input
               type="url"
               className="form-control"
               id="cicdUrl"
               name="cicdUrl"
-              value={currentBox.cicdUrl || ""}
+              value={currentBox.cicdUrl || ''}
               onChange={handleInputChange}
-              placeholder={t("box.cicd.pipelinePlaceholder")}
+              placeholder={t('box.cicd.pipelinePlaceholder')}
             />
-            <small className="form-text text-muted">
-              {t("box.cicd.pipelineHint")}
-            </small>
+            <small className="form-text text-muted">{t('box.cicd.pipelineHint')}</small>
           </div>
         </div>
       </form>
@@ -1416,23 +1315,20 @@ const Box = ({ theme }) => {
             onClick={updateBox}
             disabled={!!validationErrors.name}
           >
-            {t("buttons.save")}
+            {t('buttons.save')}
           </button>
           <button className="btn btn-secondary me-2" onClick={cancelEdit}>
-            {t("buttons.cancel")}
+            {t('buttons.cancel')}
           </button>
         </>
       ) : (
-        <button
-          className="btn btn-primary me-2"
-          onClick={() => setEditMode(true)}
-        >
-          {t("buttons.edit")}
+        <button className="btn btn-primary me-2" onClick={() => setEditMode(true)}>
+          {t('buttons.edit')}
         </button>
       )}
       {currentBox.id && !editMode && (
         <button className="btn btn-danger me-2" onClick={handleDeleteClick}>
-          {t("buttons.delete")}
+          {t('buttons.delete')}
         </button>
       )}
       <ConfirmationModal
@@ -1470,7 +1366,7 @@ const Box = ({ theme }) => {
           {editMode ? (
             <div className="mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4>{t("box.details")}</h4>
+                <h4>{t('box.details')}</h4>
                 <div>{heroActions}</div>
               </div>
               {renderEditForm()}
@@ -1482,11 +1378,7 @@ const Box = ({ theme }) => {
               box={currentBox}
               watchControl={
                 currentUser ? (
-                  <WatchStarButton
-                    watched={watched}
-                    disabled={watchBusy}
-                    onToggle={toggleWatch}
-                  />
+                  <WatchStarButton watched={watched} disabled={watchBusy} onToggle={toggleWatch} />
                 ) : null
               }
               actions={heroActions}
@@ -1519,13 +1411,11 @@ const Box = ({ theme }) => {
           )}
           <div className="list-table">
             <div className="d-flex justify-content-between align-items-center">
-              <h4>{t("box.versionsTitle")}</h4>
+              <h4>{t('box.versionsTitle')}</h4>
               {isAuthorized && (
                 <AddVersionControls
                   show={showAddVersionForm}
-                  onToggleShow={() =>
-                    setShowAddVersionForm(!showAddVersionForm)
-                  }
+                  onToggleShow={() => setShowAddVersionForm(!showAddVersionForm)}
                   onSave={addVersion}
                   newVersion={newVersion}
                   validationErrors={validationErrors}
@@ -1537,7 +1427,7 @@ const Box = ({ theme }) => {
             <div>
               <form onSubmit={addVersion} ref={form}>
                 <div className="form-group col-md-3">
-                  <label htmlFor="versionNumber">{t("version.number")}</label>
+                  <label htmlFor="versionNumber">{t('version.number')}</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1548,15 +1438,11 @@ const Box = ({ theme }) => {
                     required
                   />
                   {validationErrors.versionNumber && (
-                    <div className="text-danger">
-                      {validationErrors.versionNumber}
-                    </div>
+                    <div className="text-danger">{validationErrors.versionNumber}</div>
                   )}
                 </div>
                 <div className="form-group">
-                  <label htmlFor="versionDescription">
-                    {t("provider.description")}
-                  </label>
+                  <label htmlFor="versionDescription">{t('provider.description')}</label>
                   <textarea
                     className="form-control"
                     id="versionDescription"
@@ -1573,33 +1459,27 @@ const Box = ({ theme }) => {
           <Table striped className="table">
             <thead>
               <tr>
-                <th>{t("version.number")}</th>
-                <th>{t("version.details")}</th>
-                <th>
-                  {t("version.providers", { version: "" }).replace(":", "")}
-                </th>
-                {isAuthorized && <th>{t("version.actions")}</th>}
+                <th>{t('version.number')}</th>
+                <th>{t('version.details')}</th>
+                <th>{t('version.providers', { version: '' }).replace(':', '')}</th>
+                {isAuthorized && <th>{t('version.actions')}</th>}
               </tr>
             </thead>
             <tbody>
-              {sortVersionsNewestFirst(versions).map((version) => (
+              {sortVersionsNewestFirst(versions).map(version => (
                 <tr key={version.id || version.versionNumber}>
                   <td>
-                    <Link
-                      to={`/${organization}/${name}/${version.versionNumber}`}
-                    >
+                    <Link to={`/${organization}/${name}/${version.versionNumber}`}>
                       {version.versionNumber}
                     </Link>
                     {readDeprecated(version) && (
-                      <span className="badge bg-danger ms-2">
-                        {t("version.deprecated")}
-                      </span>
+                      <span className="badge bg-danger ms-2">{t('version.deprecated')}</span>
                     )}
                   </td>
                   <td>{version.description}</td>
                   <td>
                     {providers[version.versionNumber] &&
-                      providers[version.versionNumber].map((provider) => (
+                      providers[version.versionNumber].map(provider => (
                         <div key={provider.id || provider.name}>
                           <Link
                             to={`/${organization}/${name}/${version.versionNumber}/${provider.name}`}
@@ -1613,11 +1493,9 @@ const Box = ({ theme }) => {
                     <td>
                       <button
                         className="btn btn-danger"
-                        onClick={() =>
-                          handleVersionDeleteClick(version.versionNumber)
-                        }
+                        onClick={() => handleVersionDeleteClick(version.versionNumber)}
                       >
-                        {t("buttons.delete")}
+                        {t('buttons.delete')}
                       </button>
                     </td>
                   )}
@@ -1635,7 +1513,7 @@ const Box = ({ theme }) => {
         <div>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <button className="btn btn-dark me-2" onClick={() => navigate(`/`)}>
-              {t("actions.backToFiles")}
+              {t('actions.backToFiles')}
             </button>
           </div>
         </div>

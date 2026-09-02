@@ -1,27 +1,23 @@
-import PropTypes from "prop-types";
-import { Component } from "react";
-import { useTranslation } from "react-i18next";
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Translation wrapper for ErrorBoundary class component
  */
-const ErrorBoundaryWithTranslation = ({
-  children,
-  fallback,
-  showErrorDetails,
-}) => {
-  const { t } = useTranslation(["common"]);
+const ErrorBoundaryWithTranslation = ({ children, fallback, showErrorDetails }) => {
+  const { t } = useTranslation(['common']);
 
   return (
     <ErrorBoundaryClass
       fallback={fallback}
       showErrorDetails={showErrorDetails}
       translations={{
-        somethingWentWrong: t("common:error.somethingWentWrong"),
-        unexpectedErrorOccurred: t("common:error.unexpectedErrorOccurred"),
-        refreshPage: t("common:error.refreshPage"),
-        goHome: t("common:error.goHome"),
-        errorDetailsDevelopment: t("common:error.errorDetailsDevelopment"),
+        somethingWentWrong: t('common:error.somethingWentWrong'),
+        unexpectedErrorOccurred: t('common:error.unexpectedErrorOccurred'),
+        refreshPage: t('common:error.refreshPage'),
+        goHome: t('common:error.goHome'),
+        errorDetailsDevelopment: t('common:error.errorDetailsDevelopment'),
       }}
     >
       {children}
@@ -50,8 +46,8 @@ class ErrorBoundaryClass extends Component {
     });
 
     // Log error to console in development
-    if (import.meta.env.NODE_ENV === "development") {
-      console.error("Error Boundary caught an error:", error, errorInfo);
+    if (import.meta.env.NODE_ENV === 'development') {
+      console.error('Error Boundary caught an error:', error, errorInfo);
     }
 
     // In production, send to error reporting service:
@@ -63,7 +59,7 @@ class ErrorBoundaryClass extends Component {
   };
 
   handleGoHome = () => {
-    window.location.href = "/";
+    window.location.href = '/';
   };
 
   render() {
@@ -83,9 +79,7 @@ class ErrorBoundaryClass extends Component {
               <div className="card bg-dark border-danger">
                 <div className="card-body text-center">
                   <i className="bi bi-exclamation-triangle display-4 text-danger mb-3" />
-                  <h4 className="text-light mb-3">
-                    {this.props.translations.somethingWentWrong}
-                  </h4>
+                  <h4 className="text-light mb-3">{this.props.translations.somethingWentWrong}</h4>
                   <p className="text-muted mb-4">
                     {this.props.translations.unexpectedErrorOccurred}
                   </p>

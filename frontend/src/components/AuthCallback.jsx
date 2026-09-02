@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import EventBus from "../common/EventBus";
-import { log } from "../utils/Logger";
+import EventBus from '../common/EventBus';
+import { log } from '../utils/Logger';
 
 /**
  * AuthCallback Component
@@ -12,59 +12,59 @@ import { log } from "../utils/Logger";
  * The code is exchanged for the token via POST /api/auth/oidc/exchange.
  */
 const AuthCallback = () => {
-  const { t } = useTranslation(["auth", "common"]);
+  const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Codes are single-use: never start a second exchange if the effect re-runs
   const exchangeStartedRef = useRef(false);
 
   useEffect(() => {
-    const code = searchParams.get("code");
-    const error = searchParams.get("error");
+    const code = searchParams.get('code');
+    const error = searchParams.get('error');
 
     const navigateAfterLogin = () => {
-      const intendedUrl = localStorage.getItem("boxvault_intended_url");
+      const intendedUrl = localStorage.getItem('boxvault_intended_url');
       if (intendedUrl) {
-        localStorage.removeItem("boxvault_intended_url");
-        log.auth.info("Redirecting to intended URL", { url: intendedUrl });
+        localStorage.removeItem('boxvault_intended_url');
+        log.auth.info('Redirecting to intended URL', { url: intendedUrl });
         navigate(intendedUrl, { replace: true });
       } else {
-        navigate("/profile", { replace: true });
+        navigate('/profile', { replace: true });
       }
     };
 
-    const processToken = (token) => {
+    const processToken = token => {
       // Store the token temporarily
       const userData = { accessToken: token };
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(userData));
 
-      log.auth.info("Authentication successful, token stored");
+      log.auth.info('Authentication successful, token stored');
 
       // Fetch full user data with the token
       fetch(`${window.location.origin}/api/user`, {
         headers: {
-          "x-access-token": token,
-          "Content-Type": "application/json",
+          'x-access-token': token,
+          'Content-Type': 'application/json',
         },
       })
-        .then((response) => {
+        .then(response => {
           if (response.ok) {
             return response.json();
           }
-          log.auth.warn("Failed to fetch user data, using token only");
+          log.auth.warn('Failed to fetch user data, using token only');
           return null;
         })
-        .then((fullUserData) => {
+        .then(fullUserData => {
           if (fullUserData) {
             // Decode JWT to extract provider field for RP-initiated logout
             let provider = null;
             try {
-              const [, base64Url] = token.split(".");
-              const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+              const [, base64Url] = token.split('.');
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
               const { provider: extractedProvider } = JSON.parse(atob(base64));
               provider = extractedProvider;
             } catch (decodeError) {
-              log.auth.warn("Failed to decode JWT for provider extraction", {
+              log.auth.warn('Failed to decode JWT for provider extraction', {
                 error: decodeError.message,
               });
             }
@@ -75,18 +75,18 @@ const AuthCallback = () => {
               tokenRefreshTime: Date.now(),
               provider,
             };
-            localStorage.setItem("user", JSON.stringify(completeUserData));
-            log.auth.info("Full user data fetched and stored", { provider });
+            localStorage.setItem('user', JSON.stringify(completeUserData));
+            log.auth.info('Full user data fetched and stored', { provider });
 
             // Trigger login event to update navbar
-            EventBus.dispatch("login", completeUserData);
+            EventBus.dispatch('login', completeUserData);
           }
 
           // Navigate after user data is processed
           navigateAfterLogin();
         })
-        .catch((userFetchError) => {
-          log.auth.warn("Error fetching user data", {
+        .catch(userFetchError => {
+          log.auth.warn('Error fetching user data', {
             error: userFetchError.message,
           });
 
@@ -96,29 +96,29 @@ const AuthCallback = () => {
     };
 
     if (error) {
-      let errorMessage = t("errors.authenticationFailed");
+      let errorMessage = t('errors.authenticationFailed');
 
       switch (error) {
-        case "oidc_failed":
-          errorMessage = t("errors.oidcFailed");
+        case 'oidc_failed':
+          errorMessage = t('errors.oidcFailed');
           break;
-        case "access_denied":
-          errorMessage = t("errors.accessDenied");
+        case 'access_denied':
+          errorMessage = t('errors.accessDenied');
           break;
-        case "token_generation_failed":
-          errorMessage = t("errors.tokenGenerationFailed");
+        case 'token_generation_failed':
+          errorMessage = t('errors.tokenGenerationFailed');
           break;
-        case "no_provider":
-          errorMessage = t("errors.noProvider");
+        case 'no_provider':
+          errorMessage = t('errors.noProvider');
           break;
         default:
-          errorMessage = t("errors.authError", {
+          errorMessage = t('errors.authError', {
             error,
           });
       }
 
-      log.auth.error("Authentication error", { error, errorMessage });
-      navigate("/login", {
+      log.auth.error('Authentication error', { error, errorMessage });
+      navigate('/login', {
         state: { error: errorMessage },
         replace: true,
       });
@@ -126,9 +126,9 @@ const AuthCallback = () => {
     }
 
     if (!code) {
-      log.auth.error("Auth callback received with no login code or error");
-      navigate("/login", {
-        state: { error: t("errors.invalidResponse") },
+      log.auth.error('Auth callback received with no login code or error');
+      navigate('/login', {
+        state: { error: t('errors.invalidResponse') },
         replace: true,
       });
       return;
@@ -141,28 +141,28 @@ const AuthCallback = () => {
 
     // Exchange the single-use login code for the session token
     fetch(`${window.location.origin}/api/auth/oidc/exchange`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),
     })
-      .then((response) => {
+      .then(response => {
         if (!response.ok) {
           throw new Error(`Login code exchange failed (${response.status})`);
         }
         return response.json();
       })
-      .then((data) => {
+      .then(data => {
         if (!data?.token) {
-          throw new Error("Login code exchange returned no token");
+          throw new Error('Login code exchange returned no token');
         }
         processToken(data.token);
       })
-      .catch((exchangeError) => {
-        log.auth.error("Error exchanging login code", {
+      .catch(exchangeError => {
+        log.auth.error('Error exchanging login code', {
           error: exchangeError.message,
         });
-        navigate("/login", {
-          state: { error: t("errors.failedToProcess") },
+        navigate('/login', {
+          state: { error: t('errors.failedToProcess') },
           replace: true,
         });
       });
@@ -174,7 +174,7 @@ const AuthCallback = () => {
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
-        <p className="mt-3">{t("messages.processingAuth")}</p>
+        <p className="mt-3">{t('messages.processingAuth')}</p>
       </div>
     </div>
   );

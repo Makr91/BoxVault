@@ -1,4 +1,4 @@
-import { log } from "../utils/Logger";
+import { log } from '../utils/Logger';
 
 class EventBusService {
   constructor() {
@@ -13,14 +13,14 @@ class EventBusService {
     const callbacks = this.eventMap.get(event);
 
     // Create wrapper that handles detail extraction
-    const wrappedCallback = (e) => {
+    const wrappedCallback = e => {
       try {
         // Only call if callback is still registered and event is valid
         if (callbacks.has(wrappedCallback) && e && e.detail !== undefined) {
           callback(e.detail);
         }
       } catch (error) {
-        log.error.error("Error in event callback", {
+        log.error.error('Error in event callback', {
           event,
           error: error.message,
         });
@@ -44,7 +44,7 @@ class EventBusService {
           }
         }
       } catch (error) {
-        log.error.error("Error cleaning up event listener", {
+        log.error.error('Error cleaning up event listener', {
           event,
           error: error.message,
         });

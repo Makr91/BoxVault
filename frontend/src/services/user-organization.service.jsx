@@ -1,6 +1,6 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
@@ -13,12 +13,8 @@ const getUserOrganizations = () =>
 /**
  * Leave an organization
  */
-const leaveOrganization = (orgName) =>
-  axios.post(
-    `${baseURL}/api/user/leave/${orgName}`,
-    {},
-    { headers: authHeader() }
-  );
+const leaveOrganization = orgName =>
+  axios.post(`${baseURL}/api/user/leave/${orgName}`, {}, { headers: authHeader() });
 
 /**
  * Get user's primary organization
@@ -31,12 +27,8 @@ const getPrimaryOrganization = () =>
 /**
  * Set user's primary organization
  */
-const setPrimaryOrganization = (orgName) =>
-  axios.put(
-    `${baseURL}/api/user/primary-organization/${orgName}`,
-    {},
-    { headers: authHeader() }
-  );
+const setPrimaryOrganization = orgName =>
+  axios.put(`${baseURL}/api/user/primary-organization/${orgName}`, {}, { headers: authHeader() });
 
 const UserOrganizationService = {
   getUserOrganizations,

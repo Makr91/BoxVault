@@ -1,15 +1,15 @@
-import path from "path";
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import svgr from "vite-plugin-svgr";
+import path from 'path';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import svgr from 'vite-plugin-svgr';
 
 export default defineConfig(() => {
   return {
-    root: path.resolve(__dirname, "src"),
-    publicDir: "../public",
-    base: "/",
+    root: path.resolve(__dirname, 'src'),
+    publicDir: '../public',
+    base: '/',
     build: {
-      outDir: "../../backend/app/views/",
+      outDir: '../../backend/app/views/',
       emptyOutDir: true,
       copyPublicDir: true,
       minify: false,
@@ -17,13 +17,10 @@ export default defineConfig(() => {
         output: {
           entryFileNames: `assets/[name].js`,
           chunkFileNames: `assets/[name].js`,
-          assetFileNames: (assetInfo) => {
+          assetFileNames: assetInfo => {
             // Keep favicons at root level
-            if (
-              assetInfo.name === "favicon.ico" ||
-              assetInfo.name === "dark-favicon.ico"
-            ) {
-              return "[name][extname]";
+            if (assetInfo.name === 'favicon.ico' || assetInfo.name === 'dark-favicon.ico') {
+              return '[name][extname]';
             }
             return `assets/[name].[ext]`;
           },

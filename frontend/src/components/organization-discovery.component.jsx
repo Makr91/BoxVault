@@ -1,15 +1,15 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation, Trans } from "react-i18next";
-import { FaBuilding, FaUsers, FaBox } from "react-icons/fa6";
-import { Link, useNavigate } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
+import { FaBuilding, FaUsers, FaBox } from 'react-icons/fa6';
+import { Link, useNavigate } from 'react-router-dom';
 
-import BoxVaultLight from "../images/BoxVault.svg?react";
-import BoxVaultDark from "../images/BoxVaultDark.svg?react";
-import AuthService from "../services/auth.service";
-import OrganizationService from "../services/organization.service";
-import RequestService from "../services/request.service";
-import { log } from "../utils/Logger";
+import BoxVaultLight from '../images/BoxVault.svg?react';
+import BoxVaultDark from '../images/BoxVaultDark.svg?react';
+import AuthService from '../services/auth.service';
+import OrganizationService from '../services/organization.service';
+import RequestService from '../services/request.service';
+import { log } from '../utils/Logger';
 
 /**
  * OrganizationDiscovery - Public page for discovering and joining organizations
@@ -19,22 +19,22 @@ const OrganizationDiscovery = ({ theme }) => {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
-  const [joinRequestMessage, setJoinRequestMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+  const [joinRequestMessage, setJoinRequestMessage] = useState('');
   const [requestingOrg, setRequestingOrg] = useState(null);
   const [orgGravatars, setOrgGravatars] = useState({});
 
-  const fetchOrgGravatars = useCallback(async (orgList) => {
+  const fetchOrgGravatars = useCallback(async orgList => {
     const gravatarPromises = orgList
-      .filter((org) => org.emailHash)
-      .map(async (org) => {
+      .filter(org => org.emailHash)
+      .map(async org => {
         try {
           const profile = await AuthService.getGravatarProfile(org.emailHash);
           return { name: org.name, url: profile?.avatar_url };
         } catch (error) {
-          log.api.error("Error fetching org gravatar", {
+          log.api.error('Error fetching org gravatar', {
             orgName: org.name,
             error: error.message,
           });
@@ -44,7 +44,7 @@ const OrganizationDiscovery = ({ theme }) => {
 
     const results = await Promise.all(gravatarPromises);
     const gravatars = {};
-    results.forEach((result) => {
+    results.forEach(result => {
       if (result.url) {
         gravatars[result.name] = result.url;
       }
@@ -53,14 +53,13 @@ const OrganizationDiscovery = ({ theme }) => {
   }, []);
 
   useEffect(() => {
-    document.title = t("discovery.title");
+    document.title = t('discovery.title');
 
     let cancelled = false;
 
     const loadDiscoverableOrganizations = async () => {
       try {
-        const response =
-          await OrganizationService.getDiscoverableOrganizations();
+        const response = await OrganizationService.getDiscoverableOrganizations();
         if (cancelled) {
           return;
         }
@@ -68,23 +67,23 @@ const OrganizationDiscovery = ({ theme }) => {
         setOrganizations(orgs);
 
         // Honor a join intent saved before an OIDC login round-trip
-        const savedJoinOrg = localStorage.getItem("boxvault_join_org");
+        const savedJoinOrg = localStorage.getItem('boxvault_join_org');
         if (savedJoinOrg) {
-          const intendedOrg = orgs.find((o) => o.name === savedJoinOrg);
+          const intendedOrg = orgs.find(o => o.name === savedJoinOrg);
           if (intendedOrg) {
             setRequestingOrg(intendedOrg);
-            localStorage.removeItem("boxvault_join_org");
+            localStorage.removeItem('boxvault_join_org');
           }
         }
 
         await fetchOrgGravatars(orgs);
       } catch (error) {
         if (!cancelled) {
-          log.api.error("Error loading discoverable organizations", {
+          log.api.error('Error loading discoverable organizations', {
             error: error.message,
           });
-          setMessage(t("discovery.errors.load"));
-          setMessageType("danger");
+          setMessage(t('discovery.errors.load'));
+          setMessageType('danger');
         }
       } finally {
         if (!cancelled) {
@@ -100,55 +99,52 @@ const OrganizationDiscovery = ({ theme }) => {
     };
   }, [fetchOrgGravatars, t]);
 
-  const handleJoinRequest = async (orgName) => {
+  const handleJoinRequest = async orgName => {
     if (!joinRequestMessage.trim()) {
-      setMessage(t("discovery.errors.emptyMessage"));
-      setMessageType("warning");
+      setMessage(t('discovery.errors.emptyMessage'));
+      setMessageType('warning');
       return;
     }
 
     try {
       await RequestService.createJoinRequest(orgName, joinRequestMessage);
-      setMessage(t("discovery.messages.requestSent", { orgName }));
-      setMessageType("success");
-      setJoinRequestMessage("");
+      setMessage(t('discovery.messages.requestSent', { orgName }));
+      setMessageType('success');
+      setJoinRequestMessage('');
       setRequestingOrg(null);
     } catch (error) {
-      log.api.error("Error creating join request", {
+      log.api.error('Error creating join request', {
         orgName,
         error: error.message,
       });
-      setMessage(
-        error.response?.data?.message ||
-          t("discovery.errors.requestFailed", { orgName })
-      );
-      setMessageType("danger");
+      setMessage(error.response?.data?.message || t('discovery.errors.requestFailed', { orgName }));
+      setMessageType('danger');
     }
   };
 
-  const getAccessModeDisplay = (accessMode) => {
+  const getAccessModeDisplay = accessMode => {
     switch (accessMode) {
-      case "invite_only":
-        return t("discovery.buttons.inviteOnly");
-      case "request_to_join":
-        return t("discovery.buttons.requestToJoin");
+      case 'invite_only':
+        return t('discovery.buttons.inviteOnly');
+      case 'request_to_join':
+        return t('discovery.buttons.requestToJoin');
       default:
-        return t("discovery.buttons.private");
+        return t('discovery.buttons.private');
     }
   };
 
-  const getAccessModeClass = (accessMode) => {
+  const getAccessModeClass = accessMode => {
     switch (accessMode) {
-      case "invite_only":
-        return "bg-warning";
-      case "request_to_join":
-        return "bg-success";
+      case 'invite_only':
+        return 'bg-warning';
+      case 'request_to_join':
+        return 'bg-success';
       default:
-        return "bg-secondary";
+        return 'bg-secondary';
     }
   };
 
-  const renderOrgIcon = (org) => {
+  const renderOrgIcon = org => {
     // Stored org logo first, fetched Gravatar second, BoxVault logo last
     const iconUrl = org.logo || orgGravatars[org.name];
     if (iconUrl) {
@@ -162,16 +158,14 @@ const OrganizationDiscovery = ({ theme }) => {
         />
       );
     }
-    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
+    const LogoComponent = theme === 'light' ? BoxVaultLight : BoxVaultDark;
     return <LogoComponent className="logo-lg icon-with-margin" />;
   };
 
   const filteredOrganizations = organizations.filter(
-    (org) =>
+    org =>
       org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (org.display_name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
+      (org.display_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       org.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -181,20 +175,17 @@ const OrganizationDiscovery = ({ theme }) => {
         <div className="col-12">
           <h2 className="mb-4">
             <FaBuilding className="me-2" />
-            {t("discovery.title")}
+            {t('discovery.title')}
           </h2>
-          <p className="text-muted">{t("discovery.description")}</p>
+          <p className="text-muted">{t('discovery.description')}</p>
 
           {message && (
-            <div
-              className={`alert alert-${messageType} alert-dismissible fade show`}
-              role="alert"
-            >
+            <div className={`alert alert-${messageType} alert-dismissible fade show`} role="alert">
               {message}
               <button
                 type="button"
                 className="btn-close"
-                onClick={() => setMessage("")}
+                onClick={() => setMessage('')}
                 aria-label="Close"
               />
             </div>
@@ -208,9 +199,9 @@ const OrganizationDiscovery = ({ theme }) => {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder={t("discovery.searchPlaceholder")}
+                  placeholder={t('discovery.searchPlaceholder')}
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
@@ -226,18 +217,16 @@ const OrganizationDiscovery = ({ theme }) => {
 
           {!loading && filteredOrganizations.length === 0 && (
             <div className="alert alert-info">
-              <h5>{t("discovery.noOrgsFoundTitle")}</h5>
+              <h5>{t('discovery.noOrgsFoundTitle')}</h5>
               <p className="mb-0">
-                {searchTerm
-                  ? t("discovery.noOrgsFoundSearch")
-                  : t("discovery.noOrgsFoundPublic")}
+                {searchTerm ? t('discovery.noOrgsFoundSearch') : t('discovery.noOrgsFoundPublic')}
               </p>
             </div>
           )}
 
           {!loading && filteredOrganizations.length > 0 && (
             <div className="row">
-              {filteredOrganizations.map((org) => (
+              {filteredOrganizations.map(org => (
                 <div key={org.id} className="col-md-6 col-lg-4 mb-4">
                   <div className="card h-100">
                     <div className="card-header">
@@ -246,78 +235,60 @@ const OrganizationDiscovery = ({ theme }) => {
                           {renderOrgIcon(org)}
                           {org.display_name || org.name}
                         </h5>
-                        <span
-                          className={`badge ${getAccessModeClass(org.accessMode)}`}
-                        >
+                        <span className={`badge ${getAccessModeClass(org.accessMode)}`}>
                           {getAccessModeDisplay(org.accessMode)}
                         </span>
                       </div>
                     </div>
                     <div className="card-body">
-                      <p className="card-text">
-                        {org.description || t("discovery.noDescription")}
-                      </p>
+                      <p className="card-text">{org.description || t('discovery.noDescription')}</p>
                       <div className="d-flex justify-content-between text-muted small">
                         <span>
                           <FaUsers className="me-1" />
-                          {org.memberCount} {t("discovery.members")}
+                          {org.memberCount} {t('discovery.members')}
                         </span>
                         <div className="d-flex flex-column align-items-end">
                           <span>
                             <FaBox className="me-1" />
-                            <Link
-                              to={`/${org.name}`}
-                              className="text-decoration-none"
-                            >
-                              {org.publicBoxCount} {t("discovery.public")}
+                            <Link to={`/${org.name}`} className="text-decoration-none">
+                              {org.publicBoxCount} {t('discovery.public')}
                             </Link>
                           </span>
                           {org.totalBoxCount > org.publicBoxCount && (
                             <span className="text-muted">
-                              {org.totalBoxCount - org.publicBoxCount}{" "}
-                              {t("discovery.private")}
+                              {org.totalBoxCount - org.publicBoxCount} {t('discovery.private')}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
                     <div className="card-footer">
-                      {org.accessMode === "invite_only" && (
-                        <button
-                          className="btn btn-outline-secondary w-100"
-                          disabled
-                        >
-                          {t("discovery.buttons.inviteOnly")}
+                      {org.accessMode === 'invite_only' && (
+                        <button className="btn btn-outline-secondary w-100" disabled>
+                          {t('discovery.buttons.inviteOnly')}
                         </button>
                       )}
-                      {org.accessMode === "request_to_join" && (
+                      {org.accessMode === 'request_to_join' && (
                         <button
                           className="btn btn-primary w-100"
                           onClick={() => {
                             const currentUser = AuthService.getCurrentUser();
                             if (!currentUser) {
-                              localStorage.setItem(
-                                "boxvault_join_org",
-                                org.name
-                              );
-                              navigate("/login");
+                              localStorage.setItem('boxvault_join_org', org.name);
+                              navigate('/login');
                             } else {
                               setRequestingOrg(org);
                             }
                           }}
                         >
-                          {t("discovery.buttons.requestToJoin")}
+                          {t('discovery.buttons.requestToJoin')}
                         </button>
                       )}
-                      {org.accessMode !== "invite_only" &&
-                        org.accessMode !== "request_to_join" && (
-                          <button
-                            className="btn btn-outline-secondary w-100"
-                            disabled
-                          >
-                            {t("discovery.buttons.private")}
-                          </button>
-                        )}
+                      {org.accessMode !== 'invite_only' && org.accessMode !== 'request_to_join' && (
+                        <button className="btn btn-outline-secondary w-100" disabled>
+                          {t('discovery.buttons.private')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -334,7 +305,7 @@ const OrganizationDiscovery = ({ theme }) => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {t("discovery.modal.title", {
+                  {t('discovery.modal.title', {
                     orgName: requestingOrg.display_name || requestingOrg.name,
                   })}
                 </h5>
@@ -343,7 +314,7 @@ const OrganizationDiscovery = ({ theme }) => {
                   className="btn-close"
                   onClick={() => {
                     setRequestingOrg(null);
-                    setJoinRequestMessage("");
+                    setJoinRequestMessage('');
                   }}
                 />
               </div>
@@ -361,8 +332,8 @@ const OrganizationDiscovery = ({ theme }) => {
                   className="form-control"
                   rows="4"
                   value={joinRequestMessage}
-                  onChange={(e) => setJoinRequestMessage(e.target.value)}
-                  placeholder={t("discovery.modal.placeholder")}
+                  onChange={e => setJoinRequestMessage(e.target.value)}
+                  placeholder={t('discovery.modal.placeholder')}
                 />
               </div>
               <div className="modal-footer">
@@ -371,7 +342,7 @@ const OrganizationDiscovery = ({ theme }) => {
                   className="btn btn-secondary"
                   onClick={() => setRequestingOrg(null)}
                 >
-                  {t("buttons.cancel")}
+                  {t('buttons.cancel')}
                 </button>
                 <button
                   type="button"
@@ -379,7 +350,7 @@ const OrganizationDiscovery = ({ theme }) => {
                   onClick={() => handleJoinRequest(requestingOrg.name)}
                   disabled={!joinRequestMessage.trim()}
                 >
-                  {t("discovery.buttons.sendRequest")}
+                  {t('discovery.buttons.sendRequest')}
                 </button>
               </div>
             </div>

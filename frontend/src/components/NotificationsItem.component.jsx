@@ -1,12 +1,12 @@
-import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { FaBell } from "react-icons/fa6";
+import PropTypes from 'prop-types';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaBell } from 'react-icons/fa6';
 
-import NotificationsService from "../services/notifications.service";
-import { log } from "../utils/Logger";
+import NotificationsService from '../services/notifications.service';
+import { log } from '../utils/Logger';
 
-import NotificationsModal from "./NotificationsModal.component";
+import NotificationsModal from './NotificationsModal.component';
 
 const UNREAD_POLL_MS = 60000;
 
@@ -25,7 +25,7 @@ const NotificationsItem = ({ authServerUrl }) => {
           setUnreadCount(response.data?.count || 0);
         }
       } catch (error) {
-        log.api.error("Error loading unread notification count", {
+        log.api.error('Error loading unread notification count', {
           error: error.message,
         });
       }
@@ -40,10 +40,8 @@ const NotificationsItem = ({ authServerUrl }) => {
     };
   }, []);
 
-  const adjustUnread = (delta) => {
-    setUnreadCount((count) =>
-      delta === -Infinity ? 0 : Math.max(0, count + delta)
-    );
+  const adjustUnread = delta => {
+    setUnreadCount(count => (delta === -Infinity ? 0 : Math.max(0, count + delta)));
   };
 
   return (
@@ -55,11 +53,9 @@ const NotificationsItem = ({ authServerUrl }) => {
           onClick={() => setShow(true)}
         >
           <FaBell className="me-2" />
-          <span className="flex-grow-1">{t("inbox.title")}</span>
+          <span className="flex-grow-1">{t('inbox.title')}</span>
           {unreadCount > 0 && (
-            <span className="badge rounded-pill bg-danger ms-2">
-              {unreadCount}
-            </span>
+            <span className="badge rounded-pill bg-danger ms-2">{unreadCount}</span>
           )}
         </button>
       </li>

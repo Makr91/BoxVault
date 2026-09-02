@@ -1,40 +1,34 @@
-import NotificationsService from "../services/notifications.service";
+import NotificationsService from '../services/notifications.service';
 
-const PUSH_ENABLED_KEY = "boxvault_push_enabled";
+const PUSH_ENABLED_KEY = 'boxvault_push_enabled';
 
 const isPushSupported = () =>
-  "serviceWorker" in navigator &&
-  "PushManager" in window &&
-  "Notification" in window;
+  'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
-const isPushEnabled = () => localStorage.getItem(PUSH_ENABLED_KEY) === "true";
+const isPushEnabled = () => localStorage.getItem(PUSH_ENABLED_KEY) === 'true';
 
-const setPushEnabled = (enabled) => {
+const setPushEnabled = enabled => {
   if (enabled) {
-    localStorage.setItem(PUSH_ENABLED_KEY, "true");
+    localStorage.setItem(PUSH_ENABLED_KEY, 'true');
   } else {
     localStorage.removeItem(PUSH_ENABLED_KEY);
   }
 };
 
-const urlBase64ToUint8Array = (base64String) => {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = `${base64String}${padding}`
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
+const urlBase64ToUint8Array = base64String => {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = `${base64String}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
   const rawData = atob(base64);
-  return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+  return Uint8Array.from(rawData, char => char.charCodeAt(0));
 };
 
 const ensureServiceWorker = async () => {
-  await navigator.serviceWorker.register("/notification-sw.js");
+  await navigator.serviceWorker.register('/notification-sw.js');
   return navigator.serviceWorker.ready;
 };
 
 const getVapidKey = async () => {
-  const response = await fetch(
-    `${window.location.origin}/api/notifications/vapid-key`
-  );
+  const response = await fetch(`${window.location.origin}/api/notifications/vapid-key`);
 
   if (!response.ok) {
     throw new Error(`VAPID key request failed with status ${response.status}`);
@@ -77,8 +71,7 @@ const matchesVapidKey = (subscription, vapidKey) => {
   const expected = urlBase64ToUint8Array(vapidKey);
   const actual = new Uint8Array(current);
   return (
-    actual.length === expected.length &&
-    actual.every((byte, index) => byte === expected[index])
+    actual.length === expected.length && actual.every((byte, index) => byte === expected[index])
   );
 };
 
@@ -104,13 +97,13 @@ const syncSubscription = async () => {
   return true;
 };
 
-const listenForSubscriptionChange = (onError) => {
+const listenForSubscriptionChange = onError => {
   if (!isPushSupported()) {
     return () => {};
   }
 
-  const handleMessage = async (event) => {
-    if (event.data?.type !== "pushsubscriptionchange") {
+  const handleMessage = async event => {
+    if (event.data?.type !== 'pushsubscriptionchange') {
       return;
     }
     try {
@@ -123,9 +116,8 @@ const listenForSubscriptionChange = (onError) => {
     }
   };
 
-  navigator.serviceWorker.addEventListener("message", handleMessage);
-  return () =>
-    navigator.serviceWorker.removeEventListener("message", handleMessage);
+  navigator.serviceWorker.addEventListener('message', handleMessage);
+  return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
 };
 
 export {

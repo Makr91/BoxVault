@@ -22,17 +22,13 @@ const orgRole = (user, organizationName) => {
   if (!user || !organizationName || !Array.isArray(user.organizations)) {
     return undefined;
   }
-  const membership = user.organizations.find(
-    (org) => org.name === organizationName
-  );
+  const membership = user.organizations.find(org => org.name === organizationName);
   return membership ? membership.role : undefined;
 };
 
 /** Whether the user holds the global admin role (matches App.jsx / backend isAdmin). */
-export const isGlobalAdmin = (user) =>
-  Boolean(user) &&
-  Array.isArray(user.roles) &&
-  user.roles.includes("ROLE_ADMIN");
+export const isGlobalAdmin = user =>
+  Boolean(user) && Array.isArray(user.roles) && user.roles.includes('ROLE_ADMIN');
 
 /** Member of the organization (any role). Mirrors verifyOrgAccess.isOrgMember. */
 export const isOrgMember = (user, organizationName) =>
@@ -44,15 +40,14 @@ export const isOrgMember = (user, organizationName) =>
  * Used for org settings, member-role management, and bulk delete.
  */
 export const isOrgManager = (user, organizationName) =>
-  isGlobalAdmin(user) ||
-  ["admin", "owner"].includes(orgRole(user, organizationName));
+  isGlobalAdmin(user) || ['admin', 'owner'].includes(orgRole(user, organizationName));
 
 /**
  * Org owner specifically, or a global admin.
  * Mirrors verifyOrgAccess.isOrgOwner (gates per-org role changes + org deletion).
  */
 export const isOrgOwner = (user, organizationName) =>
-  isGlobalAdmin(user) || orgRole(user, organizationName) === "owner";
+  isGlobalAdmin(user) || orgRole(user, organizationName) === 'owner';
 
 /**
  * Whether the user may mutate a box's content (edit/delete the box, and
@@ -72,5 +67,5 @@ export const canManageBox = (user, organizationName, box) => {
   if (box && box.userId === user.id) {
     return true;
   }
-  return ["admin", "owner"].includes(orgRole(user, organizationName));
+  return ['admin', 'owner'].includes(orgRole(user, organizationName));
 };

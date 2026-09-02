@@ -5,8 +5,7 @@
  * @param {object|null|undefined} user - Any payload carrying name/username/email.
  * @returns {string}
  */
-export const userDisplayName = (user) =>
-  user?.name || user?.username || user?.email || "";
+export const userDisplayName = user => user?.name || user?.username || user?.email || '';
 
 /**
  * The email, but only when it differs from the primary label — SCIM-synced
@@ -15,7 +14,7 @@ export const userDisplayName = (user) =>
  * @param {object|null|undefined} user
  * @returns {string} Email to render as the secondary line, or "".
  */
-export const userSecondaryLine = (user) => {
-  const email = user?.email || "";
-  return email && email !== userDisplayName(user) ? email : "";
+export const userSecondaryLine = user => {
+  const email = user?.email || '';
+  return email && email !== userDisplayName(user) ? email : '';
 };

@@ -1,12 +1,11 @@
 // setup.service.js
-import axios from "axios";
+import axios from 'axios';
 
-const API_URL = "/api/setup";
+const API_URL = '/api/setup';
 
-const verifySetupToken = (token) =>
-  axios.post(`${API_URL}/verify-token`, { token });
+const verifySetupToken = token => axios.post(`${API_URL}/verify-token`, { token });
 
-const getConfigs = (token) =>
+const getConfigs = token =>
   axios.get(API_URL, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -26,7 +25,7 @@ const uploadSSL = (token, formData) =>
   axios.post(`${API_URL}/upload-ssl`, formData, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "multipart/form-data",
+      'Content-Type': 'multipart/form-data',
     },
   });
 

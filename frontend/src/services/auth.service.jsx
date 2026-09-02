@@ -1,14 +1,14 @@
-import axios from "axios";
+import axios from 'axios';
 
-import { fetchWithDeduplication } from "../utils/GravatarCache";
-import { log } from "../utils/Logger";
-import { endSession } from "../utils/sessionEnded";
+import { fetchWithDeduplication } from '../utils/GravatarCache';
+import { log } from '../utils/Logger';
+import { endSession } from '../utils/sessionEnded';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
-const getCurrentUser = () => JSON.parse(localStorage.getItem("user"));
+const getCurrentUser = () => JSON.parse(localStorage.getItem('user'));
 
 // Function to refresh token if needed
 const refreshTokenIfNeeded = async () => {
@@ -31,7 +31,7 @@ const refreshTokenIfNeeded = async () => {
       {
         headers: {
           ...authHeader(),
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         skipAuthRefresh: true, // Skip interceptor for this request
       }
@@ -44,11 +44,11 @@ const refreshTokenIfNeeded = async () => {
         tokenRefreshTime: Date.now(),
         stayLoggedIn: response.data.stayLoggedIn, // Use the stayLoggedIn from response
       };
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(userData));
       return userData;
     }
   } catch (error) {
-    log.auth.error("Token refresh failed", { error: error.message });
+    log.auth.error('Token refresh failed', { error: error.message });
     return null;
   }
   return null;
@@ -68,7 +68,7 @@ const forceTokenRefresh = async () => {
       {
         headers: {
           ...authHeader(),
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         skipAuthRefresh: true,
       }
@@ -81,11 +81,11 @@ const forceTokenRefresh = async () => {
         tokenRefreshTime: Date.now(),
         stayLoggedIn: response.data.stayLoggedIn,
       };
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(userData));
       return userData;
     }
   } catch (error) {
-    log.auth.error("Forced token refresh failed", { error: error.message });
+    log.auth.error('Forced token refresh failed', { error: error.message });
     return null;
   }
   return null;
@@ -93,13 +93,13 @@ const forceTokenRefresh = async () => {
 
 // Add request interceptor to refresh token before requests
 axios.interceptors.request.use(
-  async (config) => {
+  async config => {
     try {
       // Skip token refresh for auth endpoints and refresh requests
       if (
         config.skipAuthRefresh ||
-        config.url.includes("/auth/signin") ||
-        config.url.includes("/auth/refresh-token")
+        config.url.includes('/auth/signin') ||
+        config.url.includes('/auth/refresh-token')
       ) {
         return config;
       }
@@ -110,19 +110,16 @@ axios.interceptors.request.use(
       }
 
       // Ensure Content-Type is set for all requests
-      if (
-        !config.headers["Content-Type"] &&
-        !config.url.includes("/file/upload")
-      ) {
-        config.headers["Content-Type"] = "application/json";
+      if (!config.headers['Content-Type'] && !config.url.includes('/file/upload')) {
+        config.headers['Content-Type'] = 'application/json';
       }
 
       return config;
     } catch (error) {
       // If request was cancelled or aborted, reject without additional processing
       if (
-        error.name === "CanceledError" ||
-        error.name === "AbortError" ||
+        error.name === 'CanceledError' ||
+        error.name === 'AbortError' ||
         (config.signal && config.signal.aborted)
       ) {
         return Promise.reject(error);
@@ -130,25 +127,22 @@ axios.interceptors.request.use(
       throw error;
     }
   },
-  (error) => Promise.reject(error)
+  error => Promise.reject(error)
 );
 
 // Add response interceptor to handle 401s
 axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     // If request was cancelled, just reject without any additional processing
-    if (error.name === "CanceledError" || error.name === "AbortError") {
+    if (error.name === 'CanceledError' || error.name === 'AbortError') {
       return Promise.reject(error);
     }
 
     const originalRequest = error.config;
 
     // Don't handle retries for auth endpoints
-    if (
-      originalRequest.url.includes("/auth/") ||
-      originalRequest.skipAuthRefresh
-    ) {
+    if (originalRequest.url.includes('/auth/') || originalRequest.skipAuthRefresh) {
       return Promise.reject(error);
     }
 
@@ -169,8 +163,8 @@ axios.interceptors.response.use(
             return axios(originalRequest);
           }
         } catch (refreshError) {
-          if (!refreshError.name?.includes("Cancel")) {
-            log.auth.error("Token refresh failed", {
+          if (!refreshError.name?.includes('Cancel')) {
+            log.auth.error('Token refresh failed', {
               error: refreshError.message,
             });
           }
@@ -195,15 +189,11 @@ const register = (username, email, password, invitationToken, name) =>
     name,
   });
 
-const validateInvitationToken = (token) =>
+const validateInvitationToken = token =>
   axios.get(`${baseURL}/api/auth/validate-invitation/${token}`);
 
-const acceptInvitation = (token) =>
-  axios.post(
-    `${baseURL}/api/auth/invitations/${token}/accept`,
-    {},
-    { headers: authHeader() }
-  );
+const acceptInvitation = token =>
+  axios.post(`${baseURL}/api/auth/invitations/${token}/accept`, {}, { headers: authHeader() });
 
 const login = (username, password, stayLoggedIn = false) =>
   axios
@@ -212,14 +202,14 @@ const login = (username, password, stayLoggedIn = false) =>
       password,
       stayLoggedIn,
     })
-    .then((response) => {
+    .then(response => {
       if (response.data.accessToken) {
         const userData = {
           ...response.data,
           stayLoggedIn,
           tokenRefreshTime: Date.now(),
         };
-        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem('user', JSON.stringify(userData));
       }
       return response.data;
     });
@@ -240,11 +230,11 @@ const refreshUserData = async () => {
         stayLoggedIn: user?.stayLoggedIn,
         tokenRefreshTime: user?.tokenRefreshTime,
       };
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(userData));
       return userData;
     }
   } catch (error) {
-    log.auth.error("Error refreshing user data", {
+    log.auth.error('Error refreshing user data', {
       error: error.message,
     });
   }
@@ -255,7 +245,7 @@ const logout = async () => {
   try {
     // Check if user is logged in with OIDC provider
     const user = getCurrentUser();
-    if (user?.provider?.startsWith("oidc-")) {
+    if (user?.provider?.startsWith('oidc-')) {
       // Call backend to initiate OIDC logout
       const response = await axios.post(
         `${baseURL}/api/auth/oidc/logout`,
@@ -267,7 +257,7 @@ const logout = async () => {
       );
 
       // Clear local storage first
-      localStorage.removeItem("user");
+      localStorage.removeItem('user');
 
       // If provider supports RP-initiated logout, redirect to provider
       if (response.data.redirect_url) {
@@ -276,18 +266,18 @@ const logout = async () => {
       }
     }
   } catch (error) {
-    log.auth.error("OIDC logout error", { error: error.message });
+    log.auth.error('OIDC logout error', { error: error.message });
     // Continue with local logout even if OIDC logout fails
   }
 
   // Fallback to local logout
-  localStorage.removeItem("user");
-  window.location.href = "/";
+  localStorage.removeItem('user');
+  window.location.href = '/';
 };
 
 const logoutLocal = () => {
-  localStorage.removeItem("user");
-  window.location.href = "/";
+  localStorage.removeItem('user');
+  window.location.href = '/';
 };
 
 const getGravatarProfile = async (emailHash, signal) => {
@@ -295,15 +285,12 @@ const getGravatarProfile = async (emailHash, signal) => {
     // Use deduplicated fetch - ensures only ONE fetch per emailHash.
     // Profiles come from BoxVault's server-side proxy — the Gravatar API key
     // never reaches the browser (#17).
-    return await fetchWithDeduplication(emailHash, async (hash) => {
+    return await fetchWithDeduplication(emailHash, async hash => {
       // Use fetch instead of axios to avoid message port issues
-      const response = await fetch(
-        `${baseURL}/api/gravatar/profile/${encodeURIComponent(hash)}`,
-        {
-          method: "GET",
-          signal,
-        }
-      );
+      const response = await fetch(`${baseURL}/api/gravatar/profile/${encodeURIComponent(hash)}`, {
+        method: 'GET',
+        signal,
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -312,10 +299,10 @@ const getGravatarProfile = async (emailHash, signal) => {
       return await response.json();
     });
   } catch (error) {
-    if (error.name === "AbortError") {
+    if (error.name === 'AbortError') {
       return null;
     }
-    log.api.error("Error fetching Gravatar profile", {
+    log.api.error('Error fetching Gravatar profile', {
       emailHash,
       error: error.message,
     });
@@ -323,7 +310,7 @@ const getGravatarProfile = async (emailHash, signal) => {
   }
 };
 
-const resendVerificationMail = (signal) =>
+const resendVerificationMail = signal =>
   axios.post(
     `${baseURL}/api/auth/resend-verification`,
     {},
@@ -333,8 +320,7 @@ const resendVerificationMail = (signal) =>
     }
   );
 
-const verifyMail = (token) =>
-  axios.get(`${baseURL}/api/auth/verify-mail/${token}`);
+const verifyMail = token => axios.get(`${baseURL}/api/auth/verify-mail/${token}`);
 
 const sendInvitation = (email, organizationName, inviteRole) =>
   axios.post(
@@ -344,7 +330,7 @@ const sendInvitation = (email, organizationName, inviteRole) =>
   );
 
 const getAuthMethods = () =>
-  axios.get(`${baseURL}/api/auth/methods`).then((response) => response.data);
+  axios.get(`${baseURL}/api/auth/methods`).then(response => response.data);
 
 const AuthService = {
   register,

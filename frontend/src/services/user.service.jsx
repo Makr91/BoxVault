@@ -1,39 +1,28 @@
-import axios from "axios";
+import axios from 'axios';
 
-import i18n from "../i18n";
+import i18n from '../i18n';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
 const getPublicContent = () =>
   axios.get(`${baseURL}/api/users/all`, { params: { lang: i18n.language } });
 
-const getUserBoard = () =>
-  axios.get(`${baseURL}/api/users/user`, { headers: authHeader() });
+const getUserBoard = () => axios.get(`${baseURL}/api/users/user`, { headers: authHeader() });
 
-const getAdminBoard = () =>
-  axios.get(`${baseURL}/api/users/admin`, { headers: authHeader() });
+const getAdminBoard = () => axios.get(`${baseURL}/api/users/admin`, { headers: authHeader() });
 
-const getAllRoles = () =>
-  axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
+const getAllRoles = () => axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
 
-const deleteUser = (userId) =>
+const deleteUser = userId =>
   axios.delete(`${baseURL}/api/users/${userId}`, { headers: authHeader() });
 
-const suspendUser = (userId) =>
-  axios.put(
-    `${baseURL}/api/users/${userId}/suspend`,
-    {},
-    { headers: authHeader() }
-  );
+const suspendUser = userId =>
+  axios.put(`${baseURL}/api/users/${userId}/suspend`, {}, { headers: authHeader() });
 
-const resumeUser = (userId) =>
-  axios.put(
-    `${baseURL}/api/users/${userId}/resume`,
-    {},
-    { headers: authHeader() }
-  );
+const resumeUser = userId =>
+  axios.put(`${baseURL}/api/users/${userId}/resume`, {}, { headers: authHeader() });
 
 const changePassword = (userId, newPassword, signal) =>
   axios.put(
@@ -68,20 +57,19 @@ const changeName = (userId, name, signal) =>
 const getPreferences = () =>
   axios.get(`${baseURL}/api/user/preferences`, { headers: authHeader() });
 
-const updatePreferences = (preferences) =>
+const updatePreferences = preferences =>
   axios.patch(`${baseURL}/api/user/preferences`, preferences, {
     headers: authHeader(),
   });
 
-const getUserRoles = () =>
-  axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
+const getUserRoles = () => axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
 
-const isOnlyUserInOrg = (organizationName) =>
+const isOnlyUserInOrg = organizationName =>
   axios
     .get(`${baseURL}/api/organization/${organizationName}/users`, {
       headers: authHeader(),
     })
-    .then((response) => response.data.length === 1);
+    .then(response => response.data.length === 1);
 
 /**
  * Get all organizations user belongs to with roles
@@ -92,22 +80,14 @@ const getUserOrganizations = () =>
 /**
  * Leave an organization
  */
-const leaveOrganization = (orgName) =>
-  axios.post(
-    `${baseURL}/api/user/leave/${orgName}`,
-    {},
-    { headers: authHeader() }
-  );
+const leaveOrganization = orgName =>
+  axios.post(`${baseURL}/api/user/leave/${orgName}`, {}, { headers: authHeader() });
 
 /**
  * Set user's primary organization
  */
-const setPrimaryOrganization = (orgName) =>
-  axios.put(
-    `${baseURL}/api/user/primary-organization/${orgName}`,
-    {},
-    { headers: authHeader() }
-  );
+const setPrimaryOrganization = orgName =>
+  axios.put(`${baseURL}/api/user/primary-organization/${orgName}`, {}, { headers: authHeader() });
 
 const UserService = {
   getPublicContent,

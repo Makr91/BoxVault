@@ -1,21 +1,14 @@
-import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
-import { Table } from "react-bootstrap";
-import { useTranslation } from "react-i18next";
-import {
-  FaTrash,
-  FaDownload,
-  FaPen,
-  FaCheck,
-  FaXmark,
-  FaCopy,
-} from "react-icons/fa6";
+import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
+import { Table } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
+import { FaTrash, FaDownload, FaPen, FaCheck, FaXmark, FaCopy } from 'react-icons/fa6';
 
-import IsoService from "../services/iso.service";
-import { formatFileSize } from "../utils/fileSize";
-import { log } from "../utils/Logger";
+import IsoService from '../services/iso.service';
+import { formatFileSize } from '../utils/fileSize';
+import { log } from '../utils/Logger';
 
-import ConfirmationModal from "./confirmation.component";
+import ConfirmationModal from './confirmation.component';
 
 const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const { t } = useTranslation();
@@ -23,15 +16,15 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isoToDelete, setIsoToDelete] = useState(null);
   const [isPublicUpload, setIsPublicUpload] = useState(false);
   const [editingIsoId, setEditingIsoId] = useState(null);
-  const [editName, setEditName] = useState("");
+  const [editName, setEditName] = useState('');
   const [copiedChecksum, setCopiedChecksum] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -45,15 +38,15 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     }
 
     fetchIsos
-      .then((response) => {
+      .then(response => {
         if (mounted) {
           setIsos(response.data);
           setLoading(false);
         }
       })
-      .catch((error) => {
+      .catch(error => {
         if (mounted) {
-          log.api.error("Error loading ISOs", { error: error.message });
+          log.api.error('Error loading ISOs', { error: error.message });
           setLoading(false);
         }
       });
@@ -63,7 +56,7 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     };
   }, [organization, showOnlyPublic, isMember]);
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = event => {
     const [file] = event.target.files;
     if (!file) {
       return;
@@ -71,28 +64,26 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
 
     setUploading(true);
     setUploadProgress(0);
-    setMessage("");
+    setMessage('');
 
-    IsoService.upload(organization, file, isPublicUpload, (progressEvent) => {
-      setUploadProgress(
-        Math.round((100 * progressEvent.loaded) / progressEvent.total)
-      );
+    IsoService.upload(organization, file, isPublicUpload, progressEvent => {
+      setUploadProgress(Math.round((100 * progressEvent.loaded) / progressEvent.total));
     })
-      .then((response) => {
-        setMessage(t("messages.operationSuccessful"));
-        setMessageType("success");
+      .then(response => {
+        setMessage(t('messages.operationSuccessful'));
+        setMessageType('success');
         setUploading(false);
         setIsos([response.data, ...isos]);
       })
-      .catch((error) => {
-        log.api.error("Error uploading ISO", { error: error.message });
-        setMessage(t("messages.uploadFailed"));
-        setMessageType("danger");
+      .catch(error => {
+        log.api.error('Error uploading ISO', { error: error.message });
+        setMessage(t('messages.uploadFailed'));
+        setMessageType('danger');
         setUploading(false);
       });
   };
 
-  const handleDeleteClick = (iso) => {
+  const handleDeleteClick = iso => {
     setIsoToDelete(iso);
     setShowDeleteModal(true);
   };
@@ -101,15 +92,15 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     if (isoToDelete) {
       IsoService.deleteISO(organization, isoToDelete.id)
         .then(() => {
-          setMessage(t("messages.operationSuccessful"));
-          setMessageType("success");
-          setIsos(isos.filter((i) => i.id !== isoToDelete.id));
+          setMessage(t('messages.operationSuccessful'));
+          setMessageType('success');
+          setIsos(isos.filter(i => i.id !== isoToDelete.id));
           setShowDeleteModal(false);
         })
-        .catch((error) => {
-          log.api.error("Error deleting ISO", { error: error.message });
-          setMessage(t("messages.deleteFailed"));
-          setMessageType("danger");
+        .catch(error => {
+          log.api.error('Error deleting ISO', { error: error.message });
+          setMessage(t('messages.deleteFailed'));
+          setMessageType('danger');
           setShowDeleteModal(false);
         });
     }
@@ -123,27 +114,27 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
       const response = await IsoService.getDownloadLink(orgName, iso.id);
       window.location.assign(response.data.downloadUrl);
     } catch (error) {
-      log.api.error("Error getting download link", { error: error.message });
-      setMessage(t("messages.operationFailed"));
-      setMessageType("danger");
+      log.api.error('Error getting download link', { error: error.message });
+      setMessage(t('messages.operationFailed'));
+      setMessageType('danger');
     }
   };
 
-  const handleVisibilityToggle = (iso) => {
+  const handleVisibilityToggle = iso => {
     if (!canManage) {
       return;
     }
 
     IsoService.update(organization, iso.id, { isPublic: !iso.isPublic })
-      .then((response) => {
-        setIsos(isos.map((i) => (i.id === iso.id ? response.data : i)));
+      .then(response => {
+        setIsos(isos.map(i => (i.id === iso.id ? response.data : i)));
       })
-      .catch((error) => {
-        log.api.error("Error updating ISO visibility", {
+      .catch(error => {
+        log.api.error('Error updating ISO visibility', {
           error: error.message,
         });
-        setMessage(t("messages.operationFailed"));
-        setMessageType("danger");
+        setMessage(t('messages.operationFailed'));
+        setMessageType('danger');
       });
   };
 
@@ -154,44 +145,44 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
         setCopiedChecksum(isoId);
         setTimeout(() => setCopiedChecksum(null), 2000); // Reset after 2 seconds
       })
-      .catch((err) => {
-        log.app.error("Failed to copy checksum", { error: err });
-        setMessage(t("messages.copyFailed"));
-        setMessageType("danger");
+      .catch(err => {
+        log.app.error('Failed to copy checksum', { error: err });
+        setMessage(t('messages.copyFailed'));
+        setMessageType('danger');
       });
   };
 
-  const handleEditClick = (iso) => {
+  const handleEditClick = iso => {
     setEditingIsoId(iso.id);
     setEditName(iso.name);
   };
 
   const handleCancelEdit = () => {
     setEditingIsoId(null);
-    setEditName("");
+    setEditName('');
   };
 
-  const handleSaveEdit = (iso) => {
+  const handleSaveEdit = iso => {
     if (!editName.trim()) {
       return;
     }
 
     IsoService.update(organization, iso.id, { name: editName })
-      .then((response) => {
-        setIsos(isos.map((i) => (i.id === iso.id ? response.data : i)));
+      .then(response => {
+        setIsos(isos.map(i => (i.id === iso.id ? response.data : i)));
         setEditingIsoId(null);
-        setEditName("");
-        setMessage(t("messages.operationSuccessful"));
-        setMessageType("success");
+        setEditName('');
+        setMessage(t('messages.operationSuccessful'));
+        setMessageType('success');
       })
-      .catch((error) => {
-        log.api.error("Error updating ISO name", { error: error.message });
-        setMessage(t("messages.operationFailed"));
-        setMessageType("danger");
+      .catch(error => {
+        log.api.error('Error updating ISO name', { error: error.message });
+        setMessage(t('messages.operationFailed'));
+        setMessageType('danger');
       });
   };
 
-  const filteredIsos = isos.filter((iso) =>
+  const filteredIsos = isos.filter(iso =>
     iso.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -200,7 +191,7 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
       return (
         <tr>
           <td colSpan="6" className="text-center">
-            {t("status.loading")}
+            {t('status.loading')}
           </td>
         </tr>
       );
@@ -210,13 +201,13 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
       return (
         <tr>
           <td colSpan="6" className="text-center">
-            {t("messages.noResultsFound")}
+            {t('messages.noResultsFound')}
           </td>
         </tr>
       );
     }
 
-    return filteredIsos.map((iso) => (
+    return filteredIsos.map(iso => (
       <tr key={iso.id}>
         <td>
           {editingIsoId === iso.id ? (
@@ -224,34 +215,32 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
               type="text"
               className="form-control form-control-sm"
               value={editName}
-              onChange={(e) => setEditName(e.target.value)}
+              onChange={e => setEditName(e.target.value)}
             />
           ) : (
             iso.name
           )}
         </td>
         {showOnlyPublic ? (
-          <td>{iso.organization?.name || "Unknown"}</td>
+          <td>{iso.organization?.name || 'Unknown'}</td>
         ) : (
           <td>
             {canManage ? (
               <button
                 type="button"
-                className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"} border-0 cursor-pointer`}
+                className={`badge ${iso.isPublic ? 'bg-info' : 'bg-secondary'} border-0 cursor-pointer`}
                 onClick={() => handleVisibilityToggle(iso)}
                 title="Click to toggle visibility"
               >
                 {iso.isPublic
-                  ? t("box.organization.visibility.public")
-                  : t("box.organization.visibility.private")}
+                  ? t('box.organization.visibility.public')
+                  : t('box.organization.visibility.private')}
               </button>
             ) : (
-              <span
-                className={`badge ${iso.isPublic ? "bg-info" : "bg-secondary"}`}
-              >
+              <span className={`badge ${iso.isPublic ? 'bg-info' : 'bg-secondary'}`}>
                 {iso.isPublic
-                  ? t("box.organization.visibility.public")
-                  : t("box.organization.visibility.private")}
+                  ? t('box.organization.visibility.public')
+                  : t('box.organization.visibility.private')}
               </span>
             )}
           </td>
@@ -264,13 +253,9 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
               type="button"
               className="btn btn-sm btn-link text-secondary p-0 ms-2"
               onClick={() => handleCopyChecksum(iso.checksum, iso.id)}
-              title={t("buttons.copy")}
+              title={t('buttons.copy')}
             >
-              {copiedChecksum === iso.id ? (
-                <FaCheck className="text-success" />
-              ) : (
-                <FaCopy />
-              )}
+              {copiedChecksum === iso.id ? <FaCheck className="text-success" /> : <FaCopy />}
             </button>
           </div>
         </td>
@@ -282,14 +267,14 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
                 <button
                   className="btn btn-sm btn-success"
                   onClick={() => handleSaveEdit(iso)}
-                  title={t("buttons.save")}
+                  title={t('buttons.save')}
                 >
                   <FaCheck />
                 </button>
                 <button
                   className="btn btn-sm btn-secondary"
                   onClick={handleCancelEdit}
-                  title={t("buttons.cancel")}
+                  title={t('buttons.cancel')}
                 >
                   <FaXmark />
                 </button>
@@ -298,7 +283,7 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
               <>
                 <button
                   type="button"
-                  onClick={(e) => handleDownloadClick(e, iso)}
+                  onClick={e => handleDownloadClick(e, iso)}
                   className="btn btn-sm btn-outline-primary"
                 >
                   <FaDownload />
@@ -308,7 +293,7 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
                     <button
                       className="btn btn-sm btn-outline-secondary"
                       onClick={() => handleEditClick(iso)}
-                      title={t("buttons.edit")}
+                      title={t('buttons.edit')}
                     >
                       <FaPen />
                     </button>
@@ -332,19 +317,16 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
     <div className="list row">
       <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
         {/* Left: Search */}
-        <div
-          className="input-group input-group-sm"
-          style={{ maxWidth: "300px" }}
-        >
+        <div className="input-group input-group-sm" style={{ maxWidth: '300px' }}>
           <input
             type="text"
             className="form-control"
-            placeholder={t("actions.search")}
+            placeholder={t('actions.search')}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
           <button className="btn btn-outline-secondary" type="button">
-            {t("actions.search")}
+            {t('actions.search')}
           </button>
         </div>
 
@@ -358,18 +340,14 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
                   type="checkbox"
                   id="publicUploadCheck"
                   checked={isPublicUpload}
-                  onChange={(e) => setIsPublicUpload(e.target.checked)}
+                  onChange={e => setIsPublicUpload(e.target.checked)}
                 />
                 <label className="form-check-label" htmlFor="publicUploadCheck">
                   Public
                 </label>
               </div>
-              <label
-                className={`btn btn-sm btn-primary ${uploading ? "disabled" : ""}`}
-              >
-                {uploading
-                  ? `Uploading ${uploadProgress}%`
-                  : t("buttons.upload")}
+              <label className={`btn btn-sm btn-primary ${uploading ? 'disabled' : ''}`}>
+                {uploading ? `Uploading ${uploadProgress}%` : t('buttons.upload')}
                 <input
                   type="file"
                   hidden
@@ -407,14 +385,12 @@ const IsoList = ({ organization, isMember, canManage, showOnlyPublic }) => {
       <Table striped hover responsive>
         <thead>
           <tr>
-            <th>{t("table.name")}</th>
-            <th>
-              {showOnlyPublic ? t("table.organization") : t("table.visibility")}
-            </th>
-            <th>{t("table.size")}</th>
-            <th>{t("table.checksum")} (SHA256)</th>
-            <th>{t("table.uploaded")}</th>
-            <th>{t("table.actions")}</th>
+            <th>{t('table.name')}</th>
+            <th>{showOnlyPublic ? t('table.organization') : t('table.visibility')}</th>
+            <th>{t('table.size')}</th>
+            <th>{t('table.checksum')} (SHA256)</th>
+            <th>{t('table.uploaded')}</th>
+            <th>{t('table.actions')}</th>
           </tr>
         </thead>
         <tbody>{renderTableBody()}</tbody>

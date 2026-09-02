@@ -1,5 +1,5 @@
-import { log } from "./Logger";
-import { endSession } from "./sessionEnded";
+import { log } from './Logger';
+import { endSession } from './sessionEnded';
 
 const RETRY_DELAY_MS = 15000;
 
@@ -8,26 +8,23 @@ const pump = async (reader, decoder) => {
   if (done) {
     return false;
   }
-  if (decoder.decode(value, { stream: true }).includes("session-terminated")) {
+  if (decoder.decode(value, { stream: true }).includes('session-terminated')) {
     return true;
   }
   return pump(reader, decoder);
 };
 
-export const subscribeSessionEvents = (accessToken) => {
+export const subscribeSessionEvents = accessToken => {
   let stopped = false;
   let timer = null;
   const controller = new AbortController();
 
   const listen = async () => {
     try {
-      const response = await fetch(
-        `${window.location.origin}/api/notifications/events`,
-        {
-          headers: { "x-access-token": accessToken },
-          signal: controller.signal,
-        }
-      );
+      const response = await fetch(`${window.location.origin}/api/notifications/events`, {
+        headers: { 'x-access-token': accessToken },
+        signal: controller.signal,
+      });
       if (response.status === 401) {
         endSession();
         return;
@@ -35,10 +32,7 @@ export const subscribeSessionEvents = (accessToken) => {
       if (!response.ok || !response.body) {
         throw new Error(`Session event stream failed (${response.status})`);
       }
-      const terminated = await pump(
-        response.body.getReader(),
-        new TextDecoder()
-      );
+      const terminated = await pump(response.body.getReader(), new TextDecoder());
       if (terminated) {
         endSession();
         return;
@@ -47,7 +41,7 @@ export const subscribeSessionEvents = (accessToken) => {
       if (stopped || controller.signal.aborted) {
         return;
       }
-      log.auth.debug("Session event stream interrupted", {
+      log.auth.debug('Session event stream interrupted', {
         error: error.message,
       });
     }

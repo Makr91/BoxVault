@@ -1,17 +1,16 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
-const getFavorites = () =>
-  axios.get(`${baseURL}/api/favorites`, { headers: authHeader() });
+const getFavorites = () => axios.get(`${baseURL}/api/favorites`, { headers: authHeader() });
 
-const saveFavorites = (favoritesArray) =>
+const saveFavorites = favoritesArray =>
   axios.post(`${baseURL}/api/favorites/save`, favoritesArray, {
     headers: {
       ...authHeader(),
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
   });
 
@@ -32,7 +31,7 @@ const addFavorite = (currentFavorites, clientId, customLabel = null) => {
 };
 
 const removeFavorite = (currentFavorites, clientId) =>
-  currentFavorites.filter((f) => f.clientId !== clientId);
+  currentFavorites.filter(f => f.clientId !== clientId);
 
 const reorderFavorites = (currentFavorites, fromIndex, toIndex) => {
   const reordered = [...currentFavorites];

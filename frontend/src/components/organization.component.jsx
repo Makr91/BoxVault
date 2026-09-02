@@ -1,39 +1,33 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import Table from "react-bootstrap/Table";
-import { useTranslation } from "react-i18next";
-import {
-  FaSortUp,
-  FaSortDown,
-  FaSort,
-  FaStar,
-  FaRegStar,
-} from "react-icons/fa6";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import Table from 'react-bootstrap/Table';
+import { useTranslation } from 'react-i18next';
+import { FaSortUp, FaSortDown, FaSort, FaStar, FaRegStar } from 'react-icons/fa6';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 
-import EventBus from "../common/EventBus";
-import BoxVaultLight from "../images/BoxVault.svg?react";
-import BoxVaultDark from "../images/BoxVaultDark.svg?react";
-import AuthService from "../services/auth.service";
-import BoxDataService from "../services/box.service";
-import OrganizationService from "../services/organization.service";
-import { getDistroIconUrl, getOsDisplayName } from "../utils/DistroIcons";
-import { log } from "../utils/Logger";
-import { isGlobalAdmin, isOrgMember, isOrgManager } from "../utils/permissions";
-import { formatRelativeTime } from "../utils/relativeTime";
+import EventBus from '../common/EventBus';
+import BoxVaultLight from '../images/BoxVault.svg?react';
+import BoxVaultDark from '../images/BoxVaultDark.svg?react';
+import AuthService from '../services/auth.service';
+import BoxDataService from '../services/box.service';
+import OrganizationService from '../services/organization.service';
+import { getDistroIconUrl, getOsDisplayName } from '../utils/DistroIcons';
+import { log } from '../utils/Logger';
+import { isGlobalAdmin, isOrgMember, isOrgManager } from '../utils/permissions';
+import { formatRelativeTime } from '../utils/relativeTime';
 
-import ConfirmationModal from "./confirmation.component";
-import IsoList from "./iso-list.component";
+import ConfirmationModal from './confirmation.component';
+import IsoList from './iso-list.component';
 
 // Box rows carry the box's OWN organization (never the owner's primary org,
 // which can differ and would mislabel the row).
-const resolveBoxOrg = (box) => {
+const resolveBoxOrg = box => {
   const org = box.organization || {};
   return { orgName: org.name, logo: org.logo, emailHash: org.emailHash };
 };
 
 // Readable OS info for a box, from backend-provided metadata.
-const getBoxOsInfo = (box) => {
+const getBoxOsInfo = box => {
   const metadata = box.metadata || {};
   return {
     distro: metadata.distro || null,
@@ -42,7 +36,7 @@ const getBoxOsInfo = (box) => {
 };
 
 // Newest version creation time (ms) for a box, or null without versions.
-const getLatestReleaseTime = (box) => {
+const getLatestReleaseTime = box => {
   if (!Array.isArray(box.versions) || box.versions.length === 0) {
     return null;
   }
@@ -59,11 +53,11 @@ const FilterPillGroup = ({ entries, activeSet, activeClass, onToggle }) =>
     <span
       key={value}
       className={`badge rounded-pill badge-xs cursor-pointer ${
-        activeSet.has(value) ? activeClass : "bg-secondary bg-opacity-25"
+        activeSet.has(value) ? activeClass : 'bg-secondary bg-opacity-25'
       }`}
       onClick={() => onToggle(value)}
-      onKeyPress={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+      onKeyPress={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onToggle(value);
         }
@@ -110,7 +104,7 @@ BoxOsCell.propTypes = {
 
 const WatchStarCell = ({ watched, onToggle }) => {
   const { t } = useTranslation();
-  const label = watched ? t("watch.unwatch") : t("watch.watch");
+  const label = watched ? t('watch.unwatch') : t('watch.watch');
   return (
     <button
       type="button"
@@ -135,11 +129,11 @@ const WatchedFilterPill = ({ active, count, onToggle }) => {
   return (
     <span
       className={`badge rounded-pill badge-xs cursor-pointer ${
-        active ? "bg-warning text-dark" : "bg-secondary bg-opacity-25"
+        active ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25'
       }`}
       onClick={onToggle}
-      onKeyPress={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+      onKeyPress={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onToggle();
         }
@@ -147,7 +141,7 @@ const WatchedFilterPill = ({ active, count, onToggle }) => {
       role="button"
       tabIndex={0}
     >
-      {t("watch.filterWatched")} ({count})
+      {t('watch.filterWatched')} ({count})
     </span>
   );
 };
@@ -160,51 +154,43 @@ WatchedFilterPill.propTypes = {
 
 // Shared boxes table markup (sortable headers + rows): used for the flat
 // list and for each per-organization group on the signed-in home page.
-const BoxesTable = ({
-  boxes,
-  renderRow,
-  sortColumn,
-  sortDirection,
-  onSort,
-  showWatchColumn,
-}) => {
+const BoxesTable = ({ boxes, renderRow, sortColumn, sortDirection, onSort, showWatchColumn }) => {
   const { t } = useTranslation();
 
-  const renderSortIcon = (column) => {
+  const renderSortIcon = column => {
     if (sortColumn !== column) {
       return <FaSort />;
     }
-    return sortDirection === "asc" ? <FaSortUp /> : <FaSortDown />;
+    return sortDirection === 'asc' ? <FaSortUp /> : <FaSortDown />;
   };
 
   return (
     <Table striped className="table">
       <thead>
         <tr>
-          {showWatchColumn && <th aria-label={t("watch.filterWatched")} />}
-          <th onClick={() => onSort("name")} className="sortable-header">
-            {t("box.organization.table.box")} {renderSortIcon("name")}
+          {showWatchColumn && <th aria-label={t('watch.filterWatched')} />}
+          <th onClick={() => onSort('name')} className="sortable-header">
+            {t('box.organization.table.box')} {renderSortIcon('name')}
           </th>
-          <th onClick={() => onSort("os")} className="sortable-header">
-            {t("box.organization.table.os")} {renderSortIcon("os")}
+          <th onClick={() => onSort('os')} className="sortable-header">
+            {t('box.organization.table.os')} {renderSortIcon('os')}
           </th>
-          <th>{t("box.organization.table.status")}</th>
-          <th>{t("box.organization.table.public")}</th>
-          <th onClick={() => onSort("created")} className="sortable-header">
-            {t("box.organization.table.created")} {renderSortIcon("created")}
+          <th>{t('box.organization.table.status')}</th>
+          <th>{t('box.organization.table.public')}</th>
+          <th onClick={() => onSort('created')} className="sortable-header">
+            {t('box.organization.table.created')} {renderSortIcon('created')}
           </th>
-          <th onClick={() => onSort("released")} className="sortable-header">
-            {t("box.organization.table.released")} {renderSortIcon("released")}
+          <th onClick={() => onSort('released')} className="sortable-header">
+            {t('box.organization.table.released')} {renderSortIcon('released')}
           </th>
-          <th onClick={() => onSort("downloads")} className="sortable-header">
-            {t("box.organization.table.downloads")}{" "}
-            {renderSortIcon("downloads")}
+          <th onClick={() => onSort('downloads')} className="sortable-header">
+            {t('box.organization.table.downloads')} {renderSortIcon('downloads')}
           </th>
-          <th onClick={() => onSort("versions")} className="sortable-header">
-            {t("box.organization.table.versions")} {renderSortIcon("versions")}
+          <th onClick={() => onSort('versions')} className="sortable-header">
+            {t('box.organization.table.versions')} {renderSortIcon('versions')}
           </th>
-          <th>{t("box.organization.table.providers")}</th>
-          <th>{t("box.organization.table.architectures")}</th>
+          <th>{t('box.organization.table.providers')}</th>
+          <th>{t('box.organization.table.architectures')}</th>
         </tr>
       </thead>
       <tbody key="tbody">
@@ -213,7 +199,7 @@ const BoxesTable = ({
         ) : (
           <tr>
             <td colSpan={showWatchColumn ? 11 : 10} className="text-center">
-              {t("box.organization.table.noBoxes")}
+              {t('box.organization.table.noBoxes')}
             </td>
           </tr>
         )}
@@ -242,7 +228,7 @@ const OrgGroupSection = ({ orgName, logo, count, children }) => {
         {logo}
         <h5 className="mb-0 v-align-middle">{orgName}</h5>
         <span className="badge bg-secondary bg-opacity-50 ms-2">
-          {t("box.organization.group.boxCount", { count })}
+          {t('box.organization.group.boxCount', { count })}
         </span>
       </div>
       {children}
@@ -277,18 +263,18 @@ const BoxManageButtons = ({
         disabled={createDisabled}
       >
         {showCreateForm
-          ? t("box.organization.buttons.createBox")
-          : t("box.organization.buttons.createNewBox")}
+          ? t('box.organization.buttons.createBox')
+          : t('box.organization.buttons.createNewBox')}
       </button>
       {showCreateForm && (
         <button className="btn btn-sm btn-secondary" onClick={onCancelCreate}>
-          {t("buttons.cancel")}
+          {t('buttons.cancel')}
         </button>
       )}
       {canManage && (
         <>
           <button className="btn btn-sm btn-danger" onClick={onRemoveAll}>
-            {t("box.organization.buttons.removeAll")}
+            {t('box.organization.buttons.removeAll')}
           </button>
           <ConfirmationModal
             show={showRemoveModal}
@@ -319,7 +305,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const { organization: routeOrganization } = useParams();
   const [boxes, setBoxes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
-  const [searchName, setSearchName] = useState("");
+  const [searchName, setSearchName] = useState('');
   const currentUser = AuthService.getCurrentUser();
 
   // Stabilize organization dependency with useMemo
@@ -337,18 +323,18 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const isSignedIn = Boolean(currentUser);
 
   const [newBox, setNewBox] = useState({
-    name: "",
-    description: "",
+    name: '',
+    description: '',
     isPublic: false,
   });
   const navigate = useNavigate();
 
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
 
   // Sort and filter state - load initial values from localStorage
   const [sortColumn, setSortColumn] = useState(() => {
-    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const key = `boxvault_table_prefs_${routeOrganization || 'home'}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
@@ -362,21 +348,21 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   });
 
   const [sortDirection, setSortDirection] = useState(() => {
-    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const key = `boxvault_table_prefs_${routeOrganization || 'home'}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
         const prefs = JSON.parse(saved);
-        return prefs.sortDirection || "asc";
+        return prefs.sortDirection || 'asc';
       } catch {
-        return "asc";
+        return 'asc';
       }
     }
-    return "asc";
+    return 'asc';
   });
 
   const [activeProviders, setActiveProviders] = useState(() => {
-    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const key = `boxvault_table_prefs_${routeOrganization || 'home'}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
@@ -390,7 +376,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   });
 
   const [activeArchitectures, setActiveArchitectures] = useState(() => {
-    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const key = `boxvault_table_prefs_${routeOrganization || 'home'}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
@@ -404,7 +390,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   });
 
   const [activeOs, setActiveOs] = useState(() => {
-    const key = `boxvault_table_prefs_${routeOrganization || "home"}`;
+    const key = `boxvault_table_prefs_${routeOrganization || 'home'}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
@@ -419,13 +405,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
   const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
 
-  const validateName = (value) =>
+  const validateName = value =>
     validCharsRegex.test(value)
       ? undefined
-      : "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.";
+      : 'Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.';
 
   // Helper functions - defined before use
-  const calculatePublicDownloads = useCallback((box) => {
+  const calculatePublicDownloads = useCallback(box => {
     if (!box.versions) {
       return 0;
     }
@@ -447,10 +433,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               }
               return (
                 archTotal +
-                architecture.files.reduce(
-                  (fileTotal, file) => fileTotal + file.downloadCount,
-                  0
-                )
+                architecture.files.reduce((fileTotal, file) => fileTotal + file.downloadCount, 0)
               );
             }, 0)
           );
@@ -459,34 +442,30 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     }, 0);
   }, []);
 
-  const getProviderNames = useCallback((box) => {
+  const getProviderNames = useCallback(box => {
     if (box.versions) {
       return [
         ...new Set(
-          box.versions.flatMap((version) =>
-            version.providers
-              ? version.providers.map((provider) => provider.name)
-              : []
+          box.versions.flatMap(version =>
+            version.providers ? version.providers.map(provider => provider.name) : []
           )
         ),
       ];
     }
     if (box.providers) {
-      return [...new Set(box.providers.map((provider) => provider.name))];
+      return [...new Set(box.providers.map(provider => provider.name))];
     }
     return [];
   }, []);
 
-  const getArchitectureNames = useCallback((box) => {
+  const getArchitectureNames = useCallback(box => {
     if (box.versions) {
       return [
         ...new Set(
-          box.versions.flatMap((version) =>
+          box.versions.flatMap(version =>
             version.providers
-              ? version.providers.flatMap((provider) =>
-                  provider.architectures
-                    ? provider.architectures.map((arch) => arch.name)
-                    : []
+              ? version.providers.flatMap(provider =>
+                  provider.architectures ? provider.architectures.map(arch => arch.name) : []
                 )
               : []
           )
@@ -496,10 +475,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     if (box.providers) {
       return [
         ...new Set(
-          box.providers.flatMap((provider) =>
-            provider.architectures
-              ? provider.architectures.map((arch) => arch.name)
-              : []
+          box.providers.flatMap(provider =>
+            provider.architectures ? provider.architectures.map(arch => arch.name) : []
           )
         ),
       ];
@@ -510,8 +487,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   // Extract unique providers and architectures with counts
   const allProviders = useMemo(() => {
     const providerCounts = {};
-    boxes.forEach((box) => {
-      getProviderNames(box).forEach((provider) => {
+    boxes.forEach(box => {
+      getProviderNames(box).forEach(provider => {
         providerCounts[provider] = (providerCounts[provider] || 0) + 1;
       });
     });
@@ -520,8 +497,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
   const allArchitectures = useMemo(() => {
     const archCounts = {};
-    boxes.forEach((box) => {
-      getArchitectureNames(box).forEach((arch) => {
+    boxes.forEach(box => {
+      getArchitectureNames(box).forEach(arch => {
         archCounts[arch] = (archCounts[arch] || 0) + 1;
       });
     });
@@ -530,7 +507,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
   const allOs = useMemo(() => {
     const osCounts = {};
-    boxes.forEach((box) => {
+    boxes.forEach(box => {
       const { distro } = getBoxOsInfo(box);
       if (distro) {
         osCounts[distro] = (osCounts[distro] || 0) + 1;
@@ -540,8 +517,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   }, [boxes]);
 
   // Toggle tag filter
-  const toggleProviderFilter = (provider) => {
-    setActiveProviders((prev) => {
+  const toggleProviderFilter = provider => {
+    setActiveProviders(prev => {
       const newSet = new Set(prev);
       if (newSet.has(provider)) {
         newSet.delete(provider);
@@ -552,8 +529,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     });
   };
 
-  const toggleArchitectureFilter = (arch) => {
-    setActiveArchitectures((prev) => {
+  const toggleArchitectureFilter = arch => {
+    setActiveArchitectures(prev => {
       const newSet = new Set(prev);
       if (newSet.has(arch)) {
         newSet.delete(arch);
@@ -564,8 +541,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     });
   };
 
-  const toggleOsFilter = (distro) => {
-    setActiveOs((prev) => {
+  const toggleOsFilter = distro => {
+    setActiveOs(prev => {
       const newSet = new Set(prev);
       if (newSet.has(distro)) {
         newSet.delete(distro);
@@ -577,17 +554,17 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   };
 
   // Handle column sort
-  const handleSort = (column) => {
+  const handleSort = column => {
     if (sortColumn === column) {
-      if (sortDirection === "asc") {
-        setSortDirection("desc");
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
       } else {
         setSortColumn(null);
-        setSortDirection("asc");
+        setSortDirection('asc');
       }
     } else {
       setSortColumn(column);
-      setSortDirection("asc");
+      setSortDirection('asc');
     }
   };
 
@@ -597,37 +574,35 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
     // Apply provider filter
     if (activeProviders.size > 0) {
-      filtered = filtered.filter((box) => {
+      filtered = filtered.filter(box => {
         const providers = getProviderNames(box);
-        return providers.some((p) => activeProviders.has(p));
+        return providers.some(p => activeProviders.has(p));
       });
     }
 
     // Apply architecture filter
     if (activeArchitectures.size > 0) {
-      filtered = filtered.filter((box) => {
+      filtered = filtered.filter(box => {
         const archs = getArchitectureNames(box);
-        return archs.some((a) => activeArchitectures.has(a));
+        return archs.some(a => activeArchitectures.has(a));
       });
     }
 
     // Apply OS (distro) filter
     if (activeOs.size > 0) {
-      filtered = filtered.filter((box) => {
+      filtered = filtered.filter(box => {
         const { distro } = getBoxOsInfo(box);
         return Boolean(distro) && activeOs.has(distro);
       });
     }
 
     if (watchedOnly) {
-      filtered = filtered.filter((box) => watchedBoxIds.has(box.id));
+      filtered = filtered.filter(box => watchedBoxIds.has(box.id));
     }
 
     // Apply search filter
     if (searchName.trim()) {
-      filtered = filtered.filter((box) =>
-        box.name.toLowerCase().includes(searchName.toLowerCase())
-      );
+      filtered = filtered.filter(box => box.name.toLowerCase().includes(searchName.toLowerCase()));
     }
 
     // Apply sort
@@ -637,27 +612,27 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         let bVal;
 
         switch (sortColumn) {
-          case "name":
+          case 'name':
             aVal = a.name.toLowerCase();
             bVal = b.name.toLowerCase();
             break;
-          case "created":
+          case 'created':
             aVal = new Date(a.createdAt).getTime();
             bVal = new Date(b.createdAt).getTime();
             break;
-          case "downloads":
+          case 'downloads':
             aVal = calculatePublicDownloads(a);
             bVal = calculatePublicDownloads(b);
             break;
-          case "versions":
+          case 'versions':
             aVal = a.versions ? a.versions.length : 0;
             bVal = b.versions ? b.versions.length : 0;
             break;
-          case "os":
+          case 'os':
             aVal = getBoxOsInfo(a).label.toLowerCase();
             bVal = getBoxOsInfo(b).label.toLowerCase();
             break;
-          case "released":
+          case 'released':
             aVal = getLatestReleaseTime(a) || 0;
             bVal = getLatestReleaseTime(b) || 0;
             break;
@@ -666,10 +641,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         }
 
         if (aVal < bVal) {
-          return sortDirection === "asc" ? -1 : 1;
+          return sortDirection === 'asc' ? -1 : 1;
         }
         if (aVal > bVal) {
-          return sortDirection === "asc" ? 1 : -1;
+          return sortDirection === 'asc' ? 1 : -1;
         }
         return 0;
       });
@@ -691,14 +666,14 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     getArchitectureNames,
   ]);
 
-  const fetchGravatarUrl = useCallback(async (emailHash) => {
+  const fetchGravatarUrl = useCallback(async emailHash => {
     try {
       const profile = await AuthService.getGravatarProfile(emailHash);
       if (profile && profile.avatar_url) {
         return profile.avatar_url;
       }
     } catch (error) {
-      log.api.error("Error fetching Gravatar profile", {
+      log.api.error('Error fetching Gravatar profile', {
         emailHash,
         error: error.message,
       });
@@ -707,11 +682,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   }, []);
 
   const fetchGravatarUrls = useCallback(
-    async (boxesList) => {
+    async boxesList => {
       const urls = {};
       const uniqueOrgs = new Map();
 
-      boxesList.forEach((box) => {
+      boxesList.forEach(box => {
         const { orgName, logo, emailHash } = resolveBoxOrg(box);
         if (!orgName || urls[orgName] || uniqueOrgs.has(orgName)) {
           return;
@@ -730,7 +705,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             const url = await fetchGravatarUrl(emailHash);
             return { orgName, url };
           } catch (error) {
-            log.api.error("Error fetching Gravatar for organization", {
+            log.api.error('Error fetching Gravatar for organization', {
               orgName,
               error: error.message,
             });
@@ -740,7 +715,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       );
 
       const results = await Promise.all(gravatarPromises);
-      results.forEach((result) => {
+      results.forEach(result => {
         if (result.url) {
           urls[result.orgName] = result.url;
         }
@@ -754,43 +729,43 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   const retrieveBoxes = useCallback(() => {
     if (showOnlyPublic) {
       BoxDataService.discoverAll()
-        .then((response) => {
+        .then(response => {
           if (isMountedRef.current) {
             const allBoxes = Array.isArray(response.data) ? response.data : [];
             setBoxes(allBoxes);
           }
         })
-        .catch((e) => {
+        .catch(e => {
           if (e.response?.status === 401) {
-            EventBus.dispatch("logout", null);
+            EventBus.dispatch('logout', null);
             setBoxes([]);
           } else {
-            log.api.error(t("box.organization.errors.retrievePublic"), {
+            log.api.error(t('box.organization.errors.retrievePublic'), {
               error: e.message,
             });
-            setMessage(t("box.organization.errors.retrievePublic"));
-            setMessageType("danger");
+            setMessage(t('box.organization.errors.retrievePublic'));
+            setMessageType('danger');
           }
         });
     } else if (organization) {
       BoxDataService.getAll(organization)
-        .then((response) => {
+        .then(response => {
           if (isMountedRef.current) {
             const allBoxes = Array.isArray(response.data) ? response.data : [];
             setBoxes(allBoxes);
           }
         })
-        .catch((e) => {
+        .catch(e => {
           if (e.response?.status === 401) {
-            EventBus.dispatch("logout", null);
+            EventBus.dispatch('logout', null);
             setBoxes([]);
           } else {
-            log.api.error(t("box.organization.errors.retrieveOrg"), {
+            log.api.error(t('box.organization.errors.retrieveOrg'), {
               organization,
               error: e.message,
             });
-            setMessage(t("box.organization.errors.retrieveOrg"));
-            setMessageType("danger");
+            setMessage(t('box.organization.errors.retrieveOrg'));
+            setMessageType('danger');
           }
         });
     }
@@ -801,17 +776,17 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     // Main page (public view) should always show "BoxVault"
     // Organization page should show organization name
     if (showOnlyPublic) {
-      document.title = "BoxVault";
+      document.title = 'BoxVault';
     } else if (organization) {
       document.title = organization;
     } else {
-      document.title = "BoxVault";
+      document.title = 'BoxVault';
     }
   }, [organization, showOnlyPublic]);
 
   // Save preferences to localStorage when they change (loading done in initial state)
   useEffect(() => {
-    const key = `boxvault_table_prefs_${organization || "home"}`;
+    const key = `boxvault_table_prefs_${organization || 'home'}`;
     const prefs = {
       sortColumn,
       sortDirection,
@@ -820,14 +795,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       os: Array.from(activeOs),
     };
     localStorage.setItem(key, JSON.stringify(prefs));
-  }, [
-    sortColumn,
-    sortDirection,
-    activeProviders,
-    activeArchitectures,
-    activeOs,
-    organization,
-  ]);
+  }, [sortColumn, sortDirection, activeProviders, activeArchitectures, activeOs, organization]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -857,7 +825,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           setGravatarUrls(urls);
         }
       } catch (e) {
-        log.api.error("Error fetching boxes", {
+        log.api.error('Error fetching boxes', {
           showOnlyPublic,
           organization,
           error: e.message,
@@ -867,9 +835,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           const errorMessage =
             e.response && e.response.data && e.response.data.message
               ? e.response.data.message
-              : t("box.organization.errors.retrieveOrg");
+              : t('box.organization.errors.retrieveOrg');
           setMessage(errorMessage);
-          setMessageType("danger");
+          setMessageType('danger');
         }
       }
     };
@@ -887,22 +855,20 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     }
     let mounted = true;
     BoxDataService.getUserWatches()
-      .then((response) => {
+      .then(response => {
         if (mounted) {
-          setWatchedBoxIds(
-            new Set((response.data || []).map((entry) => entry.boxId))
-          );
+          setWatchedBoxIds(new Set((response.data || []).map(entry => entry.boxId)));
         }
       })
-      .catch((e) => {
-        log.api.error("Error fetching watched boxes", { error: e.message });
+      .catch(e => {
+        log.api.error('Error fetching watched boxes', { error: e.message });
       });
     return () => {
       mounted = false;
     };
   }, [isSignedIn]);
 
-  const toggleBoxWatch = (box) => {
+  const toggleBoxWatch = box => {
     const orgName = resolveBoxOrg(box).orgName || organization;
     const nextWatched = !watchedBoxIds.has(box.id);
     const applyWatched = (ids, isWatched) => {
@@ -915,23 +881,23 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       return next;
     };
 
-    setWatchedBoxIds((prev) => applyWatched(prev, nextWatched));
+    setWatchedBoxIds(prev => applyWatched(prev, nextWatched));
 
     const request = nextWatched
       ? BoxDataService.watch(orgName, box.name)
       : BoxDataService.unwatch(orgName, box.name);
-    request.catch((e) => {
-      log.api.error("Error toggling box watch", {
+    request.catch(e => {
+      log.api.error('Error toggling box watch', {
         boxName: box.name,
         error: e.message,
       });
-      setWatchedBoxIds((prev) => applyWatched(prev, !nextWatched));
-      setMessage(t("watch.error"));
-      setMessageType("danger");
+      setWatchedBoxIds(prev => applyWatched(prev, !nextWatched));
+      setMessage(t('watch.error'));
+      setMessageType('danger');
     });
   };
 
-  const onChangeSearchName = (e) => {
+  const onChangeSearchName = e => {
     const searchValue = e.target.value;
     setSearchName(searchValue);
   };
@@ -946,16 +912,16 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       BoxDataService.removeAll(organization)
         .then(() => {
           refreshList();
-          setMessage(t("box.organization.messages.removeAllSuccess"));
-          setMessageType("success");
+          setMessage(t('box.organization.messages.removeAllSuccess'));
+          setMessageType('success');
         })
-        .catch((e) => {
-          log.api.error("Error removing all boxes", {
+        .catch(e => {
+          log.api.error('Error removing all boxes', {
             organization,
             error: e.message,
           });
-          setMessage(t("box.organization.errors.removeAll"));
-          setMessageType("danger");
+          setMessage(t('box.organization.errors.removeAll'));
+          setMessageType('danger');
         });
     }
   };
@@ -966,13 +932,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         await AuthService.refreshUserData();
         window.location.reload();
       })
-      .catch((e) => {
-        log.api.error("Error joining organization as admin", {
+      .catch(e => {
+        log.api.error('Error joining organization as admin', {
           organization,
           error: e.message,
         });
-        setMessage(e.response?.data?.message || t("messages.operationFailed"));
-        setMessageType("danger");
+        setMessage(e.response?.data?.message || t('messages.operationFailed'));
+        setMessageType('danger');
       });
   };
 
@@ -989,15 +955,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
   };
 
   const findByName = useCallback(() => {
-    if (searchName.trim() === "") {
+    if (searchName.trim() === '') {
       retrieveBoxes();
       return;
     }
 
-    const filterBoxes = (boxesData) =>
-      boxesData.filter((box) =>
-        box.name.toLowerCase().includes(searchName.toLowerCase())
-      );
+    const filterBoxes = boxesData =>
+      boxesData.filter(box => box.name.toLowerCase().includes(searchName.toLowerCase()));
 
     const fetchAndFilterBoxes = async () => {
       try {
@@ -1019,29 +983,29 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           setBoxes(filteredBoxes);
         }
       } catch (e) {
-        log.api.error("Error filtering boxes", {
+        log.api.error('Error filtering boxes', {
           searchName,
           error: e.message,
         });
         if (isMountedRef.current) {
           setBoxes([]);
         }
-        setMessage(t("box.organization.errors.filter"));
-        setMessageType("danger");
+        setMessage(t('box.organization.errors.filter'));
+        setMessageType('danger');
       }
     };
 
     fetchAndFilterBoxes();
   }, [searchName, showOnlyPublic, organization, retrieveBoxes, t]);
 
-  const handleInputChange = (event) => {
+  const handleInputChange = event => {
     const { name: fieldName, value } = event.target;
     setNewBox({
       ...newBox,
-      [fieldName]: fieldName === "isPublic" ? value === "true" : value,
+      [fieldName]: fieldName === 'isPublic' ? value === 'true' : value,
     });
 
-    if (fieldName === "name") {
+    if (fieldName === 'name') {
       const error = validateName(value);
       setValidationErrors({ ...validationErrors, name: error });
     }
@@ -1058,32 +1022,30 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     BoxDataService.create(organization, boxData)
       .then(() => {
         setShowCreateForm(false);
-        setNewBox({ name: "", description: "", isPublic: false });
+        setNewBox({ name: '', description: '', isPublic: false });
         refreshList();
         navigate(`/${organization}/${newBox.name}`);
-        setMessage(t("box.organization.messages.boxCreated"));
-        setMessageType("success");
+        setMessage(t('box.organization.messages.boxCreated'));
+        setMessageType('success');
       })
-      .catch((e) => {
-        log.api.error("Error creating box", {
+      .catch(e => {
+        log.api.error('Error creating box', {
           boxName: newBox.name,
           error: e.message,
         });
         const errorMessage =
           e.response && e.response.data && e.response.data.message
             ? e.response.data.message
-            : t("box.organization.errors.boxCreate");
+            : t('box.organization.errors.boxCreate');
         setMessage(errorMessage);
-        setMessageType("danger");
+        setMessageType('danger');
       });
   };
 
-  const canEditBoxes = (box) => isOrgMember(currentUser, box.organization);
+  const canEditBoxes = box => isOrgMember(currentUser, box.organization);
 
   const showJoinAsAdmin =
-    !showOnlyPublic &&
-    isGlobalAdmin(currentUser) &&
-    !isOrgMember(currentUser, organization);
+    !showOnlyPublic && isGlobalAdmin(currentUser) && !isOrgMember(currentUser, organization);
 
   // Signed-in home page groups the final processed boxes (search/sort/filter
   // already applied) by organization; anonymous home and organization pages
@@ -1093,9 +1055,9 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       return null;
     }
     const groups = new Map();
-    processedBoxes.forEach((box) => {
+    processedBoxes.forEach(box => {
       const { orgName } = resolveBoxOrg(box);
-      const key = orgName || t("unknown");
+      const key = orgName || t('unknown');
       if (!groups.has(key)) {
         groups.set(key, []);
       }
@@ -1104,7 +1066,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     return Array.from(groups.entries());
   }, [showOnlyPublic, currentUser, processedBoxes, t]);
 
-  const renderOrgLogo = (box) => {
+  const renderOrgLogo = box => {
     const { orgName, logo } = resolveBoxOrg(box);
     // Stored org logo first, fetched Gravatar second, BoxVault logo last
     const logoUrl = logo || gravatarUrls[orgName];
@@ -1118,7 +1080,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       );
     }
 
-    const LogoComponent = theme === "light" ? BoxVaultLight : BoxVaultDark;
+    const LogoComponent = theme === 'light' ? BoxVaultLight : BoxVaultDark;
     return <LogoComponent className="logo-xl icon-with-margin-sm" />;
   };
 
@@ -1127,14 +1089,10 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
     const providerNames = getProviderNames(box);
     const architectureNames = getArchitectureNames(box);
     const releaseTime = getLatestReleaseTime(box);
-    const organizationName =
-      routeOrganization || box.organization?.name || "Unknown";
+    const organizationName = routeOrganization || box.organization?.name || 'Unknown';
 
     return (
-      <tr
-        className={index === currentIndex ? "active" : ""}
-        key={box.id || box.name}
-      >
+      <tr className={index === currentIndex ? 'active' : ''} key={box.id || box.name}>
         {isSignedIn && (
           <td className="text-center align-middle">
             <WatchStarCell
@@ -1145,10 +1103,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         )}
         <td>
           {renderOrgLogo(box)}
-          <Link
-            to={`/${organizationName}/${box.name}`}
-            className="v-align-middle"
-          >
+          <Link to={`/${organizationName}/${box.name}`} className="v-align-middle">
             {organizationName}/{box.name}
           </Link>
         </td>
@@ -1156,35 +1111,25 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           <BoxOsCell box={box} />
         </td>
         <td className="px-2">
-          <span
-            className={`badge ${box.published ? "bg-success" : "bg-warning"}`}
-          >
+          <span className={`badge ${box.published ? 'bg-success' : 'bg-warning'}`}>
             {box.published
-              ? t("box.organization.status.published")
-              : t("box.organization.status.pending")}
+              ? t('box.organization.status.published')
+              : t('box.organization.status.pending')}
           </span>
         </td>
         <td>
-          <span
-            className={`badge ${box.public || box.isPublic ? "bg-info" : "bg-secondary"}`}
-          >
+          <span className={`badge ${box.public || box.isPublic ? 'bg-info' : 'bg-secondary'}`}>
             {box.public || box.isPublic
-              ? t("box.organization.visibility.public")
-              : t("box.organization.visibility.private")}
+              ? t('box.organization.visibility.public')
+              : t('box.organization.visibility.private')}
           </span>
         </td>
         <td>{new Date(box.createdAt).toLocaleDateString()}</td>
-        <td>
-          {releaseTime ? formatRelativeTime(releaseTime, i18n.language) : ""}
-        </td>
+        <td>{releaseTime ? formatRelativeTime(releaseTime, i18n.language) : ''}</td>
         <td>{totalDownloads}</td>
-        <td>
-          {box.versions ? box.versions.length : box.numberOfVersions || 0}
-        </td>
-        <td>{providerNames.length > 0 ? providerNames.join(", ") : "N/A"}</td>
-        <td>
-          {architectureNames.length > 0 ? architectureNames.join(", ") : "N/A"}
-        </td>
+        <td>{box.versions ? box.versions.length : box.numberOfVersions || 0}</td>
+        <td>{providerNames.length > 0 ? providerNames.join(', ') : 'N/A'}</td>
+        <td>{architectureNames.length > 0 ? architectureNames.join(', ') : 'N/A'}</td>
       </tr>
     );
   };
@@ -1198,25 +1143,18 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
       )}
       <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
         {/* Left: Search */}
-        <div
-          className="input-group input-group-sm"
-          style={{ maxWidth: "300px" }}
-        >
+        <div className="input-group input-group-sm" style={{ maxWidth: '300px' }}>
           <input
             type="text"
             className="form-control"
-            placeholder={t("common:actions.search")}
+            placeholder={t('common:actions.search')}
             id="search"
             name="search"
             value={searchName}
             onChange={onChangeSearchName}
           />
-          <button
-            className="btn btn-outline-secondary"
-            type="button"
-            onClick={findByName}
-          >
-            {t("common:actions.search")}
+          <button className="btn btn-outline-secondary" type="button" onClick={findByName}>
+            {t('common:actions.search')}
           </button>
         </div>
 
@@ -1226,7 +1164,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
           Object.keys(allArchitectures).length > 0 ||
           Object.keys(allOs).length > 0) && (
           <div className="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
-            <small className="text-muted">{t("box.filter")}:</small>
+            <small className="text-muted">{t('box.filter')}:</small>
             {isSignedIn && (
               <WatchedFilterPill
                 active={watchedOnly}
@@ -1258,19 +1196,13 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
         {/* Right: Action Buttons */}
         <div className="d-flex gap-2">
           {showOnlyPublic && (
-            <Link
-              to="/organizations/discover"
-              className="btn btn-sm btn-outline-primary"
-            >
-              {t("discovery.discoverButton")}
+            <Link to="/organizations/discover" className="btn btn-sm btn-outline-primary">
+              {t('discovery.discoverButton')}
             </Link>
           )}
           {showJoinAsAdmin && (
-            <button
-              className="btn btn-sm btn-outline-warning"
-              onClick={handleJoinAsAdmin}
-            >
-              {t("box.organization.buttons.joinAsAdmin")}
+            <button className="btn btn-sm btn-outline-warning" onClick={handleJoinAsAdmin}>
+              {t('box.organization.buttons.joinAsAdmin')}
             </button>
           )}
           {!showOnlyPublic && canEditBoxes({ organization }) && (
@@ -1279,7 +1211,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
               onCreateBox={createBox}
               onCancelCreate={() => {
                 setShowCreateForm(false);
-                setNewBox({ name: "", description: "", isPublic: false });
+                setNewBox({ name: '', description: '', isPublic: false });
                 setValidationErrors({});
               }}
               createDisabled={!!validationErrors.name}
@@ -1291,11 +1223,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             />
           )}
           {!showOnlyPublic && (
-            <button
-              className="btn btn-sm btn-outline-primary"
-              onClick={() => navigate("/")}
-            >
-              {t("actions.back")}
+            <button className="btn btn-sm btn-outline-primary" onClick={() => navigate('/')}>
+              {t('actions.back')}
             </button>
           )}
         </div>
@@ -1303,11 +1232,11 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
 
       {showCreateForm && (
         <div className="create-form mt-2 mb-3">
-          <h4>{t("box.organization.headers.createNewBox")}</h4>
+          <h4>{t('box.organization.headers.createNewBox')}</h4>
           <form>
             <div className="form-group">
               <label htmlFor="boxName">
-                <strong>{t("box.name")}:</strong>
+                <strong>{t('box.name')}:</strong>
               </label>
               <div className="form-group row align-items-center">
                 <div className="col-auto pe-0">
@@ -1316,7 +1245,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     className="form-control"
                     id="organization"
                     name="organization"
-                    value={currentUser ? currentUser.organization : ""}
+                    value={currentUser ? currentUser.organization : ''}
                     onChange={handleInputChange}
                     disabled
                   />
@@ -1336,16 +1265,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                   />
                 </div>
               </div>
-              {validationErrors.name && (
-                <div className="text-danger">{validationErrors.name}</div>
-              )}
-              <small className="form-text text-muted">
-                {t("box.shortDescription")}
-              </small>
+              {validationErrors.name && <div className="text-danger">{validationErrors.name}</div>}
+              <small className="form-text text-muted">{t('box.shortDescription')}</small>
             </div>
             <div className="form-group mt-2">
               <label htmlFor="description">
-                <strong>{t("box.description")}:</strong>
+                <strong>{t('box.description')}:</strong>
               </label>
               <textarea
                 className="form-control"
@@ -1358,7 +1283,7 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
             </div>
             <div className="form-group mt-2">
               <label htmlFor="visibility">
-                <strong>{t("box.visibility")}:</strong>
+                <strong>{t('box.visibility')}:</strong>
               </label>
               <div>
                 <div className="form-check">
@@ -1371,11 +1296,8 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     checked={!newBox.isPublic}
                     onChange={handleInputChange}
                   />
-                  <label
-                    className="form-check-label"
-                    htmlFor="visibilityPrivate"
-                  >
-                    {t("box.organization.visibility.private")}
+                  <label className="form-check-label" htmlFor="visibilityPrivate">
+                    {t('box.organization.visibility.private')}
                   </label>
                 </div>
                 <div className="form-check">
@@ -1388,17 +1310,12 @@ const BoxesList = ({ showOnlyPublic, theme }) => {
                     checked={newBox.isPublic}
                     onChange={handleInputChange}
                   />
-                  <label
-                    className="form-check-label"
-                    htmlFor="visibilityPublic"
-                  >
-                    {t("box.organization.visibility.public")}
+                  <label className="form-check-label" htmlFor="visibilityPublic">
+                    {t('box.organization.visibility.public')}
                   </label>
                 </div>
               </div>
-              <small className="form-text text-muted">
-                {t("box.visibilityHint")}
-              </small>
+              <small className="form-text text-muted">{t('box.visibilityHint')}</small>
             </div>
           </form>
         </div>
@@ -1446,9 +1363,8 @@ BoxesList.propTypes = {
 const Organization = ({ showOnlyPublic, theme }) => {
   const { organization: routeOrganization } = useParams();
   const currentUser = AuthService.getCurrentUser();
-  const organization =
-    routeOrganization || (currentUser ? currentUser.organization : null);
-  const [activeTab, setActiveTab] = useState("boxes");
+  const organization = routeOrganization || (currentUser ? currentUser.organization : null);
+  const [activeTab, setActiveTab] = useState('boxes');
 
   const isMember = useMemo(
     () => isOrgMember(currentUser, organization),
@@ -1465,28 +1381,26 @@ const Organization = ({ showOnlyPublic, theme }) => {
       <ul className="nav nav-tabs mb-3">
         <li className="nav-item">
           <button
-            className={`nav-link ${activeTab === "boxes" ? "active" : ""}`}
-            onClick={() => setActiveTab("boxes")}
+            className={`nav-link ${activeTab === 'boxes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('boxes')}
           >
             Boxes
           </button>
         </li>
         <li className="nav-item">
           <button
-            className={`nav-link ${activeTab === "isos" ? "active" : ""}`}
-            onClick={() => setActiveTab("isos")}
+            className={`nav-link ${activeTab === 'isos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('isos')}
           >
             ISOs
           </button>
         </li>
       </ul>
 
-      {activeTab === "boxes" && (
-        <BoxesList showOnlyPublic={showOnlyPublic} theme={theme} />
-      )}
-      {activeTab === "isos" && (
+      {activeTab === 'boxes' && <BoxesList showOnlyPublic={showOnlyPublic} theme={theme} />}
+      {activeTab === 'isos' && (
         <IsoList
-          key={organization || "public"}
+          key={organization || 'public'}
           organization={organization}
           isMember={isMember}
           canManage={canManage}

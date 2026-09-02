@@ -1,37 +1,33 @@
-import PropTypes from "prop-types";
-import { useState, useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { FaEye, FaEyeSlash } from "react-icons/fa6";
-import { Link, useLocation } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FaEye, FaEyeSlash } from 'react-icons/fa6';
+import { Link, useLocation } from 'react-router-dom';
 
-import AuthService from "../services/auth.service";
-import { log } from "../utils/Logger";
+import AuthService from '../services/auth.service';
+import { log } from '../utils/Logger';
 import {
   redirectToProvider,
   sortMethodsByDefault,
   readStoredLoginMethod,
   storeLoginMethod,
-} from "../utils/providers";
+} from '../utils/providers';
 
-import AuthShell, {
-  AuthAlert,
-  AuthSpinner,
-  InboxIcon,
-} from "./AuthShell.component";
-import ProviderButtons from "./ProviderButtons.component";
+import AuthShell, { AuthAlert, AuthSpinner, InboxIcon } from './AuthShell.component';
+import ProviderButtons from './ProviderButtons.component';
 
 const resolveInitialMode = ({ localAllowed, hasOidc }) => {
   if (!localAllowed) {
-    return "sso";
+    return 'sso';
   }
   if (!hasOidc) {
-    return "local";
+    return 'local';
   }
-  return readStoredLoginMethod() === "password" ? "local" : "sso";
+  return readStoredLoginMethod() === 'password' ? 'local' : 'sso';
 };
 
 const deriveRegisterView = ({ mode, localAllowed, hasOidc }) => {
-  const localMode = mode === "local" && localAllowed;
+  const localMode = mode === 'local' && localAllowed;
   return {
     showClosed: !hasOidc && !localAllowed,
     showLocalForm: localMode,
@@ -45,27 +41,21 @@ const deriveRegisterView = ({ mode, localAllowed, hasOidc }) => {
 const validateForm = (formValues, t) => {
   const errors = {};
   if (!formValues.username) {
-    errors.username = t("errors.fieldRequired");
-  } else if (
-    formValues.username.length < 3 ||
-    formValues.username.length > 20
-  ) {
-    errors.username = t("errors.usernameLength");
+    errors.username = t('errors.fieldRequired');
+  } else if (formValues.username.length < 3 || formValues.username.length > 20) {
+    errors.username = t('errors.usernameLength');
   }
 
   if (!formValues.email) {
-    errors.email = t("errors.fieldRequired");
+    errors.email = t('errors.fieldRequired');
   } else if (!/\S+@\S+\.\S+/.test(formValues.email)) {
-    errors.email = t("errors.invalidEmail");
+    errors.email = t('errors.invalidEmail');
   }
 
   if (!formValues.password) {
-    errors.password = t("errors.fieldRequired");
-  } else if (
-    formValues.password.length < 6 ||
-    formValues.password.length > 40
-  ) {
-    errors.password = t("errors.passwordLength");
+    errors.password = t('errors.fieldRequired');
+  } else if (formValues.password.length < 6 || formValues.password.length > 40) {
+    errors.password = t('errors.passwordLength');
   }
 
   return errors;
@@ -88,7 +78,7 @@ const RegisterField = ({
       {label}
     </label>
     <div
-      className={`auth-input-wrap${children ? " auth-input-wrap--password" : ""}${error ? " has-error" : ""}`}
+      className={`auth-input-wrap${children ? ' auth-input-wrap--password' : ''}${error ? ' has-error' : ''}`}
     >
       <input
         id={id}
@@ -119,14 +109,8 @@ RegisterField.propTypes = {
   children: PropTypes.node,
 };
 
-const LocalRegisterForm = ({
-  formValues,
-  validationErrors,
-  onChange,
-  onSubmit,
-  loading,
-}) => {
-  const { t } = useTranslation(["auth"]);
+const LocalRegisterForm = ({ formValues, validationErrors, onChange, onSubmit, loading }) => {
+  const { t } = useTranslation(['auth']);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -134,7 +118,7 @@ const LocalRegisterForm = ({
       <RegisterField
         id="register-username"
         name="username"
-        label={t("register.username")}
+        label={t('register.username')}
         error={validationErrors.username}
         type="text"
         autoComplete="username"
@@ -144,8 +128,8 @@ const LocalRegisterForm = ({
       <RegisterField
         id="register-name"
         name="name"
-        label={t("register.name")}
-        hint={t("register.nameHint")}
+        label={t('register.name')}
+        hint={t('register.nameHint')}
         type="text"
         autoComplete="name"
         value={formValues.name}
@@ -154,7 +138,7 @@ const LocalRegisterForm = ({
       <RegisterField
         id="register-email"
         name="email"
-        label={t("register.email")}
+        label={t('register.email')}
         error={validationErrors.email}
         type="email"
         autoComplete="email"
@@ -164,9 +148,9 @@ const LocalRegisterForm = ({
       <RegisterField
         id="register-password"
         name="password"
-        label={t("register.password")}
+        label={t('register.password')}
         error={validationErrors.password}
-        type={showPassword ? "text" : "password"}
+        type={showPassword ? 'text' : 'password'}
         autoComplete="new-password"
         value={formValues.password}
         onChange={onChange}
@@ -174,10 +158,8 @@ const LocalRegisterForm = ({
         <button
           type="button"
           className="auth-reveal"
-          onClick={() => setShowPassword((visible) => !visible)}
-          aria-label={
-            showPassword ? t("login.hidePassword") : t("login.showPassword")
-          }
+          onClick={() => setShowPassword(visible => !visible)}
+          aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
         >
           {showPassword ? <FaEyeSlash /> : <FaEye />}
         </button>
@@ -185,10 +167,10 @@ const LocalRegisterForm = ({
 
       <button
         type="submit"
-        className={`auth-btn auth-btn-primary auth-btn-block${loading ? " is-loading" : ""}`}
+        className={`auth-btn auth-btn-primary auth-btn-block${loading ? ' is-loading' : ''}`}
         disabled={loading}
       >
-        {t("register.signUpButton")}
+        {t('register.signUpButton')}
       </button>
     </form>
   );
@@ -219,14 +201,12 @@ const RegisterMethods = ({
   onSelectProvider,
   onSwitchMode,
 }) => {
-  const { t } = useTranslation(["auth"]);
+  const { t } = useTranslation(['auth']);
   const hasLinks = view.showLocalToggle || view.showSsoToggle;
 
   return (
     <>
-      {view.showClosed && (
-        <AuthAlert tone="info">{t("register.closed")}</AuthAlert>
-      )}
+      {view.showClosed && <AuthAlert tone="info">{t('register.closed')}</AuthAlert>}
       {view.showLocalForm && (
         <LocalRegisterForm
           formValues={formValues}
@@ -236,9 +216,7 @@ const RegisterMethods = ({
           loading={loading}
         />
       )}
-      {view.showDivider && (
-        <div className="auth-or">{t("login.orSeparator")}</div>
-      )}
+      {view.showDivider && <div className="auth-or">{t('login.orSeparator')}</div>}
       {view.showButtons && (
         <ProviderButtons
           methods={oidcMethods}
@@ -253,18 +231,18 @@ const RegisterMethods = ({
             <button
               type="button"
               className="auth-link auth-link-muted"
-              onClick={() => onSwitchMode("local")}
+              onClick={() => onSwitchMode('local')}
             >
-              {t("register.useLocal")}
+              {t('register.useLocal')}
             </button>
           )}
           {view.showSsoToggle && (
             <button
               type="button"
               className="auth-link auth-link-muted"
-              onClick={() => onSwitchMode("sso")}
+              onClick={() => onSwitchMode('sso')}
             >
-              {t("register.useSso")}
+              {t('register.useSso')}
             </button>
           )}
         </div>
@@ -294,29 +272,28 @@ RegisterMethods.propTypes = {
 };
 
 const Register = () => {
-  const { t } = useTranslation(["auth", "common"]);
+  const { t } = useTranslation(['auth', 'common']);
   const location = useLocation();
 
   useEffect(() => {
-    document.title = t("register.pageTitle");
+    document.title = t('register.pageTitle');
   }, [t]);
 
   const [formValues, setFormValues] = useState({
-    username: "",
-    name: "",
-    email: "",
-    password: "",
+    username: '',
+    name: '',
+    email: '',
+    password: '',
   });
   const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState(null);
   const [invitationToken, setInvitationToken] = useState(null);
-  const [organizationName, setOrganizationName] = useState("");
+  const [organizationName, setOrganizationName] = useState('');
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
   const [defaultProvider, setDefaultProvider] = useState(null);
-  const [localRegistrationEnabled, setLocalRegistrationEnabled] =
-    useState(false);
+  const [localRegistrationEnabled, setLocalRegistrationEnabled] = useState(false);
   const [chosenMode, setChosenMode] = useState(null);
 
   useEffect(() => {
@@ -333,12 +310,10 @@ const Register = () => {
         setLocalRegistrationEnabled(!!result.local_registration_enabled);
       } catch (error) {
         if (!cancelled) {
-          log.auth.error("Error loading auth methods", {
+          log.auth.error('Error loading auth methods', {
             error: error.message,
           });
-          setAuthMethods([
-            { id: "local", name: t("login.localAccount"), enabled: true },
-          ]);
+          setAuthMethods([{ id: 'local', name: t('login.localAccount'), enabled: true }]);
           setLocalRegistrationEnabled(true);
         }
       } finally {
@@ -358,14 +333,14 @@ const Register = () => {
   useEffect(() => {
     const validateToken = async () => {
       const queryParams = new URLSearchParams(location.search);
-      const token = queryParams.get("token");
+      const token = queryParams.get('token');
       if (token) {
         setInvitationToken(token);
         try {
           const response = await AuthService.validateInvitationToken(token);
           setOrganizationName(response.data.organizationName);
         } catch (error) {
-          log.auth.error("Invalid or expired token", {
+          log.auth.error('Invalid or expired token', {
             token,
             error: error.message,
           });
@@ -377,54 +352,51 @@ const Register = () => {
   }, [location]);
 
   const enabledAuthMethods = useMemo(
-    () => authMethods.filter((method) => method.enabled),
+    () => authMethods.filter(method => method.enabled),
     [authMethods]
   );
-  const localEnabled = enabledAuthMethods.some(
-    (method) => method.id === "local"
-  );
+  const localEnabled = enabledAuthMethods.some(method => method.id === 'local');
   const oidcMethods = useMemo(
     () =>
       sortMethodsByDefault(
-        enabledAuthMethods.filter((method) => method.id.startsWith("oidc-")),
+        enabledAuthMethods.filter(method => method.id.startsWith('oidc-')),
         defaultProvider
       ),
     [enabledAuthMethods, defaultProvider]
   );
   const hasOidc = oidcMethods.length > 0;
-  const localAllowed =
-    localEnabled && (localRegistrationEnabled || !!invitationToken);
+  const localAllowed = localEnabled && (localRegistrationEnabled || !!invitationToken);
   const mode = chosenMode || resolveInitialMode({ localAllowed, hasOidc });
   const view = deriveRegisterView({ mode, localAllowed, hasOidc });
 
-  const handleSwitchMode = (next) => {
+  const handleSwitchMode = next => {
     setChosenMode(next);
-    storeLoginMethod(next === "local" ? "password" : "sso");
+    storeLoginMethod(next === 'local' ? 'password' : 'sso');
   };
 
-  const handleInputChange = (event) => {
+  const handleInputChange = event => {
     const { name, value } = event.target;
-    setFormValues((prev) => ({ ...prev, [name]: value }));
+    setFormValues(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleOidcRegister = (provider) => {
+  const handleOidcRegister = provider => {
     try {
       localStorage.setItem(
-        "boxvault_intended_url",
+        'boxvault_intended_url',
         invitationToken
           ? `/invite/${encodeURIComponent(invitationToken)}`
-          : "/organizations/discover"
+          : '/organizations/discover'
       );
       setIsSubmitting(true);
       redirectToProvider(provider);
     } catch (err) {
-      log.auth.error("Invalid OIDC provider selected", { error: err.message });
+      log.auth.error('Invalid OIDC provider selected', { error: err.message });
       setIsSubmitting(false);
-      setStatus({ success: false, message: t("errors.invalidProvider") });
+      setStatus({ success: false, message: t('errors.invalidProvider') });
     }
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = event => {
     event.preventDefault();
 
     const errors = validateForm(formValues, t);
@@ -442,13 +414,12 @@ const Register = () => {
       invitationToken,
       formValues.name
     )
-      .then((response) => {
+      .then(response => {
         setStatus({ success: true, message: response.data.message });
         setIsSubmitting(false);
       })
-      .catch((error) => {
-        const resMessage =
-          error.response?.data?.message || error.message || error.toString();
+      .catch(error => {
+        const resMessage = error.response?.data?.message || error.message || error.toString();
         setStatus({ success: false, message: resMessage });
         setIsSubmitting(false);
       });
@@ -456,35 +427,27 @@ const Register = () => {
 
   if (status?.success) {
     return (
-      <AuthShell
-        title={t("register.checkInbox")}
-        subtitle={status.message}
-        icon={<InboxIcon />}
-      >
-        <p className="auth-note">{t("register.checkInboxHint")}</p>
-        <Link
-          to="/login"
-          className="auth-btn auth-btn-secondary auth-btn-block"
-        >
-          {t("register.signIn")}
+      <AuthShell title={t('register.checkInbox')} subtitle={status.message} icon={<InboxIcon />}>
+        <p className="auth-note">{t('register.checkInboxHint')}</p>
+        <Link to="/login" className="auth-btn auth-btn-secondary auth-btn-block">
+          {t('register.signIn')}
         </Link>
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell title={t("register.headline")} subtitle={t("register.subhead")}>
+    <AuthShell title={t('register.headline')} subtitle={t('register.subhead')}>
       {organizationName && (
         <AuthAlert tone="info">
-          {t("register.joiningOrganization")}{" "}
-          <strong>{organizationName}</strong>
+          {t('register.joiningOrganization')} <strong>{organizationName}</strong>
         </AuthAlert>
       )}
 
       {status?.message && <AuthAlert tone="danger">{status.message}</AuthAlert>}
 
       {methodsLoading ? (
-        <AuthSpinner label={t("common:loading")} />
+        <AuthSpinner label={t('common:loading')} />
       ) : (
         <RegisterMethods
           view={view}
@@ -501,9 +464,9 @@ const Register = () => {
       )}
 
       <p className="auth-foot">
-        {t("register.haveAccount")}{" "}
+        {t('register.haveAccount')}{' '}
         <Link to="/login" className="auth-link">
-          {t("register.signIn")}
+          {t('register.signIn')}
         </Link>
       </p>
     </AuthShell>

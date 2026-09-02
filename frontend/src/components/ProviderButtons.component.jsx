@@ -1,21 +1,20 @@
-import PropTypes from "prop-types";
+import PropTypes from 'prop-types';
 
-const hideBrokenIcon = (event) => {
-  event.target.style.display = "none";
+const hideBrokenIcon = event => {
+  event.target.style.display = 'none';
 };
 
 const ProviderButtons = ({ methods, defaultProvider, loading, onSelect }) => (
   <div className="auth-form">
-    {methods.map((method) => {
-      const providerName = method.id.replace("oidc-", "");
-      const isPrimary =
-        methods.length === 1 || method.id === `oidc-${defaultProvider}`;
-      const variant = isPrimary ? "auth-btn-primary" : "auth-btn-secondary";
+    {methods.map(method => {
+      const providerName = method.id.replace('oidc-', '');
+      const isPrimary = methods.length === 1 || method.id === `oidc-${defaultProvider}`;
+      const variant = isPrimary ? 'auth-btn-primary' : 'auth-btn-secondary';
       return (
         <button
           key={method.id}
           type="button"
-          className={`auth-btn auth-btn-block ${variant}${loading ? " is-loading" : ""}`}
+          className={`auth-btn auth-btn-block ${variant}${loading ? ' is-loading' : ''}`}
           disabled={loading}
           onClick={() => onSelect(providerName)}
         >

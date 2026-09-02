@@ -1,57 +1,48 @@
-import PropTypes from "prop-types";
-import { useState } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
-import { useTranslation } from "react-i18next";
+import PropTypes from 'prop-types';
+import { useState } from 'react';
+import { Modal, Button, Form } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 
-const ConfirmationModal = ({
-  show,
-  handleClose,
-  handleConfirm,
-  title,
-  message,
-}) => {
+const ConfirmationModal = ({ show, handleClose, handleConfirm, title, message }) => {
   const { t } = useTranslation();
-  const [inputValue, setInputValue] = useState("");
-  const [error, setError] = useState("");
+  const [inputValue, setInputValue] = useState('');
+  const [error, setError] = useState('');
 
-  const handleInputChange = (e) => {
+  const handleInputChange = e => {
     setInputValue(e.target.value);
-    setError("");
+    setError('');
   };
 
   const handleModalClose = () => {
-    setInputValue("");
-    setError("");
+    setInputValue('');
+    setError('');
     handleClose();
   };
 
   const handleConfirmClick = () => {
-    if (inputValue.toLowerCase() === t("deleteKeyword")) {
+    if (inputValue.toLowerCase() === t('deleteKeyword')) {
       handleConfirm();
-      setInputValue("");
-      setError("");
+      setInputValue('');
+      setError('');
       handleClose();
     } else {
-      setError(t("confirmation.typeDeleteToConfirm"));
+      setError(t('confirmation.typeDeleteToConfirm'));
     }
   };
 
   return (
     <Modal show={show} onHide={handleModalClose}>
       <Modal.Header closeButton>
-        <Modal.Title>{title || t("confirmation.title")}</Modal.Title>
+        <Modal.Title>{title || t('confirmation.title')}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <p>
-          {message ||
-            t("confirmation.message", { keyword: t("deleteKeyword") })}
-        </p>
+        <p>{message || t('confirmation.message', { keyword: t('deleteKeyword') })}</p>
         <Form.Control
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          placeholder={t("confirmation.placeholder", {
-            keyword: t("deleteKeyword"),
+          placeholder={t('confirmation.placeholder', {
+            keyword: t('deleteKeyword'),
           })}
         />
         {error && (
@@ -62,10 +53,10 @@ const ConfirmationModal = ({
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={handleModalClose}>
-          {t("buttons.cancel")}
+          {t('buttons.cancel')}
         </Button>
         <Button variant="danger" onClick={handleConfirmClick}>
-          {t("buttons.confirm")}
+          {t('buttons.confirm')}
         </Button>
       </Modal.Footer>
     </Modal>

@@ -1,6 +1,6 @@
-import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaUser,
   FaUserShield,
@@ -10,11 +10,11 @@ import {
   FaUserMinus,
   FaCheck,
   FaBox,
-} from "react-icons/fa6";
+} from 'react-icons/fa6';
 
-import AuthService from "../services/auth.service";
-import { userDisplayName, userSecondaryLine } from "../utils/displayName";
-import { log } from "../utils/Logger";
+import AuthService from '../services/auth.service';
+import { userDisplayName, userSecondaryLine } from '../utils/displayName';
+import { log } from '../utils/Logger';
 
 const UserCardActions = ({
   user,
@@ -34,20 +34,20 @@ const UserCardActions = ({
       {onChangeRole && (
         <select
           className="form-select form-select-sm w-auto"
-          value={orgRole || "member"}
-          onChange={(e) => onChangeRole(e.target.value)}
-          aria-label={t("orgConsole.users.roles")}
+          value={orgRole || 'member'}
+          onChange={e => onChangeRole(e.target.value)}
+          aria-label={t('orgConsole.users.roles')}
         >
-          <option value="member">{t("roles.member")}</option>
-          <option value="admin">{t("roles.admin")}</option>
-          <option value="owner">{t("roles.owner")}</option>
+          <option value="member">{t('roles.member')}</option>
+          <option value="admin">{t('roles.admin')}</option>
+          <option value="owner">{t('roles.owner')}</option>
         </select>
       )}
       {onSuspend && !user.suspended && !isSelf && (
         <button
           className="btn btn-sm btn-outline-warning"
           onClick={onSuspend}
-          title={t("buttons.suspend")}
+          title={t('buttons.suspend')}
         >
           <FaBan />
         </button>
@@ -56,7 +56,7 @@ const UserCardActions = ({
         <button
           className="btn btn-sm btn-outline-success"
           onClick={onResume}
-          title={t("buttons.resume")}
+          title={t('buttons.resume')}
         >
           <FaCheck />
         </button>
@@ -65,7 +65,7 @@ const UserCardActions = ({
         <button
           className="btn btn-sm btn-outline-danger"
           onClick={onRemoveFromOrg}
-          title={t("buttons.removeFromOrg")}
+          title={t('buttons.removeFromOrg')}
         >
           <FaUserMinus />
         </button>
@@ -74,7 +74,7 @@ const UserCardActions = ({
         <button
           className="btn btn-sm btn-danger"
           onClick={onDelete}
-          title={t("buttons.deleteUser")}
+          title={t('buttons.deleteUser')}
         >
           <FaTrash />
         </button>
@@ -98,7 +98,7 @@ const UserCard = ({
   user,
   currentUser,
   orgRole,
-  columnClass = "col-md-6 col-xl-4",
+  columnClass = 'col-md-6 col-xl-4',
   onChangeRole,
   onSuspend,
   onResume,
@@ -114,14 +114,14 @@ const UserCard = ({
     // email-hash fetch is only needed when no stored URL exists.
     if (!user.avatar_url && user.emailHash) {
       AuthService.getGravatarProfile(user.emailHash)
-        .then((profile) => {
+        .then(profile => {
           if (mounted && profile?.thumbnailUrl) {
             // Request a 50px image for consistency with the placeholder
             setGravatarUrl(`${profile.thumbnailUrl}?s=50`);
           }
         })
-        .catch((err) => {
-          log.component.debug("Failed to load gravatar", {
+        .catch(err => {
+          log.component.debug('Failed to load gravatar', {
             error: err.message,
           });
         });
@@ -134,46 +134,44 @@ const UserCard = ({
   const avatarUrl = user.avatar_url || gravatarUrl;
 
   // Normalize roles to array of strings
-  const roles = user.roles
-    ? user.roles.map((r) => (typeof r === "string" ? r : r.name))
-    : [];
-  const globalIsAdmin = roles.includes("admin");
+  const roles = user.roles ? user.roles.map(r => (typeof r === 'string' ? r : r.name)) : [];
+  const globalIsAdmin = roles.includes('admin');
 
   // In per-org mode (onChangeRole provided) the badge reflects the org role
   // (owner/admin/member); otherwise it reflects the global role (admin/user).
   const resolveBadgeRole = () => {
     if (orgRole || onChangeRole) {
-      return orgRole || "member";
+      return orgRole || 'member';
     }
-    return globalIsAdmin ? "admin" : "user";
+    return globalIsAdmin ? 'admin' : 'user';
   };
   const badgeRole = resolveBadgeRole();
 
   const getRoleBadge = () => {
-    if (badgeRole === "owner") {
+    if (badgeRole === 'owner') {
       return (
         <span className="badge bg-danger me-1">
-          <FaUserGear className="me-1" /> {t("roles.owner")}
+          <FaUserGear className="me-1" /> {t('roles.owner')}
         </span>
       );
     }
-    if (badgeRole === "admin") {
+    if (badgeRole === 'admin') {
       return (
         <span className="badge bg-warning text-dark me-1">
-          <FaUserShield className="me-1" /> {t("roles.admin")}
+          <FaUserShield className="me-1" /> {t('roles.admin')}
         </span>
       );
     }
-    if (badgeRole === "member") {
+    if (badgeRole === 'member') {
       return (
         <span className="badge bg-secondary me-1">
-          <FaUser className="me-1" /> {t("roles.member")}
+          <FaUser className="me-1" /> {t('roles.member')}
         </span>
       );
     }
     return (
       <span className="badge bg-secondary me-1">
-        <FaUser className="me-1" /> {t("roles.user")}
+        <FaUser className="me-1" /> {t('roles.user')}
       </span>
     );
   };
@@ -183,7 +181,7 @@ const UserCard = ({
 
   return (
     <div className={`${columnClass} mb-3`}>
-      <div className={`card h-100 ${user.suspended ? "border-danger" : ""}`}>
+      <div className={`card h-100 ${user.suspended ? 'border-danger' : ''}`}>
         <div className="card-body">
           <div className="d-flex align-items-center mb-3">
             {avatarUrl ? (
@@ -191,7 +189,7 @@ const UserCard = ({
                 src={avatarUrl}
                 alt={displayName}
                 className="rounded-circle flex-shrink-0 me-3"
-                style={{ width: 50, height: 50, objectFit: "cover" }}
+                style={{ width: 50, height: 50, objectFit: 'cover' }}
               />
             ) : (
               <div
@@ -206,10 +204,7 @@ const UserCard = ({
                 {displayName}
               </h6>
               {secondaryLine && (
-                <small
-                  className="text-body-secondary text-truncate d-block"
-                  title={secondaryLine}
-                >
+                <small className="text-body-secondary text-truncate d-block" title={secondaryLine}>
                   {secondaryLine}
                 </small>
               )}
@@ -220,15 +215,14 @@ const UserCard = ({
             {getRoleBadge()}
             {user.suspended && (
               <span className="badge bg-danger">
-                <FaBan className="me-1" /> {t("status.suspended")}
+                <FaBan className="me-1" /> {t('status.suspended')}
               </span>
             )}
           </div>
 
           <div className="d-flex align-items-center text-muted small">
             <FaBox className="me-2" />
-            {t("orgConsole.users.boxes")}:{" "}
-            <strong>{user.totalBoxes || 0}</strong>
+            {t('orgConsole.users.boxes')}: <strong>{user.totalBoxes || 0}</strong>
           </div>
         </div>
 

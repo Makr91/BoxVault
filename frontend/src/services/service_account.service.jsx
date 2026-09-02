@@ -1,6 +1,6 @@
-import axios from "axios";
+import axios from 'axios';
 
-import authHeader from "./auth-header";
+import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
@@ -16,13 +16,13 @@ const getAvailableOrganizations = () =>
     headers: authHeader(),
   });
 
-const getServiceAccounts = (signal) =>
+const getServiceAccounts = signal =>
   axios.get(`${baseURL}/api/service-accounts/`, {
     headers: authHeader(),
     signal, // Pass the AbortSignal to axios
   });
 
-const deleteServiceAccount = (id) =>
+const deleteServiceAccount = id =>
   axios.delete(`${baseURL}/api/service-accounts/${id}`, {
     headers: authHeader(),
   });
