@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.59.0](https://github.com/Makr91/BoxVault/compare/v0.58.0...v0.59.0) (2026-09-02)
+
+
+### Features
+
+* route Boxes and ISOs through the breadcrumb, hover-expanding ISO upload zone, ISO filters, watch body fix ([ebb5d5e](https://github.com/Makr91/BoxVault/commit/ebb5d5ef6b2a01eb6ef19a5998ca61f14dda9c3f))
+
+
+### Bug Fixes
+
+* refresh lockfiles for the qs and fast-uri advisories ([7f5e84d](https://github.com/Makr91/BoxVault/commit/7f5e84dab8dc00e64a518304f7228e6048a065b6))
+
 ## [0.58.0](https://github.com/Makr91/BoxVault/compare/v0.57.2...v0.58.0) (2026-09-02)
 
 
