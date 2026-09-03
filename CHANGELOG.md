@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.68.0](https://github.com/Makr91/BoxVault/compare/v0.67.0...v0.68.0) (2026-09-03)
+
+
+### Features
+
+* adopt the shared AppChrome shell and converge identity, membership, modals and tooling with the catalog ([8ddc829](https://github.com/Makr91/BoxVault/commit/8ddc829d09f4b8f1ca900f5dde03e78602129fbd))
+
+
+### Bug Fixes
+
+* drop the Spanish about.features keys English no longer has and bump frontend dependencies ([b5b402f](https://github.com/Makr91/BoxVault/commit/b5b402f7d31dcc4c6917279f63977489c002f0bd))
+
 ## [0.67.0](https://github.com/Makr91/BoxVault/compare/v0.66.0...v0.67.0) (2026-09-03)
 
 
