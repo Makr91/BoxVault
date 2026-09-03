@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaCode, FaGithub, FaHeart, FaServer } from 'react-icons/fa6';
 
-import { log } from './chrome';
+import { log, useNotify } from './chrome';
 import { BrandLogo, session } from './chromeProps';
 import { AboutPage } from './pages';
 import FavoritesService from './services/favorites.service';
@@ -23,13 +23,14 @@ const SUPPORT = [
 ];
 
 const EMPTY = { title: '', description: '', components: [], features: [], goal: '' };
+const FAVORITE_KEY = 'favorite';
 
 const About = ({ theme }) => {
   const { t, i18n } = useTranslation();
+  const notify = useNotify();
   const [projectData, setProjectData] = useState(EMPTY);
   const [currentUser, setCurrentUser] = useState(null);
   const [isBoxVaultFavorited, setIsBoxVaultFavorited] = useState(false);
-  const [favoriteNotice, setFavoriteNotice] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -37,9 +38,7 @@ const About = ({ theme }) => {
         const response = await UserService.getPublicContent(i18n.language);
         setProjectData(response.data);
       } catch (error) {
-        const content =
-          (error.response && error.response.data) || error.message || error.toString();
-        setProjectData(prevData => ({ ...prevData, title: content }));
+        notify('danger', error.response?.data?.message || error.message || error.toString());
       }
 
       const user = session.current();
@@ -59,7 +58,7 @@ const About = ({ theme }) => {
     };
 
     loadData();
-  }, [i18n.language]);
+  }, [i18n.language, notify]);
 
   const handleToggleFavorite = async () => {
     try {
@@ -68,32 +67,24 @@ const About = ({ theme }) => {
 
       if (isBoxVaultFavorited) {
         favorites = FavoritesService.removeFavorite(favorites, 'boxvault');
-        setFavoriteNotice({
-          type: 'success',
-          text: t('messages.removedFromFavorites', { ns: 'common' }),
+        notify('success', t('messages.removedFromFavorites', { ns: 'common' }), {
+          key: FAVORITE_KEY,
         });
       } else {
         favorites = FavoritesService.addFavorite(favorites, 'boxvault', null);
-        setFavoriteNotice({
-          type: 'success',
-          text: t('messages.addedToFavorites', { ns: 'common' }),
-        });
+        notify('success', t('messages.addedToFavorites', { ns: 'common' }), { key: FAVORITE_KEY });
       }
 
       await FavoritesService.saveFavorites(favorites);
       setIsBoxVaultFavorited(!isBoxVaultFavorited);
-
-      setTimeout(() => setFavoriteNotice(null), 3000);
     } catch (error) {
       log.component.error('Error toggling favorite', {
         clientId: 'boxvault',
         error: error.message,
       });
-      setFavoriteNotice({
-        type: 'danger',
-        text: t('messages.failedToUpdateFavorites', { ns: 'common' }),
+      notify('danger', t('messages.failedToUpdateFavorites', { ns: 'common' }), {
+        key: FAVORITE_KEY,
       });
-      setTimeout(() => setFavoriteNotice(null), 3000);
     }
   };
 
@@ -112,15 +103,7 @@ const About = ({ theme }) => {
       docsIntro={t('about.documentation.description')}
       support={SUPPORT.map(link => ({ ...link, label: t(`about.support.${link.key}`) }))}
       supportIntro={t('about.support.description')}
-      favorite={
-        oidc
-          ? {
-              active: isBoxVaultFavorited,
-              onToggle: handleToggleFavorite,
-              notice: favoriteNotice,
-            }
-          : null
-      }
+      favorite={oidc ? { active: isBoxVaultFavorited, onToggle: handleToggleFavorite } : null}
     />
   );
 };

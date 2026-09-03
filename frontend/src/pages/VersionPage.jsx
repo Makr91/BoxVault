@@ -5,13 +5,12 @@ import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 
-import { providerPath } from '../chrome';
+import { providerPath, useNotify } from '../chrome';
 
 import DeprecationBanner from './DeprecationBanner';
 import { collectionShape, pageContextShape, versionShape } from './itemShape';
 import PageHeader from './PageHeader';
 import StatusChips from './StatusChips';
-import { useNotice } from './useNotice';
 
 const localeDate = value => (value ? new Date(value).toLocaleDateString() : '');
 
@@ -173,7 +172,7 @@ ProvidersTable.propTypes = {
 
 const VersionPage = ({ collection, org, name, version, context }) => {
   const { t, i18n } = useTranslation();
-  const [noticeNode, notify] = useNotice();
+  const notify = useNotify();
   const [nonce, setNonce] = useState(0);
   const [data, setData] = useState({ key: '', item: null, entry: null });
   const [editor, setEditor] = useState(null);
@@ -225,13 +224,12 @@ const VersionPage = ({ collection, org, name, version, context }) => {
   if (!ready) {
     return (
       <div className="list row">
-        {noticeNode}
         <div>{t('pages.loading')}</div>
       </div>
     );
   }
   if (!entry) {
-    return <div className="list row">{noticeNode}</div>;
+    return <div className="list row" />;
   }
 
   const slotProps = { item, version: entry, ctx };
@@ -240,7 +238,6 @@ const VersionPage = ({ collection, org, name, version, context }) => {
 
   return (
     <div className="list row">
-      {noticeNode}
       {editor ? (
         <div className="mb-4">
           <div className="d-flex justify-content-between align-items-center mb-3">

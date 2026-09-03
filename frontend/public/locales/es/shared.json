@@ -32,16 +32,23 @@
     "title": "Se cerró tu sesión.",
     "body": "Tu sesión terminó. Inicia sesión de nuevo para continuar donde estabas."
   },
+  "notice": {
+    "dismiss": "Descartar"
+  },
   "session": {
     "completing": "Completando el inicio de sesión…",
     "failed": "Error al iniciar sesión: {{message}} —",
     "clockSkew": "es posible que tu hora esté desajustada; inténtalo de nuevo",
+    "noCode": "no llegó ningún código de autorización",
+    "stateMismatch": "la respuesta estaba caducada o no era nuestra",
+    "tokenFailed": "la solicitud del token falló",
     "returnLink": "volver al inicio",
     "tryAgain": "e inténtalo de nuevo."
   },
   "orgSwitcher": {
     "title": "Cambiar Organización",
     "noOrgsFound": "No se encontraron organizaciones. Contacta a tu administrador si esto es inesperado.",
+    "loadError": "Error al cargar tus organizaciones. Por favor intenta de nuevo.",
     "primaryOrg": "Organización Principal"
   },
   "roles": {
@@ -56,7 +63,10 @@
     "markRead": "Marcar como leída",
     "dismiss": "Descartar",
     "viewAll": "Ver todas las notificaciones",
-    "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo."
+    "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo.",
+    "markReadError": "Error al marcar la notificación como leída. Por favor intenta de nuevo.",
+    "dismissError": "Error al descartar la notificación. Por favor intenta de nuevo.",
+    "markAllReadError": "Error al marcar todas las notificaciones como leídas. Por favor intenta de nuevo."
   },
   "notifications": {
     "pushSwitch": "Notificaciones del navegador en este dispositivo",

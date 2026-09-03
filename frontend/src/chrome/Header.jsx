@@ -5,7 +5,7 @@ import { FaCircleHalfStroke, FaMoon, FaSun } from 'react-icons/fa6';
 import Crumbs, { crumbShape } from './Crumbs';
 import { LanguageButton } from './LanguageModal';
 import { NavbarSearchControl, NavbarSearchPanel } from './NavbarSearch';
-import SessionEndedBanner from './SessionEndedBanner';
+import { NoticeBanners } from './notices';
 import UserMenu, { SignInButton } from './UserMenu';
 
 const THEME_ICONS = { auto: FaCircleHalfStroke, light: FaSun, dark: FaMoon };
@@ -90,7 +90,6 @@ const Header = ({
   onSignIn = null,
   signInTo = '',
   userMenu = null,
-  sessionEnded = false,
 }) => {
   const { t } = useTranslation();
   const ThemeIcon = THEME_ICONS[theme.preference] || FaCircleHalfStroke;
@@ -130,7 +129,7 @@ const Header = ({
           )}
         </ul>
       </div>
-      {sessionEnded ? <SessionEndedBanner /> : null}
+      <NoticeBanners LinkComponent={LinkComponent} />
       <NavbarSearchPanel />
     </nav>
   );
@@ -153,7 +152,6 @@ Header.propTypes = {
   onSignIn: PropTypes.func,
   signInTo: PropTypes.string,
   userMenu: PropTypes.object,
-  sessionEnded: PropTypes.bool,
 };
 
 export default Header;

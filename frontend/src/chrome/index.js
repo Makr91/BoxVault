@@ -25,6 +25,7 @@ export {
 export { configureLogger, log, redact, reportRenderError } from './logger';
 export { default as LogoutItem } from './LogoutItem';
 export { mountApp } from './mountApp';
+export { NoticeBanners, NoticeProvider, NoticeToasts, useDismiss, useNotify } from './notices';
 export { createNotificationsClient } from './notifications';
 export {
   NavbarSearchControl,
@@ -56,6 +57,5 @@ export {
   providerPath,
   versionPath,
 } from './routeCrumbs';
-export { default as SessionEndedBanner } from './SessionEndedBanner';
 export { default as UserMenu, SignInButton } from './UserMenu';
 export { isThemePreference, useTheme } from './useTheme';

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
-import { log } from '../chrome';
+import { log, useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
@@ -415,16 +415,15 @@ InvitationsTable.propTypes = {
 
 const OrgConsole = ({ currentOrganization }) => {
   const { t } = useTranslation();
+  const notify = useNotify();
   useEffect(() => {
     document.title = t('orgConsole.pageTitle');
   }, [t]);
 
   const [users, setUsers] = useState([]);
   const [newOrgName, setNewOrgName] = useState('');
-  const [updateMessage, setUpdateMessage] = useState('');
   const [loadedOrganization, setLoadedOrganization] = useState(null);
   const [email, setEmail] = useState('');
-  const [invitationMessage, setInvitationMessage] = useState('');
   const [activeInvitations, setActiveInvitations] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -552,22 +551,22 @@ const OrgConsole = ({ currentOrganization }) => {
     e.preventDefault();
     // Validation
     if (!newOrgName.trim()) {
-      setUpdateMessage(t('orgConsole.orgNameRequired'));
+      notify('danger', t('orgConsole.orgNameRequired'));
       return;
     }
     if (!validateOrgName(newOrgName)) {
-      setUpdateMessage(t('orgConsole.invalidOrgName'));
+      notify('danger', t('orgConsole.invalidOrgName'));
       return;
     }
     if (!orgEmail.trim()) {
-      setUpdateMessage(t('orgConsole.orgEmailRequired'));
+      notify('danger', t('orgConsole.orgEmailRequired'));
       return;
     }
 
     if (newOrgName !== currentOrganization) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
-        setUpdateMessage(t('orgConsole.orgExists'));
+        notify('danger', t('orgConsole.orgExists'));
         return;
       }
     }
@@ -598,14 +597,14 @@ const OrgConsole = ({ currentOrganization }) => {
             defaultRole: orgDefaultRole,
           };
         }
-        setUpdateMessage(t('orgConsole.orgUpdateSuccess'));
+        notify('success', t('orgConsole.orgUpdateSuccess'));
       }
     } catch (error) {
       log.component.error('Error updating organization', {
         organization: currentOrganization,
         error: error.message,
       });
-      setUpdateMessage(t('orgConsole.orgUpdateError'));
+      notify('danger', t('orgConsole.orgUpdateError'));
     }
   };
 
@@ -615,14 +614,14 @@ const OrgConsole = ({ currentOrganization }) => {
         setUsers(prevUsers =>
           prevUsers.map(user => (user.id === userId ? { ...user, orgRole: newRole } : user))
         );
-        setUpdateMessage(t('messages.operationSuccessful'));
+        notify('success', t('messages.operationSuccessful'));
       })
       .catch(error => {
         log.component.error('Error updating user org role', {
           userId,
           error: error.message,
         });
-        setUpdateMessage(t('messages.operationFailed'));
+        notify('danger', t('messages.operationFailed'));
       });
   };
 
@@ -635,12 +634,12 @@ const OrgConsole = ({ currentOrganization }) => {
     e.preventDefault();
     try {
       const response = await AuthService.sendInvitation(email, currentOrganization, inviteRole);
-      const invitationDetails = `Invitation sent! 
+      const invitationDetails = `${t('orgConsole.invitation.sent')}
         ${t('orgConsole.invitation.token')}: ${response.data.invitationToken}
         ${t('orgConsole.invitation.expires')}: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
         ${t('orgConsole.invitation.orgId')}: ${response.data.organizationId}
         ${t('orgConsole.invitation.link')}: ${response.data.invitationLink}`;
-      setInvitationMessage(invitationDetails);
+      notify('success', <pre className="mb-0 small">{invitationDetails}</pre>, { sticky: true });
       setEmail('');
     } catch (error) {
       log.component.error('Error sending invitation', {
@@ -650,7 +649,7 @@ const OrgConsole = ({ currentOrganization }) => {
       });
       // Prefer the server's own message (e.g. the identity provider's reason
       // for refusing a delegated invite) over the generic local warning.
-      setInvitationMessage(error.response?.data?.message || t('orgConsole.invitation.sendWarning'));
+      notify('danger', error.response?.data?.message || t('orgConsole.invitation.sendWarning'));
     } finally {
       // Always refresh invitations list (even if email failed)
       try {
@@ -689,6 +688,7 @@ const OrgConsole = ({ currentOrganization }) => {
             invitationId: itemToDelete.id,
             error: error.message,
           });
+          notify('danger', t('messages.deleteFailed'));
           handleCloseDeleteModal();
         });
     }
@@ -697,7 +697,7 @@ const OrgConsole = ({ currentOrganization }) => {
       OrganizationService.removeUserFromOrg(currentOrganization, itemToDelete.id)
         .then(() => {
           setUsers(prevUsers => prevUsers.filter(user => user.id !== itemToDelete.id));
-          setUpdateMessage(t('orgConsole.users.removeSuccess'));
+          notify('success', t('orgConsole.users.removeSuccess'));
           handleCloseDeleteModal();
         })
         .catch(error => {
@@ -706,7 +706,7 @@ const OrgConsole = ({ currentOrganization }) => {
             organization: currentOrganization,
             error: error.message,
           });
-          setUpdateMessage(t('orgConsole.users.removeError'));
+          notify('danger', t('orgConsole.users.removeError'));
           handleCloseDeleteModal();
         });
     }
@@ -715,7 +715,7 @@ const OrgConsole = ({ currentOrganization }) => {
   const handleApproveJoinRequest = async (requestId, assignedRole = 'member') => {
     try {
       await RequestService.approveJoinRequest(currentOrganization, requestId, assignedRole);
-      setUpdateMessage(t('orgConsole.joinRequest.approved'));
+      notify('success', t('orgConsole.joinRequest.approved'));
 
       // Refresh join requests list
       const response = await RequestService.getOrgJoinRequests(currentOrganization);
@@ -725,14 +725,14 @@ const OrgConsole = ({ currentOrganization }) => {
         requestId,
         error: error.message,
       });
-      setUpdateMessage(t('orgConsole.joinRequest.approveError', { error: error.message }));
+      notify('danger', t('orgConsole.joinRequest.approveError', { error: error.message }));
     }
   };
 
   const handleDenyJoinRequest = async requestId => {
     try {
       await RequestService.denyJoinRequest(currentOrganization, requestId);
-      setUpdateMessage(t('orgConsole.joinRequest.denied'));
+      notify('success', t('orgConsole.joinRequest.denied'));
 
       // Refresh join requests list
       const response = await RequestService.getOrgJoinRequests(currentOrganization);
@@ -742,7 +742,7 @@ const OrgConsole = ({ currentOrganization }) => {
         requestId,
         error: error.message,
       });
-      setUpdateMessage(t('orgConsole.joinRequest.denyError', { error: error.message }));
+      notify('danger', t('orgConsole.joinRequest.denyError', { error: error.message }));
     }
   };
 
@@ -770,7 +770,9 @@ const OrgConsole = ({ currentOrganization }) => {
       />
 
       {!loading && !currentOrganization && (
-        <div className="alert alert-warning mt-3">{t('orgConsole.noActiveOrganization')}</div>
+        <div className="alert alert-warning mt-3" role="alert">
+          {t('orgConsole.noActiveOrganization')}
+        </div>
       )}
 
       {loading ? (
@@ -797,7 +799,9 @@ const OrgConsole = ({ currentOrganization }) => {
                   <div className="card-body">
                     {isExternalOrg && (
                       <>
-                        <div className="alert alert-info">{t('orgUserManager.ssoManagedHint')}</div>
+                        <div className="alert alert-info" role="status">
+                          {t('orgUserManager.ssoManagedHint')}
+                        </div>
                         <OrgProfileDisplay
                           orgName={newOrgName}
                           orgDisplayName={orgDisplayName}
@@ -917,7 +921,6 @@ const OrgConsole = ({ currentOrganization }) => {
                         </button>
                       </form>
                     )}
-                    {updateMessage && <div className="alert alert-info mt-3">{updateMessage}</div>}
                   </div>
                 </div>
               </div>
@@ -1018,11 +1021,6 @@ const OrgConsole = ({ currentOrganization }) => {
                       {t('orgConsole.invitation.sendButton')}
                     </button>
                   </form>
-                  {invitationMessage && (
-                    <div className="alert alert-info mt-3">
-                      <pre>{invitationMessage}</pre>
-                    </div>
-                  )}
                 </div>
 
                 <h5>{t('orgConsole.invitation.activeTitle')}</h5>

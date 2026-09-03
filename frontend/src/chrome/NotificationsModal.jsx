@@ -13,6 +13,7 @@ import {
   FaXmark,
 } from 'react-icons/fa6';
 
+import { useNotify } from './notices';
 import { formatRelativeTime } from './relativeTime';
 
 export const notificationsAdapterShape = PropTypes.shape({
@@ -193,6 +194,7 @@ PushSwitch.propTypes = {
 
 const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, viewAllUrl }) => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [entries, setEntries] = useState([]);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -222,7 +224,7 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
         )
       );
     } catch {
-      setLoadFailed(true);
+      notify('danger', t('inbox.markReadError'));
     }
   };
 
@@ -242,7 +244,7 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
         onUnreadDelta(-1);
       }
     } catch {
-      setLoadFailed(true);
+      notify('danger', t('inbox.dismissError'));
     }
   };
 
@@ -254,7 +256,7 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
         prev.map(item => (item.readAt ? item : { ...item, readAt: new Date().toISOString() }))
       );
     } catch {
-      setLoadFailed(true);
+      notify('danger', t('inbox.markAllReadError'));
     }
   };
 

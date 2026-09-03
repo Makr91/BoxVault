@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaHardDrive, FaCompactDisc } from 'react-icons/fa6';
 
-import { log } from '../chrome';
+import { log, useNotify } from '../chrome';
 import SystemService from '../services/system.service';
 
 const formatBytes = (bytes, decimals = 2) => {
@@ -21,7 +21,7 @@ const StorageBar = ({ usage, label, icon }) => {
   const { t } = useTranslation();
   if (!usage) {
     return (
-      <div className="alert alert-warning">
+      <div className="alert alert-warning" role="alert">
         {t('admin.storage.pathNotConfigured', { path: label })}
       </div>
     );
@@ -80,19 +80,19 @@ StorageBar.propTypes = {
 
 const StorageInfo = () => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [storageInfo, setStorageInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     SystemService.getStorageInfo()
       .then(response => setStorageInfo(response.data))
       .catch(err => {
         log.api.error('Failed to fetch storage info', { error: err.message });
-        setError(err.response?.data?.message || t('admin.storage.fetchError'));
+        notify('danger', err.response?.data?.message || t('admin.storage.fetchError'));
       })
       .finally(() => setLoading(false));
-  }, [t]);
+  }, [notify, t]);
 
   if (loading) {
     return (
@@ -102,9 +102,6 @@ const StorageInfo = () => {
         </div>
       </div>
     );
-  }
-  if (error) {
-    return <div className="alert alert-danger">{error}</div>;
   }
 
   return (

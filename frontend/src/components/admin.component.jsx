@@ -23,8 +23,6 @@ const Admin = () => {
 
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('organizations');
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('');
   const [updateInfo, setUpdateInfo] = useState(null);
 
   // Authentication guard - redirect if not authenticated or not admin
@@ -86,17 +84,8 @@ const Admin = () => {
         </li>
       </ul>
       <div className="tab-content mt-2">
-        {message && (
-          <div className={`alert alert-${messageType}`} role="alert">
-            {message}
-          </div>
-        )}
-        {activeTab === 'organizations' && (
-          <OrganizationUserManager setMessage={setMessage} setMessageType={setMessageType} />
-        )}
-        {activeTab === 'config' && (
-          <ConfigurationManager setMessage={setMessage} setMessageType={setMessageType} />
-        )}
+        {activeTab === 'organizations' && <OrganizationUserManager />}
+        {activeTab === 'config' && <ConfigurationManager />}
         {activeTab === 'system' && <StorageInfo />}
       </div>
     </div>

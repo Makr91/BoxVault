@@ -98,6 +98,7 @@ export const OrgSwitcherModal = ({
   activeUuid = '',
   onPick,
   loading = false,
+  loadFailed = false,
   orgMark = null,
 }) => {
   const { t } = useTranslation();
@@ -119,7 +120,12 @@ export const OrgSwitcherModal = ({
             </div>
           </div>
         ) : null}
-        {!loading && rows.length === 0 ? (
+        {!loading && loadFailed ? (
+          <div className="alert alert-danger" role="alert">
+            {t('orgSwitcher.loadError')}
+          </div>
+        ) : null}
+        {!loading && !loadFailed && rows.length === 0 ? (
           <div className="alert alert-info">{t('orgSwitcher.noOrgsFound')}</div>
         ) : null}
         {!loading && rows.length > 0 ? (
@@ -147,5 +153,6 @@ OrgSwitcherModal.propTypes = {
   activeUuid: PropTypes.string,
   onPick: PropTypes.func.isRequired,
   loading: PropTypes.bool,
+  loadFailed: PropTypes.bool,
   orgMark: PropTypes.node,
 };

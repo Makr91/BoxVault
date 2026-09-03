@@ -44,6 +44,12 @@ const submitForm = (action, fields) => {
   form.submit();
 };
 
+const keyedFailure = (message, messageKey) => {
+  const error = new Error(message);
+  error.messageKey = messageKey;
+  return error;
+};
+
 const tokenFailure = requestError => {
   const body = requestError.response?.data;
   const failure = new Error(
@@ -52,6 +58,8 @@ const tokenFailure = requestError => {
   failure.code = body?.error || '';
   if (failure.code === 'invalid_dpop_proof') {
     failure.messageKey = 'session.clockSkew';
+  } else if (!body?.error_description && !failure.code) {
+    failure.messageKey = 'session.tokenFailed';
   }
   return failure;
 };
@@ -244,10 +252,10 @@ export const createBrowserOidc = ({
     localStorage.removeItem(STORE.state);
     localStorage.removeItem(STORE.verifier);
     if (!code) {
-      throw new Error('no authorization code in callback');
+      throw keyedFailure('no authorization code in callback', 'session.noCode');
     }
     if (!expectedState || state !== expectedState) {
-      throw new Error('state mismatch — stale or forged callback');
+      throw keyedFailure('state mismatch — stale or forged callback', 'session.stateMismatch');
     }
     const tokens = await tokenRequest({
       grant_type: 'authorization_code',

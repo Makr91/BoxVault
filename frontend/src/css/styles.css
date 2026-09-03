@@ -571,7 +571,7 @@ button::-moz-focus-inner {
 }
 
 .navbar:has(> .navbar-search-panel),
-.navbar:has(> .navbar-session-strip) {
+.navbar:has(> .notice-banner) {
   flex-wrap: wrap;
 }
 
@@ -684,16 +684,62 @@ button::-moz-focus-inner {
   border-top: 1px solid var(--bs-border-color);
 }
 
-.navbar-session-strip {
+.notice-banner {
   margin: 14px 0 -14px;
   padding: 8px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 13px;
+}
+
+.notice-banner-success {
+  background: var(--bs-success-bg-subtle);
+  color: var(--bs-success-text-emphasis);
+  border-top: 1px solid var(--bs-success-border-subtle);
+}
+
+.notice-banner-info {
+  background: var(--bs-info-bg-subtle);
+  color: var(--bs-info-text-emphasis);
+  border-top: 1px solid var(--bs-info-border-subtle);
+}
+
+.notice-banner-warning {
   background: var(--bs-warning-bg-subtle);
   color: var(--bs-warning-text-emphasis);
   border-top: 1px solid var(--bs-warning-border-subtle);
+}
+
+.notice-banner-danger {
+  background: var(--bs-danger-bg-subtle);
+  color: var(--bs-danger-text-emphasis);
+  border-top: 1px solid var(--bs-danger-border-subtle);
+}
+
+.notice-toasts {
+  --bs-toast-max-width: 360px;
+  padding: 76px 20px 0;
+}
+
+.notice-toast {
+  border-left-width: 4px;
+}
+
+.notice-toast-success {
+  border-left-color: var(--bs-success);
+}
+
+.notice-toast-info {
+  border-left-color: var(--bs-info);
+}
+
+.notice-toast-warning {
+  border-left-color: var(--bs-warning);
+}
+
+.notice-toast-danger {
+  border-left-color: var(--bs-danger);
 }
 
 .upload-zone {
@@ -803,11 +849,28 @@ button::-moz-focus-inner {
   width: 6.5rem;
 }
 
-.items-table .col-downloads {
+.items-table .col-downloads,
+.items-table .col-versions {
+  width: 7rem;
+  text-align: right;
+  padding-right: 1.25rem;
+}
+
+.items-table .col-released {
+  width: 9rem;
+}
+
+.items-table .col-os {
+  width: 10rem;
+}
+
+.items-table .col-size,
+.items-table .col-tier {
   width: 7rem;
 }
 
-.items-table .col-downloads,
-.items-table .col-versions {
-  text-align: right;
+.items-table .col-checksum {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

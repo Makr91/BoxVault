@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { organizationShape } from '../chrome';
+import { organizationShape, useNotify } from '../chrome';
 
 import { currentPath } from './returnTo';
 
@@ -57,6 +58,8 @@ export const useSession = ({
   push = null,
   onAdopt = null,
 }) => {
+  const { t } = useTranslation();
+  const notify = useNotify();
   const onAdoptRef = useRef(onAdopt);
   const [session, setSession] = useState(() => {
     const restored = provider.restore();
@@ -128,9 +131,10 @@ export const useSession = ({
     if (!session.user || !push || !push.isPushEnabled()) {
       return undefined;
     }
-    push.syncSubscription().catch(() => null);
-    return push.listenForSubscriptionChange(() => null);
-  }, [push, session.user]);
+    const report = () => notify('danger', t('notifications.enableError'));
+    push.syncSubscription().catch(report);
+    return push.listenForSubscriptionChange(report);
+  }, [notify, push, session.user, t]);
 
   const pickOrg = uuid => {
     if (!session.organizations.some(org => org.uuid === uuid)) {

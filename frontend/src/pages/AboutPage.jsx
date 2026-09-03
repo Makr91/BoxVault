@@ -15,10 +15,6 @@ const linkShape = PropTypes.shape({
 const favoriteShape = PropTypes.shape({
   active: PropTypes.bool.isRequired,
   onToggle: PropTypes.func.isRequired,
-  notice: PropTypes.shape({
-    type: PropTypes.string.isRequired,
-    text: PropTypes.string.isRequired,
-  }),
 });
 
 const FavoriteToggle = ({ active, onToggle }) => {
@@ -223,7 +219,7 @@ SupportStrip.propTypes = {
  * @param {string} props.docsIntro - The sentence above the documentation links
  * @param {Array<{key: string, href: string, label: string, Icon: Function}>} props.support - The help and community links
  * @param {string} props.supportIntro - The sentence beside the support links
- * @param {{active: boolean, onToggle: Function, notice: ({type: string, text: string}|null)}|null} [props.favorite] - The identity-provider favourite toggle and the notice its last toggle raised, or null when the session has none
+ * @param {{active: boolean, onToggle: Function}|null} [props.favorite] - The identity-provider favourite toggle, or null when the session has none
  * @returns {import('react').ReactElement} The page
  */
 const AboutPage = ({
@@ -246,11 +242,6 @@ const AboutPage = ({
 
   return (
     <div className="list row">
-      {favorite?.notice ? (
-        <div className={`alert alert-${favorite.notice.type}`} role="alert">
-          {favorite.notice.text}
-        </div>
-      ) : null}
       <AboutHeader
         brand={brand}
         title={title}

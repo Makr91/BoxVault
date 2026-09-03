@@ -1,8 +1,7 @@
-import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { log } from '../chrome';
+import { log, useNotify } from '../chrome';
 import { session } from '../chromeProps';
 import ConfigService from '../services/config.service';
 import { processConfig } from '../utils/ConfigProcessorUtils';
@@ -10,17 +9,19 @@ import { processConfig } from '../utils/ConfigProcessorUtils';
 import ConfigFieldRenderer from './ConfigFieldRenderer.component';
 import OidcProviderManager from './OidcProviderManager.component';
 
+const SMTP_TEST_KEY = 'smtp-test';
+
 /**
  * ConfigurationManager - Manages system configuration
  */
-const ConfigurationManager = ({ setMessage, setMessageType }) => {
+const ConfigurationManager = () => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [selectedConfig, setSelectedConfig] = useState('app');
   const [config, setConfig] = useState({});
   const [sections, setSections] = useState({});
   const [values, setValues] = useState({});
   const [collapsedSubsections, setCollapsedSubsections] = useState({});
-  const [submitError, setSubmitError] = useState('');
   const [testEmail, setTestEmail] = useState('');
 
   const fetchConfig = useCallback(
@@ -113,9 +114,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
     ConfigService.updateConfig(selectedConfig, newConfig).then(
       () => {
-        setMessage(t('configManager.updateSuccess'));
-        setMessageType('success');
-        setSubmitError('');
+        notify('success', t('configManager.updateSuccess'));
         // Re-fetch config to ensure UI is in sync with the saved state
         fetchConfig(selectedConfig);
       },
@@ -124,38 +123,37 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           configName: selectedConfig,
           error: error.message,
         });
-        setMessage(t('configManager.updateError'));
-        setMessageType('danger');
+        notify('danger', t('configManager.updateError'));
       }
     );
   };
 
-  const handleConfigUpdate = newConfig => {
-    ConfigService.updateConfig('auth', newConfig);
+  const handleConfigUpdate = async newConfig => {
+    await ConfigService.updateConfig('auth', newConfig);
     setConfig(newConfig);
   };
 
   const handleTestSmtp = () => {
     if (!testEmail) {
-      setMessage('Please provide an email address for the test.');
-      setMessageType('warning');
+      notify('warning', t('configManager.smtpTest.emailRequired'));
       return;
     }
 
-    setMessage(t('configManager.testingSmtp'));
-    setMessageType('info');
+    notify('info', t('configManager.testingSmtp'), { key: SMTP_TEST_KEY });
     ConfigService.testSmtp(testEmail)
       .then(response => {
-        setMessage(response.data.message || t('configManager.testSmtpSuccess'));
-        setMessageType('success');
+        notify('success', response.data.message || t('configManager.testSmtpSuccess'), {
+          key: SMTP_TEST_KEY,
+        });
       })
       .catch(error => {
         const resMessage =
           (error.response && error.response.data && error.response.data.message) ||
           error.message ||
           error.toString();
-        setMessage(`${t('configManager.testSmtpError')}: ${resMessage}`);
-        setMessageType('danger');
+        notify('danger', `${t('configManager.testSmtpError')}: ${resMessage}`, {
+          key: SMTP_TEST_KEY,
+        });
       });
   };
 
@@ -166,8 +164,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
 
     const user = session.current();
     if (!user || !user.accessToken) {
-      setMessage(t('error.unexpectedErrorOccurred'));
-      setMessageType('danger');
+      notify('danger', t('error.unexpectedErrorOccurred'));
       return;
     }
 
@@ -188,12 +185,13 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
         throw new Error(`Upload failed: ${response.statusText}`);
       }
 
-      setMessage(`${t('messages.operationSuccessful')}. ${t('configManager.restartInitiated')}`);
-      setMessageType('success');
+      notify(
+        'success',
+        `${t('messages.operationSuccessful')}. ${t('configManager.restartInitiated')}`
+      );
     } catch (error) {
       log.component.error('Error uploading file', { error: error.message });
-      setMessage(t('messages.uploadFailed'));
-      setMessageType('danger');
+      notify('danger', t('messages.uploadFailed'));
     }
   };
 
@@ -290,8 +288,6 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                       key={subsectionName}
                       config={config}
                       onConfigUpdate={handleConfigUpdate}
-                      setMessage={setMessage}
-                      setMessageType={setMessageType}
                     />
                   );
                 }
@@ -617,12 +613,10 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             onClick={() => {
               ConfigService.restartServer()
                 .then(() => {
-                  setMessage(t('configManager.restartInitiated'));
-                  setMessageType('success');
+                  notify('success', t('configManager.restartInitiated'));
                 })
                 .catch(() => {
-                  setMessage(t('configManager.restartFailed'));
-                  setMessageType('danger');
+                  notify('danger', t('configManager.restartFailed'));
                 });
             }}
           >
@@ -630,11 +624,6 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
           </button>
         </li>
       </ul>
-      {submitError && (
-        <div className="alert alert-warning mt-3" role="alert">
-          {submitError}
-        </div>
-      )}
       <div className="config-container mt-3">
         <div>{renderConfigSections()}</div>
         {selectedConfig === 'mail' && (
@@ -642,13 +631,13 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
             <div className="card-header">
               <h5 className="mb-0">
                 <i className="fas fa-envelope-open-text me-2" />
-                Test SMTP Configuration
+                {t('configManager.smtpTest.title')}
               </h5>
             </div>
             <div className="card-body">
               <div className="mb-3">
                 <label htmlFor="testEmail" className="form-label">
-                  Recipient Email
+                  {t('configManager.smtpTest.recipient')}
                 </label>
                 <div className="input-group">
                   <input
@@ -657,19 +646,17 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
                     id="testEmail"
                     value={testEmail}
                     onChange={e => setTestEmail(e.target.value)}
-                    placeholder="Enter email address"
+                    placeholder={t('configManager.smtpTest.placeholder')}
                   />
                   <button
                     className="btn btn-outline-primary"
                     type="button"
                     onClick={handleTestSmtp}
                   >
-                    Send Test Email
+                    {t('configManager.smtpTest.send')}
                   </button>
                 </div>
-                <small className="form-text text-muted">
-                  Sends a test email to verify your SMTP settings are correct.
-                </small>
+                <small className="form-text text-muted">{t('configManager.smtpTest.hint')}</small>
               </div>
             </div>
           </div>
@@ -677,11 +664,6 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
       </div>
     </div>
   );
-};
-
-ConfigurationManager.propTypes = {
-  setMessage: PropTypes.func.isRequired,
-  setMessageType: PropTypes.func.isRequired,
 };
 
 export default ConfigurationManager;

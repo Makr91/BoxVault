@@ -25,6 +25,14 @@
     "testingSmtp": "Sending test email...",
     "testSmtpSuccess": "Test email sent successfully! Check the recipient's inbox.",
     "testSmtpError": "Failed to send test email",
+    "smtpTest": {
+      "title": "Test SMTP Configuration",
+      "recipient": "Recipient Email",
+      "placeholder": "Enter email address",
+      "send": "Send Test Email",
+      "hint": "Sends a test email to verify your SMTP settings are correct.",
+      "emailRequired": "Please provide an email address for the test."
+    },
     "settingsCount": "{{count}} setting",
     "settingsCount_plural": "{{count}} settings",
     "tabs": {
@@ -240,7 +248,13 @@
       "organization": "Organization",
       "expires": "Expires",
       "token": "Token",
-      "tokenShownOnce": "Copy this token now — it is shown only once and cannot be retrieved later."
+      "tokenShownOnce": "Copy this token now — it is shown only once and cannot be retrieved later.",
+      "selectAll": "Select all",
+      "deleteSelected": "Delete selected ({{count}})",
+      "deleteSelectedModal": {
+        "title": "Delete Service Accounts",
+        "message": "Are you sure you want to delete the selected service accounts? This action cannot be undone."
+      }
     },
     "deleteModal": {
       "title": "Delete Account",
@@ -252,6 +266,7 @@
       "requestCancelled": "Join request cancelled successfully",
       "cancelRequestError": "Could not cancel the join request. Please try again.",
       "serviceAccountCreated": "Service account created successfully!",
+      "serviceAccountsDeleted": "Selected service accounts deleted successfully!",
       "passwordChanged": "Password changed successfully!",
       "emailChanged": "Email changed successfully!",
       "nameChanged": "Display name saved.",
@@ -263,6 +278,7 @@
       "verificationFailed": "Failed to verify email. Please try again or contact support.",
       "activeOrgNotFound": "Error: Could not find active organization",
       "createServiceAccountFailed": "Error creating service account: {{error}}",
+      "deleteServiceAccountsFailed": "Error deleting service accounts: {{error}}",
       "resendVerificationFailed": "Error sending verification email: {{error}}",
       "changePasswordFailed": "Error changing password: {{error}}",
       "changeEmailFailed": "Error changing email: {{error}}",
@@ -400,6 +416,7 @@
       "email": "Email Address",
       "assignRole": "Assign Role",
       "sendButton": "Send Invitation",
+      "sent": "Invitation sent!",
       "activeTitle": "Active Invitations",
       "noActive": "No active invitations.",
       "expires": "Expires",
@@ -442,22 +459,27 @@
     "form": {
       "name": {
         "label": "Provider Name",
+        "placeholder": "e.g., mycompany, enterprise, provider1",
         "hint": "Internal identifier (lowercase letters, numbers, and underscores only)"
       },
       "displayName": {
         "label": "Display Name",
+        "placeholder": "e.g., Sign in with Company SSO",
         "hint": "Name shown to users on the login page"
       },
       "issuer": {
         "label": "Issuer URL",
+        "placeholder": "https://your-provider.com or https://your-domain.auth0.com",
         "hint": "The OIDC issuer URL (check your provider's documentation for the correct URL)"
       },
       "clientId": {
         "label": "Client ID",
+        "placeholder": "Your OAuth client ID",
         "hint": "Client ID from your OAuth application registration"
       },
       "clientSecret": {
         "label": "Client Secret",
+        "placeholder": "Your OAuth client secret",
         "hint": "Client Secret from your OAuth application registration"
       },
       "scope": {
@@ -475,6 +497,7 @@
       },
       "iconUrl": {
         "label": "Icon URL",
+        "placeholder": "https://example.com/logo.svg",
         "hint": "Optional image shown on this provider's sign-in button"
       },
       "enabled": {

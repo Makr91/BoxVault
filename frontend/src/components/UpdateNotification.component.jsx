@@ -16,7 +16,7 @@ const UpdateNotification = ({ updateInfo }) => {
   };
 
   return (
-    <div className="alert alert-info" role="alert">
+    <div className="alert alert-info" role="status">
       <h4 className="alert-heading">
         <FaDownload className="me-2" />
         {t('update.available.title')}

@@ -4,7 +4,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { FaBuilding, FaUsers, FaBox } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { log } from '../chrome';
+import { log, useNotify } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
@@ -17,12 +17,11 @@ import RequestService from '../services/request.service';
  */
 const OrganizationDiscovery = ({ theme }) => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('');
   const [joinRequestMessage, setJoinRequestMessage] = useState('');
   const [requestingOrg, setRequestingOrg] = useState(null);
   const [orgGravatars, setOrgGravatars] = useState({});
@@ -83,8 +82,7 @@ const OrganizationDiscovery = ({ theme }) => {
           log.api.error('Error loading discoverable organizations', {
             error: error.message,
           });
-          setMessage(t('discovery.errors.load'));
-          setMessageType('danger');
+          notify('danger', t('discovery.errors.load'));
         }
       } finally {
         if (!cancelled) {
@@ -98,19 +96,17 @@ const OrganizationDiscovery = ({ theme }) => {
     return () => {
       cancelled = true;
     };
-  }, [fetchOrgGravatars, t]);
+  }, [fetchOrgGravatars, notify, t]);
 
   const handleJoinRequest = async orgName => {
     if (!joinRequestMessage.trim()) {
-      setMessage(t('discovery.errors.emptyMessage'));
-      setMessageType('warning');
+      notify('warning', t('discovery.errors.emptyMessage'));
       return;
     }
 
     try {
       await RequestService.createJoinRequest(orgName, joinRequestMessage);
-      setMessage(t('discovery.messages.requestSent', { orgName }));
-      setMessageType('success');
+      notify('success', t('discovery.messages.requestSent', { orgName }));
       setJoinRequestMessage('');
       setRequestingOrg(null);
     } catch (error) {
@@ -118,8 +114,10 @@ const OrganizationDiscovery = ({ theme }) => {
         orgName,
         error: error.message,
       });
-      setMessage(error.response?.data?.message || t('discovery.errors.requestFailed', { orgName }));
-      setMessageType('danger');
+      notify(
+        'danger',
+        error.response?.data?.message || t('discovery.errors.requestFailed', { orgName })
+      );
     }
   };
 
@@ -180,18 +178,6 @@ const OrganizationDiscovery = ({ theme }) => {
           </h2>
           <p className="text-muted">{t('discovery.description')}</p>
 
-          {message && (
-            <div className={`alert alert-${messageType} alert-dismissible fade show`} role="alert">
-              {message}
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setMessage('')}
-                aria-label="Close"
-              />
-            </div>
-          )}
-
           {/* Search */}
           <div className="card mb-4">
             <div className="card-body">
@@ -211,7 +197,7 @@ const OrganizationDiscovery = ({ theme }) => {
           {loading && (
             <div className="text-center">
               <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+                <span className="visually-hidden">{t('loading')}</span>
               </div>
             </div>
           )}

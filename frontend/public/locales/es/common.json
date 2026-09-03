@@ -25,6 +25,14 @@
     "testingSmtp": "Enviando correo de prueba...",
     "testSmtpSuccess": "¡Correo de prueba enviado con éxito! Revisa la bandeja de entrada del destinatario.",
     "testSmtpError": "Error al enviar el correo de prueba",
+    "smtpTest": {
+      "title": "Probar la configuración SMTP",
+      "recipient": "Correo del destinatario",
+      "placeholder": "Introduce una dirección de correo",
+      "send": "Enviar correo de prueba",
+      "hint": "Envía un correo de prueba para verificar que tu configuración SMTP es correcta.",
+      "emailRequired": "Por favor indica una dirección de correo para la prueba."
+    },
     "settingsCount": "{{count}} configuración",
     "settingsCount_plural": "{{count}} configuraciones",
     "tabs": {
@@ -240,7 +248,13 @@
       "organization": "Organización",
       "expires": "Expira",
       "token": "Token",
-      "tokenShownOnce": "Copia este token ahora — se muestra solo una vez y no se puede recuperar después."
+      "tokenShownOnce": "Copia este token ahora — se muestra solo una vez y no se puede recuperar después.",
+      "selectAll": "Seleccionar todas",
+      "deleteSelected": "Eliminar seleccionadas ({{count}})",
+      "deleteSelectedModal": {
+        "title": "Eliminar Cuentas de Servicio",
+        "message": "¿Estás seguro de que quieres eliminar las cuentas de servicio seleccionadas? Esta acción no se puede deshacer."
+      }
     },
     "deleteModal": {
       "title": "Eliminar Cuenta",
@@ -252,6 +266,7 @@
       "requestCancelled": "Solicitud de unión cancelada exitosamente",
       "cancelRequestError": "No se pudo cancelar la solicitud de unión. Por favor intenta de nuevo.",
       "serviceAccountCreated": "¡Cuenta de servicio creada exitosamente!",
+      "serviceAccountsDeleted": "¡Cuentas de servicio seleccionadas eliminadas exitosamente!",
       "passwordChanged": "¡Contraseña cambiada exitosamente!",
       "emailChanged": "¡Correo electrónico cambiado exitosamente!",
       "nameChanged": "Nombre visible guardado.",
@@ -263,6 +278,7 @@
       "verificationFailed": "Error al verificar el correo. Por favor intenta de nuevo o contacta soporte.",
       "activeOrgNotFound": "Error: No se pudo encontrar la organización activa",
       "createServiceAccountFailed": "Error al crear cuenta de servicio: {{error}}",
+      "deleteServiceAccountsFailed": "Error al eliminar cuentas de servicio: {{error}}",
       "resendVerificationFailed": "Error al enviar correo de verificación: {{error}}",
       "changePasswordFailed": "Error al cambiar contraseña: {{error}}",
       "changeEmailFailed": "Error al cambiar correo: {{error}}",
@@ -400,6 +416,7 @@
       "email": "Dirección de Correo",
       "assignRole": "Asignar Rol",
       "sendButton": "Enviar Invitación",
+      "sent": "¡Invitación enviada!",
       "activeTitle": "Invitaciones Activas",
       "noActive": "No hay invitaciones activas.",
       "expires": "Expira",
@@ -442,22 +459,27 @@
     "form": {
       "name": {
         "label": "Nombre del Proveedor",
+        "placeholder": "p. ej., miempresa, enterprise, provider1",
         "hint": "Identificador interno (minúsculas, letras, números y guiones bajos solamente)"
       },
       "displayName": {
         "label": "Nombre para Mostrar",
+        "placeholder": "p. ej., Iniciar sesión con el SSO de la empresa",
         "hint": "Nombre mostrado a los usuarios en la página de inicio de sesión"
       },
       "issuer": {
         "label": "URL del Emisor",
+        "placeholder": "https://tu-proveedor.com o https://tu-dominio.auth0.com",
         "hint": "La URL del emisor OIDC (consulta la documentación de tu proveedor para la URL correcta)"
       },
       "clientId": {
         "label": "ID de Cliente",
+        "placeholder": "Tu ID de cliente OAuth",
         "hint": "ID de Cliente del registro de tu aplicación OAuth"
       },
       "clientSecret": {
         "label": "Secreto de Cliente",
+        "placeholder": "Tu secreto de cliente OAuth",
         "hint": "Secreto de cliente del registro de tu aplicación OAuth"
       },
       "scope": {
@@ -475,6 +497,7 @@
       },
       "iconUrl": {
         "label": "URL del icono",
+        "placeholder": "https://example.com/logo.svg",
         "hint": "Imagen opcional mostrada en el botón de inicio de sesión de este proveedor"
       },
       "enabled": {

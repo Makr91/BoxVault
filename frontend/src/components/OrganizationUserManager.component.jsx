@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import OrganizationService from '../services/organization.service';
@@ -15,11 +16,11 @@ import UserCard from './UserCard.component';
  */
 const OrganizationUserManager = () => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [organizations, setOrganizations] = useState([]);
   const [editingOrgId, setEditingOrgId] = useState(null);
   const [newOrgName, setNewOrgName] = useState('');
   const [oldName, setOldName] = useState('');
-  const [renameMessage, setRenameMessage] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingOrg, setEditingOrg] = useState(null);
@@ -28,7 +29,6 @@ const OrganizationUserManager = () => {
   const [editOrgDescription, setEditOrgDescription] = useState('');
   const [editOrgAccessMode, setEditOrgAccessMode] = useState('private');
   const [editOrgDefaultRole, setEditOrgDefaultRole] = useState('member');
-  const [editMessage, setEditMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const currentUser = session.current();
@@ -52,20 +52,24 @@ const OrganizationUserManager = () => {
   };
 
   const handleDeleteOrganization = organizationName => {
-    OrganizationService.deleteOrganization(organizationName).then(() => {
-      setOrganizations(prev => prev.filter(org => org.name !== organizationName));
-    });
+    OrganizationService.deleteOrganization(organizationName)
+      .then(() => {
+        setOrganizations(prev => prev.filter(org => org.name !== organizationName));
+      })
+      .catch(() => notify('danger', t('messages.deleteFailed')));
   };
 
   const handleDeleteUser = userId => {
-    UserService.deleteUser(userId).then(() => {
-      setOrganizations(prev =>
-        prev.map(org => ({
-          ...org,
-          members: org.members.filter(user => user.id !== userId),
-        }))
-      );
-    });
+    UserService.deleteUser(userId)
+      .then(() => {
+        setOrganizations(prev =>
+          prev.map(org => ({
+            ...org,
+            members: org.members.filter(user => user.id !== userId),
+          }))
+        );
+      })
+      .catch(() => notify('danger', t('messages.deleteFailed')));
   };
 
   const handleRemoveUserFromOrg = (organizationName, userId) => {
@@ -94,18 +98,20 @@ const OrganizationUserManager = () => {
       } else if (itemToDelete.type === 'organization') {
         handleDeleteOrganization(itemToDelete.name);
       } else if (itemToDelete.type === 'user_remove') {
-        OrganizationService.removeUserFromOrg(itemToDelete.orgName, itemToDelete.id).then(() => {
-          setOrganizations(prev =>
-            prev.map(org =>
-              org.name === itemToDelete.orgName
-                ? {
-                    ...org,
-                    members: org.members.filter(user => user.id !== itemToDelete.id),
-                  }
-                : org
-            )
-          );
-        });
+        OrganizationService.removeUserFromOrg(itemToDelete.orgName, itemToDelete.id)
+          .then(() => {
+            setOrganizations(prev =>
+              prev.map(org =>
+                org.name === itemToDelete.orgName
+                  ? {
+                      ...org,
+                      members: org.members.filter(user => user.id !== itemToDelete.id),
+                    }
+                  : org
+              )
+            );
+          })
+          .catch(() => notify('danger', t('orgConsole.users.removeError')));
       }
       handleCloseDeleteModal();
     }
@@ -114,16 +120,18 @@ const OrganizationUserManager = () => {
   const handleSuspendOrResumeUser = (userId, isSuspended) => {
     const action = isSuspended ? UserService.resumeUser(userId) : UserService.suspendUser(userId);
 
-    action.then(() => {
-      setOrganizations(prev =>
-        prev.map(org => ({
-          ...org,
-          members: org.members.map(user =>
-            user.id === userId ? { ...user, suspended: !isSuspended } : user
-          ),
-        }))
-      );
-    });
+    action
+      .then(() => {
+        setOrganizations(prev =>
+          prev.map(org => ({
+            ...org,
+            members: org.members.map(user =>
+              user.id === userId ? { ...user, suspended: !isSuspended } : user
+            ),
+          }))
+        );
+      })
+      .catch(() => notify('danger', t('messages.operationFailed')));
   };
 
   const handleSuspendOrResumeOrganization = (organizationName, isSuspended) => {
@@ -131,33 +139,34 @@ const OrganizationUserManager = () => {
       ? OrganizationService.resumeOrganization(organizationName)
       : OrganizationService.suspendOrganization(organizationName);
 
-    action.then(() => {
-      setOrganizations(prev =>
-        prev.map(org => (org.name === organizationName ? { ...org, suspended: !isSuspended } : org))
-      );
-    });
+    action
+      .then(() => {
+        setOrganizations(prev =>
+          prev.map(org =>
+            org.name === organizationName ? { ...org, suspended: !isSuspended } : org
+          )
+        );
+      })
+      .catch(() => notify('danger', t('messages.operationFailed')));
   };
 
   const handleRenameOrganization = async e => {
     e.preventDefault();
 
-    // Reset message at start
-    setRenameMessage('');
-
     const isValid = validateOrgName(newOrgName);
     if (!isValid) {
-      setRenameMessage(t('validation.invalidOrgName'));
+      notify('danger', t('validation.invalidOrgName'));
       return;
     }
 
     if (newOrgName === oldName) {
-      setRenameMessage(t('orgUserManager.rename.sameNameError'));
+      notify('danger', t('orgUserManager.rename.sameNameError'));
       return;
     }
 
     const organizationExists = await checkOrganizationExists(newOrgName);
     if (organizationExists) {
-      setRenameMessage(t('orgUserManager.rename.orgExistsError'));
+      notify('danger', t('orgUserManager.rename.orgExistsError'));
       return;
     }
 
@@ -178,10 +187,10 @@ const OrganizationUserManager = () => {
         setEditingOrgId(null);
         setNewOrgName('');
         setOldName('');
-        setRenameMessage(t('orgUserManager.rename.success'));
+        notify('success', t('orgUserManager.rename.success'));
       }
     } catch {
-      setRenameMessage(t('orgUserManager.rename.error'));
+      notify('danger', t('orgUserManager.rename.error'));
     }
   };
 
@@ -214,9 +223,6 @@ const OrganizationUserManager = () => {
               <div className="card-header d-flex justify-content-between align-items-center">
                 {editingOrgId === org.id ? (
                   <form onSubmit={handleRenameOrganization} noValidate>
-                    {renameMessage && (
-                      <div className="alert alert-info mt-3 mb-3">{renameMessage}</div>
-                    )}
                     <input
                       type="text"
                       className="form-control"
@@ -348,13 +354,6 @@ const OrganizationUserManager = () => {
                 />
               </div>
               <div className="modal-body">
-                {editMessage && (
-                  <div
-                    className={`alert alert-${editMessage.includes('success') ? 'success' : 'danger'}`}
-                  >
-                    {editMessage}
-                  </div>
-                )}
                 <div className="form-group mb-3">
                   <label htmlFor="editOrgCode">{t('orgUserManager.editModal.orgCode')}</label>
                   <input
@@ -466,13 +465,11 @@ const OrganizationUserManager = () => {
                         editOrgDefaultRole
                       );
 
-                      setEditMessage(t('orgUserManager.editModal.updateSuccess'));
-                      setTimeout(() => {
-                        setShowEditModal(false);
-                        setEditMessage('');
-                      }, 1500);
+                      notify('success', t('orgUserManager.editModal.updateSuccess'));
+                      setTimeout(() => setShowEditModal(false), 1500);
                     } catch (error) {
-                      setEditMessage(
+                      notify(
+                        'danger',
                         error.response?.data?.message || t('orgUserManager.editModal.updateError')
                       );
                     }

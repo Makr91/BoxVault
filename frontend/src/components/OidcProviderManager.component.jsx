@@ -2,13 +2,19 @@ import PropTypes from 'prop-types';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useNotify } from '../chrome';
 import { ConfirmModal } from '../pages';
+
+const OIDC_PROVIDER_KEY = 'oidc-provider';
+const REQUIRED_FIELDS = ['name', 'displayName', 'issuer', 'clientId', 'clientSecret'];
 
 /**
  * OidcProviderManager - Manages OIDC authentication providers
  */
-const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageType }) => {
+const OidcProviderManager = ({ config, onConfigUpdate }) => {
   const { t } = useTranslation();
+  const notify = useNotify();
+  const [formErrors, setFormErrors] = useState({});
   const [showOidcProviderModal, setShowOidcProviderModal] = useState(false);
   const [oidcProviderForm, setOidcProviderForm] = useState({
     name: '',
@@ -38,6 +44,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
       iconUrl: '',
       enabled: true,
     });
+    setFormErrors({});
   };
 
   const handleOidcProviderFormChange = (field, value) => {
@@ -45,10 +52,12 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
       ...prev,
       [field]: value,
     }));
+    setFormErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const handleEditProvider = (providerName, providerConfig) => {
     setEditingProvider(providerName);
+    setFormErrors({});
     setOidcProviderForm({
       name: providerName,
       displayName: providerConfig.display_name?.value || '',
@@ -65,21 +74,24 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
 
   // Validation helper
   const validateProviderForm = formData => {
-    const { name, displayName, issuer, clientId, clientSecret } = formData;
+    const { name } = formData;
+    const errors = {};
 
-    if (!name || !displayName || !issuer || !clientId || !clientSecret) {
-      return t('oidc.errors.requiredFields');
+    REQUIRED_FIELDS.forEach(field => {
+      if (!formData[field]) {
+        errors[field] = t('oidc.errors.requiredFields');
+      }
+    });
+
+    if (name && !/^[a-z0-9_]+$/i.test(name)) {
+      errors.name = t('oidc.errors.invalidName');
     }
 
-    if (!/^[a-z0-9_]+$/i.test(name)) {
-      return t('oidc.errors.invalidName');
+    if (name && config.auth?.oidc?.providers?.[name] && !editingProvider) {
+      errors.name = t('oidc.errors.providerExists', { name });
     }
 
-    if (config.auth?.oidc?.providers?.[name] && !editingProvider) {
-      return t('oidc.errors.providerExists', { name });
-    }
-
-    return null;
+    return errors;
   };
 
   const addOidcProvider = async e => {
@@ -97,17 +109,16 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
     } = oidcProviderForm;
 
     // Validate form
-    const validationError = validateProviderForm(oidcProviderForm);
-    if (validationError) {
-      setMessage(validationError);
-      setMessageType('danger');
+    const errors = validateProviderForm(oidcProviderForm);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
     try {
       setOidcProviderLoading(true);
-      setMessage(editingProvider ? t('oidc.messages.updating') : t('oidc.messages.adding'));
-      setMessageType('info');
+      const progress = editingProvider ? t('oidc.messages.updating') : t('oidc.messages.adding');
+      notify('info', progress, { key: OIDC_PROVIDER_KEY });
 
       const newConfig = { ...config };
       if (!newConfig.auth) {
@@ -170,25 +181,27 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
       };
 
       await onConfigUpdate(newConfig);
-      setMessage(
+      notify(
+        'success',
         t('oidc.messages.success', {
           displayName,
           action: editingProvider ? t('oidc.actions.updated') : t('oidc.actions.added'),
-        })
+        }),
+        { key: OIDC_PROVIDER_KEY }
       );
-      setMessageType('success');
       setShowOidcProviderModal(false);
       setEditingProvider(null);
       resetOidcProviderForm();
     } catch (error) {
       const action = editingProvider ? t('oidc.actions.updating') : t('oidc.actions.adding');
-      setMessage(
+      notify(
+        'danger',
         t('oidc.errors.apiError', {
           action,
           error: error.response?.data?.message || error.message,
-        })
+        }),
+        { key: OIDC_PROVIDER_KEY }
       );
-      setMessageType('danger');
     } finally {
       setOidcProviderLoading(false);
     }
@@ -210,8 +223,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
     }
 
     try {
-      setMessage(t('oidc.messages.deleting'));
-      setMessageType('info');
+      notify('info', t('oidc.messages.deleting'), { key: OIDC_PROVIDER_KEY });
 
       const newConfig = { ...config };
       if (newConfig.auth?.oidc?.providers) {
@@ -219,15 +231,17 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
       }
 
       await onConfigUpdate(newConfig);
-      setMessage(t('oidc.messages.deleteSuccess', { providerName: providerToDelete }));
-      setMessageType('success');
+      notify('success', t('oidc.messages.deleteSuccess', { providerName: providerToDelete }), {
+        key: OIDC_PROVIDER_KEY,
+      });
     } catch (error) {
-      setMessage(
+      notify(
+        'danger',
         t('oidc.errors.deleteError', {
           error: error.response?.data?.message || error.message,
-        })
+        }),
+        { key: OIDC_PROVIDER_KEY }
       );
-      setMessageType('danger');
     } finally {
       handleCloseDeleteModal();
     }
@@ -355,7 +369,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           type="text"
                           className="form-control"
                           id="providerName"
-                          placeholder="e.g., mycompany, enterprise, provider1"
+                          placeholder={t('oidc.form.name.placeholder')}
                           value={oidcProviderForm.name}
                           onChange={e =>
                             handleOidcProviderFormChange('name', e.target.value.toLowerCase())
@@ -363,6 +377,9 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           disabled={oidcProviderLoading || editingProvider}
                           required
                         />
+                        {formErrors.name ? (
+                          <div className="text-danger small">{formErrors.name}</div>
+                        ) : null}
                         <small className="form-text text-muted">{t('oidc.form.name.hint')}</small>
                       </div>
                     </div>
@@ -376,7 +393,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           type="text"
                           className="form-control"
                           id="displayName"
-                          placeholder="e.g., Sign in with Company SSO"
+                          placeholder={t('oidc.form.displayName.placeholder')}
                           value={oidcProviderForm.displayName}
                           onChange={e =>
                             handleOidcProviderFormChange('displayName', e.target.value)
@@ -384,6 +401,9 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           disabled={oidcProviderLoading}
                           required
                         />
+                        {formErrors.displayName ? (
+                          <div className="text-danger small">{formErrors.displayName}</div>
+                        ) : null}
                         <small className="form-text text-muted">
                           {t('oidc.form.displayName.hint')}
                         </small>
@@ -399,12 +419,15 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           type="url"
                           className="form-control"
                           id="issuer"
-                          placeholder="https://your-provider.com or https://your-domain.auth0.com"
+                          placeholder={t('oidc.form.issuer.placeholder')}
                           value={oidcProviderForm.issuer}
                           onChange={e => handleOidcProviderFormChange('issuer', e.target.value)}
                           disabled={oidcProviderLoading}
                           required
                         />
+                        {formErrors.issuer ? (
+                          <div className="text-danger small">{formErrors.issuer}</div>
+                        ) : null}
                         <small className="form-text text-muted">{t('oidc.form.issuer.hint')}</small>
                       </div>
                     </div>
@@ -418,12 +441,15 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           type="text"
                           className="form-control"
                           id="clientId"
-                          placeholder="Your OAuth client ID"
+                          placeholder={t('oidc.form.clientId.placeholder')}
                           value={oidcProviderForm.clientId}
                           onChange={e => handleOidcProviderFormChange('clientId', e.target.value)}
                           disabled={oidcProviderLoading}
                           required
                         />
+                        {formErrors.clientId ? (
+                          <div className="text-danger small">{formErrors.clientId}</div>
+                        ) : null}
                         <small className="form-text text-muted">
                           {t('oidc.form.clientId.hint')}
                         </small>
@@ -439,7 +465,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           type="password"
                           className="form-control"
                           id="clientSecret"
-                          placeholder="Your OAuth client secret"
+                          placeholder={t('oidc.form.clientSecret.placeholder')}
                           value={oidcProviderForm.clientSecret}
                           onChange={e =>
                             handleOidcProviderFormChange('clientSecret', e.target.value)
@@ -447,6 +473,9 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           disabled={oidcProviderLoading}
                           required
                         />
+                        {formErrors.clientSecret ? (
+                          <div className="text-danger small">{formErrors.clientSecret}</div>
+                        ) : null}
                         <small className="form-text text-muted">
                           {t('oidc.form.clientSecret.hint')}
                         </small>
@@ -501,7 +530,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                           type="url"
                           className="form-control"
                           id="iconUrl"
-                          placeholder="https://example.com/logo.svg"
+                          placeholder={t('oidc.form.iconUrl.placeholder')}
                           value={oidcProviderForm.iconUrl}
                           onChange={e => handleOidcProviderFormChange('iconUrl', e.target.value)}
                           disabled={oidcProviderLoading}
@@ -529,7 +558,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
                     </div>
                   </div>
 
-                  <div className="alert alert-info mt-3">
+                  <div className="alert alert-info mt-3" role="status">
                     <h6>{t('oidc.instructions.title')}</h6>
                     <ol className="mb-0">
                       <li>{t('oidc.instructions.step1')}</li>
@@ -608,8 +637,6 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
 OidcProviderManager.propTypes = {
   config: PropTypes.object.isRequired,
   onConfigUpdate: PropTypes.func.isRequired,
-  setMessage: PropTypes.func.isRequired,
-  setMessageType: PropTypes.func.isRequired,
 };
 
 export default OidcProviderManager;

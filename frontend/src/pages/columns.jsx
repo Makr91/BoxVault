@@ -6,6 +6,8 @@ import { architectureNames, latestReleaseTime, providerNames } from './itemShape
 
 const localeDate = value => (value ? new Date(value).toLocaleDateString() : '');
 
+const namesKey = names => names.join(' ').toLowerCase();
+
 const nameBadges = names =>
   names.length > 0 ? (
     <span className="d-inline-flex flex-wrap gap-1">
@@ -104,6 +106,7 @@ export const osColumn = {
 export const statusColumn = {
   key: 'status',
   labelKey: 'pages.table.status',
+  sortValue: item => (item.published ? 0 : 1),
   render: (item, ctx) => (
     <span className={`badge ${item.published ? 'bg-success' : 'bg-warning'}`}>
       {ctx.t(item.published ? 'pages.status.published' : 'pages.status.pending')}
@@ -114,6 +117,7 @@ export const statusColumn = {
 export const visibilityColumn = {
   key: 'visibility',
   labelKey: 'pages.table.visibility',
+  sortValue: item => (item.isPublic ? 0 : 1),
   render: (item, ctx) => (
     <span className={`badge ${item.isPublic ? 'bg-info' : 'bg-secondary'}`}>
       {ctx.t(item.isPublic ? 'pages.status.public' : 'pages.status.private')}
@@ -164,6 +168,7 @@ export const versionsColumn = {
 export const providersColumn = {
   key: 'providers',
   labelKey: 'pages.table.providers',
+  sortValue: item => namesKey(providerNames(item)),
   render: item => nameBadges(providerNames(item)),
 };
 
@@ -171,6 +176,7 @@ export const architecturesColumn = {
   key: 'architectures',
   labelKey: 'pages.table.architectures',
   defaultHidden: true,
+  sortValue: item => namesKey(architectureNames(item)),
   render: item => nameBadges(architectureNames(item)),
 };
 
@@ -184,8 +190,9 @@ export const sizeColumn = {
 export const checksumColumn = {
   key: 'checksum',
   labelKey: 'pages.table.checksum',
+  sortValue: item => (item.artifact?.checksum || '').toLowerCase(),
   render: item => {
     const checksum = item.artifact?.checksum || '';
-    return checksum ? <code title={checksum}>{checksum.substring(0, 12)}…</code> : '';
+    return checksum ? <code title={checksum}>{checksum}</code> : '';
   },
 };

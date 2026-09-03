@@ -5,11 +5,12 @@ import { BrowserRouter } from 'react-router-dom';
 
 import ErrorBoundary from './ErrorBoundary';
 import { NavbarSearchProvider } from './NavbarSearch';
+import { NoticeProvider } from './notices';
 
 /**
  * Mount an estate app once its i18n is ready, inside the providers every
  * app renders through: i18n, Suspense for the lazy locale loads, the shared
- * error boundary, the navbar search binding and the router.
+ * error boundary, the notice store, the navbar search binding and the router.
  *
  * @param {Object} options - The app's side of the mount
  * @param {Function} options.App - The app's root component
@@ -23,13 +24,15 @@ export const mountApp = ({ App, i18n, ready, showErrorDetails = false, onError =
   ready.then(() => {
     createRoot(document.getElementById('root')).render(
       <I18nextProvider i18n={i18n}>
-        <Suspense fallback="Loading...">
+        <Suspense fallback={i18n.t('loading')}>
           <ErrorBoundary showErrorDetails={showErrorDetails} onError={onError}>
-            <NavbarSearchProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
-            </NavbarSearchProvider>
+            <NoticeProvider>
+              <NavbarSearchProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </NavbarSearchProvider>
+            </NoticeProvider>
           </ErrorBoundary>
         </Suspense>
       </I18nextProvider>

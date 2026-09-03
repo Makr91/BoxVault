@@ -3,11 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 
-import { log } from '../chrome';
+import { log, useNotify } from '../chrome';
 import SetupService from '../services/setup.service';
+
+const SETUP_KEY = 'setup';
 
 const SetupComponent = () => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [configs, setConfigs] = useState({
     db: {},
     app: {},
@@ -17,7 +20,6 @@ const SetupComponent = () => {
   const [setupComplete, setSetupComplete] = useState(false);
   const [setupToken, setSetupToken] = useState('');
   const [authorizedSetupToken, setAuthorizedSetupToken] = useState('');
-  const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('db');
   const [validationErrors, setValidationErrors] = useState({});
   const [showPasswords, setShowPasswords] = useState({});
@@ -201,7 +203,7 @@ const SetupComponent = () => {
         log.api.error('Error verifying setup token', {
           error: error.message,
         });
-        setMessage(t('setup.invalidToken'));
+        notify('danger', t('setup.invalidToken'));
       });
   };
 
@@ -246,13 +248,13 @@ const SetupComponent = () => {
     SetupService.uploadSSL(authorizedSetupToken, file)
       .then(({ path }) => {
         handleConfigChange(configName, currentPath, path);
-        setMessage(t('messages.operationSuccessful'));
+        notify('success', t('messages.operationSuccessful'));
       })
       .catch(error => {
         log.api.error('Error uploading SSL file', {
           error: error.message,
         });
-        setMessage(t('messages.uploadFailed'));
+        notify('danger', t('messages.uploadFailed'));
       });
   };
 
@@ -283,7 +285,7 @@ const SetupComponent = () => {
   // Helper: Render OIDC provider info
   const renderOidcInfo = errorKey => (
     <div key={errorKey} className="col-md-12 mb-3">
-      <div className="alert alert-info">
+      <div className="alert alert-info" role="status">
         <h6>
           <i className="fas fa-info-circle me-2" />
           {t('oidc.title')}
@@ -446,16 +448,17 @@ const SetupComponent = () => {
 
   const handleSubmit = () => {
     if (!isFormValid) {
-      setMessage(t('validation.fixErrors'));
+      notify('danger', t('validation.fixErrors'));
       return;
     }
 
     SetupService.updateConfigs(authorizedSetupToken, configs)
       .then(() => {
-        setMessage(t('setup.updateSuccess'));
+        notify('success', t('setup.updateSuccess'), { key: SETUP_KEY, sticky: true });
 
         // Set a 5-second delay before navigating
         setTimeout(() => {
+          notify('', '', { key: SETUP_KEY });
           navigate('/register');
         }, 5000);
       })
@@ -463,7 +466,7 @@ const SetupComponent = () => {
         log.api.error('Error updating configuration', {
           error: error.message,
         });
-        setMessage(t('setup.updateError'));
+        notify('danger', t('setup.updateError'));
       });
   };
 
@@ -493,78 +496,78 @@ const SetupComponent = () => {
     return hasErrors ? '' : 'text-success';
   };
 
+  const renderBody = () => {
+    if (setupComplete) {
+      return (
+        <div className="alert alert-success" role="status">
+          {t('setup.alreadyComplete')}
+        </div>
+      );
+    }
+    if (!authorizedSetupToken) {
+      return (
+        <div className="card">
+          <div className="card-body">
+            <h5 className="card-title">{t('setup.enterToken')}</h5>
+            <div className="input-group mb-3">
+              <input
+                type="text"
+                className="form-control"
+                placeholder={t('setup.tokenPlaceholder')}
+                value={setupToken}
+                onChange={e => setSetupToken(e.target.value)}
+              />
+              <button className="btn btn-primary" onClick={handleVerifyToken}>
+                {t('setup.verifyToken')}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div>
+        <ul className="nav nav-tabs mb-4 d-flex">
+          {['db', 'app', 'auth', 'mail'].map(configName => (
+            <li className="nav-item" key={configName}>
+              <button
+                className={`nav-link ${activeTab === configName ? 'active' : ''} ${getTabStatusClass(configName)}`}
+                onClick={() => setActiveTab(configName)}
+              >
+                {t(`configManager.tabs.${configName}`)}
+              </button>
+            </li>
+          ))}
+          <li className="nav-item ms-auto">
+            <button
+              type="button"
+              className={`nav-link ${!isFormValid ? 'disabled' : 'cursor-pointer'}`}
+              onClick={handleSubmit}
+              disabled={!isFormValid}
+            >
+              {t('setup.submitAll')}
+            </button>
+          </li>
+        </ul>
+
+        <div className="tab-content">
+          {['db', 'app', 'auth', 'mail'].map(configName => (
+            <div
+              key={configName}
+              className={`tab-pane ${activeTab === configName ? 'active' : ''}`}
+            >
+              <div className="row">{renderConfigFields(configName)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mt-5">
       <h2 className="text-center mb-4">{t('setup.title')}</h2>
-      {setupComplete ? (
-        <div className="alert alert-success" role="alert">
-          {t('setup.alreadyComplete')}
-        </div>
-      ) : (
-        <>
-          {!authorizedSetupToken ? (
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">{t('setup.enterToken')}</h5>
-                <div className="input-group mb-3">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder={t('setup.tokenPlaceholder')}
-                    value={setupToken}
-                    onChange={e => setSetupToken(e.target.value)}
-                  />
-                  <button className="btn btn-primary" onClick={handleVerifyToken}>
-                    {t('setup.verifyToken')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <ul className="nav nav-tabs mb-4 d-flex">
-                {['db', 'app', 'auth', 'mail'].map(configName => (
-                  <li className="nav-item" key={configName}>
-                    <button
-                      className={`nav-link ${activeTab === configName ? 'active' : ''} ${getTabStatusClass(configName)}`}
-                      onClick={() => setActiveTab(configName)}
-                    >
-                      {configName.charAt(0).toUpperCase() + configName.slice(1)} Config
-                    </button>
-                  </li>
-                ))}
-                <li className="nav-item ms-auto">
-                  <button
-                    type="button"
-                    className={`nav-link ${!isFormValid ? 'disabled' : 'cursor-pointer'}`}
-                    onClick={handleSubmit}
-                    disabled={!isFormValid}
-                  >
-                    {t('setup.submitAll')}
-                  </button>
-                </li>
-              </ul>
-
-              <div className="tab-content">
-                {['db', 'app', 'auth', 'mail'].map(configName => (
-                  <div
-                    key={configName}
-                    className={`tab-pane ${activeTab === configName ? 'active' : ''}`}
-                  >
-                    <div className="row">{renderConfigFields(configName)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {message && (
-            <div className="alert alert-info mt-3" role="alert">
-              {message}
-            </div>
-          )}
-        </>
-      )}
+      {renderBody()}
     </div>
   );
 };

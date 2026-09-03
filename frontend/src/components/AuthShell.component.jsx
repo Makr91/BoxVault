@@ -28,7 +28,7 @@ const ALERT_ICONS = {
 };
 
 export const AuthAlert = ({ tone, children }) => (
-  <div className={`auth-alert auth-alert-${tone}`} role="alert">
+  <div className={`auth-alert auth-alert-${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>
     {ALERT_ICONS[tone]}
     <div>{children}</div>
   </div>

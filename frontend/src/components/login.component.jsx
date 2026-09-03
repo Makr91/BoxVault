@@ -94,7 +94,7 @@ const deriveLoginView = ({
   };
 };
 
-const LocalLoginForm = ({ formValues, onChange, onSubmit, loading }) => {
+const LocalLoginForm = ({ formValues, errors, onChange, onSubmit, loading }) => {
   const { t } = useTranslation(['auth']);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -104,7 +104,7 @@ const LocalLoginForm = ({ formValues, onChange, onSubmit, loading }) => {
         <label className="auth-field-label" htmlFor="login-username">
           {t('login.username')}
         </label>
-        <div className="auth-input-wrap">
+        <div className={`auth-input-wrap${errors.username ? ' has-error' : ''}`}>
           <input
             id="login-username"
             name="username"
@@ -114,13 +114,16 @@ const LocalLoginForm = ({ formValues, onChange, onSubmit, loading }) => {
             onChange={onChange}
           />
         </div>
+        {errors.username && <p className="auth-field-error">{errors.username}</p>}
       </div>
 
       <div className="auth-field">
         <label className="auth-field-label" htmlFor="login-password">
           {t('login.password')}
         </label>
-        <div className="auth-input-wrap auth-input-wrap--password">
+        <div
+          className={`auth-input-wrap auth-input-wrap--password${errors.password ? ' has-error' : ''}`}
+        >
           <input
             id="login-password"
             name="password"
@@ -138,6 +141,7 @@ const LocalLoginForm = ({ formValues, onChange, onSubmit, loading }) => {
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </button>
         </div>
+        {errors.password && <p className="auth-field-error">{errors.password}</p>}
         <label className="auth-check">
           <input
             type="checkbox"
@@ -166,6 +170,7 @@ LocalLoginForm.propTypes = {
     password: PropTypes.string.isRequired,
     stayLoggedIn: PropTypes.bool.isRequired,
   }).isRequired,
+  errors: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
@@ -178,6 +183,7 @@ const LoginMethods = ({
   loading,
   loadingProvider,
   formValues,
+  errors,
   onChange,
   onSubmit,
   onSelectProvider,
@@ -192,6 +198,7 @@ const LoginMethods = ({
       {view.showLocalForm && (
         <LocalLoginForm
           formValues={formValues}
+          errors={errors}
           onChange={onChange}
           onSubmit={onSubmit}
           loading={loading}
@@ -253,6 +260,7 @@ LoginMethods.propTypes = {
   loading: PropTypes.bool.isRequired,
   loadingProvider: PropTypes.string,
   formValues: PropTypes.object.isRequired,
+  errors: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   onSelectProvider: PropTypes.func.isRequired,
@@ -275,6 +283,7 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState(location.state?.error || '');
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
@@ -432,7 +441,15 @@ const Login = () => {
   const handleLogin = event => {
     event.preventDefault();
 
-    if (!formValues.username || !formValues.password) {
+    const errors = {};
+    if (!formValues.username) {
+      errors.username = t('errors.fieldRequired');
+    }
+    if (!formValues.password) {
+      errors.password = t('errors.fieldRequired');
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
 
@@ -474,6 +491,7 @@ const Login = () => {
           loading={loading}
           loadingProvider={loadingProvider}
           formValues={formValues}
+          errors={fieldErrors}
           onChange={handleInputChange}
           onSubmit={handleLogin}
           onSelectProvider={handleOidcLogin}

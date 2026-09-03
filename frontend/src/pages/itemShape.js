@@ -173,19 +173,20 @@ export const latestReleaseTime = item => {
   return latest || null;
 };
 
-export const providerNames = item => [
-  ...new Set((item.versions || []).flatMap(version => (version.providers || []).map(p => p.name))),
-];
+const sortNames = names =>
+  [...new Set(names)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
-export const architectureNames = item => [
-  ...new Set(
+export const providerNames = item =>
+  sortNames((item.versions || []).flatMap(version => (version.providers || []).map(p => p.name)));
+
+export const architectureNames = item =>
+  sortNames(
     (item.versions || []).flatMap(version =>
       (version.providers || []).flatMap(provider =>
         (provider.architectures || []).map(architecture => architecture.name)
       )
     )
-  ),
-];
+  );
 
 export const defaultMatches = (item, needle) =>
   [item.name, item.label || '', item.description || '', item.organization.name].some(text =>

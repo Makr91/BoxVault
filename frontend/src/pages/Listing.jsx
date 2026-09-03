@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaList, FaTableCellsLarge } from 'react-icons/fa6';
 
+import { useNotify } from '../chrome';
+
 import ItemCards from './ItemCards';
 import { collectionShape, pageContextShape } from './itemShape';
 import ItemsTable from './ItemsTable';
 import { useCatalogSearch } from './useCatalogSearch';
-import { useNotice } from './useNotice';
 
 const groupByOrganization = items => {
   const groups = new Map();
@@ -134,7 +135,7 @@ CollectionHeading.propTypes = {
  */
 const Listing = ({ collections, org, member, grouped, context, header = null, actions = null }) => {
   const { t, i18n } = useTranslation();
-  const [noticeNode, notify] = useNotice();
+  const notify = useNotify();
   const [nonce, setNonce] = useState(0);
   const [data, setData] = useState({ key: '', byCollection: {} });
   const signedIn = Boolean(context.user);
@@ -149,7 +150,10 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
         (org ? collection.adapter.listOrg(org, { member }) : collection.adapter.listAll())
           .then(items => {
             if (items.notice && mounted) {
-              notify(items.notice.type, t(items.notice.key));
+              notify(items.notice.type, t(items.notice.key), {
+                tier: 'banner',
+                key: items.notice.key,
+              });
             }
             return [collection.key, items];
           })
@@ -250,7 +254,6 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
 
   return (
     <div className="list row">
-      {noticeNode}
       {header ? (
         <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
           <div className="d-flex align-items-center gap-3 min-width-0">{header}</div>

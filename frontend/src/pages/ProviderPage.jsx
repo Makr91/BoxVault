@@ -3,16 +3,17 @@ import { useEffect, useState } from 'react';
 import { Table } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 
+import { useNotify } from '../chrome';
+
 import { collectionShape, pageContextShape } from './itemShape';
 import PageHeader from './PageHeader';
-import { useNotice } from './useNotice';
 
 const shortChecksum = checksum =>
   `${checksum.substring(0, 20)}...${checksum.substring(checksum.length - 20)}`;
 
 const ProviderPage = ({ collection, org, name, version, provider, context }) => {
   const { t, i18n } = useTranslation();
-  const [noticeNode, notify] = useNotice();
+  const notify = useNotify();
   const [nonce, setNonce] = useState(0);
   const [data, setData] = useState({ key: '', item: null, entry: null });
   const [editor, setEditor] = useState(null);
@@ -70,13 +71,12 @@ const ProviderPage = ({ collection, org, name, version, provider, context }) => 
   if (!ready) {
     return (
       <div className="list row">
-        {noticeNode}
         <div>{t('pages.loading')}</div>
       </div>
     );
   }
   if (!entry) {
-    return <div className="list row">{noticeNode}</div>;
+    return <div className="list row" />;
   }
 
   const slotProps = { item, version, provider: entry, ctx };
@@ -85,7 +85,6 @@ const ProviderPage = ({ collection, org, name, version, provider, context }) => 
 
   return (
     <div className="list row">
-      {noticeNode}
       {editor ? (
         <div className="mb-4">
           <div className="d-flex justify-content-between align-items-center mb-3">

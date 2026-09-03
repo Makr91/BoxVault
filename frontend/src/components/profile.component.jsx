@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { log } from '../chrome';
+import { log, useNotify } from '../chrome';
 import { events, isOidcSession, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
@@ -13,6 +13,7 @@ import UserService from '../services/user.service';
 
 const Profile = ({ activeOrganization }) => {
   const { t } = useTranslation();
+  const notify = useNotify();
   useEffect(() => {
     document.title = t('profile.pageTitle');
   }, [t]);
@@ -21,20 +22,18 @@ const Profile = ({ activeOrganization }) => {
   const [gravatarProfile, setGravatarProfile] = useState({});
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [emailMessage, setEmailMessage] = useState('');
   const [displayName, setDisplayName] = useState(session.current()?.name || '');
-  const [displayNameMessage, setDisplayNameMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const [passwordErrors, setPasswordErrors] = useState({});
   const [emailErrors, setEmailErrors] = useState({});
-  const [verificationMessage, setVerificationMessage] = useState('');
   const [serviceAccounts, setServiceAccounts] = useState([]);
   const [newServiceAccountDescription, setNewServiceAccountDescription] = useState('');
   const [newServiceAccountExpiration, setNewServiceAccountExpiration] = useState(30);
   const [newServiceAccountToken, setNewServiceAccountToken] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showDeleteSelectedModal, setShowDeleteSelectedModal] = useState(false);
   const [userOrganizations, setUserOrganizations] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
@@ -45,7 +44,7 @@ const Profile = ({ activeOrganization }) => {
   const handleLeaveOrganization = async orgName => {
     try {
       await UserService.leaveOrganization(orgName);
-      setMessage(t('profile.messages.leftOrganization', { orgName }));
+      notify('success', t('profile.messages.leftOrganization', { orgName }));
 
       // Refresh organizations list
       const response = await UserService.getUserOrganizations();
@@ -55,14 +54,14 @@ const Profile = ({ activeOrganization }) => {
         orgName,
         error: error.message,
       });
-      setMessage(t('profile.errors.leaveOrganization', { error: error.message }));
+      notify('danger', t('profile.errors.leaveOrganization', { error: error.message }));
     }
   };
 
   const handleCancelJoinRequest = async requestId => {
     try {
       await RequestService.cancelJoinRequest(requestId);
-      setMessage(t('profile.messages.requestCancelled'));
+      notify('success', t('profile.messages.requestCancelled'));
 
       // Refresh join requests list
       const response = await RequestService.getUserJoinRequests();
@@ -72,7 +71,7 @@ const Profile = ({ activeOrganization }) => {
         requestId,
         error: error.message,
       });
-      setMessage(t('profile.messages.cancelRequestError', { error: error.message }));
+      notify('danger', t('profile.messages.cancelRequestError', { error: error.message }));
     }
   };
 
@@ -117,8 +116,6 @@ const Profile = ({ activeOrganization }) => {
   };
 
   const resetFormStates = useCallback(() => {
-    setMessage('');
-    setEmailMessage('');
     setPasswordErrors({});
     setEmailErrors({});
     setNewPassword('');
@@ -127,7 +124,6 @@ const Profile = ({ activeOrganization }) => {
   }, []);
 
   const resetServiceAccountStates = useCallback(() => {
-    setMessage('');
     setNewServiceAccountToken(null);
     setNewServiceAccountDescription('');
     setNewServiceAccountExpiration(30);
@@ -155,7 +151,7 @@ const Profile = ({ activeOrganization }) => {
         error: error.message,
       });
       // Surface the server's refusal reason (e.g. sole-owner guard) when present
-      setMessage(error.response?.data?.message || t('profile.errors.deleteAccountFailed'));
+      notify('danger', error.response?.data?.message || t('profile.errors.deleteAccountFailed'));
     }
   };
 
@@ -176,7 +172,7 @@ const Profile = ({ activeOrganization }) => {
   const handleSetPrimaryOrganization = async orgName => {
     try {
       await UserService.setPrimaryOrganization(orgName);
-      setMessage(t('profile.messages.primaryOrganizationSet', { orgName }));
+      notify('success', t('profile.messages.primaryOrganizationSet', { orgName }));
       const response = await UserService.getUserOrganizations();
       setUserOrganizations(response.data || []);
       refreshUserData();
@@ -185,7 +181,7 @@ const Profile = ({ activeOrganization }) => {
         orgName,
         error: error.message,
       });
-      setMessage(t('profile.errors.setPrimaryOrganization', { error: error.message }));
+      notify('danger', t('profile.errors.setPrimaryOrganization', { error: error.message }));
     }
   };
 
@@ -196,19 +192,18 @@ const Profile = ({ activeOrganization }) => {
     if (token) {
       AuthService.verifyMail(token)
         .then(response => {
-          setVerificationMessage(response.data.message);
+          notify('success', response.data.message);
           refreshUserData();
         })
         .catch(error => {
-          setVerificationMessage(
-            error.response?.data?.message || t('profile.errors.verificationFailed')
-          );
+          const failure = error.response?.data?.message || t('profile.errors.verificationFailed');
+          notify('danger', failure);
         })
         .finally(() => {
           navigate('/profile', { replace: true });
         });
     }
-  }, [location.search, navigate, refreshUserData, t]);
+  }, [location.search, navigate, notify, refreshUserData, t]);
 
   useEffect(() => {
     checkEmailVerification();
@@ -328,7 +323,7 @@ const Profile = ({ activeOrganization }) => {
       const activeOrg = orgsResponse.data?.find(org => org.name === activeOrganization);
 
       if (!activeOrg) {
-        setMessage(t('profile.errors.activeOrgNotFound'));
+        notify('danger', t('profile.errors.activeOrgNotFound'));
         return;
       }
 
@@ -342,13 +337,14 @@ const Profile = ({ activeOrganization }) => {
       setNewServiceAccountExpiration(30);
       // The raw token is returned only by this response — show it once
       setNewServiceAccountToken(createResponse.data?.token || null);
-      setMessage(t('profile.messages.serviceAccountCreated'));
+      notify('success', t('profile.messages.serviceAccountCreated'));
     } catch (error) {
       if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
         log.api.error('Error creating service account', {
           error: error.message,
         });
-        setMessage(
+        notify(
+          'danger',
           t('profile.errors.createServiceAccountFailed', {
             error: error.response?.data?.message || error.message,
           })
@@ -369,23 +365,72 @@ const Profile = ({ activeOrganization }) => {
           serviceAccountId: id,
           error: error.message,
         });
+        notify(
+          'danger',
+          t('profile.errors.deleteServiceAccountsFailed', {
+            error: error.response?.data?.message || error.message,
+          })
+        );
       }
     }
     controller.abort();
   };
 
+  const selectedAccounts = serviceAccounts.filter(account => selectedIds.has(account.id));
+  const allServiceAccountsSelected =
+    serviceAccounts.length > 0 && selectedAccounts.length === serviceAccounts.length;
+
+  const selectServiceAccount = (id, checked) => {
+    setSelectedIds(current => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAllServiceAccounts = checked => {
+    setSelectedIds(new Set(checked ? serviceAccounts.map(account => account.id) : []));
+  };
+
+  const handleDeleteSelectedServiceAccounts = async () => {
+    const ids = selectedAccounts.map(account => account.id);
+    const controller = new AbortController();
+    try {
+      await Promise.all(ids.map(id => ServiceAccountService.deleteServiceAccount(id)));
+      notify('success', t('profile.messages.serviceAccountsDeleted'));
+    } catch (error) {
+      log.api.error('Error deleting service accounts', {
+        serviceAccountIds: ids,
+        error: error.message,
+      });
+      notify(
+        'danger',
+        t('profile.errors.deleteServiceAccountsFailed', {
+          error: error.response?.data?.message || error.message,
+        })
+      );
+    }
+    setSelectedIds(new Set());
+    await loadServiceAccounts(controller.signal);
+    controller.abort();
+  };
+
+  const openDeleteSelectedModal = () => setShowDeleteSelectedModal(true);
+  const closeDeleteSelectedModal = () => setShowDeleteSelectedModal(false);
+
   const handleResendVerificationMail = async () => {
     const controller = new AbortController();
-    setVerificationMessage('');
     try {
       const response = await AuthService.resendVerificationMail(controller.signal);
-      setVerificationMessage(response.data.message);
+      notify('success', response.data.message);
       await refreshUserData();
     } catch (error) {
       if (!error.name?.includes('Cancel')) {
-        setVerificationMessage(
-          t('profile.errors.resendVerificationFailed', { error: error.message })
-        );
+        notify('danger', t('profile.errors.resendVerificationFailed', { error: error.message }));
       }
     }
     controller.abort();
@@ -394,16 +439,15 @@ const Profile = ({ activeOrganization }) => {
   const handlePasswordChange = async e => {
     e.preventDefault();
     const controller = new AbortController();
-    setMessage('');
     const errors = validatePasswordForm();
     setPasswordErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
         await UserService.changePassword(currentUser.id, newPassword, controller.signal);
-        setMessage(t('profile.messages.passwordChanged'));
+        notify('success', t('profile.messages.passwordChanged'));
       } catch (error) {
         if (!error.name?.includes('Cancel')) {
-          setMessage(t('profile.errors.changePasswordFailed', { error: error.message }));
+          notify('danger', t('profile.errors.changePasswordFailed', { error: error.message }));
         }
       }
     }
@@ -413,17 +457,16 @@ const Profile = ({ activeOrganization }) => {
   const handleEmailChange = async e => {
     e.preventDefault();
     const controller = new AbortController();
-    setEmailMessage('');
     const errors = validateEmailForm();
     setEmailErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
         await UserService.changeEmail(currentUser.id, newEmail, controller.signal);
-        setEmailMessage(t('profile.messages.emailChanged'));
+        notify('success', t('profile.messages.emailChanged'));
         await refreshUserData();
       } catch (error) {
         if (!error.name?.includes('Cancel')) {
-          setEmailMessage(t('profile.errors.changeEmailFailed', { error: error.message }));
+          notify('danger', t('profile.errors.changeEmailFailed', { error: error.message }));
         }
       }
     }
@@ -433,14 +476,14 @@ const Profile = ({ activeOrganization }) => {
   const handleDisplayNameChange = async e => {
     e.preventDefault();
     const controller = new AbortController();
-    setDisplayNameMessage('');
     try {
       await UserService.changeName(currentUser.id, displayName, controller.signal);
-      setDisplayNameMessage(t('profile.messages.nameChanged'));
+      notify('success', t('profile.messages.nameChanged'));
       await refreshUserData();
     } catch (error) {
       if (!error.name?.includes('Cancel')) {
-        setDisplayNameMessage(
+        notify(
+          'danger',
           error.response?.data?.message ||
             t('profile.errors.changeNameFailed', { error: error.message })
         );
@@ -471,7 +514,6 @@ const Profile = ({ activeOrganization }) => {
           <button className="btn btn-primary" type="submit">
             {t('buttons.save')}
           </button>
-          {displayNameMessage && <div className="alert alert-info mt-2">{displayNameMessage}</div>}
         </div>
       </form>
       <p>
@@ -532,7 +574,7 @@ const Profile = ({ activeOrganization }) => {
             onChange={e => setNewPassword(e.target.value)}
           />
           {passwordErrors.newPassword && (
-            <div className="alert alert-danger">{passwordErrors.newPassword}</div>
+            <div className="text-danger small">{passwordErrors.newPassword}</div>
           )}
         </div>
         <div className="form-group col-md-3 mb-3">
@@ -544,13 +586,12 @@ const Profile = ({ activeOrganization }) => {
             onChange={e => setConfirmPassword(e.target.value)}
           />
           {passwordErrors.confirmPassword && (
-            <div className="alert alert-danger">{passwordErrors.confirmPassword}</div>
+            <div className="text-danger small">{passwordErrors.confirmPassword}</div>
           )}
         </div>
         <button className="btn btn-primary mb-3">
           {t('profile.security.changePassword.button')}
         </button>
-        {message && <p className="mt-3">{message}</p>}
       </form>
       <form onSubmit={handleEmailChange} noValidate>
         <h5>{t('profile.security.changeEmail.title')}</h5>
@@ -562,10 +603,9 @@ const Profile = ({ activeOrganization }) => {
             value={newEmail}
             onChange={e => setNewEmail(e.target.value)}
           />
-          {emailErrors.newEmail && <div className="alert alert-danger">{emailErrors.newEmail}</div>}
+          {emailErrors.newEmail && <div className="text-danger small">{emailErrors.newEmail}</div>}
         </div>
         <button className="btn btn-primary mb-3">{t('profile.security.changeEmail.button')}</button>
-        {emailMessage && <p className="mt-3">{emailMessage}</p>}
       </form>
       <div className="mt-3">
         <h4>{t('profile.security.deleteAccount.title')}</h4>
@@ -584,7 +624,7 @@ const Profile = ({ activeOrganization }) => {
       {organizationsLoading ? (
         <div className="text-center">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">{t('loading')}</span>
           </div>
         </div>
       ) : (
@@ -730,18 +770,46 @@ const Profile = ({ activeOrganization }) => {
         </button>
       </form>
       {newServiceAccountToken && (
-        <div className="alert alert-warning">
+        <div className="alert alert-warning" role="alert">
           <strong>{t('profile.serviceAccounts.token')}:</strong>{' '}
           <code>{newServiceAccountToken}</code>
           <br />
           <small>{t('profile.serviceAccounts.tokenShownOnce')}</small>
         </div>
       )}
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <div className="form-check">
+          <input
+            type="checkbox"
+            className="form-check-input"
+            id="selectAllServiceAccounts"
+            checked={allServiceAccountsSelected}
+            onChange={event => selectAllServiceAccounts(event.target.checked)}
+          />
+          <label className="form-check-label" htmlFor="selectAllServiceAccounts">
+            {t('profile.serviceAccounts.selectAll')}
+          </label>
+        </div>
+        <button
+          className="btn btn-danger btn-sm"
+          disabled={selectedAccounts.length === 0}
+          onClick={openDeleteSelectedModal}
+        >
+          {t('profile.serviceAccounts.deleteSelected', { count: selectedAccounts.length })}
+        </button>
+      </div>
       <ul className="list-group">
         {serviceAccounts.map(account => (
           <li key={account.id} className="list-group-item">
             <div className="d-flex justify-content-between align-items-center">
-              <div>
+              <input
+                type="checkbox"
+                className="form-check-input me-3"
+                checked={selectedIds.has(account.id)}
+                onChange={event => selectServiceAccount(account.id, event.target.checked)}
+                aria-label={account.username}
+              />
+              <div className="flex-grow-1">
                 <strong>{account.username}</strong> - {account.description}
                 <br />
                 <small>
@@ -785,11 +853,6 @@ const Profile = ({ activeOrganization }) => {
             <p className="text-muted">{gravatarProfile.job_title || t('profile.noJobTitle')}</p>
           </div>
           <div className="card-body">
-            {verificationMessage && (
-              <div className="alert alert-info" role="alert">
-                {verificationMessage}
-              </div>
-            )}
             {!currentUser.verified && (
               <div className="alert alert-warning" role="alert">
                 {t('profile.messages.emailNotVerified')}
@@ -847,6 +910,13 @@ const Profile = ({ activeOrganization }) => {
         handleConfirm={handleDeleteAccount}
         title={t('profile.deleteModal.title')}
         message={t('profile.deleteModal.message')}
+      />
+      <ConfirmModal
+        show={showDeleteSelectedModal}
+        handleClose={closeDeleteSelectedModal}
+        handleConfirm={handleDeleteSelectedServiceAccounts}
+        title={t('profile.serviceAccounts.deleteSelectedModal.title')}
+        message={t('profile.serviceAccounts.deleteSelectedModal.message')}
       />
     </div>
   );

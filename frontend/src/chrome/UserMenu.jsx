@@ -63,6 +63,7 @@ const UserMenu = ({
   const [showOrgs, setShowOrgs] = useState(false);
   const [loadedOrgs, setLoadedOrgs] = useState(null);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [orgsFailed, setOrgsFailed] = useState(false);
 
   const activeOrg = organizations.find(org => org.uuid === activeOrgUuid) || null;
   const switcherOrgs = loadedOrgs || organizations;
@@ -73,9 +74,13 @@ const UserMenu = ({
       return;
     }
     setLoadingOrgs(true);
+    setOrgsFailed(false);
     loadOrganizations()
       .then(rows => setLoadedOrgs(rows))
-      .catch(() => setLoadedOrgs([]))
+      .catch(() => {
+        setLoadedOrgs([]);
+        setOrgsFailed(true);
+      })
       .finally(() => setLoadingOrgs(false));
   };
 
@@ -161,6 +166,7 @@ const UserMenu = ({
         organizations={switcherOrgs}
         activeUuid={activeOrgUuid}
         loading={loadingOrgs}
+        loadFailed={orgsFailed}
         orgMark={orgMark}
         onPick={uuid => {
           setShowOrgs(false);

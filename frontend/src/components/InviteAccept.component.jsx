@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, returnTo, session } from '../chromeProps';
 import AuthService from '../services/auth.service';
 import { isOrgMember } from '../utils/permissions';
@@ -13,6 +14,7 @@ import { isOrgMember } from '../utils/permissions';
  */
 const InviteAccept = () => {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { token } = useParams();
   const navigate = useNavigate();
 
@@ -22,7 +24,6 @@ const InviteAccept = () => {
   const [invitation, setInvitation] = useState(null);
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     document.title = t('inviteAccept.title');
@@ -57,7 +58,6 @@ const InviteAccept = () => {
 
   const handleAccept = async () => {
     setAccepting(true);
-    setMessage('');
     try {
       const response = await AuthService.acceptInvitation(token);
       const org = response.data.organization;
@@ -66,7 +66,7 @@ const InviteAccept = () => {
       window.location.href = `/${org}`;
     } catch (err) {
       setAccepting(false);
-      setMessage(err.response?.data?.message || t('inviteAccept.error'));
+      notify('danger', err.response?.data?.message || t('inviteAccept.error'));
     }
   };
 
@@ -147,7 +147,7 @@ const InviteAccept = () => {
     if (isOrgMember(currentUser, orgName)) {
       return (
         <>
-          <div className="alert alert-info" role="alert">
+          <div className="alert alert-info" role="status">
             {t('inviteAccept.alreadyMember', { organization: orgName })}
           </div>
           <div className="d-grid gap-2 col-8 mx-auto">
@@ -168,11 +168,6 @@ const InviteAccept = () => {
             role: roleLabel,
           })}
         </p>
-        {message && (
-          <div className="alert alert-danger" role="alert">
-            {message}
-          </div>
-        )}
         <div className="d-grid gap-2 col-8 mx-auto">
           <button className="btn btn-primary" onClick={handleAccept} disabled={accepting}>
             {accepting && <span className="spinner-border spinner-border-sm me-2" />}

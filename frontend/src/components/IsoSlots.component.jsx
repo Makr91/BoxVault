@@ -20,6 +20,7 @@ import IsoService from '../services/iso.service';
 import { isOrgManager } from '../utils/permissions';
 
 const HOVER_DWELL_MS = 400;
+const UPLOAD_KEY = 'iso-upload';
 
 const UploadZone = ({ uploading, progress, onFile }) => {
   const { t } = useTranslation();
@@ -193,17 +194,17 @@ export const IsoListActions = ({ ctx }) => {
   const upload = (file, isPublic) => {
     setUploading(true);
     setProgress(0);
-    notify('', '');
+    notify('', '', { key: UPLOAD_KEY });
     IsoService.upload(org, file, isPublic, event => {
       setProgress(Math.round((100 * event.loaded) / event.total));
     })
       .then(() => {
-        notify('success', t('messages.operationSuccessful'));
+        notify('success', t('messages.operationSuccessful'), { key: UPLOAD_KEY });
         reload();
       })
       .catch(error => {
         log.api.error('Error uploading ISO', { error: error.message });
-        notify('danger', t('messages.uploadFailed'));
+        notify('danger', t('messages.uploadFailed'), { key: UPLOAD_KEY });
       })
       .finally(() => setUploading(false));
   };

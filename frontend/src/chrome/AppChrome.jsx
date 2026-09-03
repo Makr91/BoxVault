@@ -8,6 +8,7 @@ import Footer from './Footer';
 import Header, { brandShape, linkShape } from './Header';
 import { localProfileShape } from './IdentityCard';
 import { reportRenderError } from './logger';
+import { NoticeToasts, useNotify } from './notices';
 import { notificationsAdapterShape, pushAdapterShape } from './NotificationsModal';
 import { OrgLogo, organizationShape } from './OrgSwitcherModal';
 import { buildRouteCrumbs, parseRoute } from './routeCrumbs';
@@ -56,12 +57,41 @@ const useRouteCrumbs = ({ pathname, reserved, collections, signedIn, orgs, t }) 
   return signedIn ? buildRouteCrumbs({ route, t, orgIcon }) : [];
 };
 
+const SESSION_ENDED_KEY = 'session-ended';
+
+const useSessionEndedBanner = ({ ended, onSignIn, signInTo }) => {
+  const { t } = useTranslation();
+  const notify = useNotify();
+  const onSignInRef = useRef(onSignIn);
+
+  useEffect(() => {
+    onSignInRef.current = onSignIn;
+  });
+
+  useEffect(() => {
+    if (!ended) {
+      notify('warning', '', { key: SESSION_ENDED_KEY });
+      return;
+    }
+    const text = (
+      <>
+        <strong>{t('sessionEnded.title')}</strong> {t('sessionEnded.body')}
+      </>
+    );
+    const label = t('navbar.signIn');
+    const action = signInTo
+      ? { label, to: signInTo }
+      : { label, onClick: () => onSignInRef.current() };
+    notify('warning', text, { tier: 'banner', key: SESSION_ENDED_KEY, action });
+  }, [ended, notify, signInTo, t]);
+};
+
 /**
  * The whole chrome around an estate app's routes: the header with the
- * route crumbs and the user menu, the one scroll region with the page
- * inside its own error boundary so a page that throws keeps the chrome,
- * and the footer. Everything an app differs in arrives as data; the app
- * renders its routes as children.
+ * route crumbs, the user menu and the notice banners, the notice toasts,
+ * the one scroll region with the page inside its own error boundary so a
+ * page that throws keeps the chrome, and the footer. Everything an app
+ * differs in arrives as data; the app renders its routes as children.
  */
 const AppChrome = ({
   brand,
@@ -84,6 +114,11 @@ const AppChrome = ({
   const scrollRef = useRef(null);
   const signedIn = Boolean(user);
   const crumbs = useRouteCrumbs({ pathname, reserved, collections, signedIn, orgs, t });
+  useSessionEndedBanner({
+    ended: Boolean(session.ended) && !signedIn,
+    onSignIn: session.onSignIn || null,
+    signInTo: session.signInTo || '',
+  });
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
@@ -120,8 +155,8 @@ const AppChrome = ({
         onSignIn={session.onSignIn || null}
         signInTo={session.signInTo || ''}
         userMenu={userMenu}
-        sessionEnded={Boolean(session.ended) && !signedIn}
       />
+      <NoticeToasts LinkComponent={LinkComponent} />
       <div ref={scrollRef} className="container-fluid app-scroll py-3">
         <ErrorBoundary showErrorDetails={import.meta.env.DEV} onError={reportRenderError}>
           {children}

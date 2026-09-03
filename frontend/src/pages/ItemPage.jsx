@@ -6,7 +6,7 @@ import { FaRegStar, FaStar } from 'react-icons/fa6';
 import Markdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 
-import { providerPath, versionPath } from '../chrome';
+import { providerPath, useNotify, versionPath } from '../chrome';
 
 import ItemFacts from './ItemFacts';
 import {
@@ -19,7 +19,6 @@ import {
 } from './itemShape';
 import PageHeader from './PageHeader';
 import StatusChips from './StatusChips';
-import { useNotice } from './useNotice';
 
 const Readme = ({ readme }) => {
   const { t } = useTranslation();
@@ -331,7 +330,7 @@ VersionsSection.propTypes = {
 
 const ItemPage = ({ collection, org, name, context }) => {
   const { t, i18n } = useTranslation();
-  const [noticeNode, notify] = useNotice();
+  const notify = useNotify();
   const [nonce, setNonce] = useState(0);
   const [data, setData] = useState({ key: '', item: null });
   const [editor, setEditor] = useState(null);
@@ -382,20 +381,18 @@ const ItemPage = ({ collection, org, name, context }) => {
   if (!ready) {
     return (
       <div className="list row">
-        {noticeNode}
         <div>{t('pages.loading')}</div>
       </div>
     );
   }
   if (!item) {
-    return <div className="list row">{noticeNode}</div>;
+    return <div className="list row" />;
   }
 
   const actions = ItemActions ? <ItemActions item={item} ctx={ctx} /> : null;
 
   return (
     <div className="list row">
-      {noticeNode}
       <ItemHeading
         item={item}
         org={org}

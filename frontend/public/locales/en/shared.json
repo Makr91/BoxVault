@@ -32,16 +32,23 @@
     "title": "You were signed out.",
     "body": "Your session ended. Sign in again to continue where you were."
   },
+  "notice": {
+    "dismiss": "Dismiss"
+  },
   "session": {
     "completing": "Completing sign-in…",
     "failed": "Sign-in failed: {{message}} —",
     "clockSkew": "your time may be off, please try again",
+    "noCode": "no authorization code came back",
+    "stateMismatch": "the callback was stale or not ours",
+    "tokenFailed": "the token request failed",
     "returnLink": "return home",
     "tryAgain": "and try again."
   },
   "orgSwitcher": {
     "title": "Switch Organization",
     "noOrgsFound": "No organizations found. Contact your administrator if this is unexpected.",
+    "loadError": "Failed to load your organizations. Please try again.",
     "primaryOrg": "Primary Organization"
   },
   "roles": {
@@ -56,7 +63,10 @@
     "markRead": "Mark read",
     "dismiss": "Dismiss",
     "viewAll": "View all notifications",
-    "loadError": "Failed to load notifications. Please try again."
+    "loadError": "Failed to load notifications. Please try again.",
+    "markReadError": "Failed to mark the notification as read. Please try again.",
+    "dismissError": "Failed to dismiss the notification. Please try again.",
+    "markAllReadError": "Failed to mark all notifications as read. Please try again."
   },
   "notifications": {
     "pushSwitch": "Browser notifications on this device",
