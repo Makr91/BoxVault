@@ -14,9 +14,6 @@ const saveFavorites = favoritesArray =>
     },
   });
 
-const getUserInfoClaims = () =>
-  axios.get(`${baseURL}/api/userinfo/claims`, { headers: authHeader() });
-
 const addFavorite = (currentFavorites, clientId, customLabel = null) => [
   ...currentFavorites,
   { clientId, customLabel, order: currentFavorites.length },
@@ -28,7 +25,6 @@ const removeFavorite = (currentFavorites, clientId) =>
 const FavoritesService = {
   getFavorites,
   saveFavorites,
-  getUserInfoClaims,
   addFavorite,
   removeFavorite,
 };

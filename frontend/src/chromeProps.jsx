@@ -7,6 +7,7 @@ import authHeader from './services/auth-header';
 import AuthService from './services/auth.service';
 import NotificationsService from './services/notifications.service';
 import UserService from './services/user.service';
+import { createBackendSession, createReturnTo, createSessionEvents } from './session';
 import { log } from './utils/Logger';
 import version from './version.json';
 
@@ -17,6 +18,7 @@ export const POWERED_BY = {
   href: 'https://startcloud.com',
   logoSrc: 'https://startcloud.com/assets/images/logos/startcloud-logo40.png',
 };
+export const ACTIVE_ORG_KEY = 'activeOrganization';
 
 const loadSupportedLanguages = async () => {
   try {
@@ -40,6 +42,16 @@ export const {
   getSupportedLanguages,
 } = createI18n({ loadSupportedLanguages, debug: true });
 
+export const events = createSessionEvents();
+
+export const returnTo = createReturnTo({
+  storageKey: 'boxvault_intended_url',
+  signInPath: '/login',
+  authPaths: ['/login', '/register', '/auth/', '/setup'],
+});
+
+export const session = createBackendSession({ baseUrl: window.location.origin, events });
+
 export const notificationsAdapter = createNotificationsClient({
   baseUrl: window.location.origin,
   headers: () => authHeader(),
@@ -54,15 +66,13 @@ const getVapidKey = async () => {
   return data.publicKey;
 };
 
-const push = createPush({
+export const push = createPush({
   storageKey: 'boxvault_push_enabled',
   serviceWorkerUrl: `/notification-sw.js?app=${encodeURIComponent(APP_NAME)}`,
   getVapidKey,
   createSubscription: subscription => NotificationsService.createSubscription(subscription),
   deleteSubscription: endpoint => NotificationsService.deleteSubscription(endpoint),
 });
-
-export const { isPushEnabled, syncSubscription, listenForSubscriptionChange } = push;
 
 export const pushAdapter = {
   isSupported: push.isPushSupported,
@@ -145,9 +155,8 @@ export const organizationLogo = async org => {
 };
 
 export const fetchOrganization = async name => {
-  const user = AuthService.getCurrentUser();
   const response = await fetch(`${window.location.origin}/api/organization/${name}`, {
-    headers: user?.accessToken ? { 'x-access-token': user.accessToken } : {},
+    headers: session.authHeader(),
   });
   if (!response.ok) {
     throw new Error(`organization ${name} answered ${response.status}`);
@@ -180,24 +189,3 @@ export const loadOrganizations = async () => {
     })
   );
 };
-
-const rememberPreference = patch => {
-  const stored = AuthService.getCurrentUser();
-  if (stored) {
-    localStorage.setItem('user', JSON.stringify({ ...stored, ...patch }));
-  }
-};
-
-export const persistTheme = preference =>
-  UserService.updatePreferences({ theme: preference })
-    .then(() => rememberPreference({ preferredTheme: preference }))
-    .catch(error => {
-      log.app.error('Theme preference not saved', { error: error.message });
-    });
-
-export const persistLanguage = language =>
-  UserService.updatePreferences({ language })
-    .then(() => rememberPreference({ preferredLanguage: language }))
-    .catch(error => {
-      log.component.error('Language preference not saved', { error: error.message });
-    });

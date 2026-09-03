@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import AuthService from '../services/auth.service';
+import { session } from '../chromeProps';
 import ConfigService from '../services/config.service';
 import { processConfig } from '../utils/ConfigProcessorUtils';
 import { log } from '../utils/Logger';
@@ -164,7 +164,7 @@ const ConfigurationManager = ({ setMessage, setMessageType }) => {
       return;
     }
 
-    const user = AuthService.getCurrentUser();
+    const user = session.current();
     if (!user || !user.accessToken) {
       setMessage(t('error.unexpectedErrorOccurred'));
       setMessageType('danger');

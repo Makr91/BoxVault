@@ -45,11 +45,6 @@ const changeName = (userId, name, signal) =>
     }
   );
 
-const updatePreferences = preferences =>
-  axios.patch(`${baseURL}/api/user/preferences`, preferences, {
-    headers: authHeader(),
-  });
-
 const getUserOrganizations = () =>
   axios.get(`${baseURL}/api/user/organizations`, { headers: authHeader() });
 
@@ -67,7 +62,6 @@ const UserService = {
   changePassword,
   changeEmail,
   changeName,
-  updatePreferences,
   getUserOrganizations,
   leaveOrganization,
   setPrimaryOrganization,

@@ -1,5 +1,4 @@
 import { fetchOrganization, organizationLogo } from './chromeProps';
-import EventBus from './common/EventBus';
 import ArchitectureService from './services/architecture.service';
 import BoxService from './services/box.service';
 import FileService from './services/file.service';
@@ -25,13 +24,6 @@ const logoFor = organization => {
 };
 
 const rows = response => (Array.isArray(response.data) ? response.data : []);
-
-const signOutOn401 = error => {
-  if (error.response?.status === 401) {
-    EventBus.dispatch('logout', null);
-  }
-  throw error;
-};
 
 const fileDownloads = files =>
   (files || []).reduce((sum, file) => sum + (file.downloadCount || 0), 0);
@@ -296,13 +288,8 @@ const watches = {
 
 export const boxesAdapter = {
   listAll: () =>
-    BoxService.discoverAll()
-      .catch(signOutOn401)
-      .then(response => withLogos(rows(response), 'Unknown', boxItem)),
-  listOrg: org =>
-    BoxService.getAll(org)
-      .catch(signOutOn401)
-      .then(response => withLogos(rows(response), org, boxItem)),
+    BoxService.discoverAll().then(response => withLogos(rows(response), 'Unknown', boxItem)),
+  listOrg: org => BoxService.getAll(org).then(response => withLogos(rows(response), org, boxItem)),
   getItem,
   getItemSummary,
   getVersion,

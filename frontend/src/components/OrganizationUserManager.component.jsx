@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import EventBus from '../common/EventBus';
+import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
-import AuthService from '../services/auth.service';
 import OrganizationService from '../services/organization.service';
 import UserService from '../services/user.service';
 import { validateOrgName } from '../utils/ConfigProcessorUtils';
@@ -32,18 +31,14 @@ const OrganizationUserManager = () => {
   const [editMessage, setEditMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const currentUser = AuthService.getCurrentUser();
+  const currentUser = session.current();
 
   useEffect(() => {
     OrganizationService.getOrganizationsWithUsers().then(
       response => {
         setOrganizations(response.data);
       },
-      error => {
-        if (error.response && error.response.status === 401) {
-          EventBus.dispatch('logout');
-        }
-      }
+      () => null
     );
   }, []);
 
@@ -173,17 +168,8 @@ const OrganizationUserManager = () => {
 
       if (response.status === 200) {
         if (currentUser && currentUser.organization === oldName) {
-          currentUser.organization = newOrgName;
-          localStorage.setItem('user', JSON.stringify(currentUser));
-
-          // Force token refresh to update claims with new org name
-          await AuthService.forceTokenRefresh();
-
-          // Trigger an EventBus event to update App.jsx state
-          EventBus.dispatch('organizationUpdated', {
-            oldName,
-            newName: newOrgName,
-          });
+          localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
+          await session.refresh();
         }
 
         setOrganizations(prevOrgs =>

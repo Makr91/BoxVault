@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { session } from '../chromeProps';
 import { ConfirmModal, responseMessage } from '../pages';
-import AuthService from '../services/auth.service';
 import BoxService from '../services/box.service';
 import OrganizationService from '../services/organization.service';
 import { log } from '../utils/Logger';
@@ -115,7 +115,7 @@ const JoinAsOwner = ({ org, notify }) => {
   const join = () => {
     OrganizationService.joinOrganizationAsAdmin(org)
       .then(async () => {
-        await AuthService.refreshUserData();
+        await session.reload();
         window.location.reload();
       })
       .catch(error => {

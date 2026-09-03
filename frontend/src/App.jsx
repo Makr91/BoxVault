@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
 
@@ -8,17 +8,16 @@ import './css/auth.css';
 import About from './About';
 import { useTheme } from './chrome';
 import {
+  ACTIVE_ORG_KEY,
   APP_NAME,
   BrandLogo,
-  isPushEnabled,
-  listenForSubscriptionChange,
-  persistTheme,
-  syncSubscription,
+  events,
+  push,
+  returnTo,
+  session,
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
-import EventBus from './common/EventBus';
 import Admin from './components/admin.component';
-import AuthCallback from './components/AuthCallback';
 import InviteAccept from './components/InviteAccept.component';
 import Login from './components/login.component';
 import OrgConsole from './components/org-console.component';
@@ -38,30 +37,15 @@ import {
 } from './pages';
 import AuthService from './services/auth.service';
 import SetupService from './services/setup.service';
+import { CallbackPage, subscribeTerminateStream, useSession } from './session';
 import Shell from './shell';
 import { log } from './utils/Logger';
 import { isOrgManager, isOrgMember } from './utils/permissions';
-import { subscribeSessionEvents } from './utils/sessionEvents';
 
 const PREFS_PREFIX = 'boxvault_table_prefs';
+const PROFILE_RELOAD_MS = 69120000;
 
-const resolveActiveOrganization = (user, stored) => {
-  if (!user) {
-    return '';
-  }
-  if (!Array.isArray(user.organizations)) {
-    return stored || user.organization || '';
-  }
-
-  const names = user.organizations.map(org => org.name).filter(Boolean);
-  if (stored && names.includes(stored)) {
-    return stored;
-  }
-  if (user.organization && names.includes(user.organization)) {
-    return user.organization;
-  }
-  return names[0] || '';
-};
+const persistTheme = preference => session.savePreferences({ theme: preference });
 
 const DiscoverLink = () => {
   const { t } = useTranslation();
@@ -159,6 +143,26 @@ ProviderRoute.propTypes = {
 
 const App = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const account = useSession({
+    provider: session,
+    events,
+    returnTo,
+    activeOrgKey: ACTIVE_ORG_KEY,
+    push,
+  });
+  const { user, activeOrgUuid: activeOrganization, reload } = account;
+  const [gravatar, setGravatar] = useState(null);
+  const [setupComplete, setSetupComplete] = useState(null);
+  const {
+    theme,
+    preference: themePreference,
+    setPreference: setThemePreference,
+    toggleTheme,
+  } = useTheme({
+    initialPreference: session.current()?.preferredTheme || '',
+    onPersist: persistTheme,
+  });
 
   useEffect(() => {
     let bootstrap;
@@ -178,33 +182,6 @@ const App = () => {
       }
     };
   }, []);
-
-  const [showAdminBoard, setShowAdminBoard] = useState(() =>
-    Boolean(AuthService.getCurrentUser()?.roles?.includes('ROLE_ADMIN'))
-  );
-  const [currentUser, setCurrentUser] = useState(() => AuthService.getCurrentUser() || undefined);
-  const [activeOrganization, setActiveOrganization] = useState(() =>
-    resolveActiveOrganization(
-      AuthService.getCurrentUser(),
-      localStorage.getItem('activeOrganization')
-    )
-  );
-  const [gravatarUrl, setGravatarUrl] = useState(
-    () => AuthService.getCurrentUser()?.avatarUrl || ''
-  );
-  const [gravatarFetched, setGravatarFetched] = useState(false);
-  const {
-    theme,
-    preference: themePreference,
-    setPreference: setThemePreference,
-    toggleTheme,
-  } = useTheme({
-    initialPreference: AuthService.getCurrentUser()?.preferredTheme || '',
-    onPersist: persistTheme,
-  });
-  const [setupComplete, setSetupComplete] = useState(null);
-  const [sessionEnded, setSessionEnded] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const favicon = document.getElementById('favicon');
@@ -242,202 +219,74 @@ const App = () => {
     };
   }, [navigate]);
 
-  const fetchGravatarUrl = useCallback(
-    emailHash => {
-      const controller = new AbortController();
-
-      const loadGravatar = async () => {
-        if (!gravatarFetched) {
-          try {
-            const profile = await AuthService.getGravatarProfile(emailHash, controller.signal);
-            if (profile?.avatar_url) {
-              setGravatarUrl(profile.avatar_url);
-            }
-            setGravatarFetched(true);
-          } catch (error) {
-            if (error.name !== 'AbortError') {
-              log.api.error('Error fetching Gravatar', {
-                emailHash,
-                error: error.message,
-              });
-              setGravatarFetched(true);
-            }
-          }
-        }
-      };
-
-      loadGravatar();
-
-      return () => {
-        controller.abort();
-      };
-    },
-    [gravatarFetched]
-  );
-
   useEffect(() => {
-    const user = AuthService.getCurrentUser();
-
-    if (user) {
-      if (activeOrganization) {
-        localStorage.setItem('activeOrganization', activeOrganization);
-      } else {
-        localStorage.removeItem('activeOrganization');
-      }
-
-      if (!user.avatarUrl && user.emailHash) {
-        fetchGravatarUrl(user.emailHash);
-      }
-    } else {
-      localStorage.removeItem('activeOrganization');
+    if (user?.preferredTheme) {
+      setThemePreference(user.preferredTheme, { persist: false });
     }
-  }, [activeOrganization, fetchGravatarUrl]);
-
-  const handleOrganizationSwitch = useCallback(
-    newOrgName => {
-      setActiveOrganization(newOrgName);
-      localStorage.setItem('activeOrganization', newOrgName);
-
-      log.app.info('Organization switched', {
-        from: activeOrganization,
-        to: newOrgName,
-      });
-    },
-    [activeOrganization]
-  );
-
-  const logOut = useCallback(() => {
-    AuthService.logout();
-    setShowAdminBoard(false);
-    setCurrentUser(undefined);
-    setGravatarUrl('');
-    setGravatarFetched(false);
-  }, []);
-
-  const logOutLocal = useCallback(() => {
-    AuthService.logoutLocal();
-    setShowAdminBoard(false);
-    setCurrentUser(undefined);
-    setGravatarUrl('');
-    setGravatarFetched(false);
-  }, []);
+  }, [user?.preferredTheme, setThemePreference]);
 
   useEffect(() => {
-    const logoutCleanup = EventBus.on('logout', () => {
-      logOut();
-    });
-
-    const sessionEndedCleanup = EventBus.on('sessionEnded', detail => {
-      setCurrentUser(undefined);
-      setShowAdminBoard(false);
-      setGravatarUrl('');
-      setGravatarFetched(false);
-      setSessionEnded({ returnTo: detail?.returnTo || '/' });
-    });
-
-    const loginCleanup = EventBus.on('login', userData => {
-      setSessionEnded(null);
-      setCurrentUser(userData);
-      setShowAdminBoard(userData.roles && userData.roles.includes('ROLE_ADMIN'));
-
-      if (userData.preferredTheme) {
-        setThemePreference(userData.preferredTheme, { persist: false });
-      }
-      if (userData.preferredLanguage && userData.preferredLanguage !== i18n.language) {
-        i18n.changeLanguage(userData.preferredLanguage);
-      }
-
-      const nextOrganization = resolveActiveOrganization(
-        userData,
-        localStorage.getItem('activeOrganization')
-      );
-
-      setActiveOrganization(nextOrganization);
-      if (nextOrganization) {
-        localStorage.setItem('activeOrganization', nextOrganization);
-      } else {
-        localStorage.removeItem('activeOrganization');
-      }
-
-      if (userData.avatarUrl) {
-        setGravatarUrl(userData.avatarUrl);
-      } else if (userData.emailHash) {
-        fetchGravatarUrl(userData.emailHash);
-      }
-    });
-
-    const organizationUpdateCleanup = EventBus.on('organizationUpdated', data => {
-      setCurrentUser(c => (c ? { ...c, organization: data.newName } : c));
-
-      setActiveOrganization(currentActive => {
-        if (currentActive === data.oldName) {
-          localStorage.setItem('activeOrganization', data.newName);
-          return data.newName;
-        }
-        return currentActive;
-      });
-    });
-
-    return () => {
-      logoutCleanup();
-      sessionEndedCleanup();
-      loginCleanup();
-      organizationUpdateCleanup();
-    };
-  }, [fetchGravatarUrl, i18n, logOut, logOutLocal, setThemePreference]);
-
-  useEffect(() => {
-    let mounted = true;
-    let intervalId;
-
-    if (currentUser) {
-      intervalId = setInterval(() => {
-        if (mounted) {
-          AuthService.refreshUserData().then(updatedUser => {
-            if (mounted && updatedUser) {
-              setCurrentUser(updatedUser);
-            }
-          });
-        }
-      }, 69120000);
+    if (user?.preferredLanguage && user.preferredLanguage !== i18n.language) {
+      i18n.changeLanguage(user.preferredLanguage);
     }
-
-    return () => {
-      mounted = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [currentUser]);
+  }, [user?.preferredLanguage, i18n]);
 
   useEffect(() => {
-    if (!currentUser || !isPushEnabled()) {
+    const emailHash = user && !user.avatarUrl ? user.emailHash : '';
+    if (!emailHash) {
       return undefined;
     }
-    const reportSyncFailure = error => {
-      log.app.error('Push subscription sync failed', {
-        error: error.message,
-      });
+    const controller = new AbortController();
+    AuthService.getGravatarProfile(emailHash, controller.signal).then(profile => {
+      if (profile?.avatar_url) {
+        setGravatar({ emailHash, url: profile.avatar_url });
+      }
+    });
+    return () => {
+      controller.abort();
     };
-    syncSubscription().catch(reportSyncFailure);
-    return listenForSubscriptionChange(reportSyncFailure);
-  }, [currentUser]);
+  }, [user]);
 
   useEffect(() => {
-    if (!currentUser?.accessToken) {
+    if (!user) {
       return undefined;
     }
-    return subscribeSessionEvents(currentUser.accessToken);
-  }, [currentUser]);
+    const timer = setInterval(reload, PROFILE_RELOAD_MS);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [user, reload]);
+
+  useEffect(() => {
+    const token = user?.accessToken;
+    if (!token) {
+      return undefined;
+    }
+    return subscribeTerminateStream({
+      url: `${window.location.origin}/api/notifications/events`,
+      headers: { 'x-access-token': token },
+      onEnded: () => events.endSession(),
+    });
+  }, [user?.accessToken]);
 
   if (setupComplete === null) {
     return <div>{t('loading')}</div>;
   }
 
-  const showOrgConsole = isOrgManager(currentUser, activeOrganization);
+  const fetchedGravatar = gravatar?.emailHash === user?.emailHash ? gravatar?.url || '' : '';
+  const gravatarUrl = user ? user.avatarUrl || fetchedGravatar : '';
+  const showAdminBoard = Boolean(user?.roles?.includes('ROLE_ADMIN'));
+  const showOrgConsole = isOrgManager(user, activeOrganization);
+
+  const handleSignOut = () => {
+    account.signOut();
+    navigate('/');
+  };
+
+  const afterSignIn = () => navigate(returnTo.consume() || '/', { replace: true });
 
   const context = {
-    user: currentUser || null,
+    user,
     orgMark: <BrandLogo theme={theme} className="logo-xl icon-with-margin-sm" />,
     prefsPrefix: PREFS_PREFIX,
     appName: APP_NAME,
@@ -450,18 +299,14 @@ const App = () => {
 
   return (
     <Shell
-      currentUser={currentUser}
-      activeOrganization={activeOrganization}
-      onOrganizationSwitch={handleOrganizationSwitch}
+      account={account}
       gravatarUrl={gravatarUrl}
       showAdminBoard={showAdminBoard}
       showOrgConsole={showOrgConsole}
       theme={theme}
       themePreference={themePreference}
       toggleTheme={toggleTheme}
-      logOut={logOut}
-      logOutLocal={logOutLocal}
-      sessionEnded={sessionEnded}
+      onSignOut={handleSignOut}
     >
       <Routes>
         <Route
@@ -481,7 +326,10 @@ const App = () => {
               element={<OrganizationDiscovery theme={theme} />}
             />
             <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/auth/callback"
+              element={<CallbackPage complete={session.complete} onDone={afterSignIn} />}
+            />
             <Route path="/register" element={<Register />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
             <Route path="/profile" element={<Profile activeOrganization={activeOrganization} />} />

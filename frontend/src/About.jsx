@@ -3,9 +3,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaCode, FaGithub, FaHeart, FaServer } from 'react-icons/fa6';
 
-import { BrandLogo } from './chromeProps';
+import { BrandLogo, session } from './chromeProps';
 import { AboutPage } from './pages';
-import AuthService from './services/auth.service';
 import FavoritesService from './services/favorites.service';
 import UserService from './services/user.service';
 import { log } from './utils/Logger';
@@ -54,7 +53,7 @@ const About = ({ theme }) => {
         setProjectData(prevData => ({ ...prevData, title: content }));
       }
 
-      const user = AuthService.getCurrentUser();
+      const user = session.current();
       setCurrentUser(user);
 
       if (user?.provider?.startsWith('oidc-')) {

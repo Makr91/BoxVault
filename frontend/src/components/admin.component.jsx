@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import AuthService from '../services/auth.service';
+import { returnTo, session } from '../chromeProps';
 import SystemService from '../services/system.service';
 import { log } from '../utils/Logger';
 
@@ -29,11 +29,10 @@ const Admin = () => {
 
   // Authentication guard - redirect if not authenticated or not admin
   useEffect(() => {
-    const currentUser = AuthService.getCurrentUser();
+    const currentUser = session.current();
 
     if (!currentUser) {
-      // Not authenticated, redirect to login
-      navigate(`/login?returnTo=${encodeURIComponent('/admin')}`);
+      navigate(returnTo.signInTo('/admin'));
       return;
     }
 

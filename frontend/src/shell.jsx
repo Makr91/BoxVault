@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Dropdown } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaBuilding, FaCircleInfo, FaGear } from 'react-icons/fa6';
@@ -17,23 +17,14 @@ import {
   fetchOrganization,
   getSupportedLanguages,
   hasNotificationsScope,
-  isOidcSession,
   loadOrganizations,
   notificationsAdapter,
-  persistLanguage,
   pushAdapter,
+  returnTo,
 } from './chromeProps';
 import { collections } from './collections';
-import AuthService from './services/auth.service';
-import FavoritesService from './services/favorites.service';
-import { fetchTrustedIssuers, resolveIssuer } from './utils/authServer';
+import { sessionStateShape } from './session';
 import { log } from './utils/Logger';
-
-const resolveMemberships = user => (Array.isArray(user?.organizations) ? user.organizations : []);
-
-const resolveDisplayName = (userClaims, user) => userClaims?.name || userDisplayName(user);
-
-const AUTH_PATHS = ['/login', '/register', '/auth/', '/setup'];
 
 const RESERVED_ROUTES = [
   'about',
@@ -84,60 +75,45 @@ AppRows.propTypes = {
 const routeOrgLogo = name => fetchOrganization(name).then(organization => organization.logo);
 
 const Shell = ({
-  currentUser,
+  account,
   gravatarUrl,
   showAdminBoard,
   showOrgConsole,
   theme,
   themePreference,
   toggleTheme,
-  logOut,
-  logOutLocal,
-  activeOrganization,
-  onOrganizationSwitch,
-  sessionEnded = null,
+  onSignOut,
   children,
 }) => {
   const { t, i18n } = useTranslation();
   const { pathname, search } = useLocation();
-  const [favoriteApps, setFavoriteApps] = useState([]);
-  const [userClaims, setUserClaims] = useState(null);
+  const { user, claims, organizations: memberships, activeOrgUuid, issuerUrl, oidc } = account;
   const [ticketConfig, setTicketConfig] = useState(null);
-  const [authServerUrl, setAuthServerUrl] = useState('');
-  const [trustedIssuers, setTrustedIssuers] = useState([]);
-  const [activeOrgGravatar, setActiveOrgGravatar] = useState(null);
-  const [activeOrgCode, setActiveOrgCode] = useState(null);
-
-  const oidc = isOidcSession(currentUser);
-  const memberships = resolveMemberships(currentUser);
+  const [activeOrg, setActiveOrg] = useState(null);
 
   const changeLanguage = async lng => {
-    if (currentUser) {
-      persistLanguage(lng);
-    }
+    account.savePreferences({ language: lng });
     await i18n.changeLanguage(lng);
   };
 
   useEffect(() => {
     let mounted = true;
 
-    const loadTrustedIssuers = async () => {
+    const loadTicketConfig = async () => {
       try {
-        const issuers = await fetchTrustedIssuers();
-        if (mounted) {
-          setTrustedIssuers(issuers);
+        const response = await fetch(`${window.location.origin}/api/config/ticket`);
+        if (response.ok) {
+          const data = await response.json();
+          if (mounted && data?.ticket_system) {
+            setTicketConfig(data.ticket_system);
+          }
         }
       } catch (error) {
-        log.auth.error('Failed to load trusted issuers', {
-          error: error.message,
-        });
-        if (mounted) {
-          setTrustedIssuers([]);
-        }
+        log.api.error('Error fetching ticket config', { error: error.message });
       }
     };
 
-    loadTrustedIssuers();
+    loadTicketConfig();
 
     return () => {
       mounted = false;
@@ -145,120 +121,37 @@ const Shell = ({
   }, []);
 
   useEffect(() => {
+    if (!user || !activeOrgUuid) {
+      return undefined;
+    }
     let mounted = true;
 
-    const loadUserData = async () => {
-      if (!isOidcSession(currentUser)) {
-        setFavoriteApps([]);
-        setUserClaims(null);
-        return;
-      }
-      try {
-        const response = await FavoritesService.getUserInfoClaims();
+    fetchOrganization(activeOrgUuid)
+      .then(organization => {
         if (mounted) {
-          setUserClaims(response.data);
-          setFavoriteApps(response.data?.favorite_apps || []);
+          setActiveOrg(organization);
         }
-      } catch (error) {
-        if (!error.name?.includes('Cancel') && !error.message?.includes('aborted')) {
-          log.api.error('Error loading user claims', {
-            error: error.message,
-          });
-        }
-      }
-    };
-
-    loadUserData();
+      })
+      .catch(error => {
+        log.api.error('Error fetching active organization', { error: error.message });
+      });
 
     return () => {
       mounted = false;
     };
-  }, [currentUser]);
+  }, [user, activeOrgUuid]);
 
-  const fetchTicketConfig = useCallback(async mounted => {
-    try {
-      const response = await fetch(`${window.location.origin}/api/config/ticket`);
-      if (response.ok) {
-        const data = await response.json();
-        if (mounted && data?.ticket_system) {
-          setTicketConfig(data.ticket_system);
-        }
-      }
-    } catch (error) {
-      log.api.error('Error fetching ticket config', { error: error.message });
-    }
-  }, []);
-
-  const fetchOrgGravatar = useCallback(async (org, user, mounted) => {
-    try {
-      const response = await fetch(`${window.location.origin}/api/organization/${org}`, {
-        headers: { 'x-access-token': user.accessToken },
-      });
-      if (!response.ok) {
-        return;
-      }
-
-      const orgData = await response.json();
-
-      if (mounted) {
-        setActiveOrgCode(orgData.external_issuer ? orgData.org_code || null : null);
-      }
-
-      if (orgData.logo && mounted) {
-        setActiveOrgGravatar(orgData.logo);
-        return;
-      }
-
-      if (!orgData.emailHash || !mounted) {
-        return;
-      }
-
-      const profile = await AuthService.getGravatarProfile(orgData.emailHash);
-      if (profile?.avatar_url && mounted) {
-        setActiveOrgGravatar(profile.avatar_url);
-      }
-    } catch (error) {
-      log.api.error('Error fetching active org gravatar', {
-        error: error.message,
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadConfigs = async () => {
-      await fetchTicketConfig(mounted);
-
-      if (trustedIssuers.length > 0 && isOidcSession(currentUser) && currentUser?.accessToken) {
-        const issuerUrl = resolveIssuer(currentUser.accessToken, trustedIssuers);
-        if (issuerUrl && mounted) {
-          setAuthServerUrl(issuerUrl);
-        }
-      }
-
-      if (activeOrganization && currentUser) {
-        await fetchOrgGravatar(activeOrganization, currentUser, mounted);
-      }
-    };
-
-    loadConfigs();
-
-    return () => {
-      mounted = false;
-    };
-  }, [currentUser, trustedIssuers, activeOrganization, fetchTicketConfig, fetchOrgGravatar]);
+  const active = activeOrg?.name === activeOrgUuid ? activeOrg : null;
 
   const ticketUrl = buildTicketUrl({
     ticketConfig,
-    activeOrgCode,
-    userClaims,
-    user: currentUser,
+    activeOrgCode: active?.orgCode || '',
+    userClaims: claims,
+    user,
   });
 
-  const displayName = resolveDisplayName(userClaims, currentUser);
-  const email = userSecondaryLine({ ...currentUser, name: displayName });
-  const issuerUrl = oidc ? authServerUrl : '';
+  const displayName = claims?.name || userDisplayName(user);
+  const email = userSecondaryLine({ ...user, name: displayName });
 
   const renderAvatar = size => (
     <Avatar
@@ -268,18 +161,13 @@ const Shell = ({
     />
   );
 
-  const organizations = memberships
-    .map(membership => membership.name)
-    .filter(Boolean)
-    .map(name => ({
-      uuid: name,
-      name,
-      logo: name === activeOrganization ? activeOrgGravatar || '' : '',
-    }));
+  const organizations = memberships.map(org => ({
+    ...org,
+    logo: org.name === activeOrgUuid ? active?.logo || '' : '',
+  }));
 
-  const onAuthPage = AUTH_PATHS.some(path => pathname.startsWith(path));
-  const returnTo = sessionEnded?.returnTo || (onAuthPage ? '' : `${pathname}${search}`);
-  const signInTo = returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login';
+  const onAuthPage = returnTo.onAuthPage(pathname);
+  const returnPath = account.sessionEnded?.returnTo || (onAuthPage ? '' : `${pathname}${search}`);
 
   return (
     <AppChrome
@@ -297,9 +185,9 @@ const Shell = ({
       collections={collections}
       theme={{ preference: themePreference, onToggle: toggleTheme }}
       language={{ languages: getSupportedLanguages(), onPick: changeLanguage }}
-      user={currentUser || null}
+      user={user}
       identity={
-        currentUser
+        user
           ? {
               displayName,
               email,
@@ -312,31 +200,31 @@ const Shell = ({
       }
       orgs={{
         organizations,
-        activeUuid: activeOrganization || '',
-        onPick: onOrganizationSwitch,
+        activeUuid: activeOrgUuid,
+        onPick: account.pickOrg,
         load: loadOrganizations,
         mark: <BrandLogo theme={theme} className="logo-md icon-with-margin" />,
         crumbMark: <BrandLogo theme={theme} className="logo-sm" />,
         logoFor: routeOrgLogo,
       }}
       menu={
-        currentUser
+        user
           ? {
               appName: t('navbar.boxvault'),
               appRows: <AppRows showAdminBoard={showAdminBoard} showOrgConsole={showOrgConsole} />,
-              favorites: favoriteApps,
-              notifications: hasNotificationsScope(userClaims) ? notificationsAdapter : null,
+              favorites: claims?.favorite_apps || [],
+              notifications: hasNotificationsScope(claims) ? notificationsAdapter : null,
               push: pushAdapter,
-              viewAllUrl: authServerUrl ? `${authServerUrl}/notifications` : '',
+              viewAllUrl: issuerUrl ? `${issuerUrl}/notifications` : '',
               ticketUrl,
             }
           : null
       }
       session={{
-        signInTo,
-        ended: Boolean(sessionEnded),
-        onSignOut: logOutLocal,
-        onSignOutEverywhere: logOut,
+        signInTo: returnTo.signInTo(returnPath),
+        ended: Boolean(account.sessionEnded),
+        onSignOut,
+        onSignOutEverywhere: account.signOutEverywhere,
       }}
       footer={{ version: APP_VERSION, repoUrl: REPO_URL, poweredBy: POWERED_BY, fetchHealth }}
     >
@@ -346,26 +234,14 @@ const Shell = ({
 };
 
 Shell.propTypes = {
-  currentUser: PropTypes.shape({
-    username: PropTypes.string,
-    name: PropTypes.string,
-    provider: PropTypes.string,
-    accessToken: PropTypes.string,
-    email: PropTypes.string,
-    organization: PropTypes.string,
-    organizations: PropTypes.arrayOf(PropTypes.object),
-  }),
-  gravatarUrl: PropTypes.string,
-  showAdminBoard: PropTypes.bool,
-  showOrgConsole: PropTypes.bool,
+  account: sessionStateShape.isRequired,
+  gravatarUrl: PropTypes.string.isRequired,
+  showAdminBoard: PropTypes.bool.isRequired,
+  showOrgConsole: PropTypes.bool.isRequired,
   theme: PropTypes.string.isRequired,
   themePreference: PropTypes.string.isRequired,
   toggleTheme: PropTypes.func.isRequired,
-  logOut: PropTypes.func.isRequired,
-  logOutLocal: PropTypes.func.isRequired,
-  activeOrganization: PropTypes.string,
-  onOrganizationSwitch: PropTypes.func.isRequired,
-  sessionEnded: PropTypes.shape({ returnTo: PropTypes.string.isRequired }),
+  onSignOut: PropTypes.func.isRequired,
   children: PropTypes.node.isRequired,
 };
 

@@ -4,14 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router-dom';
 
+import { returnTo, session } from '../chromeProps';
 import AuthService from '../services/auth.service';
 import { log } from '../utils/Logger';
-import {
-  redirectToProvider,
-  sortMethodsByDefault,
-  readStoredLoginMethod,
-  storeLoginMethod,
-} from '../utils/providers';
+import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
 import AuthShell, { AuthAlert, AuthSpinner, InboxIcon } from './AuthShell.component';
 import ProviderButtons from './ProviderButtons.component';
@@ -381,14 +377,13 @@ const Register = () => {
 
   const handleOidcRegister = provider => {
     try {
-      localStorage.setItem(
-        'boxvault_intended_url',
+      returnTo.remember(
         invitationToken
           ? `/invite/${encodeURIComponent(invitationToken)}`
           : '/organizations/discover'
       );
       setIsSubmitting(true);
-      redirectToProvider(provider);
+      session.begin({ method: provider });
     } catch (err) {
       log.auth.error('Invalid OIDC provider selected', { error: err.message });
       setIsSubmitting(false);

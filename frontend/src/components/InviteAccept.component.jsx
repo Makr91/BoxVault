@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { ACTIVE_ORG_KEY, returnTo, session } from '../chromeProps';
 import AuthService from '../services/auth.service';
 import { isOrgMember } from '../utils/permissions';
 
@@ -15,7 +16,7 @@ const InviteAccept = () => {
   const { token } = useParams();
   const navigate = useNavigate();
 
-  const currentUser = AuthService.getCurrentUser();
+  const currentUser = session.current();
 
   const [loading, setLoading] = useState(true);
   const [invitation, setInvitation] = useState(null);
@@ -60,9 +61,8 @@ const InviteAccept = () => {
     try {
       const response = await AuthService.acceptInvitation(token);
       const org = response.data.organization;
-      // Refresh the JWT so the new membership appears in the org switcher/claims.
-      await AuthService.forceTokenRefresh();
-      localStorage.setItem('activeOrganization', org);
+      localStorage.setItem(ACTIVE_ORG_KEY, org);
+      await session.refresh();
       window.location.href = `/${org}`;
     } catch (err) {
       setAccepting(false);
@@ -72,9 +72,8 @@ const InviteAccept = () => {
 
   const handleSignIn = () => {
     const target = `/invite/${token}`;
-    // Honored by both the local login (returnTo) and the OIDC callback (intended url).
-    localStorage.setItem('boxvault_intended_url', target);
-    navigate(`/login?returnTo=${encodeURIComponent(target)}`);
+    returnTo.remember(target);
+    navigate(returnTo.signInTo(target));
   };
 
   const renderBody = () => {

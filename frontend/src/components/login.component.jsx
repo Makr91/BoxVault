@@ -4,44 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
-import EventBus from '../common/EventBus';
+import { returnTo, session } from '../chromeProps';
 import AuthService from '../services/auth.service';
 import { log } from '../utils/Logger';
-import {
-  redirectToProvider,
-  sortMethodsByDefault,
-  readStoredLoginMethod,
-  storeLoginMethod,
-} from '../utils/providers';
+import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
 import AuthShell, { AuthAlert, AuthSpinner } from './AuthShell.component';
 import ProviderButtons from './ProviderButtons.component';
 
 const SILENT_SSO_FLAG = 'boxvault_silent_sso_attempted';
 
-const returnPathOf = urlParams => {
-  const returnTo = urlParams.get('returnTo');
-  if (returnTo) {
-    const decodedUrl = decodeURIComponent(returnTo);
-    if (decodedUrl.startsWith('/') && !decodedUrl.startsWith('//')) {
-      return decodedUrl;
-    }
-  }
-  return '';
+const rememberReturn = urlParams => {
+  const fromPage = window.location.pathname === '/login' ? '' : window.location.pathname;
+  returnTo.remember(returnTo.fromParams(urlParams) || fromPage);
 };
-
-const rememberIntendedUrl = urlParams => {
-  const returnTo = returnPathOf(urlParams);
-  if (returnTo) {
-    localStorage.setItem('boxvault_intended_url', returnTo);
-    return;
-  }
-  if (window.location.pathname !== '/login') {
-    localStorage.setItem('boxvault_intended_url', window.location.pathname);
-  }
-};
-
-const resolveReturnPath = urlParams => returnPathOf(urlParams) || '/profile';
 
 const getOidcErrorMessage = (error, t) => {
   switch (error) {
@@ -365,7 +341,7 @@ const Login = () => {
     if (hasSilentBlockingParams(urlParams)) {
       return false;
     }
-    if (AuthService.getCurrentUser()) {
+    if (session.current()) {
       return false;
     }
     if (sessionStorage.getItem(SILENT_SSO_FLAG)) {
@@ -414,8 +390,8 @@ const Login = () => {
     }
     try {
       sessionStorage.setItem(SILENT_SSO_FLAG, '1');
-      rememberIntendedUrl(urlParams);
-      redirectToProvider(defaultProvider, '?prompt=none');
+      rememberReturn(urlParams);
+      session.begin({ method: defaultProvider, silent: true });
     } catch (err) {
       log.auth.error('Silent SSO attempt failed to start', {
         error: err.message,
@@ -429,11 +405,11 @@ const Login = () => {
   };
 
   const handleOidcLogin = provider => {
-    rememberIntendedUrl(urlParams);
+    rememberReturn(urlParams);
     setLoading(true);
     setStatusMessage('');
     try {
-      redirectToProvider(provider);
+      session.begin({ method: provider });
     } catch (err) {
       log.auth.error('Invalid OIDC provider selected', { error: err.message });
       setLoading(false);
@@ -459,10 +435,10 @@ const Login = () => {
     setStatusMessage('');
     setLoading(true);
 
-    AuthService.login(formValues.username, formValues.password, formValues.stayLoggedIn)
-      .then(user => {
-        EventBus.dispatch('login', user);
-        navigate(resolveReturnPath(urlParams), { replace: true });
+    session
+      .login(formValues.username, formValues.password, formValues.stayLoggedIn)
+      .then(() => {
+        navigate(returnTo.fromParams(urlParams) || '/', { replace: true });
       })
       .catch(error => {
         const resMessage = error.response?.data?.message || error.message || error.toString();

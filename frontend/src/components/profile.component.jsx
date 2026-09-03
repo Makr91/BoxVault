@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { isOidcSession } from '../chromeProps';
+import { events, isOidcSession, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
 import RequestService from '../services/request.service';
@@ -17,14 +17,14 @@ const Profile = ({ activeOrganization }) => {
     document.title = t('profile.pageTitle');
   }, [t]);
 
-  const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState(session.current());
   const [gravatarProfile, setGravatarProfile] = useState({});
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
-  const [displayName, setDisplayName] = useState(AuthService.getCurrentUser()?.name || '');
+  const [displayName, setDisplayName] = useState(session.current()?.name || '');
   const [displayNameMessage, setDisplayNameMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const [passwordErrors, setPasswordErrors] = useState({});
@@ -148,8 +148,7 @@ const Profile = ({ activeOrganization }) => {
   const handleDeleteAccount = async () => {
     try {
       await UserService.deleteUser(currentUser.id);
-      AuthService.logout();
-      navigate('/login');
+      await session.signOutEverywhere();
     } catch (error) {
       log.auth.error('Error deleting account', {
         userId: currentUser.id,
@@ -163,13 +162,16 @@ const Profile = ({ activeOrganization }) => {
   const openDeleteModal = () => setShowDeleteModal(true);
   const closeDeleteModal = () => setShowDeleteModal(false);
 
-  const refreshUserData = useCallback(() => {
-    AuthService.refreshUserData().then(updatedUser => {
-      if (updatedUser) {
-        setCurrentUser(updatedUser);
-      }
-    });
-  }, []);
+  const refreshUserData = useCallback(
+    () =>
+      session.reload().then(next => {
+        if (next) {
+          setCurrentUser(next.user);
+          events.emit('login');
+        }
+      }),
+    []
+  );
 
   const handleSetPrimaryOrganization = async orgName => {
     try {

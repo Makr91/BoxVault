@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
-import EventBus from '../common/EventBus';
+import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
 import InvitationService from '../services/invitation.service';
@@ -445,7 +445,7 @@ const OrgConsole = ({ currentOrganization }) => {
   const [orgIdpLink, setOrgIdpLink] = useState('');
   const [orgDisplayName, setOrgDisplayName] = useState('');
   const [activeTab, setActiveTab] = useState('organization');
-  const currentUser = AuthService.getCurrentUser();
+  const currentUser = session.current();
   const canManageRoles = isOrgOwner(currentUser, currentOrganization);
   const [searchTerm, setSearchTerm] = useState('');
   // Access mode / default role as loaded, so save only calls the dedicated
@@ -542,11 +542,6 @@ const OrgConsole = ({ currentOrganization }) => {
         setOrgAddress(details.address);
       }
 
-      const unauthorized = failures.some(({ result }) => result.reason?.response?.status === 401);
-      if (unauthorized) {
-        EventBus.dispatch('logout');
-      }
-
       setLoadedOrganization(currentOrganization);
     };
 
@@ -585,21 +580,9 @@ const OrgConsole = ({ currentOrganization }) => {
       });
 
       if (response.status === 200) {
-        // Update the user's organization in localStorage if name changed
         if (newOrgName !== currentOrganization) {
-          if (currentUser) {
-            const updatedUser = { ...currentUser, organization: newOrgName };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-          }
-
-          // Force token refresh to update claims with new org name
-          await AuthService.forceTokenRefresh();
-
-          // Trigger an EventBus event to update App.jsx state
-          EventBus.dispatch('organizationUpdated', {
-            oldName: currentOrganization,
-            newName: newOrgName,
-          });
+          localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
+          await session.refresh();
         }
 
         // Local orgs: persist access mode / default role through the

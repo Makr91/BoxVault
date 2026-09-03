@@ -4,6 +4,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { FaBuilding, FaUsers, FaBox } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { returnTo, session } from '../chromeProps';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import AuthService from '../services/auth.service';
@@ -272,12 +273,9 @@ const OrganizationDiscovery = ({ theme }) => {
                         <button
                           className="btn btn-primary w-100"
                           onClick={() => {
-                            const currentUser = AuthService.getCurrentUser();
-                            if (!currentUser) {
+                            if (!session.current()) {
                               localStorage.setItem('boxvault_join_org', org.name);
-                              navigate(
-                                `/login?returnTo=${encodeURIComponent('/organizations/discover')}`
-                              );
+                              navigate(returnTo.signInTo('/organizations/discover'));
                             } else {
                               setRequestingOrg(org);
                             }
