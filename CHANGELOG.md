@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.71.0](https://github.com/Makr91/BoxVault/compare/v0.70.0...v0.71.0) (2026-09-03)
+
+
+### Features
+
+* identity-provider tokens with DPoP on every gate, IdP claims kept through refresh ([9920c20](https://github.com/Makr91/BoxVault/commit/9920c208813a0e124325469d2312193e233e7d11))
+
 ## [0.70.0](https://github.com/Makr91/BoxVault/compare/v0.69.0...v0.70.0) (2026-09-03)
 
 
