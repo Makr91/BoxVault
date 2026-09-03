@@ -124,6 +124,19 @@ boxvault:
     subsection_key: boxvaultSettings
     required: true
     order: 10
+  allowed_origins:
+    type: array
+    value: []
+    description: >-
+      Comma-separated list of additional browser origins allowed to call the
+      BoxVault API cross-origin with their own identity-provider session (e.g.
+      https://provisioner-catalog.startcloud.com). BoxVault's own origin is
+      always allowed.
+    section: Application
+    subsection: BoxVault Settings
+    subsection_key: boxvaultSettings
+    required: false
+    order: 11
 gravatar:
   base_url:
     type: url
