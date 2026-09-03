@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.63.0](https://github.com/Makr91/BoxVault/compare/v0.62.0...v0.63.0) (2026-09-03)
+
+
+### Features
+
+* watch cell on every table so the shape holds signed in or out ([66b275e](https://github.com/Makr91/BoxVault/commit/66b275e1d171a490cf0e2dc4706039fa0b72741e))
+
+
+### Bug Fixes
+
+* keep SSO sessions signed in by adopting the refreshed token returned after an IdP token refresh ([366811e](https://github.com/Makr91/BoxVault/commit/366811ee31392476d78caf984d006786a2ad6803))
+
 ## [0.62.0](https://github.com/Makr91/BoxVault/compare/v0.61.0...v0.62.0) (2026-09-03)
 
 
