@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.69.0](https://github.com/Makr91/BoxVault/compare/v0.68.0...v0.69.0) (2026-09-03)
+
+
+### Features
+
+* run the shared logger, the column picker and the redrawn About page ([6e48318](https://github.com/Makr91/BoxVault/commit/6e48318f04d6832571c5d34faf1e347db1daa063))
+
 ## [0.68.0](https://github.com/Makr91/BoxVault/compare/v0.67.0...v0.68.0) (2026-09-03)
 
 
