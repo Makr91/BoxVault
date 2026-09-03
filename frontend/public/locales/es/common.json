@@ -695,16 +695,14 @@
     "countOf": "{{count}} {{collection}}",
     "searchAll": "Buscar…",
     "filter": {
-      "collection": "Colección"
+      "collection": "Colección",
+      "provider": "Proveedor",
+      "architecture": "Arquitectura"
     },
     "view": {
       "label": "Vista",
       "table": "Vista de lista",
       "cards": "Vista de tarjetas"
-    },
-    "group": {
-      "public": "Público",
-      "private": "Privado"
     },
     "toggle": "Mostrar u ocultar",
     "table": {

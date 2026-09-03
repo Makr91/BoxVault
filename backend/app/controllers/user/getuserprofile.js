@@ -56,6 +56,18 @@ const { user: User, role: Role, organization: Organization, UserOrg } = db;
  *                   type: string
  *                   nullable: true
  *                   description: Stored avatar URL from the identity provider (clients fall back to the emailHash gravatar)
+ *                 entitlements:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       value:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                       display:
+ *                         type: string
+ *                   description: RFC 7643 entitlements pushed by SCIM (empty array when none are stored)
  *       404:
  *         description: User not found
  *         content:
@@ -121,6 +133,7 @@ export const getUserProfile = async (req, res) => {
       roles: authorities,
       organization: user.primaryOrganization ? user.primaryOrganization.name : null,
       organizations,
+      entitlements: user.entitlements || [],
       accessToken: token,
     });
   } catch (error) {

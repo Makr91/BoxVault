@@ -176,18 +176,19 @@ export const useCatalogSearch = ({
     filtered[collection.key] = sortItems(passing, prefs.sort[collection.key], collection.columns);
     matched += passing.length;
     shown.forEach(group => {
-      groups.push(
-        ownGroup({
-          collection,
-          group,
-          items,
-          filters,
-          prefixed: collections.length > 1,
-          setPrefs,
-          ctx,
-          t,
-        })
-      );
+      const own = ownGroup({
+        collection,
+        group,
+        items,
+        filters,
+        prefixed: collections.length > 1,
+        setPrefs,
+        ctx,
+        t,
+      });
+      if (Object.keys(own.entries).length > 0) {
+        groups.push(own);
+      }
     });
   });
 

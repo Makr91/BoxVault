@@ -421,16 +421,14 @@
     "countOf": "{{count}} {{collection}}",
     "searchAll": "Search…",
     "filter": {
-      "collection": "Collection"
+      "collection": "Collection",
+      "provider": "Provider",
+      "architecture": "Architecture"
     },
     "view": {
       "label": "View",
       "table": "List view",
       "cards": "Card view"
-    },
-    "group": {
-      "public": "Public",
-      "private": "Private"
     },
     "toggle": "Show or hide",
     "table": {

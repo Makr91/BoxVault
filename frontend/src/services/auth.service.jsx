@@ -130,55 +130,66 @@ axios.interceptors.request.use(
   error => Promise.reject(error)
 );
 
+const adoptRefreshedToken = response => {
+  const refreshed = response?.headers?.['x-refreshed-token'];
+  if (refreshed) {
+    const user = getCurrentUser();
+    if (user) {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({ ...user, accessToken: refreshed, tokenRefreshTime: Date.now() })
+      );
+    }
+  }
+  return response;
+};
+
 // Add response interceptor to handle 401s
-axios.interceptors.response.use(
-  response => response,
-  async error => {
-    // If request was cancelled, just reject without any additional processing
-    if (error.name === 'CanceledError' || error.name === 'AbortError') {
-      return Promise.reject(error);
-    }
-
-    const originalRequest = error.config;
-
-    // Don't handle retries for auth endpoints
-    if (originalRequest.url.includes('/auth/') || originalRequest.skipAuthRefresh) {
-      return Promise.reject(error);
-    }
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const user = getCurrentUser();
-      if (user?.stayLoggedIn) {
-        try {
-          // Force token refresh
-          const refreshed = await refreshTokenIfNeeded();
-          if (refreshed) {
-            // Retry original request with new token
-            originalRequest.headers = {
-              ...originalRequest.headers,
-              ...authHeader(),
-            };
-            return axios(originalRequest);
-          }
-        } catch (refreshError) {
-          if (!refreshError.name?.includes('Cancel')) {
-            log.auth.error('Token refresh failed', {
-              error: refreshError.message,
-            });
-          }
-        }
-      }
-
-      // The session is gone server-side (expiry, back-channel logout, or a
-      // revoke sweep), so every 401 means the same thing: clear the stored
-      // session and show the signed-out header with a way back.
-      endSession();
-    }
+axios.interceptors.response.use(adoptRefreshedToken, async error => {
+  // If request was cancelled, just reject without any additional processing
+  if (error.name === 'CanceledError' || error.name === 'AbortError') {
     return Promise.reject(error);
   }
-);
+
+  const originalRequest = error.config;
+
+  // Don't handle retries for auth endpoints
+  if (originalRequest.url.includes('/auth/') || originalRequest.skipAuthRefresh) {
+    return Promise.reject(error);
+  }
+
+  if (error.response?.status === 401 && !originalRequest._retry) {
+    originalRequest._retry = true;
+
+    const user = getCurrentUser();
+    if (user?.stayLoggedIn) {
+      try {
+        // Force token refresh
+        const refreshed = await refreshTokenIfNeeded();
+        if (refreshed) {
+          // Retry original request with new token
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            ...authHeader(),
+          };
+          return axios(originalRequest);
+        }
+      } catch (refreshError) {
+        if (!refreshError.name?.includes('Cancel')) {
+          log.auth.error('Token refresh failed', {
+            error: refreshError.message,
+          });
+        }
+      }
+    }
+
+    // The session is gone server-side (expiry, back-channel logout, or a
+    // revoke sweep), so every 401 means the same thing: clear the stored
+    // session and show the signed-out header with a way back.
+    endSession();
+  }
+  return Promise.reject(error);
+});
 
 const register = (username, email, password, invitationToken, name) =>
   axios.post(`${baseURL}/api/auth/signup`, {

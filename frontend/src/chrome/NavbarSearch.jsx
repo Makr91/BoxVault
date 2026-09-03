@@ -308,16 +308,18 @@ FilterPill.propTypes = {
 const FilterGroup = ({ group }) => (
   <div className="navbar-search-group">
     <span className="navbar-search-group-label">{group.label}</span>
-    {Object.entries(group.entries).map(([value, count]) => (
-      <FilterPill
-        key={value}
-        count={count}
-        active={group.activeSet.has(value)}
-        activeClass={group.pillClass ? group.pillClass(value) : group.activeClass}
-        label={group.labelFor ? group.labelFor(value) : value}
-        onToggle={() => group.onToggle(value)}
-      />
-    ))}
+    <span className="navbar-search-pills">
+      {Object.entries(group.entries).map(([value, count]) => (
+        <FilterPill
+          key={value}
+          count={count}
+          active={group.activeSet.has(value)}
+          activeClass={group.pillClass ? group.pillClass(value) : group.activeClass}
+          label={group.labelFor ? group.labelFor(value) : value}
+          onToggle={() => group.onToggle(value)}
+        />
+      ))}
+    </span>
   </div>
 );
 

@@ -65,13 +65,13 @@ export const boxes = {
     },
     {
       key: 'provider',
-      labelKey: 'pages.table.providers',
+      labelKey: 'pages.filter.provider',
       values: providerNames,
       activeClass: 'bg-primary',
     },
     {
       key: 'architecture',
-      labelKey: 'pages.table.architectures',
+      labelKey: 'pages.filter.architecture',
       values: architectureNames,
       activeClass: 'bg-info',
     },
