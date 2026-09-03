@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.64.0](https://github.com/Makr91/BoxVault/compare/v0.63.0...v0.64.0) (2026-09-03)
+
+
+### Features
+
+* footer links name, year and version to the repo with health alone on the right, gap before each organization group ([48a03d3](https://github.com/Makr91/BoxVault/commit/48a03d303be9d7d285ca878531f04098caa4390e))
+
 ## [0.63.0](https://github.com/Makr91/BoxVault/compare/v0.62.0...v0.63.0) (2026-09-03)
 
 
