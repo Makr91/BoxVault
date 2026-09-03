@@ -10,18 +10,6 @@ const getArchitectures = (organization, boxId, versionNumber, providerName) =>
     { headers: authHeader() }
   );
 
-const getArchitectureByName = (
-  organization,
-  boxId,
-  versionNumber,
-  providerName,
-  architectureName
-) =>
-  axios.get(
-    `${baseURL}/api/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}`,
-    { headers: authHeader() }
-  );
-
 const createArchitecture = (organization, boxId, versionNumber, providerName, data) =>
   axios.post(
     `${baseURL}/api/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture`,
@@ -39,7 +27,6 @@ const ArchitectureService = {
   getArchitectures,
   createArchitecture,
   deleteArchitecture,
-  getArchitectureByName,
 };
 
 export default ArchitectureService;

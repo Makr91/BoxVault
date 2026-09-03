@@ -766,3 +766,39 @@ button::-moz-focus-inner {
   --bs-table-border-color: rgba(var(--bs-emphasis-color-rgb), 0.08);
   --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.02);
 }
+
+.items-table {
+  table-layout: fixed;
+}
+
+.items-table .col-watch,
+.items-table .col-quick {
+  width: 2.5rem;
+}
+
+.items-table .col-name,
+.items-table .col-label {
+  width: 28%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.items-table .col-visibility {
+  width: 6rem;
+}
+
+.items-table .col-created,
+.items-table .col-updated,
+.items-table .col-status {
+  width: 6.5rem;
+}
+
+.items-table .col-downloads {
+  width: 6rem;
+}
+
+.items-table .col-downloads,
+.items-table .col-versions {
+  text-align: right;
+}

@@ -32,7 +32,6 @@ router.use((req, res, next) => {
 router.get('/badge/:organization/:name.svg', getBadge);
 
 router.get('/discover', discoverAll);
-router.get('/discover/:name', discoverAll);
 router.get('/organization/:organization/box', externalTokenAuth, getOrganizationBoxDetails);
 router.get('/organization/:organization/box/:name', externalTokenAuth, findOne);
 router.get('/organization/:organization/box/:name/metadata', externalTokenAuth, findOne);

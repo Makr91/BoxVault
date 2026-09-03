@@ -17,42 +17,20 @@ const saveFavorites = favoritesArray =>
 const getUserInfoClaims = () =>
   axios.get(`${baseURL}/api/userinfo/claims`, { headers: authHeader() });
 
-const getEnrichedFavorites = () =>
-  axios.get(`${baseURL}/api/userinfo/favorites`, { headers: authHeader() });
-
-const addFavorite = (currentFavorites, clientId, customLabel = null) => {
-  const newFavorite = {
-    clientId,
-    customLabel,
-    order: currentFavorites.length,
-  };
-
-  return [...currentFavorites, newFavorite];
-};
+const addFavorite = (currentFavorites, clientId, customLabel = null) => [
+  ...currentFavorites,
+  { clientId, customLabel, order: currentFavorites.length },
+];
 
 const removeFavorite = (currentFavorites, clientId) =>
   currentFavorites.filter(f => f.clientId !== clientId);
-
-const reorderFavorites = (currentFavorites, fromIndex, toIndex) => {
-  const reordered = [...currentFavorites];
-  const [moved] = reordered.splice(fromIndex, 1);
-  reordered.splice(toIndex, 0, moved);
-
-  // Update order values
-  return reordered.map((fav, idx) => ({
-    ...fav,
-    order: idx,
-  }));
-};
 
 const FavoritesService = {
   getFavorites,
   saveFavorites,
   getUserInfoClaims,
-  getEnrichedFavorites,
   addFavorite,
   removeFavorite,
-  reorderFavorites,
 };
 
 export default FavoritesService;

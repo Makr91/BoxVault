@@ -9,12 +9,6 @@ const baseURL = window.location.origin;
 const getPublicContent = () =>
   axios.get(`${baseURL}/api/users/all`, { params: { lang: i18n.language } });
 
-const getUserBoard = () => axios.get(`${baseURL}/api/users/user`, { headers: authHeader() });
-
-const getAdminBoard = () => axios.get(`${baseURL}/api/users/admin`, { headers: authHeader() });
-
-const getAllRoles = () => axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
-
 const deleteUser = userId =>
   axios.delete(`${baseURL}/api/users/${userId}`, { headers: authHeader() });
 
@@ -54,56 +48,29 @@ const changeName = (userId, name, signal) =>
     }
   );
 
-const getPreferences = () =>
-  axios.get(`${baseURL}/api/user/preferences`, { headers: authHeader() });
-
 const updatePreferences = preferences =>
   axios.patch(`${baseURL}/api/user/preferences`, preferences, {
     headers: authHeader(),
   });
 
-const getUserRoles = () => axios.get(`${baseURL}/api/users/roles`, { headers: authHeader() });
-
-const isOnlyUserInOrg = organizationName =>
-  axios
-    .get(`${baseURL}/api/organization/${organizationName}/users`, {
-      headers: authHeader(),
-    })
-    .then(response => response.data.length === 1);
-
-/**
- * Get all organizations user belongs to with roles
- */
 const getUserOrganizations = () =>
   axios.get(`${baseURL}/api/user/organizations`, { headers: authHeader() });
 
-/**
- * Leave an organization
- */
 const leaveOrganization = orgName =>
   axios.post(`${baseURL}/api/user/leave/${orgName}`, {}, { headers: authHeader() });
 
-/**
- * Set user's primary organization
- */
 const setPrimaryOrganization = orgName =>
   axios.put(`${baseURL}/api/user/primary-organization/${orgName}`, {}, { headers: authHeader() });
 
 const UserService = {
   getPublicContent,
-  getUserBoard,
-  getAdminBoard,
-  getAllRoles,
-  getUserRoles,
   deleteUser,
   suspendUser,
   resumeUser,
   changePassword,
   changeEmail,
   changeName,
-  getPreferences,
   updatePreferences,
-  isOnlyUserInOrg,
   getUserOrganizations,
   leaveOrganization,
   setPrimaryOrganization,

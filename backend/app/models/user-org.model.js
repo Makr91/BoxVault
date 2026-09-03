@@ -133,20 +133,6 @@ export default (sequelize, Sequelize) => {
   };
 
   /**
-   * Get user's primary organization
-   * @param {number} userId - User ID
-   * @returns {Promise<UserOrg|null>}
-   */
-  UserOrg.getPrimaryOrganization = function (userId) {
-    return this.findOne({
-      where: { user_id: userId, is_primary: true },
-      include: [{ model: sequelize.models.organizations, as: 'organization' }],
-      raw: true,
-      nest: true,
-    });
-  };
-
-  /**
    * Set primary organization for user (ensures only one primary)
    * @param {number} userId - User ID
    * @param {number} organizationId - Organization ID to set as primary

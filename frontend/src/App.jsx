@@ -24,7 +24,6 @@ import {
   persistTheme,
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
-import ErrorBoundary from './common/ErrorBoundary';
 import EventBus from './common/EventBus';
 import About from './components/about.component';
 import Admin from './components/admin.component';
@@ -44,11 +43,11 @@ import {
   OrgPage,
   ProviderPage,
   VersionPage,
+  formatFileSize,
   pageContextShape,
 } from './pages';
 import AuthService from './services/auth.service';
 import SetupService from './services/setup.service';
-import { formatFileSize } from './utils/fileSize';
 import { log } from './utils/Logger';
 import { isOrgManager, isOrgMember } from './utils/permissions';
 import {
@@ -174,7 +173,6 @@ ProviderRoute.propTypes = {
 
 const App = () => {
   const { t, i18n } = useTranslation();
-  const isDevelopment = import.meta.env.NODE_ENV === 'development';
 
   useEffect(() => {
     let bootstrap;
@@ -479,87 +477,85 @@ const App = () => {
   );
 
   return (
-    <ErrorBoundary showErrorDetails={isDevelopment}>
-      <div className="App d-flex flex-column vh-100">
-        <Navbar
-          currentUser={currentUser}
-          userOrganization={userOrganization}
-          activeOrganization={activeOrganization}
-          onOrganizationSwitch={handleOrganizationSwitch}
-          gravatarUrl={gravatarUrl}
-          showAdminBoard={showAdminBoard}
-          showOrgConsole={showOrgConsole}
-          theme={theme}
-          themePreference={themePreference}
-          toggleTheme={toggleTheme}
-          logOut={logOut}
-          logOutLocal={logOutLocal}
-          sessionEnded={sessionEnded}
-        />
-        <div ref={scrollRef} className="container-fluid app-scroll py-3">
-          <Routes>
-            <Route
-              path="/setup"
-              element={setupComplete ? <Navigate to="/register" replace /> : <Setup />}
-            />
-            {setupComplete ? (
-              <>
-                <Route path="/" element={homeElement} />
-                <Route
-                  path="/isos"
-                  element={
-                    <CollectionPage collection={isos} org="" member={false} context={context} />
-                  }
-                />
-                <Route path="/about" element={<About theme={theme} />} />
-                <Route
-                  path="/organizations/discover"
-                  element={<OrganizationDiscovery theme={theme} />}
-                />
-                <Route path="/login" element={<Login />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/invite/:token" element={<InviteAccept />} />
-                <Route
-                  path="/profile"
-                  element={<Profile activeOrganization={activeOrganization} />}
-                />
-                <Route path="/admin" element={<Admin />} />
-                <Route
-                  path="/org-console"
-                  element={<OrgConsole currentOrganization={activeOrganization} />}
-                />
-                <Route path="/:organization" element={<OrgRoute context={context} />} />
-                <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />
-                <Route
-                  path="/:organization/isos/:name"
-                  element={<IsoItemRoute context={context} />}
-                />
-                <Route path="/:organization/:name" element={<ItemRoute context={context} />} />
-                <Route
-                  path="/:organization/:name/:version"
-                  element={<VersionRoute context={context} />}
-                />
-                <Route
-                  path="/:organization/:name/:version/:providerName"
-                  element={<ProviderRoute context={context} />}
-                />
-                <Route path="*" element={<Navigate to="/" />} />
-              </>
-            ) : (
-              <Route path="*" element={<Navigate to="/setup" replace />} />
-            )}
-          </Routes>
-        </div>
-        <Footer
-          appName={APP_NAME}
-          version={APP_VERSION}
-          repoUrl={REPO_URL}
-          poweredBy={POWERED_BY}
-          fetchHealth={fetchHealth}
-        />
+    <div className="App d-flex flex-column vh-100">
+      <Navbar
+        currentUser={currentUser}
+        userOrganization={userOrganization}
+        activeOrganization={activeOrganization}
+        onOrganizationSwitch={handleOrganizationSwitch}
+        gravatarUrl={gravatarUrl}
+        showAdminBoard={showAdminBoard}
+        showOrgConsole={showOrgConsole}
+        theme={theme}
+        themePreference={themePreference}
+        toggleTheme={toggleTheme}
+        logOut={logOut}
+        logOutLocal={logOutLocal}
+        sessionEnded={sessionEnded}
+      />
+      <div ref={scrollRef} className="container-fluid app-scroll py-3">
+        <Routes>
+          <Route
+            path="/setup"
+            element={setupComplete ? <Navigate to="/register" replace /> : <Setup />}
+          />
+          {setupComplete ? (
+            <>
+              <Route path="/" element={homeElement} />
+              <Route
+                path="/isos"
+                element={
+                  <CollectionPage collection={isos} org="" member={false} context={context} />
+                }
+              />
+              <Route path="/about" element={<About theme={theme} />} />
+              <Route
+                path="/organizations/discover"
+                element={<OrganizationDiscovery theme={theme} />}
+              />
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/invite/:token" element={<InviteAccept />} />
+              <Route
+                path="/profile"
+                element={<Profile activeOrganization={activeOrganization} />}
+              />
+              <Route path="/admin" element={<Admin />} />
+              <Route
+                path="/org-console"
+                element={<OrgConsole currentOrganization={activeOrganization} />}
+              />
+              <Route path="/:organization" element={<OrgRoute context={context} />} />
+              <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />
+              <Route
+                path="/:organization/isos/:name"
+                element={<IsoItemRoute context={context} />}
+              />
+              <Route path="/:organization/:name" element={<ItemRoute context={context} />} />
+              <Route
+                path="/:organization/:name/:version"
+                element={<VersionRoute context={context} />}
+              />
+              <Route
+                path="/:organization/:name/:version/:providerName"
+                element={<ProviderRoute context={context} />}
+              />
+              <Route path="*" element={<Navigate to="/" />} />
+            </>
+          ) : (
+            <Route path="*" element={<Navigate to="/setup" replace />} />
+          )}
+        </Routes>
       </div>
-    </ErrorBoundary>
+      <Footer
+        appName={APP_NAME}
+        version={APP_VERSION}
+        repoUrl={REPO_URL}
+        poweredBy={POWERED_BY}
+        fetchHealth={fetchHealth}
+      />
+    </div>
   );
 };
 

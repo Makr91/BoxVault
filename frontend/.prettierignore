@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Package files
+package-lock.json
+yarn.lock
+
+# Vite cache
+.vite/
+
+# Logs
+*.log
+
+# Test coverage
+coverage/
+*.lcov
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Configuration files
+.prettierrc
+.prettierignore

@@ -340,11 +340,20 @@ curl -X GET https://boxvault.example.com/api/setup/status
 
 ### Upload SSL Certificate
 
+During first-run setup the certificate and the private key are uploaded one file per request, each authenticated with the setup token. The response carries the path the file was saved under, which is what goes into `ssl.cert_path` or `ssl.key_path` when the configuration is submitted.
+
 ```bash
 curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
-  -H "Content-Type: multipart/form-data" \
-  -F "cert=@/path/to/cert.pem" \
-  -F "key=@/path/to/key.pem"
+  -H "Authorization: Bearer YOUR_SETUP_TOKEN" \
+  -F "file=@/path/to/fullchain.pem"
+```
+
+**Response:**
+
+```json
+{
+  "path": "/etc/boxvault/ssl/fullchain.pem"
+}
 ```
 
 ### Test SMTP Configuration

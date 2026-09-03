@@ -241,7 +241,7 @@ export const BoxItemExtras = ({ item, ctx }) => {
               ))}
             </select>
           </label>
-          <DeployButton user={user} org={org} name={item.name} version={selected} size="btn-sm" />
+          <DeployButton user={user} item={item} version={selected} size="btn-sm" />
         </span>
       </div>
       <CodeBlock code={initCommand} />
@@ -582,12 +582,7 @@ export const BoxItemActions = ({ item, ctx }) => {
 
   return (
     <>
-      <DeployButton
-        user={user}
-        org={org}
-        name={item.name}
-        version={deployableVersion(item.versions)}
-      />
+      <DeployButton user={user} item={item} version={deployableVersion(item.versions)} />
       {manage ? editButtons : null}
       {manage ? publishButton : null}
       <Link className="btn btn-dark me-2" to={`/${org}`}>

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { isOidcSession } from '../chromeProps';
 import AuthService from '../services/auth.service';
 import RequestService from '../services/request.service';
 import ServiceAccountService from '../services/service_account.service';
@@ -170,6 +171,22 @@ const Profile = ({ activeOrganization }) => {
       }
     });
   }, []);
+
+  const handleSetPrimaryOrganization = async orgName => {
+    try {
+      await UserService.setPrimaryOrganization(orgName);
+      setMessage(t('profile.messages.primaryOrganizationSet', { orgName }));
+      const response = await UserService.getUserOrganizations();
+      setUserOrganizations(response.data || []);
+      refreshUserData();
+    } catch (error) {
+      log.api.error('Error setting primary organization', {
+        orgName,
+        error: error.message,
+      });
+      setMessage(t('profile.errors.setPrimaryOrganization', { error: error.message }));
+    }
+  };
 
   const checkEmailVerification = useCallback(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -612,6 +629,14 @@ const Profile = ({ activeOrganization }) => {
                             <span className={`badge ${getRoleBadgeClass(org.role)} me-3`}>
                               {t(`roles.${org.role}`)}
                             </span>
+                            {!isPrimary && !isOidcSession(currentUser) && (
+                              <button
+                                className="btn btn-outline-primary btn-sm me-2"
+                                onClick={() => handleSetPrimaryOrganization(orgName)}
+                              >
+                                {t('profile.organizations.makePrimary')}
+                              </button>
+                            )}
                             {userOrganizations.length > 1 && (
                               <button
                                 className="btn btn-outline-danger btn-sm"

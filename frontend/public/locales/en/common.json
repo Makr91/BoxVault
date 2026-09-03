@@ -1,24 +1,6 @@
 {
-  "navigation": {
-    "dashboard": "Dashboard",
-    "apiKeys": "API Keys",
-    "apiDocumentation": "API Documentation",
-    "logout": "Logout",
-    "logoutLocal": "Logout (Local)"
-  },
-  "language": {
-    "changeLanguage": "Change Language"
-  },
-  "user": {
-    "unknownUser": "Unknown User",
-    "basicAuthUser": "Basic Auth User",
-    "oidcUser": "OIDC User",
-    "user": "User",
-    "apiKey": "API Key: {{keyName}}"
-  },
   "buttons": {
     "leave": "Leave Organization",
-    "create": "Create",
     "cancel": "Cancel",
     "edit": "Edit",
     "suspend": "Suspend",
@@ -26,21 +8,16 @@
     "save": "Save",
     "close": "Close",
     "confirm": "Confirm",
-    "retry": "Retry",
-    "clear": "Clear",
     "copy": "Copy",
-    "move": "Move",
     "rename": "Rename",
     "resume": "Resume",
     "download": "Download",
-    "search": "Search",
     "back": "Back",
     "removeFromOrg": "Remove from Org",
     "deleteUser": "Delete User",
     "upload": "Upload"
   },
   "configManager": {
-    "fixErrors": "Please fix the validation errors before submitting.",
     "updateSuccess": "Configuration updated successfully.",
     "updateError": "Error updating configuration.",
     "restartInitiated": "Server restart initiated",
@@ -57,10 +34,8 @@
       "mail": "Email Config"
     },
     "buttons": {
-      "leave": "Leave Organization",
       "update": "Update Configuration",
-      "restart": "Restart Server",
-      "testSmtp": "Test SMTP"
+      "restart": "Restart Server"
     },
     "sections": {
       "authentication": "Authentication",
@@ -96,87 +71,37 @@
     }
   },
   "status": {
-    "loading": "Loading...",
-    "success": "Success",
-    "error": "Error",
     "pending": "Pending",
     "completed": "Completed",
-    "failed": "Failed"
+    "suspended": "Suspended"
   },
   "actions": {
-    "copyToClipboard": "Copy to clipboard",
-    "copyFullChecksum": "Copy full checksum",
     "backToFiles": "Back to Files",
-    "clearSelection": "Clear selection",
-    "selectAll": "Select All",
-    "retryUpload": "Retry upload",
     "search": "Search",
     "back": "Back"
   },
-  "table": {
-    "name": "Name",
-    "organization": "Organization",
-    "visibility": "Visibility",
-    "size": "Size",
-    "checksum": "Checksum",
-    "uploaded": "Uploaded",
-    "actions": "Actions"
-  },
   "messages": {
-    "noResultsFound": "No Results Found",
-    "searchFailed": "Search Failed",
     "uploadFailed": "Upload failed",
     "deleteFailed": "Delete failed",
     "copyFailed": "Copy failed",
     "operationSuccessful": "Operation completed successfully",
     "operationFailed": "Operation failed",
-    "confirmAction": "Are you sure?",
-    "cannotUndoAction": "This action cannot be undone.",
     "addedToFavorites": "Added BoxVault to favorites!",
     "removedFromFavorites": "Removed BoxVault from favorites",
     "failedToUpdateFavorites": "Failed to update favorites"
   },
   "about": {
-    "pageTitle": "About",
-    "version": "Version",
-    "keyFeatures": "Key Features",
-    "supportAndFollow": "Support and Follow",
-    "addToFavorites": "Add to Favorites",
-    "removeFromFavorites": "Remove from Favorites",
-    "supportOnPatreon": "Support on Patreon",
-    "githubProfile": "GitHub Profile",
-    "projectRepository": "Project Repository",
     "documentation": {
-      "title": "Documentation",
       "description": "Learn how to use BoxVault and integrate it with your workflow.",
       "fullDocs": "Full Documentation",
       "apiExplorer": "API Explorer (Swagger UI)",
       "gettingStarted": "Getting Started Guide"
     },
     "support": {
-      "title": "Support and Community",
       "description": "Support the project and stay connected with the community.",
       "patreon": "Support on Patreon",
       "githubProfile": "GitHub Profile",
       "repository": "Project Repository"
-    },
-    "components": {
-      "title": "Components",
-      "backend": {
-        "details": {
-          "nodejs": "Node.js Environment",
-          "auth": "Authentication System",
-          "endpoints": "API Endpoints",
-          "database": "Database Integration"
-        }
-      },
-      "frontend": {
-        "details": {
-          "react": "React Framework",
-          "interface": "User Interface",
-          "features": "Frontend Features"
-        }
-      }
     },
     "fallbackTitle": "BoxVault Project",
     "fallbackDescription": "A self-hosted solution for managing VM templates.",
@@ -208,17 +133,6 @@
       "instructions": "To update, run the following command on your server:"
     }
   },
-  "breadcrumbs": {
-    "boxvault": "BoxVault",
-    "home": "Home"
-  },
-  "error": {
-    "somethingWentWrong": "Something Went Wrong",
-    "unexpectedErrorOccurred": "An unexpected error occurred. Please try refreshing the page or return to the home page.",
-    "refreshPage": "Refresh Page",
-    "goHome": "Go Home",
-    "errorDetailsDevelopment": "Error Details (Development)"
-  },
   "errors": {
     "upload": {
       "noFile": "No file provided for upload.",
@@ -239,12 +153,6 @@
       "success": "Organization renamed successfully!",
       "error": "Error renaming organization. Please try again."
     },
-    "user": {
-      "boxes": "Boxes: {{count}}",
-      "roles": "Roles",
-      "removeFromOrgTitle": "Remove {{username}} from {{orgName}}",
-      "deleteUserTitle": "Permanently delete {{username}} from BoxVault"
-    },
     "editModal": {
       "title": "Edit Organization: {{orgName}}",
       "orgCode": "Organization Code",
@@ -264,11 +172,6 @@
       "updateSuccess": "Organization updated successfully!",
       "updateError": "Error updating organization"
     }
-  },
-  "orgSwitcher": {
-    "title": "Switch Organization",
-    "noOrgsFound": "No organizations found. Contact your administrator if this is unexpected.",
-    "primaryOrg": "Primary Organization"
   },
   "profile": {
     "pageTitle": "Profile",
@@ -319,6 +222,7 @@
       "belongToTitle": "Organizations You Belong To",
       "noOrgs": "You don't belong to any organizations yet.",
       "primary": "Primary",
+      "makePrimary": "Make primary",
       "joined": "Joined",
       "pendingRequestsTitle": "Pending Join Requests",
       "requested": "Requested"
@@ -344,7 +248,9 @@
     },
     "messages": {
       "leftOrganization": "Successfully left organization {{orgName}}",
+      "primaryOrganizationSet": "{{orgName}} is now your primary organization",
       "requestCancelled": "Join request cancelled successfully",
+      "cancelRequestError": "Could not cancel the join request. Please try again.",
       "serviceAccountCreated": "Service account created successfully!",
       "passwordChanged": "Password changed successfully!",
       "emailChanged": "Email changed successfully!",
@@ -360,14 +266,32 @@
       "resendVerificationFailed": "Error sending verification email: {{error}}",
       "changePasswordFailed": "Error changing password: {{error}}",
       "changeEmailFailed": "Error changing email: {{error}}",
-      "changeNameFailed": "Error changing display name: {{error}}"
+      "changeNameFailed": "Error changing display name: {{error}}",
+      "leaveOrganization": "Error leaving organization: {{error}}",
+      "setPrimaryOrganization": "Error setting primary organization: {{error}}"
     },
     "buttons": {
-      "leave": "Leave Organization",
       "resendVerification": "Resend verification email"
     }
   },
   "unknown": "Unknown",
+  "validation": {
+    "required": "This field is required!",
+    "invalidName": "Invalid name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
+    "invalidUrl": "Invalid URL format.",
+    "invalidHost": "Invalid host. Must be a valid IP address, FQDN, or 'localhost'.",
+    "integerRequired": "The value must be an integer.",
+    "booleanRequired": "The value must be a boolean.",
+    "passwordLength": "The password must be at least 6 characters.",
+    "invalidEmail": "Invalid email address.",
+    "portRange": "The port must be between 1 and 65535.",
+    "valueRequired": "The value cannot be empty.",
+    "invalidFieldStructure": "Invalid field structure",
+    "fixErrors": "Please fix the errors in the form.",
+    "unsupportedChecksum": "Unsupported checksum type!",
+    "invalidChecksumFormat": "Invalid {{type}} checksum format!",
+    "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed."
+  },
   "setup": {
     "title": "BoxVault Setup",
     "alreadyComplete": "Setup is already complete. You can now use BoxVault.",
@@ -382,20 +306,11 @@
     "sqlitePath": "SQLite Database File Path"
   },
   "navbar": {
-    "logout": "Logout",
-    "logoutEverywhereTitle": "Logging out everywhere — click to log out of this app only",
-    "logoutLocalTitle": "Logging out of this app only — click to log out everywhere",
-    "signIn": "Sign in",
-    "accountMenu": "Account menu",
     "about": "About",
     "docs": "Docs",
     "admin": "Admin",
     "orgConsole": "Organization console",
-    "preferences": "Preferences",
-    "boxvault": "BoxVault",
-    "profileModeTitle": "Switch between identity provider and local profile",
-    "favorites": "Favorites",
-    "help": "Help"
+    "boxvault": "BoxVault"
   },
   "iso": {
     "upload": {
@@ -410,165 +325,7 @@
     "unpublish": "Unpublish",
     "copyChecksum": "Copy checksum"
   },
-  "collections": {
-    "boxes": "Boxes",
-    "boxesCount_one": "{{count}} box",
-    "boxesCount_other": "{{count}} boxes",
-    "isos": "ISOs",
-    "isosCount_one": "{{count}} ISO",
-    "isosCount_other": "{{count}} ISOs",
-    "provisioners": "Provisioners",
-    "provisionersCount_one": "{{count}} provisioner",
-    "provisionersCount_other": "{{count}} provisioners"
-  },
-  "pages": {
-    "loading": "Loading…",
-    "notFound": "Not found.",
-    "empty": "Nothing here yet.",
-    "noMatches": "Nothing matches.",
-    "searchAll": "Search…",
-    "filter": {
-      "collection": "Collection",
-      "provider": "Provider",
-      "architecture": "Architecture"
-    },
-    "view": {
-      "label": "View",
-      "table": "List view",
-      "cards": "Card view"
-    },
-    "toggle": "Show or hide",
-    "addNew": "Add New",
-    "removeAll": "Remove All",
-    "links": {
-      "repo": "Source repository",
-      "homepage": "Homepage",
-      "issues": "Report an issue",
-      "pipeline": "CI pipeline"
-    },
-    "table": {
-      "name": "Name",
-      "os": "OS",
-      "status": "Status",
-      "visibility": "Visibility",
-      "organization": "Organization",
-      "created": "Created",
-      "updated": "Updated",
-      "released": "Latest release",
-      "downloads": "Downloads",
-      "versions": "# Versions",
-      "providers": "Providers",
-      "architectures": "Architectures",
-      "actions": "Actions",
-      "size": "Size",
-      "checksum": "Checksum",
-      "version": "Version",
-      "details": "Details",
-      "download": "Download",
-      "defaultBox": "Default box",
-      "fileSize": "File size",
-      "checksumType": "Checksum type"
-    },
-    "status": {
-      "published": "Published",
-      "pending": "Pending",
-      "public": "Public",
-      "private": "Private",
-      "deprecated": "Deprecated"
-    },
-    "item": {
-      "details": "Details",
-      "facts": "Facts",
-      "readme": "README",
-      "versions": "Versions"
-    },
-    "facts": {
-      "os": "OS",
-      "type": "Type",
-      "username": "Username",
-      "password": "Password",
-      "communicator": "Communicator",
-      "cpus": "CPUs",
-      "memory": "Memory",
-      "disks": "Disks",
-      "providers": "Providers",
-      "built": "Built",
-      "driver": "Driver",
-      "desktop": "Desktop",
-      "server": "Server",
-      "show": "Show",
-      "size": "Size",
-      "checksum": "Checksum",
-      "created": "Created",
-      "updated": "Updated",
-      "downloads": "Downloads",
-      "hide": "Hide"
-    },
-    "version": {
-      "title": "Version {{version}}",
-      "released": "Released",
-      "edit": "Edit version",
-      "releaseNotes": "Release notes",
-      "deprecatedBanner": "This version is deprecated",
-      "description": "Description",
-      "createdAt": "Created",
-      "updatedAt": "Updated",
-      "providersFor": "Providers for version {{version}}",
-      "artifacts": "Artifacts"
-    },
-    "provider": {
-      "edit": "Edit provider",
-      "architecturesFor": "Architectures for provider {{provider}}",
-      "clickToCopy": "Click to copy checksum",
-      "checksumCopied": "Checksum copied to clipboard.",
-      "copyFailed": "Could not copy the checksum."
-    },
-    "watch": {
-      "watch": "Watch",
-      "unwatch": "Stop watching",
-      "filterWatched": "Watched",
-      "watched": "Watched",
-      "error": "Failed to update the watch. Please try again."
-    }
-  },
-  "sessionEnded": {
-    "title": "You were signed out.",
-    "body": "Your session ended. Sign in again to continue where you were."
-  },
-  "notifications": {
-    "pushSwitch": "Browser notifications on this device",
-    "enableError": "Failed to enable notifications. Please try again.",
-    "disableError": "Failed to disable notifications. Please try again.",
-    "permissionDenied": "Notification permission was denied by the browser.",
-    "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
-    "notSupported": "Push notifications are not supported by this browser."
-  },
-  "theme": {
-    "auto": "Theme: follow system",
-    "light": "Theme: light",
-    "dark": "Theme: dark"
-  },
-  "inbox": {
-    "title": "Notifications",
-    "empty": "No notifications yet.",
-    "markAllRead": "Mark all read",
-    "dismiss": "Dismiss",
-    "viewAll": "View all notifications",
-    "loadError": "Failed to load notifications. Please try again."
-  },
-  "watch": {
-    "watch": "Watch this box",
-    "unwatch": "Stop watching this box",
-    "filterWatched": "Watched",
-    "error": "Failed to update the box watch. Please try again."
-  },
   "search": {
-    "open": "Search",
-    "filters": "Filters",
-    "clear": "Clear search and filters",
-    "clearFilters": "Clear filters",
-    "activeFilters_one": "{{count}} filter active",
-    "activeFilters_other": "{{count}} filters active",
     "boxes": "Search boxes",
     "isos": "Search ISOs"
   },
@@ -616,7 +373,9 @@
     "users": {
       "title": "Users in {{organization}}",
       "boxes": "Boxes",
-      "roles": "Roles"
+      "roles": "Roles",
+      "removeSuccess": "Member removed from the organization.",
+      "removeError": "Could not remove the member. Please try again."
     },
     "joinRequest": {
       "title": "Pending Join Requests",
@@ -656,10 +415,7 @@
     }
   },
   "roles": {
-    "user": "User",
-    "member": "Member",
-    "admin": "Administrator",
-    "owner": "Owner"
+    "user": "User"
   },
   "oidc": {
     "title": "OIDC Providers",
@@ -672,7 +428,6 @@
     "scope": "Scope",
     "noProvidersConfigured": "No OIDC providers configured yet. Click \"Add OIDC Provider\" to set up authentication with providers like Google, Microsoft, GitHub, etc.",
     "buttons": {
-      "leave": "Leave Organization",
       "add": "Add OIDC Provider",
       "delete": "Delete Provider",
       "update": "Update Provider",
@@ -760,29 +515,9 @@
       "adding": "adding"
     }
   },
-  "footer": {
-    "health": {
-      "status": "System Status",
-      "ok": "All systems operational",
-      "error": "A system has an issue",
-      "warning": "One or more systems have warnings",
-      "database": "Database",
-      "storage": "Storage",
-      "storageBoxes": "Storage (Boxes)",
-      "storageIsos": "Storage (ISOs)",
-      "oidcProviders": "OIDC Providers",
-      "worker": "Worker",
-      "idp": "Identity provider",
-      "pages": "Public catalog",
-      "store": "Private store"
-    }
-  },
   "configField": {
     "commaSeparated": "Comma-separated values"
   },
-  "yes": "Yes",
-  "no": "No",
-  "loading": "Loading...",
   "deleteKeyword": "delete",
   "confirmation": {
     "title": "Confirm Action",
@@ -798,44 +533,29 @@
     "exists": "A provider with this name already exists. Please choose a different name.",
     "updated": "Provider updated successfully!",
     "updateError": "Could not update provider",
-    "notFound": "Provider Not Found",
-    "edit": "Edit Provider",
-    "details": "Provider Details",
     "name": "Provider Name",
     "description": "Description",
-    "architectures": "Architectures for Provider: {{providerName}}",
     "add": "Add Provider"
   },
   "version": {
     "deleted": "Version deleted successfully!",
     "deleteError": "Error deleting version. Please try again.",
-    "notFound": "Version Not Found",
     "exists": "A version with this number already exists. Please choose a different version number.",
     "updated": "Version updated successfully!",
     "updateError": "An error occurred while updating the version.",
     "added": "Version added successfully!",
     "addError": "An error occurred while adding the version.",
-    "edit": "Edit Version",
-    "details": "Version Details",
     "number": "Version Number",
-    "createdAt": "Created At",
-    "updatedAt": "Updated At",
-    "actions": "Actions",
-    "providers": "Providers for Version: {{version}}",
     "add": "Add Version",
     "releaseNotes": "Release notes",
     "editReleaseNotes": "Edit release notes",
-    "deprecated": "Deprecated",
-    "deprecatedBanner": "This version is deprecated",
     "deprecate": "Deprecate",
     "undeprecate": "Undeprecate",
-    "deprecationReason": "Deprecation reason",
-    "title": "Version {{version}}"
+    "deprecationReason": "Deprecation reason"
   },
   "architecture": {
     "deleted": "Architecture deleted successfully!",
     "deleteError": "Could not delete architecture",
-    "notFound": "Architecture not found",
     "name": "Architecture Name",
     "add": "Add Architecture",
     "selectFile": "Please select a file before adding an architecture.",
@@ -851,20 +571,12 @@
     "uploaded": "Uploaded",
     "remaining": "Remaining",
     "checksumType": "Checksum Type",
-    "checksum": "Checksum",
-    "clickToCopy": "Click to copy checksum",
-    "checksumCopied": "Checksum copied to clipboard!"
+    "checksum": "Checksum"
   },
   "box": {
-    "notFound": "Box Not Found",
-    "exists": "A box with this name already exists. Please choose a different name.",
     "updated": "Box updated successfully!",
     "updateError": "An error occurred while updating the box.",
-    "deleted": "Box deleted successfully",
     "deleteError": "An error occurred while deleting the box.",
-    "created": "Box created successfully.",
-    "createError": "An error occurred while creating the box.",
-    "details": "Box Details",
     "name": "Box Name",
     "status": "Status",
     "visibility": "Visibility",
@@ -882,7 +594,6 @@
       "workflow": "Workflow File",
       "workflowPlaceholder": "build.yml",
       "workflowHint": "Name of the GitHub Actions workflow file (e.g., build.yml, ci.yaml)",
-      "pipeline": "CI/CD Pipeline",
       "pipelineUrl": "CI/CD URL",
       "pipelinePlaceholder": "https://github.com/owner/repo/actions",
       "pipelineHint": "Direct link to your CI/CD pipeline or GitHub Actions page",
@@ -890,33 +601,6 @@
     },
     "publish": "Publish",
     "unpublish": "Unpublish",
-    "versions": "Versions for Box: {{name}}",
-    "versionsTitle": "Versions",
-    "create": "Create New Box",
-    "createButton": "Create Box",
-    "removeAll": "Remove All",
-    "removeAllSuccess": "All boxes removed successfully.",
-    "removeAllError": "Error removing all boxes.",
-    "filter": "Filter",
-    "noBoxes": "No boxes found",
-    "facts": {
-      "title": "Box facts",
-      "os": "OS",
-      "type": "Type",
-      "username": "Username",
-      "password": "Password",
-      "communicator": "Communicator",
-      "cpus": "CPUs",
-      "memory": "Memory",
-      "disks": "Disks",
-      "providers": "Providers",
-      "built": "Built",
-      "driver": "Driver",
-      "desktop": "Desktop",
-      "server": "Server",
-      "show": "Show",
-      "hide": "Hide"
-    },
     "useThisBox": {
       "title": "Use this box",
       "version": "Version",
@@ -925,17 +609,9 @@
       "starterKit": "Starter kit (self-bootstrapping Vagrantfile + Hosts.yml)",
       "starterStep1": "Step 1: add the box"
     },
-    "hyperweaver": {
-      "deploy": "Deploy",
-      "deployVersionTitle": "Deploy {{version}} with Hyperweaver"
-    },
-    "readmeTitle": "README",
     "organization": {
       "errors": {
-        "retrievePublic": "Error retrieving public boxes.",
-        "retrieveOrg": "Error retrieving organization boxes.",
         "removeAll": "Error removing all boxes.",
-        "filter": "Error filtering boxes.",
         "boxCreate": "An error occurred while creating the box."
       },
       "messages": {
@@ -943,44 +619,11 @@
         "boxCreated": "Box created successfully."
       },
       "buttons": {
-        "leave": "Leave Organization",
         "createBox": "Create Box",
-        "createNewBox": "Create New Box",
-        "removeAll": "Remove All",
         "joinAsAdmin": "Join as Owner"
       },
       "headers": {
-        "createNewBox": "Create New Box",
-        "templateList": "Template List"
-      },
-      "group": {
-        "boxCount": "{{count}} box",
-        "boxCount_plural": "{{count}} boxes"
-      },
-      "table": {
-        "box": "Box",
-        "os": "OS",
-        "status": "Status",
-        "public": "Public",
-        "created": "Created",
-        "released": "Latest release",
-        "downloads": "Downloads",
-        "versions": "# Versions",
-        "providers": "Providers",
-        "architectures": "Architectures",
-        "noBoxes": "No boxes found",
-        "name": "Name",
-        "organization": "Organization",
-        "visibility": "Visibility",
-        "size": "Size",
-        "checksum": "Checksum",
-        "uploaded": "Uploaded",
-        "actions": "Actions"
-      },
-      "status": {
-        "published": "Published",
-        "pending": "Pending",
-        "completed": "Completed"
+        "createNewBox": "Create New Box"
       },
       "visibility": {
         "public": "Public",
@@ -1001,7 +644,6 @@
     "public": "public",
     "private": "private",
     "buttons": {
-      "leave": "Leave Organization",
       "inviteOnly": "Invite Only",
       "requestToJoin": "Request to Join",
       "private": "Private",
@@ -1009,7 +651,6 @@
     },
     "modal": {
       "title": "Request to Join {{orgName}}",
-      "description": "Please explain why you would like to join <strong>{{orgName}}</strong>:",
       "placeholder": "Enter your reason for wanting to join this organization..."
     },
     "errors": {
@@ -1036,13 +677,5 @@
     "emailMismatch": "This invitation was sent to {{email}}, but you're signed in as {{current}}.",
     "goToOrg": "Go to {{organization}}",
     "error": "Could not accept the invitation. Please try again."
-  },
-  "User Authentication": "User Authentication",
-  "Box Management": "Box Management",
-  "Version Control": "Version Control",
-  "Organization Support": "Organization Support",
-  "API Documentation": "API Documentation",
-  "Secure Storage": "Secure Storage",
-  "Backend": "Backend",
-  "Frontend": "Frontend"
+  }
 }

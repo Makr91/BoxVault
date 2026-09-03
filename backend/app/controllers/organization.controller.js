@@ -10,7 +10,6 @@ import { suspendOrganization } from './organization/suspend.js';
 import { resumeOrganization } from './organization/resume.js';
 import { discoverOrganizations } from './organization/discover.js';
 import { updateAccessMode } from './organization/accessmode.js';
-import { getUserOrgRole } from './organization/userrole.js';
 import { updateUserOrgRole } from './organization/updateuserrole.js';
 import { removeUserFromOrg } from './organization/removeuser.js';
 import { joinAsAdmin } from './organization/joinasadmin.js';
@@ -27,7 +26,6 @@ export {
   resumeOrganization,
   discoverOrganizations,
   updateAccessMode,
-  getUserOrgRole,
   updateUserOrgRole,
   removeUserFromOrg,
   joinAsAdmin,

@@ -239,6 +239,23 @@ const SetupComponent = () => {
     }
   };
 
+  const handleFileUpload = (configName, currentPath, file) => {
+    if (!file) {
+      return;
+    }
+    SetupService.uploadSSL(authorizedSetupToken, file)
+      .then(({ path }) => {
+        handleConfigChange(configName, currentPath, path);
+        setMessage(t('messages.operationSuccessful'));
+      })
+      .catch(error => {
+        log.api.error('Error uploading SSL file', {
+          error: error.message,
+        });
+        setMessage(t('messages.uploadFailed'));
+      });
+  };
+
   // Helper: Render SQLite storage field
   const renderSqliteStorage = (configName, entry) => {
     const storageEntry = entry.storage;
@@ -329,6 +346,33 @@ const SetupComponent = () => {
             >
               {showPasswords[errorKey] ? <FaEyeSlash /> : <FaEye />}
             </button>
+          </div>
+          <small className="form-text text-muted">{description}</small>
+          {error && <div className="invalid-feedback">{error}</div>}
+        </div>
+      );
+    }
+
+    if (entry.upload) {
+      return (
+        <div className="form-group" key={errorKey}>
+          <label htmlFor={fieldId}>{currentPath[currentPath.length - 1]}</label>
+          <div className="input-group">
+            <input
+              id={fieldId}
+              type="text"
+              className={`form-control ${error ? 'is-invalid' : ''}`}
+              value={inputValue}
+              onChange={e => handleConfigChange(configName, currentPath, e.target.value)}
+            />
+            <label className="btn btn-outline-secondary">
+              {t('buttons.upload')}
+              <input
+                type="file"
+                hidden
+                onChange={e => handleFileUpload(configName, currentPath, e.target.files[0])}
+              />
+            </label>
           </div>
           <small className="form-text text-muted">{description}</small>
           {error && <div className="invalid-feedback">{error}</div>}

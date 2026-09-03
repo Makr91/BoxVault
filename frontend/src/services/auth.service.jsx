@@ -356,7 +356,6 @@ const AuthService = {
   sendInvitation,
   validateInvitationToken,
   acceptInvitation,
-  refreshTokenIfNeeded,
   forceTokenRefresh,
   getAuthMethods,
 };

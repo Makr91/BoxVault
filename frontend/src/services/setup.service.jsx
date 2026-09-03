@@ -1,4 +1,3 @@
-// setup.service.js
 import axios from 'axios';
 
 const API_URL = '/api/setup';
@@ -21,13 +20,20 @@ const updateConfigs = (token, configs) =>
 
 const isSetupComplete = () => axios.get(`${API_URL}/status`);
 
-const uploadSSL = (token, formData) =>
-  axios.post(`${API_URL}/upload-ssl`, formData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'multipart/form-data',
-    },
+const uploadSSL = (token, file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return fetch(`${API_URL}/upload-ssl`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  }).then(response => {
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+    return response.json();
   });
+};
 
 export default {
   verifySetupToken,

@@ -18,7 +18,6 @@ import {
   suspendOrganization,
   resumeOrganization,
   updateAccessMode,
-  getUserOrgRole,
   updateUserOrgRole,
   removeUserFromOrg,
   joinAsAdmin,
@@ -105,12 +104,6 @@ router.put(
   '/organization/:organization/access-mode',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   updateAccessMode
-);
-
-router.get(
-  '/organization/:organization/users/:userId/role',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
-  getUserOrgRole
 );
 
 router.put(

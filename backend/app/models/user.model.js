@@ -167,13 +167,5 @@ export default (sequelize, Sequelize) => {
     return sequelize.models.UserOrg.getUserOrganizations(this.id);
   };
 
-  /**
-   * Get user's primary organization
-   * @returns {Promise<UserOrg|null>}
-   */
-  User.prototype.getPrimaryOrganization = function () {
-    return sequelize.models.UserOrg.getPrimaryOrganization(this.id);
-  };
-
   return User;
 };

@@ -858,48 +858,6 @@ describe('Organization API', () => {
       expect(res.body.length).toBeGreaterThanOrEqual(2); // adminUser and tempUser
     });
 
-    it('GET /api/organization/:organization/users/:userId/role - should return 404 if user not found', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/999999/role`)
-        .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('GET /api/organization/:organization/users/:userId/role - should return 404 if user not member', async () => {
-      const outsider = await db.user.create({
-        username: `outsider-role-get-${uniqueId}`,
-        email: `outsider-role-get-${uniqueId}@example.com`,
-        password: 'password',
-        verified: true,
-      });
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/${outsider.id}/role`)
-        .set('x-access-token', adminToken);
-
-      expect(res.statusCode).toBe(404);
-      await outsider.destroy();
-    });
-
-    it('GET /api/organization/:organization/users/:userId/role - should reject auth when user lookups fail', async () => {
-      jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/${user.id}/role`)
-        .set('x-access-token', adminToken);
-      jest.restoreAllMocks();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
-    });
-
-    it('GET /api/organization/:organization/users/:userId/role - should get a user role in an org', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/${tempUser.id}/role`)
-        .set('x-access-token', adminToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('role', 'member');
-    });
-
     it('PUT .../role - should fail with invalid role', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/users/${tempUser.id}/role`)
@@ -934,16 +892,6 @@ describe('Organization API', () => {
 
       expect(res.statusCode).toBe(404);
       await outsider.destroy();
-    });
-
-    it('GET /api/organization/:organization/users/:userId/role - should reject auth when user lookups fail', async () => {
-      jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/${user.id}/role`)
-        .set('x-access-token', adminToken);
-      jest.restoreAllMocks();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
     });
 
     it('DELETE /api/organization/:organization/members/:userId - should remove a user from an organization', async () => {
@@ -1334,17 +1282,6 @@ describe('Organization API', () => {
       jest.restoreAllMocks();
     });
 
-    it('GET /api/organization/:organization/users/:userId/role - should handle database errors', async () => {
-      jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error('DB Error'));
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/${user.id}/role`)
-        .set('x-access-token', adminToken);
-
-      expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
-    });
-
     it('PUT /api/organization/:organization/users/:userId/role - should handle database errors', async () => {
       jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error('DB Error'));
 
@@ -1435,17 +1372,6 @@ describe('Organization API', () => {
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
         .send({ accessMode: 'invite_only' });
-
-      expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
-    });
-
-    it('GET /api/organization/:organization/users/:userId/role - should handle database errors (getUserOrgRole)', async () => {
-      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockRejectedValue(new Error('DB Error'));
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/users/${user.id}/role`)
-        .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();

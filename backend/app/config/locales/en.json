@@ -69,7 +69,6 @@
     "invalidRole": "Invalid role. Must be member, admin, or owner.",
     "userRoleUpdated": "User role updated to {{role}}",
     "updateUserRoleError": "Error updating user role",
-    "getUserRoleError": "Error fetching user role",
     "cannotLeaveOnlyOrg": "Cannot leave your only organization! You must belong to at least one organization.",
     "leftOrganization": "Successfully left organization {{orgName}}",
     "leaveError": "Error leaving organization",
@@ -229,7 +228,6 @@
     "nameTooLong": "Display name must be at most 255 characters.",
     "passwordChanged": "Password changed successfully!",
     "userDeleted": "User deleted successfully.",
-    "adminBoard": "Admin Board.",
     "findAll": {
       "error": "Some error occurred while retrieving users."
     },
@@ -243,19 +241,12 @@
     "checkOrgUsers": {
       "error": "Some error occurred while checking the organization users."
     },
-    "organizationContent": "Organization Content.",
     "fetchOrgsError": "Error fetching your organizations",
-    "noPrimaryOrg": "No primary organization found. Please contact support.",
-    "fetchPrimaryOrgError": "Error fetching primary organization",
-    "roles": {
-      "error": "Some error occurred while retrieving user roles."
-    },
     "primaryOrgSet": "Primary organization set to {{orgName}}",
     "setPrimaryOrgError": "Error setting primary organization",
     "update": {
       "error": "Some error occurred while updating the user."
-    },
-    "userContent": "User Content."
+    }
   },
   "invitations": {
     "notFound": "Invitation not found.",
@@ -404,7 +395,6 @@
     "checkError": "Failed to check setup status",
     "readError": "Failed to read configurations",
     "invalidToken": "Invalid authorization token",
-    "sslUploadError": "Failed to upload SSL certificate.",
     "notAllowed": "Setup is not allowed"
   },
   "isos": {

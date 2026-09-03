@@ -1,3 +1,4 @@
+export { default as AboutPage } from './AboutPage';
 export { default as CollectionPage } from './CollectionPage';
 export {
   architecturesColumn,
@@ -15,6 +16,7 @@ export {
   versionsColumn,
   visibilityColumn,
 } from './columns';
+export { createDeployControls, deployableVersion } from './deploy';
 export { default as DeprecationBanner } from './DeprecationBanner';
 export { CollapseButton } from './GroupHeading';
 export { default as HomePage } from './HomePage';
@@ -28,6 +30,7 @@ export {
   columnShape,
   defaultMatches,
   filterGroupShape,
+  formatFileSize,
   itemShape,
   latestReleaseTime,
   organizationShape,

@@ -3,11 +3,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { architectureShape, itemShape, providerShape, responseMessage } from '../pages';
+import {
+  architectureShape,
+  formatFileSize,
+  itemShape,
+  providerShape,
+  responseMessage,
+} from '../pages';
 import ArchitectureService from '../services/architecture.service';
 import FileService from '../services/file.service';
 import ProviderService from '../services/provider.service';
-import { formatFileSize } from '../utils/fileSize';
 import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
 

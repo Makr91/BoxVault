@@ -47,15 +47,7 @@ export const uploadSSL = [
   upload.single('file'),
   (req, res) => {
     if (req.file) {
-      const sslUploadPath = getSSLUploadPath();
-      const filePath = join(sslUploadPath, req.file.filename);
-      const response = {};
-      if (filePath.endsWith('.crt')) {
-        response.certPath = filePath;
-      } else if (filePath.endsWith('.key')) {
-        response.keyPath = filePath;
-      }
-      res.status(200).send(response);
+      res.status(200).send({ path: join(getSSLUploadPath(), req.file.filename) });
     } else {
       res.status(400).send({ message: 'No file uploaded.' });
     }

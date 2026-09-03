@@ -1,0 +1,219 @@
+{
+  "loading": "Loading...",
+  "yes": "Yes",
+  "no": "No",
+  "language": {
+    "changeLanguage": "Change Language"
+  },
+  "error": {
+    "somethingWentWrong": "Something Went Wrong",
+    "unexpectedErrorOccurred": "An unexpected error occurred. Please try refreshing the page or return to the home page.",
+    "refreshPage": "Refresh Page",
+    "goHome": "Go Home",
+    "errorDetailsDevelopment": "Error Details (Development)"
+  },
+  "navbar": {
+    "logout": "Logout",
+    "logoutEverywhereTitle": "Logging out everywhere — click to log out of this app only",
+    "logoutLocalTitle": "Logging out of this app only — click to log out everywhere",
+    "signIn": "Sign in",
+    "accountMenu": "Account menu",
+    "preferences": "Preferences",
+    "favorites": "Favorites",
+    "help": "Help",
+    "profileModeTitle": "Switch between identity provider and local profile"
+  },
+  "theme": {
+    "auto": "Theme: follow system",
+    "light": "Theme: light",
+    "dark": "Theme: dark"
+  },
+  "sessionEnded": {
+    "title": "You were signed out.",
+    "body": "Your session ended. Sign in again to continue where you were."
+  },
+  "orgSwitcher": {
+    "title": "Switch Organization",
+    "noOrgsFound": "No organizations found. Contact your administrator if this is unexpected.",
+    "primaryOrg": "Primary Organization"
+  },
+  "roles": {
+    "member": "Member",
+    "admin": "Administrator",
+    "owner": "Owner"
+  },
+  "inbox": {
+    "title": "Notifications",
+    "empty": "No notifications yet.",
+    "markAllRead": "Mark all read",
+    "dismiss": "Dismiss",
+    "viewAll": "View all notifications",
+    "loadError": "Failed to load notifications. Please try again."
+  },
+  "notifications": {
+    "pushSwitch": "Browser notifications on this device",
+    "enableError": "Failed to enable notifications. Please try again.",
+    "disableError": "Failed to disable notifications. Please try again.",
+    "permissionDenied": "Notification permission was denied by the browser.",
+    "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
+    "notSupported": "Push notifications are not supported by this browser."
+  },
+  "search": {
+    "open": "Search",
+    "filters": "Filters",
+    "clear": "Clear search and filters",
+    "clearFilters": "Clear filters",
+    "activeFilters_one": "{{count}} filter active",
+    "activeFilters_other": "{{count}} filters active"
+  },
+  "footer": {
+    "health": {
+      "status": "System Status",
+      "ok": "All systems operational",
+      "error": "A system has an issue",
+      "warning": "One or more systems have warnings",
+      "database": "Database",
+      "storage": "Storage",
+      "storageBoxes": "Storage (Boxes)",
+      "storageIsos": "Storage (ISOs)",
+      "oidcProviders": "OIDC Providers",
+      "worker": "Worker",
+      "idp": "Identity provider",
+      "pages": "Public catalog",
+      "store": "Private store"
+    }
+  },
+  "collections": {
+    "provisioners": "Provisioners",
+    "provisionersCount_one": "{{count}} provisioner",
+    "provisionersCount_other": "{{count}} provisioners",
+    "boxes": "Boxes",
+    "boxesCount_one": "{{count}} box",
+    "boxesCount_other": "{{count}} boxes",
+    "isos": "ISOs",
+    "isosCount_one": "{{count}} ISO",
+    "isosCount_other": "{{count}} ISOs"
+  },
+  "pages": {
+    "loading": "Loading…",
+    "notFound": "Not found.",
+    "empty": "Nothing here yet.",
+    "noMatches": "Nothing matches.",
+    "searchAll": "Search…",
+    "filter": {
+      "collection": "Collection",
+      "provider": "Provider",
+      "architecture": "Architecture"
+    },
+    "view": {
+      "label": "View",
+      "table": "List view",
+      "cards": "Card view"
+    },
+    "toggle": "Show or hide",
+    "addNew": "Add New",
+    "removeAll": "Remove All",
+    "links": {
+      "repo": "Source repository",
+      "homepage": "Homepage",
+      "issues": "Report an issue",
+      "pipeline": "CI pipeline"
+    },
+    "table": {
+      "name": "Name",
+      "os": "OS",
+      "status": "Status",
+      "visibility": "Visibility",
+      "organization": "Organization",
+      "created": "Created",
+      "updated": "Updated",
+      "released": "Latest release",
+      "downloads": "Downloads",
+      "versions": "# Versions",
+      "providers": "Providers",
+      "architectures": "Architectures",
+      "actions": "Actions",
+      "size": "Size",
+      "checksum": "Checksum",
+      "version": "Version",
+      "details": "Details",
+      "download": "Download",
+      "defaultBox": "Default box",
+      "fileSize": "File size",
+      "checksumType": "Checksum type"
+    },
+    "status": {
+      "published": "Published",
+      "pending": "Pending",
+      "public": "Public",
+      "private": "Private",
+      "deprecated": "Deprecated"
+    },
+    "item": {
+      "details": "Details",
+      "facts": "Facts",
+      "readme": "README",
+      "versions": "Versions"
+    },
+    "facts": {
+      "os": "OS",
+      "type": "Type",
+      "username": "Username",
+      "password": "Password",
+      "communicator": "Communicator",
+      "cpus": "CPUs",
+      "memory": "Memory",
+      "disks": "Disks",
+      "providers": "Providers",
+      "built": "Built",
+      "driver": "Driver",
+      "desktop": "Desktop",
+      "server": "Server",
+      "size": "Size",
+      "checksum": "Checksum",
+      "created": "Created",
+      "updated": "Updated",
+      "downloads": "Downloads",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "version": {
+      "title": "Version {{version}}",
+      "released": "Released",
+      "edit": "Edit version",
+      "releaseNotes": "Release notes",
+      "deprecatedBanner": "This version is deprecated",
+      "description": "Description",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "providersFor": "Providers for version {{version}}",
+      "artifacts": "Artifacts"
+    },
+    "provider": {
+      "edit": "Edit provider",
+      "architecturesFor": "Architectures for provider {{provider}}",
+      "clickToCopy": "Click to copy checksum",
+      "checksumCopied": "Checksum copied to clipboard.",
+      "copyFailed": "Could not copy the checksum."
+    },
+    "watch": {
+      "watch": "Watch",
+      "unwatch": "Stop watching",
+      "filterWatched": "Watched",
+      "watched": "Watched",
+      "error": "Failed to update the watch. Please try again."
+    },
+    "deploy": {
+      "deploy": "Deploy",
+      "versionTitle": "Deploy {{version}} with Hyperweaver"
+    },
+    "about": {
+      "keyFeatures": "Key Features",
+      "documentation": "Documentation",
+      "components": "Components",
+      "support": "Support and Community",
+      "addToFavorites": "Add to Favorites",
+      "removeFromFavorites": "Remove from Favorites"
+    }
+  }
+}

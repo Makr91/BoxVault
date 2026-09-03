@@ -22,8 +22,7 @@ jest.unstable_mockModule('../app/models/index.js', () => ({ default: mockDb }));
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 jest.unstable_mockModule('../app/controllers/favorites/helpers.js', () => mockFavoriteHelpers);
 
-const { getPreferences, updatePreferences } =
-  await import('../app/controllers/user/preferences.js');
+const { updatePreferences } = await import('../app/controllers/user/preferences.js');
 
 const buildRequest = body => ({
   body,
@@ -58,41 +57,6 @@ describe('User Preferences', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFavoriteHelpers.extractOidcAccessToken.mockReturnValue(null);
-  });
-
-  describe('GET /api/user/preferences', () => {
-    it('should return the stored preferences in wire shape', async () => {
-      mockDb.user.findByPk.mockResolvedValue(
-        buildStoredUser({ preferredLanguage: 'es', preferredTheme: 'dark', timezone: 'UTC' })
-      );
-      const res = buildResponse();
-
-      await getPreferences(buildRequest({}), res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.send).toHaveBeenCalledWith({ language: 'es', theme: 'dark', timezone: 'UTC' });
-    });
-
-    it('should report unset columns as null', async () => {
-      mockDb.user.findByPk.mockResolvedValue(
-        buildStoredUser({ preferredLanguage: null, preferredTheme: null, timezone: null })
-      );
-      const res = buildResponse();
-
-      await getPreferences(buildRequest({}), res);
-
-      expect(res.send).toHaveBeenCalledWith({ language: null, theme: null, timezone: null });
-    });
-
-    it('should return 404 when the user no longer exists', async () => {
-      mockDb.user.findByPk.mockResolvedValue(null);
-      const res = buildResponse();
-
-      await getPreferences(buildRequest({}), res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.userNotFound' });
-    });
   });
 
   describe('PATCH /api/user/preferences - accepted values', () => {

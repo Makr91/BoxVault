@@ -6,25 +6,13 @@ const baseURL = window.location.origin;
 
 const discoverAll = () => axios.get(`${baseURL}/api/discover`, { headers: authHeader() });
 
-const discoverAllbyName = name =>
-  axios.get(`${baseURL}/api/discover/box?name=${name}`, {
-    headers: authHeader(),
-  });
-
 const getAll = organization =>
   axios.get(`${baseURL}/api/organization/${organization}/box`, {
     headers: authHeader(),
   });
 
-const getAllBoxes = () => axios.get(`${baseURL}/api/boxes`, { headers: authHeader() });
-
 const get = (organization, name) =>
   axios.get(`${baseURL}/api/organization/${organization}/box/${name}`, {
-    headers: authHeader(),
-  });
-
-const findByName = (organization, name) =>
-  axios.get(`${baseURL}/api/organization/${organization}/box?name=${name}`, {
     headers: authHeader(),
   });
 
@@ -72,9 +60,6 @@ const BoxService = {
   update,
   remove,
   removeAll,
-  findByName,
-  discoverAllbyName,
-  getAllBoxes,
   watch,
   unwatch,
   getUserWatches,

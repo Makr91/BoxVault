@@ -268,39 +268,6 @@ describe('Favorites API', () => {
     });
   });
 
-  describe('GET /api/userinfo/favorites', () => {
-    it('should retrieve enriched favorites from auth server', async () => {
-      axiosGet.mockResolvedValue({ data: { favorite_apps: mockFavoriteApps } });
-      const res = await request(app)
-        .get('/api/userinfo/favorites')
-        .set('x-access-token', oidcUserToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThan(0);
-      expect(res.body[0]).toHaveProperty('clientId', 'box-id-1');
-      expect(res.body[0]).toHaveProperty('clientName', 'My Favorite Box'); // Enriched property
-    });
-
-    it('should return empty array for non-OIDC user', async () => {
-      const res = await request(app)
-        .get('/api/userinfo/favorites')
-        .set('x-access-token', localUserToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-
-    it('should handle missing favorite_apps in response data', async () => {
-      axiosGet.mockResolvedValue({ data: {} }); // No favorite_apps property
-      const res = await request(app)
-        .get('/api/userinfo/favorites')
-        .set('x-access-token', oidcUserToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-  });
-
   describe('GET /api/userinfo/claims', () => {
     it('should retrieve full claims from auth server', async () => {
       const mockClaims = {
@@ -362,19 +329,6 @@ describe('Favorites API', () => {
       const res = await request(app).get('/api/favorites').set('x-access-token', oidcUserToken);
 
       // The controller is designed to return an empty array on error to prevent UI breakage
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-
-    it('should handle errors when getting enriched favorites fails and return an empty array', async () => {
-      // Configure mock to reject
-      axiosGet.mockRejectedValueOnce(new Error('Auth server unavailable'));
-
-      const res = await request(app)
-        .get('/api/userinfo/favorites')
-        .set('x-access-token', oidcUserToken);
-
-      // The controller is designed to return an empty array on error
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual([]);
     });

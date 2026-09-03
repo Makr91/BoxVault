@@ -134,7 +134,7 @@ describe('Setup API', () => {
         .attach('file', Buffer.from('fake-cert-content'), 'server.crt');
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('certPath');
+      expect(res.body.path).toBe(path.join(tempConfigDir, 'ssl', 'server.crt'));
     });
 
     it('should upload SSL key', async () => {
@@ -146,7 +146,7 @@ describe('Setup API', () => {
         .attach('file', Buffer.from('fake-key-content'), 'server.key');
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('keyPath');
+      expect(res.body.path).toBe(path.join(tempConfigDir, 'ssl', 'server.key'));
     });
   });
 
@@ -394,16 +394,15 @@ describe('Setup API', () => {
       renameSpy.mockRestore();
     });
 
-    it('should handle upload of non-cert/key files (upload.js)', async () => {
+    it('should return the saved path for any file name (upload.js)', async () => {
       await reauthorize();
       const res = await request(app)
         .post('/api/setup/upload-ssl')
         .set('Authorization', `Bearer ${authorizedToken}`)
-        .attach('file', Buffer.from('content'), 'test.txt');
+        .attach('file', Buffer.from('content'), 'fullchain.pem');
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.certPath).toBeUndefined();
-      expect(res.body.keyPath).toBeUndefined();
+      expect(res.body.path).toBe(path.join(tempConfigDir, 'ssl', 'fullchain.pem'));
     });
 
     it('should use default config directory if env var is missing (upload.js)', async () => {

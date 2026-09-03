@@ -4,7 +4,6 @@ import {
   getFavorites,
   saveFavorites,
   getUserInfoClaims,
-  getEnrichedFavorites,
 } from '../controllers/favorites.controller.js';
 
 const router = Router();
@@ -33,14 +32,6 @@ router.get(
   '/userinfo/claims',
   [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
   getUserInfoClaims
-);
-
-// Get enriched favorites only (lightweight)
-// Apply OIDC token refresh middleware before this route as it uses OIDC access token
-router.get(
-  '/userinfo/favorites',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
-  getEnrichedFavorites
 );
 
 export default router;

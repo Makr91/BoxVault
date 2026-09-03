@@ -3,18 +3,13 @@ import { Router } from 'express';
 import { authJwt, verifySignUp, verifyOrgAccess, oidcTokenRefresh } from '../middleware/index.js';
 import {
   allAccess,
-  userBoard,
-  adminBoard,
-  getUserRoles,
   changePassword,
   changeEmail,
   changeName,
   getUserProfile,
   getUserOrganizations,
-  getPreferences,
   updatePreferences,
   leaveOrganization,
-  getPrimaryOrganization,
   setPrimaryOrganization,
   isOnlyUserInOrg,
   findOne,
@@ -41,9 +36,6 @@ router.use((req, res, next) => {
 });
 
 router.get('/users/all', allAccess);
-router.get('/users/user', [authJwt.verifyToken, authJwt.isUser], userBoard);
-router.get('/users/admin', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], adminBoard);
-router.get('/users/roles', [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin], getUserRoles);
 
 router.put(
   '/users/:userId/change-password',
@@ -86,8 +78,6 @@ router.get(
 
 // Writes ride the acting user's OIDC token for federated accounts, so the
 // token has to be fresh before the controller reaches for it.
-router.get('/user/preferences', [authJwt.verifyToken, authJwt.isUser], getPreferences);
-
 router.patch(
   '/user/preferences',
   [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
@@ -99,12 +89,6 @@ router.get('/user/watches', [authJwt.verifyToken, authJwt.isUser], listUserWatch
 router.get('/user/iso-watches', [authJwt.verifyToken, authJwt.isUser], listUserIsoWatches);
 
 router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], leaveOrganization);
-
-router.get(
-  '/user/primary-organization',
-  [authJwt.verifyToken, authJwt.isUser],
-  getPrimaryOrganization
-);
 
 router.put(
   '/user/primary-organization/:orgName',

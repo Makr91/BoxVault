@@ -4,8 +4,6 @@ import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
-const getOrganizations = () => axios.get(`${baseURL}/api/organizations`, { headers: authHeader() });
-
 const getOrganizationsWithUsers = () =>
   axios.get(`${baseURL}/api/organizations-with-users`, {
     headers: authHeader(),
@@ -55,11 +53,6 @@ const updateAccessMode = (organizationName, accessMode, defaultRole) =>
     { headers: authHeader() }
   );
 
-const getUserOrgRole = (organizationName, userId) =>
-  axios.get(`${baseURL}/api/organization/${organizationName}/users/${userId}/role`, {
-    headers: authHeader(),
-  });
-
 const updateUserOrgRole = (organizationName, userId, role) =>
   axios.put(
     `${baseURL}/api/organization/${organizationName}/users/${userId}/role`,
@@ -76,7 +69,6 @@ const joinOrganizationAsAdmin = organizationName =>
   axios.post(`${baseURL}/api/organization/${organizationName}/join`, {}, { headers: authHeader() });
 
 const OrganizationService = {
-  getOrganizations,
   getOrganizationsWithUsers,
   getOrganizationWithUsers,
   getOrganizationByName,
@@ -86,7 +78,6 @@ const OrganizationService = {
   deleteOrganization,
   getDiscoverableOrganizations,
   updateAccessMode,
-  getUserOrgRole,
   updateUserOrgRole,
   removeUserFromOrg,
   joinOrganizationAsAdmin,

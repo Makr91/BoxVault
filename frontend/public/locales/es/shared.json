@@ -1,0 +1,219 @@
+{
+  "loading": "Cargando...",
+  "yes": "Sí",
+  "no": "No",
+  "language": {
+    "changeLanguage": "Cambiar Idioma"
+  },
+  "error": {
+    "somethingWentWrong": "Algo salió mal",
+    "unexpectedErrorOccurred": "Ocurrió un error inesperado. Por favor intenta refrescar la página o volver a la página de inicio.",
+    "refreshPage": "Refrescar Página",
+    "goHome": "Ir a Inicio",
+    "errorDetailsDevelopment": "Detalles del Error (Desarrollo)"
+  },
+  "navbar": {
+    "logout": "Cerrar Sesión",
+    "logoutEverywhereTitle": "Cerrando sesión en todas partes — haz clic para cerrar solo esta aplicación",
+    "logoutLocalTitle": "Cerrando sesión solo en esta aplicación — haz clic para cerrar en todas partes",
+    "signIn": "Iniciar sesión",
+    "accountMenu": "Menú de cuenta",
+    "preferences": "Preferencias",
+    "favorites": "Favoritos",
+    "help": "Ayuda",
+    "profileModeTitle": "Cambiar entre el perfil del proveedor de identidad y el perfil local"
+  },
+  "theme": {
+    "auto": "Tema: seguir el sistema",
+    "light": "Tema: claro",
+    "dark": "Tema: oscuro"
+  },
+  "sessionEnded": {
+    "title": "Se cerró tu sesión.",
+    "body": "Tu sesión terminó. Inicia sesión de nuevo para continuar donde estabas."
+  },
+  "orgSwitcher": {
+    "title": "Cambiar Organización",
+    "noOrgsFound": "No se encontraron organizaciones. Contacta a tu administrador si esto es inesperado.",
+    "primaryOrg": "Organización Principal"
+  },
+  "roles": {
+    "member": "Miembro",
+    "admin": "Administrador",
+    "owner": "Propietario"
+  },
+  "inbox": {
+    "title": "Notificaciones",
+    "empty": "Aún no hay notificaciones.",
+    "markAllRead": "Marcar todas como leídas",
+    "dismiss": "Descartar",
+    "viewAll": "Ver todas las notificaciones",
+    "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo."
+  },
+  "notifications": {
+    "pushSwitch": "Notificaciones del navegador en este dispositivo",
+    "enableError": "Error al activar las notificaciones. Por favor intenta de nuevo.",
+    "disableError": "Error al desactivar las notificaciones. Por favor intenta de nuevo.",
+    "permissionDenied": "El navegador denegó el permiso de notificaciones.",
+    "scopeMissing": "Tu cuenta aún no está autorizada para notificaciones. Pide a tu administrador que habilite el alcance de notificaciones.",
+    "notSupported": "Este navegador no soporta notificaciones push."
+  },
+  "search": {
+    "open": "Buscar",
+    "filters": "Filtros",
+    "clear": "Borrar búsqueda y filtros",
+    "clearFilters": "Quitar filtros",
+    "activeFilters_one": "{{count}} filtro activo",
+    "activeFilters_other": "{{count}} filtros activos"
+  },
+  "footer": {
+    "health": {
+      "status": "Estado del Sistema",
+      "ok": "Todos los sistemas operativos",
+      "error": "Un sistema tiene un problema",
+      "warning": "Uno o más sistemas tienen advertencias",
+      "database": "Base de Datos",
+      "storage": "Almacenamiento",
+      "storageBoxes": "Almacenamiento (Boxes)",
+      "storageIsos": "Almacenamiento (ISOs)",
+      "oidcProviders": "Proveedores OIDC",
+      "worker": "Worker",
+      "idp": "Proveedor de identidad",
+      "pages": "Catálogo público",
+      "store": "Almacén privado"
+    }
+  },
+  "collections": {
+    "provisioners": "Provisioners",
+    "provisionersCount_one": "{{count}} provisioner",
+    "provisionersCount_other": "{{count}} provisioners",
+    "boxes": "Boxes",
+    "boxesCount_one": "{{count}} box",
+    "boxesCount_other": "{{count}} boxes",
+    "isos": "ISOs",
+    "isosCount_one": "{{count}} ISO",
+    "isosCount_other": "{{count}} ISOs"
+  },
+  "pages": {
+    "loading": "Cargando…",
+    "notFound": "No encontrado.",
+    "empty": "Aún no hay nada aquí.",
+    "noMatches": "Nada coincide.",
+    "searchAll": "Buscar…",
+    "filter": {
+      "collection": "Colección",
+      "provider": "Proveedor",
+      "architecture": "Arquitectura"
+    },
+    "view": {
+      "label": "Vista",
+      "table": "Vista de lista",
+      "cards": "Vista de tarjetas"
+    },
+    "toggle": "Mostrar u ocultar",
+    "addNew": "Añadir nuevo",
+    "removeAll": "Eliminar todo",
+    "links": {
+      "repo": "Repositorio",
+      "homepage": "Página web",
+      "issues": "Informar de un problema",
+      "pipeline": "Pipeline de CI"
+    },
+    "table": {
+      "name": "Nombre",
+      "os": "SO",
+      "status": "Estado",
+      "visibility": "Visibilidad",
+      "organization": "Organización",
+      "created": "Creado",
+      "updated": "Actualizado",
+      "released": "Último lanzamiento",
+      "downloads": "Descargas",
+      "versions": "# Versiones",
+      "providers": "Proveedores",
+      "architectures": "Arquitecturas",
+      "actions": "Acciones",
+      "size": "Tamaño",
+      "checksum": "Suma de comprobación",
+      "version": "Versión",
+      "details": "Detalles",
+      "download": "Descargar",
+      "defaultBox": "Box predeterminada",
+      "fileSize": "Tamaño de archivo",
+      "checksumType": "Tipo de checksum"
+    },
+    "status": {
+      "published": "Publicado",
+      "pending": "Pendiente",
+      "public": "Público",
+      "private": "Privado",
+      "deprecated": "Obsoleta"
+    },
+    "item": {
+      "details": "Detalles",
+      "facts": "Datos",
+      "readme": "README",
+      "versions": "Versiones"
+    },
+    "facts": {
+      "os": "SO",
+      "type": "Tipo",
+      "username": "Usuario",
+      "password": "Contraseña",
+      "communicator": "Comunicador",
+      "cpus": "CPUs",
+      "memory": "Memoria",
+      "disks": "Discos",
+      "providers": "Proveedores",
+      "built": "Compilada",
+      "driver": "Driver",
+      "desktop": "Escritorio",
+      "server": "Servidor",
+      "size": "Tamaño",
+      "checksum": "Suma de comprobación",
+      "created": "Creado",
+      "updated": "Actualizado",
+      "downloads": "Descargas",
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "version": {
+      "title": "Versión {{version}}",
+      "released": "Publicado",
+      "edit": "Editar versión",
+      "releaseNotes": "Notas de la versión",
+      "deprecatedBanner": "Esta versión está obsoleta",
+      "description": "Descripción",
+      "createdAt": "Creado",
+      "updatedAt": "Actualizado",
+      "providersFor": "Proveedores para la versión {{version}}",
+      "artifacts": "Artefactos"
+    },
+    "provider": {
+      "edit": "Editar proveedor",
+      "architecturesFor": "Arquitecturas para el proveedor {{provider}}",
+      "clickToCopy": "Clic para copiar el checksum",
+      "checksumCopied": "Checksum copiado al portapapeles.",
+      "copyFailed": "No se pudo copiar el checksum."
+    },
+    "watch": {
+      "watch": "Seguir",
+      "unwatch": "Dejar de seguir",
+      "filterWatched": "Seguidas",
+      "watched": "Seguidas",
+      "error": "Error al actualizar el seguimiento. Por favor intenta de nuevo."
+    },
+    "deploy": {
+      "deploy": "Desplegar",
+      "versionTitle": "Desplegar {{version}} con Hyperweaver"
+    },
+    "about": {
+      "keyFeatures": "Características Clave",
+      "documentation": "Documentación",
+      "components": "Componentes",
+      "support": "Soporte y Comunidad",
+      "addToFavorites": "Añadir a Favoritos",
+      "removeFromFavorites": "Eliminar de Favoritos"
+    }
+  }
+}

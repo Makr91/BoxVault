@@ -265,17 +265,10 @@ describe('User API', () => {
   });
 
   describe('Primary Organization Management', () => {
-    it("should get the user's primary organization", async () => {
-      const res = await request(app)
-        .get('/api/user/primary-organization')
-        .set('x-access-token', userToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.organization).toHaveProperty('name', orgOne.name);
-    });
-
-    it('should get primary organization via model method', async () => {
-      const primary = await testUser.getPrimaryOrganization();
+    it('should flag the seeded membership as primary', async () => {
+      const primary = await db.UserOrg.findOne({
+        where: { user_id: testUser.id, is_primary: true },
+      });
       expect(primary.organization_id).toBe(orgOne.id);
     });
 
@@ -287,11 +280,12 @@ describe('User API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toMatch(/Primary organization set to/);
 
-      // Verify by calling getPrimaryOrganization again
-      const checkRes = await request(app)
-        .get('/api/user/primary-organization')
-        .set('x-access-token', userToken);
-      expect(checkRes.body.organization).toHaveProperty('name', orgTwo.name);
+      const primary = await db.UserOrg.findOne({
+        where: { user_id: testUser.id, is_primary: true },
+      });
+      expect(primary.organization_id).toBe(orgTwo.id);
+      const user = await db.user.findByPk(testUser.id);
+      expect(user.primary_organization_id).toBe(orgTwo.id);
     });
 
     it('should handle transaction rollback in setPrimaryOrganization', async () => {
@@ -660,27 +654,6 @@ describe('User API', () => {
       expect(res.body).toHaveProperty('title');
     });
 
-    it('GET /api/users/user should return user content', async () => {
-      const res = await request(app).get('/api/users/user').set('x-access-token', userToken);
-      expect(res.statusCode).toBe(200);
-    });
-
-    it('GET /api/users/admin should return admin content', async () => {
-      const res = await request(app).get('/api/users/admin').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(200);
-    });
-
-    it('GET /api/users/admin should fail for non-admin', async () => {
-      const res = await request(app).get('/api/users/admin').set('x-access-token', userToken);
-      expect(res.statusCode).toBe(403);
-    });
-
-    it('GET /api/users/roles should return user roles for admin', async () => {
-      const res = await request(app).get('/api/users/roles').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
     it('GET /api/user should return 404 for deleted user with valid token', async () => {
       const tempToken = jwt.sign({ id: 999999 }, 'test-secret', { expiresIn: '1h' });
       const res = await request(app).get('/api/user').set('x-access-token', tempToken);
@@ -913,31 +886,6 @@ describe('User API', () => {
       expect(res.body.roles).toEqual([]);
     });
 
-    it('GET /api/user/primary-organization - should return 404 if no primary org', async () => {
-      // Create a user with NO primary organization
-      const noOrgUser = await db.user.create({
-        username: `no-org-${uniqueId}`,
-        email: `no-org-${uniqueId}@example.com`,
-        password: 'password',
-        verified: true,
-        primary_organization_id: null,
-      });
-      const userRole = await db.role.findOne({ where: { name: 'user' } });
-      await noOrgUser.setRoles([userRole]);
-
-      const token = jwt.sign({ id: noOrgUser.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      const res = await request(app)
-        .get('/api/user/primary-organization')
-        .set('x-access-token', token);
-
-      expect(res.statusCode).toBe(404);
-      await noOrgUser.destroy();
-    });
-
     it('GET /api/user - should use default token expiration if config value is missing', async () => {
       // 1. Read current auth config
       const configPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
@@ -1068,30 +1016,6 @@ describe('User API', () => {
       expect(res.statusCode).toBe(500);
     });
 
-    it('GET /api/users/roles - should handle errors', async () => {
-      jest
-        .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
-        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
-        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
-        .mockRejectedValueOnce(new Error('')); // controller
-
-      const res = await request(app).get('/api/users/roles').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(500);
-    });
-
-    it('GET /api/users/roles - should handle user not found in controller', async () => {
-      jest
-        .spyOn(db.user, 'findByPk')
-        .mockResolvedValueOnce(mwAdminMock()) // token revocation check
-        .mockResolvedValueOnce(mwAdminMock()) // isUser middleware
-        .mockResolvedValueOnce(mwAdminMock()) // isAdmin middleware
-        .mockResolvedValueOnce(null);
-
-      const res = await request(app).get('/api/users/roles').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(404);
-    });
-
     it('GET /api/user/organizations - should handle errors', async () => {
       // Mock User.findByPk for middleware to pass
       jest.spyOn(db.user, 'findByPk').mockResolvedValue({
@@ -1112,18 +1036,6 @@ describe('User API', () => {
       jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error(''));
       const res = await request(app)
         .post(`/api/user/leave/${orgOne.name}`)
-        .set('x-access-token', userToken);
-      expect(res.statusCode).toBe(500);
-    });
-
-    it('GET /api/user/primary-organization - should handle errors', async () => {
-      // Mock User.findByPk for middleware to pass
-      jest.spyOn(db.user, 'findByPk').mockResolvedValue({
-        getRoles: () => Promise.resolve([{ name: 'user' }]),
-      });
-      jest.spyOn(db.UserOrg, 'getPrimaryOrganization').mockRejectedValue(new Error(''));
-      const res = await request(app)
-        .get('/api/user/primary-organization')
         .set('x-access-token', userToken);
       expect(res.statusCode).toBe(500);
     });

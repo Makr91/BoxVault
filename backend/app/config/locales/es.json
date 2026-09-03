@@ -69,7 +69,6 @@
     "invalidRole": "Rol inválido. Debe ser miembro, administrador o propietario.",
     "userRoleUpdated": "Rol de usuario actualizado a {{role}}",
     "updateUserRoleError": "Error al actualizar el rol del usuario",
-    "getUserRoleError": "Error al obtener el rol del usuario",
     "cannotLeaveOnlyOrg": "¡No puedes dejar tu única organización! Debes pertenecer al menos a una organización.",
     "leftOrganization": "Has dejado exitosamente la organización {{orgName}}",
     "leaveError": "Error al dejar la organización",
@@ -229,7 +228,6 @@
     "nameTooLong": "El nombre visible debe tener como máximo 255 caracteres.",
     "passwordChanged": "¡Contraseña cambiada exitosamente!",
     "userDeleted": "Usuario eliminado exitosamente.",
-    "adminBoard": "Panel de Administración.",
     "findAll": {
       "error": "Ocurrió un error al recuperar los usuarios."
     },
@@ -243,19 +241,12 @@
     "checkOrgUsers": {
       "error": "Ocurrió un error al verificar los usuarios de la organización."
     },
-    "organizationContent": "Contenido de la Organización.",
     "fetchOrgsError": "Error al obtener tus organizaciones",
-    "noPrimaryOrg": "No se encontró organización principal. Por favor contacta soporte.",
-    "fetchPrimaryOrgError": "Error al obtener la organización principal",
-    "roles": {
-      "error": "Ocurrió un error al recuperar los roles de usuario."
-    },
     "primaryOrgSet": "Organización principal establecida a {{orgName}}",
     "setPrimaryOrgError": "Error al establecer la organización principal",
     "update": {
       "error": "Ocurrió un error al actualizar el usuario."
-    },
-    "userContent": "Contenido de Usuario."
+    }
   },
   "invitations": {
     "notFound": "Invitación no encontrada.",
@@ -404,7 +395,6 @@
     "checkError": "Error al verificar el estado de configuración",
     "readError": "Error al leer configuraciones",
     "invalidToken": "Token de autorización inválido",
-    "sslUploadError": "Error al subir certificado SSL.",
     "notAllowed": "La configuración no está permitida"
   },
   "isos": {

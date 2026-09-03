@@ -93,51 +93,6 @@ const toWireShape = user => ({
   timezone: user.timezone || null,
 });
 
-/**
- * @swagger
- * /api/user/preferences:
- *   get:
- *     summary: Get the signed-in user's preferences
- *     description: Language, colour-scheme variant, and timezone as stored by BoxVault.
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Current preferences
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 language:
- *                   type: string
- *                   nullable: true
- *                 theme:
- *                   type: string
- *                   nullable: true
- *                   enum: [light, dark, auto]
- *                 timezone:
- *                   type: string
- *                   nullable: true
- *       404:
- *         description: User not found
- *       500:
- *         description: Internal server error
- */
-export const getPreferences = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.userId);
-    if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
-    }
-    return res.status(200).send(toWireShape(user));
-  } catch (err) {
-    log.error.error('Error reading preferences:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
-  }
-};
-
 const delegateToProvider = async (req, body) => {
   const oidcAccessToken = extractOidcAccessToken(req);
   if (!oidcAccessToken) {

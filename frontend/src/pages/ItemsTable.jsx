@@ -42,21 +42,23 @@ SortIcon.propTypes = {
 
 const ItemRow = ({ item, columns, watches, ItemQuickActions, RowActions, ctx }) => (
   <tr>
-    <td className="text-center align-middle">
+    <td className="col-watch text-center align-middle">
       {watches ? (
         <WatchStar watched={watches.ids.has(item.id)} onToggle={() => watches.toggle(item)} />
       ) : null}
     </td>
     {columns.map(column => (
-      <td key={column.key}>{column.render(item, ctx)}</td>
+      <td key={column.key} className={`col-${column.key}`}>
+        {column.render(item, ctx)}
+      </td>
     ))}
     {ItemQuickActions ? (
-      <td className="text-center align-middle">
+      <td className="col-quick text-center align-middle">
         <ItemQuickActions item={item} ctx={ctx} />
       </td>
     ) : null}
     {RowActions ? (
-      <td>
+      <td className="col-actions">
         <RowActions item={item} ctx={ctx} />
       </td>
     ) : null}
@@ -131,11 +133,11 @@ const ItemsTable = ({
   };
 
   return (
-    <Table striped className="table">
+    <Table striped className="table items-table">
       <thead>
         <tr>
           <th
-            className={watches ? 'sortable-header text-center' : 'text-center'}
+            className={`col-watch text-center${watches ? ' sortable-header' : ''}`}
             onClick={watches ? () => onSort('watch') : undefined}
             title={t('pages.watch.filterWatched')}
           >
@@ -145,15 +147,17 @@ const ItemsTable = ({
           {columns.map(column => (
             <th
               key={column.key}
-              className={column.sortValue ? 'sortable-header' : undefined}
+              className={`col-${column.key}${column.sortValue ? ' sortable-header' : ''}`}
               onClick={column.sortValue ? () => onSort(column.key) : undefined}
             >
               {t(column.labelKey)}{' '}
               {column.sortValue ? <SortIcon column={column.key} sort={sort} /> : null}
             </th>
           ))}
-          {ItemQuickActions ? <th aria-label={t('pages.table.actions')} /> : null}
-          {RowActions ? <th>{t('pages.table.actions')}</th> : null}
+          {ItemQuickActions ? (
+            <th className="col-quick" aria-label={t('pages.table.actions')} />
+          ) : null}
+          {RowActions ? <th className="col-actions">{t('pages.table.actions')}</th> : null}
         </tr>
       </thead>
       {body()}

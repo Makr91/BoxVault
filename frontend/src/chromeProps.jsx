@@ -1,9 +1,10 @@
 import PropTypes from 'prop-types';
 
+import { createNotificationsClient } from './chrome';
 import BoxVaultLight from './images/BoxVault.svg?react';
 import BoxVaultDark from './images/BoxVaultDark.svg?react';
+import authHeader from './services/auth-header';
 import AuthService from './services/auth.service';
-import NotificationsService from './services/notifications.service';
 import UserService from './services/user.service';
 import { userDisplayName } from './utils/displayName';
 import { log } from './utils/Logger';
@@ -24,13 +25,10 @@ export const POWERED_BY = {
   logoSrc: 'https://startcloud.com/assets/images/logos/startcloud-logo40.png',
 };
 
-export const notificationsAdapter = {
-  list: params => NotificationsService.listNotifications(params).then(response => response.data),
-  unreadCount: () => NotificationsService.getUnreadCount().then(response => response.data),
-  markRead: id => NotificationsService.markRead(id),
-  markAllRead: () => NotificationsService.markAllRead(),
-  remove: id => NotificationsService.deleteNotification(id),
-};
+export const notificationsAdapter = createNotificationsClient({
+  baseUrl: window.location.origin,
+  headers: () => authHeader(),
+});
 
 export const pushAdapter = {
   isSupported: isPushSupported,
