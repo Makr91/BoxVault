@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.72.0](https://github.com/Makr91/BoxVault/compare/v0.71.0...v0.72.0) (2026-09-03)
+
+
+### Features
+
+* api stuff ([666fc96](https://github.com/Makr91/BoxVault/commit/666fc96ed38ae5524d4d4a18e817b26bc9409203))
+
 ## [0.71.0](https://github.com/Makr91/BoxVault/compare/v0.70.0...v0.71.0) (2026-09-03)
 
 
