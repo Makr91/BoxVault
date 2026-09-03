@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.66.0](https://github.com/Makr91/BoxVault/compare/v0.65.0...v0.66.0) (2026-09-03)
+
+
+### Features
+
+* Add New and Remove All on both Boxes and ISOs heading rows, ISO delete-all route ([72aee46](https://github.com/Makr91/BoxVault/commit/72aee46b1854044bd2aeca61c24ba0e9b08fcdfb))
+
 ## [0.65.0](https://github.com/Makr91/BoxVault/compare/v0.64.0...v0.65.0) (2026-09-03)
 
 
