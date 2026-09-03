@@ -12,9 +12,8 @@ import {
   FaBox,
 } from 'react-icons/fa6';
 
-import { userDisplayName, userSecondaryLine } from '../chrome';
+import { log, userDisplayName, userSecondaryLine } from '../chrome';
 import AuthService from '../services/auth.service';
-import { log } from '../utils/Logger';
 
 const UserCardActions = ({
   user,
@@ -115,9 +114,9 @@ const UserCard = ({
     if (!user.avatar_url && user.emailHash) {
       AuthService.getGravatarProfile(user.emailHash)
         .then(profile => {
-          if (mounted && profile?.thumbnailUrl) {
+          if (mounted && profile?.avatar_url) {
             // Request a 50px image for consistency with the placeholder
-            setGravatarUrl(`${profile.thumbnailUrl}?s=50`);
+            setGravatarUrl(`${profile.avatar_url}?s=50`);
           }
         })
         .catch(err => {

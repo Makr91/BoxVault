@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import SetupService from '../services/setup.service';
-import { log } from '../utils/Logger';
 
 const SetupComponent = () => {
   const { t } = useTranslation();

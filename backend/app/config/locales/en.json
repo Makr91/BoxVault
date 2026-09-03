@@ -319,10 +319,21 @@
     "description": "BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates.",
     "components": {
       "backend": {
-        "title": "Backend"
+        "title": "Backend",
+        "details": {
+          "nodejs": "Node.js service that also answers Vagrant's box API on the same paths",
+          "auth": "Local accounts, single sign-on through OpenID Connect providers, and service-account tokens for automation",
+          "endpoints": "REST API documented in the Swagger UI at /api-docs",
+          "database": "Organizations, boxes, versions, providers, architectures and ISOs in the database; files on local storage"
+        }
       },
       "frontend": {
-        "title": "Frontend"
+        "title": "Frontend",
+        "details": {
+          "react": "React single-page app with the navbar and pages shared byte for byte with the provisioner catalog",
+          "interface": "Light and dark themes, English and Spanish, browser notifications",
+          "features": "Box and ISO upload, versions, providers and architectures, organization console, admin panel"
+        }
       }
     },
     "features": {

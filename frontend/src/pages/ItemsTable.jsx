@@ -83,10 +83,13 @@ const ItemsTable = ({
   sort,
   onSort,
   watches,
+  hiddenColumns,
   ctx,
 }) => {
   const { t } = useTranslation();
-  const columns = collection.columns.filter(column => !column.when || column.when(ctx));
+  const columns = collection.columns.filter(
+    column => !hiddenColumns.has(column.key) && (!column.when || column.when(ctx))
+  );
   const { ItemQuickActions, RowActions } = collection.slots;
   const columnCount = columns.length + 1 + (ItemQuickActions ? 1 : 0) + (RowActions ? 1 : 0);
   const rowProps = { columns, watches, ItemQuickActions, RowActions, ctx };
@@ -177,6 +180,7 @@ ItemsTable.propTypes = {
     ids: PropTypes.instanceOf(Set).isRequired,
     toggle: PropTypes.func.isRequired,
   }),
+  hiddenColumns: PropTypes.instanceOf(Set).isRequired,
   ctx: PropTypes.object.isRequired,
 };
 

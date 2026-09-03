@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import {
   ConfirmModal,
   architectureShape,
@@ -14,7 +15,6 @@ import {
 import ArchitectureService from '../services/architecture.service';
 import FileService from '../services/file.service';
 import ProviderService from '../services/provider.service';
-import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;

@@ -3,13 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { events, isOidcSession, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
 import RequestService from '../services/request.service';
 import ServiceAccountService from '../services/service_account.service';
 import UserService from '../services/user.service';
-import { log } from '../utils/Logger';
 
 const Profile = ({ activeOrganization }) => {
   const { t } = useTranslation();

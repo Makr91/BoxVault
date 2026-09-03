@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { deleteProviderCascade, deleteVersionCascade } from '../adapter';
+import { log } from '../chrome';
 import { ConfirmModal, itemShape, providerShape, responseMessage, versionShape } from '../pages';
 import ProviderService from '../services/provider.service';
 import VersionService from '../services/version.service';
-import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;

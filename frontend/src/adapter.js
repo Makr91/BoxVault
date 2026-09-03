@@ -1,3 +1,4 @@
+import { log } from './chrome';
 import { fetchOrganization, organizationLogo } from './chromeProps';
 import ArchitectureService from './services/architecture.service';
 import BoxService from './services/box.service';
@@ -6,7 +7,6 @@ import IsoService from './services/iso.service';
 import ProviderService from './services/provider.service';
 import VersionService from './services/version.service';
 import { getDistroIconUrl, getOsDisplayName } from './utils/DistroIcons';
-import { log } from './utils/Logger';
 import { readDeprecated, readDeprecationReason, readReleaseNotes } from './utils/versionFields';
 
 const { origin } = window.location;

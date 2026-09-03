@@ -102,19 +102,24 @@ button::-moz-focus-inner {
   border-bottom: 0;
 }
 
-.notification-dismiss {
+.notification-tools {
   position: absolute;
   top: 0.5rem;
   right: 0.65rem;
-  padding: 0.1rem 0.3rem;
-  line-height: 1;
-  color: var(--bs-secondary-color);
+  display: flex;
+  gap: 0.25rem;
   opacity: 0;
   transition: opacity 0.12s ease-in-out;
 }
 
-.notification-row:hover .notification-dismiss,
-.notification-row:focus-within .notification-dismiss {
+.notification-tools .btn {
+  padding: 0.1rem 0.3rem;
+  line-height: 1;
+  color: var(--bs-secondary-color);
+}
+
+.notification-row:hover .notification-tools,
+.notification-row:focus-within .notification-tools {
   opacity: 1;
 }
 
@@ -177,7 +182,7 @@ button::-moz-focus-inner {
 }
 
 .notifications-modal {
-  --bs-modal-width: 540px;
+  --bs-modal-width: 720px;
 }
 
 .notifications-modal .modal-footer > * {
@@ -771,6 +776,10 @@ button::-moz-focus-inner {
   table-layout: fixed;
 }
 
+.items-table th {
+  white-space: nowrap;
+}
+
 .items-table .col-watch,
 .items-table .col-quick {
   width: 2.5rem;
@@ -795,7 +804,7 @@ button::-moz-focus-inner {
 }
 
 .items-table .col-downloads {
-  width: 6rem;
+  width: 7rem;
 }
 
 .items-table .col-downloads,

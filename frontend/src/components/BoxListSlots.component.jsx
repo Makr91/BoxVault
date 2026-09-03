@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { session } from '../chromeProps';
 import { ConfirmModal, responseMessage } from '../pages';
 import BoxService from '../services/box.service';
 import OrganizationService from '../services/organization.service';
-import { log } from '../utils/Logger';
 import { isGlobalAdmin, isOrgManager, isOrgMember } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;

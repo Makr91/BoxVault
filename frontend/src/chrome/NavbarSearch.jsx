@@ -24,6 +24,7 @@ export const navbarSearchGroupShape = PropTypes.shape({
   onToggle: PropTypes.func.isRequired,
   pillClass: PropTypes.func,
   labelFor: PropTypes.func,
+  columns: PropTypes.bool,
 });
 
 export const navbarSearchBindingShape = PropTypes.shape({
@@ -126,7 +127,7 @@ const useBinding = store => {
 };
 
 const activeFilterCount = binding =>
-  binding.groups.reduce((sum, group) => sum + group.activeSet.size, 0);
+  binding.groups.reduce((sum, group) => sum + (group.columns ? 0 : group.activeSet.size), 0);
 
 const SearchIconButton = ({ filtersOn, onOpen, onMouseEnter, onMouseLeave }) => {
   const { t } = useTranslation();
@@ -293,12 +294,13 @@ const FilterPill = ({ count, active, activeClass, label, onToggle }) => (
     role="button"
     tabIndex={0}
   >
-    {label} ({count})
+    {label}
+    {typeof count === 'number' ? ` (${count})` : null}
   </span>
 );
 
 FilterPill.propTypes = {
-  count: PropTypes.number.isRequired,
+  count: PropTypes.number,
   active: PropTypes.bool.isRequired,
   activeClass: PropTypes.string.isRequired,
   label: PropTypes.string.isRequired,

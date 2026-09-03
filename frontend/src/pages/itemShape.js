@@ -116,6 +116,7 @@ export const columnShape = PropTypes.shape({
   sortValue: PropTypes.func,
   render: PropTypes.func.isRequired,
   when: PropTypes.func,
+  defaultHidden: PropTypes.bool,
 });
 
 export const collectionShape = PropTypes.shape({

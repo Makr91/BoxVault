@@ -53,6 +53,7 @@
     "title": "Notifications",
     "empty": "No notifications yet.",
     "markAllRead": "Mark all read",
+    "markRead": "Mark read",
     "dismiss": "Dismiss",
     "viewAll": "View all notifications",
     "loadError": "Failed to load notifications. Please try again."
@@ -110,7 +111,8 @@
     "filter": {
       "collection": "Collection",
       "provider": "Provider",
-      "architecture": "Architecture"
+      "architecture": "Architecture",
+      "columns": "Columns"
     },
     "view": {
       "label": "View",
@@ -224,12 +226,13 @@
       "versionTitle": "Deploy {{version}} with Hyperweaver"
     },
     "about": {
-      "keyFeatures": "Key Features",
-      "documentation": "Documentation",
-      "components": "Components",
-      "support": "Support and Community",
+      "startHere": "Start here",
+      "whatYouCanDo": "What you can do here",
+      "howItFits": "How it fits together",
+      "support": "Help and community",
       "addToFavorites": "Add to Favorites",
-      "removeFromFavorites": "Remove from Favorites"
+      "removeFromFavorites": "Remove from Favorites",
+      "runningVersion": "Running version {{version}}"
     }
   }
 }

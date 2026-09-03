@@ -177,8 +177,18 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
     watchedIds: watches.ids,
     prefsKey: `${context.prefsPrefix}_${org || 'home'}`,
   });
-  const { visible, filtered, filtering, sort, setSort, view, setView, collapsed, toggleCollapsed } =
-    search;
+  const {
+    visible,
+    filtered,
+    filtering,
+    sort,
+    setSort,
+    view,
+    setView,
+    collapsed,
+    toggleCollapsed,
+    hiddenColumns,
+  } = search;
 
   const toggle = <ViewToggle view={view} onChange={setView} />;
 
@@ -218,6 +228,7 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
         {...shared}
         sort={sort[collection.key]}
         onSort={column => setSort(collection.key, column)}
+        hiddenColumns={hiddenColumns[collection.key]}
       />
     );
   };

@@ -4,13 +4,13 @@ import { useTranslation, Trans } from 'react-i18next';
 import { FaBuilding, FaUsers, FaBox } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import AuthService from '../services/auth.service';
 import OrganizationService from '../services/organization.service';
 import RequestService from '../services/request.service';
-import { log } from '../utils/Logger';
 
 /**
  * OrganizationDiscovery - Public page for discovering and joining organizations

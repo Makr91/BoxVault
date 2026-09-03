@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import {
   FaArrowUpRightFromSquare,
   FaBell,
+  FaCheck,
   FaEnvelope,
   FaGear,
   FaShieldHalved,
@@ -51,7 +52,10 @@ const SEVERITY_CLASSES = {
 
 const extractEntries = data => (Array.isArray(data?.notifications) ? data.notifications : []);
 
-const NotificationRow = ({ entry, onSelect, onDismiss }) => {
+const linkOf = entry =>
+  typeof entry.navigate === 'string' && entry.navigate.startsWith('https://') ? entry.navigate : '';
+
+const NotificationRow = ({ entry, onSelect, onMarkRead, onDismiss }) => {
   const { t, i18n } = useTranslation();
   const Icon = TYPE_ICONS[entry.type] || FaBell;
   const unread = !entry.readAt;
@@ -69,6 +73,9 @@ const NotificationRow = ({ entry, onSelect, onDismiss }) => {
         <span className="notification-item-body">
           <span className={`notification-item-title ${unread ? 'fw-semibold' : ''}`}>
             {entry.title}
+            {linkOf(entry) ? (
+              <FaArrowUpRightFromSquare className="ms-1 small text-body-secondary" aria-hidden />
+            ) : null}
           </span>
           {entry.body ? <span className="notification-item-text">{entry.body}</span> : null}
           <span className="notification-item-time">
@@ -77,15 +84,28 @@ const NotificationRow = ({ entry, onSelect, onDismiss }) => {
         </span>
         {unread ? <span className="notification-item-dot" /> : null}
       </button>
-      <button
-        type="button"
-        className="btn btn-sm notification-dismiss"
-        onClick={() => onDismiss(entry)}
-        title={t('inbox.dismiss')}
-        aria-label={t('inbox.dismiss')}
-      >
-        <FaXmark />
-      </button>
+      <span className="notification-tools">
+        {unread ? (
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => onMarkRead(entry)}
+            title={t('inbox.markRead')}
+            aria-label={t('inbox.markRead')}
+          >
+            <FaCheck />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => onDismiss(entry)}
+          title={t('inbox.dismiss')}
+          aria-label={t('inbox.dismiss')}
+        >
+          <FaXmark />
+        </button>
+      </span>
     </div>
   );
 };
@@ -102,6 +122,7 @@ NotificationRow.propTypes = {
     readAt: PropTypes.string,
   }).isRequired,
   onSelect: PropTypes.func.isRequired,
+  onMarkRead: PropTypes.func.isRequired,
   onDismiss: PropTypes.func.isRequired,
 };
 
@@ -188,22 +209,28 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
       .catch(() => setLoadFailed(true));
   }, [show, notifications]);
 
-  const handleSelect = async entry => {
-    if (!entry.readAt) {
-      try {
-        await notifications.markRead(entry.id);
-        onUnreadDelta(-1);
-        setEntries(prev =>
-          prev.map(item =>
-            item.id === entry.id ? { ...item, readAt: new Date().toISOString() } : item
-          )
-        );
-      } catch {
-        setLoadFailed(true);
-      }
+  const markRead = async entry => {
+    if (entry.readAt) {
+      return;
     }
-    if (typeof entry.navigate === 'string' && entry.navigate.startsWith('https://')) {
-      window.location.assign(entry.navigate);
+    try {
+      await notifications.markRead(entry.id);
+      onUnreadDelta(-1);
+      setEntries(prev =>
+        prev.map(item =>
+          item.id === entry.id ? { ...item, readAt: new Date().toISOString() } : item
+        )
+      );
+    } catch {
+      setLoadFailed(true);
+    }
+  };
+
+  const handleSelect = async entry => {
+    await markRead(entry);
+    const link = linkOf(entry);
+    if (link) {
+      window.location.assign(link);
     }
   };
 
@@ -252,6 +279,7 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
               key={entry.id}
               entry={entry}
               onSelect={handleSelect}
+              onMarkRead={markRead}
               onDismiss={handleDismiss}
             />
           ))}

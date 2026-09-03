@@ -12,10 +12,17 @@ const parse = key => {
 
 const setOf = values => new Set(Array.isArray(values) ? values : []);
 
+const defaultHidden = collection =>
+  collection.columns.filter(column => column.defaultHidden).map(column => column.key);
+
+const plainSets = sets =>
+  Object.fromEntries(Object.entries(sets).map(([key, set]) => [key, [...set]]));
+
 export const readPrefs = (key, collections) => {
   const saved = parse(key);
   const filters = {};
   const sort = {};
+  const hiddenColumns = {};
   collections.forEach(collection => {
     filters[collection.key] = Object.fromEntries(
       filterGroupsOf(collection).map(group => [
@@ -24,6 +31,9 @@ export const readPrefs = (key, collections) => {
       ])
     );
     sort[collection.key] = saved.sort?.[collection.key] || { column: '', direction: 'asc' };
+    hiddenColumns[collection.key] = setOf(
+      saved.hiddenColumns?.[collection.key] ?? defaultHidden(collection)
+    );
   });
   return {
     filters,
@@ -33,29 +43,27 @@ export const readPrefs = (key, collections) => {
     sort,
     view: VIEWS.includes(saved.view) ? saved.view : collections[0].defaultView,
     collapsed: saved.collapsed || {},
+    hiddenColumns,
   };
 };
 
 export const writePrefs = (
   key,
-  { filters, collection, visibility, watched, sort, view, collapsed }
+  { filters, collection, visibility, watched, sort, view, collapsed, hiddenColumns }
 ) => {
-  const plain = Object.fromEntries(
-    Object.entries(filters).map(([collectionKey, groups]) => [
-      collectionKey,
-      Object.fromEntries(Object.entries(groups).map(([groupKey, set]) => [groupKey, [...set]])),
-    ])
-  );
   localStorage.setItem(
     key,
     JSON.stringify({
-      filters: plain,
+      filters: Object.fromEntries(
+        Object.entries(filters).map(([collectionKey, groups]) => [collectionKey, plainSets(groups)])
+      ),
       collection: [...collection],
       visibility: [...visibility],
       watched: [...watched],
       sort,
       view,
       collapsed,
+      hiddenColumns: plainSets(hiddenColumns),
     })
   );
 };

@@ -319,10 +319,21 @@
     "description": "BoxVault es una solución autoalojada diseñada para almacenar y gestionar plantillas de Máquinas Virtuales.",
     "components": {
       "backend": {
-        "title": "Backend"
+        "title": "Backend",
+        "details": {
+          "nodejs": "Servicio Node.js que también responde a la API de boxes de Vagrant en las mismas rutas",
+          "auth": "Cuentas locales, inicio de sesión único mediante proveedores OpenID Connect y tokens de cuenta de servicio para la automatización",
+          "endpoints": "API REST documentada en la Swagger UI en /api-docs",
+          "database": "Organizaciones, boxes, versiones, proveedores, arquitecturas e ISOs en la base de datos; archivos en almacenamiento local"
+        }
       },
       "frontend": {
-        "title": "Frontend"
+        "title": "Frontend",
+        "details": {
+          "react": "Aplicación React de una sola página con la barra de navegación y las páginas compartidas byte a byte con el catálogo de provisioners",
+          "interface": "Temas claro y oscuro, inglés y español, notificaciones del navegador",
+          "features": "Subida de boxes e ISOs, versiones, proveedores y arquitecturas, consola de la organización, panel de administración"
+        }
       }
     },
     "features": {

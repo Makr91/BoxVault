@@ -3,13 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
+import { log } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
 import InvitationService from '../services/invitation.service';
 import OrganizationService from '../services/organization.service';
 import RequestService from '../services/request.service';
-import { log } from '../utils/Logger';
 import { isOrgOwner } from '../utils/permissions';
 
 import UserCard from './UserCard.component';

@@ -6,6 +6,19 @@ import { architectureNames, latestReleaseTime, providerNames } from './itemShape
 
 const localeDate = value => (value ? new Date(value).toLocaleDateString() : '');
 
+const nameBadges = names =>
+  names.length > 0 ? (
+    <span className="d-inline-flex flex-wrap gap-1">
+      {names.map(name => (
+        <span key={name} className="badge bg-secondary badge-xs">
+          {name}
+        </span>
+      ))}
+    </span>
+  ) : (
+    'N/A'
+  );
+
 export const nameColumn = {
   key: 'name',
   labelKey: 'pages.table.name',
@@ -111,6 +124,7 @@ export const visibilityColumn = {
 export const createdColumn = {
   key: 'created',
   labelKey: 'pages.table.created',
+  defaultHidden: true,
   sortValue: item => new Date(item.createdAt || 0).getTime(),
   render: item => localeDate(item.createdAt),
 };
@@ -118,6 +132,7 @@ export const createdColumn = {
 export const updatedColumn = {
   key: 'updated',
   labelKey: 'pages.table.updated',
+  defaultHidden: true,
   sortValue: item => new Date(item.updatedAt || 0).getTime(),
   render: item => localeDate(item.updatedAt),
 };
@@ -149,19 +164,14 @@ export const versionsColumn = {
 export const providersColumn = {
   key: 'providers',
   labelKey: 'pages.table.providers',
-  render: item => {
-    const names = providerNames(item);
-    return names.length > 0 ? names.join(', ') : 'N/A';
-  },
+  render: item => nameBadges(providerNames(item)),
 };
 
 export const architecturesColumn = {
   key: 'architectures',
   labelKey: 'pages.table.architectures',
-  render: item => {
-    const names = architectureNames(item);
-    return names.length > 0 ? names.join(', ') : 'N/A';
-  },
+  defaultHidden: true,
+  render: item => nameBadges(architectureNames(item)),
 };
 
 export const sizeColumn = {

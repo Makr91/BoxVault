@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import SystemService from '../services/system.service';
-import { log } from '../utils/Logger';
 
 import ConfigurationManager from './ConfigurationManager.component';
 import OrganizationUserManager from './OrganizationUserManager.component';

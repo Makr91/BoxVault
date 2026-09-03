@@ -45,6 +45,7 @@ import setupRoutes from './app/routes/setup.routes.js';
 import sslRoutes from './app/routes/ssl.routes.js';
 import isoRoutes from './app/routes/iso.routes.js';
 import systemRoutes from './app/routes/system.routes.js';
+import clientErrorsRoutes from './app/routes/client_errors.routes.js';
 import scimRoutes from './app/routes/scim.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -528,6 +529,7 @@ const initializeApp = async () => {
     app.use('/api', sslRoutes);
     app.use('/api', isoRoutes);
     app.use('/api', systemRoutes);
+    app.use('/api', clientErrorsRoutes);
     // SCIM 2.0 receiver for auth-server provisioning pushes (contract URL is
     // /scim/v2, not under /api). Bearer-JWT authenticated inside the router.
     app.use('/scim/v2', scimRoutes);

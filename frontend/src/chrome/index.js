@@ -22,6 +22,7 @@ export {
   getLanguageDisplayName,
   getLanguageFlag,
 } from './LanguageModal';
+export { configureLogger, log, redact, reportRenderError } from './logger';
 export { default as LogoutItem } from './LogoutItem';
 export { mountApp } from './mountApp';
 export { createNotificationsClient } from './notifications';

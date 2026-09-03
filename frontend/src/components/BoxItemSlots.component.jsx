@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { deleteVersionCascade } from '../adapter';
+import { log } from '../chrome';
 import { DeployButton, deployableVersion } from '../deploy';
 import {
   ConfirmModal,
@@ -14,7 +15,6 @@ import {
 } from '../pages';
 import BoxService from '../services/box.service';
 import VersionService from '../services/version.service';
-import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;

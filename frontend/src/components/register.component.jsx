@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import AuthService from '../services/auth.service';
-import { log } from '../utils/Logger';
 import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
 import AuthShell, { AuthAlert, AuthSpinner, InboxIcon } from './AuthShell.component';
@@ -190,6 +190,7 @@ const RegisterMethods = ({
   oidcMethods,
   defaultProvider,
   loading,
+  loadingProvider,
   formValues,
   validationErrors,
   onChange,
@@ -218,6 +219,7 @@ const RegisterMethods = ({
           methods={oidcMethods}
           defaultProvider={defaultProvider}
           loading={loading}
+          loadingProvider={loadingProvider}
           onSelect={onSelectProvider}
         />
       )}
@@ -259,6 +261,7 @@ RegisterMethods.propTypes = {
   oidcMethods: PropTypes.arrayOf(PropTypes.object).isRequired,
   defaultProvider: PropTypes.string,
   loading: PropTypes.bool.isRequired,
+  loadingProvider: PropTypes.string,
   formValues: PropTypes.object.isRequired,
   validationErrors: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired,
@@ -283,6 +286,7 @@ const Register = () => {
   });
   const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState(null);
   const [status, setStatus] = useState(null);
   const [invitationToken, setInvitationToken] = useState(null);
   const [organizationName, setOrganizationName] = useState('');
@@ -382,11 +386,11 @@ const Register = () => {
           ? `/invite/${encodeURIComponent(invitationToken)}`
           : '/organizations/discover'
       );
-      setIsSubmitting(true);
+      setLoadingProvider(provider);
       session.begin({ method: provider });
     } catch (err) {
       log.auth.error('Invalid OIDC provider selected', { error: err.message });
-      setIsSubmitting(false);
+      setLoadingProvider(null);
       setStatus({ success: false, message: t('errors.invalidProvider') });
     }
   };
@@ -449,6 +453,7 @@ const Register = () => {
           oidcMethods={oidcMethods}
           defaultProvider={defaultProvider}
           loading={isSubmitting}
+          loadingProvider={loadingProvider}
           formValues={formValues}
           validationErrors={validationErrors}
           onChange={handleInputChange}

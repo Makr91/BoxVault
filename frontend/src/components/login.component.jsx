@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import AuthService from '../services/auth.service';
-import { log } from '../utils/Logger';
 import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
 import AuthShell, { AuthAlert, AuthSpinner } from './AuthShell.component';
@@ -176,6 +176,7 @@ const LoginMethods = ({
   visibleOidcMethods,
   defaultProvider,
   loading,
+  loadingProvider,
   formValues,
   onChange,
   onSubmit,
@@ -202,6 +203,7 @@ const LoginMethods = ({
           methods={visibleOidcMethods}
           defaultProvider={defaultProvider}
           loading={loading}
+          loadingProvider={loadingProvider}
           onSelect={onSelectProvider}
         />
       )}
@@ -249,6 +251,7 @@ LoginMethods.propTypes = {
   visibleOidcMethods: PropTypes.arrayOf(PropTypes.object).isRequired,
   defaultProvider: PropTypes.string,
   loading: PropTypes.bool.isRequired,
+  loadingProvider: PropTypes.string,
   formValues: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
@@ -271,6 +274,7 @@ const Login = () => {
     stayLoggedIn: false,
   });
   const [loading, setLoading] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState(null);
   const [statusMessage, setStatusMessage] = useState(location.state?.error || '');
   const [authMethods, setAuthMethods] = useState([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
@@ -406,13 +410,13 @@ const Login = () => {
 
   const handleOidcLogin = provider => {
     rememberReturn(urlParams);
-    setLoading(true);
+    setLoadingProvider(provider);
     setStatusMessage('');
     try {
       session.begin({ method: provider });
     } catch (err) {
       log.auth.error('Invalid OIDC provider selected', { error: err.message });
-      setLoading(false);
+      setLoadingProvider(null);
       setStatusMessage(t('errors.invalidProvider'));
     }
   };
@@ -468,6 +472,7 @@ const Login = () => {
           visibleOidcMethods={visibleOidcMethods}
           defaultProvider={defaultProvider}
           loading={loading}
+          loadingProvider={loadingProvider}
           formValues={formValues}
           onChange={handleInputChange}
           onSubmit={handleLogin}

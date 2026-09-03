@@ -6,7 +6,7 @@ import './css/styles.css';
 import './css/fonts.css';
 import './css/auth.css';
 import About from './About';
-import { useTheme } from './chrome';
+import { log, useTheme } from './chrome';
 import {
   ACTIVE_ORG_KEY,
   APP_NAME,
@@ -39,7 +39,6 @@ import AuthService from './services/auth.service';
 import SetupService from './services/setup.service';
 import { CallbackPage, subscribeTerminateStream, useSession } from './session';
 import Shell from './shell';
-import { log } from './utils/Logger';
 import { isOrgManager, isOrgMember } from './utils/permissions';
 
 const PREFS_PREFIX = 'boxvault_table_prefs';

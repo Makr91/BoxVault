@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-import { fetchWithDeduplication } from '../chrome';
-import { log } from '../utils/Logger';
+import { fetchWithDeduplication, log } from '../chrome';
 
 import authHeader from './auth-header';
 

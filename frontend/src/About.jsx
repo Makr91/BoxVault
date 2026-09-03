@@ -3,34 +3,23 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaCode, FaGithub, FaHeart, FaServer } from 'react-icons/fa6';
 
+import { log } from './chrome';
 import { BrandLogo, session } from './chromeProps';
 import { AboutPage } from './pages';
 import FavoritesService from './services/favorites.service';
 import UserService from './services/user.service';
-import { log } from './utils/Logger';
 import BoxVaultVersion from './version.json';
 
-const toCamelCase = str => {
-  if (!str) {
-    return '';
-  }
-  return str
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) =>
-      index === 0 ? word.toLowerCase() : word.toUpperCase()
-    )
-    .replace(/\s+/g, '');
-};
-
 const DOCS = [
+  { key: 'gettingStarted', href: '/docs/guides/', Icon: FaServer },
   { key: 'fullDocs', href: '/docs', Icon: FaBook },
   { key: 'apiExplorer', href: '/api-docs', Icon: FaCode },
-  { key: 'gettingStarted', href: '/docs/guides/', Icon: FaServer },
 ];
 
 const SUPPORT = [
-  { key: 'patreon', href: 'https://www.patreon.com/Philotic', Icon: FaHeart, tone: 'danger' },
-  { key: 'githubProfile', href: 'https://github.com/makr91', Icon: FaGithub, tone: 'secondary' },
-  { key: 'repository', href: 'https://github.com/makr91/BoxVault', Icon: FaCode, tone: 'primary' },
+  { key: 'patreon', href: 'https://www.patreon.com/Philotic', Icon: FaHeart },
+  { key: 'githubProfile', href: 'https://github.com/makr91', Icon: FaGithub },
+  { key: 'repository', href: 'https://github.com/makr91/BoxVault', Icon: FaCode },
 ];
 
 const EMPTY = { title: '', description: '', components: [], features: [], goal: '' };
@@ -40,7 +29,7 @@ const About = ({ theme }) => {
   const [projectData, setProjectData] = useState(EMPTY);
   const [currentUser, setCurrentUser] = useState(null);
   const [isBoxVaultFavorited, setIsBoxVaultFavorited] = useState(false);
-  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [favoriteNotice, setFavoriteNotice] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -79,23 +68,32 @@ const About = ({ theme }) => {
 
       if (isBoxVaultFavorited) {
         favorites = FavoritesService.removeFavorite(favorites, 'boxvault');
-        setFavoriteMessage(t('messages.removedFromFavorites', { ns: 'common' }));
+        setFavoriteNotice({
+          type: 'success',
+          text: t('messages.removedFromFavorites', { ns: 'common' }),
+        });
       } else {
         favorites = FavoritesService.addFavorite(favorites, 'boxvault', null);
-        setFavoriteMessage(t('messages.addedToFavorites', { ns: 'common' }));
+        setFavoriteNotice({
+          type: 'success',
+          text: t('messages.addedToFavorites', { ns: 'common' }),
+        });
       }
 
       await FavoritesService.saveFavorites(favorites);
       setIsBoxVaultFavorited(!isBoxVaultFavorited);
 
-      setTimeout(() => setFavoriteMessage(''), 3000);
+      setTimeout(() => setFavoriteNotice(null), 3000);
     } catch (error) {
       log.component.error('Error toggling favorite', {
         clientId: 'boxvault',
         error: error.message,
       });
-      setFavoriteMessage(t('messages.failedToUpdateFavorites', { ns: 'common' }));
-      setTimeout(() => setFavoriteMessage(''), 3000);
+      setFavoriteNotice({
+        type: 'danger',
+        text: t('messages.failedToUpdateFavorites', { ns: 'common' }),
+      });
+      setTimeout(() => setFavoriteNotice(null), 3000);
     }
   };
 
@@ -103,18 +101,13 @@ const About = ({ theme }) => {
 
   return (
     <AboutPage
-      brand={<BrandLogo theme={theme} className="logo-xl flex-shrink-0" />}
+      brand={<BrandLogo theme={theme} className="prov-icon" />}
       title={projectData.title || t('about.fallbackTitle')}
       description={projectData.description || t('about.fallbackDescription')}
       version={BoxVaultVersion.version}
       goal={projectData.goal || t('about.fallbackGoal')}
-      features={projectData.features.map(feature =>
-        t(`about.features.${toCamelCase(feature)}`, { defaultValue: feature })
-      )}
-      components={projectData.components.map(component => ({
-        title: t(component.title),
-        details: component.details.map(detail => t(detail)),
-      }))}
+      features={projectData.features}
+      components={projectData.components}
       docs={DOCS.map(doc => ({ ...doc, label: t(`about.documentation.${doc.key}`) }))}
       docsIntro={t('about.documentation.description')}
       support={SUPPORT.map(link => ({ ...link, label: t(`about.support.${link.key}`) }))}
@@ -124,7 +117,7 @@ const About = ({ theme }) => {
           ? {
               active: isBoxVaultFavorited,
               onToggle: handleToggleFavorite,
-              message: favoriteMessage,
+              notice: favoriteNotice,
             }
           : null
       }

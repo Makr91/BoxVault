@@ -53,6 +53,7 @@
     "title": "Notificaciones",
     "empty": "Aún no hay notificaciones.",
     "markAllRead": "Marcar todas como leídas",
+    "markRead": "Marcar como leída",
     "dismiss": "Descartar",
     "viewAll": "Ver todas las notificaciones",
     "loadError": "Error al cargar las notificaciones. Por favor intenta de nuevo."
@@ -110,7 +111,8 @@
     "filter": {
       "collection": "Colección",
       "provider": "Proveedor",
-      "architecture": "Arquitectura"
+      "architecture": "Arquitectura",
+      "columns": "Columnas"
     },
     "view": {
       "label": "Vista",
@@ -224,12 +226,13 @@
       "versionTitle": "Desplegar {{version}} con Hyperweaver"
     },
     "about": {
-      "keyFeatures": "Características Clave",
-      "documentation": "Documentación",
-      "components": "Componentes",
-      "support": "Soporte y Comunidad",
+      "startHere": "Empieza aquí",
+      "whatYouCanDo": "Qué puedes hacer aquí",
+      "howItFits": "Cómo encaja todo",
+      "support": "Ayuda y comunidad",
       "addToFavorites": "Añadir a Favoritos",
-      "removeFromFavorites": "Eliminar de Favoritos"
+      "removeFromFavorites": "Eliminar de Favoritos",
+      "runningVersion": "Versión {{version}} en ejecución"
     }
   }
 }

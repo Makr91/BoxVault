@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 
-import { createI18n, createNotificationsClient, createPush, userDisplayName } from './chrome';
+import { createI18n, createNotificationsClient, createPush, log, userDisplayName } from './chrome';
 import BoxVaultLight from './images/BoxVault.svg?react';
 import BoxVaultDark from './images/BoxVaultDark.svg?react';
 import authHeader from './services/auth-header';
@@ -8,7 +8,6 @@ import AuthService from './services/auth.service';
 import NotificationsService from './services/notifications.service';
 import UserService from './services/user.service';
 import { createBackendSession, createReturnTo, createSessionEvents } from './session';
-import { log } from './utils/Logger';
 import version from './version.json';
 
 export const APP_NAME = 'BoxVault';

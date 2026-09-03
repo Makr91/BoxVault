@@ -1,10 +1,11 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 import App from './App';
-import { mountApp } from './chrome';
-import { i18n, i18nPromise } from './chromeProps';
-import { log } from './utils/Logger';
+import { configureLogger, log, mountApp, reportRenderError } from './chrome';
+import { fetchHealth, i18n, i18nPromise } from './chromeProps';
 import version from './version.json';
+
+configureLogger({ fetchHealth, reportUrl: '/api/client-errors' });
 
 log.app.info('BoxVault application starting', {
   name: version.name,
@@ -16,9 +17,5 @@ mountApp({
   i18n,
   ready: i18nPromise,
   showErrorDetails: import.meta.env.NODE_ENV === 'development',
-  onError: (error, info) =>
-    log.app.error('Unhandled render error', {
-      error: error.message,
-      stack: info?.componentStack,
-    }),
+  onError: reportRenderError,
 });

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { log } from '../utils/Logger';
+import { log } from '../chrome';
 
 import authHeader from './auth-header';
 

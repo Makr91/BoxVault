@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaHardDrive, FaCompactDisc } from 'react-icons/fa6';
 
+import { log } from '../chrome';
 import SystemService from '../services/system.service';
-import { log } from '../utils/Logger';
 
 const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) {

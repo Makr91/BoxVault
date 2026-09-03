@@ -2,10 +2,10 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { log } from '../chrome';
 import { session } from '../chromeProps';
 import ConfigService from '../services/config.service';
 import { processConfig } from '../utils/ConfigProcessorUtils';
-import { log } from '../utils/Logger';
 
 import ConfigFieldRenderer from './ConfigFieldRenderer.component';
 import OidcProviderManager from './OidcProviderManager.component';

@@ -14,9 +14,9 @@ import {
 } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { log } from '../chrome';
 import { ConfirmModal } from '../pages';
 import IsoService from '../services/iso.service';
-import { log } from '../utils/Logger';
 import { isOrgManager } from '../utils/permissions';
 
 const HOVER_DWELL_MS = 400;

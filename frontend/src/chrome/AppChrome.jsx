@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 
+import ErrorBoundary from './ErrorBoundary';
 import Footer from './Footer';
 import Header, { brandShape, linkShape } from './Header';
 import { localProfileShape } from './IdentityCard';
+import { reportRenderError } from './logger';
 import { notificationsAdapterShape, pushAdapterShape } from './NotificationsModal';
 import { OrgLogo, organizationShape } from './OrgSwitcherModal';
 import { buildRouteCrumbs, parseRoute } from './routeCrumbs';
@@ -56,9 +58,10 @@ const useRouteCrumbs = ({ pathname, reserved, collections, signedIn, orgs, t }) 
 
 /**
  * The whole chrome around an estate app's routes: the header with the
- * route crumbs and the user menu, the one scroll region, and the footer.
- * Everything an app differs in arrives as data; the app renders its routes
- * as children.
+ * route crumbs and the user menu, the one scroll region with the page
+ * inside its own error boundary so a page that throws keeps the chrome,
+ * and the footer. Everything an app differs in arrives as data; the app
+ * renders its routes as children.
  */
 const AppChrome = ({
   brand,
@@ -120,7 +123,9 @@ const AppChrome = ({
         sessionEnded={Boolean(session.ended) && !signedIn}
       />
       <div ref={scrollRef} className="container-fluid app-scroll py-3">
-        {children}
+        <ErrorBoundary showErrorDetails={import.meta.env.DEV} onError={reportRenderError}>
+          {children}
+        </ErrorBoundary>
       </div>
       <Footer
         appName={brand.name}

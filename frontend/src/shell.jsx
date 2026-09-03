@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { FaBook, FaBuilding, FaCircleInfo, FaGear } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router-dom';
 
-import { AppChrome, Avatar, userDisplayName, userSecondaryLine } from './chrome';
+import { AppChrome, Avatar, log, userDisplayName, userSecondaryLine } from './chrome';
 import {
   APP_NAME,
   APP_VERSION,
@@ -24,7 +24,6 @@ import {
 } from './chromeProps';
 import { collections } from './collections';
 import { sessionStateShape } from './session';
-import { log } from './utils/Logger';
 
 const RESERVED_ROUTES = [
   'about',

@@ -132,9 +132,12 @@ const watchedGroup = (visible, itemsByCollection, watchedIds, prefs, setPrefs, t
   };
 };
 
+const groupLabel = (collection, labelKey, prefixed, t) =>
+  prefixed ? `${t(collection.labelKey)} · ${t(labelKey)}` : t(labelKey);
+
 const ownGroup = ({ collection, group, items, filters, prefixed, setPrefs, ctx, t }) => ({
   key: `${collection.key}.${group.key}`,
-  label: prefixed ? `${t(collection.labelKey)} · ${t(group.labelKey)}` : t(group.labelKey),
+  label: groupLabel(collection, group.labelKey, prefixed, t),
   entries: countValues(items, group, ctx),
   activeSet: filters[group.key],
   activeClass: group.activeClass,
@@ -153,15 +156,34 @@ const ownGroup = ({ collection, group, items, filters, prefixed, setPrefs, ctx, 
     })),
 });
 
+const columnsGroup = ({ collection, hidden, prefixed, setPrefs, t }) => ({
+  key: `${collection.key}.columns`,
+  label: groupLabel(collection, 'pages.filter.columns', prefixed, t),
+  entries: Object.fromEntries(collection.columns.map(column => [column.key, null])),
+  activeSet: new Set(collection.columns.map(column => column.key).filter(key => !hidden.has(key))),
+  activeClass: 'bg-secondary',
+  columns: true,
+  labelFor: key => t(collection.columns.find(column => column.key === key).labelKey),
+  onToggle: key =>
+    setPrefs(current => ({
+      ...current,
+      hiddenColumns: {
+        ...current.hiddenColumns,
+        [collection.key]: toggleIn(current.hiddenColumns[collection.key], key),
+      },
+    })),
+});
+
 /**
  * Registers one navbar search binding for a page that lists one or more
  * collections, and returns the collections left visible by the Collection
  * group plus the filtered, sorted items per collection. The Collection,
  * Visibility and Watched groups are shared across the page; the collection's
- * own groups follow them. Watched ids arrive as one Set per collection key,
- * because item ids only mean something inside their own collection. Filters,
- * sort, the one view and the collapsed groups persist per page under the
- * app's prefs prefix.
+ * own groups follow them and, in list view, a Columns group per collection
+ * that shows or hides that table's columns. Watched ids arrive as one Set per
+ * collection key, because item ids only mean something inside their own
+ * collection. Filters, sort, the one view, the hidden columns and the
+ * collapsed groups persist per page under the app's prefs prefix.
  */
 export const useCatalogSearch = ({
   collections,
@@ -189,6 +211,7 @@ export const useCatalogSearch = ({
     (sum, collection) => sum + (itemsByCollection[collection.key] || []).length,
     0
   );
+  const prefixed = collections.length > 1;
   const groups = [];
   if (collections.length > 1) {
     groups.push(collectionGroup(collections, itemsByCollection, prefs, setPrefs, t));
@@ -212,6 +235,7 @@ export const useCatalogSearch = ({
       groupShown(group, { signedIn, org, items })
     );
     const filters = prefs.filters[collection.key];
+    const hidden = prefs.hiddenColumns[collection.key];
     const matches = collection.matches || defaultMatches;
     const passing = items.filter(
       item =>
@@ -222,24 +246,18 @@ export const useCatalogSearch = ({
     );
     filtered[collection.key] = sortItems(passing, prefs.sort[collection.key], [
       watchSort(ctx.watchedIds),
-      ...collection.columns,
+      ...collection.columns.filter(column => !hidden.has(column.key)),
     ]);
     matched += passing.length;
     shown.forEach(group => {
-      const own = ownGroup({
-        collection,
-        group,
-        items,
-        filters,
-        prefixed: collections.length > 1,
-        setPrefs,
-        ctx,
-        t,
-      });
+      const own = ownGroup({ collection, group, items, filters, prefixed, setPrefs, ctx, t });
       if (Object.keys(own.entries).length > 0) {
         groups.push(own);
       }
     });
+    if (prefs.view === 'table') {
+      groups.push(columnsGroup({ collection, hidden, prefixed, setPrefs, t }));
+    }
   });
 
   useNavbarSearchBinding({
@@ -285,5 +303,6 @@ export const useCatalogSearch = ({
     setView,
     collapsed: prefs.collapsed,
     toggleCollapsed,
+    hiddenColumns: prefs.hiddenColumns,
   };
 };
