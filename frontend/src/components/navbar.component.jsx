@@ -87,6 +87,7 @@ const Navbar = ({
   logOutLocal,
   activeOrganization,
   onOrganizationSwitch,
+  sessionEnded = null,
 }) => {
   const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
@@ -302,6 +303,9 @@ const Navbar = ({
   );
 
   const crumbs = currentUser ? buildRouteCrumbs({ route, t, orgIcon }) : [];
+  const signInTo = sessionEnded
+    ? `/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`
+    : '/login';
 
   const userMenu = currentUser
     ? {
@@ -344,8 +348,9 @@ const Navbar = ({
       theme={{ preference: themePreference, onToggle: toggleTheme }}
       language={{ languages: getSupportedLanguages(), onPick: changeLanguage }}
       signedIn={Boolean(currentUser)}
-      signInTo="/login"
+      signInTo={signInTo}
       userMenu={userMenu}
+      sessionEnded={Boolean(sessionEnded)}
     />
   );
 };
@@ -370,6 +375,7 @@ Navbar.propTypes = {
   logOutLocal: PropTypes.func.isRequired,
   activeOrganization: PropTypes.string,
   onOrganizationSwitch: PropTypes.func.isRequired,
+  sessionEnded: PropTypes.shape({ returnTo: PropTypes.string.isRequired }),
 };
 
 export default Navbar;

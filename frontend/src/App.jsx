@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-rou
 import './css/styles.css';
 import './css/fonts.css';
 import './css/auth.css';
-import { Footer, SessionEndedBanner, useTheme } from './chrome';
+import { Footer, useTheme } from './chrome';
 import {
   APP_NAME,
   APP_VERSION,
@@ -480,14 +480,8 @@ const App = () => {
           toggleTheme={toggleTheme}
           logOut={logOut}
           logOutLocal={logOutLocal}
+          sessionEnded={sessionEnded}
         />
-        {sessionEnded && (
-          <SessionEndedBanner
-            signInTo={`/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`}
-            LinkComponent={Link}
-            onSignIn={() => setSessionEnded(null)}
-          />
-        )}
         <div className="container-fluid mt-3 flex-grow-1">
           <Routes>
             <Route

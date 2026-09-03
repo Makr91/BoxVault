@@ -518,8 +518,7 @@
   },
   "sessionEnded": {
     "title": "You were signed out.",
-    "body": "Your single sign-on session ended on another device or app. Sign in again to continue where you were.",
-    "signIn": "Sign in"
+    "body": "Your session ended. Sign in again to continue where you were."
   },
   "notifications": {
     "pushSwitch": "Browser notifications on this device",

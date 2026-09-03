@@ -558,7 +558,8 @@ button::-moz-focus-inner {
   object-fit: contain;
 }
 
-.navbar:has(> .navbar-search-panel) {
+.navbar:has(> .navbar-search-panel),
+.navbar:has(> .navbar-session-strip) {
   flex-wrap: wrap;
 }
 
@@ -669,6 +670,18 @@ button::-moz-focus-inner {
   padding-top: 6px;
   font-size: 12.5px;
   border-top: 1px solid var(--bs-border-color);
+}
+
+.navbar-session-strip {
+  margin: 14px 0 -14px;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  background: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  border-top: 1px solid var(--bs-warning-border-subtle);
 }
 
 .upload-zone {

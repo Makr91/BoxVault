@@ -121,7 +121,9 @@ CollectionHeading.propTypes = {
  * every collection it is given, registers the search binding, and draws one
  * heading row per collection carrying that collection's list actions, one
  * table or card grid per collection with organization group rows when the
- * page spans organizations, and one view toggle per page.
+ * page spans organizations, and the page's actions with the one view toggle
+ * on the header row when the page has a header, else on the first
+ * collection's heading row.
  */
 const Listing = ({ collections, org, member, grouped, context, header = null, actions = null }) => {
   const { t, i18n } = useTranslation();
@@ -171,7 +173,6 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
   const { visible, filtered, filtering, sort, setSort, view, setView, collapsed, toggleCollapsed } =
     search;
 
-  const toggleInHeading = collections.length === 1 && !grouped;
   const toggle = <ViewToggle view={view} onChange={setView} />;
 
   const ctxFor = collection => ({
@@ -202,21 +203,21 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
     return (
       <ItemsTable
         {...shared}
-        watchColumn={watches.available}
         sort={sort[collection.key]}
         onSort={column => setSort(collection.key, column)}
       />
     );
   };
 
-  const renderCollection = collection => {
+  const renderCollection = (collection, index) => {
     const items = filtered[collection.key];
     const { ListActions } = collection.slots;
     return (
       <div key={collection.key} className="mb-4">
         <CollectionHeading collection={collection} count={items.length}>
           {ListActions ? <ListActions ctx={ctxFor(collection)} /> : null}
-          {toggleInHeading ? toggle : null}
+          {!header && index === 0 ? actions : null}
+          {!header && index === 0 ? toggle : null}
         </CollectionHeading>
         {listOf(collection, items)}
       </div>
@@ -226,12 +227,12 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
   return (
     <div className="list row">
       {noticeNode}
-      {header || actions || !toggleInHeading ? (
+      {header ? (
         <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
           <div className="d-flex align-items-center gap-3 min-width-0">{header}</div>
           <div className="d-flex align-items-center gap-2 ms-auto">
             {actions}
-            {toggleInHeading ? null : toggle}
+            {toggle}
           </div>
         </div>
       ) : null}

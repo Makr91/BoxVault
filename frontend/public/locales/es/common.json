@@ -792,8 +792,7 @@
   },
   "sessionEnded": {
     "title": "Se cerró tu sesión.",
-    "body": "Tu sesión de inicio único terminó en otro dispositivo o aplicación. Inicia sesión de nuevo para continuar donde estabas.",
-    "signIn": "Iniciar sesión"
+    "body": "Tu sesión terminó. Inicia sesión de nuevo para continuar donde estabas."
   },
   "notifications": {
     "pushSwitch": "Notificaciones del navegador en este dispositivo",
