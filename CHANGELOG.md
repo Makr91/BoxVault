@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.65.0](https://github.com/Makr91/BoxVault/compare/v0.64.0...v0.65.0) (2026-09-03)
+
+
+### Features
+
+* ISO routes and fields converge with boxes, one token-widened list, published state, fileName and downloadCount on every row ([72be505](https://github.com/Makr91/BoxVault/commit/72be50565fbb76992367099e77e7621b6e4e8421))
+
 ## [0.64.0](https://github.com/Makr91/BoxVault/compare/v0.63.0...v0.64.0) (2026-09-03)
 
 
