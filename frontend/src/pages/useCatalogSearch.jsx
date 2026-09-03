@@ -58,6 +58,11 @@ const sortItems = (items, sort, columns) => {
   });
 };
 
+const watchSort = watchedIds => ({
+  key: 'watch',
+  sortValue: item => (watchedIds.has(item.id) ? 0 : 1),
+});
+
 const nextSort = (current, column) => {
   if (current.column !== column) {
     return { column, direction: 'asc' };
@@ -173,7 +178,10 @@ export const useCatalogSearch = ({
         passesVisibility(item, prefs.visibility) &&
         passesGroups(item, shown, filters, ctx)
     );
-    filtered[collection.key] = sortItems(passing, prefs.sort[collection.key], collection.columns);
+    filtered[collection.key] = sortItems(passing, prefs.sort[collection.key], [
+      watchSort(watchedIds),
+      ...collection.columns,
+    ]);
     matched += passing.length;
     shown.forEach(group => {
       const own = ownGroup({

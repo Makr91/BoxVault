@@ -142,10 +142,7 @@ const ItemCards = ({ collection, items, groups, collapsed, onToggleGroup, watche
           group={group}
           collapsed={Boolean(collapsed[group.key])}
           onToggle={() => onToggleGroup(group.key)}
-          countLabel={t('pages.countOf', {
-            count: group.items.length,
-            collection: t(collection.labelKey),
-          })}
+          countLabel={t(collection.countKey, { count: group.items.length })}
           orgMark={ctx.orgMark}
         />
       </div>

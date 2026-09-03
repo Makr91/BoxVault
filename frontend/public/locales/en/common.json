@@ -410,15 +410,20 @@
   },
   "collections": {
     "boxes": "Boxes",
+    "boxesCount_one": "{{count}} box",
+    "boxesCount_other": "{{count}} boxes",
     "isos": "ISOs",
-    "provisioners": "Provisioners"
+    "isosCount_one": "{{count}} ISO",
+    "isosCount_other": "{{count}} ISOs",
+    "provisioners": "Provisioners",
+    "provisionersCount_one": "{{count}} provisioner",
+    "provisionersCount_other": "{{count}} provisioners"
   },
   "pages": {
     "loading": "Loading…",
     "notFound": "Not found.",
     "empty": "Nothing here yet.",
     "noMatches": "Nothing matches.",
-    "countOf": "{{count}} {{collection}}",
     "searchAll": "Search…",
     "filter": {
       "collection": "Collection",
@@ -755,7 +760,11 @@
       "storage": "Storage",
       "storageBoxes": "Storage (Boxes)",
       "storageIsos": "Storage (ISOs)",
-      "oidcProviders": "OIDC Providers"
+      "oidcProviders": "OIDC Providers",
+      "worker": "Worker",
+      "idp": "Identity provider",
+      "pages": "Public catalog",
+      "store": "Private store"
     }
   },
   "configField": {

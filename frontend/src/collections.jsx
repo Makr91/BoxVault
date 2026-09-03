@@ -46,6 +46,7 @@ const sharedColumns = [nameColumn, visibilityColumn, createdColumn, updatedColum
 export const boxes = {
   key: 'boxes',
   labelKey: 'collections.boxes',
+  countKey: 'collections.boxesCount',
   icon: <FaCube aria-hidden />,
   segment: '',
   hasVersions: true,
@@ -112,6 +113,7 @@ export const boxes = {
 export const isos = {
   key: 'isos',
   labelKey: 'collections.isos',
+  countKey: 'collections.isosCount',
   icon: <FaCompactDisc aria-hidden />,
   segment: 'isos',
   hasVersions: false,

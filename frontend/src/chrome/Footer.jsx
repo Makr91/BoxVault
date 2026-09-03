@@ -62,7 +62,7 @@ const HealthIndicator = ({ fetchHealth }) => {
 
   return (
     <OverlayTrigger placement="top" delay={{ show: 250, hide: 400 }} overlay={popover}>
-      <div className="d-flex align-items-center cursor-pointer ms-3">
+      <div className="d-flex align-items-center cursor-pointer">
         <FaHeartPulse className={OVERALL_COLORS[health.status] || 'text-muted'} />
       </div>
     </OverlayTrigger>
@@ -79,9 +79,15 @@ const Footer = ({ appName, version, repoUrl, poweredBy, fetchHealth = null }) =>
     <footer className="footer mt-auto bg-body-tertiary border-top">
       <div className="container-fluid position-relative d-flex align-items-center">
         <div className="footer-edge-start">
-          <span className="text-muted">
-            {appName} &copy; {new Date().getFullYear()}
-          </span>
+          <a
+            href={repoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-decoration-none text-body-secondary"
+          >
+            <FaGithub className="me-1" />
+            {appName} &copy; {new Date().getFullYear()} · v{version}
+          </a>
         </div>
         <div className="mx-auto d-flex align-items-center">
           <span className="text-muted me-2">{t('auth:login.poweredBy')}</span>
@@ -104,15 +110,6 @@ const Footer = ({ appName, version, repoUrl, poweredBy, fetchHealth = null }) =>
           </a>
         </div>
         <div className="footer-edge-end d-flex align-items-center">
-          <a
-            href={repoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-decoration-none text-body-secondary"
-          >
-            <FaGithub className="me-1" />
-            {appName} v{version}
-          </a>
           {fetchHealth ? <HealthIndicator fetchHealth={fetchHealth} /> : null}
         </div>
       </div>

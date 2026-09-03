@@ -111,6 +111,7 @@ export const columnShape = PropTypes.shape({
 export const collectionShape = PropTypes.shape({
   key: PropTypes.string.isRequired,
   labelKey: PropTypes.string.isRequired,
+  countKey: PropTypes.string.isRequired,
   icon: PropTypes.node,
   segment: PropTypes.string.isRequired,
   hasVersions: PropTypes.bool.isRequired,

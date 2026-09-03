@@ -112,10 +112,7 @@ const ItemsTable = ({
               group={group}
               collapsed={Boolean(collapsed[group.key])}
               onToggle={() => onToggleGroup(group.key)}
-              countLabel={t('pages.countOf', {
-                count: group.items.length,
-                collection: t(collection.labelKey),
-              })}
+              countLabel={t(collection.countKey, { count: group.items.length })}
               orgMark={ctx.orgMark}
             />
           </td>
@@ -131,7 +128,14 @@ const ItemsTable = ({
     <Table striped className="table">
       <thead>
         <tr>
-          <th aria-label={t('pages.watch.filterWatched')} />
+          <th
+            className={watches ? 'sortable-header text-center' : 'text-center'}
+            onClick={watches ? () => onSort('watch') : undefined}
+            title={t('pages.watch.filterWatched')}
+          >
+            <FaRegStar aria-label={t('pages.watch.filterWatched')} />{' '}
+            {watches ? <SortIcon column="watch" sort={sort} /> : null}
+          </th>
           {columns.map(column => (
             <th
               key={column.key}

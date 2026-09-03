@@ -748,3 +748,7 @@ button::-moz-focus-inner {
   padding-top: 0.6rem;
   padding-bottom: 0.6rem;
 }
+
+.table > tbody + tbody > tr.table-group-row > td {
+  border-top: 0.5rem solid var(--bs-body-bg);
+}
