@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.67.0](https://github.com/Makr91/BoxVault/compare/v0.66.0...v0.67.0) (2026-09-03)
+
+
+### Features
+
+* Deploy on the item action row and box rows and cards through the shared controls, shared error boundary and mountApp, shared push and i18n, shared.json namespace, org profile readable without a token, redesigned About page ([cf3291f](https://github.com/Makr91/BoxVault/commit/cf3291ff3ec0af4a4e8fc922c777179704d0bb95))
+
 ## [0.66.0](https://github.com/Makr91/BoxVault/compare/v0.65.0...v0.66.0) (2026-09-03)
 
 
