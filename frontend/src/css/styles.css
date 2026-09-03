@@ -218,6 +218,13 @@ button::-moz-focus-inner {
   min-width: 0;
 }
 
+.app-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .navbar {
   padding-top: 14px;
   padding-bottom: 14px;
@@ -749,6 +756,13 @@ button::-moz-focus-inner {
   padding-bottom: 0.6rem;
 }
 
-.table > tbody + tbody > tr.table-group-row > td {
-  border-top: 0.5rem solid var(--bs-body-bg);
+.table > tbody + tbody::before {
+  content: '';
+  display: table-row;
+  height: 1rem;
+}
+
+.table {
+  --bs-table-border-color: rgba(var(--bs-emphasis-color-rgb), 0.08);
+  --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.02);
 }

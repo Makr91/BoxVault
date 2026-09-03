@@ -323,6 +323,15 @@ const getIso = async (org, name) => {
   return item;
 };
 
+const isoWatches = {
+  list: () =>
+    IsoService.getUserWatches().then(response => new Set(rows(response).map(entry => entry.isoId))),
+  toggle: (item, next) =>
+    next
+      ? IsoService.watch(item.organization.name, item.extras.raw.id)
+      : IsoService.unwatch(item.organization.name, item.extras.raw.id),
+};
+
 export const isosAdapter = {
   listAll: () =>
     IsoService.discoverAll().then(response => withLogos(rows(response), 'Unknown', isoItem)),
@@ -330,4 +339,5 @@ export const isosAdapter = {
   getItem: getIso,
   getItemSummary: getIso,
   getOrganization: fetchOrganization,
+  watches: isoWatches,
 };

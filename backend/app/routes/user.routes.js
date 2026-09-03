@@ -28,6 +28,7 @@ import {
   signup,
 } from '../controllers/auth.controller.js';
 import { listUserWatches } from '../controllers/box.controller.js';
+import { listUserIsoWatches } from '../controllers/iso/watch.js';
 
 const router = Router();
 
@@ -94,6 +95,8 @@ router.patch(
 );
 
 router.get('/user/watches', [authJwt.verifyToken, authJwt.isUser], listUserWatches);
+
+router.get('/user/iso-watches', [authJwt.verifyToken, authJwt.isUser], listUserIsoWatches);
 
 router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], leaveOrganization);
 

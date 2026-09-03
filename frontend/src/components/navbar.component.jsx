@@ -29,6 +29,8 @@ const resolveMemberships = user => (Array.isArray(user?.organizations) ? user.or
 
 const resolveDisplayName = (userClaims, user) => userClaims?.name || userDisplayName(user);
 
+const AUTH_PATHS = ['/login', '/register', '/auth/', '/setup'];
+
 const RESERVED_ROUTES = [
   'about',
   'organizations',
@@ -90,7 +92,7 @@ const Navbar = ({
   sessionEnded = null,
 }) => {
   const { t, i18n } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [favoriteApps, setFavoriteApps] = useState([]);
   const [userClaims, setUserClaims] = useState(null);
   const [ticketConfig, setTicketConfig] = useState(null);
@@ -303,9 +305,9 @@ const Navbar = ({
   );
 
   const crumbs = currentUser ? buildRouteCrumbs({ route, t, orgIcon }) : [];
-  const signInTo = sessionEnded
-    ? `/login?returnTo=${encodeURIComponent(sessionEnded.returnTo)}`
-    : '/login';
+  const onAuthPage = AUTH_PATHS.some(path => pathname.startsWith(path));
+  const returnTo = sessionEnded?.returnTo || (onAuthPage ? '' : `${pathname}${search}`);
+  const signInTo = returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login';
 
   const userMenu = currentUser
     ? {

@@ -15,9 +15,11 @@ import {
   getDownloadLink,
   update,
   delete as deleteIso,
+  deleteAll,
 } from '../controllers/iso.controller.js';
 const router = Router();
 import { discoverAll } from '../controllers/iso/discover.js';
+import { watchIso, unwatchIso } from '../controllers/iso/watch.js';
 
 router.use(json());
 
@@ -60,6 +62,19 @@ router.get(
 // Get Download Link (Public/Authenticated)
 router.post('/organization/:organization/iso/:isoId/download-link', [sessionAuth], getDownloadLink);
 
+// Watch and unwatch an ISO
+router.post(
+  '/organization/:organization/iso/:isoId/watch',
+  [authJwt.verifyToken, authJwt.isUser],
+  watchIso
+);
+
+router.delete(
+  '/organization/:organization/iso/:isoId/watch',
+  [authJwt.verifyToken, authJwt.isUser],
+  unwatchIso
+);
+
 // Update ISO
 router.put(
   '/organization/:organization/iso/:isoId',
@@ -72,6 +87,13 @@ router.delete(
   '/organization/:organization/iso/:isoId',
   [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
   deleteIso
+);
+
+// Delete every ISO of an organization
+router.delete(
+  '/organization/:organization/iso',
+  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
+  deleteAll
 );
 
 export default router;

@@ -1,6 +1,7 @@
 import { FaCompactDisc, FaCube } from 'react-icons/fa6';
 
 import { boxesAdapter, isosAdapter } from './boxvaultAdapter';
+import { BoxQuickActions } from './components/BoxDeploy.component';
 import {
   BoxCicdBar,
   BoxItemActions,
@@ -57,14 +58,6 @@ export const boxes = {
   canManage: (item, user) => canManageBox(user, item.organization.name, item.extras.raw),
   filterGroups: [
     {
-      key: 'watched',
-      labelKey: 'pages.watch.filterWatched',
-      values: (item, ctx) => (ctx.watchedIds.has(item.id) ? ['watched'] : []),
-      activeClass: 'bg-warning text-dark',
-      labelFor: (value, t) => t(`pages.watch.${value}`),
-      signedInOnly: true,
-    },
-    {
       key: 'provider',
       labelKey: 'pages.filter.provider',
       values: providerNames,
@@ -94,6 +87,7 @@ export const boxes = {
   ],
   slots: {
     ListActions: BoxListActions,
+    ItemQuickActions: BoxQuickActions,
     ItemActions: BoxItemActions,
     ItemHeaderExtra: BoxCicdBar,
     ItemExtras: BoxItemExtras,

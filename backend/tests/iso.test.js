@@ -229,6 +229,83 @@ describe('ISO API', () => {
     });
   });
 
+  describe('ISO watches', () => {
+    it('should watch, list and unwatch an ISO', async () => {
+      const watched = await request(app)
+        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
+        .set('x-access-token', authToken);
+      expect(watched.statusCode).toBe(201);
+      expect(watched.body).toEqual({ watched: true });
+
+      const again = await request(app)
+        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
+        .set('x-access-token', authToken);
+      expect(again.statusCode).toBe(200);
+
+      const listed = await request(app)
+        .get('/api/user/iso-watches')
+        .set('x-access-token', authToken);
+      expect(listed.statusCode).toBe(200);
+      expect(listed.body.some(entry => entry.isoId === iso.id)).toBe(true);
+
+      const unwatched = await request(app)
+        .delete(`/api/organization/${orgName}/iso/${iso.id}/watch`)
+        .set('x-access-token', authToken);
+      expect(unwatched.statusCode).toBe(200);
+      expect(unwatched.body).toEqual({ watched: false });
+
+      const emptied = await request(app)
+        .get('/api/user/iso-watches')
+        .set('x-access-token', authToken);
+      expect(emptied.body.some(entry => entry.isoId === iso.id)).toBe(false);
+    });
+
+    it('should refuse to watch a private ISO of another organization', async () => {
+      const outsider = await db.user.create({
+        username: `outsider-watch-${Date.now()}`,
+        email: `outsider-watch-${Date.now()}@test.com`,
+        password: 'password',
+        verified: true,
+      });
+      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
+
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
+        .set('x-access-token', token);
+      expect(res.statusCode).toBe(403);
+
+      await outsider.destroy();
+    });
+
+    it('should return 404 when watching an unknown ISO', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso/999999/watch`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should notify watchers when an ISO is published', async () => {
+      await request(app)
+        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
+        .set('x-access-token', authToken);
+      await db.iso.update({ published: false }, { where: { id: iso.id } });
+
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/iso/${iso.id}`)
+        .set('x-access-token', adminToken)
+        .send({ published: true });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.published).toBe(true);
+
+      await request(app)
+        .delete(`/api/organization/${orgName}/iso/${iso.id}/watch`)
+        .set('x-access-token', authToken);
+    });
+  });
+
   describe('ISO Edge Cases (Integration)', () => {
     it('should handle path traversal attempt in filename', async () => {
       const res = await request(app)
@@ -1499,6 +1576,44 @@ describe('ISO API', () => {
       );
 
       logSpy.mockRestore();
+    });
+  });
+
+  describe('DELETE /api/organization/:organization/iso', () => {
+    it('should remove every ISO of the organization and answer 404 once empty', async () => {
+      const otherOrg = await db.organization.create({
+        name: `IsoRemoveAllOrg_${Date.now()}`,
+        access_mode: 'private',
+      });
+      await db.iso.create({
+        name: 'Remove Me A',
+        fileName: 'remove-a.iso',
+        checksum: `remove-a-${Date.now()}`,
+        size: 1024,
+        organizationId: otherOrg.id,
+        storagePath: 'remove-a.iso',
+      });
+      await db.iso.create({
+        name: 'Remove Me B',
+        fileName: 'remove-b.iso',
+        checksum: `remove-b-${Date.now()}`,
+        size: 1024,
+        organizationId: otherOrg.id,
+        storagePath: 'remove-b.iso',
+      });
+
+      const removed = await request(app)
+        .delete(`/api/organization/${otherOrg.name}/iso`)
+        .set('x-access-token', adminToken);
+      expect(removed.statusCode).toBe(200);
+      expect(await db.iso.count({ where: { organizationId: otherOrg.id } })).toBe(0);
+
+      const empty = await request(app)
+        .delete(`/api/organization/${otherOrg.name}/iso`)
+        .set('x-access-token', adminToken);
+      expect(empty.statusCode).toBe(404);
+
+      await otherOrg.destroy();
     });
   });
 

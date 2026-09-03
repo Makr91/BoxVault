@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaRocket } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { deleteVersionCascade } from '../boxvaultAdapter';
@@ -11,6 +10,7 @@ import VersionService from '../services/version.service';
 import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
 
+import { DeployButton, deployableVersion } from './BoxDeploy.component';
 import ConfirmationModal from './confirmation.component';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
@@ -133,19 +133,6 @@ const downloadTextFile = (fileName, content) => {
   URL.revokeObjectURL(url);
 };
 
-const hasHyperweaverEntitlement = user =>
-  Array.isArray(user?.entitlements) &&
-  user.entitlements.some(
-    entitlement =>
-      typeof entitlement.value === 'string' && entitlement.value.startsWith('hyperweaver')
-  );
-
-const pickDefaultVersion = versions => {
-  const sorted = sortVersionsNewestFirst(versions);
-  const active = sorted.find(version => !version.deprecated);
-  return (active || sorted[0])?.version || '';
-};
-
 const CopyButton = ({ text }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -203,58 +190,11 @@ CodeBlock.propTypes = {
   downloadFileName: PropTypes.string,
 };
 
-const DeployToHyperweaver = ({ user, hyperweaverUrl, org, name, selectedVersion }) => {
-  const { t } = useTranslation();
-  if (!user || !hyperweaverUrl || !selectedVersion || !hasHyperweaverEntitlement(user)) {
-    return null;
-  }
-  const href = `${hyperweaverUrl}/?create=machine&box=${encodeURIComponent(`${org}/${name}`)}&box_version=${encodeURIComponent(selectedVersion)}&box_arch=amd64&box_url=${encodeURIComponent(window.location.origin)}`;
-  return (
-    <a
-      className="btn btn-sm btn-primary"
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={t('box.hyperweaver.deployTitle')}
-    >
-      <FaRocket className="me-2" />
-      {t('box.hyperweaver.deploy')}
-    </a>
-  );
-};
-
-DeployToHyperweaver.propTypes = {
-  user: PropTypes.object,
-  hyperweaverUrl: PropTypes.string.isRequired,
-  org: PropTypes.string.isRequired,
-  name: PropTypes.string.isRequired,
-  selectedVersion: PropTypes.string.isRequired,
-};
-
 export const BoxItemExtras = ({ item, ctx }) => {
   const { t } = useTranslation();
   const { user, org } = ctx;
   const versions = sortVersionsNewestFirst(item.versions || []);
-  const [selected, setSelected] = useState(() => pickDefaultVersion(versions));
-  const [hyperweaverUrl, setHyperweaverUrl] = useState('');
-
-  useEffect(() => {
-    let mounted = true;
-    fetch(`${window.location.origin}/api/config/hyperweaver`)
-      .then(response => (response.ok ? response.json() : null))
-      .then(data => {
-        const url = data?.hyperweaver?.url?.value;
-        if (mounted && url) {
-          setHyperweaverUrl(url.replace(/\/+$/, ''));
-        }
-      })
-      .catch(error => {
-        log.api.error('Error fetching hyperweaver config', { error: error.message });
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const [selected, setSelected] = useState(() => deployableVersion(versions));
 
   if (versions.length === 0 || !selected) {
     return null;
@@ -301,13 +241,7 @@ export const BoxItemExtras = ({ item, ctx }) => {
               ))}
             </select>
           </label>
-          <DeployToHyperweaver
-            user={user}
-            hyperweaverUrl={hyperweaverUrl}
-            org={org}
-            name={item.name}
-            selectedVersion={selected}
-          />
+          <DeployButton user={user} org={org} name={item.name} version={selected} size="btn-sm" />
         </span>
       </div>
       <CodeBlock code={initCommand} />
@@ -648,6 +582,12 @@ export const BoxItemActions = ({ item, ctx }) => {
 
   return (
     <>
+      <DeployButton
+        user={user}
+        org={org}
+        name={item.name}
+        version={deployableVersion(item.versions)}
+      />
       {manage ? editButtons : null}
       {manage ? publishButton : null}
       <Link className="btn btn-dark me-2" to={`/${org}`}>

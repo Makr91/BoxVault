@@ -292,6 +292,10 @@
     "versionDeprecated": {
       "title": "Version deprecated: {{organization}}/{{box}} {{version}}"
     },
+    "isoPublished": {
+      "title": "ISO published: {{organization}}/{{iso}}",
+      "body": "{{iso}} is now available."
+    },
     "serviceAccountExpiry": {
       "title": "Service account expiring: {{username}}",
       "bodyOne": "Expires in 1 day. Recreate it before automation breaks.",
@@ -405,7 +409,13 @@
   },
   "isos": {
     "notFound": "ISO not found.",
-    "deleted": "ISO deleted successfully."
+    "deleted": "ISO deleted successfully.",
+    "deletedAll": "{{count}} ISOs were deleted successfully.",
+    "noIsosFound": "No ISOs found for this organization.",
+    "watch": {
+      "error": "Some error occurred while updating the ISO watch.",
+      "listError": "Some error occurred while retrieving watched ISOs."
+    }
   },
   "requests": {
     "invalidRole": "Invalid role. Must be member or admin.",

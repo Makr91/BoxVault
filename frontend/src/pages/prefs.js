@@ -29,13 +29,17 @@ export const readPrefs = (key, collections) => {
     filters,
     collection: setOf(saved.collection),
     visibility: setOf(saved.visibility),
+    watched: setOf(saved.watched),
     sort,
     view: VIEWS.includes(saved.view) ? saved.view : collections[0].defaultView,
     collapsed: saved.collapsed || {},
   };
 };
 
-export const writePrefs = (key, { filters, collection, visibility, sort, view, collapsed }) => {
+export const writePrefs = (
+  key,
+  { filters, collection, visibility, watched, sort, view, collapsed }
+) => {
   const plain = Object.fromEntries(
     Object.entries(filters).map(([collectionKey, groups]) => [
       collectionKey,
@@ -48,6 +52,7 @@ export const writePrefs = (key, { filters, collection, visibility, sort, view, c
       filters: plain,
       collection: [...collection],
       visibility: [...visibility],
+      watched: [...watched],
       sort,
       view,
       collapsed,
@@ -64,6 +69,7 @@ export const emptyFilters = collections => ({
   ),
   collection: new Set(),
   visibility: new Set(),
+  watched: new Set(),
 });
 
 export const toggleIn = (set, value) => {

@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { Card, Col, Row } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import { FaRegStar, FaStar } from 'react-icons/fa6';
+import { FaBug, FaGears, FaGithub, FaHouse, FaRegStar, FaStar } from 'react-icons/fa6';
 import { Link } from 'react-router-dom';
 
 import { OrgLogo, itemPath } from '../chrome';
@@ -39,9 +39,53 @@ CardMedia.propTypes = {
   ctx: PropTypes.object.isRequired,
 };
 
+const LINKS = [
+  { key: 'repo', Icon: FaGithub, labelKey: 'pages.links.repo' },
+  { key: 'homepage', Icon: FaHouse, labelKey: 'pages.links.homepage' },
+  { key: 'issues', Icon: FaBug, labelKey: 'pages.links.issues' },
+  { key: 'pipeline', Icon: FaGears, labelKey: 'pages.links.pipeline' },
+];
+
+const CardLinks = ({ item, ItemQuickActions, ctx }) => {
+  const { t } = useTranslation();
+  const links = item.links || {};
+  const present = LINKS.filter(link => links[link.key]);
+  if (present.length === 0 && !ItemQuickActions) {
+    return null;
+  }
+  return (
+    <div className="d-flex align-items-center gap-3 card-links">
+      {present.map(({ key, Icon, labelKey }) => (
+        <a
+          key={key}
+          href={links[key]}
+          target="_blank"
+          rel="noreferrer"
+          className="text-body-secondary"
+          title={t(labelKey)}
+          aria-label={t(labelKey)}
+        >
+          <Icon />
+        </a>
+      ))}
+      {ItemQuickActions ? (
+        <span className="ms-auto d-inline-flex align-items-center gap-3">
+          <ItemQuickActions item={item} ctx={ctx} />
+        </span>
+      ) : null}
+    </div>
+  );
+};
+
+CardLinks.propTypes = {
+  item: itemShape.isRequired,
+  ItemQuickActions: PropTypes.elementType,
+  ctx: PropTypes.object.isRequired,
+};
+
 const ItemCard = ({ collection, item, watches, ctx }) => {
   const { t } = useTranslation();
-  const { ItemChips, CardExtras, RowActions } = collection.slots;
+  const { ItemChips, ItemQuickActions, CardExtras, RowActions } = collection.slots;
   const title = item.label || item.name;
   const watched = watches ? watches.ids.has(item.id) : false;
   return (
@@ -88,6 +132,7 @@ const ItemCard = ({ collection, item, watches, ctx }) => {
           </Card.Text>
         ) : null}
         <div className="mt-auto d-flex flex-column gap-2">
+          <CardLinks item={item} ItemQuickActions={ItemQuickActions} ctx={ctx} />
           {CardExtras ? <CardExtras item={item} ctx={ctx} /> : null}
           {RowActions ? <RowActions item={item} ctx={ctx} /> : null}
         </div>

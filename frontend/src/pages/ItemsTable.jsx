@@ -40,7 +40,7 @@ SortIcon.propTypes = {
   sort: PropTypes.shape({ column: PropTypes.string, direction: PropTypes.string }).isRequired,
 };
 
-const ItemRow = ({ item, columns, watches, RowActions, ctx }) => (
+const ItemRow = ({ item, columns, watches, ItemQuickActions, RowActions, ctx }) => (
   <tr>
     <td className="text-center align-middle">
       {watches ? (
@@ -50,6 +50,11 @@ const ItemRow = ({ item, columns, watches, RowActions, ctx }) => (
     {columns.map(column => (
       <td key={column.key}>{column.render(item, ctx)}</td>
     ))}
+    {ItemQuickActions ? (
+      <td className="text-center align-middle">
+        <ItemQuickActions item={item} ctx={ctx} />
+      </td>
+    ) : null}
     {RowActions ? (
       <td>
         <RowActions item={item} ctx={ctx} />
@@ -62,6 +67,7 @@ ItemRow.propTypes = {
   item: itemShape.isRequired,
   columns: PropTypes.array.isRequired,
   watches: PropTypes.object,
+  ItemQuickActions: PropTypes.elementType,
   RowActions: PropTypes.elementType,
   ctx: PropTypes.object.isRequired,
 };
@@ -79,9 +85,9 @@ const ItemsTable = ({
 }) => {
   const { t } = useTranslation();
   const columns = collection.columns.filter(column => !column.when || column.when(ctx));
-  const { RowActions } = collection.slots;
-  const columnCount = columns.length + 1 + (RowActions ? 1 : 0);
-  const rowProps = { columns, watches, RowActions, ctx };
+  const { ItemQuickActions, RowActions } = collection.slots;
+  const columnCount = columns.length + 1 + (ItemQuickActions ? 1 : 0) + (RowActions ? 1 : 0);
+  const rowProps = { columns, watches, ItemQuickActions, RowActions, ctx };
 
   const body = () => {
     if (items.length === 0) {
@@ -146,6 +152,7 @@ const ItemsTable = ({
               {column.sortValue ? <SortIcon column={column.key} sort={sort} /> : null}
             </th>
           ))}
+          {ItemQuickActions ? <th aria-label={t('pages.table.actions')} /> : null}
           {RowActions ? <th>{t('pages.table.actions')}</th> : null}
         </tr>
       </thead>

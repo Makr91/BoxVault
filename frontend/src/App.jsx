@@ -1,6 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+  Link,
+} from 'react-router-dom';
 
 import './css/styles.css';
 import './css/fonts.css';
@@ -216,6 +224,12 @@ const App = () => {
   const [setupComplete, setSetupComplete] = useState(null);
   const [sessionEnded, setSessionEnded] = useState(null);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
     const favicon = document.getElementById('favicon');
@@ -466,7 +480,7 @@ const App = () => {
 
   return (
     <ErrorBoundary showErrorDetails={isDevelopment}>
-      <div className="App d-flex flex-column min-vh-100">
+      <div className="App d-flex flex-column vh-100">
         <Navbar
           currentUser={currentUser}
           userOrganization={userOrganization}
@@ -482,7 +496,7 @@ const App = () => {
           logOutLocal={logOutLocal}
           sessionEnded={sessionEnded}
         />
-        <div className="container-fluid mt-3 flex-grow-1">
+        <div ref={scrollRef} className="container-fluid app-scroll py-3">
           <Routes>
             <Route
               path="/setup"
@@ -497,7 +511,7 @@ const App = () => {
                     <CollectionPage collection={isos} org="" member={false} context={context} />
                   }
                 />
-                <Route path="/about" element={<About />} />
+                <Route path="/about" element={<About theme={theme} />} />
                 <Route
                   path="/organizations/discover"
                   element={<OrganizationDiscovery theme={theme} />}

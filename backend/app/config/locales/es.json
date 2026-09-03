@@ -292,6 +292,10 @@
     "versionDeprecated": {
       "title": "Versión obsoleta: {{organization}}/{{box}} {{version}}"
     },
+    "isoPublished": {
+      "title": "ISO publicada: {{organization}}/{{iso}}",
+      "body": "{{iso}} ya está disponible."
+    },
     "serviceAccountExpiry": {
       "title": "Cuenta de servicio por caducar: {{username}}",
       "bodyOne": "Caduca en 1 día. Vuelve a crearla antes de que se rompa la automatización.",
@@ -405,7 +409,13 @@
   },
   "isos": {
     "notFound": "ISO no encontrada.",
-    "deleted": "ISO eliminada exitosamente."
+    "deleted": "ISO eliminada exitosamente.",
+    "deletedAll": "Se eliminaron {{count}} ISOs exitosamente.",
+    "noIsosFound": "No se encontraron ISOs para esta organización.",
+    "watch": {
+      "error": "Ocurrió un error al actualizar el seguimiento de la ISO.",
+      "listError": "Ocurrió un error al recuperar las ISOs seguidas."
+    }
   },
   "requests": {
     "invalidRole": "Rol inválido. Debe ser miembro o administrador.",

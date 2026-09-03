@@ -97,6 +97,7 @@ if (shouldSkipInitialization) {
   db.iso = (await import('./iso.model.js')).default(sequelize, Sequelize);
   db.scimGroup = (await import('./scim-group.model.js')).default(sequelize, Sequelize);
   db.boxWatcher = (await import('./box-watcher.model.js')).default(sequelize, Sequelize);
+  db.isoWatcher = (await import('./iso-watcher.model.js')).default(sequelize, Sequelize);
   db.pushSubscription = (await import('./push-subscription.model.js')).default(
     sequelize,
     Sequelize

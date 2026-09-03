@@ -532,7 +532,7 @@
     },
     "hyperweaver": {
       "deploy": "Desplegar",
-      "deployTitle": "Abrir Hyperweaver con esta box preseleccionada"
+      "deployVersionTitle": "Desplegar {{version}} con Hyperweaver"
     },
     "readmeTitle": "README",
     "organization": {
@@ -712,6 +712,14 @@
       "cards": "Vista de tarjetas"
     },
     "toggle": "Mostrar u ocultar",
+    "addNew": "Añadir nuevo",
+    "removeAll": "Eliminar todo",
+    "links": {
+      "repo": "Repositorio",
+      "homepage": "Página web",
+      "issues": "Informar de un problema",
+      "pipeline": "Pipeline de CI"
+    },
     "table": {
       "name": "Nombre",
       "os": "SO",

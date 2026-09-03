@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { iso: ISO } = db;
+import { notifyIsoPublished } from './notifications.js';
+const { iso: ISO, organization: Organization } = db;
 
 /**
  * @swagger
@@ -62,6 +63,8 @@ const update = async (req, res) => {
       return res.status(404).send({ message: req.__('isos.notFound') });
     }
 
+    const wasPublished = iso.published;
+
     if (isPublic !== undefined) {
       iso.isPublic = isPublic;
     }
@@ -79,6 +82,12 @@ const update = async (req, res) => {
     }
 
     await iso.save();
+
+    if (iso.published && !wasPublished) {
+      const organization = await Organization.findByPk(iso.organizationId);
+      notifyIsoPublished(organization, iso);
+    }
+
     return res.send(iso);
   } catch (err) {
     log.error.error('Error updating ISO', err);

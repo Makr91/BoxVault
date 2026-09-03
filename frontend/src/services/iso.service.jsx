@@ -27,6 +27,11 @@ const deleteISO = (organizationName, isoId) =>
     headers: authHeader(),
   });
 
+const removeAll = organizationName =>
+  axios.delete(`${baseURL}/api/organization/${organizationName}/iso`, {
+    headers: authHeader(),
+  });
+
 const getDownloadLink = (organizationName, isoId) =>
   axios.post(
     `${baseURL}/api/organization/${organizationName}/iso/${isoId}/download-link`,
@@ -39,13 +44,32 @@ const update = (organizationName, isoId, data) =>
     headers: authHeader(),
   });
 
+const watch = (organizationName, isoId) =>
+  axios.post(
+    `${baseURL}/api/organization/${organizationName}/iso/${isoId}/watch`,
+    {},
+    { headers: authHeader() }
+  );
+
+const unwatch = (organizationName, isoId) =>
+  axios.delete(`${baseURL}/api/organization/${organizationName}/iso/${isoId}/watch`, {
+    headers: authHeader(),
+  });
+
+const getUserWatches = () =>
+  axios.get(`${baseURL}/api/user/iso-watches`, { headers: authHeader() });
+
 const IsoService = {
   getAll,
   discoverAll,
   upload,
   deleteISO,
+  removeAll,
   getDownloadLink,
   update,
+  watch,
+  unwatch,
+  getUserWatches,
 };
 
 export default IsoService;

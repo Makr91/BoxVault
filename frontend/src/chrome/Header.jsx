@@ -97,7 +97,7 @@ const Header = ({
   const themeLabel = t(`theme.${theme.preference}`);
 
   return (
-    <nav className="navbar navbar-expand-lg sticky-top shadow-sm bg-body-tertiary border-bottom">
+    <nav className="navbar navbar-expand-lg shadow-sm bg-body-tertiary border-bottom">
       <div className="container-fluid">
         <Brand brand={brand} LinkComponent={LinkComponent} />
         <ul className="nav nav-pills me-auto align-items-center">

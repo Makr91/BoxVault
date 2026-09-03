@@ -49,13 +49,12 @@ const UploadZone = ({ uploading, progress, onFile }) => {
     return (
       <button
         type="button"
-        className="btn btn-sm btn-primary d-inline-flex align-items-center gap-2"
+        className="btn btn-sm btn-outline-success"
         onClick={() => setOpen(true)}
         onMouseEnter={startDwell}
         onMouseLeave={stopDwell}
       >
-        <FaUpload />
-        {t('buttons.upload')}
+        {t('pages.addNew')}
       </button>
     );
   }
@@ -152,6 +151,36 @@ UploadZone.propTypes = {
   onFile: PropTypes.func.isRequired,
 };
 
+const RemoveAll = ({ org, reload, notify }) => {
+  const { t } = useTranslation();
+  const [show, setShow] = useState(false);
+  const removeAll = () => {
+    IsoService.removeAll(org)
+      .then(() => {
+        notify('success', t('messages.operationSuccessful'));
+        reload();
+      })
+      .catch(error => {
+        log.api.error('Error removing all ISOs', { org, error: error.message });
+        notify('danger', t('messages.deleteFailed'));
+      });
+  };
+  return (
+    <>
+      <button type="button" className="btn btn-sm btn-danger" onClick={() => setShow(true)}>
+        {t('pages.removeAll')}
+      </button>
+      <ConfirmationModal show={show} handleClose={() => setShow(false)} handleConfirm={removeAll} />
+    </>
+  );
+};
+
+RemoveAll.propTypes = {
+  org: PropTypes.string.isRequired,
+  reload: PropTypes.func.isRequired,
+  notify: PropTypes.func.isRequired,
+};
+
 export const IsoListActions = ({ ctx }) => {
   const { t } = useTranslation();
   const { user, org, reload, notify } = ctx;
@@ -180,7 +209,12 @@ export const IsoListActions = ({ ctx }) => {
       .finally(() => setUploading(false));
   };
 
-  return <UploadZone uploading={uploading} progress={progress} onFile={upload} />;
+  return (
+    <>
+      <UploadZone uploading={uploading} progress={progress} onFile={upload} />
+      <RemoveAll org={org} reload={reload} notify={notify} />
+    </>
+  );
 };
 
 IsoListActions.propTypes = {

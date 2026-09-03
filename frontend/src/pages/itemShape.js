@@ -95,8 +95,18 @@ export const VISIBILITY_GROUP = {
   shownFor: items => items.some(item => item.isPublic === false),
 };
 
+export const WATCHED_GROUP = {
+  key: 'watched',
+  labelKey: 'pages.watch.filterWatched',
+  values: (item, ctx) => (ctx.watchedIds.has(item.id) ? ['watched'] : []),
+  activeClass: 'bg-warning text-dark',
+  labelFor: (value, t) => t(`pages.watch.${value}`),
+};
+
+const SHARED_GROUP_KEYS = [VISIBILITY_GROUP.key, WATCHED_GROUP.key];
+
 export const filterGroupsOf = collection =>
-  collection.filterGroups.filter(group => group.key !== VISIBILITY_GROUP.key);
+  collection.filterGroups.filter(group => !SHARED_GROUP_KEYS.includes(group.key));
 
 export const isPrivate = item => item.isPublic === false;
 

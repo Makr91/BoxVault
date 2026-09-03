@@ -196,6 +196,19 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(404);
     });
 
+    it('should return only the public profile to an anonymous caller', async () => {
+      const res = await request(app).get(`/api/organization/${orgName}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('name', orgName);
+      expect(res.body).toHaveProperty('logo');
+      expect(res.body).toHaveProperty('emailHash');
+      expect(res.body).not.toHaveProperty('totalBoxes');
+      expect(res.body).not.toHaveProperty('members');
+      expect(res.body).not.toHaveProperty('access_mode');
+      expect(res.body).not.toHaveProperty('email');
+    });
+
     it('should handle members with no boxes', async () => {
       const mockOrg = {
         id: organization.id,
@@ -1762,12 +1775,14 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(404);
     });
 
-    it('should return 401 for findOne with invalid token', async () => {
+    it('should treat an invalid token as anonymous on findOne', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}`)
         .set('x-access-token', 'invalid_token_string');
 
-      expect(res.statusCode).toBe(401);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('name', orgName);
+      expect(res.body).not.toHaveProperty('totalBoxes');
     });
 
     it('should handle invalid token gracefully', async () => {

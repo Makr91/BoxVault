@@ -154,7 +154,7 @@ const RemoveAll = ({ org, reload, notify }) => {
   return (
     <>
       <button type="button" className="btn btn-sm btn-danger" onClick={() => setShow(true)}>
-        {t('box.organization.buttons.removeAll')}
+        {t('pages.removeAll')}
       </button>
       <ConfirmationModal show={show} handleClose={() => setShow(false)} handleConfirm={removeAll} />
     </>
@@ -223,9 +223,7 @@ export const BoxListActions = ({ ctx }) => {
             onClick={create}
             disabled={creating && (!draft.name || Boolean(nameError))}
           >
-            {creating
-              ? t('box.organization.buttons.createBox')
-              : t('box.organization.buttons.createNewBox')}
+            {creating ? t('box.organization.buttons.createBox') : t('pages.addNew')}
           </button>
           {creating ? (
             <button type="button" className="btn btn-sm btn-secondary" onClick={cancel}>

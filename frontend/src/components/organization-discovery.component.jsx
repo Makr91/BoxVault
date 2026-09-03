@@ -275,7 +275,9 @@ const OrganizationDiscovery = ({ theme }) => {
                             const currentUser = AuthService.getCurrentUser();
                             if (!currentUser) {
                               localStorage.setItem('boxvault_join_org', org.name);
-                              navigate('/login');
+                              navigate(
+                                `/login?returnTo=${encodeURIComponent('/organizations/discover')}`
+                              );
                             } else {
                               setRequestingOrg(org);
                             }

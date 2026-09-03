@@ -33,7 +33,7 @@ const Admin = () => {
 
     if (!currentUser) {
       // Not authenticated, redirect to login
-      navigate('/login');
+      navigate(`/login?returnTo=${encodeURIComponent('/admin')}`);
       return;
     }
 

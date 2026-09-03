@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useNavbarSearchBinding } from '../chrome';
 
-import { VISIBILITY_GROUP, defaultMatches, filterGroupsOf } from './itemShape';
+import { VISIBILITY_GROUP, WATCHED_GROUP, defaultMatches, filterGroupsOf } from './itemShape';
 import { emptyFilters, readPrefs, toggleIn, writePrefs } from './prefs';
 
 const groupShown = (group, { signedIn, org, items }) =>
@@ -38,6 +38,12 @@ const passesGroups = (item, groups, filters, ctx) =>
 
 const passesVisibility = (item, visibility) =>
   visibility.size === 0 || VISIBILITY_GROUP.values(item).some(value => visibility.has(value));
+
+const NO_IDS = new Set();
+
+const passesWatched = (item, watched, watchedIds) =>
+  watched.size === 0 ||
+  WATCHED_GROUP.values(item, { watchedIds }).some(value => watched.has(value));
 
 const sortItems = (items, sort, columns) => {
   const column = columns.find(entry => entry.key === sort.column);
@@ -100,6 +106,32 @@ const visibilityGroup = (items, prefs, setPrefs, ctx, t) => ({
     setPrefs(current => ({ ...current, visibility: toggleIn(current.visibility, value) })),
 });
 
+const watchedGroup = (visible, itemsByCollection, watchedIds, prefs, setPrefs, t) => {
+  const entries = {};
+  visible.forEach(collection => {
+    if (!watchedIds[collection.key]) {
+      return;
+    }
+    const counts = countValues(itemsByCollection[collection.key] || [], WATCHED_GROUP, {
+      watchedIds: watchedIds[collection.key],
+      t,
+    });
+    Object.entries(counts).forEach(([value, count]) => {
+      entries[value] = (entries[value] || 0) + count;
+    });
+  });
+  return {
+    key: WATCHED_GROUP.key,
+    label: t(WATCHED_GROUP.labelKey),
+    entries,
+    activeSet: prefs.watched,
+    activeClass: WATCHED_GROUP.activeClass,
+    labelFor: value => WATCHED_GROUP.labelFor(value, t),
+    onToggle: value =>
+      setPrefs(current => ({ ...current, watched: toggleIn(current.watched, value) })),
+  };
+};
+
 const ownGroup = ({ collection, group, items, filters, prefixed, setPrefs, ctx, t }) => ({
   key: `${collection.key}.${group.key}`,
   label: prefixed ? `${t(collection.labelKey)} · ${t(group.labelKey)}` : t(group.labelKey),
@@ -124,10 +156,12 @@ const ownGroup = ({ collection, group, items, filters, prefixed, setPrefs, ctx, 
 /**
  * Registers one navbar search binding for a page that lists one or more
  * collections, and returns the collections left visible by the Collection
- * group plus the filtered, sorted items per collection. The Collection and
- * Visibility groups are shared across the page; the collection's own groups
- * follow them. Filters, sort, the one view and the collapsed groups persist
- * per page under the app's prefs prefix.
+ * group plus the filtered, sorted items per collection. The Collection,
+ * Visibility and Watched groups are shared across the page; the collection's
+ * own groups follow them. Watched ids arrive as one Set per collection key,
+ * because item ids only mean something inside their own collection. Filters,
+ * sort, the one view and the collapsed groups persist per page under the
+ * app's prefs prefix.
  */
 export const useCatalogSearch = ({
   collections,
@@ -145,7 +179,7 @@ export const useCatalogSearch = ({
     writePrefs(prefsKey, prefs);
   }, [prefsKey, prefs]);
 
-  const ctx = { watchedIds, t };
+  const idsFor = collection => watchedIds[collection.key] || NO_IDS;
   const needle = query.trim().toLowerCase();
   const visible = collections.filter(
     collection => prefs.collection.size === 0 || prefs.collection.has(collection.key)
@@ -160,13 +194,20 @@ export const useCatalogSearch = ({
     groups.push(collectionGroup(collections, itemsByCollection, prefs, setPrefs, t));
   }
   if (groupShown(VISIBILITY_GROUP, { signedIn, org, items: visibleItems })) {
-    groups.push(visibilityGroup(visibleItems, prefs, setPrefs, ctx, t));
+    groups.push(visibilityGroup(visibleItems, prefs, setPrefs, { t }, t));
+  }
+  if (signedIn) {
+    const watched = watchedGroup(visible, itemsByCollection, watchedIds, prefs, setPrefs, t);
+    if (Object.keys(watched.entries).length > 0) {
+      groups.push(watched);
+    }
   }
 
   const filtered = {};
   let matched = 0;
   visible.forEach(collection => {
     const items = itemsByCollection[collection.key] || [];
+    const ctx = { watchedIds: idsFor(collection), t };
     const shown = filterGroupsOf(collection).filter(group =>
       groupShown(group, { signedIn, org, items })
     );
@@ -176,10 +217,11 @@ export const useCatalogSearch = ({
       item =>
         (needle === '' || matches(item, needle)) &&
         passesVisibility(item, prefs.visibility) &&
+        passesWatched(item, prefs.watched, ctx.watchedIds) &&
         passesGroups(item, shown, filters, ctx)
     );
     filtered[collection.key] = sortItems(passing, prefs.sort[collection.key], [
-      watchSort(watchedIds),
+      watchSort(ctx.watchedIds),
       ...collection.columns,
     ]);
     matched += passing.length;
@@ -214,6 +256,7 @@ export const useCatalogSearch = ({
     needle !== '' ||
     prefs.collection.size > 0 ||
     prefs.visibility.size > 0 ||
+    prefs.watched.size > 0 ||
     Object.values(prefs.filters).some(groupsOfCollection =>
       Object.values(groupsOfCollection).some(set => set.size > 0)
     );

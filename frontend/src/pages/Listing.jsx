@@ -21,49 +21,56 @@ const groupByOrganization = items => {
   return [...groups.values()];
 };
 
+const NO_IDS = new Set();
+
 const useWatches = ({ collections, user, notify }) => {
   const { t } = useTranslation();
-  const [ids, setIds] = useState(() => new Set());
-  const watchable = collections.find(collection => collection.adapter.watches);
+  const [ids, setIds] = useState({});
   const signedIn = Boolean(user);
+  const available = signedIn && collections.some(collection => collection.adapter.watches);
 
   useEffect(() => {
-    if (!signedIn || !watchable) {
+    const watchable = collections.filter(collection => collection.adapter.watches);
+    if (!signedIn || watchable.length === 0) {
       return undefined;
     }
     let mounted = true;
-    watchable.adapter.watches
-      .list()
-      .then(loaded => {
-        if (mounted) {
-          setIds(loaded);
-        }
-      })
-      .catch(() => null);
+    Promise.all(
+      watchable.map(collection =>
+        collection.adapter.watches
+          .list()
+          .then(loaded => [collection.key, loaded])
+          .catch(() => [collection.key, NO_IDS])
+      )
+    ).then(entries => {
+      if (mounted) {
+        setIds(Object.fromEntries(entries));
+      }
+    });
     return () => {
       mounted = false;
     };
-  }, [signedIn, watchable]);
+  }, [signedIn, collections]);
 
-  const toggle = item => {
-    const next = !ids.has(item.id);
-    const apply = (current, watched) => {
-      const copy = new Set(current);
+  const toggle = (collection, item) => {
+    const next = !(ids[collection.key] || NO_IDS).has(item.id);
+    const apply = (all, watched) => {
+      const copy = new Set(all[collection.key] || []);
       if (watched) {
         copy.add(item.id);
       } else {
         copy.delete(item.id);
       }
-      return copy;
+      return { ...all, [collection.key]: copy };
     };
-    setIds(current => apply(current, next));
-    watchable.adapter.watches.toggle(item, next).catch(() => {
-      setIds(current => apply(current, !next));
+    setIds(all => apply(all, next));
+    collection.adapter.watches.toggle(item, next).catch(() => {
+      setIds(all => apply(all, !next));
       notify('danger', t('pages.watch.error'));
     });
   };
 
-  return { ids, toggle, available: signedIn && Boolean(watchable) };
+  return { ids, toggle, available };
 };
 
 const ViewToggle = ({ view, onChange }) => {
@@ -194,7 +201,13 @@ const Listing = ({ collections, org, member, grouped, context, header = null, ac
       groups: grouped ? groupByOrganization(items) : null,
       collapsed,
       onToggleGroup: toggleCollapsed,
-      watches: watches.available && collection.adapter.watches ? watches : null,
+      watches:
+        watches.available && collection.adapter.watches
+          ? {
+              ids: watches.ids[collection.key] || NO_IDS,
+              toggle: item => watches.toggle(collection, item),
+            }
+          : null,
       ctx: ctxFor(collection),
     };
     if (view === 'cards') {
