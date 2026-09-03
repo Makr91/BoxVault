@@ -82,6 +82,41 @@ jobs:
       - name: Check Prettier formatting
         run: npm run format:check
 
+      - name: Check locale key parity against en
+        working-directory: frontend
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'fs';
+          const flat = (obj, prefix = '') =>
+            Object.entries(obj).flatMap(([key, value]) =>
+              value && typeof value === 'object' ? flat(value, `${prefix}${key}.`) : [`${prefix}${key}`]
+            );
+          const read = (lang, ns) => new Set(flat(JSON.parse(fs.readFileSync(`public/locales/${lang}/${ns}`, 'utf8'))));
+          const namespaces = fs.readdirSync('public/locales/en').filter(file => file.endsWith('.json'));
+          const langs = fs.readdirSync('public/locales').filter(dir => dir !== 'en' && dir !== 'cimode');
+          let failed = false;
+          for (const lang of langs) {
+            for (const ns of namespaces) {
+              const en = read('en', ns);
+              const keys = read(lang, ns);
+              const missing = [...en].filter(key => !keys.has(key));
+              const extra = [...keys].filter(key => !en.has(key));
+              if (missing.length > 0) {
+                failed = true;
+                console.error(`${lang}/${ns} is MISSING ${missing.length} keys:\n  ${missing.join('\n  ')}`);
+              }
+              if (extra.length > 0) {
+                failed = true;
+                console.error(`${lang}/${ns} has ${extra.length} keys en lacks:\n  ${extra.join('\n  ')}`);
+              }
+              if (missing.length === 0 && extra.length === 0) {
+                console.log(`${lang}/${ns}: parity OK (${keys.size} keys)`);
+              }
+            }
+          }
+          process.exit(failed ? 1 : 0);
+          EOF
+
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
 import EventBus from '../common/EventBus';
+import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
 import InvitationService from '../services/invitation.service';
 import OrganizationService from '../services/organization.service';
@@ -11,7 +12,6 @@ import RequestService from '../services/request.service';
 import { log } from '../utils/Logger';
 import { isOrgOwner } from '../utils/permissions';
 
-import ConfirmationModal from './confirmation.component';
 import UserCard from './UserCard.component';
 
 const OrgConsoleTabs = ({
@@ -1054,14 +1054,14 @@ const OrgConsole = ({ currentOrganization }) => {
         </div>
       )}
 
-      <ConfirmationModal
+      <ConfirmModal
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}
         title={itemToDelete?.type === 'user_remove' ? t('buttons.removeFromOrg') : undefined}
         message={
           itemToDelete?.type === 'user_remove'
-            ? t('confirmation.message', { keyword: t('deleteKeyword') })
+            ? t('pages.confirm.message', { keyword: t('pages.confirm.keyword') })
             : undefined
         }
       />

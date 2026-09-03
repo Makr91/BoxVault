@@ -3,14 +3,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import { responseMessage } from '../pages';
+import { ConfirmModal, responseMessage } from '../pages';
 import AuthService from '../services/auth.service';
 import BoxService from '../services/box.service';
 import OrganizationService from '../services/organization.service';
 import { log } from '../utils/Logger';
 import { isGlobalAdmin, isOrgManager, isOrgMember } from '../utils/permissions';
-
-import ConfirmationModal from './confirmation.component';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
 const EMPTY_BOX = { name: '', description: '', isPublic: false };
@@ -156,7 +154,7 @@ const RemoveAll = ({ org, reload, notify }) => {
       <button type="button" className="btn btn-sm btn-danger" onClick={() => setShow(true)}>
         {t('pages.removeAll')}
       </button>
-      <ConfirmationModal show={show} handleClose={() => setShow(false)} handleConfirm={removeAll} />
+      <ConfirmModal show={show} handleClose={() => setShow(false)} handleConfirm={removeAll} />
     </>
   );
 };

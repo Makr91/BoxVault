@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import ConfirmationModal from './confirmation.component';
+import { ConfirmModal } from '../pages';
 
 /**
  * OidcProviderManager - Manages OIDC authentication providers
@@ -592,7 +592,7 @@ const OidcProviderManager = ({ config, onConfigUpdate, setMessage, setMessageTyp
       )}
 
       {/* Delete Confirmation Modal */}
-      <ConfirmationModal
+      <ConfirmModal
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}

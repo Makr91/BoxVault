@@ -2,7 +2,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 import App from './App';
 import { mountApp } from './chrome';
-import i18n, { i18nPromise } from './i18n';
+import { i18n, i18nPromise } from './chromeProps';
 import { log } from './utils/Logger';
 import version from './version.json';
 

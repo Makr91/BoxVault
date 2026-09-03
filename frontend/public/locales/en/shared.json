@@ -113,6 +113,15 @@
     "toggle": "Show or hide",
     "addNew": "Add New",
     "removeAll": "Remove All",
+    "confirm": {
+      "title": "Confirm Action",
+      "message": "Please type \"{{keyword}}\" to confirm.",
+      "placeholder": "Type '{{keyword}}' to confirm",
+      "typeToConfirm": "Please type '{{keyword}}' to confirm.",
+      "keyword": "delete",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
     "links": {
       "repo": "Source repository",
       "homepage": "Homepage",

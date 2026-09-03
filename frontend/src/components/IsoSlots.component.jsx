@@ -14,11 +14,10 @@ import {
 } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { ConfirmModal } from '../pages';
 import IsoService from '../services/iso.service';
 import { log } from '../utils/Logger';
 import { isOrgManager } from '../utils/permissions';
-
-import ConfirmationModal from './confirmation.component';
 
 const HOVER_DWELL_MS = 400;
 
@@ -170,7 +169,7 @@ const RemoveAll = ({ org, reload, notify }) => {
       <button type="button" className="btn btn-sm btn-danger" onClick={() => setShow(true)}>
         {t('pages.removeAll')}
       </button>
-      <ConfirmationModal show={show} handleClose={() => setShow(false)} handleConfirm={removeAll} />
+      <ConfirmModal show={show} handleClose={() => setShow(false)} handleConfirm={removeAll} />
     </>
   );
 };
@@ -392,7 +391,7 @@ export const IsoItemActions = ({ item, ctx }) => {
       <Link className="btn btn-dark me-2" to={`/${org}/isos`}>
         {t('buttons.back')}
       </Link>
-      <ConfirmationModal
+      <ConfirmModal
         show={showDelete}
         handleClose={() => setShowDelete(false)}
         handleConfirm={remove}

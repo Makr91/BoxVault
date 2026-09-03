@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {
+  ConfirmModal,
   architectureShape,
   formatFileSize,
   itemShape,
@@ -15,8 +16,6 @@ import FileService from '../services/file.service';
 import ProviderService from '../services/provider.service';
 import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
-
-import ConfirmationModal from './confirmation.component';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
 const CHECKSUM_TYPES = ['NULL', 'MD5', 'SHA1', 'SHA256', 'SHA384', 'SHA512'];
@@ -198,7 +197,7 @@ export const BoxProviderActions = ({ item, version, provider, ctx }) => {
         {t('buttons.delete')}
       </button>
       {back}
-      <ConfirmationModal
+      <ConfirmModal
         show={showDelete}
         handleClose={() => setShowDelete(false)}
         handleConfirm={remove}
@@ -531,7 +530,7 @@ export const BoxArchitectureRowActions = ({ item, version, provider, architectur
       <button type="button" className="btn btn-danger me-2" onClick={() => setShow(true)}>
         {t('buttons.delete')}
       </button>
-      <ConfirmationModal show={show} handleClose={() => setShow(false)} handleConfirm={remove} />
+      <ConfirmModal show={show} handleClose={() => setShow(false)} handleConfirm={remove} />
     </>
   );
 };

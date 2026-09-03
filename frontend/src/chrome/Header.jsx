@@ -39,7 +39,7 @@ const Brand = ({ brand, LinkComponent }) => {
   );
 };
 
-const brandShape = PropTypes.shape({
+export const brandShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
   logo: PropTypes.node.isRequired,
   href: PropTypes.string,
@@ -67,7 +67,7 @@ const UtilityLinks = ({ links, LinkComponent }) =>
     </li>
   ));
 
-const linkShape = PropTypes.shape({
+export const linkShape = PropTypes.shape({
   key: PropTypes.string.isRequired,
   label: PropTypes.string.isRequired,
   href: PropTypes.string,

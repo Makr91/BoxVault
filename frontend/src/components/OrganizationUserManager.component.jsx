@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import EventBus from '../common/EventBus';
+import { ConfirmModal } from '../pages';
 import AuthService from '../services/auth.service';
 import OrganizationService from '../services/organization.service';
 import UserService from '../services/user.service';
 import { validateOrgName } from '../utils/ConfigProcessorUtils';
 
-import ConfirmationModal from './confirmation.component';
 import UserCard from './UserCard.component';
 
 /**
@@ -338,7 +338,7 @@ const OrganizationUserManager = () => {
           </div>
         ))}
       </div>
-      <ConfirmationModal
+      <ConfirmModal
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { fetchWithDeduplication } from '../utils/GravatarCache';
+import { fetchWithDeduplication } from '../chrome';
 import { log } from '../utils/Logger';
 import { endSession } from '../utils/sessionEnded';
 

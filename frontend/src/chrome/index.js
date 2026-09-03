@@ -1,9 +1,20 @@
+export {
+  default as AppChrome,
+  footerShape,
+  identityShape,
+  menuShape,
+  orgsShape,
+  sessionShape,
+} from './AppChrome';
+export { default as Avatar } from './Avatar';
 export { default as Crumbs, crumbShape } from './Crumbs';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as FavoriteApps } from './FavoriteApps';
 export { default as Footer } from './Footer';
-export { default as Header } from './Header';
+export { fetchWithDeduplication } from './gravatar';
+export { default as Header, brandShape, linkShape } from './Header';
 export { createI18n } from './i18n';
+export { userDisplayName, userSecondaryLine } from './identity';
 export { default as IdentityCard, localProfileShape } from './IdentityCard';
 export {
   LanguageButton,

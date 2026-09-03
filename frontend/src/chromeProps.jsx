@@ -1,20 +1,13 @@
 import PropTypes from 'prop-types';
 
-import { createNotificationsClient } from './chrome';
+import { createI18n, createNotificationsClient, createPush, userDisplayName } from './chrome';
 import BoxVaultLight from './images/BoxVault.svg?react';
 import BoxVaultDark from './images/BoxVaultDark.svg?react';
 import authHeader from './services/auth-header';
 import AuthService from './services/auth.service';
+import NotificationsService from './services/notifications.service';
 import UserService from './services/user.service';
-import { userDisplayName } from './utils/displayName';
 import { log } from './utils/Logger';
-import {
-  isPushEnabled,
-  isPushSupported,
-  setPushEnabled,
-  subscribePush,
-  unsubscribePush,
-} from './utils/pushNotifications';
 import version from './version.json';
 
 export const APP_NAME = 'BoxVault';
@@ -25,17 +18,57 @@ export const POWERED_BY = {
   logoSrc: 'https://startcloud.com/assets/images/logos/startcloud-logo40.png',
 };
 
+const loadSupportedLanguages = async () => {
+  try {
+    const response = await fetch('/api/health');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.supported_languages) {
+        log.app.info('Frontend using backend-detected locales: ', data.supported_languages);
+        return data.supported_languages;
+      }
+    }
+  } catch (error) {
+    log.app.error('Failed to fetch supported languages', { error });
+  }
+  return ['en', 'es'];
+};
+
+export const {
+  i18n,
+  ready: i18nPromise,
+  getSupportedLanguages,
+} = createI18n({ loadSupportedLanguages, debug: true });
+
 export const notificationsAdapter = createNotificationsClient({
   baseUrl: window.location.origin,
   headers: () => authHeader(),
 });
 
+const getVapidKey = async () => {
+  const response = await fetch(`${window.location.origin}/api/notifications/vapid-key`);
+  if (!response.ok) {
+    throw new Error(`VAPID key request failed with status ${response.status}`);
+  }
+  const data = await response.json();
+  return data.publicKey;
+};
+
+const push = createPush({
+  storageKey: 'boxvault_push_enabled',
+  getVapidKey,
+  createSubscription: subscription => NotificationsService.createSubscription(subscription),
+  deleteSubscription: endpoint => NotificationsService.deleteSubscription(endpoint),
+});
+
+export const { isPushEnabled, syncSubscription, listenForSubscriptionChange } = push;
+
 export const pushAdapter = {
-  isSupported: isPushSupported,
-  isEnabled: isPushEnabled,
-  setEnabled: setPushEnabled,
-  subscribe: subscribePush,
-  unsubscribe: unsubscribePush,
+  isSupported: push.isPushSupported,
+  isEnabled: push.isPushEnabled,
+  setEnabled: push.setPushEnabled,
+  subscribe: push.subscribePush,
+  unsubscribe: push.unsubscribePush,
 };
 
 export const fetchHealth = async () => {

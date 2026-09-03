@@ -518,13 +518,6 @@
   "configField": {
     "commaSeparated": "Comma-separated values"
   },
-  "deleteKeyword": "delete",
-  "confirmation": {
-    "title": "Confirm Action",
-    "message": "Please type \"{{keyword}}\" to confirm.",
-    "placeholder": "Type '{{keyword}}' to confirm",
-    "typeDeleteToConfirm": "Please type 'delete' to confirm."
-  },
   "provider": {
     "deleted": "Provider deleted successfully!",
     "deleteError": "Error deleting provider. Please try again.",

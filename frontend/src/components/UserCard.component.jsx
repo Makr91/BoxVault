@@ -12,8 +12,8 @@ import {
   FaBox,
 } from 'react-icons/fa6';
 
+import { userDisplayName, userSecondaryLine } from '../chrome';
 import AuthService from '../services/auth.service';
-import { userDisplayName, userSecondaryLine } from '../utils/displayName';
 import { log } from '../utils/Logger';
 
 const UserCardActions = ({

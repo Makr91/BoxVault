@@ -5,25 +5,29 @@ import { useTranslation } from 'react-i18next';
 import { FaBook, FaBuilding, FaCircleInfo, FaGear } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router-dom';
 
-import { Header, OrgLogo, buildRouteCrumbs, parseRoute } from '../chrome';
+import { AppChrome, Avatar, userDisplayName, userSecondaryLine } from './chrome';
 import {
+  APP_NAME,
+  APP_VERSION,
   BrandLogo,
+  POWERED_BY,
+  REPO_URL,
   buildTicketUrl,
+  fetchHealth,
   fetchOrganization,
+  getSupportedLanguages,
   hasNotificationsScope,
   isOidcSession,
   loadOrganizations,
   notificationsAdapter,
   persistLanguage,
   pushAdapter,
-} from '../chromeProps';
-import { collections } from '../collections';
-import { getSupportedLanguages } from '../i18n';
-import AuthService from '../services/auth.service';
-import FavoritesService from '../services/favorites.service';
-import { fetchTrustedIssuers, resolveIssuer } from '../utils/authServer';
-import { userDisplayName, userSecondaryLine } from '../utils/displayName';
-import { log } from '../utils/Logger';
+} from './chromeProps';
+import { collections } from './collections';
+import AuthService from './services/auth.service';
+import FavoritesService from './services/favorites.service';
+import { fetchTrustedIssuers, resolveIssuer } from './utils/authServer';
+import { log } from './utils/Logger';
 
 const resolveMemberships = user => (Array.isArray(user?.organizations) ? user.organizations : []);
 
@@ -77,7 +81,9 @@ AppRows.propTypes = {
   showOrgConsole: PropTypes.bool.isRequired,
 };
 
-const Navbar = ({
+const routeOrgLogo = name => fetchOrganization(name).then(organization => organization.logo);
+
+const Shell = ({
   currentUser,
   gravatarUrl,
   showAdminBoard,
@@ -90,6 +96,7 @@ const Navbar = ({
   activeOrganization,
   onOrganizationSwitch,
   sessionEnded = null,
+  children,
 }) => {
   const { t, i18n } = useTranslation();
   const { pathname, search } = useLocation();
@@ -100,29 +107,9 @@ const Navbar = ({
   const [trustedIssuers, setTrustedIssuers] = useState([]);
   const [activeOrgGravatar, setActiveOrgGravatar] = useState(null);
   const [activeOrgCode, setActiveOrgCode] = useState(null);
-  const [routeOrgLogo, setRouteOrgLogo] = useState({ name: '', logo: '' });
 
   const oidc = isOidcSession(currentUser);
   const memberships = resolveMemberships(currentUser);
-  const route = parseRoute(pathname, { reserved: RESERVED_ROUTES, collections });
-  const routeOrg = route?.org || '';
-
-  useEffect(() => {
-    if (!routeOrg || !currentUser) {
-      return undefined;
-    }
-    let mounted = true;
-    fetchOrganization(routeOrg)
-      .then(organization => {
-        if (mounted) {
-          setRouteOrgLogo({ name: routeOrg, logo: organization.logo });
-        }
-      })
-      .catch(() => null);
-    return () => {
-      mounted = false;
-    };
-  }, [routeOrg, currentUser]);
 
   const changeLanguage = async lng => {
     if (currentUser) {
@@ -273,18 +260,13 @@ const Navbar = ({
   const email = userSecondaryLine({ ...currentUser, name: displayName });
   const issuerUrl = oidc ? authServerUrl : '';
 
-  const renderAvatar = size =>
-    gravatarUrl ? (
-      <img
-        src={gravatarUrl}
-        alt=""
-        width={size}
-        height={size}
-        className="rounded-circle flex-shrink-0"
-      />
-    ) : (
-      <BrandLogo theme={theme} className="logo-xl flex-shrink-0" />
-    );
+  const renderAvatar = size => (
+    <Avatar
+      picture={gravatarUrl}
+      size={size}
+      fallback={<BrandLogo theme={theme} className="logo-xl flex-shrink-0" />}
+    />
+  );
 
   const organizations = memberships
     .map(membership => membership.name)
@@ -295,49 +277,14 @@ const Navbar = ({
       logo: name === activeOrganization ? activeOrgGravatar || '' : '',
     }));
 
-  const orgIcon = (
-    <OrgLogo
-      org={{ logo: routeOrgLogo.name === routeOrg ? routeOrgLogo.logo : '' }}
-      size={16}
-      className="rounded-circle avatar-sm"
-      fallback={<BrandLogo theme={theme} className="logo-sm" />}
-    />
-  );
-
-  const crumbs = currentUser ? buildRouteCrumbs({ route, t, orgIcon }) : [];
   const onAuthPage = AUTH_PATHS.some(path => pathname.startsWith(path));
   const returnTo = sessionEnded?.returnTo || (onAuthPage ? '' : `${pathname}${search}`);
   const signInTo = returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login';
 
-  const userMenu = currentUser
-    ? {
-        displayName,
-        email,
-        renderAvatar,
-        oidc,
-        issuerUrl,
-        localProfile: { to: '/profile', LinkComponent: Link },
-        organizations,
-        activeOrgUuid: activeOrganization || '',
-        onPickOrg: onOrganizationSwitch,
-        loadOrganizations,
-        orgMark: <BrandLogo theme={theme} className="logo-md icon-with-margin" />,
-        favorites: favoriteApps,
-        appName: t('navbar.boxvault'),
-        appRows: <AppRows showAdminBoard={showAdminBoard} showOrgConsole={showOrgConsole} />,
-        notifications: hasNotificationsScope(userClaims) ? notificationsAdapter : null,
-        push: pushAdapter,
-        viewAllUrl: authServerUrl ? `${authServerUrl}/notifications` : '',
-        ticketUrl,
-        onSignOut: logOutLocal,
-        onSignOutEverywhere: logOut,
-      }
-    : null;
-
   return (
-    <Header
+    <AppChrome
       brand={{
-        name: 'BoxVault',
+        name: APP_NAME,
         logo: <BrandLogo theme={theme} className="logo-cluster icon-with-margin-sm" />,
         to: '/',
       }}
@@ -345,19 +292,60 @@ const Navbar = ({
         { key: 'about', label: t('navbar.about'), to: '/about' },
         { key: 'docs', label: t('navbar.docs'), href: '/docs' },
       ]}
-      crumbs={crumbs}
       LinkComponent={Link}
+      reserved={RESERVED_ROUTES}
+      collections={collections}
       theme={{ preference: themePreference, onToggle: toggleTheme }}
       language={{ languages: getSupportedLanguages(), onPick: changeLanguage }}
-      signedIn={Boolean(currentUser)}
-      signInTo={signInTo}
-      userMenu={userMenu}
-      sessionEnded={Boolean(sessionEnded)}
-    />
+      user={currentUser || null}
+      identity={
+        currentUser
+          ? {
+              displayName,
+              email,
+              renderAvatar,
+              oidc,
+              issuerUrl,
+              localProfile: { to: '/profile', LinkComponent: Link },
+            }
+          : null
+      }
+      orgs={{
+        organizations,
+        activeUuid: activeOrganization || '',
+        onPick: onOrganizationSwitch,
+        load: loadOrganizations,
+        mark: <BrandLogo theme={theme} className="logo-md icon-with-margin" />,
+        crumbMark: <BrandLogo theme={theme} className="logo-sm" />,
+        logoFor: routeOrgLogo,
+      }}
+      menu={
+        currentUser
+          ? {
+              appName: t('navbar.boxvault'),
+              appRows: <AppRows showAdminBoard={showAdminBoard} showOrgConsole={showOrgConsole} />,
+              favorites: favoriteApps,
+              notifications: hasNotificationsScope(userClaims) ? notificationsAdapter : null,
+              push: pushAdapter,
+              viewAllUrl: authServerUrl ? `${authServerUrl}/notifications` : '',
+              ticketUrl,
+            }
+          : null
+      }
+      session={{
+        signInTo,
+        ended: Boolean(sessionEnded),
+        onSignOut: logOutLocal,
+        onSignOutEverywhere: logOut,
+      }}
+      footer={{ version: APP_VERSION, repoUrl: REPO_URL, poweredBy: POWERED_BY, fetchHealth }}
+    >
+      {children}
+    </AppChrome>
   );
 };
 
-Navbar.propTypes = {
+Shell.propTypes = {
   currentUser: PropTypes.shape({
     username: PropTypes.string,
     name: PropTypes.string,
@@ -378,6 +366,7 @@ Navbar.propTypes = {
   activeOrganization: PropTypes.string,
   onOrganizationSwitch: PropTypes.func.isRequired,
   sessionEnded: PropTypes.shape({ returnTo: PropTypes.string.isRequired }),
+  children: PropTypes.node.isRequired,
 };
 
-export default Navbar;
+export default Shell;

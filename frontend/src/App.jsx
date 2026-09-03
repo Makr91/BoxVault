@@ -1,36 +1,26 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  useNavigate,
-  useParams,
-  Link,
-} from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
 
 import './css/styles.css';
 import './css/fonts.css';
 import './css/auth.css';
-import { Footer, useTheme } from './chrome';
+import About from './About';
+import { useTheme } from './chrome';
 import {
   APP_NAME,
-  APP_VERSION,
   BrandLogo,
-  POWERED_BY,
-  REPO_URL,
-  fetchHealth,
+  isPushEnabled,
+  listenForSubscriptionChange,
   persistTheme,
+  syncSubscription,
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
 import EventBus from './common/EventBus';
-import About from './components/about.component';
 import Admin from './components/admin.component';
 import AuthCallback from './components/AuthCallback';
 import InviteAccept from './components/InviteAccept.component';
 import Login from './components/login.component';
-import Navbar from './components/navbar.component';
 import OrgConsole from './components/org-console.component';
 import OrganizationDiscovery from './components/organization-discovery.component';
 import Profile from './components/profile.component';
@@ -48,13 +38,9 @@ import {
 } from './pages';
 import AuthService from './services/auth.service';
 import SetupService from './services/setup.service';
+import Shell from './shell';
 import { log } from './utils/Logger';
 import { isOrgManager, isOrgMember } from './utils/permissions';
-import {
-  isPushEnabled,
-  syncSubscription,
-  listenForSubscriptionChange,
-} from './utils/pushNotifications';
 import { subscribeSessionEvents } from './utils/sessionEvents';
 
 const PREFS_PREFIX = 'boxvault_table_prefs';
@@ -197,9 +183,6 @@ const App = () => {
     Boolean(AuthService.getCurrentUser()?.roles?.includes('ROLE_ADMIN'))
   );
   const [currentUser, setCurrentUser] = useState(() => AuthService.getCurrentUser() || undefined);
-  const [userOrganization, setUserOrganization] = useState(
-    () => AuthService.getCurrentUser()?.organization || ''
-  );
   const [activeOrganization, setActiveOrganization] = useState(() =>
     resolveActiveOrganization(
       AuthService.getCurrentUser(),
@@ -222,12 +205,6 @@ const App = () => {
   const [setupComplete, setSetupComplete] = useState(null);
   const [sessionEnded, setSessionEnded] = useState(null);
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo(0, 0);
-  }, [pathname]);
 
   useEffect(() => {
     const favicon = document.getElementById('favicon');
@@ -333,7 +310,6 @@ const App = () => {
     AuthService.logout();
     setShowAdminBoard(false);
     setCurrentUser(undefined);
-    setUserOrganization('');
     setGravatarUrl('');
     setGravatarFetched(false);
   }, []);
@@ -342,7 +318,6 @@ const App = () => {
     AuthService.logoutLocal();
     setShowAdminBoard(false);
     setCurrentUser(undefined);
-    setUserOrganization('');
     setGravatarUrl('');
     setGravatarFetched(false);
   }, []);
@@ -355,7 +330,6 @@ const App = () => {
     const sessionEndedCleanup = EventBus.on('sessionEnded', detail => {
       setCurrentUser(undefined);
       setShowAdminBoard(false);
-      setUserOrganization('');
       setGravatarUrl('');
       setGravatarFetched(false);
       setSessionEnded({ returnTo: detail?.returnTo || '/' });
@@ -365,7 +339,6 @@ const App = () => {
       setSessionEnded(null);
       setCurrentUser(userData);
       setShowAdminBoard(userData.roles && userData.roles.includes('ROLE_ADMIN'));
-      setUserOrganization(userData.organization);
 
       if (userData.preferredTheme) {
         setThemePreference(userData.preferredTheme, { persist: false });
@@ -394,7 +367,6 @@ const App = () => {
     });
 
     const organizationUpdateCleanup = EventBus.on('organizationUpdated', data => {
-      setUserOrganization(data.newName);
       setCurrentUser(c => (c ? { ...c, organization: data.newName } : c));
 
       setActiveOrganization(currentActive => {
@@ -477,85 +449,66 @@ const App = () => {
   );
 
   return (
-    <div className="App d-flex flex-column vh-100">
-      <Navbar
-        currentUser={currentUser}
-        userOrganization={userOrganization}
-        activeOrganization={activeOrganization}
-        onOrganizationSwitch={handleOrganizationSwitch}
-        gravatarUrl={gravatarUrl}
-        showAdminBoard={showAdminBoard}
-        showOrgConsole={showOrgConsole}
-        theme={theme}
-        themePreference={themePreference}
-        toggleTheme={toggleTheme}
-        logOut={logOut}
-        logOutLocal={logOutLocal}
-        sessionEnded={sessionEnded}
-      />
-      <div ref={scrollRef} className="container-fluid app-scroll py-3">
-        <Routes>
-          <Route
-            path="/setup"
-            element={setupComplete ? <Navigate to="/register" replace /> : <Setup />}
-          />
-          {setupComplete ? (
-            <>
-              <Route path="/" element={homeElement} />
-              <Route
-                path="/isos"
-                element={
-                  <CollectionPage collection={isos} org="" member={false} context={context} />
-                }
-              />
-              <Route path="/about" element={<About theme={theme} />} />
-              <Route
-                path="/organizations/discover"
-                element={<OrganizationDiscovery theme={theme} />}
-              />
-              <Route path="/login" element={<Login />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/invite/:token" element={<InviteAccept />} />
-              <Route
-                path="/profile"
-                element={<Profile activeOrganization={activeOrganization} />}
-              />
-              <Route path="/admin" element={<Admin />} />
-              <Route
-                path="/org-console"
-                element={<OrgConsole currentOrganization={activeOrganization} />}
-              />
-              <Route path="/:organization" element={<OrgRoute context={context} />} />
-              <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />
-              <Route
-                path="/:organization/isos/:name"
-                element={<IsoItemRoute context={context} />}
-              />
-              <Route path="/:organization/:name" element={<ItemRoute context={context} />} />
-              <Route
-                path="/:organization/:name/:version"
-                element={<VersionRoute context={context} />}
-              />
-              <Route
-                path="/:organization/:name/:version/:providerName"
-                element={<ProviderRoute context={context} />}
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </>
-          ) : (
-            <Route path="*" element={<Navigate to="/setup" replace />} />
-          )}
-        </Routes>
-      </div>
-      <Footer
-        appName={APP_NAME}
-        version={APP_VERSION}
-        repoUrl={REPO_URL}
-        poweredBy={POWERED_BY}
-        fetchHealth={fetchHealth}
-      />
-    </div>
+    <Shell
+      currentUser={currentUser}
+      activeOrganization={activeOrganization}
+      onOrganizationSwitch={handleOrganizationSwitch}
+      gravatarUrl={gravatarUrl}
+      showAdminBoard={showAdminBoard}
+      showOrgConsole={showOrgConsole}
+      theme={theme}
+      themePreference={themePreference}
+      toggleTheme={toggleTheme}
+      logOut={logOut}
+      logOutLocal={logOutLocal}
+      sessionEnded={sessionEnded}
+    >
+      <Routes>
+        <Route
+          path="/setup"
+          element={setupComplete ? <Navigate to="/register" replace /> : <Setup />}
+        />
+        {setupComplete ? (
+          <>
+            <Route path="/" element={homeElement} />
+            <Route
+              path="/isos"
+              element={<CollectionPage collection={isos} org="" member={false} context={context} />}
+            />
+            <Route path="/about" element={<About theme={theme} />} />
+            <Route
+              path="/organizations/discover"
+              element={<OrganizationDiscovery theme={theme} />}
+            />
+            <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/invite/:token" element={<InviteAccept />} />
+            <Route path="/profile" element={<Profile activeOrganization={activeOrganization} />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route
+              path="/org-console"
+              element={<OrgConsole currentOrganization={activeOrganization} />}
+            />
+            <Route path="/:organization" element={<OrgRoute context={context} />} />
+            <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />
+            <Route path="/:organization/isos/:name" element={<IsoItemRoute context={context} />} />
+            <Route path="/:organization/:name" element={<ItemRoute context={context} />} />
+            <Route
+              path="/:organization/:name/:version"
+              element={<VersionRoute context={context} />}
+            />
+            <Route
+              path="/:organization/:name/:version/:providerName"
+              element={<ProviderRoute context={context} />}
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </>
+        ) : (
+          <Route path="*" element={<Navigate to="/setup" replace />} />
+        )}
+      </Routes>
+    </Shell>
   );
 };
 

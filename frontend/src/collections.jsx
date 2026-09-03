@@ -1,7 +1,6 @@
 import { FaCompactDisc, FaCube } from 'react-icons/fa6';
 
-import { boxesAdapter, isosAdapter } from './boxvaultAdapter';
-import { BoxQuickActions } from './components/BoxDeploy.component';
+import { boxesAdapter, isosAdapter } from './adapter';
 import {
   BoxCicdBar,
   BoxItemActions,
@@ -23,6 +22,7 @@ import {
   BoxVersionNotesActions,
 } from './components/BoxVersionSlots.component';
 import { IsoItemActions, IsoListActions } from './components/IsoSlots.component';
+import { BoxQuickActions } from './deploy';
 import {
   architectureNames,
   architecturesColumn,

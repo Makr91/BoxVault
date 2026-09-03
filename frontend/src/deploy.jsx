@@ -1,5 +1,5 @@
-import { createDeployControls, deployableVersion } from '../pages';
-import { log } from '../utils/Logger';
+import { createDeployControls, deployableVersion } from './pages';
+import { log } from './utils/Logger';
 
 export { deployableVersion };
 

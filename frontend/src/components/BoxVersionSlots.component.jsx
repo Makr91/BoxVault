@@ -3,14 +3,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { deleteProviderCascade, deleteVersionCascade } from '../boxvaultAdapter';
-import { itemShape, providerShape, responseMessage, versionShape } from '../pages';
+import { deleteProviderCascade, deleteVersionCascade } from '../adapter';
+import { ConfirmModal, itemShape, providerShape, responseMessage, versionShape } from '../pages';
 import ProviderService from '../services/provider.service';
 import VersionService from '../services/version.service';
 import { log } from '../utils/Logger';
 import { canManageBox } from '../utils/permissions';
-
-import ConfirmationModal from './confirmation.component';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
 
@@ -190,7 +188,7 @@ export const BoxVersionActions = ({ item, version, ctx }) => {
         {t('buttons.delete')}
       </button>
       {back}
-      <ConfirmationModal
+      <ConfirmModal
         show={showDelete}
         handleClose={() => setShowDelete(false)}
         handleConfirm={remove}
@@ -509,7 +507,7 @@ export const BoxProviderRowActions = ({ item, version, provider, ctx }) => {
       <button type="button" className="btn btn-danger" onClick={() => setShow(true)}>
         {t('buttons.delete')}
       </button>
-      <ConfirmationModal show={show} handleClose={() => setShow(false)} handleConfirm={remove} />
+      <ConfirmModal show={show} handleClose={() => setShow(false)} handleConfirm={remove} />
     </>
   );
 };

@@ -29,6 +29,8 @@ export default [
       'vite.config.js',
       'vite.config.mjs',
       'src/version.json',
+      'vendor/**/*',
+      '.vscode/**/*',
     ],
   },
 
@@ -51,6 +53,8 @@ export default [
         // Vite global variables
         __APP_NAME__: 'readonly',
         __APP_VERSION__: 'readonly',
+        __SUPPORTED_LOCALES__: 'readonly',
+        __API_ORIGIN__: 'readonly',
       },
       parserOptions: {
         ecmaFeatures: {

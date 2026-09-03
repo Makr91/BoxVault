@@ -113,6 +113,15 @@
     "toggle": "Mostrar u ocultar",
     "addNew": "Añadir nuevo",
     "removeAll": "Eliminar todo",
+    "confirm": {
+      "title": "Confirmar Acción",
+      "message": "Por favor escribe \"{{keyword}}\" para confirmar.",
+      "placeholder": "Escribe '{{keyword}}' para confirmar",
+      "typeToConfirm": "Por favor escribe '{{keyword}}' para confirmar.",
+      "keyword": "eliminar",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar"
+    },
     "links": {
       "repo": "Repositorio",
       "homepage": "Página web",

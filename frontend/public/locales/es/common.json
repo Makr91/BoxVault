@@ -526,13 +526,6 @@
   "configField": {
     "commaSeparated": "Valores separados por comas"
   },
-  "deleteKeyword": "eliminar",
-  "confirmation": {
-    "title": "Confirmar Acción",
-    "message": "Por favor escribe \"{{keyword}}\" para confirmar.",
-    "placeholder": "Escribe '{{keyword}}' para confirmar",
-    "typeDeleteToConfirm": "Por favor escribe 'eliminar' para confirmar."
-  },
   "provider": {
     "deleted": "¡El proveedor fue eliminado exitosamente!",
     "deleteError": "Error al eliminar proveedor. Por favor intenta de nuevo.",

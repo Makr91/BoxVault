@@ -1,5 +1,6 @@
 export { default as AboutPage } from './AboutPage';
 export { default as CollectionPage } from './CollectionPage';
+export { default as ConfirmModal } from './ConfirmModal';
 export {
   architecturesColumn,
   checksumColumn,
@@ -43,6 +44,7 @@ export {
   versionShape,
   visibilityOf,
 } from './itemShape';
+export { isManager, isMember, isOwner } from './membership';
 export { default as OrgPage } from './OrgPage';
 export { default as PageHeader } from './PageHeader';
 export { default as ProviderPage } from './ProviderPage';

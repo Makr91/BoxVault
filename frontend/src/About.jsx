@@ -3,13 +3,13 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaCode, FaGithub, FaHeart, FaServer } from 'react-icons/fa6';
 
-import { BrandLogo } from '../chromeProps';
-import { AboutPage } from '../pages';
-import AuthService from '../services/auth.service';
-import FavoritesService from '../services/favorites.service';
-import UserService from '../services/user.service';
-import { log } from '../utils/Logger';
-import BoxVaultVersion from '../version.json';
+import { BrandLogo } from './chromeProps';
+import { AboutPage } from './pages';
+import AuthService from './services/auth.service';
+import FavoritesService from './services/favorites.service';
+import UserService from './services/user.service';
+import { log } from './utils/Logger';
+import BoxVaultVersion from './version.json';
 
 const toCamelCase = str => {
   if (!str) {
@@ -46,7 +46,7 @@ const About = ({ theme }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const response = await UserService.getPublicContent();
+        const response = await UserService.getPublicContent(i18n.language);
         setProjectData(response.data);
       } catch (error) {
         const content =

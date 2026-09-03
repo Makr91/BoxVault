@@ -1,13 +1,10 @@
 import axios from 'axios';
 
-import i18n from '../i18n';
-
 import authHeader from './auth-header';
 
 const baseURL = window.location.origin;
 
-const getPublicContent = () =>
-  axios.get(`${baseURL}/api/users/all`, { params: { lang: i18n.language } });
+const getPublicContent = lang => axios.get(`${baseURL}/api/users/all`, { params: { lang } });
 
 const deleteUser = userId =>
   axios.delete(`${baseURL}/api/users/${userId}`, { headers: authHeader() });
