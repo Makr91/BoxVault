@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { OverlayTrigger, Popover } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import { FaCircle, FaGithub, FaHeartPulse } from 'react-icons/fa6';
+import { FaCircle, FaHeartPulse } from 'react-icons/fa6';
 
 const HEALTH_POLL_MS = 60000;
 
@@ -85,7 +85,6 @@ const Footer = ({ appName, version, repoUrl, poweredBy, fetchHealth = null }) =>
             rel="noreferrer"
             className="text-decoration-none text-body-secondary"
           >
-            <FaGithub className="me-1" />
             {appName} &copy; {new Date().getFullYear()} · v{version}
           </a>
         </div>

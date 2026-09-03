@@ -7,8 +7,9 @@ export default (sequelize, Sequelize) => {
     description: {
       type: Sequelize.STRING,
     },
-    filename: {
+    fileName: {
       type: Sequelize.STRING,
+      field: 'filename',
     },
     size: {
       type: Sequelize.BIGINT,
@@ -24,6 +25,11 @@ export default (sequelize, Sequelize) => {
     isPublic: {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
+    },
+    published: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     storagePath: {
       type: Sequelize.STRING,

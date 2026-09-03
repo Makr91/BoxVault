@@ -3,6 +3,7 @@ import configLoader from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import jwt from 'jsonwebtoken';
 import db from '../../models/index.js';
+import { sumBoxDownloads } from './helpers.js';
 const {
   organization: Organization,
   user: Users,
@@ -264,6 +265,7 @@ export const findOne = async (req, res) => {
       // Format response for frontend
       response = {
         ...box.toJSON(),
+        downloadCount: sumBoxDownloads(box),
         organization: {
           id: organizationData.id,
           name: organizationData.name,

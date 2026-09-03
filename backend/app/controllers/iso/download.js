@@ -11,7 +11,7 @@ const { iso: ISO, organization: Organization, UserOrg } = db;
  * /api/organization/{organization}/iso/{isoId}/download:
  *   get:
  *     summary: Download an ISO file
- *     description: Download the physical ISO file. Public ISOs can be downloaded by anyone; private ISOs require organization membership.
+ *     description: Download the physical ISO file. Public, published ISOs can be downloaded by anyone; any other ISO requires organization membership.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -46,8 +46,8 @@ const serveIso = async (req, res, iso, token) => {
   try {
     const fullPath = join(getIsoStorageRoot(), iso.storagePath);
 
-    // Check permissions: Allow if public, otherwise require org membership
-    if (!iso.isPublic) {
+    // Check permissions: Allow if public and published, otherwise require org membership
+    if (!iso.isPublic || !iso.published) {
       const { userId } = req;
 
       // Security Check: Ensure token was issued for THIS specific ISO
@@ -90,7 +90,7 @@ const serveIso = async (req, res, iso, token) => {
 
     const stat = fs.statSync(fullPath);
     const fileSize = stat.size;
-    const fileName = iso.filename;
+    const { fileName } = iso;
 
     // Handle Range requests (Resumable downloads)
     const { range } = req.headers;

@@ -9,9 +9,6 @@ const getAll = organizationName =>
     headers: authHeader(),
   });
 
-const getPublic = organizationName =>
-  axios.get(`${baseURL}/api/organization/${organizationName}/public-isos`);
-
 const discoverAll = () => axios.get(`${baseURL}/api/isos/discover`, { headers: authHeader() });
 
 const upload = (organizationName, file, isPublic, onUploadProgress) =>
@@ -44,7 +41,6 @@ const update = (organizationName, isoId, data) =>
 
 const IsoService = {
   getAll,
-  getPublic,
   discoverAll,
   upload,
   deleteISO,

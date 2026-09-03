@@ -6,6 +6,7 @@ import {
   extractBearerToken,
   findServiceAccountByRawToken,
 } from '../../../utils/serviceAccountAuth.js';
+import { sumBoxDownloads } from '../helpers.js';
 import db from '../../../models/index.js';
 const {
   organization: Organization,
@@ -202,6 +203,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
       userId: box.userId,
       createdAt: box.createdAt,
       updatedAt: box.updatedAt,
+      downloadCount: sumBoxDownloads(box),
       versions: box.versions.map(version => ({
         id: version.id,
         versionNumber: version.versionNumber,

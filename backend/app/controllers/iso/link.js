@@ -51,8 +51,8 @@ const getDownloadLink = async (req, res) => {
       return res.status(404).send({ message: req.__('isos.notFound') });
     }
 
-    // Check permissions if private
-    if (!iso.isPublic) {
+    // Check permissions unless public and published
+    if (!iso.isPublic || !iso.published) {
       if (!userId) {
         return res.status(403).send({ message: req.__('auth.forbidden') });
       }

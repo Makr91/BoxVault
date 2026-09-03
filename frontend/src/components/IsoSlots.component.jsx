@@ -282,6 +282,15 @@ export const IsoItemActions = ({ item, ctx }) => {
       });
   };
 
+  const togglePublished = () => {
+    IsoService.update(org, iso.id, { published: !iso.published })
+      .then(reload)
+      .catch(error => {
+        log.api.error('Error updating ISO release status', { error: error.message });
+        notify('danger', t('messages.operationFailed'));
+      });
+  };
+
   const remove = () => {
     IsoService.deleteISO(org, iso.id)
       .then(() => navigate(`/${org}/isos`))
@@ -311,6 +320,13 @@ export const IsoItemActions = ({ item, ctx }) => {
         <button type="button" className="btn btn-outline-secondary me-2" onClick={toggleVisibility}>
           {iso.isPublic ? <FaLock className="me-2" /> : <FaGlobe className="me-2" />}
           {t(iso.isPublic ? 'iso.makePrivate' : 'iso.makePublic')}
+        </button>
+        <button
+          type="button"
+          className={`btn ${iso.published ? 'btn-warning' : 'btn-outline-primary'} me-2`}
+          onClick={togglePublished}
+        >
+          {t(iso.published ? 'iso.unpublish' : 'iso.publish')}
         </button>
         <button
           type="button"

@@ -406,6 +406,8 @@
     "deleteMessage": "Are you sure you want to delete {{name}}?",
     "makePublic": "Make public",
     "makePrivate": "Make private",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
     "copyChecksum": "Copy checksum"
   },
   "collections": {

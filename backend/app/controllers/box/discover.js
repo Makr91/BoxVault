@@ -6,6 +6,7 @@ import {
   extractBearerToken,
   findServiceAccountByRawToken,
 } from '../../utils/serviceAccountAuth.js';
+import { sumBoxDownloads } from './helpers.js';
 const { box: Box, versions, providers, architectures, files, user, organization, Sequelize } = db;
 const { Op } = Sequelize;
 
@@ -116,7 +117,7 @@ export const discoverAll = async (req, res) => {
       ],
     });
 
-    return res.send(boxes);
+    return res.send(boxes.map(box => ({ ...box.toJSON(), downloadCount: sumBoxDownloads(box) })));
   } catch (err) {
     log.error.error('Error discovering boxes:', err);
     return res.status(500).send({

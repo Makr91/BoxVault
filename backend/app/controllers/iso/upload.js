@@ -124,7 +124,7 @@ const upload = async (req, res) => {
       // Create DB Record
       const iso = await ISO.create({
         name: filename,
-        filename,
+        fileName: filename,
         size: fileSize,
         checksum: calculatedChecksum,
         checksumType: 'sha256',

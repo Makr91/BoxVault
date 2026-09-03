@@ -32,7 +32,12 @@ const { iso: ISO } = db;
  *             properties:
  *               isPublic:
  *                 type: boolean
+ *               published:
+ *                 type: boolean
+ *                 description: Unpublished ISOs are visible to organization members only
  *               name:
+ *                 type: string
+ *               description:
  *                 type: string
  *     responses:
  *       200:
@@ -44,7 +49,7 @@ const { iso: ISO } = db;
  */
 const update = async (req, res) => {
   const { isoId } = req.params;
-  const { isPublic, name, description } = req.body || {};
+  const { isPublic, published, name, description } = req.body || {};
 
   try {
     const iso = await ISO.findOne({
@@ -59,6 +64,10 @@ const update = async (req, res) => {
 
     if (isPublic !== undefined) {
       iso.isPublic = isPublic;
+    }
+
+    if (published !== undefined) {
+      iso.published = published;
     }
 
     if (name !== undefined && name.trim() !== '') {

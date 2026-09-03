@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { isoWhereFor, resolveIsoViewer } from './visibility.js';
 const { iso: ISO, organization: Organization } = db;
 
 /**
@@ -7,10 +8,8 @@ const { iso: ISO, organization: Organization } = db;
  * /api/organization/{organization}/iso:
  *   get:
  *     summary: List ISOs for an organization
- *     description: Retrieve a list of all ISOs uploaded to a specific organization
+ *     description: Retrieve the ISOs of an organization visible to the caller. Anonymous requests get the public, published ISOs; a member of the organization, by JWT or by a service-account key of the organization, gets every ISO — the same rule as the organization box list.
  *     tags: [ISOs]
- *     security:
- *       - JwtAuth: []
  *     parameters:
  *       - in: path
  *         name: organization
@@ -18,6 +17,11 @@ const { iso: ISO, organization: Organization } = db;
  *         schema:
  *           type: string
  *         description: Organization name
+ *       - in: header
+ *         name: x-access-token
+ *         schema:
+ *           type: string
+ *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
  *         description: List of ISOs
@@ -27,9 +31,15 @@ const { iso: ISO, organization: Organization } = db;
  *         description: Internal server error
  */
 const findAll = async (req, res) => {
+  const { organization: organizationName } = req.params;
   try {
+    const organization = await Organization.findOne({ where: { name: organizationName } });
+    if (!organization) {
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+    }
+    const viewer = await resolveIsoViewer(req);
     const isos = await ISO.findAll({
-      where: { organizationId: req.organizationId },
+      where: isoWhereFor(viewer, organization.id),
       include: [
         { model: Organization, as: 'organization', attributes: ['name', 'emailHash', 'logo'] },
       ],

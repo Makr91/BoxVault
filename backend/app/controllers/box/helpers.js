@@ -84,4 +84,18 @@ const parseBoxContentFields = body => {
   return { error: null, fields };
 };
 
-export { parseBoxContentFields };
+/**
+ * Total downloads of a box: the sum of every file's downloadCount across its
+ * versions, providers and architectures, the number the box row carries beside
+ * the per-file counts.
+ * @param {Object} box - A box with nested versions, providers, architectures and files
+ * @returns {number} Total download count
+ */
+const sumBoxDownloads = box =>
+  (box.versions || [])
+    .flatMap(version => version.providers || [])
+    .flatMap(provider => provider.architectures || [])
+    .flatMap(architecture => architecture.files || [])
+    .reduce((total, file) => total + (file.downloadCount || 0), 0);
+
+export { parseBoxContentFields, sumBoxDownloads };

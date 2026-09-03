@@ -1,7 +1,6 @@
 import { fetchOrganization, organizationLogo } from './chromeProps';
 import EventBus from './common/EventBus';
 import ArchitectureService from './services/architecture.service';
-import AuthService from './services/auth.service';
 import BoxService from './services/box.service';
 import FileService from './services/file.service';
 import IsoService from './services/iso.service';
@@ -9,7 +8,6 @@ import ProviderService from './services/provider.service';
 import VersionService from './services/version.service';
 import { getDistroIconUrl, getOsDisplayName } from './utils/DistroIcons';
 import { log } from './utils/Logger';
-import { isOrgMember } from './utils/permissions';
 import { readDeprecated, readDeprecationReason, readReleaseNotes } from './utils/versionFields';
 
 const { origin } = window.location;
@@ -62,23 +60,6 @@ const versionSummary = version => ({
   extras: { raw: version },
 });
 
-const sumDownloads = box =>
-  (box.versions || []).reduce(
-    (total, version) =>
-      total +
-      (version.providers || []).reduce(
-        (providerTotal, provider) =>
-          providerTotal +
-          (provider.architectures || []).reduce(
-            (architectureTotal, architecture) =>
-              architectureTotal + fileDownloads(architecture.files),
-            0
-          ),
-        0
-      ),
-    0
-  );
-
 const boxItem = (box, orgName, logo) => ({
   id: box.id ?? `${orgName}/${box.name}`,
   organization: { name: orgName, logo: logo || '' },
@@ -87,12 +68,12 @@ const boxItem = (box, orgName, logo) => ({
   description: box.shortDescription || box.description || '',
   icon: '',
   artwork: box.artwork ? `${origin}/api/organization/${orgName}/box/${box.name}/artwork` : '',
-  isPublic: Boolean(box.public || box.isPublic),
+  isPublic: Boolean(box.isPublic),
   published: Boolean(box.published),
   createdAt: box.createdAt || null,
   updatedAt: box.updatedAt || null,
   latestReleaseAt: null,
-  downloads: sumDownloads(box),
+  downloads: box.downloadCount || 0,
   os: {
     label: getOsDisplayName(box.metadata),
     iconUrl: getDistroIconUrl(box.metadata?.distro) || '',
@@ -121,7 +102,7 @@ const isoItem = (iso, orgName, logo) => ({
   icon: '',
   artwork: '',
   isPublic: Boolean(iso.isPublic),
-  published: null,
+  published: Boolean(iso.published),
   createdAt: iso.createdAt || null,
   updatedAt: iso.updatedAt || null,
   latestReleaseAt: null,
@@ -130,7 +111,7 @@ const isoItem = (iso, orgName, logo) => ({
   metadata: null,
   readme: null,
   artifact: {
-    fileName: iso.filename || '',
+    fileName: iso.fileName || '',
     fileSize: iso.size || 0,
     checksum: iso.checksum || '',
     checksumType: iso.checksumType || '',
@@ -330,13 +311,11 @@ export const boxesAdapter = {
   watches,
 };
 
-const isoList = (org, member) =>
-  (member ? IsoService.getAll(org) : IsoService.getPublic(org)).then(response =>
-    withLogos(rows(response), org, isoItem)
-  );
+const isoList = org =>
+  IsoService.getAll(org).then(response => withLogos(rows(response), org, isoItem));
 
 const getIso = async (org, name) => {
-  const items = await isoList(org, isOrgMember(AuthService.getCurrentUser(), org));
+  const items = await isoList(org);
   const item = items.find(entry => entry.name === name);
   if (!item) {
     throw new Error(`${org}/${name} not found`);
@@ -347,7 +326,7 @@ const getIso = async (org, name) => {
 export const isosAdapter = {
   listAll: () =>
     IsoService.discoverAll().then(response => withLogos(rows(response), 'Unknown', isoItem)),
-  listOrg: (org, { member }) => isoList(org, member),
+  listOrg: isoList,
   getItem: getIso,
   getItemSummary: getIso,
   getOrganization: fetchOrganization,

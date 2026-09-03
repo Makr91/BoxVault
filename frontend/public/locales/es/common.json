@@ -680,6 +680,8 @@
     "deleteMessage": "¿Seguro que quieres eliminar {{name}}?",
     "makePublic": "Hacer pública",
     "makePrivate": "Hacer privada",
+    "publish": "Publicar",
+    "unpublish": "Despublicar",
     "copyChecksum": "Copiar checksum"
   },
   "collections": {

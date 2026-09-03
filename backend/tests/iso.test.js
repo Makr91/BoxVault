@@ -65,7 +65,7 @@ describe('ISO API', () => {
     // Create ISO
     iso = await db.iso.create({
       name: 'Test ISO',
-      filename: 'test.iso',
+      fileName: 'test.iso',
       checksum: 'fakechecksum',
       size: 1024,
       organizationId: org.id,
@@ -101,13 +101,36 @@ describe('ISO API', () => {
   });
 
   describe('GET /api/organization/:organization/iso', () => {
-    it('should list ISOs for organization member', async () => {
+    it('should list every ISO for an organization member', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}/iso`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.body.some(entry => entry.id === iso.id)).toBe(true);
+      expect(res.body.find(entry => entry.id === iso.id).fileName).toBe('test.iso');
+    });
+
+    it('should hide private ISOs from anonymous callers', async () => {
+      const res = await request(app).get(`/api/organization/${orgName}/iso`);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.some(entry => entry.id === iso.id)).toBe(false);
+    });
+
+    it('should hide unpublished ISOs from non-members', async () => {
+      await db.iso.update({ isPublic: true, published: false }, { where: { id: iso.id } });
+      const res = await request(app).get(`/api/organization/${orgName}/iso`);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.some(entry => entry.id === iso.id)).toBe(false);
+      await db.iso.update({ isPublic: false, published: true }, { where: { id: iso.id } });
+    });
+
+    it('should list public published ISOs for anonymous callers', async () => {
+      await db.iso.update({ isPublic: true }, { where: { id: iso.id } });
+      const res = await request(app).get(`/api/organization/${orgName}/iso`);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.some(entry => entry.id === iso.id)).toBe(true);
+      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
     });
 
     it('should return 404 if organization not found', async () => {
@@ -127,10 +150,20 @@ describe('ISO API', () => {
       expect(res.body.name).toBe('Test ISO');
     });
 
+    it('should refuse a private ISO to an anonymous caller', async () => {
+      const res = await request(app).get(`/api/organization/${orgName}/iso/${iso.id}`);
+      expect(res.statusCode).toBe(403);
+    });
+
     it('should return 404 if ISO not found', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}/iso/99999`)
         .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should return 404 if organization not found', async () => {
+      const res = await request(app).get(`/api/organization/NonExistentOrg/iso/${iso.id}`);
       expect(res.statusCode).toBe(404);
     });
   });
@@ -144,6 +177,22 @@ describe('ISO API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.name).toBe('Updated ISO Name');
       expect(res.body.isPublic).toBe(true);
+    });
+
+    it('should unpublish and publish an ISO', async () => {
+      const hidden = await request(app)
+        .put(`/api/organization/${orgName}/iso/${iso.id}`)
+        .set('x-access-token', adminToken)
+        .send({ published: false });
+      expect(hidden.statusCode).toBe(200);
+      expect(hidden.body.published).toBe(false);
+
+      const shown = await request(app)
+        .put(`/api/organization/${orgName}/iso/${iso.id}`)
+        .set('x-access-token', adminToken)
+        .send({ published: true });
+      expect(shown.statusCode).toBe(200);
+      expect(shown.body.published).toBe(true);
     });
 
     it('should return 404 if ISO not found', async () => {
@@ -177,19 +226,6 @@ describe('ISO API', () => {
       const res = await request(app).get('/api/isos/discover');
       expect(res.statusCode).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-    });
-  });
-
-  describe('GET /api/organization/:organization/public-isos', () => {
-    it('should list public ISOs for organization', async () => {
-      const res = await request(app).get(`/api/organization/${orgName}/public-isos`);
-      expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('should return 404 if organization not found', async () => {
-      const res = await request(app).get('/api/organization/NonExistentOrg/public-isos');
-      expect(res.statusCode).toBe(404);
     });
   });
 
@@ -233,7 +269,7 @@ describe('ISO API', () => {
       // Create a unique ISO to delete
       const isoToDelete = await db.iso.create({
         name: 'Delete Me',
-        filename: 'delete.iso',
+        fileName: 'delete.iso',
         checksum: 'uniquechecksum123',
         size: 1024,
         organizationId: org.id,
@@ -302,7 +338,7 @@ describe('ISO API', () => {
       // Create private ISO
       const privIso = await db.iso.create({
         name: 'Private ISO',
-        filename: 'priv.iso',
+        fileName: 'priv.iso',
         checksum: 'privsum',
         size: 1024,
         organizationId: org.id,
@@ -736,7 +772,7 @@ describe('ISO API', () => {
       // Create private ISO
       const privIso = await db.iso.create({
         name: 'Private ISO Link Test',
-        filename: 'priv-link.iso',
+        fileName: 'priv-link.iso',
         checksum: 'privlinksum',
         size: 1024,
         organizationId: org.id,
@@ -799,7 +835,7 @@ describe('ISO API', () => {
     it('should return 403 for private ISO if user is not member (explicit check)', async () => {
       const privIso = await db.iso.create({
         name: 'Private ISO Explicit',
-        filename: 'priv-exp.iso',
+        fileName: 'priv-exp.iso',
         checksum: 'privexpsum',
         size: 1024,
         organizationId: org.id,
@@ -984,7 +1020,7 @@ describe('ISO API', () => {
     it('should return 404 if physical file is missing during download', async () => {
       const ghostIso = await db.iso.create({
         name: 'Ghost ISO',
-        filename: 'ghost.iso',
+        fileName: 'ghost.iso',
         checksum: 'ghostsum',
         size: 123,
         organizationId: org.id,
@@ -1031,13 +1067,6 @@ describe('ISO API', () => {
       jest.restoreAllMocks();
     });
 
-    it('should handle DB error in getPublic', async () => {
-      jest.spyOn(db.iso, 'findAll').mockRejectedValue(new Error('DB Error'));
-      const res = await request(app).get(`/api/organization/${orgName}/public-isos`);
-      expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
-    });
-
     it('should handle DB error in getDownloadLink', async () => {
       jest.spyOn(db.iso, 'findByPk').mockRejectedValue(new Error('DB Error'));
       const res = await request(app)
@@ -1051,7 +1080,7 @@ describe('ISO API', () => {
       // Create an ISO
       const isoToDelete = await db.iso.create({
         name: 'Missing File ISO',
-        filename: 'missing.iso',
+        fileName: 'missing.iso',
         checksum: 'missingchecksum',
         size: 1024,
         organizationId: org.id,
@@ -1097,9 +1126,9 @@ describe('ISO API', () => {
       jest.restoreAllMocks();
     });
 
-    it('should handle getPublic error with fallback message', async () => {
+    it('should handle organization lookup error in findAll with fallback message', async () => {
       jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error(''));
-      const res = await request(app).get(`/api/organization/${orgName}/public-isos`);
+      const res = await request(app).get(`/api/organization/${orgName}/iso`);
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toBeDefined();
       jest.restoreAllMocks();
@@ -1109,7 +1138,7 @@ describe('ISO API', () => {
       // Create ISO A
       const isoA = await db.iso.create({
         name: 'ISO A',
-        filename: 'shared.iso',
+        fileName: 'shared.iso',
         checksum: 'shared_checksum',
         size: 1024,
         organizationId: org.id,
@@ -1119,7 +1148,7 @@ describe('ISO API', () => {
       // Create ISO B (same storagePath/checksum)
       const isoB = await db.iso.create({
         name: 'ISO B',
-        filename: 'shared.iso',
+        fileName: 'shared.iso',
         checksum: 'shared_checksum',
         size: 1024,
         organizationId: org.id,
@@ -1153,7 +1182,7 @@ describe('ISO API', () => {
       // Create private ISO
       const privIso = await db.iso.create({
         name: 'Private Download Test',
-        filename: 'priv.iso',
+        fileName: 'priv.iso',
         checksum: 'priv_sum',
         size: 1024,
         organizationId: org.id,
@@ -1299,7 +1328,7 @@ describe('ISO API', () => {
       // 1. Create a strictly PRIVATE ISO
       const privateIso = await db.iso.create({
         name: 'Strictly Private ISO',
-        filename: 'private.iso',
+        fileName: 'private.iso',
         checksum: 'privatesum',
         size: 1024,
         organizationId: org.id,

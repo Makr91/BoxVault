@@ -130,7 +130,7 @@ export const isos = {
       homeOnly: true,
     },
   ],
-  columns: [...sharedColumns, sizeColumn, checksumColumn],
+  columns: [...sharedColumns, statusColumn, sizeColumn, checksumColumn],
   slots: { ListActions: IsoListActions, ItemActions: IsoItemActions },
 };
 

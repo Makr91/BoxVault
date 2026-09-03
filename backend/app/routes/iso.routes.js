@@ -1,5 +1,11 @@
 import { Router, json } from 'express';
-import { authJwt, verifyOrgAccess, downloadAuth, sessionAuth } from '../middleware/index.js';
+import {
+  authJwt,
+  verifyOrgAccess,
+  downloadAuth,
+  externalTokenAuth,
+  sessionAuth,
+} from '../middleware/index.js';
 import {
   upload,
   findAll,
@@ -12,7 +18,6 @@ import {
 } from '../controllers/iso.controller.js';
 const router = Router();
 import { discoverAll } from '../controllers/iso/discover.js';
-import { getPublic } from '../controllers/iso/getpublic.js';
 
 router.use(json());
 
@@ -22,11 +27,8 @@ router.use((req, res, next) => {
   next();
 });
 
-// Discover all public ISOs (public)
-router.get('/isos/discover', discoverAll);
-
-// Get public ISOs for an organization (public)
-router.get('/organization/:organization/public-isos', getPublic);
+// Discover ISOs visible to the caller
+router.get('/isos/discover', externalTokenAuth, discoverAll);
 
 // Upload an ISO
 router.post(
@@ -35,19 +37,11 @@ router.post(
   upload
 );
 
-// List ISOs for an organization
-router.get(
-  '/organization/:organization/iso',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
-  findAll
-);
+// List ISOs for an organization visible to the caller
+router.get('/organization/:organization/iso', externalTokenAuth, findAll);
 
-// Get specific ISO details
-router.get(
-  '/organization/:organization/iso/:isoId',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
-  findOne
-);
+// Get specific ISO details visible to the caller
+router.get('/organization/:organization/iso/:isoId', externalTokenAuth, findOne);
 
 // Download ISO
 router.get(
