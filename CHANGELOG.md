@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.62.0](https://github.com/Makr91/BoxVault/compare/v0.61.0...v0.62.0) (2026-09-03)
+
+
+### Features
+
+* ISO item page, shared columns on boxes and ISOs, private ISOs on home, deploy label, sign-in returns to the page, switcher stays put ([94fb066](https://github.com/Makr91/BoxVault/commit/94fb06671496503341c513f502381b6dfd3cca7f))
+
 ## [0.61.0](https://github.com/Makr91/BoxVault/compare/v0.60.0...v0.61.0) (2026-09-02)
 
 
