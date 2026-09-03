@@ -91,14 +91,6 @@
     "failedToUpdateFavorites": "Error al actualizar favoritos"
   },
   "about": {
-    "features": {
-      "userAuthentication": "Autenticación de Usuario",
-      "boxManagement": "Gestión de Boxes",
-      "versionControl": "Control de Versiones",
-      "organizationSupport": "Soporte de Organización",
-      "apiDocumentation": "Documentación de API",
-      "secureStorage": "Almacenamiento Seguro"
-    },
     "documentation": {
       "description": "Aprende cómo usar BoxVault e integrarlo con tu flujo de trabajo.",
       "fullDocs": "Documentación Completa",
