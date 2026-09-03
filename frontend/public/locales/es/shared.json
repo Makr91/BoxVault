@@ -32,6 +32,13 @@
     "title": "Se cerró tu sesión.",
     "body": "Tu sesión terminó. Inicia sesión de nuevo para continuar donde estabas."
   },
+  "session": {
+    "completing": "Completando el inicio de sesión…",
+    "failed": "Error al iniciar sesión: {{message}} —",
+    "clockSkew": "es posible que tu hora esté desajustada; inténtalo de nuevo",
+    "returnLink": "volver al inicio",
+    "tryAgain": "e inténtalo de nuevo."
+  },
   "orgSwitcher": {
     "title": "Cambiar Organización",
     "noOrgsFound": "No se encontraron organizaciones. Contacta a tu administrador si esto es inesperado.",

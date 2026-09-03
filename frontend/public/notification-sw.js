@@ -1,3 +1,5 @@
+const APP_NAME = new URL(self.location.href).searchParams.get('app') || 'Notification';
+
 self.addEventListener('push', event => {
   if (!event.data) {
     return;
@@ -13,7 +15,7 @@ self.addEventListener('push', event => {
   const { title, body, icon, tag, data, actions } = payload;
 
   event.waitUntil(
-    self.registration.showNotification(title || 'BoxVault', {
+    self.registration.showNotification(title || APP_NAME, {
       body,
       icon,
       tag,

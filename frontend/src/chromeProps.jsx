@@ -56,6 +56,7 @@ const getVapidKey = async () => {
 
 const push = createPush({
   storageKey: 'boxvault_push_enabled',
+  serviceWorkerUrl: `/notification-sw.js?app=${encodeURIComponent(APP_NAME)}`,
   getVapidKey,
   createSubscription: subscription => NotificationsService.createSubscription(subscription),
   deleteSubscription: endpoint => NotificationsService.deleteSubscription(endpoint),

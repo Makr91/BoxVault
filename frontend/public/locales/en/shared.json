@@ -32,6 +32,13 @@
     "title": "You were signed out.",
     "body": "Your session ended. Sign in again to continue where you were."
   },
+  "session": {
+    "completing": "Completing sign-in…",
+    "failed": "Sign-in failed: {{message}} —",
+    "clockSkew": "your time may be off, please try again",
+    "returnLink": "return home",
+    "tryAgain": "and try again."
+  },
   "orgSwitcher": {
     "title": "Switch Organization",
     "noOrgsFound": "No organizations found. Contact your administrator if this is unexpected.",
