@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.70.0](https://github.com/Makr91/BoxVault/compare/v0.69.0...v0.70.0) (2026-09-03)
+
+
+### Features
+
+* route every screen through the shared notice surface, delete selected service accounts ([7bd9162](https://github.com/Makr91/BoxVault/commit/7bd916274c72b234fa56f08b78d00db15b468da4))
+
 ## [0.69.0](https://github.com/Makr91/BoxVault/compare/v0.68.0...v0.69.0) (2026-09-03)
 
 
