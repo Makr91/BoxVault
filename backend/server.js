@@ -279,7 +279,15 @@ app.use(
 const corsOptions = {
   origin: boxConfig.boxvault.origin.value,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['x-access-token', 'Origin', 'Content-Type', 'Accept', 'Content-Length'],
+  allowedHeaders: [
+    'x-access-token',
+    'Authorization',
+    'DPoP',
+    'Origin',
+    'Content-Type',
+    'Accept',
+    'Content-Length',
+  ],
   exposedHeaders: ['X-Refreshed-Token'],
   maxAge: 600, // 10 minutes
   credentials: true,

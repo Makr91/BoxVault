@@ -76,8 +76,17 @@ export const getOrganizationBoxDetails = async (req, res) => {
   }
 
   try {
-    // If a token is provided, verify it and extract the user ID
-    if (token) {
+    if (req.userId && !req.isServiceAccount) {
+      ({ userId } = req);
+      const orgData = await Organization.findOne({
+        where: { name: organization },
+      });
+
+      if (orgData) {
+        const membership = await UserOrg.findUserOrgRole(userId, orgData.id);
+        userOrganizationId = membership ? orgData.id : null;
+      }
+    } else if (token) {
       try {
         const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
         userId = decoded.id;

@@ -143,14 +143,15 @@ const oidcTokenRefresh = async (req, res, next) => {
       delete refreshedClaims.iss;
       delete refreshedClaims.aud;
 
+      const refreshedTokens = {
+        id_token: newTokens.id_token || decoded.id_token, // Use new if provided, else keep old
+        oidc_access_token: newTokens.access_token,
+        oidc_refresh_token: newTokens.refresh_token || decoded.oidc_refresh_token, // Some providers don't return new refresh token
+        oidc_expires_at: newExpiresAt,
+      };
+
       const newJwtToken = jwt.sign(
-        {
-          ...refreshedClaims,
-          id_token: newTokens.id_token || decoded.id_token, // Use new if provided, else keep old
-          oidc_access_token: newTokens.access_token,
-          oidc_refresh_token: newTokens.refresh_token || decoded.oidc_refresh_token, // Some providers don't return new refresh token
-          oidc_expires_at: newExpiresAt,
-        },
+        { ...refreshedClaims, ...refreshedTokens },
         authConfig.auth.jwt.jwt_secret.value,
         {
           algorithm: 'HS256',
@@ -167,6 +168,7 @@ const oidcTokenRefresh = async (req, res, next) => {
       req.userId = decoded.id;
       req.isServiceAccount = false;
       req.oidcAccessToken = newTokens.access_token;
+      req.oidcTokens = refreshedTokens;
 
       log.auth.info('New JWT token generated after OIDC refresh', {
         userId: decoded.id,

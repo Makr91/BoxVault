@@ -16,15 +16,13 @@ const getAuthConfig = () => {
 
 /**
  * Get authentication server base URL from OIDC provider config
- * @param {Object} req - Express request object to extract provider from JWT
+ * @param {Object} req - Express request object carrying the resolved provider or the session JWT
  * @returns {string} Auth server base URL
  */
 const getAuthServerUrl = req => {
-  const token = req.headers['x-access-token'];
-
   try {
-    const decoded = decode(token);
-    const provider = decoded?.provider?.replace('oidc-', ''); // e.g., "oidc-startcloud" -> "startcloud"
+    const providerTag = req.authProvider || decode(req.headers['x-access-token'])?.provider;
+    const provider = providerTag?.replace('oidc-', '');
 
     if (!provider) {
       throw new Error('No provider in JWT');
@@ -48,20 +46,16 @@ const getAuthServerUrl = req => {
 };
 
 /**
- * Extract OIDC access token from BoxVault JWT or refreshed token
+ * Extract the identity-provider access token of the session: the one the
+ * request resolved or refreshed, else the one inside the session JWT
  * @param {Object} req - Express request object
  * @returns {string|null} OIDC access token or null
  */
 const extractOidcAccessToken = req => {
-  // Check if token was refreshed by middleware - this takes precedence
   if (req.oidcAccessToken) {
     return req.oidcAccessToken;
   }
-
-  const token = req.headers['x-access-token'];
-
-  const decoded = decode(token);
-  return decoded?.oidc_access_token || null;
+  return decode(req.headers['x-access-token'])?.oidc_access_token || null;
 };
 
 export { getAuthServerUrl, extractOidcAccessToken };

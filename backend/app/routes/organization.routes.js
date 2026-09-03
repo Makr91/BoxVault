@@ -1,11 +1,5 @@
 import { Router } from 'express';
-import {
-  authJwt,
-  externalTokenAuth,
-  verifyOrganization,
-  verifyOrgAccess,
-  sessionAuth,
-} from '../middleware/index.js';
+import { authJwt, verifyOrganization, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
 import {
   discoverOrganizations,
   findAllWithUsers,
@@ -51,7 +45,7 @@ router.get(
 
 router.get('/organization', [authJwt.verifyToken, authJwt.isUser], findAll);
 
-router.get('/organization/:organization', externalTokenAuth, findOne);
+router.get('/organization/:organization', sessionAuth, findOne);
 
 router.post(
   '/organization',

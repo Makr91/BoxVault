@@ -739,6 +739,60 @@ describe('Authentication API', () => {
       expect(res.body).toHaveProperty('accessToken');
     });
 
+    it('should keep the identity-provider claims and provider tag through a refresh', async () => {
+      const oidcExpiresAt = Date.now() + 60 * 60 * 1000;
+      const token = jwt.sign(
+        {
+          id: testUserForRefresh.id,
+          provider: 'oidc-testprovider',
+          stayLoggedIn: true,
+          id_token: 'kept-id-token',
+          oidc_access_token: 'kept-access-token',
+          oidc_refresh_token: 'kept-refresh-token',
+          oidc_expires_at: oidcExpiresAt,
+        },
+        'test-secret',
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+      );
+
+      const res = await request(app)
+        .post('/api/auth/refresh-token')
+        .set('x-access-token', token)
+        .send({ stayLoggedIn: true });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.provider).toBe('oidc-testprovider');
+
+      const decoded = jwt.decode(res.body.accessToken);
+      expect(decoded.provider).toBe('oidc-testprovider');
+      expect(decoded.id_token).toBe('kept-id-token');
+      expect(decoded.oidc_access_token).toBe('kept-access-token');
+      expect(decoded.oidc_refresh_token).toBe('kept-refresh-token');
+      expect(decoded.oidc_expires_at).toBe(oidcExpiresAt);
+    });
+
+    it('should carry no identity-provider claims for a local session refresh', async () => {
+      const token = jwt.sign(
+        { id: testUserForRefresh.id, provider: 'local', stayLoggedIn: true },
+        'test-secret',
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+      );
+
+      const res = await request(app)
+        .post('/api/auth/refresh-token')
+        .set('x-access-token', token)
+        .send({ stayLoggedIn: true });
+
+      expect(res.statusCode).toBe(200);
+
+      const decoded = jwt.decode(res.body.accessToken);
+      expect(decoded.provider).toBe('local');
+      expect(decoded).not.toHaveProperty('id_token');
+      expect(decoded).not.toHaveProperty('oidc_access_token');
+      expect(decoded).not.toHaveProperty('oidc_refresh_token');
+      expect(decoded).not.toHaveProperty('oidc_expires_at');
+    });
+
     it('should default provider to local if authProvider is null (token.js line 80)', async () => {
       const hashedPassword = await bcrypt.hash('password', 8);
       const nullProviderUser = await db.user.create({

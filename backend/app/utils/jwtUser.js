@@ -1,43 +1,33 @@
-import jwt from 'jsonwebtoken';
-import configLoader from './config-loader.js';
 import { log } from './Logger.js';
 import db from '../models/index.js';
+import { resolveRequestAuth } from './requestAuth.js';
 
 const { UserOrg } = db;
-const { verify } = jwt;
 
 /**
- * Resolve the signed-in BoxVault user behind an x-access-token JWT for the
- * optional-auth discover routes.
+ * Resolve the signed-in BoxVault user behind a request's credentials for the
+ * optional-auth discover routes: the session JWT, an identity-provider token
+ * or a service-account key, by the one request-auth rule.
  *
- * @param {import('express').Request} req - The request carrying the header.
+ * @param {import('express').Request} req - The request carrying the credentials.
  * @returns {Promise<{userId: number, orgIds: number[]}|null>} The user id and
- *   the ids of every organization the user is a member of, or null when the
- *   header is missing or the token does not verify; an invalid token never
- *   errors, it only leaves the caller on the anonymous public-only view.
+ *   the ids of every organization the user is a member of, or null when no
+ *   credential resolves; a refused credential never errors, it only leaves the
+ *   caller on the anonymous public-only view.
  */
 export const resolveJwtUser = async req => {
-  const token = req.headers['x-access-token'];
-  if (!token) {
-    return null;
-  }
-
-  let authConfig;
   try {
-    authConfig = configLoader.loadConfig('auth');
-  } catch (e) {
-    log.error.error(`Failed to load auth configuration: ${e.message}`);
-    return null;
-  }
-
-  try {
-    const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
-    const memberships = await UserOrg.getUserOrganizations(decoded.id);
+    const auth = await resolveRequestAuth(req);
+    if (!auth) {
+      return null;
+    }
+    const memberships = await UserOrg.getUserOrganizations(auth.userId);
     return {
-      userId: decoded.id,
+      userId: auth.userId,
       orgIds: memberships.map(membership => membership.organization_id),
     };
-  } catch {
+  } catch (err) {
+    log.error.error(`Failed to resolve the request user: ${err.message}`);
     return null;
   }
 };

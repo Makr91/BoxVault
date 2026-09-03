@@ -5,6 +5,20 @@ import { getJwtClaimOptions } from '../../utils/auth.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
 
+const IDP_CLAIMS = ['id_token', 'oidc_access_token', 'oidc_refresh_token', 'oidc_expires_at'];
+
+/**
+ * The identity-provider fields a refreshed BoxVault JWT carries forward: the
+ * set refreshed on this request when the OIDC refresh middleware ran, else
+ * the verified claims of the presented token; a local session carries none.
+ * @param {Object} source - `req.oidcTokens` or the verified token claims
+ * @returns {Object} The present fields only
+ */
+const idpClaimsOf = source =>
+  Object.fromEntries(
+    IDP_CLAIMS.filter(key => source[key] !== undefined).map(key => [key, source[key]])
+  );
+
 /**
  * @swagger
  * /api/auth/refresh-token:
@@ -73,7 +87,10 @@ export const refreshToken = async (req, res) => {
     // Get user's organizations for multi-org JWT (pointer-first primary)
     const { userOrganizations, primaryOrgName } = await resolveUserOrganizations(user);
 
-    let provider = user.authProvider;
+    const claims = req.tokenClaims || {};
+    const idpClaims = idpClaimsOf(req.oidcTokens || claims);
+
+    let provider = claims.provider || user.authProvider;
     if (!provider) {
       provider = 'local';
     }
@@ -88,6 +105,7 @@ export const refreshToken = async (req, res) => {
         stayLoggedIn: finalStayLoggedIn,
         provider,
         organizations: userOrganizations,
+        ...idpClaims,
       },
       authConfig.auth.jwt.jwt_secret.value,
       {

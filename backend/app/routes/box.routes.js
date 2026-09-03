@@ -1,6 +1,6 @@
 // box.routes.js
 import { Router } from 'express';
-import { authJwt, externalTokenAuth, verifyBoxName, verifyOrgAccess } from '../middleware/index.js';
+import { authJwt, sessionAuth, verifyBoxName, verifyOrgAccess } from '../middleware/index.js';
 import {
   discoverAll,
   getOrganizationBoxDetails,
@@ -32,10 +32,10 @@ router.use((req, res, next) => {
 router.get('/badge/:organization/:name.svg', getBadge);
 
 router.get('/discover', discoverAll);
-router.get('/organization/:organization/box', externalTokenAuth, getOrganizationBoxDetails);
-router.get('/organization/:organization/box/:name', externalTokenAuth, findOne);
-router.get('/organization/:organization/box/:name/metadata', externalTokenAuth, findOne);
-router.get('/organization/:organization/box/:name/artwork', externalTokenAuth, getArtwork);
+router.get('/organization/:organization/box', sessionAuth, getOrganizationBoxDetails);
+router.get('/organization/:organization/box/:name', sessionAuth, findOne);
+router.get('/organization/:organization/box/:name/metadata', sessionAuth, findOne);
+router.get('/organization/:organization/box/:name/artwork', sessionAuth, getArtwork);
 
 // Administrative Actions - Now require organization membership
 router.post(

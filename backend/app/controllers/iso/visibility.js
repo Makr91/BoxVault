@@ -12,25 +12,26 @@ const PUBLIC_ISO = { isPublic: true, published: true };
 
 /**
  * Resolve who is reading ISOs, the same optional-auth rule the box read routes
- * apply: a user already authenticated by an earlier middleware, a raw
- * service-account key, or an x-access-token JWT; anonymous callers resolve to
- * null and see only public, published ISOs.
+ * apply: a raw service-account key sees its own organization; a user already
+ * authenticated by an earlier middleware, or resolved from the request's
+ * session JWT or identity-provider token, sees every organization they belong
+ * to; anonymous callers resolve to null and see only public, published ISOs.
  * @param {import('express').Request} req - The request carrying the credentials
  * @returns {Promise<{userId: number, orgIds: number[]}|null>} The viewer and the
  *   ids of every organization the viewer belongs to, or null
  */
 const resolveIsoViewer = async req => {
+  const rawToken = extractBearerToken(req) || req.headers['x-access-token'];
+  const serviceAccount = await findServiceAccountByRawToken(rawToken);
+  if (serviceAccount) {
+    return { userId: serviceAccount.userId, orgIds: [serviceAccount.organization_id] };
+  }
   if (req.userId) {
     const memberships = await UserOrg.getUserOrganizations(req.userId);
     return {
       userId: req.userId,
       orgIds: memberships.map(membership => membership.organization_id),
     };
-  }
-  const rawToken = extractBearerToken(req) || req.headers['x-access-token'];
-  const serviceAccount = await findServiceAccountByRawToken(rawToken);
-  if (serviceAccount) {
-    return { userId: serviceAccount.userId, orgIds: [serviceAccount.organization_id] };
   }
   return resolveJwtUser(req);
 };

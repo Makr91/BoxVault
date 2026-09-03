@@ -1,11 +1,5 @@
 import { Router, json } from 'express';
-import {
-  authJwt,
-  verifyOrgAccess,
-  downloadAuth,
-  externalTokenAuth,
-  sessionAuth,
-} from '../middleware/index.js';
+import { authJwt, verifyOrgAccess, downloadAuth, sessionAuth } from '../middleware/index.js';
 import {
   upload,
   findAll,
@@ -30,7 +24,7 @@ router.use((req, res, next) => {
 });
 
 // Discover ISOs visible to the caller
-router.get('/isos/discover', externalTokenAuth, discoverAll);
+router.get('/isos/discover', sessionAuth, discoverAll);
 
 // Upload an ISO
 router.post(
@@ -40,10 +34,10 @@ router.post(
 );
 
 // List ISOs for an organization visible to the caller
-router.get('/organization/:organization/iso', externalTokenAuth, findAll);
+router.get('/organization/:organization/iso', sessionAuth, findAll);
 
 // Get specific ISO details visible to the caller
-router.get('/organization/:organization/iso/:isoId', externalTokenAuth, findOne);
+router.get('/organization/:organization/iso/:isoId', sessionAuth, findOne);
 
 // Download ISO
 router.get(

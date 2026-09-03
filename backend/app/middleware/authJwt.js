@@ -1,104 +1,50 @@
-import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
-import jwt from 'jsonwebtoken';
 import db from '../models/index.js';
-import { extractBearerToken, findServiceAccountByRawToken } from '../utils/serviceAccountAuth.js';
-import { getJwtClaimOptions } from '../utils/auth.js';
+import { authorizationCredential, resolveRequestAuth } from '../utils/requestAuth.js';
 const { user: User, role: Role, organization } = db;
 
-// Fallback for raw service-account API keys: when no valid JWT is present,
-// look the token up in the service_account table and set the same request
-// fields the JWT service-account path sets below.
-const applyServiceAccountAuth = async (req, ...candidates) => {
-  const tokens = candidates.filter(Boolean);
-  const results = await Promise.all(tokens.map(t => findServiceAccountByRawToken(t)));
-  const serviceAccount = results.find(Boolean);
-
-  if (!serviceAccount) {
-    return false;
-  }
-
-  req.userId = serviceAccount.userId;
-  req.isServiceAccount = true;
-  req.serviceAccountId = serviceAccount.id;
-  return true;
-};
-
-const isTokenRevoked = (decoded, sessionsInvalidAfter) =>
+const isTokenRevoked = (auth, sessionsInvalidAfter) =>
   Boolean(
-    !decoded.isServiceAccount &&
-    decoded.iat &&
+    !auth.isServiceAccount &&
+    auth.claims?.iat &&
     sessionsInvalidAfter &&
-    decoded.iat * 1000 < new Date(sessionsInvalidAfter).getTime()
+    auth.claims.iat * 1000 < new Date(sessionsInvalidAfter).getTime()
   );
 
 const verifyToken = async (req, res, next) => {
   try {
-    const authConfig = loadConfig('auth');
-    const token = req.headers['x-access-token'];
-    const bearerToken = extractBearerToken(req);
-
-    if (!token && !bearerToken) {
+    if (!req.headers['x-access-token'] && !authorizationCredential(req)) {
       return res.status(403).send({ message: 'No token provided!' });
     }
 
-    // Raw service-account keys cannot refresh tokens
-    const canFallbackToServiceAccount = !req.path.endsWith('/auth/refresh-token');
+    const refreshRoute = req.path.endsWith('/auth/refresh-token');
+    const auth = await resolveRequestAuth(req, { sessionOnly: refreshRoute });
 
-    if (!token) {
-      // Only Authorization: Bearer present — raw service-account key
-      if (canFallbackToServiceAccount && (await applyServiceAccountAuth(req, bearerToken))) {
-        return next();
-      }
+    if (!auth) {
+      log.error.error('Request authentication failed', { path: req.path });
       return res.status(401).send({
         message: 'Unauthorized!',
         error: 'TOKEN_INVALID',
       });
     }
 
-    let decoded;
-    try {
-      decoded = await new Promise((resolve, reject) => {
-        jwt.verify(
-          token,
-          authConfig.auth.jwt.jwt_secret.value,
-          getJwtClaimOptions(),
-          (err, decodedToken) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(decodedToken);
-            }
-          }
-        );
-      });
-    } catch (jwtError) {
-      if (canFallbackToServiceAccount && (await applyServiceAccountAuth(req, bearerToken, token))) {
-        return next();
-      }
-
-      log.error.error('JWT verification error:', {
-        error: jwtError.message,
-        token: '(token present)',
-      });
-      return res.status(401).send({
-        message: 'Unauthorized!',
-        error: 'TOKEN_INVALID',
-      });
+    req.userId = auth.userId;
+    req.isServiceAccount = auth.isServiceAccount;
+    req.stayLoggedIn = auth.stayLoggedIn;
+    req.tokenClaims = auth.claims;
+    if (auth.provider) {
+      req.authProvider = auth.provider;
+    }
+    if (auth.oidcAccessToken) {
+      req.oidcAccessToken = auth.oidcAccessToken;
     }
 
-    req.userId = decoded.id;
-    req.isServiceAccount = decoded.isServiceAccount;
-    req.stayLoggedIn = decoded.stayLoggedIn;
-
-    // If this is a refresh token request, attach the full user object
-    // Check path instead of originalUrl to handle query parameters correctly
-    if (req.path.endsWith('/auth/refresh-token')) {
-      if (decoded.isServiceAccount) {
+    if (refreshRoute) {
+      if (auth.isServiceAccount) {
         return res.status(403).send({ message: 'Service accounts cannot refresh tokens' });
       }
 
-      const user = await User.findByPk(decoded.id, {
+      const user = await User.findByPk(auth.userId, {
         include: [
           {
             model: Role,
@@ -122,7 +68,7 @@ const verifyToken = async (req, res, next) => {
         return res.status(403).send({ message: req.__('auth.accountSuspended') });
       }
 
-      if (isTokenRevoked(decoded, user.sessionsInvalidAfter)) {
+      if (isTokenRevoked(auth, user.sessionsInvalidAfter)) {
         return res.status(401).send({
           message: 'Unauthorized!',
           error: 'TOKEN_INVALID',
@@ -130,11 +76,11 @@ const verifyToken = async (req, res, next) => {
       }
 
       req.user = user;
-    } else if (!decoded.isServiceAccount && decoded.iat) {
-      const revocationRow = await User.findByPk(decoded.id, {
+    } else if (!auth.isServiceAccount && auth.claims?.iat) {
+      const revocationRow = await User.findByPk(auth.userId, {
         attributes: ['sessionsInvalidAfter'],
       });
-      if (revocationRow && isTokenRevoked(decoded, revocationRow.sessionsInvalidAfter)) {
+      if (revocationRow && isTokenRevoked(auth, revocationRow.sessionsInvalidAfter)) {
         return res.status(401).send({
           message: 'Unauthorized!',
           error: 'TOKEN_INVALID',
@@ -142,14 +88,12 @@ const verifyToken = async (req, res, next) => {
       }
     }
 
-    // Attach JWT context for service accounts
-    if (decoded.isServiceAccount && decoded.serviceAccountId) {
-      req.serviceAccountId = decoded.serviceAccountId;
+    if (auth.isServiceAccount && auth.serviceAccountId) {
+      req.serviceAccountId = auth.serviceAccountId;
     }
 
-    // Attach user's organizations from JWT for frontend
-    if (decoded.organizations) {
-      req.userOrganizations = decoded.organizations;
+    if (auth.organizations) {
+      req.userOrganizations = auth.organizations;
     }
 
     return next();

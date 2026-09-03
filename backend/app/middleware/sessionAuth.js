@@ -1,28 +1,37 @@
 import { log } from '../utils/Logger.js';
 import db from '../models/index.js';
-import { verifySessionToken } from '../utils/auth.js';
+import { resolveRequestAuth } from '../utils/requestAuth.js';
 
 const { user: User } = db;
 
 const sessionAuth = async (req, res, next) => {
   void res;
-  const token = req.headers['x-access-token'];
-
-  if (token) {
-    try {
-      const decoded = await verifySessionToken(token);
-
-      // Suspended users proceed anonymously (public-only access)
-      const user = await User.findByPk(decoded.id);
-      if (user && !user.suspended) {
-        req.userId = decoded.id;
-        req.isServiceAccount = decoded.isServiceAccount || false;
-      }
-    } catch (err) {
-      log.app.debug('Session auth check failed:', { error: err.message });
-    }
+  if (req.userId) {
+    return next();
   }
-  next();
+
+  try {
+    const auth = await resolveRequestAuth(req);
+    if (auth) {
+      const user = await User.findByPk(auth.userId);
+      if (user && !user.suspended) {
+        req.userId = auth.userId;
+        req.isServiceAccount = auth.isServiceAccount;
+        if (auth.serviceAccountId) {
+          req.serviceAccountId = auth.serviceAccountId;
+        }
+        if (auth.provider) {
+          req.authProvider = auth.provider;
+        }
+        if (auth.oidcAccessToken) {
+          req.oidcAccessToken = auth.oidcAccessToken;
+        }
+      }
+    }
+  } catch (err) {
+    log.app.debug('Session auth check failed:', { error: err.message });
+  }
+  return next();
 };
 
 export { sessionAuth };

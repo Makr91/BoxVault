@@ -2727,15 +2727,12 @@ describe('Middleware Tests', () => {
     });
 
     // sessionAuth.js coverage
-    it('sessionAuth should handle verification error', async () => {
+    it('sessionAuth should stay anonymous on a rejected session token', async () => {
       req.headers['x-access-token'] = 'invalid-token';
-      // jwt.verify will call callback with error for invalid token
-      // sessionAuth catches it and logs debug
+      mockDb.service_account.findOne.mockResolvedValue(null);
       await sessionAuth(req, res, next);
-      expect(mockLog.app.debug).toHaveBeenCalledWith(
-        'Session auth check failed:',
-        expect.any(Object)
-      );
+      expect(mockLog.auth.debug).toHaveBeenCalledWith('Session token rejected', expect.any(Object));
+      expect(req.userId).toBeUndefined();
       expect(next).toHaveBeenCalled();
     });
 

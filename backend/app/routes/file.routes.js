@@ -1,11 +1,5 @@
 import { Router } from 'express';
-import {
-  authJwt,
-  sessionAuth,
-  downloadAuth,
-  externalTokenAuth,
-  verifyBoxFilePath,
-} from '../middleware/index.js';
+import { authJwt, sessionAuth, downloadAuth, verifyBoxFilePath } from '../middleware/index.js';
 import {
   fileOperationLimiter,
   getDownloadLinkLimiter,
@@ -49,7 +43,6 @@ router.post(
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
   verifyBoxFilePath,
-  externalTokenAuth,
   sessionAuth,
   info
 );
@@ -59,7 +52,6 @@ router.get(
   downloadLimiter,
   verifyBoxFilePath,
   downloadAuth,
-  externalTokenAuth,
   sessionAuth,
   download
 );
