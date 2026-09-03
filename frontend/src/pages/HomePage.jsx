@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { collectionShape, pageContextShape } from './itemShape';
 import Listing from './Listing';
 
-const HomePage = ({ collections, context, header = null }) => {
+const HomePage = ({ collections, context, actions = null }) => {
   useEffect(() => {
     document.title = context.appName;
   }, [context.appName]);
@@ -16,7 +16,7 @@ const HomePage = ({ collections, context, header = null }) => {
       member={false}
       grouped
       context={context}
-      header={header}
+      actions={actions}
     />
   );
 };
@@ -24,7 +24,7 @@ const HomePage = ({ collections, context, header = null }) => {
 HomePage.propTypes = {
   collections: PropTypes.arrayOf(collectionShape).isRequired,
   context: pageContextShape.isRequired,
-  header: PropTypes.node,
+  actions: PropTypes.node,
 };
 
 export default HomePage;

@@ -26,7 +26,7 @@ export const nameColumn = {
             {text}
           </Link>
         ) : (
-          <span className="v-align-middle">{item.name}</span>
+          <span className="v-align-middle">{text}</span>
         )}
       </>
     );
@@ -108,13 +108,6 @@ export const visibilityColumn = {
   ),
 };
 
-export const organizationColumn = {
-  key: 'organization',
-  labelKey: 'pages.table.organization',
-  sortValue: item => item.organization.name.toLowerCase(),
-  render: item => item.organization.name,
-};
-
 export const createdColumn = {
   key: 'created',
   labelKey: 'pages.table.created',
@@ -122,10 +115,11 @@ export const createdColumn = {
   render: item => localeDate(item.createdAt),
 };
 
-export const uploadedColumn = {
-  ...createdColumn,
-  key: 'uploaded',
-  labelKey: 'pages.table.uploaded',
+export const updatedColumn = {
+  key: 'updated',
+  labelKey: 'pages.table.updated',
+  sortValue: item => new Date(item.updatedAt || 0).getTime(),
+  render: item => localeDate(item.updatedAt),
 };
 
 export const releasedColumn = {
@@ -173,15 +167,15 @@ export const architecturesColumn = {
 export const sizeColumn = {
   key: 'size',
   labelKey: 'pages.table.size',
-  sortValue: item => item.extras?.size || 0,
-  render: (item, ctx) => ctx.formatFileSize(item.extras?.size),
+  sortValue: item => item.artifact?.fileSize || 0,
+  render: (item, ctx) => ctx.formatFileSize(item.artifact?.fileSize),
 };
 
 export const checksumColumn = {
   key: 'checksum',
   labelKey: 'pages.table.checksum',
   render: item => {
-    const checksum = item.extras?.checksum || '';
+    const checksum = item.artifact?.checksum || '';
     return checksum ? <code title={checksum}>{checksum.substring(0, 12)}…</code> : '';
   },
 };

@@ -40,11 +40,13 @@ SortIcon.propTypes = {
   sort: PropTypes.shape({ column: PropTypes.string, direction: PropTypes.string }).isRequired,
 };
 
-const ItemRow = ({ item, columns, watches, RowActions, ctx }) => (
+const ItemRow = ({ item, columns, watchColumn, watches, RowActions, ctx }) => (
   <tr>
-    {watches ? (
+    {watchColumn ? (
       <td className="text-center align-middle">
-        <WatchStar watched={watches.ids.has(item.id)} onToggle={() => watches.toggle(item)} />
+        {watches ? (
+          <WatchStar watched={watches.ids.has(item.id)} onToggle={() => watches.toggle(item)} />
+        ) : null}
       </td>
     ) : null}
     {columns.map(column => (
@@ -61,6 +63,7 @@ const ItemRow = ({ item, columns, watches, RowActions, ctx }) => (
 ItemRow.propTypes = {
   item: itemShape.isRequired,
   columns: PropTypes.array.isRequired,
+  watchColumn: PropTypes.bool.isRequired,
   watches: PropTypes.object,
   RowActions: PropTypes.elementType,
   ctx: PropTypes.object.isRequired,
@@ -74,14 +77,15 @@ const ItemsTable = ({
   onToggleGroup,
   sort,
   onSort,
+  watchColumn,
   watches,
   ctx,
 }) => {
   const { t } = useTranslation();
   const columns = collection.columns.filter(column => !column.when || column.when(ctx));
   const { RowActions } = collection.slots;
-  const columnCount = columns.length + (watches ? 1 : 0) + (RowActions ? 1 : 0);
-  const rowProps = { columns, watches, RowActions, ctx };
+  const columnCount = columns.length + (watchColumn ? 1 : 0) + (RowActions ? 1 : 0);
+  const rowProps = { columns, watchColumn, watches, RowActions, ctx };
 
   const body = () => {
     if (items.length === 0) {
@@ -131,7 +135,7 @@ const ItemsTable = ({
     <Table striped className="table">
       <thead>
         <tr>
-          {watches ? <th aria-label={t('pages.watch.filterWatched')} /> : null}
+          {watchColumn ? <th aria-label={t('pages.watch.filterWatched')} /> : null}
           {columns.map(column => (
             <th
               key={column.key}
@@ -158,6 +162,7 @@ ItemsTable.propTypes = {
   onToggleGroup: PropTypes.func.isRequired,
   sort: PropTypes.shape({ column: PropTypes.string, direction: PropTypes.string }).isRequired,
   onSort: PropTypes.func.isRequired,
+  watchColumn: PropTypes.bool.isRequired,
   watches: PropTypes.shape({
     ids: PropTypes.instanceOf(Set).isRequired,
     toggle: PropTypes.func.isRequired,

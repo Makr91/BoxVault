@@ -1,56 +1,13 @@
 // discover.js
-import configLoader from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import jwt from 'jsonwebtoken';
 import db from '../../models/index.js';
+import { resolveJwtUser } from '../../utils/jwtUser.js';
 import {
   extractBearerToken,
   findServiceAccountByRawToken,
 } from '../../utils/serviceAccountAuth.js';
-const {
-  box: Box,
-  versions,
-  providers,
-  architectures,
-  files,
-  user,
-  organization,
-  UserOrg,
-  Sequelize,
-} = db;
+const { box: Box, versions, providers, architectures, files, user, organization, Sequelize } = db;
 const { Op } = Sequelize;
-const { verify } = jwt;
-
-// Resolve a signed-in BoxVault user from an x-access-token JWT.
-// Returns { userId, orgIds } for a valid token (orgIds = organizations the
-// user is a member of), or null for a missing/invalid token — an invalid
-// token never errors, it only falls back to the anonymous public-only view.
-const resolveJwtUser = async req => {
-  const token = req.headers['x-access-token'];
-  if (!token) {
-    return null;
-  }
-
-  let authConfig;
-  try {
-    authConfig = configLoader.loadConfig('auth');
-  } catch (e) {
-    log.error.error(`Failed to load auth configuration: ${e.message}`);
-    return null;
-  }
-
-  try {
-    const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
-    const memberships = await UserOrg.getUserOrganizations(decoded.id);
-    return {
-      userId: decoded.id,
-      orgIds: memberships.map(membership => membership.organization_id),
-    };
-  } catch {
-    // Not a valid JWT — may be a raw service-account key, handled by caller
-    return null;
-  }
-};
 
 /**
  * @swagger

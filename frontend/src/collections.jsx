@@ -21,7 +21,7 @@ import {
   BoxVersionBannerActions,
   BoxVersionNotesActions,
 } from './components/BoxVersionSlots.component';
-import { IsoListActions, IsoRowActions } from './components/IsoSlots.component';
+import { IsoItemActions, IsoListActions } from './components/IsoSlots.component';
 import {
   architectureNames,
   architecturesColumn,
@@ -29,18 +29,19 @@ import {
   createdColumn,
   downloadsColumn,
   nameColumn,
-  organizationColumn,
   osColumn,
   providerNames,
   providersColumn,
   releasedColumn,
   sizeColumn,
   statusColumn,
-  uploadedColumn,
+  updatedColumn,
   versionsColumn,
   visibilityColumn,
 } from './pages';
 import { canManageBox } from './utils/permissions';
+
+const sharedColumns = [nameColumn, visibilityColumn, createdColumn, updatedColumn, downloadsColumn];
 
 export const boxes = {
   key: 'boxes',
@@ -82,13 +83,10 @@ export const boxes = {
     },
   ],
   columns: [
-    nameColumn,
-    osColumn,
+    ...sharedColumns,
     statusColumn,
-    { ...visibilityColumn, labelKey: 'pages.table.public' },
-    createdColumn,
+    osColumn,
     releasedColumn,
-    downloadsColumn,
     versionsColumn,
     providersColumn,
     architecturesColumn,
@@ -111,20 +109,13 @@ export const boxes = {
   },
 };
 
-const isoNameColumn = {
-  key: 'name',
-  labelKey: 'pages.table.name',
-  sortValue: item => item.name.toLowerCase(),
-  render: item => item.name,
-};
-
 export const isos = {
   key: 'isos',
   labelKey: 'collections.isos',
   icon: <FaCompactDisc aria-hidden />,
   segment: 'isos',
   hasVersions: false,
-  itemRoute: false,
+  itemRoute: true,
   searchKey: 'search.isos',
   defaultView: 'table',
   adapter: isosAdapter,
@@ -137,15 +128,8 @@ export const isos = {
       homeOnly: true,
     },
   ],
-  columns: [
-    isoNameColumn,
-    { ...visibilityColumn, when: ctx => Boolean(ctx.org) },
-    { ...organizationColumn, when: ctx => !ctx.org },
-    sizeColumn,
-    checksumColumn,
-    uploadedColumn,
-  ],
-  slots: { ListActions: IsoListActions, RowActions: IsoRowActions },
+  columns: [...sharedColumns, sizeColumn, checksumColumn],
+  slots: { ListActions: IsoListActions, ItemActions: IsoItemActions },
 };
 
 export const collections = [boxes, isos];

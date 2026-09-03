@@ -35,18 +35,21 @@ const OrgPage = ({ collections, org, member, context }) => {
 
   const info = organization.key === org && organization.value ? organization.value : { name: org };
   const header = (
-    <div className="d-flex align-items-center gap-3 mb-3">
+    <>
       <OrgLogo
         org={info}
         size={40}
         className="rounded-circle org-logo-lg"
         fallback={context.orgMark}
       />
-      <div>
-        <h2 className="h4 mb-0">{info.name}</h2>
+      <div className="min-width-0">
+        <h2 className="h4 mb-0">{info.displayName || info.name}</h2>
+        {info.displayName && info.displayName !== info.name ? (
+          <code className="checksum">{info.name}</code>
+        ) : null}
         {info.description ? <div className="text-muted small">{info.description}</div> : null}
       </div>
-    </div>
+    </>
   );
 
   return (

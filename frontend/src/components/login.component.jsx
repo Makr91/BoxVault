@@ -19,13 +19,7 @@ import ProviderButtons from './ProviderButtons.component';
 
 const SILENT_SSO_FLAG = 'boxvault_silent_sso_attempted';
 
-const rememberIntendedUrl = () => {
-  if (window.location.pathname !== '/login') {
-    localStorage.setItem('boxvault_intended_url', window.location.pathname);
-  }
-};
-
-const resolveReturnPath = urlParams => {
+const returnPathOf = urlParams => {
   const returnTo = urlParams.get('returnTo');
   if (returnTo) {
     const decodedUrl = decodeURIComponent(returnTo);
@@ -33,8 +27,21 @@ const resolveReturnPath = urlParams => {
       return decodedUrl;
     }
   }
-  return '/profile';
+  return '';
 };
+
+const rememberIntendedUrl = urlParams => {
+  const returnTo = returnPathOf(urlParams);
+  if (returnTo) {
+    localStorage.setItem('boxvault_intended_url', returnTo);
+    return;
+  }
+  if (window.location.pathname !== '/login') {
+    localStorage.setItem('boxvault_intended_url', window.location.pathname);
+  }
+};
+
+const resolveReturnPath = urlParams => returnPathOf(urlParams) || '/profile';
 
 const getOidcErrorMessage = (error, t) => {
   switch (error) {
@@ -407,13 +414,14 @@ const Login = () => {
     }
     try {
       sessionStorage.setItem(SILENT_SSO_FLAG, '1');
+      rememberIntendedUrl(urlParams);
       redirectToProvider(defaultProvider, '?prompt=none');
     } catch (err) {
       log.auth.error('Silent SSO attempt failed to start', {
         error: err.message,
       });
     }
-  }, [shouldAttemptSilent, defaultProvider]);
+  }, [shouldAttemptSilent, defaultProvider, urlParams]);
 
   const handleSwitchMode = next => {
     setChosenMode(next);
@@ -421,7 +429,7 @@ const Login = () => {
   };
 
   const handleOidcLogin = provider => {
-    rememberIntendedUrl();
+    rememberIntendedUrl(urlParams);
     setLoading(true);
     setStatusMessage('');
     try {

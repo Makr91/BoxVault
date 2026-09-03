@@ -1,5 +1,7 @@
 import { filterGroupsOf } from './itemShape';
 
+const VIEWS = ['table', 'cards'];
+
 const parse = key => {
   try {
     return JSON.parse(localStorage.getItem(key) || 'null') || {};
@@ -8,41 +10,61 @@ const parse = key => {
   }
 };
 
+const setOf = values => new Set(Array.isArray(values) ? values : []);
+
 export const readPrefs = (key, collections) => {
   const saved = parse(key);
   const filters = {};
   const sort = {};
-  const view = {};
   collections.forEach(collection => {
     filters[collection.key] = Object.fromEntries(
       filterGroupsOf(collection).map(group => [
         group.key,
-        new Set(saved.filters?.[collection.key]?.[group.key] || []),
+        setOf(saved.filters?.[collection.key]?.[group.key]),
       ])
     );
     sort[collection.key] = saved.sort?.[collection.key] || { column: '', direction: 'asc' };
-    view[collection.key] = saved.view?.[collection.key] || collection.defaultView;
   });
-  return { filters, sort, view, collapsed: saved.collapsed || {} };
+  return {
+    filters,
+    collection: setOf(saved.collection),
+    visibility: setOf(saved.visibility),
+    sort,
+    view: VIEWS.includes(saved.view) ? saved.view : collections[0].defaultView,
+    collapsed: saved.collapsed || {},
+  };
 };
 
-export const writePrefs = (key, { filters, sort, view, collapsed }) => {
+export const writePrefs = (key, { filters, collection, visibility, sort, view, collapsed }) => {
   const plain = Object.fromEntries(
     Object.entries(filters).map(([collectionKey, groups]) => [
       collectionKey,
       Object.fromEntries(Object.entries(groups).map(([groupKey, set]) => [groupKey, [...set]])),
     ])
   );
-  localStorage.setItem(key, JSON.stringify({ filters: plain, sort, view, collapsed }));
+  localStorage.setItem(
+    key,
+    JSON.stringify({
+      filters: plain,
+      collection: [...collection],
+      visibility: [...visibility],
+      sort,
+      view,
+      collapsed,
+    })
+  );
 };
 
-export const emptyFilters = collections =>
-  Object.fromEntries(
+export const emptyFilters = collections => ({
+  filters: Object.fromEntries(
     collections.map(collection => [
       collection.key,
       Object.fromEntries(filterGroupsOf(collection).map(group => [group.key, new Set()])),
     ])
-  );
+  ),
+  collection: new Set(),
+  visibility: new Set(),
+});
 
 export const toggleIn = (set, value) => {
   const next = new Set(set);

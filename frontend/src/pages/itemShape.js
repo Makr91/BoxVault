@@ -11,6 +11,15 @@ export const architectureShape = PropTypes.shape({
   downloadCount: PropTypes.number,
 });
 
+export const artifactShape = PropTypes.shape({
+  fileName: PropTypes.string,
+  fileSize: PropTypes.number,
+  checksum: PropTypes.string,
+  checksumType: PropTypes.string,
+  downloadUrl: PropTypes.string,
+  downloadCount: PropTypes.number,
+});
+
 export const providerShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
   description: PropTypes.string,
@@ -35,6 +44,7 @@ export const organizationShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
   uuid: PropTypes.string,
   logo: PropTypes.string,
+  displayName: PropTypes.string,
   description: PropTypes.string,
 });
 
@@ -49,11 +59,13 @@ export const itemShape = PropTypes.shape({
   isPublic: PropTypes.bool,
   published: PropTypes.bool,
   createdAt: PropTypes.string,
+  updatedAt: PropTypes.string,
   latestReleaseAt: PropTypes.string,
   downloads: PropTypes.number,
   os: PropTypes.shape({ label: PropTypes.string, iconUrl: PropTypes.string }),
   metadata: PropTypes.object,
   readme: PropTypes.string,
+  artifact: artifactShape,
   links: PropTypes.object,
   extras: PropTypes.object,
   versions: PropTypes.arrayOf(versionShape),
@@ -83,10 +95,8 @@ export const VISIBILITY_GROUP = {
   shownFor: items => items.some(item => item.isPublic === false),
 };
 
-export const filterGroupsOf = collection => [
-  VISIBILITY_GROUP,
-  ...collection.filterGroups.filter(group => group.key !== VISIBILITY_GROUP.key),
-];
+export const filterGroupsOf = collection =>
+  collection.filterGroups.filter(group => group.key !== VISIBILITY_GROUP.key);
 
 export const isPrivate = item => item.isPublic === false;
 

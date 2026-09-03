@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { iso: ISO } = db;
+const { iso: ISO, organization: Organization } = db;
 
 /**
  * @swagger
@@ -30,6 +30,9 @@ const findAll = async (req, res) => {
   try {
     const isos = await ISO.findAll({
       where: { organizationId: req.organizationId },
+      include: [
+        { model: Organization, as: 'organization', attributes: ['name', 'emailHash', 'logo'] },
+      ],
       order: [['createdAt', 'DESC']],
     });
 

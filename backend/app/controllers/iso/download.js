@@ -86,6 +86,8 @@ const serveIso = async (req, res, iso, token) => {
       return;
     }
 
+    await iso.increment('downloadCount');
+
     const stat = fs.statSync(fullPath);
     const fileSize = stat.size;
     const fileName = iso.filename;

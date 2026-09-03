@@ -6,23 +6,24 @@ export {
   downloadsColumn,
   labelColumn,
   nameColumn,
-  organizationColumn,
   osColumn,
   providersColumn,
   releasedColumn,
   sizeColumn,
   statusColumn,
-  uploadedColumn,
+  updatedColumn,
   versionsColumn,
   visibilityColumn,
 } from './columns';
 export { default as DeprecationBanner } from './DeprecationBanner';
+export { CollapseButton } from './GroupHeading';
 export { default as HomePage } from './HomePage';
 export { default as ItemFacts } from './ItemFacts';
 export { default as ItemPage } from './ItemPage';
 export {
   architectureNames,
   architectureShape,
+  artifactShape,
   collectionShape,
   columnShape,
   defaultMatches,

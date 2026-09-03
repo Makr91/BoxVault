@@ -28,6 +28,11 @@ export default (sequelize, Sequelize) => {
     storagePath: {
       type: Sequelize.STRING,
     },
+    downloadCount: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   });
 
   return ISO;

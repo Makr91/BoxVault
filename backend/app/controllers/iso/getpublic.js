@@ -30,7 +30,9 @@ export const getPublic = async (req, res) => {
     }
     const isos = await Iso.findAll({
       where: { organizationId: organization.id, isPublic: true },
-      include: [{ model: Organization, as: 'organization', attributes: ['name'] }],
+      include: [
+        { model: Organization, as: 'organization', attributes: ['name', 'emailHash', 'logo'] },
+      ],
       order: [['createdAt', 'DESC']],
     });
     return res.status(200).send(isos);

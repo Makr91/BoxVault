@@ -18,7 +18,7 @@ const EMPTY_BOX = { name: '', description: '', isPublic: false };
 const CreateBoxForm = ({ org, draft, nameError, onChange }) => {
   const { t } = useTranslation();
   return (
-    <div className="create-form mt-2 mb-3 w-100">
+    <div className="create-form mt-2 mb-3 w-100 order-last">
       <h4>{t('box.organization.headers.createNewBox')}</h4>
       <form>
         <div className="form-group">

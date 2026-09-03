@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import { itemShape } from './itemShape';
 
+const localeDate = value => (value ? new Date(value).toLocaleDateString() : '');
+
 const formatMemory = memoryMb => {
   const mb = Number(memoryMb);
   if (mb >= 1024) {
@@ -42,7 +44,7 @@ const osRow = (item, rows) => {
   });
 };
 
-const buildRows = (item, t) => {
+const metadataRows = (item, t) => {
   const metadata = item.metadata || {};
   const rows = [];
   osRow(item, rows);
@@ -89,6 +91,40 @@ const buildRows = (item, t) => {
   return rows;
 };
 
+const artifactRows = (item, formatFileSize) => {
+  const { artifact } = item;
+  if (!artifact) {
+    return [];
+  }
+  const rows = [];
+  if (artifact.fileSize) {
+    rows.push({ key: 'size', content: formatFileSize(artifact.fileSize) });
+  }
+  if (artifact.checksum) {
+    rows.push({
+      key: 'checksum',
+      content: (
+        <>
+          <code className="checksum text-break me-2">{artifact.checksum}</code>
+          {artifact.checksumType ? (
+            <span className="badge bg-secondary">{artifact.checksumType}</span>
+          ) : null}
+        </>
+      ),
+    });
+  }
+  if (item.createdAt) {
+    rows.push({ key: 'created', content: localeDate(item.createdAt) });
+  }
+  if (item.updatedAt) {
+    rows.push({ key: 'updated', content: localeDate(item.updatedAt) });
+  }
+  if (typeof artifact.downloadCount === 'number') {
+    rows.push({ key: 'downloads', content: artifact.downloadCount });
+  }
+  return rows;
+};
+
 const PasswordRow = ({ password }) => {
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
@@ -113,9 +149,9 @@ PasswordRow.propTypes = {
   password: PropTypes.string.isRequired,
 };
 
-const ItemFacts = ({ item }) => {
+const ItemFacts = ({ item, formatFileSize }) => {
   const { t } = useTranslation();
-  const rows = buildRows(item, t);
+  const rows = [...metadataRows(item, t), ...artifactRows(item, formatFileSize)];
   if (rows.length === 0) {
     return null;
   }
@@ -144,6 +180,7 @@ const ItemFacts = ({ item }) => {
 
 ItemFacts.propTypes = {
   item: itemShape.isRequired,
+  formatFileSize: PropTypes.func.isRequired,
 };
 
 export default ItemFacts;

@@ -11,6 +11,7 @@ import { providerPath, versionPath } from '../chrome';
 import ItemFacts from './ItemFacts';
 import {
   collectionShape,
+  itemShape,
   pageContextShape,
   sortVersionsNewestFirst,
   statusOf,
@@ -61,6 +62,13 @@ WatchStar.propTypes = {
   busy: PropTypes.bool.isRequired,
   onToggle: PropTypes.func.isRequired,
 };
+
+const watchShape = PropTypes.shape({
+  available: PropTypes.bool.isRequired,
+  watched: PropTypes.bool.isRequired,
+  busy: PropTypes.bool.isRequired,
+  toggle: PropTypes.func.isRequired,
+});
 
 const useItemWatch = ({ collection, item, signedIn, notify }) => {
   const { t } = useTranslation();
@@ -120,6 +128,89 @@ const mediaFor = item => {
     );
   }
   return null;
+};
+
+const ItemHeading = ({ item, org, editor, actions, watch, ctx }) => {
+  const { t } = useTranslation();
+  const { ItemChips, ItemHeaderExtra } = ctx.collection.slots;
+  if (editor) {
+    return (
+      <div className="mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4>{t('pages.item.details')}</h4>
+          <div>{actions}</div>
+        </div>
+        {editor}
+      </div>
+    );
+  }
+  const title = (
+    <>
+      {item.label || item.name}
+      {watch.available ? (
+        <span className="ms-2 align-middle">
+          <WatchStar watched={watch.watched} busy={watch.busy} onToggle={watch.toggle} />
+        </span>
+      ) : null}
+    </>
+  );
+  const chips = (
+    <>
+      <StatusChips
+        status={statusOf(item)}
+        visibility={visibilityOf(item)}
+        osLabel={item.os?.label || null}
+      />
+      {ItemChips ? <ItemChips item={item} ctx={ctx} /> : null}
+    </>
+  );
+  return (
+    <PageHeader
+      media={mediaFor(item)}
+      title={title}
+      subtitle={`${org} / ${item.name}`}
+      chips={chips}
+      actions={actions}
+    >
+      {item.description ? <p className="mb-0 mt-2">{item.description}</p> : null}
+      {ItemHeaderExtra ? <ItemHeaderExtra item={item} ctx={ctx} /> : null}
+    </PageHeader>
+  );
+};
+
+ItemHeading.propTypes = {
+  item: itemShape.isRequired,
+  org: PropTypes.string.isRequired,
+  editor: PropTypes.node,
+  actions: PropTypes.node,
+  watch: watchShape.isRequired,
+  ctx: PropTypes.object.isRequired,
+};
+
+const ItemDetails = ({ item, formatFileSize }) => {
+  const facts = Boolean(item.metadata || item.artifact);
+  if (!facts && !item.readme) {
+    return null;
+  }
+  return (
+    <div className="row g-3 mb-4 mx-0 px-0">
+      {facts ? (
+        <div className="col-lg-5 col-xl-4">
+          <ItemFacts item={item} formatFileSize={formatFileSize} />
+        </div>
+      ) : null}
+      {item.readme ? (
+        <div className="col">
+          <Readme readme={item.readme} />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+ItemDetails.propTypes = {
+  item: itemShape.isRequired,
+  formatFileSize: PropTypes.func.isRequired,
 };
 
 const shortChecksum = artifact =>
@@ -213,6 +304,31 @@ VersionsTable.propTypes = {
   ctx: PropTypes.object.isRequired,
 };
 
+const VersionsSection = ({ collection, item, org, form, ctx }) => {
+  const { t } = useTranslation();
+  const { VersionsActions } = collection.slots;
+  return (
+    <>
+      <div className="list-table">
+        <div className="d-flex justify-content-between align-items-center">
+          <h4>{t('pages.item.versions')}</h4>
+          {VersionsActions ? <VersionsActions item={item} ctx={ctx} /> : null}
+        </div>
+      </div>
+      {form}
+      <VersionsTable collection={collection} item={item} org={org} ctx={ctx} />
+    </>
+  );
+};
+
+VersionsSection.propTypes = {
+  collection: collectionShape.isRequired,
+  item: itemShape.isRequired,
+  org: PropTypes.string.isRequired,
+  form: PropTypes.node,
+  ctx: PropTypes.object.isRequired,
+};
+
 const ItemPage = ({ collection, org, name, context }) => {
   const { t, i18n } = useTranslation();
   const [noticeNode, notify] = useNotice();
@@ -250,7 +366,7 @@ const ItemPage = ({ collection, org, name, context }) => {
     document.title = ready && item ? item.label || item.name : name;
   }, [ready, item, name]);
 
-  const { ItemActions, ItemChips, ItemHeaderExtra, ItemExtras, VersionsActions } = collection.slots;
+  const { ItemActions, ItemExtras, ItemSections } = collection.slots;
   const ctx = {
     ...context,
     t,
@@ -276,77 +392,24 @@ const ItemPage = ({ collection, org, name, context }) => {
   }
 
   const actions = ItemActions ? <ItemActions item={item} ctx={ctx} /> : null;
-  const title = (
-    <>
-      {item.label || item.name}
-      {watch.available ? (
-        <span className="ms-2 align-middle">
-          <WatchStar watched={watch.watched} busy={watch.busy} onToggle={watch.toggle} />
-        </span>
-      ) : null}
-    </>
-  );
-  const chips = (
-    <>
-      <StatusChips
-        status={statusOf(item)}
-        visibility={visibilityOf(item)}
-        osLabel={item.os?.label || null}
-      />
-      {ItemChips ? <ItemChips item={item} ctx={ctx} /> : null}
-    </>
-  );
 
   return (
     <div className="list row">
       {noticeNode}
-      {editor ? (
-        <div className="mb-4">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4>{t('pages.item.details')}</h4>
-            <div>{actions}</div>
-          </div>
-          {editor}
-        </div>
-      ) : (
-        <PageHeader
-          media={mediaFor(item)}
-          title={title}
-          subtitle={`${org} / ${item.name}`}
-          chips={chips}
-          actions={actions}
-        >
-          {item.description ? <p className="mb-0 mt-2">{item.description}</p> : null}
-          {ItemHeaderExtra ? <ItemHeaderExtra item={item} ctx={ctx} /> : null}
-        </PageHeader>
-      )}
+      <ItemHeading
+        item={item}
+        org={org}
+        editor={editor}
+        actions={actions}
+        watch={watch}
+        ctx={ctx}
+      />
       {ItemExtras ? <ItemExtras item={item} ctx={ctx} /> : null}
-      {item.metadata || item.readme ? (
-        <div className="row g-3 mb-4 mx-0 px-0">
-          {item.metadata ? (
-            <div className="col-lg-5 col-xl-4">
-              <ItemFacts item={item} />
-            </div>
-          ) : null}
-          {item.readme ? (
-            <div className="col">
-              <Readme readme={item.readme} />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <ItemDetails item={item} formatFileSize={context.formatFileSize} />
       {collection.hasVersions ? (
-        <>
-          <div className="list-table">
-            <div className="d-flex justify-content-between align-items-center">
-              <h4>{t('pages.item.versions')}</h4>
-              {VersionsActions ? <VersionsActions item={item} ctx={ctx} /> : null}
-            </div>
-          </div>
-          {form}
-          <VersionsTable collection={collection} item={item} org={org} ctx={ctx} />
-        </>
+        <VersionsSection collection={collection} item={item} org={org} form={form} ctx={ctx} />
       ) : null}
+      {ItemSections ? <ItemSections item={item} ctx={ctx} /> : null}
     </div>
   );
 };

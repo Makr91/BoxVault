@@ -123,6 +123,7 @@ export const fetchOrganization = async name => {
   const data = await response.json();
   return {
     name,
+    displayName: data.display_name || '',
     logo: await organizationLogo(data),
     description: data.description || '',
     orgCode: data.external_issuer ? data.org_code || '' : '',

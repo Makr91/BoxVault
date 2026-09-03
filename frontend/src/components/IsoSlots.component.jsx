@@ -12,6 +12,7 @@ import {
   FaUpload,
   FaXmark,
 } from 'react-icons/fa6';
+import { Link, useNavigate } from 'react-router-dom';
 
 import IsoService from '../services/iso.service';
 import { log } from '../utils/Logger';
@@ -62,7 +63,7 @@ const UploadZone = ({ uploading, progress, onFile }) => {
   return (
     <div
       role="presentation"
-      className={`upload-zone w-100${over ? ' over' : ''}`}
+      className={`upload-zone w-100 order-last${over ? ' over' : ''}`}
       onDragOver={event => {
         event.preventDefault();
         setOver(true);
@@ -191,18 +192,18 @@ IsoListActions.propTypes = {
   }).isRequired,
 };
 
-const RenameControls = ({ iso, org, reload, notify, onDone }) => {
+const RenameControls = ({ iso, org, notify, onDone, onSaved }) => {
   const { t } = useTranslation();
   const [name, setName] = useState(iso.name);
   const save = () => {
-    if (!name.trim()) {
+    const next = name.trim();
+    if (!next) {
       return;
     }
-    IsoService.update(org, iso.id, { name })
+    IsoService.update(org, iso.id, { name: next })
       .then(() => {
         notify('success', t('messages.operationSuccessful'));
-        onDone();
-        reload();
+        onSaved(next);
       })
       .catch(error => {
         log.api.error('Error updating ISO name', { error: error.message });
@@ -210,7 +211,7 @@ const RenameControls = ({ iso, org, reload, notify, onDone }) => {
       });
   };
   return (
-    <span className="d-inline-flex align-items-center gap-1">
+    <span className="d-inline-flex align-items-center gap-1 me-2">
       <input
         type="text"
         className="form-control form-control-sm w-auto"
@@ -242,20 +243,19 @@ RenameControls.propTypes = {
   iso: PropTypes.shape({ id: PropTypes.number.isRequired, name: PropTypes.string.isRequired })
     .isRequired,
   org: PropTypes.string.isRequired,
-  reload: PropTypes.func.isRequired,
   notify: PropTypes.func.isRequired,
   onDone: PropTypes.func.isRequired,
+  onSaved: PropTypes.func.isRequired,
 };
 
-export const IsoRowActions = ({ item, ctx }) => {
+export const IsoItemActions = ({ item, ctx }) => {
   const { t } = useTranslation();
-  const { user, reload, notify } = ctx;
+  const navigate = useNavigate();
+  const { user, org, reload, notify } = ctx;
   const iso = item.extras.raw;
-  const org = item.organization.name;
   const manage = isOrgManager(user, org);
   const [renaming, setRenaming] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const download = () => {
     IsoService.getDownloadLink(org, iso.id)
@@ -269,10 +269,7 @@ export const IsoRowActions = ({ item, ctx }) => {
   const copyChecksum = () => {
     navigator.clipboard
       .writeText(iso.checksum)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
+      .then(() => notify('success', t('pages.provider.checksumCopied')))
       .catch(() => notify('danger', t('messages.copyFailed')));
   };
 
@@ -287,92 +284,82 @@ export const IsoRowActions = ({ item, ctx }) => {
 
   const remove = () => {
     IsoService.deleteISO(org, iso.id)
-      .then(() => {
-        notify('success', t('messages.operationSuccessful'));
-        reload();
-      })
+      .then(() => navigate(`/${org}/isos`))
       .catch(error => {
         log.api.error('Error deleting ISO', { error: error.message });
         notify('danger', t('messages.deleteFailed'));
       });
   };
 
-  if (renaming) {
+  const manageControls = () => {
+    if (!manage) {
+      return null;
+    }
+    if (renaming) {
+      return (
+        <RenameControls
+          iso={iso}
+          org={org}
+          notify={notify}
+          onDone={() => setRenaming(false)}
+          onSaved={next => navigate(`/${org}/isos/${next}`)}
+        />
+      );
+    }
     return (
-      <RenameControls
-        iso={iso}
-        org={org}
-        reload={reload}
-        notify={notify}
-        onDone={() => setRenaming(false)}
-      />
+      <>
+        <button type="button" className="btn btn-outline-secondary me-2" onClick={toggleVisibility}>
+          {iso.isPublic ? <FaLock className="me-2" /> : <FaGlobe className="me-2" />}
+          {t(iso.isPublic ? 'iso.makePrivate' : 'iso.makePublic')}
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline-secondary me-2"
+          onClick={() => setRenaming(true)}
+        >
+          <FaPen className="me-2" />
+          {t('buttons.rename')}
+        </button>
+        <button type="button" className="btn btn-danger me-2" onClick={() => setShowDelete(true)}>
+          <FaTrash className="me-2" />
+          {t('buttons.delete')}
+        </button>
+      </>
     );
-  }
+  };
 
   return (
-    <div className="btn-group">
-      <button
-        type="button"
-        className="btn btn-sm btn-outline-primary"
-        onClick={download}
-        title={t('buttons.download')}
-      >
-        <FaDownload />
+    <>
+      <button type="button" className="btn btn-primary me-2" onClick={download}>
+        <FaDownload className="me-2" />
+        {t('buttons.download')}
       </button>
-      <button
-        type="button"
-        className="btn btn-sm btn-outline-secondary"
-        onClick={copyChecksum}
-        title={t('buttons.copy')}
-      >
-        {copied ? <FaCheck className="text-success" /> : <FaCopy />}
+      <button type="button" className="btn btn-outline-secondary me-2" onClick={copyChecksum}>
+        <FaCopy className="me-2" />
+        {t('iso.copyChecksum')}
       </button>
-      {manage ? (
-        <>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-secondary"
-            onClick={toggleVisibility}
-            title={t(iso.isPublic ? 'pages.status.public' : 'pages.status.private')}
-          >
-            {iso.isPublic ? <FaGlobe /> : <FaLock />}
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => setRenaming(true)}
-            title={t('buttons.edit')}
-          >
-            <FaPen />
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-danger"
-            onClick={() => setShowDelete(true)}
-            title={t('buttons.delete')}
-          >
-            <FaTrash />
-          </button>
-          <ConfirmationModal
-            show={showDelete}
-            handleClose={() => setShowDelete(false)}
-            handleConfirm={remove}
-            title={t('iso.deleteTitle')}
-            message={t('iso.deleteMessage', { name: iso.name })}
-          />
-        </>
-      ) : null}
-    </div>
+      {manageControls()}
+      <Link className="btn btn-dark me-2" to={`/${org}/isos`}>
+        {t('buttons.back')}
+      </Link>
+      <ConfirmationModal
+        show={showDelete}
+        handleClose={() => setShowDelete(false)}
+        handleConfirm={remove}
+        title={t('iso.deleteTitle')}
+        message={t('iso.deleteMessage', { name: iso.name })}
+      />
+    </>
   );
 };
 
-IsoRowActions.propTypes = {
+IsoItemActions.propTypes = {
   item: PropTypes.shape({
-    organization: PropTypes.shape({ name: PropTypes.string.isRequired }).isRequired,
     extras: PropTypes.shape({ raw: PropTypes.object.isRequired }).isRequired,
   }).isRequired,
   ctx: PropTypes.shape({
     user: PropTypes.object,
+    org: PropTypes.string.isRequired,
     reload: PropTypes.func.isRequired,
     notify: PropTypes.func.isRequired,
   }).isRequired,

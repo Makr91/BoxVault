@@ -1,6 +1,7 @@
 import { fetchOrganization, organizationLogo } from './chromeProps';
 import EventBus from './common/EventBus';
 import ArchitectureService from './services/architecture.service';
+import AuthService from './services/auth.service';
 import BoxService from './services/box.service';
 import FileService from './services/file.service';
 import IsoService from './services/iso.service';
@@ -8,6 +9,7 @@ import ProviderService from './services/provider.service';
 import VersionService from './services/version.service';
 import { getDistroIconUrl, getOsDisplayName } from './utils/DistroIcons';
 import { log } from './utils/Logger';
+import { isOrgMember } from './utils/permissions';
 import { readDeprecated, readDeprecationReason, readReleaseNotes } from './utils/versionFields';
 
 const { origin } = window.location;
@@ -88,6 +90,7 @@ const boxItem = (box, orgName, logo) => ({
   isPublic: Boolean(box.public || box.isPublic),
   published: Boolean(box.published),
   createdAt: box.createdAt || null,
+  updatedAt: box.updatedAt || null,
   latestReleaseAt: null,
   downloads: sumDownloads(box),
   os: {
@@ -96,6 +99,7 @@ const boxItem = (box, orgName, logo) => ({
   },
   metadata: box.metadata || null,
   readme: box.readme || null,
+  artifact: null,
   links: {
     repo: box.githubRepo ? `https://github.com/${box.githubRepo}` : '',
     pipeline: box.cicdUrl || '',
@@ -108,12 +112,42 @@ const boxItem = (box, orgName, logo) => ({
   versions: (box.versions || []).map(versionSummary),
 });
 
-const withLogos = async (boxes, fallbackOrg) => {
+const isoItem = (iso, orgName, logo) => ({
+  id: iso.id,
+  organization: { name: orgName, logo: logo || '' },
+  name: iso.name,
+  label: iso.name,
+  description: iso.description || '',
+  icon: '',
+  artwork: '',
+  isPublic: Boolean(iso.isPublic),
+  published: null,
+  createdAt: iso.createdAt || null,
+  updatedAt: iso.updatedAt || null,
+  latestReleaseAt: null,
+  downloads: iso.downloadCount || 0,
+  os: null,
+  metadata: null,
+  readme: null,
+  artifact: {
+    fileName: iso.filename || '',
+    fileSize: iso.size || 0,
+    checksum: iso.checksum || '',
+    checksumType: iso.checksumType || '',
+    downloadUrl: '',
+    downloadCount: iso.downloadCount || 0,
+  },
+  links: {},
+  extras: { raw: iso },
+  versions: [],
+});
+
+const withLogos = async (entries, fallbackOrg, toItem) => {
   const organizations = new Map();
-  boxes.forEach(box => {
-    const name = box.organization?.name || fallbackOrg;
+  entries.forEach(entry => {
+    const name = entry.organization?.name || fallbackOrg;
     if (!organizations.has(name)) {
-      organizations.set(name, { name, ...(box.organization || {}) });
+      organizations.set(name, { name, ...(entry.organization || {}) });
     }
   });
   const logos = Object.fromEntries(
@@ -124,9 +158,9 @@ const withLogos = async (boxes, fallbackOrg) => {
       ])
     )
   );
-  return boxes.map(box => {
-    const name = box.organization?.name || fallbackOrg;
-    return boxItem(box, name, logos[name]);
+  return entries.map(entry => {
+    const name = entry.organization?.name || fallbackOrg;
+    return toItem(entry, name, logos[name]);
   });
 };
 
@@ -283,11 +317,11 @@ export const boxesAdapter = {
   listAll: () =>
     BoxService.discoverAll()
       .catch(signOutOn401)
-      .then(response => withLogos(rows(response), 'Unknown')),
+      .then(response => withLogos(rows(response), 'Unknown', boxItem)),
   listOrg: org =>
     BoxService.getAll(org)
       .catch(signOutOn401)
-      .then(response => withLogos(rows(response), org)),
+      .then(response => withLogos(rows(response), org, boxItem)),
   getItem,
   getItemSummary,
   getVersion,
@@ -296,33 +330,25 @@ export const boxesAdapter = {
   watches,
 };
 
-const isoItem = (iso, fallbackOrg) => ({
-  id: iso.id,
-  organization: { name: iso.organization?.name || fallbackOrg, logo: iso.organization?.logo || '' },
-  name: iso.name,
-  label: iso.name,
-  description: '',
-  icon: '',
-  artwork: '',
-  isPublic: Boolean(iso.isPublic),
-  published: null,
-  createdAt: iso.createdAt || null,
-  latestReleaseAt: null,
-  downloads: null,
-  os: null,
-  metadata: null,
-  readme: null,
-  links: {},
-  extras: { raw: iso, size: iso.size, checksum: iso.checksum },
-  versions: [],
-});
+const isoList = (org, member) =>
+  (member ? IsoService.getAll(org) : IsoService.getPublic(org)).then(response =>
+    withLogos(rows(response), org, isoItem)
+  );
+
+const getIso = async (org, name) => {
+  const items = await isoList(org, isOrgMember(AuthService.getCurrentUser(), org));
+  const item = items.find(entry => entry.name === name);
+  if (!item) {
+    throw new Error(`${org}/${name} not found`);
+  }
+  return item;
+};
 
 export const isosAdapter = {
   listAll: () =>
-    IsoService.discoverAll().then(response => rows(response).map(iso => isoItem(iso, 'Unknown'))),
-  listOrg: (org, { member }) =>
-    (member ? IsoService.getAll(org) : IsoService.getPublic(org)).then(response =>
-      rows(response).map(iso => isoItem(iso, org))
-    ),
+    IsoService.discoverAll().then(response => withLogos(rows(response), 'Unknown', isoItem)),
+  listOrg: (org, { member }) => isoList(org, member),
+  getItem: getIso,
+  getItemSummary: getIso,
   getOrganization: fetchOrganization,
 };

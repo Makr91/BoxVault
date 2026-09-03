@@ -403,7 +403,10 @@
       "uploading": "Uploading… {{percent}}%"
     },
     "deleteTitle": "Delete ISO",
-    "deleteMessage": "Are you sure you want to delete {{name}}?"
+    "deleteMessage": "Are you sure you want to delete {{name}}?",
+    "makePublic": "Make public",
+    "makePrivate": "Make private",
+    "copyChecksum": "Copy checksum"
   },
   "collections": {
     "boxes": "Boxes",
@@ -415,9 +418,11 @@
     "notFound": "Not found.",
     "empty": "Nothing here yet.",
     "noMatches": "Nothing matches.",
-    "all": "All {{collection}}",
     "countOf": "{{count}} {{collection}}",
     "searchAll": "Search…",
+    "filter": {
+      "collection": "Collection"
+    },
     "view": {
       "label": "View",
       "table": "List view",
@@ -432,10 +437,10 @@
       "name": "Name",
       "os": "OS",
       "status": "Status",
-      "public": "Public",
       "visibility": "Visibility",
       "organization": "Organization",
       "created": "Created",
+      "updated": "Updated",
       "released": "Latest release",
       "downloads": "Downloads",
       "versions": "# Versions",
@@ -444,7 +449,6 @@
       "actions": "Actions",
       "size": "Size",
       "checksum": "Checksum",
-      "uploaded": "Uploaded",
       "version": "Version",
       "details": "Details",
       "download": "Download",
@@ -480,6 +484,11 @@
       "desktop": "Desktop",
       "server": "Server",
       "show": "Show",
+      "size": "Size",
+      "checksum": "Checksum",
+      "created": "Created",
+      "updated": "Updated",
+      "downloads": "Downloads",
       "hide": "Hide"
     },
     "version": {
@@ -901,7 +910,7 @@
       "starterStep1": "Step 1: add the box"
     },
     "hyperweaver": {
-      "deploy": "Deploy to Hyperweaver",
+      "deploy": "Deploy",
       "deployTitle": "Open Hyperweaver with this box pre-selected"
     },
     "readmeTitle": "README",

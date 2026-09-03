@@ -73,11 +73,9 @@ const resolveActiveOrganization = (user, stored) => {
 const DiscoverLink = () => {
   const { t } = useTranslation();
   return (
-    <div className="d-flex justify-content-end mb-3">
-      <Link to="/organizations/discover" className="btn btn-sm btn-outline-primary">
-        {t('discovery.discoverButton')}
-      </Link>
-    </div>
+    <Link to="/organizations/discover" className="btn btn-sm btn-outline-primary">
+      {t('discovery.discoverButton')}
+    </Link>
   );
 };
 
@@ -119,6 +117,15 @@ const ItemRoute = ({ context }) => {
 };
 
 ItemRoute.propTypes = {
+  context: pageContextShape.isRequired,
+};
+
+const IsoItemRoute = ({ context }) => {
+  const { organization, name } = useParams();
+  return <ItemPage collection={isos} org={organization} name={name} context={context} />;
+};
+
+IsoItemRoute.propTypes = {
   context: pageContextShape.isRequired,
 };
 
@@ -306,10 +313,8 @@ const App = () => {
         from: activeOrganization,
         to: newOrgName,
       });
-
-      navigate(`/${newOrgName}`);
     },
-    [activeOrganization, navigate]
+    [activeOrganization]
   );
 
   const logOut = useCallback(() => {
@@ -456,7 +461,7 @@ const App = () => {
   };
 
   const homeElement = (
-    <HomePage collections={collections} context={context} header={<DiscoverLink />} />
+    <HomePage collections={collections} context={context} actions={<DiscoverLink />} />
   );
 
   return (
@@ -518,6 +523,10 @@ const App = () => {
                 />
                 <Route path="/:organization" element={<OrgRoute context={context} />} />
                 <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />
+                <Route
+                  path="/:organization/isos/:name"
+                  element={<IsoItemRoute context={context} />}
+                />
                 <Route path="/:organization/:name" element={<ItemRoute context={context} />} />
                 <Route
                   path="/:organization/:name/:version"
