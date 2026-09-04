@@ -315,6 +315,31 @@
   "configField": {
     "commaSeparated": "Comma-separated values"
   },
+  "setup": {
+    "title": "Setup",
+    "alreadyComplete": "Setup is already complete.",
+    "enterToken": "Enter Setup Token",
+    "tokenPlaceholder": "Setup Token",
+    "verifyToken": "Verify Token",
+    "submitAll": "Submit All Configurations",
+    "oidcNote": "OIDC provider configuration is managed via the Admin interface after setup is complete. Go to Admin → Configuration Management → Auth Config to add OIDC providers.",
+    "updateSuccess": "Configuration updated successfully. Redirecting to registration page in 5 seconds...",
+    "updateError": "Error updating configuration.",
+    "invalidToken": "Invalid setup token.",
+    "sqlitePath": "SQLite Database File Path",
+    "validation": {
+      "invalidUrl": "Invalid URL format.",
+      "invalidHost": "Invalid host. Must be a valid IP address, FQDN, or 'localhost'.",
+      "integerRequired": "The value must be an integer.",
+      "booleanRequired": "The value must be a boolean.",
+      "passwordLength": "The password must be at least 6 characters.",
+      "invalidEmail": "Invalid email address.",
+      "portRange": "The port must be between 1 and 65535.",
+      "valueRequired": "The value cannot be empty.",
+      "invalidFieldStructure": "Invalid field structure",
+      "fixErrors": "Please fix the errors in the form."
+    }
+  },
   "oidc": {
     "title": "OIDC Providers",
     "providerCount_one": "{{count}} provider",

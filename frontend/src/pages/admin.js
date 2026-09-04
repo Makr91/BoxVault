@@ -243,7 +243,7 @@ const validateUrl = (value, t) => {
     new URL(value);
     return null;
   } catch {
-    return t('validation.invalidUrl');
+    return t('setup.validation.invalidUrl');
   }
 };
 
@@ -251,21 +251,25 @@ const validateHost = (value, t) => {
   if (value === 'localhost' || value === '127.0.0.1') {
     return null;
   }
-  return IP_PATTERN.test(value) || FQDN_PATTERN.test(value) ? null : t('validation.invalidHost');
+  return IP_PATTERN.test(value) || FQDN_PATTERN.test(value)
+    ? null
+    : t('setup.validation.invalidHost');
 };
 
 const TYPE_VALIDATORS = {
   url: validateUrl,
   host: validateHost,
-  integer: (value, t) => (Number.isInteger(Number(value)) ? null : t('validation.integerRequired')),
-  boolean: (value, t) => (typeof value === 'boolean' ? null : t('validation.booleanRequired')),
-  password: (value, t) => (value.length >= 6 ? null : t('validation.passwordLength')),
-  email: (value, t) => (EMAIL_PATTERN.test(value) ? null : t('validation.invalidEmail')),
+  integer: (value, t) =>
+    Number.isInteger(Number(value)) ? null : t('setup.validation.integerRequired'),
+  boolean: (value, t) =>
+    typeof value === 'boolean' ? null : t('setup.validation.booleanRequired'),
+  password: (value, t) => (value.length >= 6 ? null : t('setup.validation.passwordLength')),
+  email: (value, t) => (EMAIL_PATTERN.test(value) ? null : t('setup.validation.invalidEmail')),
   port: (value, t) => {
     const port = Number(value);
-    return port >= 1 && port <= 65535 ? null : t('validation.portRange');
+    return port >= 1 && port <= 65535 ? null : t('setup.validation.portRange');
   },
-  string: (value, t) => (value.trim() !== '' ? null : t('validation.valueRequired')),
+  string: (value, t) => (value.trim() !== '' ? null : t('setup.validation.valueRequired')),
 };
 
 /**

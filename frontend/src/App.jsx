@@ -22,7 +22,6 @@ import {
   session,
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
-import Setup from './components/setup.component';
 import {
   AdminPage,
   CollectionPage,
@@ -36,6 +35,7 @@ import {
   ProfilePage,
   ProviderPage,
   RegisterPage,
+  SetupPage,
   VersionPage,
   formatFileSize,
   pageContextShape,
@@ -297,25 +297,6 @@ const App = () => {
   });
 
   useEffect(() => {
-    let bootstrap;
-    const loadBootstrap = async () => {
-      bootstrap = await import('bootstrap/dist/js/bootstrap.bundle.min.js');
-    };
-    loadBootstrap();
-    return () => {
-      if (bootstrap && bootstrap.Modal) {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-          const instance = bootstrap.Modal.getInstance(modal);
-          if (instance) {
-            instance.dispose();
-          }
-        });
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     const favicon = document.getElementById('favicon');
     if (favicon) {
       favicon.href = theme === 'dark' ? '/dark-favicon.ico' : '/favicon.ico';
@@ -429,6 +410,12 @@ const App = () => {
     <HomePage collections={collections} context={context} actions={<DiscoverLink />} />
   );
 
+  const setupElement = setupComplete ? (
+    <Navigate to="/register" replace />
+  ) : (
+    <SetupPage setup={api.setup} />
+  );
+
   return (
     <Shell
       account={account}
@@ -441,10 +428,7 @@ const App = () => {
       onSignOut={handleSignOut}
     >
       <Routes>
-        <Route
-          path="/setup"
-          element={setupComplete ? <Navigate to="/register" replace /> : <Setup />}
-        />
+        <Route path="/setup" element={setupElement} />
         {setupComplete ? (
           <>
             <Route path="/" element={homeElement} />

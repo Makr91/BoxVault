@@ -81,19 +81,6 @@
     "invalidChecksumFormat": "¡Formato de checksum {{type}} inválido!",
     "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos."
   },
-  "setup": {
-    "title": "Configuración de BoxVault",
-    "alreadyComplete": "La configuración ya está completa. Ahora puedes usar BoxVault.",
-    "enterToken": "Ingresar Token de Configuración",
-    "tokenPlaceholder": "Token de Configuración",
-    "verifyToken": "Verificar Token",
-    "submitAll": "Enviar Todas las Configuraciones",
-    "oidcNote": "La configuración del proveedor OIDC se gestiona a través de la interfaz de Administración después de completar la configuración. Ve a Admin → Gestión de Configuración → Config Auth para añadir proveedores OIDC.",
-    "updateSuccess": "Configuración actualizada exitosamente. Redirigiendo a la página de registro en 5 segundos...",
-    "updateError": "Error al actualizar la configuración.",
-    "invalidToken": "Token de configuración inválido.",
-    "sqlitePath": "Ruta del Archivo de Base de Datos SQLite"
-  },
   "navbar": {
     "about": "Acerca de",
     "docs": "Documentación",

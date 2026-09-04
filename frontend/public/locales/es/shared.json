@@ -315,6 +315,31 @@
   "configField": {
     "commaSeparated": "Valores separados por comas"
   },
+  "setup": {
+    "title": "Configuración inicial",
+    "alreadyComplete": "La configuración ya está completa.",
+    "enterToken": "Ingresar Token de Configuración",
+    "tokenPlaceholder": "Token de Configuración",
+    "verifyToken": "Verificar Token",
+    "submitAll": "Enviar Todas las Configuraciones",
+    "oidcNote": "La configuración del proveedor OIDC se gestiona a través de la interfaz de Administración después de completar la configuración. Ve a Admin → Gestión de Configuración → Config Auth para añadir proveedores OIDC.",
+    "updateSuccess": "Configuración actualizada exitosamente. Redirigiendo a la página de registro en 5 segundos...",
+    "updateError": "Error al actualizar la configuración.",
+    "invalidToken": "Token de configuración inválido.",
+    "sqlitePath": "Ruta del Archivo de Base de Datos SQLite",
+    "validation": {
+      "invalidUrl": "Formato de URL inválido.",
+      "invalidHost": "Host inválido. Debe ser una dirección IP válida, FQDN o 'localhost'.",
+      "integerRequired": "El valor debe ser un entero.",
+      "booleanRequired": "El valor debe ser un booleano.",
+      "passwordLength": "La contraseña debe tener al menos 6 caracteres.",
+      "invalidEmail": "Dirección de correo electrónico inválida.",
+      "portRange": "El puerto debe estar entre 1 y 65535.",
+      "valueRequired": "El valor no puede estar vacío.",
+      "invalidFieldStructure": "Estructura de campo inválida",
+      "fixErrors": "Por favor corrige los errores en el formulario."
+    }
+  },
   "oidc": {
     "title": "Proveedores OIDC",
     "providerCount_one": "{{count}} proveedor",

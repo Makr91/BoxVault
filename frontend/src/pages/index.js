@@ -72,6 +72,7 @@ export { default as ProfilePage, accountShape } from './ProfilePage';
 export { default as ProviderButtons } from './ProviderButtons';
 export { default as ProviderPage } from './ProviderPage';
 export { default as RegisterPage } from './RegisterPage';
+export { default as SetupPage, setupShape } from './SetupPage';
 export { default as StatusChips } from './StatusChips';
 export { default as UpdateNotice } from './UpdateNotice';
 export { default as UserCard } from './UserCard';

@@ -81,19 +81,6 @@
     "invalidChecksumFormat": "Invalid {{type}} checksum format!",
     "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed."
   },
-  "setup": {
-    "title": "BoxVault Setup",
-    "alreadyComplete": "Setup is already complete. You can now use BoxVault.",
-    "enterToken": "Enter Setup Token",
-    "tokenPlaceholder": "Setup Token",
-    "verifyToken": "Verify Token",
-    "submitAll": "Submit All Configurations",
-    "oidcNote": "OIDC provider configuration is managed via the Admin interface after setup is complete. Go to Admin → Configuration Management → Auth Config to add OIDC providers.",
-    "updateSuccess": "Configuration updated successfully. Redirecting to registration page in 5 seconds...",
-    "updateError": "Error updating configuration.",
-    "invalidToken": "Invalid setup token.",
-    "sqlitePath": "SQLite Database File Path"
-  },
   "navbar": {
     "about": "About",
     "docs": "Docs",
