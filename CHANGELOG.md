@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.76.0](https://github.com/Makr91/BoxVault/compare/v0.75.0...v0.76.0) (2026-09-04)
+
+
+### Features
+
+* serve the STARTcloud UI artifact instead of a bundled web app ([749da74](https://github.com/Makr91/BoxVault/commit/749da7471e9041ec9c96068f5a31303eea7bd582))
+
 ## [0.75.0](https://github.com/Makr91/BoxVault/compare/v0.74.0...v0.75.0) (2026-09-04)
 
 
