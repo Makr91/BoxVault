@@ -68,7 +68,10 @@ export const {
   getSupportedLanguages,
 } = createI18n({ loadSupportedLanguages, debug: true });
 
-export const notificationsAdapter = createNotificationsClient({ client });
+export const notificationsAdapter = {
+  ...createNotificationsClient({ client }),
+  sendTest: () => client.post('/api/notifications/test/channel', {}),
+};
 
 export const push = createPush({
   storageKey: 'boxvault_push_enabled',
@@ -85,6 +88,7 @@ export const pushAdapter = {
   setEnabled: push.setPushEnabled,
   subscribe: push.subscribePush,
   unsubscribe: push.unsubscribePush,
+  sendTest: () => client.post('/api/notifications/test/toast', {}),
 };
 
 export const BrandLogo = ({ theme, className }) =>

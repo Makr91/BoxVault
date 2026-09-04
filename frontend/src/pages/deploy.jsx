@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaRocket } from 'react-icons/fa6';
 
+import HyperweaverGlyph from './HyperweaverGlyph';
 import { itemShape, sortVersionsNewestFirst } from './itemShape';
 
 /**
@@ -25,9 +25,9 @@ const deployProps = {
 
 /**
  * The Deploy controls every collection Hyperweaver can turn into a machine
- * draws the same way: a filled rocket button for action rows and the
- * use-this strip, a rocket glyph for rows and cards through the
- * `ItemQuickActions` slot; each drawn only while the viewer is signed in,
+ * draws the same way: a filled button carrying the Hyperweaver glyph for
+ * action rows and the use-this strip, the glyph alone for rows and cards
+ * through the `ItemQuickActions` slot; each drawn only while the viewer is signed in,
  * entitled to Hyperweaver and Hyperweaver is configured. The app supplies
  * only where its Hyperweaver lives, who may deploy and the deep link.
  *
@@ -89,7 +89,7 @@ export const createDeployControls = ({ fetchHyperweaverUrl, canDeploy, hrefFor }
         rel="noopener noreferrer"
         title={deploy.title}
       >
-        <FaRocket />
+        <HyperweaverGlyph />
         {t('pages.deploy.deploy')}
       </a>
     );
@@ -111,7 +111,7 @@ export const createDeployControls = ({ fetchHyperweaverUrl, canDeploy, hrefFor }
         title={deploy.title}
         aria-label={deploy.title}
       >
-        <FaRocket />
+        <HyperweaverGlyph />
       </a>
     );
   };

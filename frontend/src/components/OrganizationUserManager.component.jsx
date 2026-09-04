@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import { useNotify } from '../chrome';
+import { useNavbarSearchBinding, useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal, responseMessage } from '../pages';
 import { api } from '../services/api';
 import { validateOrgName } from '../utils/ConfigProcessorUtils';
 
 import UserCard from './UserCard.component';
+
+const NO_FILTERS = [];
+const clearNothing = () => undefined;
 
 /**
  * OrganizationUserManager - Manages organizations and their users
@@ -197,17 +200,18 @@ const OrganizationUserManager = () => {
     );
   });
 
+  useNavbarSearchBinding({
+    query: searchTerm,
+    onQueryChange: setSearchTerm,
+    placeholder: t('orgUserManager.searchPlaceholder'),
+    matched: filteredOrganizations.length,
+    total: organizations.length,
+    groups: NO_FILTERS,
+    onClearFilters: clearNothing,
+  });
+
   return (
     <>
-      <div className="mb-4">
-        <input
-          type="text"
-          className="form-control"
-          placeholder={t('orgUserManager.searchPlaceholder')}
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </div>
       <div className="row">
         {filteredOrganizations.map(org => (
           <div className="col-md-6" key={org.id}>

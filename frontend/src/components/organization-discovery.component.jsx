@@ -4,12 +4,15 @@ import { useTranslation, Trans } from 'react-i18next';
 import { FaBuilding, FaUsers, FaBox } from 'react-icons/fa6';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { log, useNotify } from '../chrome';
+import { log, useNavbarSearchBinding, useNotify } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
 import { responseMessage } from '../pages';
 import { api } from '../services/api';
+
+const NO_FILTERS = [];
+const clearNothing = () => undefined;
 
 /**
  * OrganizationDiscovery - Public page for discovering and joining organizations
@@ -155,6 +158,16 @@ const OrganizationDiscovery = ({ theme }) => {
       org.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  useNavbarSearchBinding({
+    query: searchTerm,
+    onQueryChange: setSearchTerm,
+    placeholder: t('discovery.searchPlaceholder'),
+    matched: filteredOrganizations.length,
+    total: organizations.length,
+    groups: NO_FILTERS,
+    onClearFilters: clearNothing,
+  });
+
   return (
     <div className="container mt-4">
       <div className="row">
@@ -164,22 +177,6 @@ const OrganizationDiscovery = ({ theme }) => {
             {t('discovery.title')}
           </h2>
           <p className="text-muted">{t('discovery.description')}</p>
-
-          {/* Search */}
-          <div className="card mb-4">
-            <div className="card-body">
-              <div className="input-group">
-                <span className="input-group-text">🔍</span>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder={t('discovery.searchPlaceholder')}
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
 
           {loading && (
             <div className="text-center">

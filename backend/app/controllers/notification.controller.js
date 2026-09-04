@@ -1,6 +1,9 @@
 import axios from 'axios';
+import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
-import { getVapidPublicKey } from '../utils/webPush.js';
+import { sendHubNotification } from '../utils/notifyHub.js';
+import { resolveUserRecipients } from '../utils/notifyRecipients.js';
+import { getVapidPublicKey, sendPushToUsers } from '../utils/webPush.js';
 import db from '../models/index.js';
 import { getAuthServerUrl, extractOidcAccessToken } from './favorites/helpers.js';
 
@@ -169,6 +172,86 @@ export const deleteSubscription = async (req, res) => {
     log.error.error('Failed to remove push subscription', { error: err.message });
     return res.status(500).json({ error: 'SUBSCRIPTION_DELETE_FAILED' });
   }
+};
+
+const testNotification = req => ({
+  title: req.__('notifications.test.title'),
+  body: req.__('notifications.test.body'),
+  navigate: `${loadConfig('app').boxvault.origin.value}/`,
+  tag: 'boxvault-test',
+});
+
+/**
+ * @swagger
+ * /api/notifications/test/toast:
+ *   post:
+ *     summary: Send the caller a test toast
+ *     description: Delivers one OS toast through BoxVault's own Web Push stack to every subscription the calling user registered on this origin.
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Count of subscriptions the push service accepted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 delivered:
+ *                   type: integer
+ *       503:
+ *         description: Push notifications are disabled or unconfigured
+ */
+export const sendTestToast = async (req, res) => {
+  if (!getVapidPublicKey()) {
+    return res.status(503).json({ error: 'PUSH_NOT_CONFIGURED' });
+  }
+  const delivered = await sendPushToUsers([req.userId], testNotification(req));
+  return res.json({ delivered });
+};
+
+/**
+ * @swagger
+ * /api/notifications/test/channel:
+ *   post:
+ *     summary: Send the caller a test Notification Channel Notification
+ *     description: Writes one notification addressed to the calling user through the notification hub, the way every BoxVault event reaches the bell.
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The hub accepted the write
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 delivered:
+ *                   type: integer
+ *       404:
+ *         description: The caller has no identity-provider credential to address
+ *       502:
+ *         description: The hub is disabled, unreachable or refused the write
+ */
+export const sendTestChannel = async (req, res) => {
+  const [recipient] = await resolveUserRecipients([req.userId]);
+  if (!recipient) {
+    return res.status(404).json({ error: 'NO_HUB_IDENTITY' });
+  }
+  const accepted = await sendHubNotification({
+    issuer: recipient.issuer,
+    recipient: { user_uuid: recipient.uuid },
+    notification: testNotification(req),
+    type: 'SYSTEM',
+    severity: 'INFO',
+    idempotencyKey: `boxvault:test:${recipient.uuid}:${Date.now()}`,
+  });
+  if (!accepted) {
+    return res.status(502).json({ error: 'HUB_UNAVAILABLE' });
+  }
+  return res.json({ delivered: 1 });
 };
 
 export const listNotifications = (req, res) =>

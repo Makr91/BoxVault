@@ -3,13 +3,37 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
-import { log, useNotify } from '../chrome';
+import { log, useNavbarSearchBinding, useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
 import { ConfirmModal, responseMessage } from '../pages';
 import { api } from '../services/api';
 import { isOrgOwner } from '../utils/permissions';
 
 import UserCard from './UserCard.component';
+
+const NO_FILTERS = [];
+const clearNothing = () => undefined;
+
+const MembersSearch = ({ query, onQueryChange, matched, total }) => {
+  const { t } = useTranslation();
+  useNavbarSearchBinding({
+    query,
+    onQueryChange,
+    placeholder: t('common:actions.search'),
+    matched,
+    total,
+    groups: NO_FILTERS,
+    onClearFilters: clearNothing,
+  });
+  return null;
+};
+
+MembersSearch.propTypes = {
+  query: PropTypes.string.isRequired,
+  onQueryChange: PropTypes.func.isRequired,
+  matched: PropTypes.number.isRequired,
+  total: PropTypes.number.isRequired,
+};
 
 const OrgConsoleTabs = ({
   activeTab,
@@ -931,15 +955,12 @@ const OrgConsole = ({ currentOrganization }) => {
                     </h4>
                   </div>
                   <div className="card-body">
-                    <div className="mb-3">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder={t('common:actions.search')}
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                      />
-                    </div>
+                    <MembersSearch
+                      query={searchTerm}
+                      onQueryChange={setSearchTerm}
+                      matched={filteredUsers.length}
+                      total={users.length}
+                    />
                     <div className="row">
                       {filteredUsers.map(user => (
                         <UserCard

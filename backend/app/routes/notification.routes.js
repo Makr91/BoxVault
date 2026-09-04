@@ -9,6 +9,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  sendTestToast,
+  sendTestChannel,
 } from '../controllers/notification.controller.js';
 import { openSessionEventStream } from '../utils/sessionEvents.js';
 
@@ -33,6 +35,10 @@ router.get('/notifications/events', subscriptionAuth, openSessionEventStream);
 router.post('/notifications/subscriptions', subscriptionAuth, createSubscription);
 
 router.delete('/notifications/subscriptions', subscriptionAuth, deleteSubscription);
+
+router.post('/notifications/test/toast', subscriptionAuth, sendTestToast);
+
+router.post('/notifications/test/channel', subscriptionAuth, sendTestChannel);
 
 router.get('/notifications', notificationAuth, listNotifications);
 

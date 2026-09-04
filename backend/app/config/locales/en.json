@@ -296,6 +296,10 @@
       "title": "BoxVault SSL certificate expiring",
       "bodyOne": "The certificate expires in 1 day ({{expiry}}).",
       "bodyOther": "The certificate expires in {{days}} days ({{expiry}})."
+    },
+    "test": {
+      "title": "BoxVault test",
+      "body": "A test notification from BoxVault."
     }
   },
   "mail": {

@@ -105,7 +105,7 @@ const serializeWithinBudget = payload => {
  * @param {Object} [params.delivery] - { ttl, urgency }; defaults to
  *   { ttl: 86400, urgency: 'normal' }
  * @param {string} params.idempotencyKey - Stable per-event key for replays
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} Whether the hub accepted the write
  */
 const sendHubNotification = async ({
   issuer,
@@ -120,7 +120,7 @@ const sendHubNotification = async ({
     const authConfig = loadConfig('auth');
     if (!authConfig.auth?.oidc?.notifications_enabled?.value) {
       log.app.debug('Hub notifications disabled; skipping', { idempotencyKey });
-      return;
+      return false;
     }
 
     const token = await getS2sToken(issuer, NOTIFY_SCOPE);
@@ -144,6 +144,7 @@ const sendHubNotification = async ({
       replay: response.status === 200,
       recipients: response.data?.recipients,
     });
+    return true;
   } catch (err) {
     // Errors are RFC 9457 problem+json — log status + problem type, never throw
     log.app.warn('Hub notification failed', {
@@ -152,6 +153,7 @@ const sendHubNotification = async ({
       problemType: err.response?.data?.type,
       error: err.message,
     });
+    return false;
   }
 };
 

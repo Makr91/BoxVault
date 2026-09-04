@@ -296,6 +296,10 @@
       "title": "El certificado SSL de BoxVault está por caducar",
       "bodyOne": "El certificado caduca en 1 día ({{expiry}}).",
       "bodyOther": "El certificado caduca en {{days}} días ({{expiry}})."
+    },
+    "test": {
+      "title": "Prueba de BoxVault",
+      "body": "Una notificación de prueba de BoxVault."
     }
   },
   "mail": {
