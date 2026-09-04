@@ -45,6 +45,18 @@ const userOf = current => current?.user || null;
 
 const nameOf = user => user?.name || '';
 
+const groupByOrganization = (accounts, unknownLabel) => {
+  const groups = new Map();
+  accounts.forEach(entry => {
+    const name = entry.organization?.name || unknownLabel;
+    if (!groups.has(name)) {
+      groups.set(name, { name, accounts: [] });
+    }
+    groups.get(name).accounts.push(entry);
+  });
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+};
+
 /**
  * The profile page every estate app with accounts of its own draws the same
  * way: the avatar card with the verification notice, then Profile (display
@@ -73,6 +85,8 @@ const ProfilePage = ({ session, events, returnTo, account, activeOrgUuid }) => {
   const [passwordErrors, setPasswordErrors] = useState({});
   const [emailErrors, setEmailErrors] = useState({});
   const [serviceAccounts, setServiceAccounts] = useState([]);
+  const [serviceAccountOrgs, setServiceAccountOrgs] = useState([]);
+  const [newServiceAccountOrg, setNewServiceAccountOrg] = useState(activeOrgUuid);
   const [newServiceAccountDescription, setNewServiceAccountDescription] = useState('');
   const [newServiceAccountExpiration, setNewServiceAccountExpiration] = useState(30);
   const [newServiceAccountToken, setNewServiceAccountToken] = useState(null);
@@ -280,9 +294,13 @@ const ProfilePage = ({ session, events, returnTo, account, activeOrgUuid }) => {
     const loadData = async () => {
       if (activeTab === 'serviceAccounts') {
         try {
-          const accounts = await account.serviceAccounts.list(controller.signal);
+          const [accounts, orgs] = await Promise.all([
+            account.serviceAccounts.list(controller.signal),
+            account.serviceAccounts.organizations(),
+          ]);
           if (mounted) {
             setServiceAccounts(accounts);
+            setServiceAccountOrgs(orgs || []);
           }
         } catch (error) {
           if (mounted && !isAbort(error)) {
@@ -342,10 +360,9 @@ const ProfilePage = ({ session, events, returnTo, account, activeOrgUuid }) => {
     e.preventDefault();
     const controller = new AbortController();
     try {
-      const organizations = await account.serviceAccounts.organizations();
-      const activeOrg = organizations?.find(org => org.name === activeOrgUuid);
+      const targetOrg = serviceAccountOrgs.find(org => org.name === newServiceAccountOrg);
 
-      if (!activeOrg) {
+      if (!targetOrg) {
         notify('danger', t('profile.errors.activeOrgNotFound'));
         return;
       }
@@ -353,7 +370,7 @@ const ProfilePage = ({ session, events, returnTo, account, activeOrgUuid }) => {
       const created = await account.serviceAccounts.create(
         newServiceAccountDescription,
         newServiceAccountExpiration,
-        activeOrg.id
+        targetOrg.id
       );
       await loadServiceAccounts(controller.signal);
       setNewServiceAccountDescription('');
@@ -774,6 +791,20 @@ const ProfilePage = ({ session, events, returnTo, account, activeOrgUuid }) => {
       <h3>{t('profile.serviceAccounts.title')}</h3>
       <form onSubmit={handleCreateServiceAccount}>
         <div className="form-group col-md-3 mb-3">
+          <select
+            className="form-control"
+            value={newServiceAccountOrg}
+            onChange={e => setNewServiceAccountOrg(e.target.value)}
+            aria-label={t('profile.serviceAccounts.organization')}
+          >
+            {serviceAccountOrgs.map(org => (
+              <option key={org.id} value={org.name}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group col-md-3 mb-3">
           <input
             type="text"
             className="form-control"
@@ -829,43 +860,46 @@ const ProfilePage = ({ session, events, returnTo, account, activeOrgUuid }) => {
           {t('profile.serviceAccounts.deleteSelected', { count: selectedAccounts.length })}
         </button>
       </div>
-      <ul className="list-group">
-        {serviceAccounts.map(entry => (
-          <li key={entry.id} className="list-group-item">
-            <div className="d-flex justify-content-between align-items-center">
-              <input
-                type="checkbox"
-                className="form-check-input me-3"
-                checked={selectedIds.has(entry.id)}
-                onChange={event => selectServiceAccount(entry.id, event.target.checked)}
-                aria-label={entry.username}
-              />
-              <div className="flex-grow-1">
-                <strong>{entry.username}</strong> - {entry.description}
-                <br />
-                <small>
-                  {t('profile.serviceAccounts.organization')}:{' '}
-                  {entry.organization?.name || t('profile.unknown')}
-                </small>
-                <br />
-                <small>
-                  {t('profile.serviceAccounts.expires')}:{' '}
-                  {new Date(entry.expiresAt).toLocaleDateString()}
-                </small>
-              </div>
-              <div>
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleDeleteServiceAccount(entry.id)}
-                >
-                  {t('profile.buttons.delete')}
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {groupByOrganization(serviceAccounts, t('profile.unknown')).map(group => (
+        <div key={group.name} className="card mb-3">
+          <div className="card-header d-flex align-items-center gap-2">
+            <h5 className="mb-0">{group.name}</h5>
+            <span className="badge bg-secondary bg-opacity-50">{group.accounts.length}</span>
+          </div>
+          <ul className="list-group list-group-flush">
+            {group.accounts.map(entry => (
+              <li key={entry.id} className="list-group-item">
+                <div className="d-flex justify-content-between align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-3"
+                    checked={selectedIds.has(entry.id)}
+                    onChange={event => selectServiceAccount(entry.id, event.target.checked)}
+                    aria-label={entry.username}
+                  />
+                  <div className="flex-grow-1">
+                    <strong>{entry.username}</strong> - {entry.description}
+                    <br />
+                    <small>
+                      {t('profile.serviceAccounts.expires')}:{' '}
+                      {new Date(entry.expiresAt).toLocaleDateString()}
+                    </small>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleDeleteServiceAccount(entry.id)}
+                    >
+                      {t('profile.buttons.delete')}
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 
