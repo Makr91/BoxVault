@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
@@ -10,6 +11,7 @@ import {
   ACTIVE_ORG_KEY,
   APP_NAME,
   BrandLogo,
+  JOIN_INTENT_KEY,
   LOGIN_METHOD_KEY,
   SILENT_SSO_KEY,
   events,
@@ -20,17 +22,17 @@ import {
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
 import Admin from './components/admin.component';
-import OrgConsole from './components/org-console.component';
-import OrganizationDiscovery from './components/organization-discovery.component';
-import Profile from './components/profile.component';
 import Setup from './components/setup.component';
 import {
   CollectionPage,
+  DiscoveryPage,
   HomePage,
   InvitePage,
   ItemPage,
   LoginPage,
+  OrgConsolePage,
   OrgPage,
+  ProfilePage,
   ProviderPage,
   RegisterPage,
   VersionPage,
@@ -40,7 +42,7 @@ import {
 import { api } from './services/api';
 import { CallbackPage, subscribeTerminateStream, useSession } from './session';
 import Shell from './shell';
-import { isOrgManager, isOrgMember } from './utils/permissions';
+import { isGlobalAdmin, isOrgManager, isOrgMember } from './utils/permissions';
 
 const PREFS_PREFIX = 'boxvault_table_prefs';
 const PROFILE_RELOAD_MS = 69120000;
@@ -51,7 +53,84 @@ const authAdapter = {
   silentSsoKey: SILENT_SSO_KEY,
 };
 
+const accountAdapter = {
+  gravatarProfile: api.gravatar.profile,
+  changePassword: api.users.changePassword,
+  changeEmail: api.users.changeEmail,
+  changeName: api.users.changeName,
+  remove: api.users.remove,
+  verifyMail: api.auth.verifyMail,
+  resendVerification: api.auth.resendVerification,
+  organizations: api.users.organizations,
+  leave: api.users.leave,
+  setPrimary: api.users.setPrimary,
+  requests: api.requests.mine,
+  cancelRequest: api.requests.cancel,
+  serviceAccounts: api.serviceAccounts,
+};
+
+const organizationsAdapter = {
+  get: api.organizations.get,
+  update: api.organizations.update,
+  accessMode: api.organizations.accessMode,
+  users: api.organizations.users,
+  memberRole: api.organizations.memberRole,
+  removeMember: api.organizations.removeMember,
+  invite: api.auth.invite,
+  invitations: api.invitations.active,
+  removeInvitation: api.invitations.remove,
+  requests: api.requests.forOrg,
+  approveRequest: api.requests.approve,
+  denyRequest: api.requests.deny,
+  discover: api.organizations.discover,
+  join: api.requests.create,
+  gravatarProfile: api.gravatar.profile,
+};
+
 const persistTheme = preference => session.savePreferences({ theme: preference });
+
+const DiscoveryRoute = ({ theme }) => (
+  <DiscoveryPage
+    session={session}
+    returnTo={returnTo}
+    organizations={organizationsAdapter}
+    orgMark={<BrandLogo theme={theme} className="logo-lg icon-with-margin" />}
+    joinIntentKey={JOIN_INTENT_KEY}
+  />
+);
+
+DiscoveryRoute.propTypes = {
+  theme: PropTypes.string.isRequired,
+};
+
+const OrgConsoleRoute = ({ org, admin }) => (
+  <OrgConsolePage
+    session={session}
+    activeOrgKey={ACTIVE_ORG_KEY}
+    organizations={organizationsAdapter}
+    org={org}
+    admin={admin}
+  />
+);
+
+OrgConsoleRoute.propTypes = {
+  org: PropTypes.string.isRequired,
+  admin: PropTypes.bool.isRequired,
+};
+
+const ProfileRoute = ({ activeOrgUuid }) => (
+  <ProfilePage
+    session={session}
+    events={events}
+    returnTo={returnTo}
+    account={accountAdapter}
+    activeOrgUuid={activeOrgUuid}
+  />
+);
+
+ProfileRoute.propTypes = {
+  activeOrgUuid: PropTypes.string.isRequired,
+};
 
 const LoginRoute = () => (
   <LoginPage session={session} returnTo={returnTo} auth={authAdapter} appName={APP_NAME} />
@@ -340,10 +419,7 @@ const App = () => {
               element={<CollectionPage collection={isos} org="" member={false} context={context} />}
             />
             <Route path="/about" element={<About theme={theme} />} />
-            <Route
-              path="/organizations/discover"
-              element={<OrganizationDiscovery theme={theme} />}
-            />
+            <Route path="/organizations/discover" element={<DiscoveryRoute theme={theme} />} />
             <Route path="/login" element={<LoginRoute />} />
             <Route
               path="/auth/callback"
@@ -354,11 +430,11 @@ const App = () => {
               element={<RegisterPage session={session} returnTo={returnTo} auth={authAdapter} />}
             />
             <Route path="/invite/:token" element={<InviteRoute />} />
-            <Route path="/profile" element={<Profile activeOrganization={activeOrganization} />} />
+            <Route path="/profile" element={<ProfileRoute activeOrgUuid={activeOrganization} />} />
             <Route path="/admin" element={<Admin />} />
             <Route
               path="/org-console"
-              element={<OrgConsole currentOrganization={activeOrganization} />}
+              element={<OrgConsoleRoute org={activeOrganization} admin={isGlobalAdmin(user)} />}
             />
             <Route path="/:organization" element={<OrgRoute context={context} />} />
             <Route path="/:organization/isos" element={<OrgIsosRoute context={context} />} />

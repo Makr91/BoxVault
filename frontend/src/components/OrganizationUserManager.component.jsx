@@ -4,11 +4,9 @@ import { Link } from 'react-router-dom';
 
 import { useNavbarSearchBinding, useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
-import { ConfirmModal, responseMessage } from '../pages';
+import { ConfirmModal, UserCard, responseMessage } from '../pages';
 import { api } from '../services/api';
 import { validateOrgName } from '../utils/ConfigProcessorUtils';
-
-import UserCard from './UserCard.component';
 
 const NO_FILTERS = [];
 const clearNothing = () => undefined;
@@ -310,6 +308,7 @@ const OrganizationUserManager = () => {
                       currentUser={currentUser}
                       orgRole={user.orgRole}
                       columnClass="col-12 col-xxl-6"
+                      gravatarProfile={api.gravatar.profile}
                       onSuspend={() => handleSuspendOrResumeUser(user.id, false)}
                       onResume={() => handleSuspendOrResumeUser(user.id, true)}
                       onRemoveFromOrg={

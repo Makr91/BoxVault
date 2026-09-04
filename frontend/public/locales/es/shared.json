@@ -62,6 +62,120 @@
     "admin": "Administrador",
     "owner": "Propietario"
   },
+  "profile": {
+    "pageTitle": "Perfil",
+    "noJobTitle": "Sin Título de Trabajo",
+    "unknown": "Desconocido",
+    "tabs": {
+      "profile": "Perfil",
+      "organizations": "Organizaciones",
+      "security": "Seguridad",
+      "serviceAccounts": "Cuentas de Servicio"
+    },
+    "fields": {
+      "fullName": "Nombre Completo",
+      "displayName": "Nombre visible",
+      "displayNameHint": "Se muestra en la aplicación en lugar de tu nombre de usuario. Déjalo vacío para usar tu nombre de usuario. Las cuentas gestionadas por un proveedor de identidad se sobrescriben en la siguiente sincronización del proveedor.",
+      "location": "Ubicación",
+      "email": "Correo",
+      "organization": "Organización",
+      "roles": "Roles",
+      "profileUrl": "URL de Perfil",
+      "verifiedAccounts": "Cuentas Verificadas",
+      "registrationDate": "Fecha de Registro",
+      "emailHash": "Hash de Correo",
+      "userId": "ID de Usuario",
+      "accessToken": "Token de Acceso"
+    },
+    "noLocation": "Sin Ubicación",
+    "noRoles": "Sin roles asignados",
+    "security": {
+      "changePassword": {
+        "title": "Cambiar Contraseña",
+        "newPasswordPlaceholder": "Nueva Contraseña",
+        "confirmPasswordPlaceholder": "Confirmar Contraseña",
+        "button": "Cambiar Contraseña"
+      },
+      "changeEmail": {
+        "title": "Cambiar Correo",
+        "newEmailPlaceholder": "Nuevo Correo",
+        "button": "Cambiar Correo"
+      },
+      "deleteAccount": {
+        "title": "Eliminar Cuenta",
+        "warning": "Advertencia: Esta acción no se puede deshacer.",
+        "button": "Eliminar Mi Cuenta"
+      }
+    },
+    "organizations": {
+      "title": "Mis Organizaciones",
+      "belongToTitle": "Organizaciones a las que Perteneces",
+      "noOrgs": "Aún no perteneces a ninguna organización.",
+      "primary": "Principal",
+      "makePrimary": "Hacer principal",
+      "joined": "Unido",
+      "pendingRequestsTitle": "Solicitudes de Unión Pendientes",
+      "requested": "Solicitado"
+    },
+    "serviceAccounts": {
+      "title": "Cuentas de Servicio",
+      "descriptionPlaceholder": "Descripción",
+      "expiration": {
+        "30": "30 días",
+        "60": "60 días",
+        "90": "90 días",
+        "365": "365 días"
+      },
+      "createButton": "Crear Cuenta de Servicio",
+      "organization": "Organización",
+      "expires": "Expira",
+      "token": "Token",
+      "tokenShownOnce": "Copia este token ahora — se muestra solo una vez y no se puede recuperar después.",
+      "selectAll": "Seleccionar todas",
+      "deleteSelected": "Eliminar seleccionadas ({{count}})",
+      "deleteSelectedModal": {
+        "title": "Eliminar Cuentas de Servicio",
+        "message": "¿Estás seguro de que quieres eliminar las cuentas de servicio seleccionadas? Esta acción no se puede deshacer."
+      }
+    },
+    "deleteModal": {
+      "title": "Eliminar Cuenta",
+      "message": "¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer."
+    },
+    "messages": {
+      "leftOrganization": "Has dejado exitosamente la organización {{orgName}}",
+      "primaryOrganizationSet": "{{orgName}} ahora es tu organización principal",
+      "requestCancelled": "Solicitud de unión cancelada exitosamente",
+      "cancelRequestError": "No se pudo cancelar la solicitud de unión. Por favor intenta de nuevo.",
+      "serviceAccountCreated": "¡Cuenta de servicio creada exitosamente!",
+      "serviceAccountsDeleted": "¡Cuentas de servicio seleccionadas eliminadas exitosamente!",
+      "passwordChanged": "¡Contraseña cambiada exitosamente!",
+      "emailChanged": "¡Correo electrónico cambiado exitosamente!",
+      "nameChanged": "Nombre visible guardado.",
+      "emailNotVerified": "Tu correo electrónico no está verificado."
+    },
+    "errors": {
+      "passwordsDoNotMatch": "¡Las contraseñas no coinciden!",
+      "deleteAccountFailed": "Error al eliminar la cuenta. Por favor intenta de nuevo.",
+      "verificationFailed": "Error al verificar el correo. Por favor intenta de nuevo o contacta soporte.",
+      "activeOrgNotFound": "Error: No se pudo encontrar la organización activa",
+      "createServiceAccountFailed": "Error al crear cuenta de servicio: {{error}}",
+      "deleteServiceAccountsFailed": "Error al eliminar cuentas de servicio: {{error}}",
+      "resendVerificationFailed": "Error al enviar correo de verificación: {{error}}",
+      "changePasswordFailed": "Error al cambiar contraseña: {{error}}",
+      "changeEmailFailed": "Error al cambiar correo: {{error}}",
+      "changeNameFailed": "Error al cambiar el nombre visible: {{error}}",
+      "leaveOrganization": "Error al dejar la organización: {{error}}",
+      "setPrimaryOrganization": "Error al establecer la organización principal: {{error}}"
+    },
+    "buttons": {
+      "resendVerification": "Reenviar correo de verificación",
+      "save": "Guardar",
+      "leave": "Dejar Organización",
+      "cancel": "Cancelar",
+      "delete": "Eliminar"
+    }
+  },
   "inviteAccept": {
     "title": "Invitación a la Organización",
     "validating": "Verificando tu invitación…",

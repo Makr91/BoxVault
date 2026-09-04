@@ -51,6 +51,7 @@ export { default as LoginPage } from './LoginPage';
 export { isManager, isMember, isOwner } from './membership';
 export { default as OrgPage } from './OrgPage';
 export { default as PageHeader } from './PageHeader';
+export { default as ProfilePage, accountShape } from './ProfilePage';
 export { default as ProviderButtons } from './ProviderButtons';
 export { default as ProviderPage } from './ProviderPage';
 export { default as RegisterPage } from './RegisterPage';
