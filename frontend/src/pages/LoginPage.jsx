@@ -5,17 +5,19 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 import { log } from '../chrome';
-import { returnTo, session } from '../chromeProps';
-import { responseMessage } from '../pages';
-import { api } from '../services/api';
-import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
-import AuthShell, { AuthAlert, AuthSpinner } from './AuthShell.component';
-import ProviderButtons from './ProviderButtons.component';
+import {
+  authShape,
+  readStoredLoginMethod,
+  returnToShape,
+  sortMethodsByDefault,
+  storeLoginMethod,
+} from './auth';
+import AuthShell, { AuthAlert, AuthSpinner } from './AuthShell';
+import { responseMessage } from './itemShape';
+import ProviderButtons from './ProviderButtons';
 
-const SILENT_SSO_FLAG = 'boxvault_silent_sso_attempted';
-
-const rememberReturn = urlParams => {
+const rememberReturn = (returnTo, urlParams) => {
   const fromPage = window.location.pathname === '/login' ? '' : window.location.pathname;
   returnTo.remember(returnTo.fromParams(urlParams) || fromPage);
 };
@@ -59,14 +61,14 @@ const hasSilentBlockingParams = urlParams =>
     urlParams.get('logout')
   );
 
-const resolveInitialMode = ({ providerParam, hasOidc, localEnabled }) => {
+const resolveInitialMode = ({ providerParam, hasOidc, localEnabled, loginMethodKey }) => {
   if (!localEnabled) {
     return 'sso';
   }
   if (!hasOidc || providerParam === 'local') {
     return 'password';
   }
-  return readStoredLoginMethod();
+  return readStoredLoginMethod(loginMethodKey);
 };
 
 const deriveLoginView = ({
@@ -268,7 +270,14 @@ LoginMethods.propTypes = {
   onSwitchMode: PropTypes.func.isRequired,
 };
 
-const Login = () => {
+/**
+ * The sign-in page every estate app with a login route draws the same way:
+ * the app's enabled methods from `auth.methods()`, the local form where the
+ * provider carries `login`, one button per identity provider through
+ * `session.begin`, the remembered choice between the two, the one silent SSO
+ * attempt per browser session, and the return path kept for the callback.
+ */
+const LoginPage = ({ session, returnTo, auth, appName }) => {
   const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
@@ -308,8 +317,10 @@ const Login = () => {
   );
 
   const localEnabled = useMemo(
-    () => enabledAuthMethods.some(method => method.id === 'local'),
-    [enabledAuthMethods]
+    () =>
+      typeof session.login === 'function' &&
+      enabledAuthMethods.some(method => method.id === 'local'),
+    [enabledAuthMethods, session]
   );
 
   const oidcMethods = useMemo(
@@ -332,6 +343,7 @@ const Login = () => {
       providerParam,
       hasOidc: visibleOidcMethods.length > 0,
       localEnabled,
+      loginMethodKey: auth.loginMethodKey,
     });
 
   const view = useMemo(
@@ -355,21 +367,21 @@ const Login = () => {
     if (hasSilentBlockingParams(urlParams)) {
       return false;
     }
-    if (session.current()) {
+    if (session.restore()) {
       return false;
     }
-    if (sessionStorage.getItem(SILENT_SSO_FLAG)) {
+    if (sessionStorage.getItem(auth.silentSsoKey)) {
       return false;
     }
     return enabledAuthMethods.some(method => method.id === `oidc-${defaultProvider}`);
-  }, [methodsLoading, silentLogin, defaultProvider, urlParams, enabledAuthMethods]);
+  }, [methodsLoading, silentLogin, defaultProvider, urlParams, enabledAuthMethods, session, auth]);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadAuthMethods = async () => {
       try {
-        const result = await api.auth.methods();
+        const result = await auth.methods();
         if (cancelled) {
           return;
         }
@@ -396,30 +408,30 @@ const Login = () => {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [auth, t]);
 
   useEffect(() => {
     if (!shouldAttemptSilent) {
       return;
     }
     try {
-      sessionStorage.setItem(SILENT_SSO_FLAG, '1');
-      rememberReturn(urlParams);
+      sessionStorage.setItem(auth.silentSsoKey, '1');
+      rememberReturn(returnTo, urlParams);
       session.begin({ method: defaultProvider, silent: true });
     } catch (err) {
       log.auth.error('Silent SSO attempt failed to start', {
         error: err.message,
       });
     }
-  }, [shouldAttemptSilent, defaultProvider, urlParams]);
+  }, [shouldAttemptSilent, defaultProvider, urlParams, auth, returnTo, session]);
 
   const handleSwitchMode = next => {
     setChosenMode(next);
-    storeLoginMethod(next);
+    storeLoginMethod(auth.loginMethodKey, next);
   };
 
   const handleOidcLogin = provider => {
-    rememberReturn(urlParams);
+    rememberReturn(returnTo, urlParams);
     setLoadingProvider(provider);
     setStatusMessage('');
     try {
@@ -477,7 +489,7 @@ const Login = () => {
   }
 
   return (
-    <AuthShell title={t('login.headline')}>
+    <AuthShell title={t('login.headline', { app: appName })}>
       {message && <AuthAlert tone="danger">{message}</AuthAlert>}
 
       {methodsLoading ? (
@@ -500,7 +512,7 @@ const Login = () => {
 
       {!methodsLoading && registrationOpen && (
         <p className="auth-foot">
-          {t('login.newHere')}{' '}
+          {t('login.newHere', { app: appName })}{' '}
           <Link to="/register" className="auth-link">
             {t('login.createAccount')}
           </Link>
@@ -510,4 +522,11 @@ const Login = () => {
   );
 };
 
-export default Login;
+LoginPage.propTypes = {
+  session: PropTypes.object.isRequired,
+  returnTo: returnToShape.isRequired,
+  auth: authShape.isRequired,
+  appName: PropTypes.string.isRequired,
+};
+
+export default LoginPage;

@@ -4,13 +4,14 @@ import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-rou
 
 import './css/styles.css';
 import './css/fonts.css';
-import './css/auth.css';
 import About from './About';
 import { log, useTheme } from './chrome';
 import {
   ACTIVE_ORG_KEY,
   APP_NAME,
   BrandLogo,
+  LOGIN_METHOD_KEY,
+  SILENT_SSO_KEY,
   events,
   i18n,
   push,
@@ -19,19 +20,19 @@ import {
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
 import Admin from './components/admin.component';
-import InviteAccept from './components/InviteAccept.component';
-import Login from './components/login.component';
 import OrgConsole from './components/org-console.component';
 import OrganizationDiscovery from './components/organization-discovery.component';
 import Profile from './components/profile.component';
-import Register from './components/register.component';
 import Setup from './components/setup.component';
 import {
   CollectionPage,
   HomePage,
+  InvitePage,
   ItemPage,
+  LoginPage,
   OrgPage,
   ProviderPage,
+  RegisterPage,
   VersionPage,
   formatFileSize,
   pageContextShape,
@@ -44,7 +45,26 @@ import { isOrgManager, isOrgMember } from './utils/permissions';
 const PREFS_PREFIX = 'boxvault_table_prefs';
 const PROFILE_RELOAD_MS = 69120000;
 
+const authAdapter = {
+  ...api.auth,
+  loginMethodKey: LOGIN_METHOD_KEY,
+  silentSsoKey: SILENT_SSO_KEY,
+};
+
 const persistTheme = preference => session.savePreferences({ theme: preference });
+
+const LoginRoute = () => (
+  <LoginPage session={session} returnTo={returnTo} auth={authAdapter} appName={APP_NAME} />
+);
+
+const InviteRoute = () => (
+  <InvitePage
+    session={session}
+    returnTo={returnTo}
+    auth={authAdapter}
+    activeOrgKey={ACTIVE_ORG_KEY}
+  />
+);
 
 const DiscoverLink = () => {
   const { t } = useTranslation();
@@ -324,13 +344,16 @@ const App = () => {
               path="/organizations/discover"
               element={<OrganizationDiscovery theme={theme} />}
             />
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<LoginRoute />} />
             <Route
               path="/auth/callback"
               element={<CallbackPage complete={session.complete} onDone={afterSignIn} />}
             />
-            <Route path="/register" element={<Register />} />
-            <Route path="/invite/:token" element={<InviteAccept />} />
+            <Route
+              path="/register"
+              element={<RegisterPage session={session} returnTo={returnTo} auth={authAdapter} />}
+            />
+            <Route path="/invite/:token" element={<InviteRoute />} />
             <Route path="/profile" element={<Profile activeOrganization={activeOrganization} />} />
             <Route path="/admin" element={<Admin />} />
             <Route

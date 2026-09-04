@@ -64,6 +64,10 @@ AuthSpinner.propTypes = {
   label: PropTypes.string.isRequired,
 };
 
+/**
+ * The centered column every auth page draws in: an optional icon, the
+ * headline, an optional subhead and the page's own content beneath.
+ */
 const AuthShell = ({ title, subtitle, icon, children }) => (
   <div className="auth-page">
     <div className="auth-column">

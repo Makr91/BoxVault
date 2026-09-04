@@ -1,25 +1,29 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useNotify } from '../chrome';
-import { ACTIVE_ORG_KEY, returnTo, session } from '../chromeProps';
-import { responseMessage } from '../pages';
-import { api } from '../services/api';
-import { isOrgMember } from '../utils/permissions';
+
+import { authShape, returnToShape } from './auth';
+import { responseMessage } from './itemShape';
+import { isMember } from './membership';
 
 /**
- * InviteAccept - landing page for organization invitation links (/invite/:token).
- * Works for existing accounts (local or OIDC) joining an additional organization,
- * which the register/signup flow cannot do.
+ * The landing page of an organization invitation link, `/invite/:token`:
+ * validates the token through `auth.validateInvitation`, sends a visitor
+ * to sign in or register, refuses an account the invitation was not
+ * addressed to, and accepts through `auth.acceptInvitation`, making the
+ * organization active and refreshing the session.
  */
-const InviteAccept = () => {
+const InvitePage = ({ session, returnTo, auth, activeOrgKey }) => {
   const { t } = useTranslation();
   const notify = useNotify();
   const { token } = useParams();
   const navigate = useNavigate();
 
-  const currentUser = session.current();
+  const current = session.restore();
+  const currentUser = current?.user || null;
 
   const [loading, setLoading] = useState(true);
   const [invitation, setInvitation] = useState(null);
@@ -35,7 +39,7 @@ const InviteAccept = () => {
 
     const validate = async () => {
       try {
-        const data = await api.auth.validateInvitation(token);
+        const data = await auth.validateInvitation(token);
         if (!cancelled) {
           setInvitation(data);
         }
@@ -55,13 +59,13 @@ const InviteAccept = () => {
     return () => {
       cancelled = true;
     };
-  }, [token, t]);
+  }, [auth, token, t]);
 
   const handleAccept = async () => {
     setAccepting(true);
     try {
-      const { organization: org } = await api.auth.acceptInvitation(token);
-      localStorage.setItem(ACTIVE_ORG_KEY, org);
+      const { organization: org } = await auth.acceptInvitation(token);
+      localStorage.setItem(activeOrgKey, org);
       await session.refresh();
       window.location.href = `/${org}`;
     } catch (err) {
@@ -99,13 +103,12 @@ const InviteAccept = () => {
     const orgName = invitation.organizationName;
     const roleLabel = t(`roles.${invitation.invitedRole || 'member'}`);
 
-    // Not signed in -> sign in (existing account) or register (new account) to accept.
     if (!currentUser) {
       return (
         <>
           <p>{t('inviteAccept.signInPrompt', { organization: orgName })}</p>
           <div className="d-grid gap-2 col-8 mx-auto">
-            <button className="btn btn-primary" onClick={handleSignIn}>
+            <button type="button" className="btn btn-primary" onClick={handleSignIn}>
               {t('inviteAccept.signIn')}
             </button>
           </div>
@@ -119,7 +122,6 @@ const InviteAccept = () => {
       );
     }
 
-    // Signed in as a different account than the invitation was addressed to.
     const emailMatches =
       currentUser.email &&
       invitation.email &&
@@ -135,7 +137,7 @@ const InviteAccept = () => {
             })}
           </div>
           <div className="d-grid gap-2 col-8 mx-auto">
-            <button className="btn btn-outline-primary" onClick={handleSignIn}>
+            <button type="button" className="btn btn-outline-primary" onClick={handleSignIn}>
               {t('inviteAccept.signIn')}
             </button>
           </div>
@@ -143,8 +145,7 @@ const InviteAccept = () => {
       );
     }
 
-    // Already a member of this organization.
-    if (isOrgMember(currentUser, orgName)) {
+    if (isMember(current.organizations, orgName)) {
       return (
         <>
           <div className="alert alert-info" role="status">
@@ -159,7 +160,6 @@ const InviteAccept = () => {
       );
     }
 
-    // Ready to accept.
     return (
       <>
         <p>
@@ -169,7 +169,12 @@ const InviteAccept = () => {
           })}
         </p>
         <div className="d-grid gap-2 col-8 mx-auto">
-          <button className="btn btn-primary" onClick={handleAccept} disabled={accepting}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleAccept}
+            disabled={accepting}
+          >
             {accepting && <span className="spinner-border spinner-border-sm me-2" />}
             {accepting ? t('inviteAccept.accepting') : t('inviteAccept.accept')}
           </button>
@@ -188,4 +193,11 @@ const InviteAccept = () => {
   );
 };
 
-export default InviteAccept;
+InvitePage.propTypes = {
+  session: PropTypes.object.isRequired,
+  returnTo: returnToShape.isRequired,
+  auth: authShape.isRequired,
+  activeOrgKey: PropTypes.string.isRequired,
+};
+
+export default InvitePage;

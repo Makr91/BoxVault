@@ -5,22 +5,26 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router-dom';
 
 import { log } from '../chrome';
-import { returnTo, session } from '../chromeProps';
-import { responseMessage } from '../pages';
-import { api } from '../services/api';
-import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
-import AuthShell, { AuthAlert, AuthSpinner, InboxIcon } from './AuthShell.component';
-import ProviderButtons from './ProviderButtons.component';
+import {
+  authShape,
+  readStoredLoginMethod,
+  returnToShape,
+  sortMethodsByDefault,
+  storeLoginMethod,
+} from './auth';
+import AuthShell, { AuthAlert, AuthSpinner, InboxIcon } from './AuthShell';
+import { responseMessage } from './itemShape';
+import ProviderButtons from './ProviderButtons';
 
-const resolveInitialMode = ({ localAllowed, hasOidc }) => {
+const resolveInitialMode = ({ localAllowed, hasOidc, loginMethodKey }) => {
   if (!localAllowed) {
     return 'sso';
   }
   if (!hasOidc) {
     return 'local';
   }
-  return readStoredLoginMethod() === 'password' ? 'local' : 'sso';
+  return readStoredLoginMethod(loginMethodKey) === 'password' ? 'local' : 'sso';
 };
 
 const deriveRegisterView = ({ mode, localAllowed, hasOidc }) => {
@@ -271,7 +275,14 @@ RegisterMethods.propTypes = {
   onSwitchMode: PropTypes.func.isRequired,
 };
 
-const Register = () => {
+/**
+ * The registration page every estate app with a register route draws the
+ * same way: the local form where `auth.methods()` allows self-registration
+ * or the URL carries an invitation token, one button per identity provider
+ * through `session.begin`, and the check-your-inbox state after a local
+ * sign-up.
+ */
+const RegisterPage = ({ session, returnTo, auth }) => {
   const { t } = useTranslation(['auth', 'common']);
   const location = useLocation();
 
@@ -302,7 +313,7 @@ const Register = () => {
 
     const loadAuthMethods = async () => {
       try {
-        const result = await api.auth.methods();
+        const result = await auth.methods();
         if (cancelled) {
           return;
         }
@@ -329,7 +340,7 @@ const Register = () => {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [auth, t]);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -338,7 +349,7 @@ const Register = () => {
       if (token) {
         setInvitationToken(token);
         try {
-          const invitation = await api.auth.validateInvitation(token);
+          const invitation = await auth.validateInvitation(token);
           setOrganizationName(invitation.organizationName);
         } catch (error) {
           log.auth.error('Invalid or expired token', {
@@ -350,7 +361,7 @@ const Register = () => {
     };
 
     validateToken();
-  }, [location]);
+  }, [auth, location]);
 
   const enabledAuthMethods = useMemo(
     () => authMethods.filter(method => method.enabled),
@@ -367,12 +378,14 @@ const Register = () => {
   );
   const hasOidc = oidcMethods.length > 0;
   const localAllowed = localEnabled && (localRegistrationEnabled || !!invitationToken);
-  const mode = chosenMode || resolveInitialMode({ localAllowed, hasOidc });
+  const mode =
+    chosenMode ||
+    resolveInitialMode({ localAllowed, hasOidc, loginMethodKey: auth.loginMethodKey });
   const view = deriveRegisterView({ mode, localAllowed, hasOidc });
 
   const handleSwitchMode = next => {
     setChosenMode(next);
-    storeLoginMethod(next === 'local' ? 'password' : 'sso');
+    storeLoginMethod(auth.loginMethodKey, next === 'local' ? 'password' : 'sso');
   };
 
   const handleInputChange = event => {
@@ -407,7 +420,7 @@ const Register = () => {
 
     setIsSubmitting(true);
     setStatus(null);
-    api.auth
+    auth
       .register({
         username: formValues.username,
         email: formValues.email,
@@ -477,4 +490,10 @@ const Register = () => {
   );
 };
 
-export default Register;
+RegisterPage.propTypes = {
+  session: PropTypes.object.isRequired,
+  returnTo: returnToShape.isRequired,
+  auth: authShape.isRequired,
+};
+
+export default RegisterPage;

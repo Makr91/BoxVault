@@ -21,6 +21,8 @@ export const POWERED_BY = {
   logoSrc: 'https://startcloud.com/assets/images/logos/startcloud-logo40.png',
 };
 export const ACTIVE_ORG_KEY = 'activeOrganization';
+export const LOGIN_METHOD_KEY = 'boxvault_login_method';
+export const SILENT_SSO_KEY = 'boxvault_silent_sso_attempted';
 
 export const events = createSessionEvents();
 
