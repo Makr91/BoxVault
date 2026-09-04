@@ -9,7 +9,14 @@ const normalizeUrl = url => url.replace(/\/+$/, '');
 
 const isOidc = user => Boolean(user?.provider?.startsWith('oidc-'));
 
-const organizationsOf = user =>
+/**
+ * The memberships of a backend profile in the chrome's organization shape:
+ * the name as the uuid, because local organizations have none, the role
+ * upper-cased into the roles list, and the primary flag.
+ * @param {Object|null|undefined} user - The stored profile
+ * @returns {Array<{ uuid: string, name: string, roles: string[], primary: boolean }>}
+ */
+export const profileMemberships = user =>
   (Array.isArray(user?.organizations) ? user.organizations : []).map(org => ({
     uuid: org.name,
     name: org.name,
@@ -137,7 +144,7 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
   const restore = () => {
     const user = current();
     return user
-      ? { user, organizations: organizationsOf(user), oidc: isOidc(user), issuerUrl: '' }
+      ? { user, organizations: profileMemberships(user), oidc: isOidc(user), issuerUrl: '' }
       : null;
   };
 

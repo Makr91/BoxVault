@@ -1,4 +1,5 @@
 import { isManager, isMember, isOwner } from '../pages';
+import { profileMemberships } from '../session';
 
 /**
  * Authorization helpers shared across components.
@@ -19,22 +20,13 @@ import { isManager, isMember, isOwner } from '../pages';
  *     member roles ................. org admin/owner OR global admin -> isOrgManager
  */
 
-/** The stored memberships in the chrome's organization shape. */
-export const memberships = user =>
-  (Array.isArray(user?.organizations) ? user.organizations : []).map(org => ({
-    uuid: org.name,
-    name: org.name,
-    roles: org.role ? [String(org.role).toUpperCase()] : [],
-    primary: Boolean(org.isPrimary),
-  }));
-
 /** Whether the user holds the global admin role (matches App.jsx / backend isAdmin). */
 export const isGlobalAdmin = user =>
   Boolean(user) && Array.isArray(user.roles) && user.roles.includes('ROLE_ADMIN');
 
 /** Member of the organization (any role). Mirrors verifyOrgAccess.isOrgMember. */
 export const isOrgMember = (user, organizationName) =>
-  isMember(memberships(user), organizationName);
+  isMember(profileMemberships(user), organizationName);
 
 /**
  * Org admin/owner, or a global admin.
@@ -42,14 +34,14 @@ export const isOrgMember = (user, organizationName) =>
  * Used for org settings, member-role management, and bulk delete.
  */
 export const isOrgManager = (user, organizationName) =>
-  isManager(memberships(user), organizationName, isGlobalAdmin(user));
+  isManager(profileMemberships(user), organizationName, isGlobalAdmin(user));
 
 /**
  * Org owner specifically, or a global admin.
  * Mirrors verifyOrgAccess.isOrgOwner (gates per-org role changes + org deletion).
  */
 export const isOrgOwner = (user, organizationName) =>
-  isOwner(memberships(user), organizationName, isGlobalAdmin(user));
+  isOwner(profileMemberships(user), organizationName, isGlobalAdmin(user));
 
 /**
  * Whether the user may mutate a box's content (edit/delete the box, and
@@ -69,5 +61,5 @@ export const canManageBox = (user, organizationName, box) => {
   if (box && box.userId === user.id) {
     return true;
   }
-  return isManager(memberships(user), organizationName);
+  return isManager(profileMemberships(user), organizationName);
 };

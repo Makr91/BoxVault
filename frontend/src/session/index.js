@@ -1,4 +1,4 @@
-export { createBackendSession } from './backendSession';
+export { createBackendSession, profileMemberships } from './backendSession';
 export { createBrowserOidc } from './browserOidc';
 export { default as CallbackPage } from './CallbackPage';
 export { createSessionEvents, subscribeTerminateStream } from './events';
