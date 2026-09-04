@@ -60,7 +60,8 @@
   "roles": {
     "member": "Miembro",
     "admin": "Administrador",
-    "owner": "Propietario"
+    "owner": "Propietario",
+    "user": "Usuario"
   },
   "profile": {
     "pageTitle": "Perfil",
@@ -174,6 +175,140 @@
       "leave": "Dejar Organización",
       "cancel": "Cancelar",
       "delete": "Eliminar"
+    }
+  },
+  "orgConsole": {
+    "pageTitle": "Consola de Org",
+    "title": "Consola de la Organización",
+    "noActiveOrganization": "No hay una organización activa seleccionada. Elige una en el selector de organizaciones para administrarla.",
+    "orgNameRequired": "El nombre de la organización es obligatorio.",
+    "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos.",
+    "orgEmailRequired": "El correo de la organización es obligatorio.",
+    "orgExists": "Ya existe una organización con este nombre. Por favor elige un nombre diferente.",
+    "orgUpdateSuccess": "¡Organización actualizada exitosamente!",
+    "orgUpdateError": "Error al actualizar la organización. Por favor intenta de nuevo.",
+    "tabs": {
+      "organization": "Organización",
+      "joinRequests": "Solicitudes de Unión",
+      "invitations": "Invitaciones"
+    },
+    "buttons": {
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "removeFromOrg": "Eliminar de Org",
+      "suspend": "Suspender",
+      "resume": "Reanudar",
+      "deleteUser": "Eliminar Usuario"
+    },
+    "messages": {
+      "operationSuccessful": "Operación completada exitosamente",
+      "operationFailed": "Operación fallida",
+      "deleteFailed": "Eliminación fallida"
+    },
+    "organization": {
+      "title": "Detalles de la Organización",
+      "ssoManaged": "Gestionada por SSO",
+      "ssoManagedHint": "Esta organización está gestionada por tu proveedor de identidad. La membresía, los roles, el renombrado y la eliminación se gestionan allí y se sincronizan automáticamente.",
+      "name": "Nombre de la Organización",
+      "email": "Correo de la Organización",
+      "emailHash": "Hash de Correo de la Organización",
+      "emailHashHint": "Generado automáticamente desde el correo de la organización",
+      "description": "Descripción de la Organización",
+      "accessMode": "Modo de Acceso",
+      "accessModes": {
+        "private": "Privado (No listado)",
+        "inviteOnly": "Solo Invitación (Listado)",
+        "requestToJoin": "Solicitud para Unirse (Listado)"
+      },
+      "accessModeHint": "Controla la visibilidad de la organización y métodos de unión",
+      "defaultRole": "Rol Predeterminado",
+      "defaultRoleHint": "Rol predeterminado para nuevos miembros",
+      "url": "URL de la Organización",
+      "telephone": "Teléfono",
+      "locale": "Configuración Regional",
+      "timezone": "Zona Horaria",
+      "address": "Dirección",
+      "updateButton": "Actualizar Organización",
+      "manageAtIdp": "Administrar en el Proveedor de Identidad",
+      "listed": "Listada en descubrimiento",
+      "unlisted": "No listada"
+    },
+    "users": {
+      "title": "Usuarios en {{organization}}",
+      "boxes": "Boxes",
+      "roles": "Roles",
+      "suspended": "Suspendido",
+      "removeSuccess": "Miembro eliminado de la organización.",
+      "removeError": "No se pudo eliminar al miembro. Por favor intenta de nuevo."
+    },
+    "joinRequest": {
+      "title": "Solicitudes de Unión Pendientes",
+      "user": "Usuario",
+      "noRequests": "No hay solicitudes de unión pendientes.",
+      "email": "Correo",
+      "message": "Mensaje",
+      "requested": "Solicitado",
+      "actions": "Acciones",
+      "noMessage": "Sin mensaje",
+      "approveAsMember": "Aprobar como Miembro",
+      "approveAsAdmin": "Aprobar como Administrador",
+      "deny": "Denegar",
+      "approved": "¡Solicitud de unión aprobada exitosamente!",
+      "approveError": "Error al aprobar solicitud: {{error}}",
+      "denied": "Solicitud de unión denegada.",
+      "denyError": "Error al denegar solicitud: {{error}}"
+    },
+    "invitation": {
+      "manageTitle": "Gestionar Invitaciones",
+      "sendTitle": "Enviar Nueva Invitación",
+      "email": "Dirección de Correo",
+      "assignRole": "Asignar Rol",
+      "sendButton": "Enviar Invitación",
+      "sent": "¡Invitación enviada!",
+      "activeTitle": "Invitaciones Activas",
+      "noActive": "No hay invitaciones activas.",
+      "expires": "Expira",
+      "accepted": "Aceptado",
+      "expired": "Caducado",
+      "link": "Enlace de Invitación",
+      "linkText": "Enlace de Invitación",
+      "managedByIdp": "Enviada por el proveedor de identidad",
+      "actions": "Acciones",
+      "token": "Token",
+      "orgId": "ID de Organización",
+      "sendWarning": "Advertencia: Invitación creada pero el correo puede no haberse enviado. Puedes copiar el enlace de abajo y enviarlo manualmente."
+    }
+  },
+  "discovery": {
+    "discoverButton": "Descubrir organizaciones",
+    "title": "Descubrir Organizaciones",
+    "description": "Explora organizaciones públicas y solicita unirte a ellas.",
+    "searchPlaceholder": "Buscar organizaciones...",
+    "noOrgsFoundTitle": "No se Encontraron Organizaciones",
+    "noDescription": "Sin descripción disponible",
+    "noOrgsFoundSearch": "Ninguna organización coincide con tus criterios de búsqueda.",
+    "noOrgsFoundPublic": "No hay organizaciones públicas disponibles actualmente para descubrimiento.",
+    "members": "miembros",
+    "public": "público",
+    "private": "privado",
+    "buttons": {
+      "inviteOnly": "Solo Invitación",
+      "requestToJoin": "Solicitar Unirse",
+      "private": "Privado",
+      "sendRequest": "Enviar Solicitud"
+    },
+    "modal": {
+      "title": "Solicitar Unirse a {{orgName}}",
+      "description": "Cuéntale a <strong>{{orgName}}</strong> por qué quieres unirte.",
+      "placeholder": "Ingresa tu razón para querer unirte a esta organización..."
+    },
+    "errors": {
+      "load": "Error al cargar organizaciones",
+      "emptyMessage": "Por favor ingresa un mensaje explicando por qué quieres unirte",
+      "requestFailed": "Error al solicitar unirse a {{orgName}}"
+    },
+    "messages": {
+      "requestSent": "¡Solicitud de unión enviada a {{orgName}} exitosamente!"
     }
   },
   "inviteAccept": {

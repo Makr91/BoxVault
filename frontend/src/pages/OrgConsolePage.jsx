@@ -4,12 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
 import { log, useNavbarSearchBinding, useNotify } from '../chrome';
-import { ACTIVE_ORG_KEY, session } from '../chromeProps';
-import { ConfirmModal, responseMessage } from '../pages';
-import { api } from '../services/api';
-import { isOrgOwner } from '../utils/permissions';
 
-import UserCard from './UserCard.component';
+import ConfirmModal from './ConfirmModal';
+import { responseMessage } from './itemShape';
+import { isOwner } from './membership';
+import { ORG_NAME_PATTERN, membershipsOf, organizationsShape } from './organizations';
+import UserCard from './UserCard';
 
 const NO_FILTERS = [];
 const clearNothing = () => undefined;
@@ -19,7 +19,7 @@ const MembersSearch = ({ query, onQueryChange, matched, total }) => {
   useNavbarSearchBinding({
     query,
     onQueryChange,
-    placeholder: t('common:actions.search'),
+    placeholder: t('search.open'),
     matched,
     total,
     groups: NO_FILTERS,
@@ -43,14 +43,13 @@ const OrgConsoleTabs = ({
   joinRequestCount,
 }) => {
   const { t } = useTranslation();
-  // SSO orgs take join requests too when the IdP-managed access mode allows
-  // them; approval then delegates an IdP invite instead of a local membership.
   const showJoinRequests = !isExternalOrg || orgAccessMode === 'request_to_join';
 
   return (
     <ul className="nav nav-tabs">
       <li className="nav-item">
         <button
+          type="button"
           className={`nav-link ${activeTab === 'organization' ? 'active' : ''}`}
           onClick={() => setActiveTab('organization')}
         >
@@ -60,6 +59,7 @@ const OrgConsoleTabs = ({
       {showJoinRequests && (
         <li className="nav-item">
           <button
+            type="button"
             className={`nav-link ${activeTab === 'joinRequests' ? 'active' : ''}`}
             onClick={() => setActiveTab('joinRequests')}
           >
@@ -70,10 +70,9 @@ const OrgConsoleTabs = ({
           </button>
         </li>
       )}
-      {/* Invitations stay available for SSO-managed orgs too: their invites
-          are delegated to the identity provider's invite API. */}
       <li className="nav-item">
         <button
+          type="button"
           className={`nav-link ${activeTab === 'invitations' ? 'active' : ''}`}
           onClick={() => setActiveTab('invitations')}
         >
@@ -92,9 +91,6 @@ OrgConsoleTabs.propTypes = {
   joinRequestCount: PropTypes.number.isRequired,
 };
 
-// address is an object of RFC 7643 §4.1.2 sub-attributes. Prefer the
-// provider-formatted value; otherwise join the present sub-attributes.
-// streetAddress may contain newlines — they are preserved for display.
 const formatOrgAddress = address => {
   if (!address) {
     return '';
@@ -113,13 +109,9 @@ const formatOrgAddress = address => {
     .join(', ');
 };
 
-// Normalized console state from a fetched org-details payload — all the
-// defaulting lives here so the loader stays simple.
 const extractOrgDetailsState = orgDetails => ({
   name: orgDetails.name,
   isExternalOrg: !!orgDetails.external_issuer,
-  // Canonical IdP org-management deep link: the fragment scrolls the
-  // provider's organizations page straight to this org's card.
   idpLink:
     orgDetails.external_issuer && orgDetails.external_org_id
       ? `${orgDetails.external_issuer.replace(/\/+$/, '')}/user/organizations#${orgDetails.external_org_id}`
@@ -138,7 +130,6 @@ const extractOrgDetailsState = orgDetails => ({
   address: formatOrgAddress(orgDetails.address),
 });
 
-// One label/value row of the SSO profile display.
 const OrgProfileRow = ({ row }) => {
   const { t } = useTranslation();
 
@@ -173,8 +164,6 @@ const ACCESS_MODE_LABEL_KEYS = {
   request_to_join: 'orgConsole.organization.accessModes.requestToJoin',
 };
 
-// SSO orgs render as a read-only profile: everything shown here is IdP-truth
-// (synced via SCIM), and management happens at the provider via the deep link.
 const OrgProfileDisplay = ({
   orgName,
   orgDisplayName,
@@ -270,10 +259,6 @@ OrgProfileDisplay.propTypes = {
   orgIdpLink: PropTypes.string.isRequired,
 };
 
-// The accept URL IS the invitation credential, so the identity provider never
-// returns it for the orgs it manages — a console that displayed it would turn a
-// single-recipient email into a shared one. Those rows link to the provider
-// instead, and fall back to plain text when the org carries no provider link.
 const InvitationLinkCell = ({ invitation, orgIdpLink }) => {
   const { t } = useTranslation();
 
@@ -342,18 +327,21 @@ const JoinRequestsTab = ({ joinRequests, onApprove, onDeny }) => {
                     <td>
                       <div className="btn-group" role="group">
                         <button
+                          type="button"
                           className="btn btn-success btn-sm"
                           onClick={() => onApprove(request.id, 'member')}
                         >
                           {t('orgConsole.joinRequest.approveAsMember')}
                         </button>
                         <button
+                          type="button"
                           className="btn btn-warning btn-sm"
                           onClick={() => onApprove(request.id, 'admin')}
                         >
                           {t('orgConsole.joinRequest.approveAsAdmin')}
                         </button>
                         <button
+                          type="button"
                           className="btn btn-danger btn-sm"
                           onClick={() => onDeny(request.id)}
                         >
@@ -416,8 +404,12 @@ const InvitationsTable = ({ invitations, orgIdpLink, onDelete }) => {
                 <InvitationLinkCell invitation={invitation} orgIdpLink={orgIdpLink} />
               </td>
               <td>
-                <button className="btn btn-danger btn-sm" onClick={() => onDelete(invitation)}>
-                  {t('buttons.delete')}
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => onDelete(invitation)}
+                >
+                  {t('orgConsole.buttons.delete')}
                 </button>
               </td>
             </tr>
@@ -434,7 +426,17 @@ InvitationsTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
 };
 
-const OrgConsole = ({ currentOrganization }) => {
+/**
+ * The console of the active organization for its owners and admins:
+ * Organization (the editable record and access mode of a local
+ * organization, the read-only profile and the provider link of an
+ * IdP-managed one, the members with role and removal controls), Join
+ * requests (approve as member or admin, deny) and Invitations (send, list,
+ * delete), every call through the app's `organizations` adapter; `admin`
+ * is the app's global-admin flag, and a rename makes the new name the
+ * active organization under `activeOrgKey` and refreshes the session.
+ */
+const OrgConsolePage = ({ session, activeOrgKey, organizations, org, admin }) => {
   const { t } = useTranslation();
   const notify = useNotify();
   useEffect(() => {
@@ -465,24 +467,18 @@ const OrgConsole = ({ currentOrganization }) => {
   const [orgIdpLink, setOrgIdpLink] = useState('');
   const [orgDisplayName, setOrgDisplayName] = useState('');
   const [activeTab, setActiveTab] = useState('organization');
-  const currentUser = session.current();
-  const canManageRoles = isOrgOwner(currentUser, currentOrganization);
+  const current = session.restore();
+  const currentUser = current ? current.user : null;
+  const canManageRoles = isOwner(membershipsOf(current), org, admin);
   const [searchTerm, setSearchTerm] = useState('');
-  // Access mode / default role as loaded, so save only calls the dedicated
-  // endpoint when one of them actually changed.
   const loadedAccessRef = useRef({
     accessMode: 'private',
     defaultRole: 'member',
   });
 
-  const validateOrgName = orgName => {
-    const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-    return orgName && validCharsRegex.test(orgName);
-  };
-
   const checkOrganizationExists = async name => {
     try {
-      return Boolean(await api.organizations.get(name));
+      return Boolean(await organizations.get(name));
     } catch (error) {
       log.api.error('Error checking organization existence', {
         name,
@@ -492,26 +488,20 @@ const OrgConsole = ({ currentOrganization }) => {
     }
   };
 
-  // Derived rather than state: an effect that flips a loading flag has to write
-  // state synchronously on mount, and switching organizations has to flip it
-  // back. Comparing the loaded organization to the requested one expresses the
-  // same thing without either write.
-  const loading = Boolean(currentOrganization) && loadedOrganization !== currentOrganization;
+  const loading = Boolean(org) && loadedOrganization !== org;
 
   useEffect(() => {
-    if (!currentOrganization) {
+    if (!org) {
       return;
     }
 
     const loadData = async () => {
-      // Each call settles independently so one failure cannot blank the
-      // data loaded by the other three.
       const [orgUsersResult, invitationsResult, orgDetailsResult, joinRequestsResult] =
         await Promise.allSettled([
-          api.organizations.users(currentOrganization),
-          api.invitations.active(currentOrganization),
-          api.organizations.get(currentOrganization),
-          api.requests.forOrg(currentOrganization),
+          organizations.users(org),
+          organizations.invitations(org),
+          organizations.get(org),
+          organizations.requests(org),
         ]);
 
       const failures = [
@@ -523,7 +513,7 @@ const OrgConsole = ({ currentOrganization }) => {
 
       failures.forEach(({ name, result }) => {
         log.api.error('Error fetching org console data', {
-          organization: currentOrganization,
+          organization: org,
           call: name,
           error: result.reason?.message,
         });
@@ -561,20 +551,19 @@ const OrgConsole = ({ currentOrganization }) => {
         setOrgAddress(details.address);
       }
 
-      setLoadedOrganization(currentOrganization);
+      setLoadedOrganization(org);
     };
 
     loadData();
-  }, [currentOrganization]);
+  }, [org, organizations]);
 
   const handleUpdateOrganization = async e => {
     e.preventDefault();
-    // Validation
     if (!newOrgName.trim()) {
       notify('danger', t('orgConsole.orgNameRequired'));
       return;
     }
-    if (!validateOrgName(newOrgName)) {
+    if (!ORG_NAME_PATTERN.test(newOrgName)) {
       notify('danger', t('orgConsole.invalidOrgName'));
       return;
     }
@@ -583,7 +572,7 @@ const OrgConsole = ({ currentOrganization }) => {
       return;
     }
 
-    if (newOrgName !== currentOrganization) {
+    if (newOrgName !== org) {
       const organizationExists = await checkOrganizationExists(newOrgName);
       if (organizationExists) {
         notify('danger', t('orgConsole.orgExists'));
@@ -592,25 +581,22 @@ const OrgConsole = ({ currentOrganization }) => {
     }
 
     try {
-      await api.organizations.update(currentOrganization, {
+      await organizations.update(org, {
         organization: newOrgName,
         email: orgEmail,
         description: orgDescription,
       });
 
-      if (newOrgName !== currentOrganization) {
-        localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
+      if (newOrgName !== org) {
+        localStorage.setItem(activeOrgKey, newOrgName);
         await session.refresh();
       }
 
-      // Local orgs: persist access mode / default role through the
-      // dedicated endpoint when either differs from what was loaded.
-      // newOrgName is the org's current name even after a rename above.
       const accessChanged =
         orgAccessMode !== loadedAccessRef.current.accessMode ||
         orgDefaultRole !== loadedAccessRef.current.defaultRole;
       if (!isExternalOrg && accessChanged) {
-        await api.organizations.accessMode(newOrgName, orgAccessMode, orgDefaultRole);
+        await organizations.accessMode(newOrgName, orgAccessMode, orgDefaultRole);
         loadedAccessRef.current = {
           accessMode: orgAccessMode,
           defaultRole: orgDefaultRole,
@@ -619,7 +605,7 @@ const OrgConsole = ({ currentOrganization }) => {
       notify('success', t('orgConsole.orgUpdateSuccess'));
     } catch (error) {
       log.component.error('Error updating organization', {
-        organization: currentOrganization,
+        organization: org,
         error: error.message,
       });
       notify('danger', t('orgConsole.orgUpdateError'));
@@ -627,20 +613,20 @@ const OrgConsole = ({ currentOrganization }) => {
   };
 
   const handleSetOrgRole = (userId, newRole) => {
-    api.organizations
-      .memberRole(currentOrganization, userId, newRole)
+    organizations
+      .memberRole(org, userId, newRole)
       .then(() => {
         setUsers(prevUsers =>
           prevUsers.map(user => (user.id === userId ? { ...user, orgRole: newRole } : user))
         );
-        notify('success', t('messages.operationSuccessful'));
+        notify('success', t('orgConsole.messages.operationSuccessful'));
       })
       .catch(error => {
         log.component.error('Error updating user org role', {
           userId,
           error: error.message,
         });
-        notify('danger', t('messages.operationFailed'));
+        notify('danger', t('orgConsole.messages.operationFailed'));
       });
   };
 
@@ -652,9 +638,9 @@ const OrgConsole = ({ currentOrganization }) => {
   const handleSendInvitation = async e => {
     e.preventDefault();
     try {
-      const sent = await api.auth.invite({
+      const sent = await organizations.invite({
         email,
-        organizationName: currentOrganization,
+        organizationName: org,
         inviteRole,
       });
       const invitationDetails = `${t('orgConsole.invitation.sent')}
@@ -667,16 +653,13 @@ const OrgConsole = ({ currentOrganization }) => {
     } catch (error) {
       log.component.error('Error sending invitation', {
         email,
-        organization: currentOrganization,
+        organization: org,
         error: error.message,
       });
-      // Prefer the server's own message (e.g. the identity provider's reason
-      // for refusing a delegated invite) over the generic local warning.
       notify('danger', responseMessage(error, t('orgConsole.invitation.sendWarning')));
     } finally {
-      // Always refresh invitations list (even if email failed)
       try {
-        setActiveInvitations(await api.invitations.active(currentOrganization));
+        setActiveInvitations(await organizations.invitations(org));
       } catch (error) {
         log.component.error('Error refreshing invitations', {
           error: error.message,
@@ -697,8 +680,8 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const handleConfirmDelete = () => {
     if (itemToDelete && itemToDelete.type === 'invitation') {
-      api.invitations
-        .remove(itemToDelete.id)
+      organizations
+        .removeInvitation(itemToDelete.id)
         .then(() => {
           setActiveInvitations(prevInvitations =>
             prevInvitations.filter(invitation => invitation.id !== itemToDelete.id)
@@ -710,14 +693,14 @@ const OrgConsole = ({ currentOrganization }) => {
             invitationId: itemToDelete.id,
             error: error.message,
           });
-          notify('danger', t('messages.deleteFailed'));
+          notify('danger', t('orgConsole.messages.deleteFailed'));
           handleCloseDeleteModal();
         });
     }
 
     if (itemToDelete && itemToDelete.type === 'user_remove') {
-      api.organizations
-        .removeMember(currentOrganization, itemToDelete.id)
+      organizations
+        .removeMember(org, itemToDelete.id)
         .then(() => {
           setUsers(prevUsers => prevUsers.filter(user => user.id !== itemToDelete.id));
           notify('success', t('orgConsole.users.removeSuccess'));
@@ -726,7 +709,7 @@ const OrgConsole = ({ currentOrganization }) => {
         .catch(error => {
           log.component.error('Error removing user from org', {
             userId: itemToDelete.id,
-            organization: currentOrganization,
+            organization: org,
             error: error.message,
           });
           notify('danger', t('orgConsole.users.removeError'));
@@ -737,11 +720,9 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const handleApproveJoinRequest = async (requestId, assignedRole = 'member') => {
     try {
-      await api.requests.approve(currentOrganization, requestId, assignedRole);
+      await organizations.approveRequest(org, requestId, assignedRole);
       notify('success', t('orgConsole.joinRequest.approved'));
-
-      // Refresh join requests list
-      setJoinRequests((await api.requests.forOrg(currentOrganization)) || []);
+      setJoinRequests((await organizations.requests(org)) || []);
     } catch (error) {
       log.component.error('Error approving join request', {
         requestId,
@@ -753,11 +734,9 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const handleDenyJoinRequest = async requestId => {
     try {
-      await api.requests.deny(currentOrganization, requestId);
+      await organizations.denyRequest(org, requestId);
       notify('success', t('orgConsole.joinRequest.denied'));
-
-      // Refresh join requests list
-      setJoinRequests((await api.requests.forOrg(currentOrganization)) || []);
+      setJoinRequests((await organizations.requests(org)) || []);
     } catch (error) {
       log.component.error('Error denying join request', {
         requestId,
@@ -790,7 +769,7 @@ const OrgConsole = ({ currentOrganization }) => {
         joinRequestCount={joinRequests.length}
       />
 
-      {!loading && !currentOrganization && (
+      {!loading && !org && (
         <div className="alert alert-warning mt-3" role="alert">
           {t('orgConsole.noActiveOrganization')}
         </div>
@@ -810,9 +789,9 @@ const OrgConsole = ({ currentOrganization }) => {
                       {isExternalOrg && (
                         <span
                           className="badge bg-info ms-2"
-                          title={t('orgUserManager.ssoManagedHint')}
+                          title={t('orgConsole.organization.ssoManagedHint')}
                         >
-                          {t('orgUserManager.ssoManaged')}
+                          {t('orgConsole.organization.ssoManaged')}
                         </span>
                       )}
                     </h4>
@@ -821,7 +800,7 @@ const OrgConsole = ({ currentOrganization }) => {
                     {isExternalOrg && (
                       <>
                         <div className="alert alert-info" role="status">
-                          {t('orgUserManager.ssoManagedHint')}
+                          {t('orgConsole.organization.ssoManagedHint')}
                         </div>
                         <OrgProfileDisplay
                           orgName={newOrgName}
@@ -950,7 +929,7 @@ const OrgConsole = ({ currentOrganization }) => {
                   <div className="card-header">
                     <h4>
                       {t('orgConsole.users.title', {
-                        organization: currentOrganization,
+                        organization: org,
                       })}
                     </h4>
                   </div>
@@ -968,6 +947,7 @@ const OrgConsole = ({ currentOrganization }) => {
                           user={user}
                           currentUser={currentUser}
                           orgRole={user.orgRole}
+                          gravatarProfile={organizations.gravatarProfile}
                           onChangeRole={
                             canManageMembership
                               ? newRole => handleSetOrgRole(user.id, newRole)
@@ -1057,7 +1037,9 @@ const OrgConsole = ({ currentOrganization }) => {
         show={showDeleteModal}
         handleClose={handleCloseDeleteModal}
         handleConfirm={handleConfirmDelete}
-        title={itemToDelete?.type === 'user_remove' ? t('buttons.removeFromOrg') : undefined}
+        title={
+          itemToDelete?.type === 'user_remove' ? t('orgConsole.buttons.removeFromOrg') : undefined
+        }
         message={
           itemToDelete?.type === 'user_remove'
             ? t('pages.confirm.message', { keyword: t('pages.confirm.keyword') })
@@ -1068,8 +1050,12 @@ const OrgConsole = ({ currentOrganization }) => {
   );
 };
 
-OrgConsole.propTypes = {
-  currentOrganization: PropTypes.string.isRequired,
+OrgConsolePage.propTypes = {
+  session: PropTypes.object.isRequired,
+  activeOrgKey: PropTypes.string.isRequired,
+  organizations: organizationsShape.isRequired,
+  org: PropTypes.string.isRequired,
+  admin: PropTypes.bool.isRequired,
 };
 
-export default OrgConsole;
+export default OrgConsolePage;

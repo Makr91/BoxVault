@@ -60,7 +60,8 @@
   "roles": {
     "member": "Member",
     "admin": "Administrator",
-    "owner": "Owner"
+    "owner": "Owner",
+    "user": "User"
   },
   "profile": {
     "pageTitle": "Profile",
@@ -174,6 +175,140 @@
       "leave": "Leave Organization",
       "cancel": "Cancel",
       "delete": "Delete"
+    }
+  },
+  "orgConsole": {
+    "pageTitle": "Org Console",
+    "title": "Organization Console",
+    "noActiveOrganization": "No active organization is selected. Pick one from the organization switcher to manage it.",
+    "orgNameRequired": "Organization name is required.",
+    "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
+    "orgEmailRequired": "Organization email is required.",
+    "orgExists": "An organization with this name already exists. Please choose a different name.",
+    "orgUpdateSuccess": "Organization updated successfully!",
+    "orgUpdateError": "Error updating organization. Please try again.",
+    "tabs": {
+      "organization": "Organization",
+      "joinRequests": "Join Requests",
+      "invitations": "Invitations"
+    },
+    "buttons": {
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "removeFromOrg": "Remove from Org",
+      "suspend": "Suspend",
+      "resume": "Resume",
+      "deleteUser": "Delete User"
+    },
+    "messages": {
+      "operationSuccessful": "Operation completed successfully",
+      "operationFailed": "Operation failed",
+      "deleteFailed": "Delete failed"
+    },
+    "organization": {
+      "title": "Organization Details",
+      "ssoManaged": "Managed by SSO",
+      "ssoManagedHint": "This organization is managed by your identity provider. Membership, roles, renaming, and deletion are handled there and synced automatically.",
+      "name": "Organization Name",
+      "email": "Organization Email",
+      "emailHash": "Organization Email Hash",
+      "emailHashHint": "Automatically generated from organization email",
+      "description": "Organization Description",
+      "accessMode": "Access Mode",
+      "accessModes": {
+        "private": "Private (Unlisted)",
+        "inviteOnly": "Invite Only (Listed)",
+        "requestToJoin": "Request to Join (Listed)"
+      },
+      "accessModeHint": "Controls organization visibility and join methods",
+      "defaultRole": "Default Role",
+      "defaultRoleHint": "Default role for new members",
+      "url": "Organization URL",
+      "telephone": "Telephone",
+      "locale": "Locale",
+      "timezone": "Timezone",
+      "address": "Address",
+      "updateButton": "Update Organization",
+      "manageAtIdp": "Manage at Identity Provider",
+      "listed": "Listed in discovery",
+      "unlisted": "Unlisted"
+    },
+    "users": {
+      "title": "Users in {{organization}}",
+      "boxes": "Boxes",
+      "roles": "Roles",
+      "suspended": "Suspended",
+      "removeSuccess": "Member removed from the organization.",
+      "removeError": "Could not remove the member. Please try again."
+    },
+    "joinRequest": {
+      "title": "Pending Join Requests",
+      "user": "User",
+      "noRequests": "No pending join requests.",
+      "email": "Email",
+      "message": "Message",
+      "requested": "Requested",
+      "actions": "Actions",
+      "noMessage": "No message",
+      "approveAsMember": "Approve as Member",
+      "approveAsAdmin": "Approve as Admin",
+      "deny": "Deny",
+      "approved": "Join request approved successfully!",
+      "approveError": "Error approving request: {{error}}",
+      "denied": "Join request denied.",
+      "denyError": "Error denying request: {{error}}"
+    },
+    "invitation": {
+      "manageTitle": "Manage Invitations",
+      "sendTitle": "Send New Invitation",
+      "email": "Email Address",
+      "assignRole": "Assign Role",
+      "sendButton": "Send Invitation",
+      "sent": "Invitation sent!",
+      "activeTitle": "Active Invitations",
+      "noActive": "No active invitations.",
+      "expires": "Expires",
+      "accepted": "Accepted",
+      "expired": "Expired",
+      "link": "Invitation Link",
+      "linkText": "Invitation Link",
+      "managedByIdp": "Sent by identity provider",
+      "actions": "Actions",
+      "token": "Token",
+      "orgId": "Organization ID",
+      "sendWarning": "Warning: Invitation created but email might not have been sent. You can copy the link below and send it manually."
+    }
+  },
+  "discovery": {
+    "discoverButton": "Discover organizations",
+    "title": "Discover Organizations",
+    "description": "Browse public organizations and request to join them.",
+    "searchPlaceholder": "Search organizations...",
+    "noOrgsFoundTitle": "No Organizations Found",
+    "noDescription": "No description available",
+    "noOrgsFoundSearch": "No organizations match your search criteria.",
+    "noOrgsFoundPublic": "There are no public organizations available for discovery at this time.",
+    "members": "members",
+    "public": "public",
+    "private": "private",
+    "buttons": {
+      "inviteOnly": "Invite Only",
+      "requestToJoin": "Request to Join",
+      "private": "Private",
+      "sendRequest": "Send Request"
+    },
+    "modal": {
+      "title": "Request to Join {{orgName}}",
+      "description": "Tell <strong>{{orgName}}</strong> why you would like to join.",
+      "placeholder": "Enter your reason for wanting to join this organization..."
+    },
+    "errors": {
+      "load": "Error loading organizations",
+      "emptyMessage": "Please enter a message explaining why you want to join",
+      "requestFailed": "Failed to request to join {{orgName}}"
+    },
+    "messages": {
+      "requestSent": "Join request sent to {{orgName}} successfully!"
     }
   },
   "inviteAccept": {

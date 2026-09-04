@@ -13,7 +13,6 @@ import {
 } from 'react-icons/fa6';
 
 import { userDisplayName, userSecondaryLine } from '../chrome';
-import { api } from '../services/api';
 
 const UserCardActions = ({
   user,
@@ -44,36 +43,40 @@ const UserCardActions = ({
       )}
       {onSuspend && !user.suspended && !isSelf && (
         <button
+          type="button"
           className="btn btn-sm btn-outline-warning"
           onClick={onSuspend}
-          title={t('buttons.suspend')}
+          title={t('orgConsole.buttons.suspend')}
         >
           <FaBan />
         </button>
       )}
       {onResume && user.suspended && (
         <button
+          type="button"
           className="btn btn-sm btn-outline-success"
           onClick={onResume}
-          title={t('buttons.resume')}
+          title={t('orgConsole.buttons.resume')}
         >
           <FaCheck />
         </button>
       )}
       {onRemoveFromOrg && !isSelf && (
         <button
+          type="button"
           className="btn btn-sm btn-outline-danger"
           onClick={onRemoveFromOrg}
-          title={t('buttons.removeFromOrg')}
+          title={t('orgConsole.buttons.removeFromOrg')}
         >
           <FaUserMinus />
         </button>
       )}
       {onDelete && !isSelf && (
         <button
+          type="button"
           className="btn btn-sm btn-danger"
           onClick={onDelete}
-          title={t('buttons.deleteUser')}
+          title={t('orgConsole.buttons.deleteUser')}
         >
           <FaTrash />
         </button>
@@ -93,11 +96,22 @@ UserCardActions.propTypes = {
   onDelete: PropTypes.func,
 };
 
+const roleNamesOf = user =>
+  user.roles ? user.roles.map(role => (typeof role === 'string' ? role : role.name)) : [];
+
+/**
+ * One member of an organization as a card: avatar (the stored URL, else a
+ * Gravatar fetched through `gravatarProfile`), name, email, the role badge
+ * (the organization role when the card manages one, else the global role),
+ * a suspended badge, the box count, and the actions the caller wires:
+ * change role, suspend, resume, remove from the organization, delete.
+ */
 const UserCard = ({
   user,
   currentUser,
   orgRole,
   columnClass = 'col-md-6 col-xl-4',
+  gravatarProfile,
   onChangeRole,
   onSuspend,
   onResume,
@@ -109,12 +123,9 @@ const UserCard = ({
 
   useEffect(() => {
     let mounted = true;
-    // The stored avatar URL is preferred at render time; the Gravatar
-    // email-hash fetch is only needed when no stored URL exists.
     if (!user.avatar_url && user.emailHash) {
-      api.gravatar.profile(user.emailHash).then(profile => {
+      gravatarProfile(user.emailHash).then(profile => {
         if (mounted && profile?.avatar_url) {
-          // Request a 50px image for consistency with the placeholder
           setGravatarUrl(`${profile.avatar_url}?s=50`);
         }
       });
@@ -122,16 +133,11 @@ const UserCard = ({
     return () => {
       mounted = false;
     };
-  }, [user.avatar_url, user.emailHash]);
+  }, [gravatarProfile, user.avatar_url, user.emailHash]);
 
   const avatarUrl = user.avatar_url || gravatarUrl;
+  const globalIsAdmin = roleNamesOf(user).includes('admin');
 
-  // Normalize roles to array of strings
-  const roles = user.roles ? user.roles.map(r => (typeof r === 'string' ? r : r.name)) : [];
-  const globalIsAdmin = roles.includes('admin');
-
-  // In per-org mode (onChangeRole provided) the badge reflects the org role
-  // (owner/admin/member); otherwise it reflects the global role (admin/user).
   const resolveBadgeRole = () => {
     if (orgRole || onChangeRole) {
       return orgRole || 'member';
@@ -208,7 +214,7 @@ const UserCard = ({
             {getRoleBadge()}
             {user.suspended && (
               <span className="badge bg-danger">
-                <FaBan className="me-1" /> {t('status.suspended')}
+                <FaBan className="me-1" /> {t('orgConsole.users.suspended')}
               </span>
             )}
           </div>
@@ -241,6 +247,7 @@ UserCard.propTypes = {
   currentUser: PropTypes.object,
   orgRole: PropTypes.string,
   columnClass: PropTypes.string,
+  gravatarProfile: PropTypes.func.isRequired,
   onChangeRole: PropTypes.func,
   onSuspend: PropTypes.func,
   onResume: PropTypes.func,
