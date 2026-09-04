@@ -53,7 +53,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
    curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C ui
    ```
 
-   The UI version is pinned by `startcloudUiVersion` in `backend/package.json`; every STARTcloud UI release dispatches `dependency-update` here and `.github/workflows/dependency-bump.yml` answers with an auto-merging `bump/startcloud-ui` pull request.
+   The UI version is pinned by `startcloudUiVersion` in `backend/package.json`; every STARTcloud UI release dispatches `dependency-update` here and `.github/workflows/dependency-bump.yml` answers with a `bump/startcloud-ui` pull request for a human to merge.
 
 3. **Configure the application**:
    - Update the database configuration in `backend/app/config/db.config.yaml`.

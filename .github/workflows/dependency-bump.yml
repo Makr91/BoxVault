@@ -100,5 +100,3 @@ jobs:
           else
             gh pr edit "$BRANCH" --title "$TITLE"
           fi
-          gh pr merge "$BRANCH" --auto --squash \
-            || echo "::warning::auto-merge unavailable — merge the bump PR manually"
