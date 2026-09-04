@@ -40,6 +40,21 @@ SortIcon.propTypes = {
   sort: PropTypes.shape({ column: PropTypes.string, direction: PropTypes.string }).isRequired,
 };
 
+const SortButton = ({ onClick, children }) => (
+  <button
+    type="button"
+    className="btn btn-link btn-sm p-0 fw-bold text-body text-decoration-none text-nowrap"
+    onClick={onClick}
+  >
+    {children}
+  </button>
+);
+
+SortButton.propTypes = {
+  onClick: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
+};
+
 const ItemRow = ({ item, columns, watches, ItemQuickActions, RowActions, ctx }) => (
   <tr>
     <td className="col-watch text-center align-middle">
@@ -139,22 +154,25 @@ const ItemsTable = ({
     <Table striped className="table items-table">
       <thead>
         <tr>
-          <th
-            className={`col-watch text-center${watches ? ' sortable-header' : ''}`}
-            onClick={watches ? () => onSort('watch') : undefined}
-            title={t('pages.watch.filterWatched')}
-          >
-            <FaRegStar aria-label={t('pages.watch.filterWatched')} />{' '}
-            {watches ? <SortIcon column="watch" sort={sort} /> : null}
+          <th className="col-watch text-center" title={t('pages.watch.filterWatched')}>
+            {watches ? (
+              <SortButton onClick={() => onSort('watch')}>
+                <FaRegStar aria-label={t('pages.watch.filterWatched')} />{' '}
+                <SortIcon column="watch" sort={sort} />
+              </SortButton>
+            ) : (
+              <FaRegStar aria-label={t('pages.watch.filterWatched')} />
+            )}
           </th>
           {columns.map(column => (
-            <th
-              key={column.key}
-              className={`col-${column.key}${column.sortValue ? ' sortable-header' : ''}`}
-              onClick={column.sortValue ? () => onSort(column.key) : undefined}
-            >
-              {t(column.labelKey)}{' '}
-              {column.sortValue ? <SortIcon column={column.key} sort={sort} /> : null}
+            <th key={column.key} className={`col-${column.key}`}>
+              {column.sortValue ? (
+                <SortButton onClick={() => onSort(column.key)}>
+                  {t(column.labelKey)} <SortIcon column={column.key} sort={sort} />
+                </SortButton>
+              ) : (
+                t(column.labelKey)
+              )}
             </th>
           ))}
           {ItemQuickActions ? (

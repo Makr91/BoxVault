@@ -66,7 +66,7 @@ export const {
   i18n,
   ready: i18nPromise,
   getSupportedLanguages,
-} = createI18n({ loadSupportedLanguages, debug: true });
+} = createI18n({ loadSupportedLanguages });
 
 export const notificationsAdapter = {
   ...createNotificationsClient({ client }),

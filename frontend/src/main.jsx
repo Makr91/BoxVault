@@ -16,6 +16,6 @@ mountApp({
   App,
   i18n,
   ready: i18nPromise,
-  showErrorDetails: import.meta.env.NODE_ENV === 'development',
+  showErrorDetails: import.meta.env.DEV,
   onError: reportRenderError,
 });

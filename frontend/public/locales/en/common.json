@@ -33,8 +33,8 @@
       "hint": "Sends a test email to verify your SMTP settings are correct.",
       "emailRequired": "Please provide an email address for the test."
     },
-    "settingsCount": "{{count}} setting",
-    "settingsCount_plural": "{{count}} settings",
+    "settingsCount_one": "{{count}} setting",
+    "settingsCount_other": "{{count}} settings",
     "tabs": {
       "app": "App Config",
       "auth": "Auth Config",
@@ -436,8 +436,8 @@
   },
   "oidc": {
     "title": "OIDC Providers",
-    "providerCount": "{{count}} provider",
-    "providerCount_plural": "{{count}} providers",
+    "providerCount_one": "{{count}} provider",
+    "providerCount_other": "{{count}} providers",
     "description": "Manage OpenID Connect authentication providers for Single Sign-On integration. Click on a provider card to edit its configuration.",
     "enabled": "Enabled",
     "issuer": "Issuer",

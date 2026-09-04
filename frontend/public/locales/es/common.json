@@ -33,8 +33,8 @@
       "hint": "Envía un correo de prueba para verificar que tu configuración SMTP es correcta.",
       "emailRequired": "Por favor indica una dirección de correo para la prueba."
     },
-    "settingsCount": "{{count}} configuración",
-    "settingsCount_plural": "{{count}} configuraciones",
+    "settingsCount_one": "{{count}} configuración",
+    "settingsCount_other": "{{count}} configuraciones",
     "tabs": {
       "app": "Config App",
       "auth": "Config Auth",
@@ -436,8 +436,8 @@
   },
   "oidc": {
     "title": "Proveedores OIDC",
-    "providerCount": "{{count}} proveedor",
-    "providerCount_plural": "{{count}} proveedores",
+    "providerCount_one": "{{count}} proveedor",
+    "providerCount_other": "{{count}} proveedores",
     "description": "Gestiona proveedores de autenticación OpenID Connect para integración de inicio de sesión único. Haz clic en una tarjeta de proveedor para editar su configuración.",
     "enabled": "Habilitado",
     "issuer": "Emisor",
