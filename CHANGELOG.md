@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.73.0](https://github.com/Makr91/BoxVault/compare/v0.72.0...v0.73.0) (2026-09-04)
+
+
+### Features
+
+* shared login, register and invitation pages ([9b606ce](https://github.com/Makr91/BoxVault/commit/9b606cebe657fd1e9cd73420072e92ce64e81e57))
+
+
+### Bug Fixes
+
+* language pick no longer reverts to the account language ([e77e245](https://github.com/Makr91/BoxVault/commit/e77e245fdee5b3b21c49bce42d8d0f57b1aa743e))
+* plural keys on the i18next suffixes, dev error details, no i18n debug in production ([85a56dc](https://github.com/Makr91/BoxVault/commit/85a56dcc9a361394a0f1cf5cb323ab1960258a1f))
+* stuff ([0165d2e](https://github.com/Makr91/BoxVault/commit/0165d2e5085fddca84a3b9fbe1c1438f980ff382))
+* sync shared chrome, pages, styles and locale keys from the catalog ([7198b01](https://github.com/Makr91/BoxVault/commit/7198b0155d33dd4c9eb38c0537a4d4ece6c82317))
+
 ## [0.72.0](https://github.com/Makr91/BoxVault/compare/v0.71.0...v0.72.0) (2026-09-03)
 
 
