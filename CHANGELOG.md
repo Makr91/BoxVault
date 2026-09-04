@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.77.0](https://github.com/Makr91/BoxVault/compare/v0.76.1...v0.77.0) (2026-09-04)
+
+
+### Features
+
+* answer the STARTcloud UI status contract with brand, auth, collections and feature tokens ([5a7ed0a](https://github.com/Makr91/BoxVault/commit/5a7ed0aab9f691306a3cc076396bb372c802c803))
+
 ## [0.76.1](https://github.com/Makr91/BoxVault/compare/v0.76.0...v0.76.1) (2026-09-04)
 
 
