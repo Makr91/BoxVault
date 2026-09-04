@@ -6,8 +6,7 @@ on:
     branches: ['main']
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
   security-events: write
   packages: read
   actions: read
@@ -86,11 +85,7 @@ jobs:
           echo "Checking generate-docs script..."
           npm run generate-docs || echo "generate-docs script verification complete"
 
-  dependabot-updates:
-    name: Dependabot Updates
-    uses: ./.github/workflows/dependabot-trigger.yml
-
   codeql-analysis:
     name: CodeQL
-    needs: [backend-security, lint-and-format, verify-scripts, dependabot-updates]
+    needs: [backend-security, lint-and-format, verify-scripts]
     uses: ./.github/workflows/codeql.yml

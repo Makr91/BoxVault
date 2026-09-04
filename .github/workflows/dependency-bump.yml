@@ -1,0 +1,104 @@
+name: Dependency Bump
+
+on:
+  repository_dispatch:
+    types: [dependency-update]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'startcloud-ui release tag to pin (vX.Y.Z)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-bump-${{ github.event.client_payload.repo || 'STARTcloud/startcloud-ui' }}
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Open bump PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint App token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Apply the bump
+        id: apply
+        env:
+          DEP_REPO: ${{ github.event.client_payload.repo || 'STARTcloud/startcloud-ui' }}
+          DEP_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
+        run: |
+          case "$DEP_REPO" in
+            STARTcloud/startcloud-ui)
+              DEP_NAME="startcloud-ui"
+              VERSION="${DEP_TAG#v}"
+              sed -i "s/\"startcloudUiVersion\": \"[^\"]*\"/\"startcloudUiVersion\": \"${VERSION}\"/" backend/package.json
+              git add backend/package.json
+              ;;
+            *)
+              echo "Unknown dependency repo: $DEP_REPO" >&2
+              exit 1
+              ;;
+          esac
+          echo "dep_name=$DEP_NAME" >> "$GITHUB_OUTPUT"
+          if git diff --cached --quiet; then
+            echo "Already at $DEP_TAG — nothing to bump."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Close a superseded bump PR
+        if: ${{ steps.apply.outputs.changed == 'false' }}
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          DEP_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
+          DEP_NAME: ${{ steps.apply.outputs.dep_name }}
+        run: |
+          BRANCH="bump/$DEP_NAME"
+          EXISTING="$(gh pr list --head "$BRANCH" --state open --json number --jq length)"
+          if [ "$EXISTING" != "0" ]; then
+            gh pr close "$BRANCH" --delete-branch --comment "Superseded: main already pins $DEP_NAME at $DEP_TAG."
+            echo "Closed stale bump PR: $BRANCH"
+          fi
+
+      - name: Commit, push and open the PR
+        if: ${{ steps.apply.outputs.changed == 'true' }}
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          DEP_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
+          DEP_REPO: ${{ github.event.client_payload.repo || 'STARTcloud/startcloud-ui' }}
+          DEP_NAME: ${{ steps.apply.outputs.dep_name }}
+        run: |
+          BRANCH="bump/$DEP_NAME"
+          TITLE="fix: bump $DEP_NAME to $DEP_TAG"
+          git config user.name "startcloud-bot[bot]"
+          git config user.email "startcloud-bot[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git commit -m "$TITLE"
+          git push --force origin "$BRANCH"
+          EXISTING="$(gh pr list --head "$BRANCH" --state open --json number --jq length)"
+          if [ "$EXISTING" = "0" ]; then
+            BODY="Automated bump of \`$DEP_NAME\` to [$DEP_TAG](https://github.com/$DEP_REPO/releases/tag/$DEP_TAG)."
+            BODY="$BODY Merging releases it through the normal release-please flow."
+            gh pr create \
+              --head "$BRANCH" \
+              --title "$TITLE" \
+              --body "$BODY"
+          else
+            gh pr edit "$BRANCH" --title "$TITLE"
+          fi
+          gh pr merge "$BRANCH" --auto --squash \
+            || echo "::warning::auto-merge unavailable — merge the bump PR manually"
