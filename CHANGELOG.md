@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.76.1](https://github.com/Makr91/BoxVault/compare/v0.76.0...v0.76.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* answer the STARTcloud UI dependency-update dispatch with an auto-merging bump PR ([ab7e703](https://github.com/Makr91/BoxVault/commit/ab7e703548861fd3c50a432af807be2b5e5d2c5c))
+* bump startcloud-ui to v0.2.0 ([6a0f9f6](https://github.com/Makr91/BoxVault/commit/6a0f9f6c1a6243b926362bbfe37fda851aeb3614))
+* bump startcloud-ui to v0.2.0 ([28344dc](https://github.com/Makr91/BoxVault/commit/28344dc7d92a16a795705f8d0349a7cccbdad800))
+* stop auto-merging UI bump PRs, pull requests are the human gate ([d13cb3f](https://github.com/Makr91/BoxVault/commit/d13cb3fce414cc91624ebac4cf4baeccb490cfa9))
+
 ## [0.76.0](https://github.com/Makr91/BoxVault/compare/v0.75.0...v0.76.0) (2026-09-04)
 
 
