@@ -62,7 +62,7 @@ cp -r /path/to/boxvault-source/* .
 
 # This will:
 # 1. Download/prepare source (if needed)
-# 2. Run npm to build frontend and install dependencies
+# 2. Fetch the pinned STARTcloud UI and install dependencies
 # 3. Create package structure in $DESTDIR
 # 4. Generate and publish IPS package
 ```
@@ -82,12 +82,13 @@ cp -r /path/to/boxvault-source/* .
 ```bash
 cd /local/builds/boxvault
 
-# Build the frontend first
+# Fetch the pinned STARTcloud UI first
 export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:$PATH"
 npm run sync-versions
 MAKE=gmake npm ci
-cd frontend && MAKE=gmake npm install && cd ..
-npm run build
+UI_VERSION=$(node -p "require('./backend/package.json').startcloudUiVersion")
+mkdir -p backend/ui
+curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C backend/ui
 
 # Install production Node.js dependencies (this removes dev dependencies)
 cd backend && MAKE=gmake npm ci --omit=dev && cd ..
@@ -154,8 +155,8 @@ The IPS package will create:
 │   ├── routes/                     # Route definitions
 │   ├── middleware/                 # Express middleware
 │   ├── config/                     # Configuration files
-│   ├── utils/                      # Utility functions
-│   └── views/                      # Built frontend files
+│   └── utils/                      # Utility functions
+├── ui/                             # STARTcloud UI artifact
 ├── node_modules/                   # Production dependencies
 ├── startup.sh                      # SMF start method
 └── shutdown.sh                     # SMF stop method
@@ -209,14 +210,7 @@ The package automatically:
    npm install -g npm@latest
    ```
 
-3. **Rollup platform error (SunOS x64 not supported):**
-
-   ```bash
-   # This is resolved by using npm install instead of npm ci for frontend
-   # The build.sh script handles this automatically
-   ```
-
-4. **Package validation errors:**
+3. **Package validation errors:**
 
    ```bash
    # Check manifest syntax

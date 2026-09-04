@@ -1,0 +1,73 @@
+name: Bump STARTcloud UI pin
+
+on:
+  repository_dispatch:
+    types: [startcloud-ui-release]
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'startcloud-ui version to pin (blank = latest release)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    name: Open UI pin-bump PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Mint App token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Resolve target startcloud-ui version
+        id: ver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${DISPATCH_VERSION:-$INPUT_VERSION}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(gh release view --repo STARTcloud/startcloud-ui --json tagName -q .tagName | sed 's/^v//')
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not resolve a startcloud-ui version"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Target startcloud-ui version: $VERSION"
+
+      - name: Pin startcloudUiVersion in backend/package.json
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          CURRENT=$(node -p "require('./backend/package.json').startcloudUiVersion")
+          echo "Current: ${CURRENT}  ->  Target: ${VERSION}"
+          sed -i "s/\"startcloudUiVersion\": \"[^\"]*\"/\"startcloudUiVersion\": \"${VERSION}\"/" backend/package.json
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ steps.app.outputs.token }}
+          branch: automation/bump-startcloud-ui
+          delete-branch: true
+          commit-message: 'fix: bump startcloudUiVersion to ${{ steps.ver.outputs.version }}'
+          title: 'fix: bump startcloudUiVersion to ${{ steps.ver.outputs.version }}'
+          body: |
+            Automated pin bump to **[startcloud-ui ${{ steps.ver.outputs.version }}](https://github.com/STARTcloud/startcloud-ui/releases/tag/v${{ steps.ver.outputs.version }})**.
+
+            Merging cuts a patch release that rebuilds this backend against the new UI artifact.
+
+            _Opened automatically by `.github/workflows/bump-ui-pin.yml`._

@@ -12,7 +12,6 @@ remote_theme: just-the-docs/just-the-docs
 color_scheme: wider
 
 # Logo and favicon
-# logo: "/BoxVault/frontend/src/images/BoxVault.svg"
 favicon_ico: '/favicon.ico'
 
 # Search
@@ -97,17 +96,12 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - node_modules/
-  - frontend/node_modules/
   - backend/node_modules/
   - vendor/bundle/
   - vendor/cache/
   - vendor/gems/
   - vendor/ruby/
   - backend/
-  - frontend/src/
-  - frontend/package.json
-  - frontend/package-lock.json
-  - frontend/vite.config.mjs
   - packaging/
   - scripts/
   - '*.log'

@@ -26,6 +26,7 @@ import {
   errorHandler,
 } from './app/middleware/index.js';
 import db from './app/models/index.js';
+import statusRoutes from './app/routes/status.routes.js';
 import healthRoutes from './app/routes/health.routes.js';
 import authRoutes from './app/routes/auth.routes.js';
 import mailRoutes from './app/routes/mail.routes.js';
@@ -215,7 +216,7 @@ const checkCertbotIntegration = () => {
   }
 };
 
-const static_path = `${__dirname}/app/views/`;
+const static_path = `${__dirname}/ui/`;
 
 const app = express();
 
@@ -521,6 +522,7 @@ const initializeApp = async () => {
     // NOW load all routes - strategies are guaranteed to exist
     log.app.info('Loading application routes...');
 
+    app.use('/api', statusRoutes);
     app.use('/api', healthRoutes);
     app.use('/api', authRoutes);
     app.use('/api', mailRoutes);
@@ -626,6 +628,7 @@ if (isConfigured) {
   app.use(i18nMiddleware);
 
   // Load only the setup route
+  app.use('/api', statusRoutes);
   app.use('/api', setupRoutes);
 
   app.get('/', (req, res) => {

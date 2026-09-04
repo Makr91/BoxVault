@@ -202,7 +202,7 @@ ships, so an unsupported tag degrades to the default rather than breaking.
 
 BoxVault sends its own browser/OS toast notifications. They are signed with
 BoxVault's own VAPID keypair and delivered to push subscriptions registered on
-BoxVault's origin by `frontend/public/notification-sw.js`.
+BoxVault's origin by the STARTcloud UI's `notification-sw.js`.
 
 This is deliberately independent of the auth server's notification hub. The hub
 supplies the in-page bell feed — the durable, cross-app record — and never

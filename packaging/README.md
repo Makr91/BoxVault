@@ -14,18 +14,10 @@ sudo apt install nodejs npm dpkg-dev gdebi-core
 ### 1. Prepare Application
 
 ```bash
-# Install backend dependencies
-cd backend
-npm ci
-cd ..
-
-# Install frontend dependencies
-cd frontend
-npm ci
-cd ..
-
-# Build frontend
-cd frontend && npm run build && cd ..
+# Fetch the pinned STARTcloud UI artifact into backend/ui
+UI_VERSION=$(node -p "require('./backend/package.json').startcloudUiVersion")
+mkdir -p backend/ui
+curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C backend/ui
 
 # Install production dependencies only (backend)
 cd backend
@@ -48,12 +40,9 @@ mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault,etc/boxvault,etc/sys
 ### 3. Copy Application Files
 
 ```bash
-# Backend application files to /opt/boxvault
-cp -r backend/app backend/server.js backend/package.json "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
+# Backend application files and the fetched UI to /opt/boxvault
+cp -r backend/app backend/server.js backend/package.json backend/ui "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
 cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
-
-# Frontend built files
-cp -r frontend/dist "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/frontend/"
 
 # Configuration files
 cp packaging/config/app.config.yaml "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/boxvault/"
@@ -125,7 +114,7 @@ sudo systemctl status boxvault
 
 - `backend/app/` - Contains all backend application code
 - `backend/node_modules/` - Backend dependencies
-- `frontend/dist/` - Must build frontend first with `npm run build`
+- `backend/ui/` - The STARTcloud UI artifact pinned by `startcloudUiVersion` in `backend/package.json`
 
 ### 🔧 Systemd Service
 
@@ -199,9 +188,9 @@ gh workflow run release-please.yml
    - ❌ Missing `backend/app` in copy command
    - ✅ Fix: Ensure `backend/app` is copied to package
 
-2. **Cannot stat 'frontend/dist'**
-   - ❌ Frontend not built
-   - ✅ Fix: Run `cd frontend && npm run build` before packaging
+2. **Cannot stat 'backend/ui'**
+   - ❌ UI artifact not fetched
+   - ✅ Fix: Run the fetch step in "Prepare Application" before packaging
 
 3. **Database connection errors**
    - ❌ MySQL/MariaDB not installed or configured

@@ -48,4 +48,4 @@ Thumbs.db
 # Configuration files
 .prettierrc
 .prettierignore
-app/views/
+ui/

@@ -9,15 +9,9 @@
       "extra-files": [
         {
           "type": "json",
-          "path": "frontend/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
           "path": "backend/package.json",
           "jsonpath": "$.version"
         },
-        "frontend/src/version.json",
         "backend/app/config/swagger.js",
         "packaging/config/app.config.yaml",
         "packaging/config/auth.config.yaml",

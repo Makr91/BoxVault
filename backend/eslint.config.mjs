@@ -8,7 +8,7 @@ export default [
   {
     ignores: [
       'node_modules/**/*', // Dependencies
-      'app/views/**/*', // Backend views (generated frontend files)
+      'ui/**/*',
       'scripts/**/*', // Build/utility scripts
       'coverage/**/*', // Test coverage
       '*.min.js', // Minified files

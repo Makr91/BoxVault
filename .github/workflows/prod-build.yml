@@ -41,12 +41,14 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          cd backend && npm ci
-          cd ../frontend && npm install
+        run: cd backend && npm ci
 
-      - name: Build frontend
-        run: npm run build
+      - name: Fetch STARTcloud UI artifact
+        run: |
+          UI_VERSION=$(node -p "require('./backend/package.json').startcloudUiVersion")
+          echo "Fetching STARTcloud UI v${UI_VERSION}"
+          mkdir -p backend/ui
+          curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C backend/ui
 
       - name: Prepare dev configs for documentation build
         run: |
@@ -75,14 +77,11 @@ jobs:
         env:
           JEKYLL_ENV: production
 
-      - name: Bundle documentation into application views
-        run: cp -r _site backend/app/views/docs
+      - name: Bundle documentation into the UI
+        run: cp -r _site backend/ui/docs
 
       - name: Remove dev dependencies for packaging
-        run: |
-          # Remove dev dependencies after building but before packaging
-          cd backend && rm -rf node_modules && npm ci --omit=dev
-          cd ../frontend && rm -rf node_modules && npm install --omit=dev
+        run: cd backend && rm -rf node_modules && npm ci --omit=dev
 
       - name: Set Debian package variables
         run: |
@@ -93,14 +92,12 @@ jobs:
 
       - name: Create Debian package structure
         run: |
-          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/frontend,opt/boxvault/config-templates,opt/boxvault/scripts,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
+          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/config-templates,opt/boxvault/scripts,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
 
       - name: Copy application files to Debian package
         run: |
-          # Backend files
-          cp -r backend/app backend/server.js backend/package.json "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
+          cp -r backend/app backend/server.js backend/package.json backend/ui "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
           cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
-          # Frontend built files are in backend/app/views after build
 
       - name: Copy configuration files to Debian package
         run: |

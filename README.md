@@ -25,7 +25,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 
 ## Technologies Used
 
-- **Frontend**: React.js
+- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), fetched as a release artifact and served from `backend/ui`
 - **Backend**: Node.js, Express.js
 - **Database**: Sequelize ORM (Database configuration in `db.config.yaml`)
 - **Authentication**: JWT tokens
@@ -43,17 +43,17 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
    cd BoxVault
    ```
 
-2. **Install dependencies**:
+2. **Install dependencies and fetch the UI**:
 
    ```bash
-   # For backend
    cd backend
    npm install
-
-   # For frontend
-   cd ../frontend
-   npm install
+   UI_VERSION=$(node -p "require('./package.json').startcloudUiVersion")
+   mkdir -p ui
+   curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C ui
    ```
+
+   The UI version is pinned by `startcloudUiVersion` in `backend/package.json`; `.github/workflows/bump-ui-pin.yml` opens a pull request whenever a newer STARTcloud UI release exists.
 
 3. **Configure the application**:
    - Update the database configuration in `backend/app/config/db.config.yaml`.
@@ -62,12 +62,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 4. **Run the application**:
 
    ```bash
-   # Start the backend server
    cd backend
-   npm start
-
-   # Start the frontend development server
-   cd ../frontend
    npm start
    ```
 

@@ -9,34 +9,23 @@
     "generate-docs": "cd backend && npm run generate-docs",
     "cinstall:backend": "cd backend && npm ci",
     "cinstall:backend:nodev": "cd backend && npm ci --omit=dev",
-    "cinstall:frontend": "cd frontend && npm run cinstall",
-    "cinstall:frontend:nodev": "cd frontend && npm run cinstall:nodev",
-    "cinstall:all": "npm ci && npm run cinstall:backend && npm run cinstall:frontend",
-    "cinstall:all:nodev": "npm run cinstall:backend:nodev && npm run cinstall:frontend:nodev",
-    "build": "npm run sync-versions && npm run build:frontend",
-    "build:frontend": "cd frontend && npm run build",
+    "cinstall:all": "npm ci && npm run cinstall:backend",
+    "cinstall:all:nodev": "npm run cinstall:backend:nodev",
     "start": "cd backend && npm run start",
-    "preproduction": "concurrently \"npm run start\" \"npm run watch:frontend\"",
     "watch:backend": "cd backend && npm run watch-build",
-    "watch:frontend": "cd frontend && npm run watch-build",
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "cd frontend && npm run start",
+    "dev": "npm run dev:backend",
     "dev:backend": "cd backend && npm run watch-build",
-    "install": "npm run install-frontend && npm run install-backend",
-    "install-frontend": "cd frontend && npm install",
+    "install": "npm run install-backend",
     "install-backend": "cd backend && npm install",
     "lint:backend": "cd backend && npm run lint",
     "lint:backend:fix": "cd backend && npm run lint:fix",
-    "lint:frontend": "cd frontend && npm run lint",
-    "lint:frontend:fix": "cd frontend && npm run lint:fix",
-    "lint:all": "npm run lint:backend && npm run lint:frontend",
+    "lint:all": "npm run lint:backend",
     "lint": "npm run lint:all",
-    "lint:fix:all": "npm run lint:backend:fix && npm run lint:frontend:fix",
+    "lint:fix:all": "npm run lint:backend:fix",
     "format:check": "prettier --check .",
     "format:fix": "prettier --write ."
   },
   "devDependencies": {
-    "concurrently": "^10.0.5",
     "prettier": "^3.9.5"
   },
   "overrides": {
@@ -46,7 +35,6 @@
   "license": "GPL-3.0",
   "files": [
     "backend/",
-    "backend/app/views/",
-    "frontend/package.json"
+    "backend/ui/"
   ]
 }

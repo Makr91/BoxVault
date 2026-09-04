@@ -11,7 +11,7 @@ export default {
     '!app/config/ssl/**',
     '!app/config/**/*.yaml',
     '!app/models/index.js',
-    '!app/views/**',
+    '!ui/**',
   ],
   globalSetup: '<rootDir>/tests/globalSetup.js',
   globalTeardown: '<rootDir>/tests/globalTeardown.js',

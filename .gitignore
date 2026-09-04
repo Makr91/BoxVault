@@ -5,8 +5,7 @@ backend/app/config/auth.config.yaml
 backend/app/config/db.config.yaml
 backend/app/config/mail.config.yaml
 backend/coverage/**/*
-backend/app/views/*
-!backend/app/views/.gitkeep
+backend/ui/
 yarn.lock
 .env
 stats.html

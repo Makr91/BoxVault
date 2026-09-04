@@ -49,7 +49,7 @@ mkdir -p "$DESTDIR"
 #   server.js
 #   package.json
 #   app/
-#   frontend/dist/
+#   ui/
 #   node_modules/
 #   startup.sh
 #   shutdown.sh
@@ -62,33 +62,23 @@ mkdir -p "$DESTDIR"
 # /var/log/boxvault/
 
 build_app() {
-    logmsg "Building BoxVault frontend"
-    
+    logmsg "Preparing BoxVault"
+
     # Set up environment for OmniOS/Solaris
     export MAKE=gmake
     export CC=gcc
     export CXX=g++
-    
+
     # Sync versions
     logcmd npm run sync-versions
-    
-    # Install backend dependencies
-    pushd backend >/dev/null
-    MAKE=gmake logcmd npm ci
-    popd >/dev/null
-    
-    # Install frontend dependencies
-    pushd frontend >/dev/null
-    # Remove package-lock.json to ensure clean dependency resolution
-    rm -f package-lock.json
-    MAKE=gmake logcmd npm install
-    popd >/dev/null
-    
-    # Build frontend
-    pushd frontend >/dev/null
-    logcmd npm run build
-    popd >/dev/null
-    
+
+    # Fetch the pinned STARTcloud UI artifact
+    UI_VERSION=$(node -p "require('./backend/package.json').startcloudUiVersion")
+    logmsg "Fetching STARTcloud UI v${UI_VERSION}"
+    rm -rf backend/ui
+    mkdir -p backend/ui
+    curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C backend/ui
+
     # Install production dependencies only
     pushd backend >/dev/null
     MAKE=gmake logcmd npm ci --omit=dev
@@ -113,10 +103,9 @@ install_app() {
         logcmd cp -r $SRCDIR/backend/app .
     fi
     
-    # Copy built frontend
-    if [ -d "$SRCDIR/frontend/dist" ]; then
-        logcmd mkdir -p frontend
-        logcmd cp -r $SRCDIR/frontend/dist frontend/
+    # Copy the fetched UI
+    if [ -d "$SRCDIR/backend/ui" ]; then
+        logcmd cp -r $SRCDIR/backend/ui .
     fi
     
     # Copy node_modules (production only)

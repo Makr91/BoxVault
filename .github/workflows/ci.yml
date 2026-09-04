@@ -41,25 +41,6 @@ jobs:
       - name: Supply chain security
         run: cd backend && npm run security:supply-chain
 
-  frontend-security:
-    name: Frontend Security
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install frontend dependencies
-        run: npm run cinstall:frontend
-
-      - name: Frontend security checks
-        run: cd frontend && npm run security:all
-
   lint-and-format:
     name: Lint & Format
     runs-on: ubuntu-latest
@@ -81,79 +62,6 @@ jobs:
 
       - name: Check Prettier formatting
         run: npm run format:check
-
-      - name: Check locale key parity against en
-        working-directory: frontend
-        run: |
-          node --input-type=module <<'EOF'
-          import fs from 'fs';
-          const flat = (obj, prefix = '') =>
-            Object.entries(obj).flatMap(([key, value]) =>
-              value && typeof value === 'object' ? flat(value, `${prefix}${key}.`) : [`${prefix}${key}`]
-            );
-          const read = (lang, ns) => new Set(flat(JSON.parse(fs.readFileSync(`public/locales/${lang}/${ns}`, 'utf8'))));
-          const namespaces = fs.readdirSync('public/locales/en').filter(file => file.endsWith('.json'));
-          const langs = fs.readdirSync('public/locales').filter(dir => dir !== 'en' && dir !== 'cimode');
-          let failed = false;
-          for (const lang of langs) {
-            for (const ns of namespaces) {
-              const en = read('en', ns);
-              const keys = read(lang, ns);
-              const missing = [...en].filter(key => !keys.has(key));
-              const extra = [...keys].filter(key => !en.has(key));
-              if (missing.length > 0) {
-                failed = true;
-                console.error(`${lang}/${ns} is MISSING ${missing.length} keys:\n  ${missing.join('\n  ')}`);
-              }
-              if (extra.length > 0) {
-                failed = true;
-                console.error(`${lang}/${ns} has ${extra.length} keys en lacks:\n  ${extra.join('\n  ')}`);
-              }
-              if (missing.length === 0 && extra.length === 0) {
-                console.log(`${lang}/${ns}: parity OK (${keys.size} keys)`);
-              }
-            }
-          }
-          process.exit(failed ? 1 : 0);
-          EOF
-
-  build-frontend:
-    name: Build Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm run cinstall:all
-
-      - name: Build frontend
-        run: npm run build
-
-  #  test:
-  #    name: Tests
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - name: Checkout code
-  #        uses: actions/checkout@v7
-  #
-  #      - name: Setup Node.js
-  #        uses: actions/setup-node@v7
-  #        with:
-  #          node-version: '22'
-  #          cache: 'npm'
-  #
-  #      - name: Install dependencies
-  #        run: npm run cinstall:all
-  #
-  #      - name: Run tests
-  #        run: npm run test:all
 
   verify-scripts:
     name: Verify Scripts
@@ -184,13 +92,5 @@ jobs:
 
   codeql-analysis:
     name: CodeQL
-    needs:
-      [
-        backend-security,
-        frontend-security,
-        lint-and-format,
-        build-frontend,
-        verify-scripts,
-        dependabot-updates,
-      ]
+    needs: [backend-security, lint-and-format, verify-scripts, dependabot-updates]
     uses: ./.github/workflows/codeql.yml
