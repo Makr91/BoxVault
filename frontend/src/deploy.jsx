@@ -1,11 +1,12 @@
 import { log } from './chrome';
 import { createDeployControls, deployableVersion } from './pages';
+import { api } from './services/api';
 
 export { deployableVersion };
 
 const fetchHyperweaverUrl = () =>
-  fetch(`${window.location.origin}/api/config/hyperweaver`)
-    .then(response => (response.ok ? response.json() : null))
+  api.config
+    .hyperweaver()
     .then(data => data?.hyperweaver?.url?.value || '')
     .catch(error => {
       log.api.error('Error fetching hyperweaver config', { error: error.message });

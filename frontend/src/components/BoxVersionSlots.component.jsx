@@ -6,8 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { deleteProviderCascade, deleteVersionCascade } from '../adapter';
 import { log } from '../chrome';
 import { ConfirmModal, itemShape, providerShape, responseMessage, versionShape } from '../pages';
-import ProviderService from '../services/provider.service';
-import VersionService from '../services/version.service';
+import { api } from '../services/api';
 import { canManageBox } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
@@ -26,7 +25,8 @@ const slotShape = {
 };
 
 const updateVersion = ({ org, item, version, fields, t, notify, reload }) =>
-  VersionService.updateVersion(org, item.name, version.version, fields)
+  api.versions
+    .update(org, item.name, version.version, fields)
     .then(() => {
       notify('success', t('version.updated'));
       reload();
@@ -123,7 +123,8 @@ export const BoxVersionActions = ({ item, version, ctx }) => {
       notify('danger', t('version.exists'));
       return;
     }
-    VersionService.updateVersion(org, item.name, version.version, draft)
+    api.versions
+      .update(org, item.name, version.version, draft)
       .then(() => {
         notify('success', t('version.updated'));
         setEditing(false);
@@ -441,7 +442,8 @@ export const BoxProvidersActions = ({ item, version, ctx }) => {
       notify('danger', t('provider.exists'));
       return;
     }
-    ProviderService.createProvider(org, item.name, version.version, draft)
+    api.providers
+      .create(org, item.name, version.version, draft)
       .then(() => {
         notify('success', t('provider.created'));
         setShow(false);

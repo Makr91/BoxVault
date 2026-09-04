@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, returnTo, session } from '../chromeProps';
-import AuthService from '../services/auth.service';
+import { responseMessage } from '../pages';
+import { api } from '../services/api';
 import { isOrgMember } from '../utils/permissions';
 
 /**
@@ -34,13 +35,13 @@ const InviteAccept = () => {
 
     const validate = async () => {
       try {
-        const response = await AuthService.validateInvitationToken(token);
+        const data = await api.auth.validateInvitation(token);
         if (!cancelled) {
-          setInvitation(response.data);
+          setInvitation(data);
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.response?.data?.message || t('inviteAccept.invalid'));
+          setError(responseMessage(err, t('inviteAccept.invalid')));
         }
       } finally {
         if (!cancelled) {
@@ -59,14 +60,13 @@ const InviteAccept = () => {
   const handleAccept = async () => {
     setAccepting(true);
     try {
-      const response = await AuthService.acceptInvitation(token);
-      const org = response.data.organization;
+      const { organization: org } = await api.auth.acceptInvitation(token);
       localStorage.setItem(ACTIVE_ORG_KEY, org);
       await session.refresh();
       window.location.href = `/${org}`;
     } catch (err) {
       setAccepting(false);
-      notify('danger', err.response?.data?.message || t('inviteAccept.error'));
+      notify('danger', responseMessage(err, t('inviteAccept.error')));
     }
   };
 

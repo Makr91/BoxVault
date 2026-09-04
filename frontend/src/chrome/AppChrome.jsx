@@ -59,14 +59,9 @@ const useRouteCrumbs = ({ pathname, reserved, collections, signedIn, orgs, t }) 
 
 const SESSION_ENDED_KEY = 'session-ended';
 
-const useSessionEndedBanner = ({ ended, onSignIn, signInTo }) => {
+const useSessionEndedBanner = ended => {
   const { t } = useTranslation();
   const notify = useNotify();
-  const onSignInRef = useRef(onSignIn);
-
-  useEffect(() => {
-    onSignInRef.current = onSignIn;
-  });
 
   useEffect(() => {
     if (!ended) {
@@ -78,12 +73,8 @@ const useSessionEndedBanner = ({ ended, onSignIn, signInTo }) => {
         <strong>{t('sessionEnded.title')}</strong> {t('sessionEnded.body')}
       </>
     );
-    const label = t('navbar.signIn');
-    const action = signInTo
-      ? { label, to: signInTo }
-      : { label, onClick: () => onSignInRef.current() };
-    notify('warning', text, { tier: 'banner', key: SESSION_ENDED_KEY, action });
-  }, [ended, notify, signInTo, t]);
+    notify('warning', text, { tier: 'banner', key: SESSION_ENDED_KEY });
+  }, [ended, notify, t]);
 };
 
 /**
@@ -114,11 +105,7 @@ const AppChrome = ({
   const scrollRef = useRef(null);
   const signedIn = Boolean(user);
   const crumbs = useRouteCrumbs({ pathname, reserved, collections, signedIn, orgs, t });
-  useSessionEndedBanner({
-    ended: Boolean(session.ended) && !signedIn,
-    onSignIn: session.onSignIn || null,
-    signInTo: session.signInTo || '',
-  });
+  useSessionEndedBanner(Boolean(session.ended) && !signedIn);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);

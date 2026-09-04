@@ -12,8 +12,8 @@ import {
   FaBox,
 } from 'react-icons/fa6';
 
-import { log, userDisplayName, userSecondaryLine } from '../chrome';
-import AuthService from '../services/auth.service';
+import { userDisplayName, userSecondaryLine } from '../chrome';
+import { api } from '../services/api';
 
 const UserCardActions = ({
   user,
@@ -112,18 +112,12 @@ const UserCard = ({
     // The stored avatar URL is preferred at render time; the Gravatar
     // email-hash fetch is only needed when no stored URL exists.
     if (!user.avatar_url && user.emailHash) {
-      AuthService.getGravatarProfile(user.emailHash)
-        .then(profile => {
-          if (mounted && profile?.avatar_url) {
-            // Request a 50px image for consistency with the placeholder
-            setGravatarUrl(`${profile.avatar_url}?s=50`);
-          }
-        })
-        .catch(err => {
-          log.component.debug('Failed to load gravatar', {
-            error: err.message,
-          });
-        });
+      api.gravatar.profile(user.emailHash).then(profile => {
+        if (mounted && profile?.avatar_url) {
+          // Request a 50px image for consistency with the placeholder
+          setGravatarUrl(`${profile.avatar_url}?s=50`);
+        }
+      });
     }
     return () => {
       mounted = false;

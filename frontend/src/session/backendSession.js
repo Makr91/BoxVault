@@ -23,11 +23,6 @@ const failure = (message, messageKey) => {
   return error;
 };
 
-const skipsRefresh = config =>
-  config.skipAuthRefresh ||
-  config.url.includes('/auth/signin') ||
-  config.url.includes('/auth/refresh-token');
-
 /**
  * The app's own backend as the session: username and password or a
  * provider redirect through the backend's OIDC routes, the backend's JWT
@@ -36,13 +31,14 @@ const skipsRefresh = config =>
  * claims and preferences read and written through the backend, and the
  * backend's logout route for signing out everywhere. A session it restores
  * or completes is `{ user, organizations, oidc, issuerUrl }`, the user
- * being the stored profile.
+ * being the stored profile. The API client drives `headers`, `retryAuth`,
+ * `adoptResponse` and `endSession`.
  *
  * @param {Object} options - The app's side of the session
  * @param {string} options.baseUrl - The backend origin
  * @param {Object} options.events - The bus from `createSessionEvents`; `login` is emitted after a sign-in and `sessionEnded` when the backend rejects the session
  * @param {string} [options.storageKey] - localStorage key of the stored user
- * @returns {Object} The session provider `useSession`, the callback page and the app's login page drive
+ * @returns {Object} The session provider `useSession`, the callback page, the API client and the app's login page drive
  */
 export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) => {
   const api = `${baseUrl}/api`;
@@ -77,7 +73,7 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
       const { data } = await axios.post(
         `${api}/auth/refresh-token`,
         { stayLoggedIn: user.stayLoggedIn },
-        { headers: { ...authHeader(), 'Content-Type': 'application/json' }, skipAuthRefresh: true }
+        { headers: authHeader() }
       );
       if (!data.accessToken) {
         return null;
@@ -103,50 +99,20 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
     return refreshToken();
   };
 
-  axios.interceptors.request.use(async config => {
-    if (skipsRefresh(config)) {
-      return config;
-    }
-    if (!config.signal || !config.signal.aborted) {
-      await refreshIfNeeded();
-    }
-    if (!config.headers['Content-Type'] && !config.url.includes('/file/upload')) {
-      config.headers['Content-Type'] = 'application/json';
-    }
-    return config;
-  });
+  const headers = async () => {
+    await refreshIfNeeded();
+    return authHeader();
+  };
 
-  const adoptRefreshedToken = response => {
-    const refreshed = response?.headers?.['x-refreshed-token'];
+  const retryAuth = async () => Boolean(current()?.stayLoggedIn && (await refreshToken()));
+
+  const adoptResponse = responseHeaders => {
+    const refreshed = responseHeaders?.['x-refreshed-token'];
     const user = refreshed ? current() : null;
     if (user) {
       store({ ...user, accessToken: refreshed, tokenRefreshTime: Date.now() });
     }
-    return response;
   };
-
-  const retryAfterRefresh = async error => {
-    const original = error.config;
-    if (
-      error.name === 'CanceledError' ||
-      error.name === 'AbortError' ||
-      original.url.includes('/auth/') ||
-      original.skipAuthRefresh ||
-      error.response?.status !== 401 ||
-      original.retried
-    ) {
-      throw error;
-    }
-    original.retried = true;
-    if (current()?.stayLoggedIn && (await refreshIfNeeded())) {
-      original.headers = { ...original.headers, ...authHeader() };
-      return axios(original);
-    }
-    endSession();
-    throw error;
-  };
-
-  axios.interceptors.response.use(adoptRefreshedToken, retryAfterRefresh);
 
   const trustedIssuers = () => {
     issuersPromise ||= axios
@@ -187,7 +153,7 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
       return null;
     }
     const profile = await axios
-      .get(`${api}/user`, { headers: authHeader() })
+      .get(`${api}/user`, { headers: await headers() })
       .then(({ data }) => data)
       .catch(() => null);
     if (profile) {
@@ -229,7 +195,7 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
       throw failure('no login code in callback', 'auth:errors.invalidResponse');
     }
     const token = await axios
-      .post(`${api}/auth/oidc/exchange`, { code }, { skipAuthRefresh: true })
+      .post(`${api}/auth/oidc/exchange`, { code })
       .then(({ data }) => data?.token || null)
       .catch(() => null);
     if (!token) {
@@ -249,11 +215,9 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
     return load();
   };
 
-  const headers = () => Promise.resolve(authHeader());
-
   const claims = () => {
-    claimsPromise ||= axios
-      .get(`${api}/userinfo/claims`, { headers: authHeader() })
+    claimsPromise ||= headers()
+      .then(requestHeaders => axios.get(`${api}/userinfo/claims`, { headers: requestHeaders }))
       .then(({ data }) => data)
       .catch(() => null);
     return claimsPromise;
@@ -264,7 +228,7 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
       return;
     }
     const saved = await axios
-      .patch(`${api}/user/preferences`, patch, { headers: authHeader() })
+      .patch(`${api}/user/preferences`, patch, { headers: await headers() })
       .then(() => true)
       .catch(() => false);
     const user = current();
@@ -281,9 +245,7 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
 
   const signOutEverywhere = async () => {
     const response = isOidc(current())
-      ? await axios
-          .post(`${api}/auth/oidc/logout`, {}, { headers: authHeader(), skipAuthRefresh: true })
-          .catch(() => null)
+      ? await axios.post(`${api}/auth/oidc/logout`, {}, { headers: authHeader() }).catch(() => null)
       : null;
     clear();
     window.location.assign(response?.data?.redirect_url || '/');
@@ -302,6 +264,9 @@ export const createBackendSession = ({ baseUrl, events, storageKey = 'user' }) =
     login,
     complete,
     headers,
+    retryAuth,
+    adoptResponse,
+    endSession,
     claims,
     savePreferences,
     signOut,

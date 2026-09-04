@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { FaBook, FaBuilding, FaCircleInfo, FaGear } from 'react-icons/fa6';
 import { Link, useLocation } from 'react-router-dom';
 
+import { fetchOrganization, loadOrganizations } from './adapter';
 import { AppChrome, Avatar, log, userDisplayName, userSecondaryLine } from './chrome';
 import {
   APP_NAME,
@@ -14,15 +15,14 @@ import {
   REPO_URL,
   buildTicketUrl,
   fetchHealth,
-  fetchOrganization,
   getSupportedLanguages,
   hasNotificationsScope,
-  loadOrganizations,
   notificationsAdapter,
   pushAdapter,
   returnTo,
 } from './chromeProps';
 import { collections } from './collections';
+import { api } from './services/api';
 import { sessionStateShape } from './session';
 
 const RESERVED_ROUTES = [
@@ -100,12 +100,9 @@ const Shell = ({
 
     const loadTicketConfig = async () => {
       try {
-        const response = await fetch(`${window.location.origin}/api/config/ticket`);
-        if (response.ok) {
-          const data = await response.json();
-          if (mounted && data?.ticket_system) {
-            setTicketConfig(data.ticket_system);
-          }
+        const data = await api.config.ticket();
+        if (mounted && data?.ticket_system) {
+          setTicketConfig(data.ticket_system);
         }
       } catch (error) {
         log.api.error('Error fetching ticket config', { error: error.message });

@@ -16,7 +16,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { log } from '../chrome';
 import { ConfirmModal } from '../pages';
-import IsoService from '../services/iso.service';
+import { api } from '../services/api';
 import { isOrgManager } from '../utils/permissions';
 
 const HOVER_DWELL_MS = 400;
@@ -155,7 +155,8 @@ const RemoveAll = ({ org, reload, notify }) => {
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const removeAll = () => {
-    IsoService.removeAll(org)
+    api.isos
+      .removeAll(org)
       .then(() => {
         notify('success', t('messages.operationSuccessful'));
         reload();
@@ -195,9 +196,10 @@ export const IsoListActions = ({ ctx }) => {
     setUploading(true);
     setProgress(0);
     notify('', '', { key: UPLOAD_KEY });
-    IsoService.upload(org, file, isPublic, event => {
-      setProgress(Math.round((100 * event.loaded) / event.total));
-    })
+    api.isos
+      .upload(org, file, isPublic, event => {
+        setProgress(Math.round((100 * event.loaded) / event.total));
+      })
       .then(() => {
         notify('success', t('messages.operationSuccessful'), { key: UPLOAD_KEY });
         reload();
@@ -234,7 +236,8 @@ const RenameControls = ({ iso, org, notify, onDone, onSaved }) => {
     if (!next) {
       return;
     }
-    IsoService.update(org, iso.id, { name: next })
+    api.isos
+      .update(org, iso.id, { name: next })
       .then(() => {
         notify('success', t('messages.operationSuccessful'));
         onSaved(next);
@@ -292,8 +295,9 @@ export const IsoItemActions = ({ item, ctx }) => {
   const [showDelete, setShowDelete] = useState(false);
 
   const download = () => {
-    IsoService.getDownloadLink(org, iso.id)
-      .then(response => window.location.assign(response.data.downloadUrl))
+    api.isos
+      .downloadLink(org, iso.id)
+      .then(downloadUrl => window.location.assign(downloadUrl))
       .catch(error => {
         log.api.error('Error getting download link', { error: error.message });
         notify('danger', t('messages.operationFailed'));
@@ -308,7 +312,8 @@ export const IsoItemActions = ({ item, ctx }) => {
   };
 
   const toggleVisibility = () => {
-    IsoService.update(org, iso.id, { isPublic: !iso.isPublic })
+    api.isos
+      .update(org, iso.id, { isPublic: !iso.isPublic })
       .then(reload)
       .catch(error => {
         log.api.error('Error updating ISO visibility', { error: error.message });
@@ -317,7 +322,8 @@ export const IsoItemActions = ({ item, ctx }) => {
   };
 
   const togglePublished = () => {
-    IsoService.update(org, iso.id, { published: !iso.published })
+    api.isos
+      .update(org, iso.id, { published: !iso.published })
       .then(reload)
       .catch(error => {
         log.api.error('Error updating ISO release status', { error: error.message });
@@ -326,7 +332,8 @@ export const IsoItemActions = ({ item, ctx }) => {
   };
 
   const remove = () => {
-    IsoService.deleteISO(org, iso.id)
+    api.isos
+      .remove(org, iso.id)
       .then(() => navigate(`/${org}/isos`))
       .catch(error => {
         log.api.error('Error deleting ISO', { error: error.message });

@@ -12,9 +12,7 @@ import {
   providerShape,
   responseMessage,
 } from '../pages';
-import ArchitectureService from '../services/architecture.service';
-import FileService from '../services/file.service';
-import ProviderService from '../services/provider.service';
+import { api } from '../services/api';
 import { canManageBox } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
@@ -120,15 +118,17 @@ export const BoxProviderActions = ({ item, version, provider, ctx }) => {
     }
     const renamed = draft.name !== provider.name;
     if (renamed) {
-      const exists = await ProviderService.getProvider(org, item.name, version, draft.name)
-        .then(response => Boolean(response.data))
+      const exists = await api.providers
+        .get(org, item.name, version, draft.name)
+        .then(Boolean)
         .catch(() => false);
       if (exists) {
         notify('danger', t('provider.exists'));
         return;
       }
     }
-    ProviderService.updateProvider(org, item.name, version, provider.name, draft)
+    api.providers
+      .update(org, item.name, version, provider.name, draft)
       .then(() => {
         notify('success', t('provider.updated'));
         setEditing(false);
@@ -148,7 +148,8 @@ export const BoxProviderActions = ({ item, version, provider, ctx }) => {
   };
 
   const remove = () => {
-    ProviderService.deleteProvider(org, item.name, version, provider.name)
+    api.providers
+      .remove(org, item.name, version, provider.name)
       .then(() => navigate(`/${org}/${item.name}/${version}`))
       .catch(requestError => {
         log.api.error('Error deleting provider', {
@@ -444,8 +445,8 @@ export const BoxArchitecturesActions = ({ item, version, provider, ctx }) => {
     notify('info', t('architecture.uploadStarting'));
     setProgress(0);
     try {
-      await ArchitectureService.createArchitecture(org, item.name, version, provider.name, draft);
-      const result = await FileService.upload(
+      await api.architectures.create(org, item.name, version, provider.name, draft);
+      const result = await api.files.upload(
         file,
         {
           organization: org,
@@ -505,13 +506,8 @@ export const BoxArchitectureRowActions = ({ item, version, provider, architectur
   }
 
   const remove = () => {
-    ArchitectureService.deleteArchitecture(
-      org,
-      item.name,
-      version,
-      provider.name,
-      architecture.name
-    )
+    api.architectures
+      .remove(org, item.name, version, provider.name, architecture.name)
       .then(() => {
         notify('success', t('architecture.deleted'));
         reload();

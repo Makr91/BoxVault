@@ -12,6 +12,7 @@ import {
   APP_NAME,
   BrandLogo,
   events,
+  i18n,
   push,
   returnTo,
   session,
@@ -35,8 +36,7 @@ import {
   formatFileSize,
   pageContextShape,
 } from './pages';
-import AuthService from './services/auth.service';
-import SetupService from './services/setup.service';
+import { api } from './services/api';
 import { CallbackPage, subscribeTerminateStream, useSession } from './session';
 import Shell from './shell';
 import { isOrgManager, isOrgMember } from './utils/permissions';
@@ -141,7 +141,7 @@ ProviderRoute.propTypes = {
 };
 
 const App = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const account = useSession({
     provider: session,
@@ -194,13 +194,13 @@ const App = () => {
 
     const checkSetup = async () => {
       try {
-        const response = await SetupService.isSetupComplete();
+        const status = await api.setup.status();
         if (!mounted) {
           return;
         }
 
-        setSetupComplete(response.data.setupComplete);
-        if (!response.data.setupComplete) {
+        setSetupComplete(status.setupComplete);
+        if (!status.setupComplete) {
           navigate('/setup');
         }
       } catch (error) {
@@ -228,7 +228,7 @@ const App = () => {
     if (user?.preferredLanguage && user.preferredLanguage !== i18n.language) {
       i18n.changeLanguage(user.preferredLanguage);
     }
-  }, [user?.preferredLanguage, i18n]);
+  }, [user?.preferredLanguage]);
 
   useEffect(() => {
     const emailHash = user && !user.avatarUrl ? user.emailHash : '';
@@ -236,7 +236,7 @@ const App = () => {
       return undefined;
     }
     const controller = new AbortController();
-    AuthService.getGravatarProfile(emailHash, controller.signal).then(profile => {
+    api.gravatar.profile(emailHash, controller.signal).then(profile => {
       if (profile?.avatar_url) {
         setGravatar({ emailHash, url: profile.avatar_url });
       }
@@ -257,13 +257,13 @@ const App = () => {
   }, [user, reload]);
 
   useEffect(() => {
-    const token = user?.accessToken;
-    if (!token) {
+    if (!user?.accessToken) {
       return undefined;
     }
+    const url = `${window.location.origin}/api/notifications/events`;
     return subscribeTerminateStream({
-      url: `${window.location.origin}/api/notifications/events`,
-      headers: { 'x-access-token': token },
+      url,
+      headers: () => session.headers('GET', url),
       onEnded: () => events.endSession(),
     });
   }, [user?.accessToken]);

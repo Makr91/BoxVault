@@ -47,7 +47,7 @@ const readUntilTerminated = async (reader, decoder) => {
  *
  * @param {Object} options - The stream
  * @param {string} options.url - The event-stream URL
- * @param {Object} options.headers - Request headers carrying the session
+ * @param {Object|(() => Promise<Object>)} options.headers - Request headers carrying the session, or a function resolving them per connection
  * @param {Function} options.onEnded - Called once the session is gone
  * @param {number} [options.retryMs] - Delay before reconnecting
  * @returns {() => void} Stops listening
@@ -59,7 +59,8 @@ export const subscribeTerminateStream = ({ url, headers, onEnded, retryMs = 1500
 
   const listen = async () => {
     try {
-      const response = await fetch(url, { headers, signal: controller.signal });
+      const requestHeaders = typeof headers === 'function' ? await headers() : headers;
+      const response = await fetch(url, { headers: requestHeaders, signal: controller.signal });
       if (response.status === 401) {
         onEnded();
         return;

@@ -5,11 +5,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { log, useNotify } from '../chrome';
 import { events, isOidcSession, session } from '../chromeProps';
-import { ConfirmModal } from '../pages';
-import AuthService from '../services/auth.service';
-import RequestService from '../services/request.service';
-import ServiceAccountService from '../services/service_account.service';
-import UserService from '../services/user.service';
+import { ConfirmModal, responseMessage } from '../pages';
+import { api } from '../services/api';
 
 const Profile = ({ activeOrganization }) => {
   const { t } = useTranslation();
@@ -43,12 +40,11 @@ const Profile = ({ activeOrganization }) => {
 
   const handleLeaveOrganization = async orgName => {
     try {
-      await UserService.leaveOrganization(orgName);
+      await api.users.leave(orgName);
       notify('success', t('profile.messages.leftOrganization', { orgName }));
 
       // Refresh organizations list
-      const response = await UserService.getUserOrganizations();
-      setUserOrganizations(response.data || []);
+      setUserOrganizations((await api.users.organizations()) || []);
     } catch (error) {
       log.api.error('Error leaving organization', {
         orgName,
@@ -60,12 +56,11 @@ const Profile = ({ activeOrganization }) => {
 
   const handleCancelJoinRequest = async requestId => {
     try {
-      await RequestService.cancelJoinRequest(requestId);
+      await api.requests.cancel(requestId);
       notify('success', t('profile.messages.requestCancelled'));
 
       // Refresh join requests list
-      const response = await RequestService.getUserJoinRequests();
-      setJoinRequests(response.data || []);
+      setJoinRequests((await api.requests.mine()) || []);
     } catch (error) {
       log.api.error('Error cancelling join request', {
         requestId,
@@ -143,7 +138,7 @@ const Profile = ({ activeOrganization }) => {
 
   const handleDeleteAccount = async () => {
     try {
-      await UserService.deleteUser(currentUser.id);
+      await api.users.remove(currentUser.id);
       await session.signOutEverywhere();
     } catch (error) {
       log.auth.error('Error deleting account', {
@@ -151,7 +146,7 @@ const Profile = ({ activeOrganization }) => {
         error: error.message,
       });
       // Surface the server's refusal reason (e.g. sole-owner guard) when present
-      notify('danger', error.response?.data?.message || t('profile.errors.deleteAccountFailed'));
+      notify('danger', responseMessage(error, t('profile.errors.deleteAccountFailed')));
     }
   };
 
@@ -171,10 +166,9 @@ const Profile = ({ activeOrganization }) => {
 
   const handleSetPrimaryOrganization = async orgName => {
     try {
-      await UserService.setPrimaryOrganization(orgName);
+      await api.users.setPrimary(orgName);
       notify('success', t('profile.messages.primaryOrganizationSet', { orgName }));
-      const response = await UserService.getUserOrganizations();
-      setUserOrganizations(response.data || []);
+      setUserOrganizations((await api.users.organizations()) || []);
       refreshUserData();
     } catch (error) {
       log.api.error('Error setting primary organization', {
@@ -190,14 +184,14 @@ const Profile = ({ activeOrganization }) => {
     const token = searchParams.get('token');
 
     if (token) {
-      AuthService.verifyMail(token)
-        .then(response => {
-          notify('success', response.data.message);
+      api.auth
+        .verifyMail(token)
+        .then(data => {
+          notify('success', data.message);
           refreshUserData();
         })
         .catch(error => {
-          const failure = error.response?.data?.message || t('profile.errors.verificationFailed');
-          notify('danger', failure);
+          notify('danger', responseMessage(error, t('profile.errors.verificationFailed')));
         })
         .finally(() => {
           navigate('/profile', { replace: true });
@@ -211,7 +205,7 @@ const Profile = ({ activeOrganization }) => {
 
   const loadGravatarProfile = useCallback(async (emailHash, signal) => {
     try {
-      const profile = await AuthService.getGravatarProfile(emailHash, signal);
+      const profile = await api.gravatar.profile(emailHash, signal);
       if (profile) {
         setGravatarProfile(profile);
       }
@@ -255,9 +249,9 @@ const Profile = ({ activeOrganization }) => {
     const loadData = async () => {
       if (activeTab === 'serviceAccounts') {
         try {
-          const response = await ServiceAccountService.getServiceAccounts(controller.signal);
+          const accounts = await api.serviceAccounts.list(controller.signal);
           if (mounted) {
-            setServiceAccounts(response.data);
+            setServiceAccounts(accounts);
           }
         } catch (error) {
           if (mounted && !error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
@@ -269,13 +263,13 @@ const Profile = ({ activeOrganization }) => {
       } else if (activeTab === 'organizations') {
         setOrganizationsLoading(true);
         try {
-          const [orgsResponse, requestsResponse] = await Promise.all([
-            UserService.getUserOrganizations(),
-            RequestService.getUserJoinRequests(),
+          const [organizations, requests] = await Promise.all([
+            api.users.organizations(),
+            api.requests.mine(),
           ]);
           if (mounted) {
-            setUserOrganizations(orgsResponse.data || []);
-            setJoinRequests(requestsResponse.data || []);
+            setUserOrganizations(organizations || []);
+            setJoinRequests(requests || []);
           }
         } catch (error) {
           if (mounted && !error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
@@ -303,8 +297,7 @@ const Profile = ({ activeOrganization }) => {
 
   const loadServiceAccounts = async signal => {
     try {
-      const response = await ServiceAccountService.getServiceAccounts(signal);
-      setServiceAccounts(response.data);
+      setServiceAccounts(await api.serviceAccounts.list(signal));
     } catch (error) {
       if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
         log.api.error('Error loading service accounts', {
@@ -319,15 +312,15 @@ const Profile = ({ activeOrganization }) => {
     const controller = new AbortController();
     try {
       // Get organizations where user can create service accounts
-      const orgsResponse = await ServiceAccountService.getAvailableOrganizations();
-      const activeOrg = orgsResponse.data?.find(org => org.name === activeOrganization);
+      const organizations = await api.serviceAccounts.organizations();
+      const activeOrg = organizations?.find(org => org.name === activeOrganization);
 
       if (!activeOrg) {
         notify('danger', t('profile.errors.activeOrgNotFound'));
         return;
       }
 
-      const createResponse = await ServiceAccountService.createServiceAccount(
+      const created = await api.serviceAccounts.create(
         newServiceAccountDescription,
         newServiceAccountExpiration,
         activeOrg.id
@@ -336,7 +329,7 @@ const Profile = ({ activeOrganization }) => {
       setNewServiceAccountDescription('');
       setNewServiceAccountExpiration(30);
       // The raw token is returned only by this response — show it once
-      setNewServiceAccountToken(createResponse.data?.token || null);
+      setNewServiceAccountToken(created?.token || null);
       notify('success', t('profile.messages.serviceAccountCreated'));
     } catch (error) {
       if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
@@ -346,7 +339,7 @@ const Profile = ({ activeOrganization }) => {
         notify(
           'danger',
           t('profile.errors.createServiceAccountFailed', {
-            error: error.response?.data?.message || error.message,
+            error: responseMessage(error, error.message),
           })
         );
       }
@@ -357,7 +350,7 @@ const Profile = ({ activeOrganization }) => {
   const handleDeleteServiceAccount = async id => {
     const controller = new AbortController();
     try {
-      await ServiceAccountService.deleteServiceAccount(id);
+      await api.serviceAccounts.remove(id);
       await loadServiceAccounts(controller.signal);
     } catch (error) {
       if (!error.message?.includes('aborted') && !error.name?.includes('Cancel')) {
@@ -368,7 +361,7 @@ const Profile = ({ activeOrganization }) => {
         notify(
           'danger',
           t('profile.errors.deleteServiceAccountsFailed', {
-            error: error.response?.data?.message || error.message,
+            error: responseMessage(error, error.message),
           })
         );
       }
@@ -400,7 +393,7 @@ const Profile = ({ activeOrganization }) => {
     const ids = selectedAccounts.map(account => account.id);
     const controller = new AbortController();
     try {
-      await Promise.all(ids.map(id => ServiceAccountService.deleteServiceAccount(id)));
+      await Promise.all(ids.map(id => api.serviceAccounts.remove(id)));
       notify('success', t('profile.messages.serviceAccountsDeleted'));
     } catch (error) {
       log.api.error('Error deleting service accounts', {
@@ -410,7 +403,7 @@ const Profile = ({ activeOrganization }) => {
       notify(
         'danger',
         t('profile.errors.deleteServiceAccountsFailed', {
-          error: error.response?.data?.message || error.message,
+          error: responseMessage(error, error.message),
         })
       );
     }
@@ -425,8 +418,8 @@ const Profile = ({ activeOrganization }) => {
   const handleResendVerificationMail = async () => {
     const controller = new AbortController();
     try {
-      const response = await AuthService.resendVerificationMail(controller.signal);
-      notify('success', response.data.message);
+      const data = await api.auth.resendVerification(controller.signal);
+      notify('success', data.message);
       await refreshUserData();
     } catch (error) {
       if (!error.name?.includes('Cancel')) {
@@ -443,7 +436,7 @@ const Profile = ({ activeOrganization }) => {
     setPasswordErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
-        await UserService.changePassword(currentUser.id, newPassword, controller.signal);
+        await api.users.changePassword(currentUser.id, newPassword, controller.signal);
         notify('success', t('profile.messages.passwordChanged'));
       } catch (error) {
         if (!error.name?.includes('Cancel')) {
@@ -461,7 +454,7 @@ const Profile = ({ activeOrganization }) => {
     setEmailErrors(errors);
     if (Object.keys(errors).length === 0) {
       try {
-        await UserService.changeEmail(currentUser.id, newEmail, controller.signal);
+        await api.users.changeEmail(currentUser.id, newEmail, controller.signal);
         notify('success', t('profile.messages.emailChanged'));
         await refreshUserData();
       } catch (error) {
@@ -477,15 +470,14 @@ const Profile = ({ activeOrganization }) => {
     e.preventDefault();
     const controller = new AbortController();
     try {
-      await UserService.changeName(currentUser.id, displayName, controller.signal);
+      await api.users.changeName(currentUser.id, displayName, controller.signal);
       notify('success', t('profile.messages.nameChanged'));
       await refreshUserData();
     } catch (error) {
       if (!error.name?.includes('Cancel')) {
         notify(
           'danger',
-          error.response?.data?.message ||
-            t('profile.errors.changeNameFailed', { error: error.message })
+          responseMessage(error, t('profile.errors.changeNameFailed', { error: error.message }))
         );
       }
     }

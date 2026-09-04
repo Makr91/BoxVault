@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { log, useNotify } from '../chrome';
-import { session } from '../chromeProps';
-import ConfigService from '../services/config.service';
+import { responseMessage } from '../pages';
+import { api } from '../services/api';
 import { processConfig } from '../utils/ConfigProcessorUtils';
 
 import ConfigFieldRenderer from './ConfigFieldRenderer.component';
@@ -26,10 +26,10 @@ const ConfigurationManager = () => {
 
   const fetchConfig = useCallback(
     configName => {
-      ConfigService.getConfig(configName).then(
-        response => {
-          setConfig(response.data);
-          const { extractedValues, organizedSections } = processConfig(response.data, configName);
+      api.config.get(configName).then(
+        data => {
+          setConfig(data);
+          const { extractedValues, organizedSections } = processConfig(data, configName);
           setValues(extractedValues);
           setSections(organizedSections);
         },
@@ -112,7 +112,7 @@ const ConfigurationManager = () => {
       updateValueInObject(newConfig, path, value);
     });
 
-    ConfigService.updateConfig(selectedConfig, newConfig).then(
+    api.config.update(selectedConfig, newConfig).then(
       () => {
         notify('success', t('configManager.updateSuccess'));
         // Re-fetch config to ensure UI is in sync with the saved state
@@ -129,7 +129,7 @@ const ConfigurationManager = () => {
   };
 
   const handleConfigUpdate = async newConfig => {
-    await ConfigService.updateConfig('auth', newConfig);
+    await api.config.update('auth', newConfig);
     setConfig(newConfig);
   };
 
@@ -140,17 +140,15 @@ const ConfigurationManager = () => {
     }
 
     notify('info', t('configManager.testingSmtp'), { key: SMTP_TEST_KEY });
-    ConfigService.testSmtp(testEmail)
-      .then(response => {
-        notify('success', response.data.message || t('configManager.testSmtpSuccess'), {
+    api.config
+      .testSmtp(testEmail)
+      .then(data => {
+        notify('success', data.message || t('configManager.testSmtpSuccess'), {
           key: SMTP_TEST_KEY,
         });
       })
       .catch(error => {
-        const resMessage =
-          (error.response && error.response.data && error.response.data.message) ||
-          error.message ||
-          error.toString();
+        const resMessage = responseMessage(error, error.message || error.toString());
         notify('danger', `${t('configManager.testSmtpError')}: ${resMessage}`, {
           key: SMTP_TEST_KEY,
         });
@@ -162,28 +160,8 @@ const ConfigurationManager = () => {
       return;
     }
 
-    const user = session.current();
-    if (!user || !user.accessToken) {
-      notify('danger', t('error.unexpectedErrorOccurred'));
-      return;
-    }
-
     try {
-      const response = await fetch(
-        `/api/config/ssl/upload?targetPath=${encodeURIComponent(targetPath)}`,
-        {
-          method: 'POST',
-          headers: {
-            'x-access-token': user.accessToken,
-            'Content-Type': 'application/octet-stream',
-          },
-          body: file,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
+      await api.config.uploadSsl(file, targetPath);
 
       notify(
         'success',
@@ -611,7 +589,8 @@ const ConfigurationManager = () => {
             type="button"
             className="nav-link"
             onClick={() => {
-              ConfigService.restartServer()
+              api.config
+                .restart()
                 .then(() => {
                   notify('success', t('configManager.restartInitiated'));
                 })

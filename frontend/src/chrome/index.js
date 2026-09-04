@@ -6,6 +6,7 @@ export {
   orgsShape,
   sessionShape,
 } from './AppChrome';
+export { ApiError, createApiClient, encodePath } from './apiClient';
 export { default as Avatar } from './Avatar';
 export { default as Crumbs, crumbShape } from './Crumbs';
 export { default as ErrorBoundary } from './ErrorBoundary';

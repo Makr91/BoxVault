@@ -4,7 +4,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 
 import { log, useNotify } from '../chrome';
-import SetupService from '../services/setup.service';
+import { api } from '../services/api';
 
 const SETUP_KEY = 'setup';
 
@@ -31,9 +31,10 @@ const SetupComponent = () => {
   }, [t]);
 
   useEffect(() => {
-    SetupService.isSetupComplete()
-      .then(response => {
-        setSetupComplete(response.data.setupComplete);
+    api.setup
+      .status()
+      .then(status => {
+        setSetupComplete(status.setupComplete);
       })
       .catch(error => {
         log.api.error('Error checking setup status', {
@@ -142,12 +143,14 @@ const SetupComponent = () => {
   };
 
   const handleVerifyToken = () => {
-    SetupService.verifySetupToken(setupToken)
-      .then(tokenResponse => {
-        setAuthorizedSetupToken(tokenResponse.data.authorizedSetupToken);
-        SetupService.getConfigs(tokenResponse.data.authorizedSetupToken)
-          .then(configResponse => {
-            const newConfigs = configResponse.data.configs;
+    api.setup
+      .verifyToken(setupToken)
+      .then(verified => {
+        setAuthorizedSetupToken(verified.authorizedSetupToken);
+        api.setup
+          .configs(verified.authorizedSetupToken)
+          .then(data => {
+            const newConfigs = data.configs;
 
             // Auto-populate dialect on initial load if database_type is set but dialect is empty
             if (
@@ -245,7 +248,8 @@ const SetupComponent = () => {
     if (!file) {
       return;
     }
-    SetupService.uploadSSL(authorizedSetupToken, file)
+    api.setup
+      .uploadSsl(authorizedSetupToken, file)
       .then(({ path }) => {
         handleConfigChange(configName, currentPath, path);
         notify('success', t('messages.operationSuccessful'));
@@ -452,7 +456,8 @@ const SetupComponent = () => {
       return;
     }
 
-    SetupService.updateConfigs(authorizedSetupToken, configs)
+    api.setup
+      .update(authorizedSetupToken, configs)
       .then(() => {
         notify('success', t('setup.updateSuccess'), { key: SETUP_KEY, sticky: true });
 
@@ -472,12 +477,13 @@ const SetupComponent = () => {
 
   useEffect(() => {
     if (authorizedSetupToken) {
-      SetupService.getConfigs(authorizedSetupToken)
-        .then(response => {
+      api.setup
+        .configs(authorizedSetupToken)
+        .then(data => {
           log.component.debug('Fetched configs', {
-            configs: response.data.configs,
+            configs: data.configs,
           });
-          setConfigs(response.data.configs);
+          setConfigs(data.configs);
         })
         .catch(error => {
           log.api.error('Error fetching configs', {

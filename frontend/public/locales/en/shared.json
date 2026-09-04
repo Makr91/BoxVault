@@ -35,6 +35,12 @@
   "notice": {
     "dismiss": "Dismiss"
   },
+  "errors": {
+    "accessDenied": "Access denied.",
+    "notFound": "Not found.",
+    "network": "The server could not be reached.",
+    "request": "The request failed."
+  },
   "session": {
     "completing": "Completing sign-in…",
     "failed": "Sign-in failed: {{message}} —",

@@ -6,7 +6,8 @@ import { Link, useLocation } from 'react-router-dom';
 
 import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
-import AuthService from '../services/auth.service';
+import { responseMessage } from '../pages';
+import { api } from '../services/api';
 import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
 import AuthShell, { AuthAlert, AuthSpinner, InboxIcon } from './AuthShell.component';
@@ -301,7 +302,7 @@ const Register = () => {
 
     const loadAuthMethods = async () => {
       try {
-        const result = await AuthService.getAuthMethods();
+        const result = await api.auth.methods();
         if (cancelled) {
           return;
         }
@@ -337,8 +338,8 @@ const Register = () => {
       if (token) {
         setInvitationToken(token);
         try {
-          const response = await AuthService.validateInvitationToken(token);
-          setOrganizationName(response.data.organizationName);
+          const invitation = await api.auth.validateInvitation(token);
+          setOrganizationName(invitation.organizationName);
         } catch (error) {
           log.auth.error('Invalid or expired token', {
             token,
@@ -406,20 +407,23 @@ const Register = () => {
 
     setIsSubmitting(true);
     setStatus(null);
-    AuthService.register(
-      formValues.username,
-      formValues.email,
-      formValues.password,
-      invitationToken,
-      formValues.name
-    )
-      .then(response => {
-        setStatus({ success: true, message: response.data.message });
+    api.auth
+      .register({
+        username: formValues.username,
+        email: formValues.email,
+        password: formValues.password,
+        invitationToken,
+        name: formValues.name,
+      })
+      .then(data => {
+        setStatus({ success: true, message: data.message });
         setIsSubmitting(false);
       })
       .catch(error => {
-        const resMessage = error.response?.data?.message || error.message || error.toString();
-        setStatus({ success: false, message: resMessage });
+        setStatus({
+          success: false,
+          message: responseMessage(error, error.message || error.toString()),
+        });
         setIsSubmitting(false);
       });
   };

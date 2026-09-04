@@ -4,9 +4,8 @@ import { Link } from 'react-router-dom';
 
 import { useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
-import { ConfirmModal } from '../pages';
-import OrganizationService from '../services/organization.service';
-import UserService from '../services/user.service';
+import { ConfirmModal, responseMessage } from '../pages';
+import { api } from '../services/api';
 import { validateOrgName } from '../utils/ConfigProcessorUtils';
 
 import UserCard from './UserCard.component';
@@ -34,25 +33,20 @@ const OrganizationUserManager = () => {
   const currentUser = session.current();
 
   useEffect(() => {
-    OrganizationService.getOrganizationsWithUsers().then(
-      response => {
-        setOrganizations(response.data);
-      },
-      () => null
-    );
+    api.organizations.withUsers().then(setOrganizations, () => null);
   }, []);
 
   const checkOrganizationExists = async name => {
     try {
-      const response = await OrganizationService.getOrganizationByName(name);
-      return !!response.data;
+      return Boolean(await api.organizations.get(name));
     } catch {
       return false;
     }
   };
 
   const handleDeleteOrganization = organizationName => {
-    OrganizationService.deleteOrganization(organizationName)
+    api.organizations
+      .remove(organizationName)
       .then(() => {
         setOrganizations(prev => prev.filter(org => org.name !== organizationName));
       })
@@ -60,7 +54,8 @@ const OrganizationUserManager = () => {
   };
 
   const handleDeleteUser = userId => {
-    UserService.deleteUser(userId)
+    api.users
+      .remove(userId)
       .then(() => {
         setOrganizations(prev =>
           prev.map(org => ({
@@ -98,7 +93,8 @@ const OrganizationUserManager = () => {
       } else if (itemToDelete.type === 'organization') {
         handleDeleteOrganization(itemToDelete.name);
       } else if (itemToDelete.type === 'user_remove') {
-        OrganizationService.removeUserFromOrg(itemToDelete.orgName, itemToDelete.id)
+        api.organizations
+          .removeMember(itemToDelete.orgName, itemToDelete.id)
           .then(() => {
             setOrganizations(prev =>
               prev.map(org =>
@@ -118,7 +114,7 @@ const OrganizationUserManager = () => {
   };
 
   const handleSuspendOrResumeUser = (userId, isSuspended) => {
-    const action = isSuspended ? UserService.resumeUser(userId) : UserService.suspendUser(userId);
+    const action = isSuspended ? api.users.resume(userId) : api.users.suspend(userId);
 
     action
       .then(() => {
@@ -136,8 +132,8 @@ const OrganizationUserManager = () => {
 
   const handleSuspendOrResumeOrganization = (organizationName, isSuspended) => {
     const action = isSuspended
-      ? OrganizationService.resumeOrganization(organizationName)
-      : OrganizationService.suspendOrganization(organizationName);
+      ? api.organizations.resume(organizationName)
+      : api.organizations.suspend(organizationName);
 
     action
       .then(() => {
@@ -171,24 +167,20 @@ const OrganizationUserManager = () => {
     }
 
     try {
-      const response = await OrganizationService.updateOrganization(oldName, {
-        organization: newOrgName,
-      });
+      await api.organizations.update(oldName, { organization: newOrgName });
 
-      if (response.status === 200) {
-        if (currentUser && currentUser.organization === oldName) {
-          localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
-          await session.refresh();
-        }
-
-        setOrganizations(prevOrgs =>
-          prevOrgs.map(org => (org.name === oldName ? { ...org, name: newOrgName } : org))
-        );
-        setEditingOrgId(null);
-        setNewOrgName('');
-        setOldName('');
-        notify('success', t('orgUserManager.rename.success'));
+      if (currentUser && currentUser.organization === oldName) {
+        localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
+        await session.refresh();
       }
+
+      setOrganizations(prevOrgs =>
+        prevOrgs.map(org => (org.name === oldName ? { ...org, name: newOrgName } : org))
+      );
+      setEditingOrgId(null);
+      setNewOrgName('');
+      setOldName('');
+      notify('success', t('orgUserManager.rename.success'));
     } catch {
       notify('danger', t('orgUserManager.rename.error'));
     }
@@ -259,13 +251,13 @@ const OrganizationUserManager = () => {
                   <button
                     className="btn btn-info btn-sm me-2"
                     onClick={async () => {
-                      const response = await OrganizationService.getOrganizationByName(org.name);
-                      setEditingOrg(response.data);
-                      setEditOrgCode(response.data.org_code || '');
-                      setEditOrgEmail(response.data.email || '');
-                      setEditOrgDescription(response.data.description || '');
-                      setEditOrgAccessMode(response.data.access_mode || 'private');
-                      setEditOrgDefaultRole(response.data.default_role || 'member');
+                      const details = await api.organizations.get(org.name);
+                      setEditingOrg(details);
+                      setEditOrgCode(details.org_code || '');
+                      setEditOrgEmail(details.email || '');
+                      setEditOrgDescription(details.description || '');
+                      setEditOrgAccessMode(details.access_mode || 'private');
+                      setEditOrgDefaultRole(details.default_role || 'member');
                       setShowEditModal(true);
                     }}
                   >
@@ -452,14 +444,14 @@ const OrganizationUserManager = () => {
                   className="btn btn-primary"
                   onClick={async () => {
                     try {
-                      await OrganizationService.updateOrganization(editingOrg.name, {
+                      await api.organizations.update(editingOrg.name, {
                         organization: editingOrg.name,
                         org_code: editOrgCode,
                         email: editOrgEmail,
                         description: editOrgDescription,
                       });
 
-                      await OrganizationService.updateAccessMode(
+                      await api.organizations.accessMode(
                         editingOrg.name,
                         editOrgAccessMode,
                         editOrgDefaultRole
@@ -470,7 +462,7 @@ const OrganizationUserManager = () => {
                     } catch (error) {
                       notify(
                         'danger',
-                        error.response?.data?.message || t('orgUserManager.editModal.updateError')
+                        responseMessage(error, t('orgUserManager.editModal.updateError'))
                       );
                     }
                   }}

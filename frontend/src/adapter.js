@@ -1,16 +1,52 @@
 import { log } from './chrome';
-import { fetchOrganization, organizationLogo } from './chromeProps';
-import ArchitectureService from './services/architecture.service';
-import BoxService from './services/box.service';
-import FileService from './services/file.service';
-import IsoService from './services/iso.service';
-import ProviderService from './services/provider.service';
-import VersionService from './services/version.service';
+import { api } from './services/api';
 import { getDistroIconUrl, getOsDisplayName } from './utils/DistroIcons';
 import { readDeprecated, readDeprecationReason, readReleaseNotes } from './utils/versionFields';
 
 const { origin } = window.location;
 const logoPromises = new Map();
+
+export const organizationLogo = async organization => {
+  const logo = organization.logo || organization.organization?.logo;
+  if (logo) {
+    return logo;
+  }
+  const emailHash = organization.emailHash || organization.organization?.emailHash;
+  if (!emailHash) {
+    return '';
+  }
+  const profile = await api.gravatar.profile(emailHash);
+  return profile?.avatar_url || '';
+};
+
+export const fetchOrganization = async name => {
+  const data = await api.organizations.get(name);
+  return {
+    name,
+    displayName: data.display_name || '',
+    logo: await organizationLogo(data),
+    description: data.description || '',
+    orgCode: data.external_issuer ? data.org_code || '' : '',
+  };
+};
+
+export const loadOrganizations = async () => {
+  const rows = (await api.users.organizations()) || [];
+  return Promise.all(
+    rows.map(async membership => {
+      const name = membership.name || membership.organization?.name;
+      return {
+        uuid: name,
+        name,
+        description: membership.description || membership.organization?.description || '',
+        roles: membership.role ? [String(membership.role).toUpperCase()] : [],
+        primary: Boolean(membership.isPrimary),
+        personal: Boolean(membership.personal),
+        logo: await organizationLogo(membership),
+      };
+    })
+  );
+};
 
 const logoFor = organization => {
   const name = organization?.name;
@@ -23,7 +59,7 @@ const logoFor = organization => {
   return logoPromises.get(name);
 };
 
-const rows = response => (Array.isArray(response.data) ? response.data : []);
+const rows = data => (Array.isArray(data) ? data : []);
 
 const fileDownloads = files =>
   (files || []).reduce((sum, file) => sum + (file.downloadCount || 0), 0);
@@ -138,26 +174,26 @@ const withLogos = async (entries, fallbackOrg, toItem) => {
 };
 
 const providersOf = (org, name, version) =>
-  ProviderService.getProviders(org, name, version)
-    .then(response => rows(response).map(providerSummary))
+  api.providers
+    .list(org, name, version)
+    .then(data => rows(data).map(providerSummary))
     .catch(error => {
       log.api.error('Error fetching providers', { versionNumber: version, error: error.message });
       return [];
     });
 
 const getItemSummary = async (org, name) => {
-  const response = await BoxService.get(org, name);
-  const box = response.data;
+  const box = await api.boxes.get(org, name);
   return boxItem(box, org, await logoFor({ name: org, ...(box.organization || {}) }));
 };
 
 const getItem = async (org, name) => {
-  const [item, versionsResponse] = await Promise.all([
+  const [item, versionRows] = await Promise.all([
     getItemSummary(org, name),
-    VersionService.getVersions(org, name),
+    api.versions.list(org, name),
   ]);
   const versions = await Promise.all(
-    rows(versionsResponse).map(async version => ({
+    rows(versionRows).map(async version => ({
       ...versionSummary(version),
       providers: await providersOf(org, name, version.versionNumber),
     }))
@@ -166,21 +202,17 @@ const getItem = async (org, name) => {
 };
 
 const downloadLink = (org, name, version, provider, architecture) =>
-  FileService.getDownloadLink(org, name, version, provider, architecture).catch(() => '');
+  api.files.downloadLink(org, name, version, provider, architecture).catch(() => '');
 
 const getVersion = async (org, name, version) => {
-  const [versionResponse, providersResponse] = await Promise.all([
-    VersionService.getVersion(org, name, version),
-    ProviderService.getProviders(org, name, version),
+  const [versionData, providerRows] = await Promise.all([
+    api.versions.get(org, name, version),
+    api.providers.list(org, name, version),
   ]);
   const providers = await Promise.all(
-    rows(providersResponse).map(async provider => {
-      const architectures = await ArchitectureService.getArchitectures(
-        org,
-        name,
-        version,
-        provider.name
-      )
+    rows(providerRows).map(async provider => {
+      const architectures = await api.architectures
+        .list(org, name, version, provider.name)
         .then(rows)
         .catch(() => []);
       return {
@@ -197,24 +229,24 @@ const getVersion = async (org, name, version) => {
       };
     })
   );
-  return { ...versionSummary(versionResponse.data), providers };
+  return { ...versionSummary(versionData), providers };
 };
 
 const architectureDetail = async (org, name, version, provider, architecture) => {
   try {
     const [info, url] = await Promise.all([
-      FileService.info(org, name, version, provider, architecture.name),
-      FileService.getDownloadLink(org, name, version, provider, architecture.name),
+      api.files.info(org, name, version, provider, architecture.name),
+      api.files.downloadLink(org, name, version, provider, architecture.name),
     ]);
     return {
       name: architecture.name,
       defaultBox: Boolean(architecture.defaultBox),
-      fileName: info.data.fileName || '',
-      fileSize: info.data.fileSize || 0,
-      checksum: info.data.checksum || '',
-      checksumType: info.data.checksumType || '',
+      fileName: info.fileName || '',
+      fileSize: info.fileSize || 0,
+      checksum: info.checksum || '',
+      checksumType: info.checksumType || '',
       downloadUrl: url,
-      downloadCount: info.data.downloadCount || 0,
+      downloadCount: info.downloadCount || 0,
     };
   } catch (error) {
     log.api.error('Error fetching file info', {
@@ -235,61 +267,61 @@ const architectureDetail = async (org, name, version, provider, architecture) =>
 };
 
 const getProvider = async (org, name, version, provider) => {
-  const [providerResponse, architecturesResponse] = await Promise.all([
-    ProviderService.getProvider(org, name, version, provider),
-    ArchitectureService.getArchitectures(org, name, version, provider),
+  const [providerData, architectureRows] = await Promise.all([
+    api.providers.get(org, name, version, provider),
+    api.architectures.list(org, name, version, provider),
   ]);
   const architectures = await Promise.all(
-    rows(architecturesResponse).map(architecture =>
+    rows(architectureRows).map(architecture =>
       architectureDetail(org, name, version, provider, architecture)
     )
   );
   return {
-    name: providerResponse.data.name,
-    description: providerResponse.data.description || '',
+    name: providerData.name,
+    description: providerData.description || '',
     architectures,
-    extras: { raw: providerResponse.data },
+    extras: { raw: providerData },
   };
 };
 
 const deleteArchitectureCascade = (org, name, version, provider, architecture) =>
-  FileService.delete(org, name, version, provider, architecture).then(() =>
-    ArchitectureService.deleteArchitecture(org, name, version, provider, architecture)
-  );
+  api.files
+    .remove(org, name, version, provider, architecture)
+    .then(() => api.architectures.remove(org, name, version, provider, architecture));
 
 export const deleteProviderCascade = (org, name, version, provider) =>
-  ArchitectureService.getArchitectures(org, name, version, provider)
-    .then(response =>
+  api.architectures
+    .list(org, name, version, provider)
+    .then(data =>
       Promise.all(
-        rows(response).map(architecture =>
+        rows(data).map(architecture =>
           deleteArchitectureCascade(org, name, version, provider, architecture.name)
         )
       )
     )
-    .then(() => ProviderService.deleteProvider(org, name, version, provider));
+    .then(() => api.providers.remove(org, name, version, provider));
 
 export const deleteVersionCascade = (org, name, version) =>
-  ProviderService.getProviders(org, name, version)
-    .then(response =>
+  api.providers
+    .list(org, name, version)
+    .then(data =>
       Promise.all(
-        rows(response).map(provider => deleteProviderCascade(org, name, version, provider.name))
+        rows(data).map(provider => deleteProviderCascade(org, name, version, provider.name))
       )
     )
-    .then(() => VersionService.deleteVersion(org, name, version));
+    .then(() => api.versions.remove(org, name, version));
 
 const watches = {
-  list: () =>
-    BoxService.getUserWatches().then(response => new Set(rows(response).map(entry => entry.boxId))),
+  list: () => api.boxes.watches().then(data => new Set(rows(data).map(entry => entry.boxId))),
   toggle: (item, next) =>
     next
-      ? BoxService.watch(item.organization.name, item.name)
-      : BoxService.unwatch(item.organization.name, item.name),
+      ? api.boxes.watch(item.organization.name, item.name)
+      : api.boxes.unwatch(item.organization.name, item.name),
 };
 
 export const boxesAdapter = {
-  listAll: () =>
-    BoxService.discoverAll().then(response => withLogos(rows(response), 'Unknown', boxItem)),
-  listOrg: org => BoxService.getAll(org).then(response => withLogos(rows(response), org, boxItem)),
+  listAll: () => api.boxes.discover().then(data => withLogos(rows(data), 'Unknown', boxItem)),
+  listOrg: org => api.boxes.list(org).then(data => withLogos(rows(data), org, boxItem)),
   getItem,
   getItemSummary,
   getVersion,
@@ -298,8 +330,7 @@ export const boxesAdapter = {
   watches,
 };
 
-const isoList = org =>
-  IsoService.getAll(org).then(response => withLogos(rows(response), org, isoItem));
+const isoList = org => api.isos.list(org).then(data => withLogos(rows(data), org, isoItem));
 
 const getIso = async (org, name) => {
   const items = await isoList(org);
@@ -311,17 +342,15 @@ const getIso = async (org, name) => {
 };
 
 const isoWatches = {
-  list: () =>
-    IsoService.getUserWatches().then(response => new Set(rows(response).map(entry => entry.isoId))),
+  list: () => api.isos.watches().then(data => new Set(rows(data).map(entry => entry.isoId))),
   toggle: (item, next) =>
     next
-      ? IsoService.watch(item.organization.name, item.extras.raw.id)
-      : IsoService.unwatch(item.organization.name, item.extras.raw.id),
+      ? api.isos.watch(item.organization.name, item.extras.raw.id)
+      : api.isos.unwatch(item.organization.name, item.extras.raw.id),
 };
 
 export const isosAdapter = {
-  listAll: () =>
-    IsoService.discoverAll().then(response => withLogos(rows(response), 'Unknown', isoItem)),
+  listAll: () => api.isos.discover().then(data => withLogos(rows(data), 'Unknown', isoItem)),
   listOrg: isoList,
   getItem: getIso,
   getItemSummary: getIso,

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { FaHardDrive, FaCompactDisc } from 'react-icons/fa6';
 
 import { log, useNotify } from '../chrome';
-import SystemService from '../services/system.service';
+import { responseMessage } from '../pages';
+import { api } from '../services/api';
 
 const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) {
@@ -85,11 +86,12 @@ const StorageInfo = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    SystemService.getStorageInfo()
-      .then(response => setStorageInfo(response.data))
+    api.system
+      .storage()
+      .then(setStorageInfo)
       .catch(err => {
         log.api.error('Failed to fetch storage info', { error: err.message });
-        notify('danger', err.response?.data?.message || t('admin.storage.fetchError'));
+        notify('danger', responseMessage(err, t('admin.storage.fetchError')));
       })
       .finally(() => setLoading(false));
   }, [notify, t]);

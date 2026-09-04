@@ -1,12 +1,15 @@
 import PropTypes from 'prop-types';
 
-import { createI18n, createNotificationsClient, createPush, log, userDisplayName } from './chrome';
+import {
+  createApiClient,
+  createI18n,
+  createNotificationsClient,
+  createPush,
+  log,
+  userDisplayName,
+} from './chrome';
 import BoxVaultLight from './images/BoxVault.svg?react';
 import BoxVaultDark from './images/BoxVaultDark.svg?react';
-import authHeader from './services/auth-header';
-import AuthService from './services/auth.service';
-import NotificationsService from './services/notifications.service';
-import UserService from './services/user.service';
 import { createBackendSession, createReturnTo, createSessionEvents } from './session';
 import version from './version.json';
 
@@ -19,15 +22,39 @@ export const POWERED_BY = {
 };
 export const ACTIVE_ORG_KEY = 'activeOrganization';
 
+export const events = createSessionEvents();
+
+export const returnTo = createReturnTo({
+  storageKey: 'boxvault_intended_url',
+  signInPath: '/login',
+  authPaths: ['/login', '/register', '/auth/', '/setup'],
+});
+
+export const session = createBackendSession({ baseUrl: window.location.origin, events });
+
+export const client = createApiClient({
+  baseUrl: window.location.origin,
+  session,
+  onError: error =>
+    log.api.error('Request failed', {
+      method: error.request.method,
+      url: error.request.url,
+      status: error.status,
+      message: error.message,
+    }),
+});
+
+const PUBLIC = { auth: false };
+const SUBSCRIPTIONS_PATH = '/api/notifications/subscriptions';
+
+export const fetchHealth = () => client.get('/api/health', PUBLIC);
+
 const loadSupportedLanguages = async () => {
   try {
-    const response = await fetch('/api/health');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.supported_languages) {
-        log.app.info('Frontend using backend-detected locales: ', data.supported_languages);
-        return data.supported_languages;
-      }
+    const data = await fetchHealth();
+    if (data.supported_languages) {
+      log.app.info('Frontend using backend-detected locales: ', data.supported_languages);
+      return data.supported_languages;
     }
   } catch (error) {
     log.app.error('Failed to fetch supported languages', { error });
@@ -41,36 +68,15 @@ export const {
   getSupportedLanguages,
 } = createI18n({ loadSupportedLanguages, debug: true });
 
-export const events = createSessionEvents();
-
-export const returnTo = createReturnTo({
-  storageKey: 'boxvault_intended_url',
-  signInPath: '/login',
-  authPaths: ['/login', '/register', '/auth/', '/setup'],
-});
-
-export const session = createBackendSession({ baseUrl: window.location.origin, events });
-
-export const notificationsAdapter = createNotificationsClient({
-  baseUrl: window.location.origin,
-  headers: () => authHeader(),
-});
-
-const getVapidKey = async () => {
-  const response = await fetch(`${window.location.origin}/api/notifications/vapid-key`);
-  if (!response.ok) {
-    throw new Error(`VAPID key request failed with status ${response.status}`);
-  }
-  const data = await response.json();
-  return data.publicKey;
-};
+export const notificationsAdapter = createNotificationsClient({ client });
 
 export const push = createPush({
   storageKey: 'boxvault_push_enabled',
   serviceWorkerUrl: `/notification-sw.js?app=${encodeURIComponent(APP_NAME)}`,
-  getVapidKey,
-  createSubscription: subscription => NotificationsService.createSubscription(subscription),
-  deleteSubscription: endpoint => NotificationsService.deleteSubscription(endpoint),
+  getVapidKey: () =>
+    client.get('/api/notifications/vapid-key', PUBLIC).then(data => data.publicKey),
+  createSubscription: subscription => client.post(SUBSCRIPTIONS_PATH, subscription),
+  deleteSubscription: endpoint => client.delete(SUBSCRIPTIONS_PATH, { body: { endpoint } }),
 });
 
 export const pushAdapter = {
@@ -79,14 +85,6 @@ export const pushAdapter = {
   setEnabled: push.setPushEnabled,
   subscribe: push.subscribePush,
   unsubscribe: push.unsubscribePush,
-};
-
-export const fetchHealth = async () => {
-  const response = await fetch('/api/health');
-  if (!response.ok) {
-    throw new Error('Health check failed');
-  }
-  return response.json();
 };
 
 export const BrandLogo = ({ theme, className }) =>
@@ -133,58 +131,4 @@ export const buildTicketUrl = ({ ticketConfig, activeOrgCode, userClaims, user }
   });
 
   return `${knobValue(ticketConfig, 'base_url')}&${params.toString()}`;
-};
-
-export const organizationLogo = async org => {
-  const logo = org.logo || org.organization?.logo;
-  if (logo) {
-    return logo;
-  }
-  const emailHash = org.emailHash || org.organization?.emailHash;
-  if (!emailHash) {
-    return '';
-  }
-  try {
-    const profile = await AuthService.getGravatarProfile(emailHash);
-    return profile?.avatar_url || '';
-  } catch (error) {
-    log.api.error('Error fetching org gravatar', { error: error.message });
-    return '';
-  }
-};
-
-export const fetchOrganization = async name => {
-  const response = await fetch(`${window.location.origin}/api/organization/${name}`, {
-    headers: session.authHeader(),
-  });
-  if (!response.ok) {
-    throw new Error(`organization ${name} answered ${response.status}`);
-  }
-  const data = await response.json();
-  return {
-    name,
-    displayName: data.display_name || '',
-    logo: await organizationLogo(data),
-    description: data.description || '',
-    orgCode: data.external_issuer ? data.org_code || '' : '',
-  };
-};
-
-export const loadOrganizations = async () => {
-  const response = await UserService.getUserOrganizations();
-  const rows = response.data || [];
-  return Promise.all(
-    rows.map(async org => {
-      const name = org.name || org.organization?.name;
-      return {
-        uuid: name,
-        name,
-        description: org.description || org.organization?.description || '',
-        roles: org.role ? [String(org.role).toUpperCase()] : [],
-        primary: Boolean(org.isPrimary),
-        personal: Boolean(org.personal),
-        logo: await organizationLogo(org),
-      };
-    })
-  );
 };

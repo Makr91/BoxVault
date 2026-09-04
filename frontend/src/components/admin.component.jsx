@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
-import SystemService from '../services/system.service';
+import { api } from '../services/api';
 
 import ConfigurationManager from './ConfigurationManager.component';
 import OrganizationUserManager from './OrganizationUserManager.component';
@@ -40,10 +40,11 @@ const Admin = () => {
     }
 
     // Check for updates
-    SystemService.getUpdateStatus()
-      .then(response => {
-        if (response.data.isAptManaged && response.data.updateAvailable) {
-          setUpdateInfo(response.data);
+    api.system
+      .updateStatus()
+      .then(status => {
+        if (status.isAptManaged && status.updateAvailable) {
+          setUpdateInfo(status);
         }
       })
       .catch(error => {

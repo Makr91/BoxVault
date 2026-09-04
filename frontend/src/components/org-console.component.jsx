@@ -5,11 +5,8 @@ import { FaArrowUpRightFromSquare, FaBuilding } from 'react-icons/fa6';
 
 import { log, useNotify } from '../chrome';
 import { ACTIVE_ORG_KEY, session } from '../chromeProps';
-import { ConfirmModal } from '../pages';
-import AuthService from '../services/auth.service';
-import InvitationService from '../services/invitation.service';
-import OrganizationService from '../services/organization.service';
-import RequestService from '../services/request.service';
+import { ConfirmModal, responseMessage } from '../pages';
+import { api } from '../services/api';
 import { isOrgOwner } from '../utils/permissions';
 
 import UserCard from './UserCard.component';
@@ -461,8 +458,7 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const checkOrganizationExists = async name => {
     try {
-      const response = await OrganizationService.getOrganizationByName(name);
-      return !!response.data;
+      return Boolean(await api.organizations.get(name));
     } catch (error) {
       log.api.error('Error checking organization existence', {
         name,
@@ -488,10 +484,10 @@ const OrgConsole = ({ currentOrganization }) => {
       // data loaded by the other three.
       const [orgUsersResult, invitationsResult, orgDetailsResult, joinRequestsResult] =
         await Promise.allSettled([
-          OrganizationService.getOrganizationWithUsers(currentOrganization),
-          InvitationService.getActiveInvitations(currentOrganization),
-          OrganizationService.getOrganizationByName(currentOrganization),
-          RequestService.getOrgJoinRequests(currentOrganization),
+          api.organizations.users(currentOrganization),
+          api.invitations.active(currentOrganization),
+          api.organizations.get(currentOrganization),
+          api.requests.forOrg(currentOrganization),
         ]);
 
       const failures = [
@@ -510,16 +506,16 @@ const OrgConsole = ({ currentOrganization }) => {
       });
 
       if (orgUsersResult.status === 'fulfilled') {
-        setUsers(orgUsersResult.value.data);
+        setUsers(orgUsersResult.value);
       }
       if (invitationsResult.status === 'fulfilled') {
-        setActiveInvitations(invitationsResult.value.data);
+        setActiveInvitations(invitationsResult.value);
       }
       if (joinRequestsResult.status === 'fulfilled') {
-        setJoinRequests(joinRequestsResult.value.data || []);
+        setJoinRequests(joinRequestsResult.value || []);
       }
       if (orgDetailsResult.status === 'fulfilled') {
-        const details = extractOrgDetailsState(orgDetailsResult.value.data);
+        const details = extractOrgDetailsState(orgDetailsResult.value);
         setNewOrgName(details.name);
         setIsExternalOrg(details.isExternalOrg);
         setOrgIdpLink(details.idpLink);
@@ -572,33 +568,31 @@ const OrgConsole = ({ currentOrganization }) => {
     }
 
     try {
-      const response = await OrganizationService.updateOrganization(currentOrganization, {
+      await api.organizations.update(currentOrganization, {
         organization: newOrgName,
         email: orgEmail,
         description: orgDescription,
       });
 
-      if (response.status === 200) {
-        if (newOrgName !== currentOrganization) {
-          localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
-          await session.refresh();
-        }
-
-        // Local orgs: persist access mode / default role through the
-        // dedicated endpoint when either differs from what was loaded.
-        // newOrgName is the org's current name even after a rename above.
-        const accessChanged =
-          orgAccessMode !== loadedAccessRef.current.accessMode ||
-          orgDefaultRole !== loadedAccessRef.current.defaultRole;
-        if (!isExternalOrg && accessChanged) {
-          await OrganizationService.updateAccessMode(newOrgName, orgAccessMode, orgDefaultRole);
-          loadedAccessRef.current = {
-            accessMode: orgAccessMode,
-            defaultRole: orgDefaultRole,
-          };
-        }
-        notify('success', t('orgConsole.orgUpdateSuccess'));
+      if (newOrgName !== currentOrganization) {
+        localStorage.setItem(ACTIVE_ORG_KEY, newOrgName);
+        await session.refresh();
       }
+
+      // Local orgs: persist access mode / default role through the
+      // dedicated endpoint when either differs from what was loaded.
+      // newOrgName is the org's current name even after a rename above.
+      const accessChanged =
+        orgAccessMode !== loadedAccessRef.current.accessMode ||
+        orgDefaultRole !== loadedAccessRef.current.defaultRole;
+      if (!isExternalOrg && accessChanged) {
+        await api.organizations.accessMode(newOrgName, orgAccessMode, orgDefaultRole);
+        loadedAccessRef.current = {
+          accessMode: orgAccessMode,
+          defaultRole: orgDefaultRole,
+        };
+      }
+      notify('success', t('orgConsole.orgUpdateSuccess'));
     } catch (error) {
       log.component.error('Error updating organization', {
         organization: currentOrganization,
@@ -609,7 +603,8 @@ const OrgConsole = ({ currentOrganization }) => {
   };
 
   const handleSetOrgRole = (userId, newRole) => {
-    OrganizationService.updateUserOrgRole(currentOrganization, userId, newRole)
+    api.organizations
+      .memberRole(currentOrganization, userId, newRole)
       .then(() => {
         setUsers(prevUsers =>
           prevUsers.map(user => (user.id === userId ? { ...user, orgRole: newRole } : user))
@@ -633,12 +628,16 @@ const OrgConsole = ({ currentOrganization }) => {
   const handleSendInvitation = async e => {
     e.preventDefault();
     try {
-      const response = await AuthService.sendInvitation(email, currentOrganization, inviteRole);
+      const sent = await api.auth.invite({
+        email,
+        organizationName: currentOrganization,
+        inviteRole,
+      });
       const invitationDetails = `${t('orgConsole.invitation.sent')}
-        ${t('orgConsole.invitation.token')}: ${response.data.invitationToken}
-        ${t('orgConsole.invitation.expires')}: ${new Date(response.data.invitationTokenExpires).toLocaleString()}
-        ${t('orgConsole.invitation.orgId')}: ${response.data.organizationId}
-        ${t('orgConsole.invitation.link')}: ${response.data.invitationLink}`;
+        ${t('orgConsole.invitation.token')}: ${sent.invitationToken}
+        ${t('orgConsole.invitation.expires')}: ${new Date(sent.invitationTokenExpires).toLocaleString()}
+        ${t('orgConsole.invitation.orgId')}: ${sent.organizationId}
+        ${t('orgConsole.invitation.link')}: ${sent.invitationLink}`;
       notify('success', <pre className="mb-0 small">{invitationDetails}</pre>, { sticky: true });
       setEmail('');
     } catch (error) {
@@ -649,13 +648,11 @@ const OrgConsole = ({ currentOrganization }) => {
       });
       // Prefer the server's own message (e.g. the identity provider's reason
       // for refusing a delegated invite) over the generic local warning.
-      notify('danger', error.response?.data?.message || t('orgConsole.invitation.sendWarning'));
+      notify('danger', responseMessage(error, t('orgConsole.invitation.sendWarning')));
     } finally {
       // Always refresh invitations list (even if email failed)
       try {
-        const invitationsResponse =
-          await InvitationService.getActiveInvitations(currentOrganization);
-        setActiveInvitations(invitationsResponse.data);
+        setActiveInvitations(await api.invitations.active(currentOrganization));
       } catch (error) {
         log.component.error('Error refreshing invitations', {
           error: error.message,
@@ -676,7 +673,8 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const handleConfirmDelete = () => {
     if (itemToDelete && itemToDelete.type === 'invitation') {
-      InvitationService.deleteInvitation(itemToDelete.id)
+      api.invitations
+        .remove(itemToDelete.id)
         .then(() => {
           setActiveInvitations(prevInvitations =>
             prevInvitations.filter(invitation => invitation.id !== itemToDelete.id)
@@ -694,7 +692,8 @@ const OrgConsole = ({ currentOrganization }) => {
     }
 
     if (itemToDelete && itemToDelete.type === 'user_remove') {
-      OrganizationService.removeUserFromOrg(currentOrganization, itemToDelete.id)
+      api.organizations
+        .removeMember(currentOrganization, itemToDelete.id)
         .then(() => {
           setUsers(prevUsers => prevUsers.filter(user => user.id !== itemToDelete.id));
           notify('success', t('orgConsole.users.removeSuccess'));
@@ -714,12 +713,11 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const handleApproveJoinRequest = async (requestId, assignedRole = 'member') => {
     try {
-      await RequestService.approveJoinRequest(currentOrganization, requestId, assignedRole);
+      await api.requests.approve(currentOrganization, requestId, assignedRole);
       notify('success', t('orgConsole.joinRequest.approved'));
 
       // Refresh join requests list
-      const response = await RequestService.getOrgJoinRequests(currentOrganization);
-      setJoinRequests(response.data || []);
+      setJoinRequests((await api.requests.forOrg(currentOrganization)) || []);
     } catch (error) {
       log.component.error('Error approving join request', {
         requestId,
@@ -731,12 +729,11 @@ const OrgConsole = ({ currentOrganization }) => {
 
   const handleDenyJoinRequest = async requestId => {
     try {
-      await RequestService.denyJoinRequest(currentOrganization, requestId);
+      await api.requests.deny(currentOrganization, requestId);
       notify('success', t('orgConsole.joinRequest.denied'));
 
       // Refresh join requests list
-      const response = await RequestService.getOrgJoinRequests(currentOrganization);
-      setJoinRequests(response.data || []);
+      setJoinRequests((await api.requests.forOrg(currentOrganization)) || []);
     } catch (error) {
       log.component.error('Error denying join request', {
         requestId,

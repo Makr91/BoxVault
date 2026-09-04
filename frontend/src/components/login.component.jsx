@@ -6,7 +6,8 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 import { log } from '../chrome';
 import { returnTo, session } from '../chromeProps';
-import AuthService from '../services/auth.service';
+import { responseMessage } from '../pages';
+import { api } from '../services/api';
 import { sortMethodsByDefault, readStoredLoginMethod, storeLoginMethod } from '../utils/providers';
 
 import AuthShell, { AuthAlert, AuthSpinner } from './AuthShell.component';
@@ -368,7 +369,7 @@ const Login = () => {
 
     const loadAuthMethods = async () => {
       try {
-        const result = await AuthService.getAuthMethods();
+        const result = await api.auth.methods();
         if (cancelled) {
           return;
         }
@@ -462,10 +463,8 @@ const Login = () => {
         navigate(returnTo.fromParams(urlParams) || '/', { replace: true });
       })
       .catch(error => {
-        const resMessage = error.response?.data?.message || error.message || error.toString();
-
         setLoading(false);
-        setStatusMessage(resMessage);
+        setStatusMessage(responseMessage(error, error.message || error.toString()));
       });
   };
 

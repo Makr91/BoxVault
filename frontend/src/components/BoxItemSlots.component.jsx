@@ -13,8 +13,7 @@ import {
   sortVersionsNewestFirst,
   versionShape,
 } from '../pages';
-import BoxService from '../services/box.service';
-import VersionService from '../services/version.service';
+import { api } from '../services/api';
 import { canManageBox } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
@@ -509,7 +508,8 @@ export const BoxItemActions = ({ item, ctx }) => {
   };
 
   const save = () => {
-    BoxService.update(org, box.name, { ...box, ...draft, isPublic: draft.isPublic ? 1 : 0 })
+    api.boxes
+      .update(org, box.name, { ...box, ...draft, isPublic: draft.isPublic ? 1 : 0 })
       .then(() => {
         notify('success', t('box.updated'));
         setEditing(false);
@@ -526,13 +526,14 @@ export const BoxItemActions = ({ item, ctx }) => {
   };
 
   const publish = published => {
-    BoxService.update(org, box.name, {
-      id: box.id,
-      name: box.name,
-      isPublic: box.isPublic,
-      description: box.description,
-      published,
-    })
+    api.boxes
+      .update(org, box.name, {
+        id: box.id,
+        name: box.name,
+        isPublic: box.isPublic,
+        description: box.description,
+        published,
+      })
       .then(reload)
       .catch(error => {
         log.api.error('Error updating box release status', { error: error.message });
@@ -541,7 +542,8 @@ export const BoxItemActions = ({ item, ctx }) => {
   };
 
   const remove = () => {
-    BoxService.remove(org, box.name)
+    api.boxes
+      .remove(org, box.name)
       .then(() => navigate(`/${org}`))
       .catch(error => {
         log.api.error('Error deleting box', { boxName: box.name, error: error.message });
@@ -695,7 +697,8 @@ export const BoxVersionsActions = ({ item, ctx }) => {
       notify('danger', t('version.exists'));
       return;
     }
-    VersionService.createVersion(org, item.name, draft)
+    api.versions
+      .create(org, item.name, draft)
       .then(() => {
         notify('success', t('version.added'));
         setShow(false);

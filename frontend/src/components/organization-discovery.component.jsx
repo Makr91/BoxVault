@@ -8,9 +8,8 @@ import { log, useNotify } from '../chrome';
 import { returnTo, session } from '../chromeProps';
 import BoxVaultLight from '../images/BoxVault.svg?react';
 import BoxVaultDark from '../images/BoxVaultDark.svg?react';
-import AuthService from '../services/auth.service';
-import OrganizationService from '../services/organization.service';
-import RequestService from '../services/request.service';
+import { responseMessage } from '../pages';
+import { api } from '../services/api';
 
 /**
  * OrganizationDiscovery - Public page for discovering and joining organizations
@@ -30,16 +29,8 @@ const OrganizationDiscovery = ({ theme }) => {
     const gravatarPromises = orgList
       .filter(org => org.emailHash)
       .map(async org => {
-        try {
-          const profile = await AuthService.getGravatarProfile(org.emailHash);
-          return { name: org.name, url: profile?.avatar_url };
-        } catch (error) {
-          log.api.error('Error fetching org gravatar', {
-            orgName: org.name,
-            error: error.message,
-          });
-          return { name: org.name, url: null };
-        }
+        const profile = await api.gravatar.profile(org.emailHash);
+        return { name: org.name, url: profile?.avatar_url };
       });
 
     const results = await Promise.all(gravatarPromises);
@@ -59,11 +50,10 @@ const OrganizationDiscovery = ({ theme }) => {
 
     const loadDiscoverableOrganizations = async () => {
       try {
-        const response = await OrganizationService.getDiscoverableOrganizations();
+        const orgs = (await api.organizations.discover()) || [];
         if (cancelled) {
           return;
         }
-        const orgs = response.data || [];
         setOrganizations(orgs);
 
         // Honor a join intent saved before an OIDC login round-trip
@@ -105,7 +95,7 @@ const OrganizationDiscovery = ({ theme }) => {
     }
 
     try {
-      await RequestService.createJoinRequest(orgName, joinRequestMessage);
+      await api.requests.create(orgName, joinRequestMessage);
       notify('success', t('discovery.messages.requestSent', { orgName }));
       setJoinRequestMessage('');
       setRequestingOrg(null);
@@ -114,10 +104,7 @@ const OrganizationDiscovery = ({ theme }) => {
         orgName,
         error: error.message,
       });
-      notify(
-        'danger',
-        error.response?.data?.message || t('discovery.errors.requestFailed', { orgName })
-      );
+      notify('danger', responseMessage(error, t('discovery.errors.requestFailed', { orgName })));
     }
   };
 

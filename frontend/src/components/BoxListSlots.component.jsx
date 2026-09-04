@@ -6,8 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { log } from '../chrome';
 import { session } from '../chromeProps';
 import { ConfirmModal, responseMessage } from '../pages';
-import BoxService from '../services/box.service';
-import OrganizationService from '../services/organization.service';
+import { api } from '../services/api';
 import { isGlobalAdmin, isOrgManager, isOrgMember } from '../utils/permissions';
 
 const NAME_RE = /^[0-9a-zA-Z-._]+$/;
@@ -113,7 +112,8 @@ CreateBoxForm.propTypes = {
 const JoinAsOwner = ({ org, notify }) => {
   const { t } = useTranslation();
   const join = () => {
-    OrganizationService.joinOrganizationAsAdmin(org)
+    api.organizations
+      .joinAsAdmin(org)
       .then(async () => {
         await session.reload();
         window.location.reload();
@@ -139,7 +139,8 @@ const RemoveAll = ({ org, reload, notify }) => {
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const removeAll = () => {
-    BoxService.removeAll(org)
+    api.boxes
+      .removeAll(org)
       .then(() => {
         notify('success', t('box.organization.messages.removeAllSuccess'));
         reload();
@@ -196,7 +197,8 @@ export const BoxListActions = ({ ctx }) => {
       setCreating(true);
       return;
     }
-    BoxService.create(org, { ...draft, organization: org })
+    api.boxes
+      .create(org, { ...draft, organization: org })
       .then(() => {
         notify('success', t('box.organization.messages.boxCreated'));
         cancel();

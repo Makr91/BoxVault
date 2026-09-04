@@ -5,9 +5,8 @@ import { FaBook, FaCode, FaGithub, FaHeart, FaServer } from 'react-icons/fa6';
 
 import { log, useNotify } from './chrome';
 import { BrandLogo, session } from './chromeProps';
-import { AboutPage } from './pages';
-import FavoritesService from './services/favorites.service';
-import UserService from './services/user.service';
+import { AboutPage, responseMessage } from './pages';
+import { api } from './services/api';
 import BoxVaultVersion from './version.json';
 
 const DOCS = [
@@ -24,6 +23,14 @@ const SUPPORT = [
 
 const EMPTY = { title: '', description: '', components: [], features: [], goal: '' };
 const FAVORITE_KEY = 'favorite';
+const CLIENT_ID = 'boxvault';
+
+const withoutFavorite = favorites => favorites.filter(entry => entry.clientId !== CLIENT_ID);
+
+const withFavorite = favorites => [
+  ...favorites,
+  { clientId: CLIENT_ID, customLabel: null, order: favorites.length },
+];
 
 const About = ({ theme }) => {
   const { t, i18n } = useTranslation();
@@ -35,10 +42,9 @@ const About = ({ theme }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const response = await UserService.getPublicContent(i18n.language);
-        setProjectData(response.data);
+        setProjectData(await api.users.publicContent(i18n.language));
       } catch (error) {
-        notify('danger', error.response?.data?.message || error.message || error.toString());
+        notify('danger', responseMessage(error, error.message || error.toString()));
       }
 
       const user = session.current();
@@ -46,9 +52,8 @@ const About = ({ theme }) => {
 
       if (user?.provider?.startsWith('oidc-')) {
         try {
-          const favResponse = await FavoritesService.getFavorites();
-          const favorites = favResponse.data || [];
-          setIsBoxVaultFavorited(favorites.some(f => f.clientId === 'boxvault'));
+          const favorites = (await api.favorites.get()) || [];
+          setIsBoxVaultFavorited(favorites.some(f => f.clientId === CLIENT_ID));
         } catch (error) {
           log.api.error('Error loading favorites', {
             error: error.message,
@@ -62,24 +67,21 @@ const About = ({ theme }) => {
 
   const handleToggleFavorite = async () => {
     try {
-      const response = await FavoritesService.getFavorites();
-      let favorites = response.data || [];
+      const current = (await api.favorites.get()) || [];
+      const favorites = isBoxVaultFavorited ? withoutFavorite(current) : withFavorite(current);
+      notify(
+        'success',
+        t(isBoxVaultFavorited ? 'messages.removedFromFavorites' : 'messages.addedToFavorites', {
+          ns: 'common',
+        }),
+        { key: FAVORITE_KEY }
+      );
 
-      if (isBoxVaultFavorited) {
-        favorites = FavoritesService.removeFavorite(favorites, 'boxvault');
-        notify('success', t('messages.removedFromFavorites', { ns: 'common' }), {
-          key: FAVORITE_KEY,
-        });
-      } else {
-        favorites = FavoritesService.addFavorite(favorites, 'boxvault', null);
-        notify('success', t('messages.addedToFavorites', { ns: 'common' }), { key: FAVORITE_KEY });
-      }
-
-      await FavoritesService.saveFavorites(favorites);
+      await api.favorites.save(favorites);
       setIsBoxVaultFavorited(!isBoxVaultFavorited);
     } catch (error) {
       log.component.error('Error toggling favorite', {
-        clientId: 'boxvault',
+        clientId: CLIENT_ID,
         error: error.message,
       });
       notify('danger', t('messages.failedToUpdateFavorites', { ns: 'common' }), {

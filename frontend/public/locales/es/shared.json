@@ -35,6 +35,12 @@
   "notice": {
     "dismiss": "Descartar"
   },
+  "errors": {
+    "accessDenied": "Acceso denegado.",
+    "notFound": "No encontrado.",
+    "network": "No se pudo contactar con el servidor.",
+    "request": "La solicitud falló."
+  },
   "session": {
     "completing": "Completando el inicio de sesión…",
     "failed": "Error al iniciar sesión: {{message}} —",
