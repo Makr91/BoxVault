@@ -24,6 +24,7 @@ export const ACTIVE_ORG_KEY = 'activeOrganization';
 export const LOGIN_METHOD_KEY = 'boxvault_login_method';
 export const SILENT_SSO_KEY = 'boxvault_silent_sso_attempted';
 export const JOIN_INTENT_KEY = 'boxvault_join_org';
+export const UPDATE_COMMAND = 'sudo apt update && sudo apt install boxvault';
 
 export const events = createSessionEvents();
 

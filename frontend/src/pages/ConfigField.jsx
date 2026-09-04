@@ -3,15 +3,75 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaEye, FaEyeSlash } from 'react-icons/fa6';
 
-/**
- * ConfigFieldRenderer - Renders individual configuration fields with appropriate input types
- */
-const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
+export const configFieldShape = PropTypes.shape({
+  path: PropTypes.string.isRequired,
+  type: PropTypes.string.isRequired,
+  label: PropTypes.string,
+  description: PropTypes.string,
+  placeholder: PropTypes.string,
+  required: PropTypes.bool,
+  options: PropTypes.arrayOf(PropTypes.string),
+  value: PropTypes.any,
+  upload: PropTypes.bool,
+});
+
+const UploadInput = ({ field, currentValue, onFieldChange, onUpload }) => {
   const { t } = useTranslation();
-  const [showPasswords, setShowPasswords] = useState({});
+  return (
+    <div className="mb-3">
+      <label className="form-label" htmlFor={field.path}>
+        {field.label}
+        {field.required && <span className="text-danger">*</span>}
+      </label>
+      <div className="input-group">
+        <input
+          id={field.path}
+          type="text"
+          className="form-control"
+          value={currentValue}
+          onChange={e => onFieldChange(field.path, e.target.value)}
+          placeholder={field.placeholder}
+        />
+        <label className="btn btn-outline-secondary">
+          {t('admin.buttons.upload')}
+          <input type="file" hidden onChange={e => onUpload(e.target.files[0], currentValue)} />
+        </label>
+      </div>
+      <small className="form-text text-muted">{field.description}</small>
+    </div>
+  );
+};
+
+UploadInput.propTypes = {
+  field: configFieldShape.isRequired,
+  currentValue: PropTypes.any,
+  onFieldChange: PropTypes.func.isRequired,
+  onUpload: PropTypes.func.isRequired,
+};
+
+/**
+ * One configuration field drawn by its type: checkbox, select, password
+ * with a reveal, textarea, comma-separated array, text, or a text input
+ * with an upload button when the field carries `upload` and the caller
+ * hands an `onUpload`.
+ */
+const ConfigField = ({ field, currentValue, onFieldChange, onUpload = null }) => {
+  const { t } = useTranslation();
+  const [showPassword, setShowPassword] = useState(false);
+
+  if (field.upload && onUpload) {
+    return (
+      <UploadInput
+        field={field}
+        currentValue={currentValue}
+        onFieldChange={onFieldChange}
+        onUpload={onUpload}
+      />
+    );
+  }
 
   const fieldProps = {
-    key: field.path,
+    id: field.path,
     value: currentValue || '',
     onChange: e => {
       const value = field.type === 'boolean' ? e.target.checked : e.target.value;
@@ -21,25 +81,21 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
     required: field.required,
   };
 
-  const togglePasswordVisibility = path => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [path]: !prev[path],
-    }));
-  };
-
   const renderInputElement = () => {
     switch (field.type) {
       case 'boolean':
         return (
           <div className="form-check">
             <input
+              id={field.path}
               type="checkbox"
               className="form-check-input"
               checked={!!currentValue}
               onChange={fieldProps.onChange}
             />
-            <label className="form-check-label">{field.label}</label>
+            <label className="form-check-label" htmlFor={field.path}>
+              {field.label}
+            </label>
           </div>
         );
       case 'select':
@@ -58,16 +114,16 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
         return (
           <div className="input-group">
             <input
-              type={showPasswords[field.path] ? 'text' : 'password'}
+              type={showPassword ? 'text' : 'password'}
               className="form-control"
               {...fieldProps}
             />
             <button
               className="btn btn-outline-secondary"
               type="button"
-              onClick={() => togglePasswordVisibility(field.path)}
+              onClick={() => setShowPassword(current => !current)}
             >
-              {showPasswords[field.path] ? <FaEyeSlash /> : <FaEye />}
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
         );
@@ -79,6 +135,7 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
           : currentValue || '';
         return (
           <input
+            id={field.path}
             type="text"
             className="form-control"
             value={arrayValue}
@@ -93,7 +150,7 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
   };
 
   return (
-    <div className="mb-3" key={field.path}>
+    <div className="mb-3">
       {field.type !== 'boolean' ? (
         <label className="form-label" htmlFor={field.path}>
           {field.label}
@@ -105,19 +162,11 @@ const ConfigFieldRenderer = ({ field, currentValue, onFieldChange }) => {
   );
 };
 
-ConfigFieldRenderer.propTypes = {
-  field: PropTypes.shape({
-    path: PropTypes.string.isRequired,
-    type: PropTypes.string.isRequired,
-    label: PropTypes.string,
-    description: PropTypes.string,
-    placeholder: PropTypes.string,
-    required: PropTypes.bool,
-    options: PropTypes.arrayOf(PropTypes.string),
-    value: PropTypes.any,
-  }).isRequired,
+ConfigField.propTypes = {
+  field: configFieldShape.isRequired,
   currentValue: PropTypes.any,
   onFieldChange: PropTypes.func.isRequired,
+  onUpload: PropTypes.func,
 };
 
-export default ConfigFieldRenderer;
+export default ConfigField;

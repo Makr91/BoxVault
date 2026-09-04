@@ -4,18 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { FaHardDrive, FaCompactDisc } from 'react-icons/fa6';
 
 import { log, useNotify } from '../chrome';
-import { responseMessage } from '../pages';
-import { api } from '../services/api';
 
-const formatBytes = (bytes, decimals = 2) => {
-  if (bytes === 0) {
-    return '0 Bytes';
+import { formatFileSize, responseMessage } from './itemShape';
+
+const progressClass = percent => {
+  if (percent > 90) {
+    return 'bg-danger';
   }
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
+  if (percent > 75) {
+    return 'bg-warning';
+  }
+  return 'bg-primary';
 };
 
 const StorageBar = ({ usage, label, icon }) => {
@@ -30,16 +29,6 @@ const StorageBar = ({ usage, label, icon }) => {
 
   const usedPercent = usage.total > 0 ? (usage.used / usage.total) * 100 : 0;
 
-  const getProgressBarClass = percent => {
-    if (percent > 90) {
-      return 'bg-danger';
-    }
-    if (percent > 75) {
-      return 'bg-warning';
-    }
-    return 'bg-primary';
-  };
-
   return (
     <div className="mb-4">
       <h5 className="d-flex align-items-center">
@@ -47,22 +36,22 @@ const StorageBar = ({ usage, label, icon }) => {
         <span className="ms-2">{label}</span>
       </h5>
       <small className="text-muted d-block mb-2">{usage.path}</small>
-      <div className="progress" style={{ height: '25px' }}>
+      <div className="progress progress-lg">
         <div
-          className={`progress-bar ${getProgressBarClass(usedPercent)}`}
+          className={`progress-bar ${progressClass(usedPercent)}`}
           role="progressbar"
           style={{ width: `${usedPercent}%` }}
           aria-valuenow={usedPercent}
           aria-valuemin="0"
           aria-valuemax="100"
         >
-          {formatBytes(usage.used)}
+          {formatFileSize(usage.used)}
         </div>
       </div>
       <div className="d-flex justify-content-between mt-1 text-muted small">
         <span>{t('admin.storage.used', { percent: usedPercent.toFixed(1) })}</span>
-        <span>{t('admin.storage.free', { space: formatBytes(usage.free) })}</span>
-        <span>{t('admin.storage.total', { space: formatBytes(usage.total) })}</span>
+        <span>{t('admin.storage.free', { space: formatFileSize(usage.free) })}</span>
+        <span>{t('admin.storage.total', { space: formatFileSize(usage.total) })}</span>
       </div>
     </div>
   );
@@ -79,22 +68,25 @@ StorageBar.propTypes = {
   icon: PropTypes.element.isRequired,
 };
 
-const StorageInfo = () => {
+/**
+ * The System tab of the admin page: one usage bar per storage path the
+ * app's `storage` call answers, boxes and ISOs.
+ */
+const AdminStorage = ({ storage }) => {
   const { t } = useTranslation();
   const notify = useNotify();
   const [storageInfo, setStorageInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.system
-      .storage()
+    storage()
       .then(setStorageInfo)
       .catch(err => {
         log.api.error('Failed to fetch storage info', { error: err.message });
         notify('danger', responseMessage(err, t('admin.storage.fetchError')));
       })
       .finally(() => setLoading(false));
-  }, [notify, t]);
+  }, [notify, storage, t]);
 
   if (loading) {
     return (
@@ -131,4 +123,8 @@ const StorageInfo = () => {
   );
 };
 
-export default StorageInfo;
+AdminStorage.propTypes = {
+  storage: PropTypes.func.isRequired,
+};
+
+export default AdminStorage;

@@ -14,6 +14,7 @@ import {
   JOIN_INTENT_KEY,
   LOGIN_METHOD_KEY,
   SILENT_SSO_KEY,
+  UPDATE_COMMAND,
   events,
   i18n,
   push,
@@ -21,9 +22,9 @@ import {
   session,
 } from './chromeProps';
 import { boxes, collections, isos } from './collections';
-import Admin from './components/admin.component';
 import Setup from './components/setup.component';
 import {
+  AdminPage,
   CollectionPage,
   DiscoveryPage,
   HomePage,
@@ -87,7 +88,40 @@ const organizationsAdapter = {
   gravatarProfile: api.gravatar.profile,
 };
 
+const adminAdapter = {
+  organizationsWithUsers: api.organizations.withUsers,
+  organization: api.organizations.get,
+  updateOrganization: api.organizations.update,
+  accessMode: api.organizations.accessMode,
+  suspendOrganization: api.organizations.suspend,
+  resumeOrganization: api.organizations.resume,
+  removeOrganization: api.organizations.remove,
+  removeMember: api.organizations.removeMember,
+  removeUser: api.users.remove,
+  suspendUser: api.users.suspend,
+  resumeUser: api.users.resume,
+  gravatarProfile: api.gravatar.profile,
+  config: api.config,
+  storage: api.system.storage,
+  updateStatus: api.system.updateStatus,
+};
+
 const persistTheme = preference => session.savePreferences({ theme: preference });
+
+const AdminRoute = ({ allowed }) => (
+  <AdminPage
+    session={session}
+    returnTo={returnTo}
+    allowed={allowed}
+    admin={adminAdapter}
+    activeOrgKey={ACTIVE_ORG_KEY}
+    updateCommand={UPDATE_COMMAND}
+  />
+);
+
+AdminRoute.propTypes = {
+  allowed: PropTypes.bool.isRequired,
+};
 
 const DiscoveryRoute = ({ theme }) => (
   <DiscoveryPage
@@ -431,7 +465,7 @@ const App = () => {
             />
             <Route path="/invite/:token" element={<InviteRoute />} />
             <Route path="/profile" element={<ProfileRoute activeOrgUuid={activeOrganization} />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<AdminRoute allowed={showAdminBoard} />} />
             <Route
               path="/org-console"
               element={<OrgConsoleRoute org={activeOrganization} admin={isGlobalAdmin(user)} />}

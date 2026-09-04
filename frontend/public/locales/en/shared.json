@@ -177,6 +177,248 @@
       "delete": "Delete"
     }
   },
+  "unknown": "Unknown",
+  "admin": {
+    "pageTitle": "Admin",
+    "title": "Admin Panel",
+    "tabs": {
+      "orgsAndUsers": "Organizations and Users",
+      "configManagement": "Configuration Management",
+      "system": "System"
+    },
+    "buttons": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "rename": "Rename",
+      "resume": "Resume",
+      "suspend": "Suspend",
+      "delete": "Delete",
+      "upload": "Upload",
+      "copy": "Copy"
+    },
+    "messages": {
+      "operationSuccessful": "Operation completed successfully",
+      "operationFailed": "Operation failed",
+      "deleteFailed": "Delete failed",
+      "uploadFailed": "Upload failed"
+    },
+    "storage": {
+      "title": "Storage Usage",
+      "boxStorage": "Box Storage",
+      "isoStorage": "ISO Storage",
+      "pathNotConfigured": "{{path}} path is not configured or accessible.",
+      "used": "Used: {{percent}}%",
+      "free": "Free: {{space}}",
+      "total": "Total: {{space}}",
+      "fetchError": "Failed to fetch storage information."
+    },
+    "update": {
+      "title": "Update Available",
+      "message": "A new version (v{{latestVersion}}) is available. You are currently running v{{currentVersion}}.",
+      "instructions": "To update, run the following command on your server:"
+    }
+  },
+  "orgUserManager": {
+    "searchPlaceholder": "Search organizations by name or code...",
+    "totalBoxes": "Total Boxes: {{count}}",
+    "ssoManaged": "Managed by SSO",
+    "ssoManagedHint": "This organization is managed by your identity provider. Membership, roles, renaming, and deletion are handled there and synced automatically.",
+    "invalidOrgName": "Invalid organization name. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
+    "rename": {
+      "sameNameError": "New name is the same as the old name. Please enter a different name.",
+      "orgExistsError": "An organization with this name already exists. Please choose a different name.",
+      "success": "Organization renamed successfully!",
+      "error": "Error renaming organization. Please try again."
+    },
+    "editModal": {
+      "title": "Edit Organization: {{orgName}}",
+      "orgCode": "Organization Code",
+      "orgCodeHint": "6-character hexadecimal identifier (0-9, A-F)",
+      "orgEmail": "Organization Email",
+      "orgEmailHint": "Used for organization contact and Gravatar",
+      "description": "Description",
+      "accessMode": "Access Mode",
+      "accessModes": {
+        "private": "Private (Unlisted)",
+        "inviteOnly": "Invite Only (Listed)",
+        "requestToJoin": "Request to Join (Listed)"
+      },
+      "accessModeHint": "Controls organization visibility and join methods",
+      "defaultRole": "Default Role",
+      "defaultRoleHint": "Default role for new members",
+      "updateSuccess": "Organization updated successfully!",
+      "updateError": "Error updating organization"
+    }
+  },
+  "configManager": {
+    "updateSuccess": "Configuration updated successfully.",
+    "updateError": "Error updating configuration.",
+    "restartInitiated": "Server restart initiated",
+    "restartFailed": "Failed to restart server",
+    "testingSmtp": "Sending test email...",
+    "testSmtpSuccess": "Test email sent successfully! Check the recipient's inbox.",
+    "testSmtpError": "Failed to send test email",
+    "smtpTest": {
+      "title": "Test SMTP Configuration",
+      "recipient": "Recipient Email",
+      "placeholder": "Enter email address",
+      "send": "Send Test Email",
+      "hint": "Sends a test email to verify your SMTP settings are correct.",
+      "emailRequired": "Please provide an email address for the test."
+    },
+    "settingsCount_one": "{{count}} setting",
+    "settingsCount_other": "{{count}} settings",
+    "tabs": {
+      "app": "App Config",
+      "auth": "Auth Config",
+      "db": "DB Config",
+      "mail": "Email Config"
+    },
+    "buttons": {
+      "update": "Update Configuration",
+      "restart": "Restart Server"
+    },
+    "sections": {
+      "authentication": "Authentication",
+      "application": "Application",
+      "database": "Database",
+      "mail": "Mail",
+      "general": "General"
+    },
+    "subsections": {
+      "generalSettings": "General",
+      "jwtSettings": "JWT Settings",
+      "localAuthentication": "Local Authentication",
+      "externalProviders": "External Providers",
+      "oidcProviders": "OIDC Providers",
+      "boxvaultSettings": "BoxVault Settings",
+      "gravatarSettings": "Gravatar Settings",
+      "sslSettings": "SSL Settings",
+      "databaseConnection": "Database Connection",
+      "connectionPool": "Connection Pool",
+      "smtpConnection": "SMTP Connection",
+      "smtpSettings": "SMTP Settings",
+      "smtpAuthentication": "SMTP Authentication",
+      "loggingSettings": "Logging Settings",
+      "loggingCategories": "Logging Categories",
+      "rateLimiting": "Rate Limiting",
+      "fileOperations": "File Operations",
+      "ticketSystem": "Ticket System",
+      "hyperweaverSettings": "Hyperweaver Settings",
+      "frontendLogging": "Frontend Logging",
+      "frontendLoggingCategories": "Frontend Logging Categories",
+      "oidcSettings": "OIDC Settings",
+      "s2sSettings": "S2S Delegation"
+    }
+  },
+  "configField": {
+    "commaSeparated": "Comma-separated values"
+  },
+  "oidc": {
+    "title": "OIDC Providers",
+    "providerCount_one": "{{count}} provider",
+    "providerCount_other": "{{count}} providers",
+    "description": "Manage OpenID Connect authentication providers for Single Sign-On integration. Click on a provider card to edit its configuration.",
+    "enabled": "Enabled",
+    "issuer": "Issuer",
+    "clientId": "Client ID",
+    "scope": "Scope",
+    "noProvidersConfigured": "No OIDC providers configured yet. Click \"Add OIDC Provider\" to set up authentication with providers like Google, Microsoft, GitHub, etc.",
+    "buttons": {
+      "add": "Add OIDC Provider",
+      "delete": "Delete Provider",
+      "update": "Update Provider",
+      "updating": "Updating...",
+      "adding": "Adding..."
+    },
+    "modal": {
+      "editTitle": "Edit OIDC Provider",
+      "addTitle": "Add OIDC Provider",
+      "description": "Configure a new OpenID Connect authentication provider. You will need to register your application with the provider first to obtain the Client ID and Client Secret."
+    },
+    "form": {
+      "name": {
+        "label": "Provider Name",
+        "placeholder": "e.g., mycompany, enterprise, provider1",
+        "hint": "Internal identifier (lowercase letters, numbers, and underscores only)"
+      },
+      "displayName": {
+        "label": "Display Name",
+        "placeholder": "e.g., Sign in with Company SSO",
+        "hint": "Name shown to users on the login page"
+      },
+      "issuer": {
+        "label": "Issuer URL",
+        "placeholder": "https://your-provider.com or https://your-domain.auth0.com",
+        "hint": "The OIDC issuer URL (check your provider's documentation for the correct URL)"
+      },
+      "clientId": {
+        "label": "Client ID",
+        "placeholder": "Your OAuth client ID",
+        "hint": "Client ID from your OAuth application registration"
+      },
+      "clientSecret": {
+        "label": "Client Secret",
+        "placeholder": "Your OAuth client secret",
+        "hint": "Client Secret from your OAuth application registration"
+      },
+      "scope": {
+        "label": "Scope",
+        "hint": "OAuth scopes (space-separated). Default is usually sufficient."
+      },
+      "responseType": {
+        "label": "Response Type",
+        "options": {
+          "code": "Authorization Code (Recommended)",
+          "id_token": "ID Token",
+          "code_id_token": "Code + ID Token"
+        },
+        "hint": "OAuth flow type. Use \"code\" for most providers."
+      },
+      "iconUrl": {
+        "label": "Icon URL",
+        "placeholder": "https://example.com/logo.svg",
+        "hint": "Optional image shown on this provider's sign-in button"
+      },
+      "enabled": {
+        "label": "Enable this provider for user authentication"
+      }
+    },
+    "instructions": {
+      "title": "Configuration Instructions",
+      "step1": "Register your application with your OIDC provider's developer console",
+      "step2": "Add",
+      "step2_cont": "as an allowed redirect URI",
+      "step3": "Copy the Client ID and Client Secret from your provider's console",
+      "step4": "Find your provider's Issuer URL in their documentation",
+      "step5": "Complete the form above and test the configuration"
+    },
+    "deleteModal": {
+      "title": "Delete OIDC Provider",
+      "message": "Are you sure you want to delete the OIDC provider '{{providerName}}'? This cannot be undone."
+    },
+    "errors": {
+      "requiredFields": "Provider name, display name, issuer, client ID, and client secret are required",
+      "invalidName": "Provider name must contain only letters, numbers, and underscores",
+      "providerExists": "OIDC provider '{{name}}' already exists",
+      "apiError": "Error {{action}} OIDC provider: {{error}}",
+      "deleteError": "Error deleting OIDC provider: {{error}}"
+    },
+    "messages": {
+      "updating": "Updating OIDC provider...",
+      "adding": "Adding OIDC provider...",
+      "deleting": "Deleting OIDC provider...",
+      "success": "OIDC provider '{{displayName}}' {{action}} successfully!",
+      "deleteSuccess": "OIDC provider '{{providerName}}' deleted successfully!"
+    },
+    "actions": {
+      "updated": "updated",
+      "added": "added",
+      "updating": "updating",
+      "adding": "adding"
+    }
+  },
   "orgConsole": {
     "pageTitle": "Org Console",
     "title": "Organization Console",

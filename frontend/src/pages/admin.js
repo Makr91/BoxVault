@@ -1,13 +1,63 @@
-/**
- * Configuration Processing Utilities
- * Pure functions for processing and validating configuration data
- */
+import PropTypes from 'prop-types';
 
 /**
- * Generate human-readable label from field name
- * @param {string} fieldName - Field name (e.g., "smtp_host")
- * @returns {string} Formatted label (e.g., "Smtp Host")
+ * The app's side of the shared admin page: the organizations with their
+ * members and the suspend, resume, rename, edit and delete calls over
+ * them, the configuration files with restart, SMTP test and SSL upload,
+ * the storage usage and the update check.
  */
+export const adminShape = PropTypes.shape({
+  organizationsWithUsers: PropTypes.func.isRequired,
+  organization: PropTypes.func.isRequired,
+  updateOrganization: PropTypes.func.isRequired,
+  accessMode: PropTypes.func.isRequired,
+  suspendOrganization: PropTypes.func.isRequired,
+  resumeOrganization: PropTypes.func.isRequired,
+  removeOrganization: PropTypes.func.isRequired,
+  removeMember: PropTypes.func.isRequired,
+  removeUser: PropTypes.func.isRequired,
+  suspendUser: PropTypes.func.isRequired,
+  resumeUser: PropTypes.func.isRequired,
+  gravatarProfile: PropTypes.func.isRequired,
+  config: PropTypes.shape({
+    get: PropTypes.func.isRequired,
+    update: PropTypes.func.isRequired,
+    restart: PropTypes.func.isRequired,
+    testSmtp: PropTypes.func.isRequired,
+    uploadSsl: PropTypes.func.isRequired,
+  }).isRequired,
+  storage: PropTypes.func.isRequired,
+  updateStatus: PropTypes.func.isRequired,
+});
+
+export const CONFIG_NAMES = ['app', 'auth', 'db', 'mail'];
+
+const SECTION_MAPS = {
+  auth: {
+    auth: 'authentication',
+    jwt: 'authentication',
+    local: 'authentication',
+    external: 'authentication',
+    oidc: 'authentication',
+    oidc_providers: 'authentication',
+  },
+  app: {
+    boxvault: 'application',
+    gravatar: 'application',
+    ssl: 'application',
+  },
+  db: {
+    sql: 'database',
+    mysql_pool: 'database',
+    database_type: 'database',
+  },
+  mail: {
+    smtp_connect: 'mail',
+    smtp_settings: 'mail',
+    smtp_auth: 'mail',
+  },
+};
+
 export const generateLabel = fieldName => {
   if (!fieldName || typeof fieldName !== 'string') {
     return fieldName || '';
@@ -18,92 +68,25 @@ export const generateLabel = fieldName => {
     .join(' ');
 };
 
-/**
- * Get icon class for section
- * @param {string} section - Section name
- * @returns {string} Icon class name
- */
-export const getSectionIcon = sectionKey => {
-  const iconMap = {
-    authentication: 'fas fa-shield-alt',
-    database: 'fas fa-database',
-    mail: 'fas fa-envelope',
-    application: 'fas fa-cogs',
-  };
-  return iconMap[sectionKey] || 'fas fa-cog';
-};
-
-/**
- * Infer section name from configuration path
- * @param {string} path - Configuration path
- * @param {string} configType - Type of config
- * @returns {string} Section name
- */
 export const inferSectionKey = (path, configType) => {
-  const sectionMaps = {
-    auth: {
-      auth: 'authentication',
-      jwt: 'authentication',
-      local: 'authentication',
-      external: 'authentication',
-      oidc: 'authentication',
-      oidc_providers: 'authentication',
-    },
-    app: {
-      boxvault: 'application',
-      gravatar: 'application',
-      ssl: 'application',
-    },
-    db: {
-      sql: 'database',
-      mysql_pool: 'database',
-      database_type: 'database',
-    },
-    mail: {
-      smtp_connect: 'mail',
-      smtp_settings: 'mail',
-      smtp_auth: 'mail',
-    },
-  };
-
-  const sectionMap = sectionMaps[configType] || {};
+  const sectionMap = SECTION_MAPS[configType] || {};
   const pathParts = path.split('.');
   return sectionMap[pathParts[0]] || sectionMap[pathParts[1]] || configType || 'general';
 };
 
-/**
- * Infer subsection name from configuration path
- * @param {string} path - Configuration path
- * @param {string} sectionKey - Section key
- * @returns {string|null} Subsection name or null
- */
-export const inferSubsectionKey = () =>
-  // We now rely on the 'subsection' field provided by the backend config
-  null;
-
-/**
- * Normalize subsection key to match translation keys
- * @param {string} key - Raw subsection key (e.g. "BoxVault Settings")
- * @returns {string} Normalized key (e.g. "boxvaultSettings")
- */
 const normalizeSubsectionKey = key => {
   if (!key) {
     return key;
   }
-
   return key
     .toLowerCase()
     .replace(/[^a-zA-Z0-9]+(?<chr>.)?/g, ([, chr]) => (chr ? chr.toUpperCase() : ''));
 };
 
-/**
- * Initialize section structure if it doesn't exist
- */
 const initializeSection = (organizedSections, sectionKey) => {
   if (!organizedSections[sectionKey]) {
     organizedSections[sectionKey] = {
       key: sectionKey,
-      icon: getSectionIcon(sectionKey),
       description: '',
       fields: [],
       subsections: {},
@@ -111,9 +94,6 @@ const initializeSection = (organizedSections, sectionKey) => {
   }
 };
 
-/**
- * Initialize subsection structure if it doesn't exist
- */
 const initializeSubsection = (organizedSections, sectionKey, subsectionKey) => {
   if (subsectionKey && !organizedSections[sectionKey].subsections[subsectionKey]) {
     organizedSections[sectionKey].subsections[subsectionKey] = {
@@ -123,9 +103,6 @@ const initializeSubsection = (organizedSections, sectionKey, subsectionKey) => {
   }
 };
 
-/**
- * Create field data object
- */
 const createFieldData = (key, fullPath, value) => ({
   key: fullPath,
   path: fullPath,
@@ -140,9 +117,6 @@ const createFieldData = (key, fullPath, value) => ({
   upload: value.upload || false,
 });
 
-/**
- * Process a configuration value with type and value properties
- */
 const processConfigValue = options => {
   const {
     key,
@@ -175,9 +149,6 @@ const processConfigValue = options => {
   }
 };
 
-/**
- * Process a configuration object with providers property
- */
 const processProvidersObject = (
   value,
   fullPath,
@@ -192,15 +163,16 @@ const processProvidersObject = (
   initializeSection(organizedSections, sectionKey);
   initializeSubsection(organizedSections, sectionKey, subsectionKey);
 
-  // Process the providers
   processObject(value.providers, `${fullPath}.providers`, sectionKey);
 };
 
 /**
- * Process configuration object into organized sections
- * @param {Object} configData - Raw configuration data
- * @param {string} configType - Type of config (app, auth, db, mail)
- * @returns {Object} { extractedValues, organizedSections }
+ * Walk one configuration file's tree into the values keyed by dotted path
+ * and the sections, each with its fields and subsections, that the admin
+ * page draws.
+ * @param {Object} configData - The configuration tree the backend answers
+ * @param {string} configType - `app`, `auth`, `db` or `mail`
+ * @returns {{ extractedValues: Object, organizedSections: Object }}
  */
 export const processConfig = (configData, configType) => {
   const extractedValues = {};
@@ -251,7 +223,6 @@ export const processConfig = (configData, configType) => {
 
   processObject(configData);
 
-  // Sort fields by order
   Object.values(organizedSections).forEach(section => {
     section.fields.sort((a, b) => (a.order || 0) - (b.order || 0));
     Object.values(section.subsections).forEach(subsection => {
@@ -262,53 +233,49 @@ export const processConfig = (configData, configType) => {
   return { extractedValues, organizedSections };
 };
 
-/**
- * Validate configuration value based on type
- * @param {string} type - Field type
- * @param {*} value - Value to validate
- * @param {Function} t - Translation function
- * @returns {string|null} Error message or null if valid
- */
-export const validateConfigValue = (type, value, t) => {
-  switch (type) {
-    case 'url': {
-      try {
-        new URL(value);
-        return null;
-      } catch {
-        return t('validation.invalidUrl');
-      }
-    }
-    case 'host': {
-      const ipRegex =
-        /^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-      const fqdnRegex = /^(?!:\/\/)(?=.{1,255}$)(?:(?:.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
-      if (ipRegex.test(value) || fqdnRegex.test(value)) {
-        return null;
-      }
-      return t('validation.invalidHost');
-    }
-    case 'integer':
-      return Number.isInteger(Number(value)) ? null : t('validation.integerRequired');
-    case 'boolean':
-      return typeof value === 'boolean' ? null : t('validation.booleanRequired');
-    case 'password':
-      return value.length >= 6 ? null : t('validation.passwordLength');
-    case 'email': {
-      const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-      return emailRegex.test(value) ? null : t('validation.invalidEmail');
-    }
-    default:
-      return null;
+const IP_PATTERN =
+  /^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const FQDN_PATTERN = /^(?!:\/\/)(?=.{1,255}$)(?:(?:.{1,63}\.){1,127}(?![0-9]*$)[a-z0-9-]+\.?)$/i;
+const EMAIL_PATTERN = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+
+const validateUrl = (value, t) => {
+  try {
+    new URL(value);
+    return null;
+  } catch {
+    return t('validation.invalidUrl');
   }
 };
 
+const validateHost = (value, t) => {
+  if (value === 'localhost' || value === '127.0.0.1') {
+    return null;
+  }
+  return IP_PATTERN.test(value) || FQDN_PATTERN.test(value) ? null : t('validation.invalidHost');
+};
+
+const TYPE_VALIDATORS = {
+  url: validateUrl,
+  host: validateHost,
+  integer: (value, t) => (Number.isInteger(Number(value)) ? null : t('validation.integerRequired')),
+  boolean: (value, t) => (typeof value === 'boolean' ? null : t('validation.booleanRequired')),
+  password: (value, t) => (value.length >= 6 ? null : t('validation.passwordLength')),
+  email: (value, t) => (EMAIL_PATTERN.test(value) ? null : t('validation.invalidEmail')),
+  port: (value, t) => {
+    const port = Number(value);
+    return port >= 1 && port <= 65535 ? null : t('validation.portRange');
+  },
+  string: (value, t) => (value.trim() !== '' ? null : t('validation.valueRequired')),
+};
+
 /**
- * Validate organization name format
- * @param {string} orgName - Organization name to validate
- * @returns {boolean} True if valid, false otherwise
+ * Validate one configuration value by its declared type.
+ * @param {string} type - The field type
+ * @param {*} value - The value to check
+ * @param {Function} t - The translator for the message
+ * @returns {string|null} The message, or null when valid
  */
-export const validateOrgName = orgName => {
-  const validCharsRegex = /^[0-9a-zA-Z-._]+$/;
-  return orgName && validCharsRegex.test(orgName);
+export const validateConfigValue = (type, value, t) => {
+  const validator = TYPE_VALIDATORS[type];
+  return validator ? validator(value, t) : null;
 };

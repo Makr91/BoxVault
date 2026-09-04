@@ -177,6 +177,248 @@
       "delete": "Eliminar"
     }
   },
+  "unknown": "Desconocido",
+  "admin": {
+    "pageTitle": "Admin",
+    "title": "Panel de Administración",
+    "tabs": {
+      "orgsAndUsers": "Organizaciones y Usuarios",
+      "configManagement": "Gestión de Configuración",
+      "system": "Sistema"
+    },
+    "buttons": {
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "edit": "Editar",
+      "rename": "Renombrar",
+      "resume": "Reanudar",
+      "suspend": "Suspender",
+      "delete": "Eliminar",
+      "upload": "Subir",
+      "copy": "Copiar"
+    },
+    "messages": {
+      "operationSuccessful": "Operación completada exitosamente",
+      "operationFailed": "Operación fallida",
+      "deleteFailed": "Eliminación fallida",
+      "uploadFailed": "Carga fallida"
+    },
+    "storage": {
+      "title": "Uso de Almacenamiento",
+      "boxStorage": "Almacenamiento de Boxes",
+      "isoStorage": "Almacenamiento de ISOs",
+      "pathNotConfigured": "La ruta {{path}} no está configurada o accesible.",
+      "used": "Usado: {{percent}}%",
+      "free": "Libre: {{space}}",
+      "total": "Total: {{space}}",
+      "fetchError": "Error al obtener información de almacenamiento."
+    },
+    "update": {
+      "title": "Actualización Disponible",
+      "message": "Una nueva versión (v{{latestVersion}}) está disponible. Actualmente estás ejecutando v{{currentVersion}}.",
+      "instructions": "Para actualizar, ejecuta el siguiente comando en tu servidor:"
+    }
+  },
+  "orgUserManager": {
+    "searchPlaceholder": "Buscar organizaciones por nombre o código...",
+    "totalBoxes": "Boxes Totales: {{count}}",
+    "ssoManaged": "Gestionada por SSO",
+    "ssoManagedHint": "Esta organización está gestionada por tu proveedor de identidad. La membresía, los roles, el renombrado y la eliminación se gestionan allí y se sincronizan automáticamente.",
+    "invalidOrgName": "Nombre de organización inválido. Solo se permiten caracteres alfanuméricos, guiones, guiones bajos y puntos.",
+    "rename": {
+      "sameNameError": "El nuevo nombre es el mismo que el anterior. Por favor ingresa un nombre diferente.",
+      "orgExistsError": "Ya existe una organización con este nombre. Por favor elige un nombre diferente.",
+      "success": "¡Organización renombrada exitosamente!",
+      "error": "Error al renombrar la organización. Por favor intenta de nuevo."
+    },
+    "editModal": {
+      "title": "Editar Organización: {{orgName}}",
+      "orgCode": "Código de Organización",
+      "orgCodeHint": "Identificador hexadecimal de 6 caracteres (0-9, A-F)",
+      "orgEmail": "Correo de Organización",
+      "orgEmailHint": "Usado para contacto de organización y Gravatar",
+      "description": "Descripción",
+      "accessMode": "Modo de Acceso",
+      "accessModes": {
+        "private": "Privado (No listado)",
+        "inviteOnly": "Solo Invitación (Listado)",
+        "requestToJoin": "Solicitud para Unirse (Listado)"
+      },
+      "accessModeHint": "Controla la visibilidad de la organización y métodos de unión",
+      "defaultRole": "Rol Predeterminado",
+      "defaultRoleHint": "Rol predeterminado para nuevos miembros",
+      "updateSuccess": "¡Organización actualizada exitosamente!",
+      "updateError": "Error al actualizar la organización"
+    }
+  },
+  "configManager": {
+    "updateSuccess": "Configuración actualizada exitosamente.",
+    "updateError": "Error al actualizar la configuración.",
+    "restartInitiated": "Reinicio del servidor iniciado",
+    "restartFailed": "Error al reiniciar el servidor",
+    "testingSmtp": "Enviando correo de prueba...",
+    "testSmtpSuccess": "¡Correo de prueba enviado con éxito! Revisa la bandeja de entrada del destinatario.",
+    "testSmtpError": "Error al enviar el correo de prueba",
+    "smtpTest": {
+      "title": "Probar la configuración SMTP",
+      "recipient": "Correo del destinatario",
+      "placeholder": "Introduce una dirección de correo",
+      "send": "Enviar correo de prueba",
+      "hint": "Envía un correo de prueba para verificar que tu configuración SMTP es correcta.",
+      "emailRequired": "Por favor indica una dirección de correo para la prueba."
+    },
+    "settingsCount_one": "{{count}} configuración",
+    "settingsCount_other": "{{count}} configuraciones",
+    "tabs": {
+      "app": "Config App",
+      "auth": "Config Auth",
+      "db": "Config BD",
+      "mail": "Config Correo"
+    },
+    "buttons": {
+      "update": "Actualizar Configuración",
+      "restart": "Reiniciar Servidor"
+    },
+    "sections": {
+      "authentication": "Autenticación",
+      "application": "Aplicación",
+      "database": "Base de Datos",
+      "mail": "Correo",
+      "general": "General"
+    },
+    "subsections": {
+      "generalSettings": "General",
+      "jwtSettings": "Configuración JWT",
+      "localAuthentication": "Autenticación Local",
+      "externalProviders": "Proveedores Externos",
+      "oidcProviders": "Proveedores OIDC",
+      "boxvaultSettings": "Configuración BoxVault",
+      "gravatarSettings": "Configuración Gravatar",
+      "sslSettings": "Configuración SSL",
+      "databaseConnection": "Conexión Base de Datos",
+      "connectionPool": "Pool de Conexiones",
+      "smtpConnection": "Conexión SMTP",
+      "smtpSettings": "Configuración SMTP",
+      "smtpAuthentication": "Autenticación SMTP",
+      "loggingSettings": "Configuración de Registro",
+      "loggingCategories": "Categorías de Registro",
+      "rateLimiting": "Limitación de Velocidad",
+      "fileOperations": "Operaciones de Archivo",
+      "ticketSystem": "Sistema de Tickets",
+      "hyperweaverSettings": "Configuración de Hyperweaver",
+      "frontendLogging": "Registro Frontend",
+      "frontendLoggingCategories": "Categorías de Registro Frontend",
+      "oidcSettings": "Configuración OIDC",
+      "s2sSettings": "Delegación S2S"
+    }
+  },
+  "configField": {
+    "commaSeparated": "Valores separados por comas"
+  },
+  "oidc": {
+    "title": "Proveedores OIDC",
+    "providerCount_one": "{{count}} proveedor",
+    "providerCount_other": "{{count}} proveedores",
+    "description": "Gestiona proveedores de autenticación OpenID Connect para integración de inicio de sesión único. Haz clic en una tarjeta de proveedor para editar su configuración.",
+    "enabled": "Habilitado",
+    "issuer": "Emisor",
+    "clientId": "ID de Cliente",
+    "scope": "Alcance",
+    "noProvidersConfigured": "No hay proveedores OIDC configurados aún. Haz clic en \"Añadir Proveedor OIDC\" para configurar autenticación con proveedores como Google, Microsoft, GitHub, etc.",
+    "buttons": {
+      "add": "Añadir Proveedor OIDC",
+      "delete": "Eliminar Proveedor",
+      "update": "Actualizar Proveedor",
+      "updating": "Actualizando...",
+      "adding": "Añadiendo..."
+    },
+    "modal": {
+      "editTitle": "Editar Proveedor OIDC",
+      "addTitle": "Añadir Proveedor OIDC",
+      "description": "Configura un nuevo proveedor de autenticación OpenID Connect. Necesitarás registrar tu aplicación con el proveedor primero para obtener el ID de cliente y el secreto de cliente."
+    },
+    "form": {
+      "name": {
+        "label": "Nombre del Proveedor",
+        "placeholder": "p. ej., miempresa, enterprise, provider1",
+        "hint": "Identificador interno (minúsculas, letras, números y guiones bajos solamente)"
+      },
+      "displayName": {
+        "label": "Nombre para Mostrar",
+        "placeholder": "p. ej., Iniciar sesión con el SSO de la empresa",
+        "hint": "Nombre mostrado a los usuarios en la página de inicio de sesión"
+      },
+      "issuer": {
+        "label": "URL del Emisor",
+        "placeholder": "https://tu-proveedor.com o https://tu-dominio.auth0.com",
+        "hint": "La URL del emisor OIDC (consulta la documentación de tu proveedor para la URL correcta)"
+      },
+      "clientId": {
+        "label": "ID de Cliente",
+        "placeholder": "Tu ID de cliente OAuth",
+        "hint": "ID de Cliente del registro de tu aplicación OAuth"
+      },
+      "clientSecret": {
+        "label": "Secreto de Cliente",
+        "placeholder": "Tu secreto de cliente OAuth",
+        "hint": "Secreto de cliente del registro de tu aplicación OAuth"
+      },
+      "scope": {
+        "label": "Alcance",
+        "hint": "Alcances OAuth (separados por espacios). El predeterminado suele ser suficiente."
+      },
+      "responseType": {
+        "label": "Tipo de Respuesta",
+        "options": {
+          "code": "Código de Autorización (Recomendado)",
+          "id_token": "Token ID",
+          "code_id_token": "Código + Token ID"
+        },
+        "hint": "Tipo de flujo OAuth. Usa \"code\" para la mayoría de los proveedores."
+      },
+      "iconUrl": {
+        "label": "URL del icono",
+        "placeholder": "https://example.com/logo.svg",
+        "hint": "Imagen opcional mostrada en el botón de inicio de sesión de este proveedor"
+      },
+      "enabled": {
+        "label": "Habilitar este proveedor para autenticación de usuarios"
+      }
+    },
+    "instructions": {
+      "title": "Instrucciones de Configuración",
+      "step1": "Registra tu aplicación con la consola de desarrollador de tu proveedor OIDC",
+      "step2": "Añade",
+      "step2_cont": "como una URI de redirección permitida",
+      "step3": "Copia el ID de Cliente y el Secreto de Cliente de la consola de tu proveedor",
+      "step4": "Encuentra la URL del emisor de tu proveedor en su documentación",
+      "step5": "Completa el formulario de arriba y prueba la configuración"
+    },
+    "deleteModal": {
+      "title": "Eliminar Proveedor OIDC",
+      "message": "¿Estás seguro de que quieres eliminar el proveedor OIDC '{{providerName}}'? Esto no se puede deshacer."
+    },
+    "errors": {
+      "requiredFields": "Nombre del proveedor, nombre para mostrar, emisor, ID de cliente y secreto de cliente son obligatorios",
+      "invalidName": "El nombre del proveedor debe contener solo letras, números y guiones bajos",
+      "providerExists": "El proveedor OIDC '{{name}}' ya existe",
+      "apiError": "Error {{action}} proveedor OIDC: {{error}}",
+      "deleteError": "Error al eliminar proveedor OIDC: {{error}}"
+    },
+    "messages": {
+      "updating": "Actualizando proveedor OIDC...",
+      "adding": "Añadiendo proveedor OIDC...",
+      "deleting": "Eliminando proveedor OIDC...",
+      "success": "¡Proveedor OIDC '{{displayName}}' {{action}} exitosamente!",
+      "deleteSuccess": "¡Proveedor OIDC '{{providerName}}' eliminado exitosamente!"
+    },
+    "actions": {
+      "updated": "actualizado",
+      "added": "añadido",
+      "updating": "actualizando",
+      "adding": "añadiendo"
+    }
+  },
   "orgConsole": {
     "pageTitle": "Consola de Org",
     "title": "Consola de la Organización",
