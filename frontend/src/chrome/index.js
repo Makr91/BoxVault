@@ -26,7 +26,7 @@ export {
 export { configureLogger, log, redact, reportRenderError } from './logger';
 export { default as LogoutItem } from './LogoutItem';
 export { mountApp } from './mountApp';
-export { NoticeBanners, NoticeProvider, NoticeToasts, useDismiss, useNotify } from './notices';
+export { NoticeBanners, NoticeCards, NoticeProvider, useDismiss, useNotify } from './notices';
 export { createNotificationsClient } from './notifications';
 export {
   NavbarSearchControl,

@@ -717,28 +717,28 @@ button::-moz-focus-inner {
   border-top: 1px solid var(--bs-danger-border-subtle);
 }
 
-.notice-toasts {
+.notice-cards {
   --bs-toast-max-width: 360px;
   padding: 76px 20px 0;
 }
 
-.notice-toast {
+.notice-card {
   border-left-width: 4px;
 }
 
-.notice-toast-success {
+.notice-card-success {
   border-left-color: var(--bs-success);
 }
 
-.notice-toast-info {
+.notice-card-info {
   border-left-color: var(--bs-info);
 }
 
-.notice-toast-warning {
+.notice-card-warning {
   border-left-color: var(--bs-warning);
 }
 
-.notice-toast-danger {
+.notice-card-danger {
   border-left-color: var(--bs-danger);
 }
 
@@ -840,24 +840,27 @@ button::-moz-focus-inner {
 }
 
 .items-table .col-visibility {
-  width: 6rem;
+  width: 6.3rem;
 }
 
 .items-table .col-created,
-.items-table .col-updated,
-.items-table .col-status {
+.items-table .col-updated {
   width: 6.5rem;
+}
+
+.items-table .col-status {
+  width: 6.8rem;
 }
 
 .items-table .col-downloads,
 .items-table .col-versions {
-  width: 7rem;
+  width: 7.3rem;
   text-align: right;
   padding-right: 1.25rem;
 }
 
 .items-table .col-released {
-  width: 9rem;
+  width: 9.3rem;
 }
 
 .items-table .col-os {

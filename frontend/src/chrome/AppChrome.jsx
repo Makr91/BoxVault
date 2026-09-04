@@ -8,7 +8,7 @@ import Footer from './Footer';
 import Header, { brandShape, linkShape } from './Header';
 import { localProfileShape } from './IdentityCard';
 import { reportRenderError } from './logger';
-import { NoticeToasts, useNotify } from './notices';
+import { NoticeCards, useNotify } from './notices';
 import { notificationsAdapterShape, pushAdapterShape } from './NotificationsModal';
 import { OrgLogo, organizationShape } from './OrgSwitcherModal';
 import { buildRouteCrumbs, parseRoute } from './routeCrumbs';
@@ -79,7 +79,7 @@ const useSessionEndedBanner = ended => {
 
 /**
  * The whole chrome around an estate app's routes: the header with the
- * route crumbs, the user menu and the notice banners, the notice toasts,
+ * route crumbs, the user menu and the notice banners, the notice cards,
  * the one scroll region with the page inside its own error boundary so a
  * page that throws keeps the chrome, and the footer. Everything an app
  * differs in arrives as data; the app renders its routes as children.
@@ -143,7 +143,7 @@ const AppChrome = ({
         signInTo={session.signInTo || ''}
         userMenu={userMenu}
       />
-      <NoticeToasts LinkComponent={LinkComponent} />
+      <NoticeCards LinkComponent={LinkComponent} />
       <div ref={scrollRef} className="container-fluid app-scroll py-3">
         <ErrorBoundary showErrorDetails={import.meta.env.DEV} onError={reportRenderError}>
           {children}

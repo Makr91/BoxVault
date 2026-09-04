@@ -64,6 +64,7 @@
   },
   "inbox": {
     "title": "Notifications",
+    "channelTitle": "Notification Channel Notifications",
     "empty": "No notifications yet.",
     "markAllRead": "Mark all read",
     "markRead": "Mark read",
@@ -75,12 +76,16 @@
     "markAllReadError": "Failed to mark all notifications as read. Please try again."
   },
   "notifications": {
-    "pushSwitch": "Browser notifications on this device",
-    "enableError": "Failed to enable notifications. Please try again.",
-    "disableError": "Failed to disable notifications. Please try again.",
-    "permissionDenied": "Notification permission was denied by the browser.",
+    "pushSwitch": "Toasts (OS notifications) on this device",
+    "enableError": "Failed to enable toasts. Please try again.",
+    "disableError": "Failed to disable toasts. Please try again.",
+    "permissionDenied": "The browser denied notification permission.",
     "scopeMissing": "Your account is not yet authorized for notifications. Ask your administrator to enable the notifications scope.",
-    "notSupported": "Push notifications are not supported by this browser."
+    "notSupported": "This browser does not support toasts.",
+    "testToast": "Send a test toast",
+    "testChannel": "Send a test Notification Channel Notification",
+    "testSent": "Test sent.",
+    "testFailed": "Test failed: {{message}}"
   },
   "search": {
     "open": "Search",

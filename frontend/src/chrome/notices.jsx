@@ -13,7 +13,7 @@ import { CloseButton, Toast, ToastContainer } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { FaCircleCheck, FaCircleInfo, FaCircleXmark, FaTriangleExclamation } from 'react-icons/fa6';
 
-const TOAST_CAP = 4;
+const CARD_CAP = 4;
 const AUTO_HIDE_MS = 6000;
 const AUTO_HIDE_KINDS = ['success', 'info'];
 const ALERT_KINDS = ['warning', 'danger'];
@@ -50,7 +50,7 @@ const createNoticeStore = () => {
     const entry = { ...notice, id: nextId };
     const kept = notice.key ? notices.filter(other => other.key !== notice.key) : notices;
     const next = [entry, ...kept];
-    const overflow = next.filter(other => other.tier === 'toast').slice(TOAST_CAP);
+    const overflow = next.filter(other => other.tier === 'card').slice(CARD_CAP);
     set(overflow.length > 0 ? next.filter(other => !overflow.includes(other)) : next);
     return entry.id;
   };
@@ -70,7 +70,7 @@ const createNoticeStore = () => {
 const createNotifier =
   store =>
   (kind, text, options = {}) => {
-    const { tier = 'toast', key = '', sticky = false, action = null } = options;
+    const { tier = 'card', key = '', sticky = false, action = null } = options;
     if (!text) {
       if (key) {
         store.removeKey(key);
@@ -99,11 +99,11 @@ NoticeProvider.propTypes = {
 };
 
 /**
- * The one way pages and slots raise a notice: `notify(kind, text, options)`
- * with kind `success`, `info`, `warning` or `danger`, a toast unless
+ * The one way pages and slots raise an in-app notice: `notify(kind, text,
+ * options)` with kind `success`, `info`, `warning` or `danger`, a card unless
  * `options.tier` is `banner`; `options.key` replaces an earlier notice with
  * the same key and, with an empty `text`, dismisses it; `options.sticky`
- * keeps a success or info toast until it is dismissed; `options.action` is
+ * keeps a success or info card until it is dismissed; `options.action` is
  * `{ label, onClick | to | href }`. Returns the notice id.
  *
  * @returns {Function} The app's `notify`
@@ -133,7 +133,7 @@ const noticeShape = PropTypes.shape({
   id: PropTypes.number.isRequired,
   kind: PropTypes.oneOf(['success', 'info', 'warning', 'danger']).isRequired,
   text: PropTypes.node.isRequired,
-  tier: PropTypes.oneOf(['toast', 'banner']).isRequired,
+  tier: PropTypes.oneOf(['card', 'banner']).isRequired,
   key: PropTypes.string.isRequired,
   sticky: PropTypes.bool.isRequired,
   action: actionShape,
@@ -203,7 +203,7 @@ NoticeBanners.propTypes = {
   LinkComponent: PropTypes.elementType,
 };
 
-const NoticeToast = ({ notice, onDismiss, LinkComponent }) => {
+const NoticeCard = ({ notice, onDismiss, LinkComponent }) => {
   const { t } = useTranslation();
   const [paused, setPaused] = useState(false);
   const remaining = useRef(AUTO_HIDE_MS);
@@ -225,7 +225,7 @@ const NoticeToast = ({ notice, onDismiss, LinkComponent }) => {
   const Icon = KIND_ICONS[notice.kind];
   return (
     <Toast
-      className={`notice-toast notice-toast-${notice.kind}`}
+      className={`notice-card notice-card-${notice.kind}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -243,24 +243,24 @@ const NoticeToast = ({ notice, onDismiss, LinkComponent }) => {
   );
 };
 
-NoticeToast.propTypes = {
+NoticeCard.propTypes = {
   notice: noticeShape.isRequired,
   onDismiss: PropTypes.func.isRequired,
   LinkComponent: PropTypes.elementType.isRequired,
 };
 
 /**
- * The toast column at the top right under the header: the four newest
- * toast-tier notices, success and info gone after six seconds unless the
- * pointer or focus rests on them, warning and danger until dismissed.
+ * The in-app notice cards at the top right under the header: the four
+ * newest card-tier notices, success and info gone after six seconds unless
+ * the pointer or focus rests on them, warning and danger until dismissed.
  */
-export const NoticeToasts = ({ LinkComponent = 'a' }) => {
+export const NoticeCards = ({ LinkComponent = 'a' }) => {
   const { dismiss } = useContext(NoticeContext);
-  const toasts = useNoticeList().filter(notice => notice.tier === 'toast');
+  const cards = useNoticeList().filter(notice => notice.tier === 'card');
   return (
-    <ToastContainer position="top-end" containerPosition="fixed" className="notice-toasts">
-      {toasts.map(notice => (
-        <NoticeToast
+    <ToastContainer position="top-end" containerPosition="fixed" className="notice-cards">
+      {cards.map(notice => (
+        <NoticeCard
           key={notice.id}
           notice={notice}
           onDismiss={dismiss}
@@ -271,6 +271,6 @@ export const NoticeToasts = ({ LinkComponent = 'a' }) => {
   );
 };
 
-NoticeToasts.propTypes = {
+NoticeCards.propTypes = {
   LinkComponent: PropTypes.elementType,
 };

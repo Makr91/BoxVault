@@ -6,8 +6,10 @@ import {
   FaArrowUpRightFromSquare,
   FaBell,
   FaCheck,
+  FaDesktop,
   FaEnvelope,
   FaGear,
+  FaPaperPlane,
   FaShieldHalved,
   FaTriangleExclamation,
   FaXmark,
@@ -22,6 +24,7 @@ export const notificationsAdapterShape = PropTypes.shape({
   markRead: PropTypes.func.isRequired,
   markAllRead: PropTypes.func.isRequired,
   remove: PropTypes.func.isRequired,
+  sendTest: PropTypes.func,
 });
 
 export const pushAdapterShape = PropTypes.shape({
@@ -30,6 +33,7 @@ export const pushAdapterShape = PropTypes.shape({
   setEnabled: PropTypes.func.isRequired,
   subscribe: PropTypes.func.isRequired,
   unsubscribe: PropTypes.func.isRequired,
+  sendTest: PropTypes.func,
 });
 
 const TYPE_ICONS = {
@@ -127,9 +131,45 @@ NotificationRow.propTypes = {
   onDismiss: PropTypes.func.isRequired,
 };
 
-const PushSwitch = ({ push }) => {
+const TestButton = ({ label, Icon, send }) => {
   const { t } = useTranslation();
-  const [enabled, setEnabled] = useState(push.isEnabled());
+  const notify = useNotify();
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      await send();
+      notify('success', t('notifications.testSent'));
+    } catch (error) {
+      notify('danger', t('notifications.testFailed', { message: error.message }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="btn btn-link btn-sm p-0 text-body-secondary"
+      onClick={run}
+      disabled={busy}
+      title={label}
+      aria-label={label}
+    >
+      <Icon />
+    </button>
+  );
+};
+
+TestButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  Icon: PropTypes.elementType.isRequired,
+  send: PropTypes.func.isRequired,
+};
+
+const PushSwitch = ({ push, enabled, onEnabledChange }) => {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
@@ -145,7 +185,7 @@ const PushSwitch = ({ push }) => {
     }
     await push.subscribe();
     push.setEnabled(true);
-    setEnabled(true);
+    onEnabledChange(true);
   };
 
   const describeError = error => {
@@ -162,7 +202,7 @@ const PushSwitch = ({ push }) => {
       if (enabled) {
         await push.unsubscribe();
         push.setEnabled(false);
-        setEnabled(false);
+        onEnabledChange(false);
       } else {
         await enablePush();
       }
@@ -190,6 +230,8 @@ const PushSwitch = ({ push }) => {
 
 PushSwitch.propTypes = {
   push: pushAdapterShape.isRequired,
+  enabled: PropTypes.bool.isRequired,
+  onEnabledChange: PropTypes.func.isRequired,
 };
 
 const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, viewAllUrl }) => {
@@ -197,6 +239,7 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
   const notify = useNotify();
   const [entries, setEntries] = useState([]);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(push.isEnabled);
 
   useEffect(() => {
     if (!show) {
@@ -264,7 +307,7 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
     <Modal show={show} onHide={onHide} centered dialogClassName="notifications-modal">
       <Modal.Header closeButton>
         <Modal.Title as="h5" className="flex-grow-1">
-          {t('inbox.title')}
+          {t('inbox.channelTitle')}
         </Modal.Title>
         <button type="button" className="btn btn-link btn-sm p-0 me-3" onClick={handleMarkAllRead}>
           {t('inbox.markAllRead')}
@@ -288,13 +331,29 @@ const NotificationsModal = ({ show, onHide, onUnreadDelta, notifications, push, 
         </div>
       </Modal.Body>
       <Modal.Footer className="d-flex justify-content-between align-items-center flex-nowrap gap-3 small">
-        <PushSwitch push={push} />
-        {viewAllUrl ? (
-          <a href={viewAllUrl} target="_blank" rel="noopener noreferrer" className="text-nowrap">
-            {t('inbox.viewAll')}
-            <FaArrowUpRightFromSquare className="ms-2" />
-          </a>
-        ) : null}
+        <PushSwitch push={push} enabled={pushEnabled} onEnabledChange={setPushEnabled} />
+        <span className="d-flex align-items-center gap-3">
+          {push.sendTest && pushEnabled ? (
+            <TestButton
+              label={t('notifications.testToast')}
+              Icon={FaDesktop}
+              send={push.sendTest}
+            />
+          ) : null}
+          {notifications.sendTest ? (
+            <TestButton
+              label={t('notifications.testChannel')}
+              Icon={FaPaperPlane}
+              send={notifications.sendTest}
+            />
+          ) : null}
+          {viewAllUrl ? (
+            <a href={viewAllUrl} target="_blank" rel="noopener noreferrer" className="text-nowrap">
+              {t('inbox.viewAll')}
+              <FaArrowUpRightFromSquare className="ms-2" />
+            </a>
+          ) : null}
+        </span>
       </Modal.Footer>
     </Modal>
   );
