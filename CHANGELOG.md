@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.74.0](https://github.com/Makr91/BoxVault/compare/v0.73.0...v0.74.0) (2026-09-04)
+
+
+### Features
+
+* admin on the shared page over the admin adapter ([d0f5012](https://github.com/Makr91/BoxVault/commit/d0f5012a5e386f42795b14d22360527c29f0712d))
+* organization console and discovery on the shared pages ([635c8ab](https://github.com/Makr91/BoxVault/commit/635c8ab1a70ff189d87235af97e76e353c1302f2))
+* profile on the shared page over the account adapter ([098fb9a](https://github.com/Makr91/BoxVault/commit/098fb9adab0fc9ae5a16fcd3c42284e1d59926aa))
+* profile service accounts grouped per organization ([d0ae340](https://github.com/Makr91/BoxVault/commit/d0ae340e0cc3fcdd162eb35b3ed53de6fd5b3967))
+* setup on the shared page, Bootstrap JS bundle dropped ([3f460f5](https://github.com/Makr91/BoxVault/commit/3f460f5c691ec96761fb11583ffea932fee2a402))
+
+
+### Bug Fixes
+
+* permission rules read the shared membership mapping ([5841234](https://github.com/Makr91/BoxVault/commit/5841234a5027ebbe055217198910f0697495bce4))
+
 ## [0.73.0](https://github.com/Makr91/BoxVault/compare/v0.72.0...v0.73.0) (2026-09-04)
 
 
