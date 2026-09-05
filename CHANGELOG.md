@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.78.0](https://github.com/Makr91/BoxVault/compare/v0.77.1...v0.78.0) (2026-09-05)
+
+
+### Features
+
+* version ISOs with per-architecture files under box-shaped routes ([4a4f31e](https://github.com/Makr91/BoxVault/commit/4a4f31e6aa7b2b1d1bb7a36ff2c07f6c678836eb))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.4.0 ([c2ac5d0](https://github.com/Makr91/BoxVault/commit/c2ac5d0d0a8e1f8cd555faa1088d53ad5eac0fb6))
+* bump startcloud-ui to v0.4.0 ([491e8ef](https://github.com/Makr91/BoxVault/commit/491e8efcb9c74566a5437e3687dfd9b99713d71d))
+
 ## [0.77.1](https://github.com/Makr91/BoxVault/compare/v0.77.0...v0.77.1) (2026-09-05)
 
 
