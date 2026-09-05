@@ -318,38 +318,6 @@
     "verificationButton": "Verify Email",
     "verificationExpiry": "This verification link will expire on: {{expirationDate}}"
   },
-  "about": {
-    "title": "BoxVault",
-    "description": "BoxVault is a self-hosted solution designed to store and manage Virtual Machine templates.",
-    "components": {
-      "backend": {
-        "title": "Backend",
-        "details": {
-          "nodejs": "Node.js service that also answers Vagrant's box API on the same paths",
-          "auth": "Local accounts, single sign-on through OpenID Connect providers, and service-account tokens for automation",
-          "endpoints": "REST API documented in the Swagger UI at /api-docs",
-          "database": "Organizations, boxes, versions, providers, architectures and ISOs in the database; files on local storage"
-        }
-      },
-      "frontend": {
-        "title": "Frontend",
-        "details": {
-          "react": "React single-page app with the navbar and pages shared byte for byte with the provisioner catalog",
-          "interface": "Light and dark themes, English and Spanish, browser notifications",
-          "features": "Box and ISO upload, versions, providers and architectures, organization console, admin panel"
-        }
-      }
-    },
-    "features": {
-      "authentication": "User Authentication",
-      "boxManagement": "Box Management",
-      "versionControl": "Version Control",
-      "organizationSupport": "Organization Support",
-      "apiDocumentation": "API Documentation",
-      "secureStorage": "Secure Storage"
-    },
-    "goal": "To provide a robust and easy-to-use platform for managing Vagrant boxes."
-  },
   "errors": {
     "operationFailed": "Operation failed."
   },
@@ -414,9 +382,22 @@
   },
   "isos": {
     "notFound": "ISO not found.",
+    "notFoundWithName": "ISO {{name}} not found in organization {{organization}}.",
+    "invalidName": "Invalid ISO name. It should contain only uppercase, lowercase, digits, dash, and period.",
+    "invalidNameDots": "Invalid ISO name. It should not contain consecutive periods.",
+    "duplicateName": "An ISO with the name {{name}} already exists in organization {{organization}}.",
+    "invalidArchitecture": "Invalid architecture. It should contain only alphanumeric characters, hyphens, underscores, and periods, and not start with a hyphen or period.",
     "deleted": "ISO deleted successfully.",
     "deletedAll": "{{count}} ISOs were deleted successfully.",
     "noIsosFound": "No ISOs found for this organization.",
+    "versions": {
+      "notFound": "ISO version not found.",
+      "duplicate": "A version with the number {{versionNumber}} already exists for ISO {{name}}.",
+      "deleted": "ISO version deleted successfully!",
+      "invalidReleaseNotes": "releaseNotes must be a string.",
+      "invalidDeprecated": "deprecated must be a boolean.",
+      "invalidDeprecationReason": "deprecationReason must be a string of at most 512 characters."
+    },
     "watch": {
       "error": "Some error occurred while updating the ISO watch.",
       "listError": "Some error occurred while retrieving watched ISOs."

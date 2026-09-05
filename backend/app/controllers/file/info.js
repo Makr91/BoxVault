@@ -80,6 +80,14 @@ const { files: File, UserOrg } = db;
  *                   type: integer
  *                   example: 1073741824
  *                   description: File size in bytes
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the file record was created
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the file record was last updated
  *       403:
  *         description: Unauthorized access to file information
  *         content:
@@ -152,6 +160,8 @@ const info = async (req, res) => {
           checksum: fileRecord.checksum,
           checksumType: fileRecord.checksumType,
           fileSize: fileRecord.fileSize,
+          createdAt: fileRecord.createdAt,
+          updatedAt: fileRecord.updatedAt,
         });
       }
       return res.status(404).send({ message: req.__('files.notFound') });
@@ -200,6 +210,8 @@ const info = async (req, res) => {
         checksum: fileRecord.checksum,
         checksumType: fileRecord.checksumType,
         fileSize: fileRecord.fileSize,
+        createdAt: fileRecord.createdAt,
+        updatedAt: fileRecord.updatedAt,
       });
     }
     return res.status(404).send({ message: req.__('files.notFound') });

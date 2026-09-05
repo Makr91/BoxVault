@@ -1,21 +1,42 @@
-import { Router, json } from 'express';
-import { authJwt, verifyOrgAccess, downloadAuth, sessionAuth } from '../middleware/index.js';
+import { Router } from 'express';
 import {
-  upload,
+  authJwt,
+  verifyOrgAccess,
+  verifyIsoName,
+  verifyIsoVersion,
+  verifyVersion,
+  verifyIsoFilePath,
+  downloadAuth,
+  sessionAuth,
+} from '../middleware/index.js';
+import {
+  fileOperationLimiter,
+  getDownloadLinkLimiter,
+  downloadLimiter,
+} from '../middleware/rateLimiter.js';
+import {
+  create,
   findAll,
   findOne,
-  download,
-  downloadByName,
-  getDownloadLink,
   update,
   delete as deleteIso,
   deleteAll,
+  discoverAll,
+  watchIso,
+  unwatchIso,
+  createVersion,
+  findAllVersions,
+  findOneVersion,
+  updateVersion,
+  deleteVersion,
+  uploadFile,
+  fileInfo,
+  downloadFile,
+  getDownloadLink,
+  removeFile,
 } from '../controllers/iso.controller.js';
-const router = Router();
-import { discoverAll } from '../controllers/iso/discover.js';
-import { watchIso, unwatchIso } from '../controllers/iso/watch.js';
 
-router.use(json());
+const router = Router();
 
 router.use((req, res, next) => {
   void req;
@@ -23,71 +44,148 @@ router.use((req, res, next) => {
   next();
 });
 
-// Discover ISOs visible to the caller
 router.get('/isos/discover', sessionAuth, discoverAll);
+router.get('/organization/:organization/iso', sessionAuth, findAll);
+router.get('/organization/:organization/iso/:name', sessionAuth, findOne);
 
-// Upload an ISO
 router.post(
   '/organization/:organization/iso',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
-  upload
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyIsoName.validateIsoName,
+    verifyIsoName.checkIsoDuplicate,
+  ],
+  create
 );
 
-// List ISOs for an organization visible to the caller
-router.get('/organization/:organization/iso', sessionAuth, findAll);
-
-// Get specific ISO details visible to the caller
-router.get('/organization/:organization/iso/:isoId', sessionAuth, findOne);
-
-// Download ISO
-router.get(
-  '/organization/:organization/iso/:isoId/download',
-  [downloadAuth, sessionAuth],
-  download
+router.put(
+  '/organization/:organization/iso/:name',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyIsoName.validateIsoName,
+    verifyIsoName.checkIsoDuplicate,
+  ],
+  update
 );
 
-// Download ISO by name
-router.get(
-  '/organization/:organization/iso/name/:name/download',
-  [downloadAuth, sessionAuth],
-  downloadByName
-);
-
-// Get Download Link (Public/Authenticated)
-router.post('/organization/:organization/iso/:isoId/download-link', [sessionAuth], getDownloadLink);
-
-// Watch and unwatch an ISO
 router.post(
-  '/organization/:organization/iso/:isoId/watch',
+  '/organization/:organization/iso/:name/watch',
   [authJwt.verifyToken, authJwt.isUser],
   watchIso
 );
 
 router.delete(
-  '/organization/:organization/iso/:isoId/watch',
+  '/organization/:organization/iso/:name/watch',
   [authJwt.verifyToken, authJwt.isUser],
   unwatchIso
 );
 
-// Update ISO
-router.put(
-  '/organization/:organization/iso/:isoId',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
-  update
-);
-
-// Delete an ISO
 router.delete(
-  '/organization/:organization/iso/:isoId',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
+  '/organization/:organization/iso/:name',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
   deleteIso
 );
 
-// Delete every ISO of an organization
 router.delete(
   '/organization/:organization/iso',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
   deleteAll
+);
+
+router.post(
+  '/organization/:organization/iso/:name/version',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyVersion.validateVersion,
+    verifyIsoVersion.attachEntities,
+    verifyIsoVersion.checkVersionDuplicate,
+  ],
+  createVersion
+);
+
+router.put(
+  '/organization/:organization/iso/:name/version/:versionNumber',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyIsoVersion.attachEntities,
+  ],
+  updateVersion
+);
+
+router.get(
+  '/organization/:organization/iso/:name/version',
+  [sessionAuth, verifyIsoVersion.attachEntities],
+  findAllVersions
+);
+
+router.get(
+  '/organization/:organization/iso/:name/version/:versionNumber',
+  [sessionAuth, verifyIsoVersion.attachEntities],
+  findOneVersion
+);
+
+router.delete(
+  '/organization/:organization/iso/:name/version/:versionNumber',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyIsoVersion.attachEntities,
+  ],
+  deleteVersion
+);
+
+router.post(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/upload',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyIsoFilePath,
+  uploadFile
+);
+
+router.get(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/info',
+  fileOperationLimiter,
+  verifyIsoFilePath,
+  sessionAuth,
+  fileInfo
+);
+
+router.get(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/download',
+  downloadLimiter,
+  verifyIsoFilePath,
+  downloadAuth,
+  sessionAuth,
+  downloadFile
+);
+
+router.post(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/get-download-link',
+  getDownloadLinkLimiter,
+  verifyIsoFilePath,
+  sessionAuth,
+  getDownloadLink
+);
+
+router.delete(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/delete',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyIsoFilePath,
+  removeFile
 );
 
 export default router;

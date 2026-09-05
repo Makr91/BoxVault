@@ -95,6 +95,8 @@ if (shouldSkipInitialization) {
   db.UserOrg = (await import('./user-org.model.js')).default(sequelize, Sequelize);
   db.Request = (await import('./request.model.js')).default(sequelize, Sequelize);
   db.iso = (await import('./iso.model.js')).default(sequelize, Sequelize);
+  db.isoVersions = (await import('./iso-version.model.js')).default(sequelize, Sequelize);
+  db.isoFiles = (await import('./iso-file.model.js')).default(sequelize, Sequelize);
   db.scimGroup = (await import('./scim-group.model.js')).default(sequelize, Sequelize);
   db.boxWatcher = (await import('./box-watcher.model.js')).default(sequelize, Sequelize);
   db.isoWatcher = (await import('./iso-watcher.model.js')).default(sequelize, Sequelize);

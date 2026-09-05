@@ -648,12 +648,6 @@ describe('User API', () => {
   });
 
   describe('Board Endpoints', () => {
-    it('GET /api/users/all should return public content', async () => {
-      const res = await request(app).get('/api/users/all');
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('title');
-    });
-
     it('GET /api/user should return 404 for deleted user with valid token', async () => {
       const tempToken = jwt.sign({ id: 999999 }, 'test-secret', { expiresIn: '1h' });
       const res = await request(app).get('/api/user').set('x-access-token', tempToken);

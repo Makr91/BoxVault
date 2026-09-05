@@ -2,6 +2,7 @@ import request from 'supertest';
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import { join } from 'path';
+import { createHash } from 'crypto';
 import app from '../server.js';
 import db from '../app/models/index.js';
 import jwt from 'jsonwebtoken';
@@ -16,26 +17,44 @@ import { log } from '../app/utils/Logger.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
+const sha256 = content => createHash('sha256').update(content).digest('hex');
+
 describe('ISO API', () => {
   let authToken;
   let adminToken;
   let user;
   let admin;
   let org;
-  let iso;
   const uniqueId = Date.now();
   const orgName = `IsoOrg_${uniqueId}`;
+  const isoName = 'test-iso';
+  const isoBase = `/api/organization/${orgName}/iso/${isoName}`;
+  const versionNumber = '1.0.0';
+  const versionBase = `${isoBase}/version/${versionNumber}`;
+  const fileBase = `${versionBase}/architecture/amd64/file`;
+  const fileContent = Buffer.from(`iso-file-content-${uniqueId}`);
+
+  const signFor = account =>
+    jwt.sign({ id: account.id }, 'test-secret', { expiresIn: '1h', ...TEST_JWT_CLAIMS });
+
+  const createOutsider = async label => {
+    const outsider = await db.user.create({
+      username: `outsider-${label}-${Date.now()}`,
+      email: `outsider-${label}-${Date.now()}@test.com`,
+      password: 'password',
+      verified: true,
+    });
+    return { outsider, token: signFor(outsider) };
+  };
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
 
-    // Create Organization
     org = await db.organization.create({
       name: orgName,
       access_mode: 'private',
     });
 
-    // Create User
     user = await db.user.create({
       username: `IsoUser_${uniqueId}`,
       email: `isouser_${uniqueId}@example.com`,
@@ -45,9 +64,8 @@ describe('ISO API', () => {
     const userRole = await db.role.findOne({ where: { name: 'user' } });
     await user.setRoles([userRole]);
     await db.UserOrg.create({ user_id: user.id, organization_id: org.id, role: 'member' });
-    authToken = jwt.sign({ id: user.id }, 'test-secret', { expiresIn: '1h', ...TEST_JWT_CLAIMS });
+    authToken = signFor(user);
 
-    // Create Admin
     admin = await db.user.create({
       username: `IsoAdmin_${uniqueId}`,
       email: `isoadmin_${uniqueId}@example.com`,
@@ -57,34 +75,16 @@ describe('ISO API', () => {
     const adminRole = await db.role.findOne({ where: { name: 'admin' } });
     await admin.setRoles([adminRole]);
     await db.UserOrg.create({ user_id: admin.id, organization_id: org.id, role: 'owner' });
-    adminToken = jwt.sign({ id: admin.id }, 'test-secret', {
-      expiresIn: '1h',
-      ...TEST_JWT_CLAIMS,
-    });
+    adminToken = signFor(admin);
 
-    // Create ISO
-    iso = await db.iso.create({
-      name: 'Test ISO',
-      fileName: 'test.iso',
-      checksum: 'fakechecksum',
-      size: 1024,
-      organizationId: org.id,
-      isPublic: false,
-      storagePath: 'test.iso',
-    });
-
-    // Create physical file for download tests
     const isoRoot = getIsoStorageRoot();
     if (!fs.existsSync(isoRoot)) {
       fs.mkdirSync(isoRoot, { recursive: true });
     }
-    fs.writeFileSync(join(isoRoot, 'test.iso'), Buffer.alloc(1024));
   });
 
   afterAll(async () => {
-    if (iso) {
-      await iso.destroy();
-    }
+    await db.iso.destroy({ where: { organizationId: org.id } });
     if (org) {
       await org.destroy();
     }
@@ -100,1021 +100,104 @@ describe('ISO API', () => {
     jest.restoreAllMocks();
   });
 
+  describe('POST /api/organization/:organization/iso', () => {
+    it('should create an ISO from a JSON body with whitelisted metadata', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', adminToken)
+        .send({
+          name: isoName,
+          description: 'Test ISO',
+          metadata: { distro: 'debian', bogus: 'dropped' },
+        });
+      expect(res.statusCode).toBe(201);
+      expect(res.body.name).toBe(isoName);
+      expect(res.body.published).toBe(true);
+      expect(res.body.isPublic).toBe(false);
+      expect(res.body.metadata).toEqual({ distro: 'debian' });
+    });
+
+    it('should reject an invalid ISO name', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', adminToken)
+        .send({ name: '../etc/passwd' });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should reject a duplicate ISO name with 409', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', adminToken)
+        .send({ name: isoName });
+      expect(res.statusCode).toBe(409);
+    });
+
+    it('should reject a plain member', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', authToken)
+        .send({ name: 'member-iso' });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should reject metadata that is not an object', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', adminToken)
+        .send({ name: 'bad-metadata', metadata: 'nope' });
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
   describe('GET /api/organization/:organization/iso', () => {
-    it('should list every ISO for an organization member', async () => {
+    it('should list every ISO with its versions for an organization member', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}/iso`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.some(entry => entry.id === iso.id)).toBe(true);
-      expect(res.body.find(entry => entry.id === iso.id).fileName).toBe('test.iso');
+      const entry = res.body.find(candidate => candidate.name === isoName);
+      expect(entry).toBeDefined();
+      expect(Array.isArray(entry.versions)).toBe(true);
+      expect(entry.downloadCount).toBe(0);
+      expect(entry.organization.name).toBe(orgName);
     });
 
     it('should hide private ISOs from anonymous callers', async () => {
       const res = await request(app).get(`/api/organization/${orgName}/iso`);
       expect(res.statusCode).toBe(200);
-      expect(res.body.some(entry => entry.id === iso.id)).toBe(false);
+      expect(res.body.some(entry => entry.name === isoName)).toBe(false);
     });
 
     it('should hide unpublished ISOs from non-members', async () => {
-      await db.iso.update({ isPublic: true, published: false }, { where: { id: iso.id } });
+      await db.iso.update(
+        { isPublic: true, published: false },
+        { where: { name: isoName, organizationId: org.id } }
+      );
       const res = await request(app).get(`/api/organization/${orgName}/iso`);
       expect(res.statusCode).toBe(200);
-      expect(res.body.some(entry => entry.id === iso.id)).toBe(false);
-      await db.iso.update({ isPublic: false, published: true }, { where: { id: iso.id } });
+      expect(res.body.some(entry => entry.name === isoName)).toBe(false);
+      await db.iso.update(
+        { isPublic: false, published: true },
+        { where: { name: isoName, organizationId: org.id } }
+      );
     });
 
     it('should list public published ISOs for anonymous callers', async () => {
-      await db.iso.update({ isPublic: true }, { where: { id: iso.id } });
+      await db.iso.update({ isPublic: true }, { where: { name: isoName, organizationId: org.id } });
       const res = await request(app).get(`/api/organization/${orgName}/iso`);
       expect(res.statusCode).toBe(200);
-      expect(res.body.some(entry => entry.id === iso.id)).toBe(true);
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
+      expect(res.body.some(entry => entry.name === isoName)).toBe(true);
+      await db.iso.update(
+        { isPublic: false },
+        { where: { name: isoName, organizationId: org.id } }
+      );
     });
 
     it('should return 404 if organization not found', async () => {
       const res = await request(app)
         .get(`/api/organization/NonExistentOrg/iso`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(404);
-    });
-  });
-
-  describe('GET /api/organization/:organization/iso/:isoId', () => {
-    it('should get ISO details', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body.name).toBe('Test ISO');
-    });
-
-    it('should refuse a private ISO to an anonymous caller', async () => {
-      const res = await request(app).get(`/api/organization/${orgName}/iso/${iso.id}`);
-      expect(res.statusCode).toBe(403);
-    });
-
-    it('should return 404 if ISO not found', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/99999`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('should return 404 if organization not found', async () => {
-      const res = await request(app).get(`/api/organization/NonExistentOrg/iso/${iso.id}`);
-      expect(res.statusCode).toBe(404);
-    });
-  });
-
-  describe('PUT /api/organization/:organization/iso/:isoId', () => {
-    it('should update ISO details (admin)', async () => {
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken)
-        .send({ name: 'Updated ISO Name', isPublic: true });
-      expect(res.statusCode).toBe(200);
-      expect(res.body.name).toBe('Updated ISO Name');
-      expect(res.body.isPublic).toBe(true);
-    });
-
-    it('should unpublish and publish an ISO', async () => {
-      const hidden = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken)
-        .send({ published: false });
-      expect(hidden.statusCode).toBe(200);
-      expect(hidden.body.published).toBe(false);
-
-      const shown = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken)
-        .send({ published: true });
-      expect(shown.statusCode).toBe(200);
-      expect(shown.body.published).toBe(true);
-    });
-
-    it('should return 404 if ISO not found', async () => {
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/99999`)
-        .set('x-access-token', adminToken)
-        .send({ name: 'New Name' });
-      expect(res.statusCode).toBe(404);
-    });
-  });
-
-  describe('POST /api/organization/:organization/iso/:isoId/download-link', () => {
-    it('should generate download link', async () => {
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/download-link`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
-    });
-
-    it('should return 404 if ISO not found', async () => {
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/99999/download-link`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(404);
-    });
-  });
-
-  describe('GET /api/isos/discover', () => {
-    it('should list public ISOs', async () => {
-      const res = await request(app).get('/api/isos/discover');
-      expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-  });
-
-  describe('ISO watches', () => {
-    it('should watch, list and unwatch an ISO', async () => {
-      const watched = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
-        .set('x-access-token', authToken);
-      expect(watched.statusCode).toBe(201);
-      expect(watched.body).toEqual({ watched: true });
-
-      const again = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
-        .set('x-access-token', authToken);
-      expect(again.statusCode).toBe(200);
-
-      const listed = await request(app)
-        .get('/api/user/iso-watches')
-        .set('x-access-token', authToken);
-      expect(listed.statusCode).toBe(200);
-      expect(listed.body.some(entry => entry.isoId === iso.id)).toBe(true);
-
-      const unwatched = await request(app)
-        .delete(`/api/organization/${orgName}/iso/${iso.id}/watch`)
-        .set('x-access-token', authToken);
-      expect(unwatched.statusCode).toBe(200);
-      expect(unwatched.body).toEqual({ watched: false });
-
-      const emptied = await request(app)
-        .get('/api/user/iso-watches')
-        .set('x-access-token', authToken);
-      expect(emptied.body.some(entry => entry.isoId === iso.id)).toBe(false);
-    });
-
-    it('should refuse to watch a private ISO of another organization', async () => {
-      const outsider = await db.user.create({
-        username: `outsider-watch-${Date.now()}`,
-        email: `outsider-watch-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
-      });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
-        .set('x-access-token', token);
-      expect(res.statusCode).toBe(403);
-
-      await outsider.destroy();
-    });
-
-    it('should return 404 when watching an unknown ISO', async () => {
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/999999/watch`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('should notify watchers when an ISO is published', async () => {
-      await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/watch`)
-        .set('x-access-token', authToken);
-      await db.iso.update({ published: false }, { where: { id: iso.id } });
-
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken)
-        .send({ published: true });
-      expect(res.statusCode).toBe(200);
-      expect(res.body.published).toBe(true);
-
-      await request(app)
-        .delete(`/api/organization/${orgName}/iso/${iso.id}/watch`)
-        .set('x-access-token', authToken);
-    });
-  });
-
-  describe('ISO Edge Cases (Integration)', () => {
-    it('should handle path traversal attempt in filename', async () => {
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', '../../etc/passwd')
-        .set('Content-Type', 'application/octet-stream')
-        .send('malicious content');
-
-      // Path traversal filenames are rejected outright by the upload allowlist
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBeDefined();
-    });
-
-    // Helper coverage via API trigger (upload)
-    it('should use configured storage path', () => {
-      // Save original config
-      const configPath = getConfigPath('app');
-      const originalConfig = fs.readFileSync(configPath, 'utf8');
-      const config = yaml.load(originalConfig);
-
-      // Modify
-      config.boxvault.iso_storage_directory = { value: '/tmp/custom-iso' };
-      fs.writeFileSync(configPath, yaml.dump(config));
-
-      try {
-        const root = getIsoStorageRoot();
-        expect(root).toBe('/tmp/custom-iso');
-      } finally {
-        // Restore
-        fs.writeFileSync(configPath, originalConfig);
-      }
-    });
-  });
-
-  describe('ISO Edge Cases (Integration)', () => {
-    it('should delete physical file when no other references exist', async () => {
-      // Create a unique ISO to delete
-      const isoToDelete = await db.iso.create({
-        name: 'Delete Me',
-        fileName: 'delete.iso',
-        checksum: 'uniquechecksum123',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false,
-        storagePath: 'delete.iso',
-      });
-
-      // Mock fs.existsSync to return true for the file
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      // Mock fs.unlinkSync
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/iso/${isoToDelete.id}`)
-        .set('x-access-token', adminToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(unlinkSpy).toHaveBeenCalled();
-
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should handle error during physical file deletion', async () => {
-      const findSpy = jest.spyOn(db.iso, 'findOne').mockRejectedValue(new Error('DB Error'));
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken);
-
-      findSpy.mockRestore();
-      expect(res.statusCode).toBe(500);
-    });
-
-    it('should handle download error (500)', async () => {
-      // Mock fs.statSync to throw error
-      // We need to ensure access check passes first
-      jest.spyOn(fs.promises, 'access').mockResolvedValue();
-      const statSpy = jest.spyOn(fs, 'statSync').mockImplementation(() => {
-        throw new Error('Stat Error');
-      });
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(500);
-      statSpy.mockRestore();
-    });
-
-    it('should handle downloadByName error (500)', async () => {
-      // Mock organization find to throw
-      const findSpy = jest
-        .spyOn(db.organization, 'findOne')
-        .mockRejectedValue(new Error('DB Error'));
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/name/${iso.name}/download`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(500);
-      findSpy.mockRestore();
-    });
-
-    it('should deny download link generation for private ISO if not member', async () => {
-      // Create private ISO
-      const privIso = await db.iso.create({
-        name: 'Private ISO',
-        fileName: 'priv.iso',
-        checksum: 'privsum',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false,
-        storagePath: 'priv.iso',
-      });
-
-      // Create non-member user
-      const outsider = await db.user.create({
-        username: `outsider-iso-${Date.now()}`,
-        email: `outsider-iso-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
-      });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${privIso.id}/download-link`)
-        .set('x-access-token', token);
-
-      expect(res.statusCode).toBe(403);
-
-      await privIso.destroy();
-      await outsider.destroy();
-    });
-
-    it('should handle update error (500)', async () => {
-      const findSpy = jest.spyOn(db.iso, 'findOne').mockResolvedValue({
-        ...iso.toJSON(),
-        save: jest.fn().mockRejectedValue(new Error('Save Error')),
-      });
-
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken)
-        .send({ name: 'New Name' });
-
-      findSpy.mockRestore();
-      expect(res.statusCode).toBe(500);
-    });
-
-    it('should handle upload cleanup on error', async () => {
-      // Mock fs.renameSync to throw (simulating error during processing)
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
-        throw new Error('Rename Error');
-      });
-
-      // Mock fs.existsSync to return true for the temp file so cleanup triggers
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        if (typeof pathArg === 'string' && pathArg.includes('temp-')) {
-          return true;
-        }
-        return originalExists(pathArg);
-      });
-
-      // Mock unlinkSync to verify cleanup
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'cleanup-test.iso')
-        .set('Content-Length', '7') // Matches 'content' length
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-      expect(unlinkSpy).toHaveBeenCalled();
-
-      renameSpy.mockRestore();
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should handle DB error during download (wrapper)', async () => {
-      jest.spyOn(db.iso, 'findByPk').mockRejectedValue(new Error('DB Error'));
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
-    });
-
-    it('should handle error during upload cleanup', async () => {
-      // 1. Mock fs.renameSync to throw (trigger cleanup)
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
-        throw new Error('Processing Error');
-      });
-
-      // 2. Mock fs.existsSync to return true (enter cleanup block)
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(path => {
-        if (path.toString().includes('temp-')) {
-          return true;
-        }
-        return originalExists(path);
-      });
-
-      // 3. Mock fs.unlinkSync to throw (trigger nested catch)
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
-        throw new Error('Cleanup Error');
-      });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'cleanup-fail.iso')
-        .set('Content-Type', 'application/octet-stream')
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-
-      renameSpy.mockRestore();
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should handle write stream error during upload', async () => {
-      const mockStream = {
-        write: jest.fn(),
-        end: jest.fn(),
-        on: jest.fn((event, handler) => {
-          if (event === 'error') {
-            handler(new Error('Write Error'));
-          }
-          return mockStream;
-        }),
-        once: jest.fn(),
-        emit: jest.fn(),
-      };
-      const createWriteStreamSpy = jest.spyOn(fs, 'createWriteStream').mockReturnValue(mockStream);
-
-      // Mock unlinkSync to verify cleanup
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-
-      createWriteStreamSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should create ISO storage directory if missing during upload', async () => {
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        const p = String(pathArg);
-        // Return false for the iso root to trigger mkdir
-        if (p.endsWith('iso')) {
-          return false;
-        }
-        return originalExists(pathArg);
-      });
-      const mkdirSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
-
-      await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'mkdir-test.iso')
-        .send('content');
-
-      expect(mkdirSpy).toHaveBeenCalled();
-
-      existsSpy.mockRestore();
-      mkdirSpy.mockRestore();
-    });
-
-    it('should generate download link for service account', async () => {
-      // Create service account
-      const sa = await db.service_account.create({
-        username: `sa-link-${Date.now()}`,
-        token: `sa-token-${Date.now()}`,
-        organization_id: org.id,
-        userId: user.id,
-      });
-
-      // Generate SA token
-      const saToken = jwt.sign(
-        {
-          id: user.id,
-          isServiceAccount: true,
-          serviceAccountOrgId: org.id,
-        },
-        'test-secret',
-        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
-      );
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/download-link`)
-        .set('x-access-token', saToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
-
-      await sa.destroy();
-    });
-
-    it('should generate download link with correct service account claim', async () => {
-      // Create service account
-      const sa = await db.service_account.create({
-        username: `sa-link-check-${Date.now()}`,
-        token: `sa-token-check-${Date.now()}`,
-        organization_id: org.id,
-        userId: user.id,
-      });
-
-      const saToken = jwt.sign(
-        {
-          id: user.id,
-          isServiceAccount: true,
-          serviceAccountOrgId: org.id,
-        },
-        'test-secret',
-        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
-      );
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/download-link`)
-        .set('x-access-token', saToken);
-
-      expect(res.statusCode).toBe(200);
-
-      // Verify the generated token in the URL
-      const { downloadUrl } = res.body;
-      const [, token] = downloadUrl.split('token=');
-      const decoded = jwt.verify(token, 'test-secret');
-      expect(decoded.isServiceAccount).toBe(true);
-
-      await sa.destroy();
-    });
-
-    it('should handle nested error during upload cleanup', async () => {
-      // Force an error in the main try block
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
-        throw new Error('Primary Error');
-      });
-
-      // Ensure we enter the cleanup block
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-
-      // Force an error in the cleanup block
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
-        throw new Error('Secondary Error');
-      });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'nested-error.iso')
-        .send('data');
-
-      expect(res.statusCode).toBe(500);
-
-      renameSpy.mockRestore();
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should return 404 when deleting non-existent ISO', async () => {
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/iso/999999`)
-        .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('should return 413 if file is too large (config modification)', async () => {
-      // Modify config file to set a very small limit (1KB)
-      const configPath = getConfigPath('app');
-      const originalConfig = fs.readFileSync(configPath, 'utf8');
-      const config = yaml.load(originalConfig);
-
-      // Set max size to ~1KB (0.000001 GB)
-      config.boxvault.box_max_file_size.value = 0.000001;
-
-      fs.writeFileSync(configPath, yaml.dump(config));
-
-      try {
-        const content = Buffer.alloc(2048); // 2KB > 1KB limit
-        const res = await request(app)
-          .post(`/api/organization/${orgName}/iso`)
-          .set('x-access-token', adminToken)
-          .set('x-file-name', 'large-config.iso')
-          .set('Content-Type', 'application/octet-stream')
-          .send(content);
-
-        expect(res.statusCode).toBe(413);
-        expect(res.body.error).toBe('FILE_TOO_LARGE');
-      } finally {
-        // Restore config
-        fs.writeFileSync(configPath, originalConfig);
-      }
-    });
-
-    it('should handle error after headers sent in download', async () => {
-      const statSpy = jest.spyOn(fs, 'statSync').mockReturnValue({ size: 0 });
-      const createReadStreamSpy = jest.spyOn(fs, 'createReadStream').mockImplementation(() => {
-        throw new Error('Stream Error');
-      });
-
-      await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken)
-        .expect(200);
-
-      statSpy.mockRestore();
-      createReadStreamSpy.mockRestore();
-    });
-
-    it('should skip cleanup if temp file does not exist during upload error', async () => {
-      // Mock fs.createWriteStream to throw immediately (simulating error before file creation)
-      const createStreamSpy = jest.spyOn(fs, 'createWriteStream').mockImplementation(() => {
-        throw new Error('Stream Init Error');
-      });
-
-      // Mock fs.existsSync to return false (file not created)
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync');
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-      expect(unlinkSpy).not.toHaveBeenCalled();
-
-      createStreamSpy.mockRestore();
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should handle unlink error during cleanup in upload', async () => {
-      // Mock ISO.create to fail
-      const createSpy = jest.spyOn(db.iso, 'create').mockRejectedValue(new Error('DB Error'));
-
-      // Mock existsSync to return true ONLY for temp file
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        const p = String(pathArg);
-        if (p.includes('temp-')) {
-          return true;
-        }
-        return originalExists(pathArg);
-      });
-
-      // Mock unlinkSync to throw (simulate cleanup failure)
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
-        throw new Error('Unlink Error');
-      });
-
-      // Mock renameSync to succeed
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      // Mock mkdirSync to succeed (for isoRoot check)
-      const mkdirSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'unlink-fail.iso')
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-      expect(unlinkSpy).toHaveBeenCalled();
-
-      createSpy.mockRestore();
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-      renameSpy.mockRestore();
-      mkdirSpy.mockRestore();
-    });
-
-    it('should clean up temp file if database creation fails during upload', async () => {
-      const createSpy = jest
-        .spyOn(db.iso, 'create')
-        .mockRejectedValue(new Error('DB Create Error'));
-
-      const mockStream = {
-        write: jest.fn(),
-        on: jest.fn((event, cb) => {
-          if (event === 'finish') {
-            mockStream._finishCb = cb;
-          }
-          return mockStream;
-        }),
-        once: jest.fn(),
-        emit: jest.fn(),
-      };
-      mockStream.end = jest.fn(() => {
-        if (mockStream._finishCb) {
-          setImmediate(mockStream._finishCb);
-        }
-      });
-
-      const writeStreamSpy = jest.spyOn(fs, 'createWriteStream').mockReturnValue(mockStream);
-
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        if (typeof pathArg === 'string' && pathArg.includes('temp-')) {
-          return true;
-        }
-        return originalExists(pathArg);
-      });
-
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'db-fail.iso')
-        .set('Content-Type', 'application/octet-stream')
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-      expect(unlinkSpy).toHaveBeenCalled();
-
-      createSpy.mockRestore();
-      writeStreamSpy.mockRestore();
-      existsSpy.mockRestore();
-      renameSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should return 403 for private ISO if user is not member', async () => {
-      // Create private ISO
-      const privIso = await db.iso.create({
-        name: 'Private ISO Link Test',
-        fileName: 'priv-link.iso',
-        checksum: 'privlinksum',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false,
-        storagePath: 'priv-link.iso',
-      });
-
-      // Create non-member user
-      const outsider = await db.user.create({
-        username: `outsider-link-${Date.now()}`,
-        email: `outsider-link-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
-      });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${privIso.id}/download-link`)
-        .set('x-access-token', token);
-
-      expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Access denied.');
-
-      await privIso.destroy();
-      await outsider.destroy();
-    });
-
-    it('should return 403 for private ISO download link without token', async () => {
-      // Ensure ISO is private
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
-
-      const res = await request(app).post(
-        `/api/organization/${orgName}/iso/${iso.id}/download-link`
-      );
-
-      expect(res.statusCode).toBe(403);
-      const msg = res.body.message;
-      const validMessages = ['Access denied.', 'Forbidden'];
-      expect(validMessages.some(m => msg.includes(m))).toBe(true);
-    });
-
-    it('should generate download link for public ISO (skip permission check)', async () => {
-      // Make ISO public
-      await db.iso.update({ isPublic: true }, { where: { id: iso.id } });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/download-link`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
-
-      // Revert
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
-    });
-
-    it('should return 403 for private ISO if user is not member (explicit check)', async () => {
-      const privIso = await db.iso.create({
-        name: 'Private ISO Explicit',
-        fileName: 'priv-exp.iso',
-        checksum: 'privexpsum',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false,
-        storagePath: 'priv-exp.iso',
-      });
-
-      const outsider = await db.user.create({
-        username: `outsider-exp-${Date.now()}`,
-        email: `outsider-exp-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
-      });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${privIso.id}/download-link`)
-        .set('x-access-token', token);
-
-      expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Access denied.');
-
-      await privIso.destroy();
-      await outsider.destroy();
-    });
-
-    it('should cleanup temp file if rename fails (upload.js line 122)', async () => {
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
-        throw new Error('Rename Failed');
-      });
-
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        const p = String(pathArg);
-        if (p.includes('temp-')) {
-          return true;
-        }
-        if (p.endsWith('.iso')) {
-          return false;
-        } // Force rename path
-        return originalExists(pathArg);
-      });
-
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
-
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'rename-fail-122.iso')
-        .set('Content-Type', 'application/octet-stream')
-        .send('content');
-
-      expect(res.statusCode).toBe(500);
-      expect(unlinkSpy).toHaveBeenCalled();
-
-      renameSpy.mockRestore();
-      existsSpy.mockRestore();
-      unlinkSpy.mockRestore();
-    });
-
-    it('should update ISO with empty body', async () => {
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', adminToken)
-        .send(); // No body
-
-      expect(res.statusCode).toBe(200);
-    });
-
-    it('should handle duplicate upload (deduplication)', async () => {
-      const content = Buffer.from('deduplication-test-content');
-
-      // First upload
-      const res1 = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'dedup-1.iso')
-        .set('Content-Type', 'application/octet-stream')
-        .send(content);
-
-      expect(res1.statusCode).toBe(201);
-
-      // Second upload (same content)
-      const res2 = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'dedup-2.iso')
-        .set('Content-Type', 'application/octet-stream')
-        .send(content);
-
-      expect(res2.statusCode).toBe(201);
-      expect(res2.body.checksum).toBe(res1.body.checksum);
-    });
-
-    it('should throw error for path traversal in helper', () => {
-      expect(() => getSecureIsoPath('../../etc/passwd')).toThrow('Path traversal attempt detected');
-    });
-
-    it('should handle DB error in downloadByName', async () => {
-      const findSpy = jest
-        .spyOn(db.organization, 'findOne')
-        .mockRejectedValue(new Error('DB Error'));
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/name/${iso.name}/download`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(500);
-      findSpy.mockRestore();
-    });
-  });
-
-  describe('Additional Coverage Tests', () => {
-    it('should return 404 when updating non-existent ISO', async () => {
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/999999`)
-        .set('x-access-token', adminToken)
-        .send({ name: 'New Name' });
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('should download file successfully (no range)', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.headers['content-length']).toBe('1024');
-    });
-
-    it('should download using valid download token', async () => {
-      // Ensure ISO is private to verify token logic
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
-
-      const token = jwt.sign(
-        {
-          userId: user.id,
-          isoId: iso.id,
-          organization: orgName,
-          type: 'download',
-        },
-        'test-secret',
-        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
-      );
-
-      const res = await request(app).get(
-        `/api/organization/${orgName}/iso/${iso.id}/download?token=${token}`
-      );
-      expect(res.statusCode).toBe(200);
-    });
-
-    it('should fail download using token with invalid scope', async () => {
-      // Ensure ISO is private
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
-
-      const token = jwt.sign(
-        {
-          userId: user.id,
-          isoId: iso.id + 999, // Wrong ISO ID
-          organization: orgName,
-          type: 'download',
-        },
-        'test-secret',
-        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
-      );
-
-      const res = await request(app).get(
-        `/api/organization/${orgName}/iso/${iso.id}/download?token=${token}`
-      );
-      expect(res.statusCode).toBe(403);
-    });
-
-    it('should handle range requests for download', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken)
-        .set('Range', 'bytes=0-4');
-      expect(res.statusCode).toBe(206);
-      expect(res.headers['content-length']).toBe('5');
-    });
-
-    it('should return 404 if physical file is missing during download', async () => {
-      const ghostIso = await db.iso.create({
-        name: 'Ghost ISO',
-        fileName: 'ghost.iso',
-        checksum: 'ghostsum',
-        size: 123,
-        organizationId: org.id,
-        storagePath: 'non-existent-file.iso',
-      });
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${ghostIso.id}/download`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(404);
-
-      await ghostIso.destroy();
-    });
-
-    it('should return 404 if org not found in downloadByName', async () => {
-      const res = await request(app)
-        .get(`/api/organization/NonExistentOrg/iso/name/test.iso/download`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
     });
@@ -1125,222 +208,448 @@ describe('ISO API', () => {
         .get(`/api/organization/${orgName}/iso`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
     });
+  });
 
-    it('should handle DB error in findOne', async () => {
-      jest.spyOn(db.iso, 'findOne').mockRejectedValue(new Error('DB Error'));
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
+  describe('GET /api/isos/discover', () => {
+    it('should list public ISOs with their versions', async () => {
+      const res = await request(app).get('/api/isos/discover');
+      expect(res.statusCode).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      res.body.forEach(entry => expect(Array.isArray(entry.versions)).toBe(true));
     });
 
     it('should handle DB error in discover', async () => {
       jest.spyOn(db.iso, 'findAll').mockRejectedValue(new Error('DB Error'));
       const res = await request(app).get('/api/isos/discover');
       expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
-    });
-
-    it('should handle DB error in getDownloadLink', async () => {
-      jest.spyOn(db.iso, 'findByPk').mockRejectedValue(new Error('DB Error'));
-      const res = await request(app)
-        .post(`/api/organization/${orgName}/iso/${iso.id}/download-link`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(500);
-      jest.restoreAllMocks();
-    });
-
-    it('should handle delete when physical file is already missing', async () => {
-      // Create an ISO
-      const isoToDelete = await db.iso.create({
-        name: 'Missing File ISO',
-        fileName: 'missing.iso',
-        checksum: 'missingchecksum',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false,
-        storagePath: 'missing.iso',
-      });
-
-      // Ensure file does NOT exist
-      const fullPath = join(getIsoStorageRoot(), 'missing.iso');
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/iso/${isoToDelete.id}`)
-        .set('x-access-token', adminToken);
-
-      expect(res.statusCode).toBe(200);
-    });
-
-    it('should return 401 for private ISO download without auth', async () => {
-      // Ensure ISO is private
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
-
-      const res = await request(app).get(`/api/organization/${orgName}/iso/${iso.id}/download`);
-
-      expect(res.statusCode).toBe(401);
-    });
-
-    it('should download file successfully by name', async () => {
-      await iso.reload();
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/name/${iso.name}/download`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(200);
-    });
-
-    it('should handle discover error with fallback message', async () => {
-      jest.spyOn(db.iso, 'findAll').mockRejectedValue(new Error(''));
-      const res = await request(app).get('/api/isos/discover');
-      expect(res.statusCode).toBe(500);
       expect(res.body.message).toBeDefined();
-      jest.restoreAllMocks();
+    });
+  });
+
+  describe('GET /api/organization/:organization/iso/:name', () => {
+    it('should get ISO details with versions and downloadCount', async () => {
+      const res = await request(app).get(isoBase).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.name).toBe(isoName);
+      expect(Array.isArray(res.body.versions)).toBe(true);
+      expect(res.body.downloadCount).toBe(0);
     });
 
-    it('should handle organization lookup error in findAll with fallback message', async () => {
-      jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error(''));
-      const res = await request(app).get(`/api/organization/${orgName}/iso`);
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
-      jest.restoreAllMocks();
-    });
-
-    it('should not delete physical file if referenced by another ISO (deduplication)', async () => {
-      // Create ISO A
-      const isoA = await db.iso.create({
-        name: 'ISO A',
-        fileName: 'shared.iso',
-        checksum: 'shared_checksum',
-        size: 1024,
-        organizationId: org.id,
-        storagePath: 'shared.iso',
-      });
-
-      // Create ISO B (same storagePath/checksum)
-      const isoB = await db.iso.create({
-        name: 'ISO B',
-        fileName: 'shared.iso',
-        checksum: 'shared_checksum',
-        size: 1024,
-        organizationId: org.id,
-        storagePath: 'shared.iso',
-      });
-
-      // Create physical file
-      const filePath = join(getIsoStorageRoot(), 'shared.iso');
-      fs.writeFileSync(filePath, 'dummy content');
-
-      // Delete ISO A
-      const resA = await request(app)
-        .delete(`/api/organization/${orgName}/iso/${isoA.id}`)
-        .set('x-access-token', adminToken);
-      expect(resA.statusCode).toBe(200);
-
-      // File should still exist because ISO B references it
-      expect(fs.existsSync(filePath)).toBe(true);
-
-      // Delete ISO B
-      const resB = await request(app)
-        .delete(`/api/organization/${orgName}/iso/${isoB.id}`)
-        .set('x-access-token', adminToken);
-      expect(resB.statusCode).toBe(200);
-
-      // File should be gone now
-      expect(fs.existsSync(filePath)).toBe(false);
-    });
-
-    it('should deny download of private ISO for non-member', async () => {
-      // Create private ISO
-      const privIso = await db.iso.create({
-        name: 'Private Download Test',
-        fileName: 'priv.iso',
-        checksum: 'priv_sum',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false,
-        storagePath: 'priv.iso',
-      });
-
-      // Create non-member user
-      const outsider = await db.user.create({
-        username: `outsider-${Date.now()}`,
-        email: `outsider-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
-      });
-      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${privIso.id}/download`)
-        .set('x-access-token', outsiderToken);
-
+    it('should refuse a private ISO to an anonymous caller', async () => {
+      const res = await request(app).get(isoBase);
       expect(res.statusCode).toBe(403);
+    });
 
-      await privIso.destroy();
+    it('should return 404 if ISO not found', async () => {
+      const res = await request(app)
+        .get(`/api/organization/${orgName}/iso/no-such-iso`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should return 404 if organization not found', async () => {
+      const res = await request(app).get(`/api/organization/NonExistentOrg/iso/${isoName}`);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should handle DB error in findOne', async () => {
+      jest.spyOn(db.iso, 'findOne').mockRejectedValue(new Error('DB Error'));
+      const res = await request(app).get(isoBase).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(500);
+    });
+  });
+
+  describe('PUT /api/organization/:organization/iso/:name', () => {
+    it('should rename an ISO and change its visibility', async () => {
+      await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', adminToken)
+        .send({ name: 'rename-me' })
+        .expect(201);
+
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/iso/rename-me`)
+        .set('x-access-token', adminToken)
+        .send({ name: 'renamed-iso', isPublic: true });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.name).toBe('renamed-iso');
+      expect(res.body.isPublic).toBe(true);
+
+      const conflict = await request(app)
+        .put(`/api/organization/${orgName}/iso/renamed-iso`)
+        .set('x-access-token', adminToken)
+        .send({ name: isoName });
+      expect(conflict.statusCode).toBe(409);
+
+      await db.iso.destroy({ where: { name: 'renamed-iso', organizationId: org.id } });
+    });
+
+    it('should update description and metadata, and clear metadata with null', async () => {
+      const res = await request(app)
+        .put(isoBase)
+        .set('x-access-token', adminToken)
+        .send({ description: 'New Description', metadata: { os_name: 'Debian 13', bogus: 1 } });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.description).toBe('New Description');
+      expect(res.body.metadata).toEqual({ os_name: 'Debian 13' });
+
+      const cleared = await request(app)
+        .put(isoBase)
+        .set('x-access-token', adminToken)
+        .send({ metadata: null });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.body.metadata).toBeNull();
+    });
+
+    it('should unpublish and publish an ISO', async () => {
+      const hidden = await request(app)
+        .put(isoBase)
+        .set('x-access-token', adminToken)
+        .send({ published: false });
+      expect(hidden.statusCode).toBe(200);
+      expect(hidden.body.published).toBe(false);
+
+      const shown = await request(app)
+        .put(isoBase)
+        .set('x-access-token', adminToken)
+        .send({ published: true });
+      expect(shown.statusCode).toBe(200);
+      expect(shown.body.published).toBe(true);
+    });
+
+    it('should update ISO with empty body', async () => {
+      const res = await request(app).put(isoBase).set('x-access-token', adminToken).send();
+      expect(res.statusCode).toBe(200);
+      expect(res.body.name).toBe(isoName);
+    });
+
+    it('should return 404 if ISO not found', async () => {
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/iso/no-such-iso`)
+        .set('x-access-token', adminToken)
+        .send({ description: 'x' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should handle update error (500)', async () => {
+      jest.spyOn(db.iso, 'findOne').mockRejectedValue(new Error('DB Error'));
+      const res = await request(app)
+        .put(isoBase)
+        .set('x-access-token', adminToken)
+        .send({ description: 'x' });
+      expect(res.statusCode).toBe(500);
+    });
+  });
+
+  describe('ISO watches', () => {
+    it('should watch, list and unwatch an ISO', async () => {
+      const watched = await request(app).post(`${isoBase}/watch`).set('x-access-token', authToken);
+      expect(watched.statusCode).toBe(201);
+      expect(watched.body).toEqual({ watched: true });
+
+      const again = await request(app).post(`${isoBase}/watch`).set('x-access-token', authToken);
+      expect(again.statusCode).toBe(200);
+
+      const listed = await request(app)
+        .get('/api/user/iso-watches')
+        .set('x-access-token', authToken);
+      expect(listed.statusCode).toBe(200);
+      expect(listed.body.some(entry => entry.name === isoName)).toBe(true);
+
+      const unwatched = await request(app)
+        .delete(`${isoBase}/watch`)
+        .set('x-access-token', authToken);
+      expect(unwatched.statusCode).toBe(200);
+      expect(unwatched.body).toEqual({ watched: false });
+
+      const emptied = await request(app)
+        .get('/api/user/iso-watches')
+        .set('x-access-token', authToken);
+      expect(emptied.body.some(entry => entry.name === isoName)).toBe(false);
+    });
+
+    it('should refuse to watch a private ISO of another organization', async () => {
+      const { outsider, token } = await createOutsider('watch');
+      const res = await request(app).post(`${isoBase}/watch`).set('x-access-token', token);
+      expect(res.statusCode).toBe(403);
       await outsider.destroy();
     });
 
-    it('should return 404 if ISO ID not found during download', async () => {
+    it('should return 404 when watching an unknown ISO', async () => {
       const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/999999/download`)
+        .post(`/api/organization/${orgName}/iso/no-such-iso/watch`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
     });
 
-    it('should return 404 if ISO name not found during downloadByName', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/name/NonExistentIso/download`)
-        .set('x-access-token', authToken);
-      expect(res.statusCode).toBe(404);
-    });
+    it('should notify watchers when an ISO is published', async () => {
+      await request(app).post(`${isoBase}/watch`).set('x-access-token', authToken);
+      await db.iso.update(
+        { published: false },
+        { where: { name: isoName, organizationId: org.id } }
+      );
 
-    it('should update ISO description', async () => {
       const res = await request(app)
-        .put(`/api/organization/${orgName}/iso/${iso.id}`)
+        .put(isoBase)
         .set('x-access-token', adminToken)
-        .send({ description: 'New Description' });
-
+        .send({ published: true });
       expect(res.statusCode).toBe(200);
-      expect(res.body.description).toBe('New Description');
+      expect(res.body.published).toBe(true);
+
+      await request(app).delete(`${isoBase}/watch`).set('x-access-token', authToken);
+    });
+  });
+
+  describe('ISO versions', () => {
+    it('should create a version', async () => {
+      const res = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', adminToken)
+        .send({ versionNumber, description: 'First' });
+      expect(res.statusCode).toBe(201);
+      expect(res.body.versionNumber).toBe(versionNumber);
+      expect(res.body.description).toBe('First');
+      expect(res.body.deprecated).toBe(false);
     });
 
-    it('should cleanup file if rename fails during upload', async () => {
-      // Mock fs.renameSync to fail
+    it('should reject a duplicate version with 409', async () => {
+      const res = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', adminToken)
+        .send({ versionNumber });
+      expect(res.statusCode).toBe(409);
+    });
+
+    it('should reject an invalid version number', async () => {
+      const res = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', adminToken)
+        .send({ versionNumber: '../1' });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should reject a plain member', async () => {
+      const res = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', authToken)
+        .send({ versionNumber: '2.0.0' });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 404 for an unknown ISO', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/iso/no-such-iso/version`)
+        .set('x-access-token', adminToken)
+        .send({ versionNumber: '2.0.0' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should list versions with their files for a member', async () => {
+      const res = await request(app).get(`${isoBase}/version`).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.some(entry => entry.versionNumber === versionNumber)).toBe(true);
+      expect(Array.isArray(res.body[0].files)).toBe(true);
+    });
+
+    it('should refuse the version list of a private ISO to an anonymous caller', async () => {
+      const res = await request(app).get(`${isoBase}/version`);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should get one version', async () => {
+      const res = await request(app).get(versionBase).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.versionNumber).toBe(versionNumber);
+    });
+
+    it('should return 404 for an unknown version', async () => {
+      const res = await request(app)
+        .get(`${isoBase}/version/9.9.9`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should update release notes and deprecation', async () => {
+      const missingReason = await request(app)
+        .put(versionBase)
+        .set('x-access-token', adminToken)
+        .send({ deprecated: true });
+      expect(missingReason.statusCode).toBe(400);
+
+      const res = await request(app).put(versionBase).set('x-access-token', adminToken).send({
+        description: 'Updated',
+        releaseNotes: 'Notes',
+        deprecated: true,
+        deprecationReason: 'Superseded',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.description).toBe('Updated');
+      expect(res.body.releaseNotes).toBe('Notes');
+      expect(res.body.deprecated).toBe(true);
+      expect(res.body.deprecationReason).toBe('Superseded');
+
+      const restored = await request(app)
+        .put(versionBase)
+        .set('x-access-token', adminToken)
+        .send({ deprecated: false, deprecationReason: null });
+      expect(restored.statusCode).toBe(200);
+      expect(restored.body.deprecated).toBe(false);
+    });
+
+    it('should reject invalid version fields', async () => {
+      const res = await request(app)
+        .put(versionBase)
+        .set('x-access-token', adminToken)
+        .send({ releaseNotes: 42 });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should delete a version and answer 404 afterwards', async () => {
+      await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', adminToken)
+        .send({ versionNumber: '0.9.0' })
+        .expect(201);
+
+      const res = await request(app)
+        .delete(`${isoBase}/version/0.9.0`)
+        .set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(200);
+
+      const gone = await request(app)
+        .delete(`${isoBase}/version/0.9.0`)
+        .set('x-access-token', adminToken);
+      expect(gone.statusCode).toBe(404);
+    });
+  });
+
+  describe('ISO files', () => {
+    const checksum = sha256(fileContent);
+    const storedPath = () => join(getIsoStorageRoot(), `${checksum}.iso`);
+
+    it('should upload a file for an architecture', async () => {
+      const res = await request(app)
+        .post(`${fileBase}/upload`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'debian-13-amd64.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(fileContent);
+      expect(res.statusCode).toBe(201);
+      expect(res.body.architecture).toBe('amd64');
+      expect(res.body.fileName).toBe('debian-13-amd64.iso');
+      expect(res.body.checksum).toBe(checksum);
+      expect(res.body.checksumType).toBe('SHA256');
+      expect(Number(res.body.fileSize)).toBe(fileContent.length);
+      expect(fs.existsSync(storedPath())).toBe(true);
+    });
+
+    it('should replace the file record when uploading the same architecture again', async () => {
+      const res = await request(app)
+        .post(`${fileBase}/upload`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'debian-13-amd64-again.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(fileContent);
+      expect(res.statusCode).toBe(201);
+      expect(res.body.fileName).toBe('debian-13-amd64-again.iso');
+      const count = await db.isoFiles.count({ where: { architecture: 'amd64' } });
+      expect(count).toBe(1);
+    });
+
+    it('should deduplicate identical content across architectures', async () => {
+      const res = await request(app)
+        .post(`${versionBase}/architecture/arm64/file/upload`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'debian-13-arm64.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(fileContent);
+      expect(res.statusCode).toBe(201);
+      expect(res.body.checksum).toBe(checksum);
+      expect(res.body.storagePath).toBe(`${checksum}.iso`);
+    });
+
+    it('should reject a path traversal filename', async () => {
+      const res = await request(app)
+        .post(`${fileBase}/upload`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', '../../etc/passwd')
+        .set('Content-Type', 'application/octet-stream')
+        .send('malicious content');
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should reject an invalid architecture segment', async () => {
+      const res = await request(app)
+        .post(`${versionBase}/architecture/..bad/file/upload`)
+        .set('x-access-token', adminToken)
+        .set('Content-Type', 'application/octet-stream')
+        .send('content');
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 404 when uploading to an unknown version', async () => {
+      const res = await request(app)
+        .post(`${isoBase}/version/9.9.9/architecture/amd64/file/upload`)
+        .set('x-access-token', adminToken)
+        .set('Content-Type', 'application/octet-stream')
+        .send('content');
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should reject a plain member upload', async () => {
+      const res = await request(app)
+        .post(`${fileBase}/upload`)
+        .set('x-access-token', authToken)
+        .set('Content-Type', 'application/octet-stream')
+        .send('content');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 413 if file is too large (config modification)', async () => {
+      const configPath = getConfigPath('app');
+      const originalConfig = fs.readFileSync(configPath, 'utf8');
+      const config = yaml.load(originalConfig);
+      config.boxvault.box_max_file_size.value = 0.000001;
+      fs.writeFileSync(configPath, yaml.dump(config));
+
+      try {
+        const res = await request(app)
+          .post(`${versionBase}/architecture/i386/file/upload`)
+          .set('x-access-token', adminToken)
+          .set('x-file-name', 'large.iso')
+          .set('Content-Type', 'application/octet-stream')
+          .send(Buffer.alloc(2048));
+        expect(res.statusCode).toBe(413);
+        expect(res.body.error).toBe('FILE_TOO_LARGE');
+      } finally {
+        fs.writeFileSync(configPath, originalConfig);
+      }
+    });
+
+    it('should clean up the temp file when the rename fails', async () => {
       const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
         throw new Error('Rename Error');
       });
-
-      // Mock fs.existsSync to ensure we enter the cleanup block
       const originalExists = fs.existsSync;
       const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
         const p = String(pathArg);
         if (p.includes('temp-')) {
           return true;
-        } // Temp file exists
+        }
         if (p.endsWith('.iso')) {
           return false;
-        } // Force rename path
-        return originalExists(pathArg); // Fallback for directories
+        }
+        return originalExists(pathArg);
       });
-
-      // Spy on unlinkSync to verify cleanup
       const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
 
       const res = await request(app)
-        .post(`/api/organization/${orgName}/iso`)
+        .post(`${versionBase}/architecture/i386/file/upload`)
         .set('x-access-token', adminToken)
         .set('x-file-name', 'rename-fail.iso')
         .set('Content-Type', 'application/octet-stream')
-        .send(`unique-content-for-cleanup-test-${Date.now()}`);
+        .send(`unique-${Date.now()}`);
 
       expect(res.statusCode).toBe(500);
       expect(unlinkSpy).toHaveBeenCalled();
@@ -1350,232 +659,266 @@ describe('ISO API', () => {
       unlinkSpy.mockRestore();
     });
 
-    it('should deny downloadByName for private ISO if user is not member', async () => {
-      // Ensure ISO is private
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
-
-      // Create outsider
-      const outsider = await db.user.create({
-        username: `outsider-dl-name-${Date.now()}`,
-        email: `outsider-dl-name-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
+    it('should return file info', async () => {
+      const res = await request(app).get(`${fileBase}/info`).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({
+        fileName: 'debian-13-amd64-again.iso',
+        fileSize: expect.anything(),
+        checksum,
+        checksumType: 'SHA256',
+        downloadCount: 0,
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       });
-      const token = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
+    });
 
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/name/${iso.name}/download`)
-        .set('x-access-token', token);
-
+    it('should refuse file info of a private ISO to an anonymous caller', async () => {
+      const res = await request(app).get(`${fileBase}/info`);
       expect(res.statusCode).toBe(403);
+    });
 
+    it('should return 404 for info of an architecture without a file', async () => {
+      const res = await request(app)
+        .get(`${versionBase}/architecture/riscv64/file/info`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should generate a download link scoped to the file', async () => {
+      const res = await request(app)
+        .post(`${fileBase}/get-download-link`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('downloadUrl');
+      const [, token] = res.body.downloadUrl.split('token=');
+      const decoded = jwt.verify(token, 'test-secret');
+      expect(decoded.type).toBe('download');
+      expect(decoded.organization).toBe(orgName);
+      expect(decoded.iso).toBe(isoName);
+      expect(decoded.versionNumber).toBe(versionNumber);
+      expect(decoded.architecture).toBe('amd64');
+    });
+
+    it('should deny a download link for a private ISO to a non-member', async () => {
+      const { outsider, token } = await createOutsider('link');
+      const res = await request(app)
+        .post(`${fileBase}/get-download-link`)
+        .set('x-access-token', token);
+      expect(res.statusCode).toBe(403);
       await outsider.destroy();
     });
 
-    it('should allow downloadByName for public ISO without auth', async () => {
-      // Make ISO public
-      await db.iso.update({ isPublic: true }, { where: { id: iso.id } });
+    it('should deny a download link for a private ISO without a token', async () => {
+      const res = await request(app).post(`${fileBase}/get-download-link`);
+      expect(res.statusCode).toBe(403);
+    });
 
-      const res = await request(app).get(
-        `/api/organization/${orgName}/iso/name/${iso.name}/download`
+    it('should generate a download link for a service account', async () => {
+      const sa = await db.service_account.create({
+        username: `sa-link-${Date.now()}`,
+        token: `sa-token-${Date.now()}`,
+        organization_id: org.id,
+        userId: user.id,
+      });
+      const saToken = jwt.sign(
+        { id: user.id, isServiceAccount: true, serviceAccountOrgId: org.id },
+        'test-secret',
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
+      const res = await request(app)
+        .post(`${fileBase}/get-download-link`)
+        .set('x-access-token', saToken);
       expect(res.statusCode).toBe(200);
+      const [, token] = res.body.downloadUrl.split('token=');
+      expect(jwt.verify(token, 'test-secret').isServiceAccount).toBe(true);
 
-      // Revert
-      await db.iso.update({ isPublic: false }, { where: { id: iso.id } });
+      await sa.destroy();
+    });
+
+    it('should download the file and count the download', async () => {
+      const res = await request(app)
+        .get(`${fileBase}/download`)
+        .set('x-access-token', authToken)
+        .buffer(true)
+        .parse((response, callback) => {
+          const chunks = [];
+          response.on('data', chunk => chunks.push(chunk));
+          response.on('end', () => callback(null, Buffer.concat(chunks)));
+        });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['content-length']).toBe(String(fileContent.length));
+      expect(res.headers['content-disposition']).toContain('debian-13-amd64-again.iso');
+      expect(Buffer.compare(res.body, fileContent)).toBe(0);
+
+      const info = await request(app).get(`${fileBase}/info`).set('x-access-token', authToken);
+      expect(info.body.downloadCount).toBe(1);
+
+      const iso = await request(app).get(isoBase).set('x-access-token', authToken);
+      expect(iso.body.downloadCount).toBe(1);
+    });
+
+    it('should handle range requests', async () => {
+      const res = await request(app)
+        .get(`${fileBase}/download`)
+        .set('x-access-token', authToken)
+        .set('Range', 'bytes=0-4');
+      expect(res.statusCode).toBe(206);
+      expect(res.headers['content-length']).toBe('5');
+    });
+
+    it('should download using a valid download token', async () => {
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          organization: orgName,
+          iso: isoName,
+          versionNumber,
+          architecture: 'amd64',
+          type: 'download',
+        },
+        'test-secret',
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+      );
+      const res = await request(app).get(`${fileBase}/download?token=${token}`);
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('should refuse a download token issued for another file', async () => {
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          organization: orgName,
+          iso: isoName,
+          versionNumber,
+          architecture: 'arm64',
+          type: 'download',
+        },
+        'test-secret',
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+      );
+      const res = await request(app).get(`${fileBase}/download?token=${token}`);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should refuse an anonymous download of a private ISO', async () => {
+      const res = await request(app).get(`${fileBase}/download`);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should refuse a non-member download of a private ISO', async () => {
+      const { outsider, token } = await createOutsider('download');
+      const res = await request(app).get(`${fileBase}/download`).set('x-access-token', token);
+      expect(res.statusCode).toBe(403);
+      await outsider.destroy();
+    });
+
+    it('should allow an anonymous download of a public published ISO', async () => {
+      await db.iso.update({ isPublic: true }, { where: { name: isoName, organizationId: org.id } });
+      const res = await request(app).get(`${fileBase}/download`);
+      expect(res.statusCode).toBe(200);
+      await db.iso.update(
+        { isPublic: false },
+        { where: { name: isoName, organizationId: org.id } }
+      );
+    });
+
+    it('should return 404 for a download of an architecture without a file', async () => {
+      const res = await request(app)
+        .get(`${versionBase}/architecture/riscv64/file/download`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should return 404 if the physical file is missing', async () => {
+      const ghost = await db.isoFiles.findOne({ where: { architecture: 'arm64' } });
+      await ghost.update({ storagePath: 'non-existent-file.iso' });
+      const res = await request(app)
+        .get(`${versionBase}/architecture/arm64/file/download`)
+        .set('x-access-token', authToken);
+      expect(res.statusCode).toBe(404);
+      await ghost.update({ storagePath: `${checksum}.iso` });
+    });
+
+    it('should handle a download error (500)', async () => {
+      const statSpy = jest.spyOn(fs, 'statSync').mockImplementation(() => {
+        throw new Error('Stat Error');
+      });
+      const res = await request(app).get(`${fileBase}/download`).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(500);
+      statSpy.mockRestore();
+    });
+
+    it('should keep the physical file while another record shares its checksum', async () => {
+      const res = await request(app)
+        .delete(`${versionBase}/architecture/arm64/file/delete`)
+        .set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(200);
+      expect(fs.existsSync(storedPath())).toBe(true);
+
+      const gone = await request(app)
+        .delete(`${versionBase}/architecture/arm64/file/delete`)
+        .set('x-access-token', adminToken);
+      expect(gone.statusCode).toBe(404);
+    });
+
+    it('should remove the physical file with the last record', async () => {
+      const res = await request(app).delete(`${fileBase}/delete`).set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(200);
+      expect(fs.existsSync(storedPath())).toBe(false);
+    });
+
+    it('should reject a plain member file delete', async () => {
+      const res = await request(app).delete(`${fileBase}/delete`).set('x-access-token', authToken);
+      expect(res.statusCode).toBe(403);
     });
   });
 
-  describe('ISO Controller Coverage - Isolated State', () => {
-    let tempIsoId;
-
-    afterEach(async () => {
-      if (tempIsoId) {
-        await db.iso.destroy({ where: { id: tempIsoId } });
-        tempIsoId = null;
-      }
-      jest.restoreAllMocks();
-    });
-
-    it('should hit all branches in getDownloadLink (link.js)', async () => {
-      // 1. Create a strictly PRIVATE ISO
-      const privateIso = await db.iso.create({
-        name: 'Strictly Private ISO',
-        fileName: 'private.iso',
-        checksum: 'privatesum',
-        size: 1024,
-        organizationId: org.id,
-        isPublic: false, // Ensure this is false
-        storagePath: 'private.iso',
-      });
-      tempIsoId = privateIso.id;
-
-      // Test 1: ISO Not Found (Line 52)
-      await request(app)
-        .post(`/api/organization/${orgName}/iso/9999999/download-link`)
-        .set('x-access-token', authToken)
-        .expect(404);
-
-      // Test 2: Private ISO, No Token (Lines 58-60)
-      await request(app)
-        .post(`/api/organization/${orgName}/iso/${privateIso.id}/download-link`)
-        .expect(403);
-
-      // Test 3: Private ISO, Non-Member (Lines 62-68)
-      const outsider = await db.user.create({
-        username: `outsider-link-${Date.now()}`,
-        email: `outsider-link-${Date.now()}@test.com`,
-        password: 'password',
-        verified: true,
-      });
-      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', {
-        expiresIn: '1h',
-        ...TEST_JWT_CLAIMS,
-      });
-
-      await request(app)
-        .post(`/api/organization/${orgName}/iso/${privateIso.id}/download-link`)
-        .set('x-access-token', outsiderToken)
-        .expect(403);
-
-      await outsider.destroy();
-    });
-
-    it('should hit cleanup in upload (upload.js line 122)', async () => {
-      const logSpy = jest.spyOn(log.app, 'warn');
-      // Force renameSync to fail
-      jest.spyOn(fs, 'renameSync').mockImplementation(() => {
-        throw new Error('Rename Failed');
-      });
-      // Force existsSync to return true for temp files to trigger cleanup
-      const originalExists = fs.existsSync;
-      jest.spyOn(fs, 'existsSync').mockImplementation(p => {
-        const pathStr = p.toString();
-        if (pathStr.includes('temp-') && pathStr.endsWith('.iso')) {
-          return true;
-        }
-        if (pathStr.endsWith('.iso')) {
-          return false;
-        }
-        return originalExists(p);
-      });
-      // Spy on unlinkSync and THROW to trigger the catch block (line 122)
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
-        throw new Error('Unlink Failed to trigger catch block');
-      });
-
+  describe('DELETE /api/organization/:organization/iso/:name', () => {
+    it('should delete the ISO with its versions and files', async () => {
+      const content = Buffer.from(`delete-me-${uniqueId}`);
       await request(app)
         .post(`/api/organization/${orgName}/iso`)
         .set('x-access-token', adminToken)
-        .set('x-file-name', 'cleanup-test.iso')
-        .send('content')
-        .expect(500);
-
-      expect(unlinkSpy).toHaveBeenCalled();
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to cleanup temp file'),
-        expect.any(String)
-      );
-      logSpy.mockRestore();
-    });
-
-    it('should generate download link with mismatched organization in URL', async () => {
-      // This ensures the controller uses req.params.organization for the token payload
-      const otherOrg = await db.organization.create({ name: `OtherLinkOrg-${Date.now()}` });
+        .send({ name: 'delete-me' })
+        .expect(201);
+      await request(app)
+        .post(`/api/organization/${orgName}/iso/delete-me/version`)
+        .set('x-access-token', adminToken)
+        .send({ versionNumber: '1.0.0' })
+        .expect(201);
+      await request(app)
+        .post(
+          `/api/organization/${orgName}/iso/delete-me/version/1.0.0/architecture/amd64/file/upload`
+        )
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'delete-me.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(content)
+        .expect(201);
+      const filePath = join(getIsoStorageRoot(), `${sha256(content)}.iso`);
+      expect(fs.existsSync(filePath)).toBe(true);
 
       const res = await request(app)
-        .post(`/api/organization/${otherOrg.name}/iso/${iso.id}/download-link`)
+        .delete(`/api/organization/${orgName}/iso/delete-me`)
         .set('x-access-token', adminToken);
-
       expect(res.statusCode).toBe(200);
-      const [, token] = res.body.downloadUrl.split('token=');
-      const decoded = jwt.verify(token, 'test-secret');
-      expect(decoded.organization).toBe(otherOrg.name);
-
-      await otherOrg.destroy();
+      expect(fs.existsSync(filePath)).toBe(false);
+      expect(await db.iso.count({ where: { name: 'delete-me', organizationId: org.id } })).toBe(0);
     });
 
-    it('should handle range request with start only (bytes=0)', async () => {
+    it('should return 404 when deleting a non-existent ISO', async () => {
       const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken)
-        .set('Range', 'bytes=0');
-
-      expect(res.statusCode).toBe(206);
-      expect(res.headers['content-length']).toBe('1024');
+        .delete(`/api/organization/${orgName}/iso/no-such-iso`)
+        .set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(404);
     });
 
-    it('should handle range request with zero length (bytes=0-0)', async () => {
-      const res = await request(app)
-        .get(`/api/organization/${orgName}/iso/${iso.id}/download`)
-        .set('x-access-token', authToken)
-        .set('Range', 'bytes=0-0');
-
-      expect(res.statusCode).toBe(206);
-      expect(res.headers['content-length']).toBe('1');
-    });
-
-    it('should hit cleanup log when deduplication fails', async () => {
-      const logSpy = jest.spyOn(log.app, 'warn');
-
-      // Mock existsSync to always return true (simulating existing final file)
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-
-      // Mock unlinkSync to throw (simulating failure to remove temp file)
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
-        throw new Error('Unlink Failed');
-      });
-
-      await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'dedup-fail.iso')
-        .send('content')
-        .expect(500);
-
-      expect(unlinkSpy).toHaveBeenCalled();
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to cleanup temp file'),
-        expect.any(String)
-      );
-
-      logSpy.mockRestore();
-    });
-
-    it('should log warning when temp file cleanup fails', async () => {
-      const logSpy = jest.spyOn(log.app, 'warn');
-
-      // Mock existsSync to ALWAYS return true
-      // 1. Forces deduplication path (simulates final file exists)
-      // 2. Ensures cleanup check passes (simulates temp file exists)
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-
-      // Mock renameSync (should not be called in dedup path, but good practice)
-      jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-
-      // Mock unlinkSync to throw error, forcing execution into the inner catch block
-      const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {
-        throw new Error('Cleanup Error');
-      });
-
-      await request(app)
-        .post(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', adminToken)
-        .set('x-file-name', 'cleanup-warn.iso')
-        .send('content')
-        .expect(500);
-
-      expect(unlinkSpy).toHaveBeenCalled();
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to cleanup temp file'),
-        expect.stringContaining('Cleanup Error')
-      );
-
-      logSpy.mockRestore();
+    it('should handle a DB error during delete', async () => {
+      jest.spyOn(db.iso, 'findOne').mockRejectedValue(new Error('DB Error'));
+      const res = await request(app).delete(isoBase).set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(500);
     });
   });
 
@@ -1585,22 +928,8 @@ describe('ISO API', () => {
         name: `IsoRemoveAllOrg_${Date.now()}`,
         access_mode: 'private',
       });
-      await db.iso.create({
-        name: 'Remove Me A',
-        fileName: 'remove-a.iso',
-        checksum: `remove-a-${Date.now()}`,
-        size: 1024,
-        organizationId: otherOrg.id,
-        storagePath: 'remove-a.iso',
-      });
-      await db.iso.create({
-        name: 'Remove Me B',
-        fileName: 'remove-b.iso',
-        checksum: `remove-b-${Date.now()}`,
-        size: 1024,
-        organizationId: otherOrg.id,
-        storagePath: 'remove-b.iso',
-      });
+      await db.iso.create({ name: 'remove-a', organizationId: otherOrg.id });
+      await db.iso.create({ name: 'remove-b', organizationId: otherOrg.id });
 
       const removed = await request(app)
         .delete(`/api/organization/${otherOrg.name}/iso`)
@@ -1618,6 +947,24 @@ describe('ISO API', () => {
   });
 
   describe('ISO Helpers Unit Tests', () => {
+    it('should use configured storage path', () => {
+      const configPath = getConfigPath('app');
+      const originalConfig = fs.readFileSync(configPath, 'utf8');
+      const config = yaml.load(originalConfig);
+      config.boxvault.iso_storage_directory = { value: '/tmp/custom-iso' };
+      fs.writeFileSync(configPath, yaml.dump(config));
+
+      try {
+        expect(getIsoStorageRoot()).toBe('/tmp/custom-iso');
+      } finally {
+        fs.writeFileSync(configPath, originalConfig);
+      }
+    });
+
+    it('should throw error for path traversal in helper', () => {
+      expect(() => getSecureIsoPath('../../etc/passwd')).toThrow('Path traversal attempt detected');
+    });
+
     it('cleanupTempFile should delete file if it exists', () => {
       const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});

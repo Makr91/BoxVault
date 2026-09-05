@@ -1,5 +1,4 @@
 // user.controller.js
-import { allAccess } from './user/allaccess.js';
 import { isOnlyUserInOrg } from './user/isonlyuserinorg.js';
 import { findOne } from './user/findone.js';
 import { update } from './user/update.js';
@@ -14,7 +13,6 @@ import { setPrimaryOrganization } from './user/setprimary.js';
 import { updatePreferences } from './user/preferences.js';
 
 export {
-  allAccess,
   isOnlyUserInOrg,
   findOne,
   update,

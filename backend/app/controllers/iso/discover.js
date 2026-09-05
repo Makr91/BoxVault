@@ -1,14 +1,15 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { isoWhereFor, resolveIsoViewer } from './visibility.js';
-const { iso: Iso, organization: Organization } = db;
+import { sumIsoDownloads } from './helpers.js';
+const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
 
 /**
  * @swagger
  * /api/isos/discover:
  *   get:
  *     summary: Discover ISOs
- *     description: Retrieve the ISOs visible to the caller. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes.
+ *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes.
  *     tags: [ISOs]
  *     security:
  *       - bearerAuth: []
@@ -20,7 +21,7 @@ const { iso: Iso, organization: Organization } = db;
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: A list of ISOs, each with its organization's name, emailHash and logo.
+ *         description: A list of ISOs, each with versions, files, total downloadCount and its organization's name, emailHash and logo.
  *       500:
  *         description: Internal server error.
  */
@@ -30,11 +31,18 @@ export const discoverAll = async (req, res) => {
     const isos = await Iso.findAll({
       where: isoWhereFor(viewer),
       include: [
+        {
+          model: IsoVersion,
+          as: 'versions',
+          include: [{ model: IsoFile, as: 'files' }],
+        },
         { model: Organization, as: 'organization', attributes: ['name', 'emailHash', 'logo'] },
       ],
       order: [['createdAt', 'DESC']],
     });
-    return res.status(200).send(isos);
+    return res
+      .status(200)
+      .send(isos.map(iso => ({ ...iso.toJSON(), downloadCount: sumIsoDownloads(iso) })));
   } catch (err) {
     log.error.error('Error discovering ISOs:', {
       error: err.message,

@@ -4,7 +4,7 @@ import { canSeeIso, resolveIsoViewer } from './visibility.js';
 const { iso: ISO, organization: Organization, isoWatcher: IsoWatcher } = db;
 
 const findVisibleIso = async (req, res) => {
-  const { organization: organizationName, isoId } = req.params;
+  const { organization: organizationName, name } = req.params;
 
   const organization = await Organization.findOne({ where: { name: organizationName } });
   if (!organization) {
@@ -12,7 +12,7 @@ const findVisibleIso = async (req, res) => {
     return null;
   }
 
-  const iso = await ISO.findOne({ where: { id: isoId, organizationId: organization.id } });
+  const iso = await ISO.findOne({ where: { name, organizationId: organization.id } });
   if (!iso) {
     res.status(404).send({ message: req.__('isos.notFound') });
     return null;
@@ -29,7 +29,7 @@ const findVisibleIso = async (req, res) => {
 
 /**
  * @swagger
- * /api/organization/{organization}/iso/{isoId}/watch:
+ * /api/organization/{organization}/iso/{name}/watch:
  *   post:
  *     summary: Watch an ISO
  *     description: Add the signed-in user to the ISO's watchers. Watchers are notified when the ISO is published. The ISO must be visible to the user.
@@ -43,10 +43,10 @@ const findVisibleIso = async (req, res) => {
  *         schema:
  *           type: string
  *       - in: path
- *         name: isoId
+ *         name: name
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       201:
  *         description: Watch created
@@ -68,10 +68,10 @@ const findVisibleIso = async (req, res) => {
  *         schema:
  *           type: string
  *       - in: path
- *         name: isoId
+ *         name: name
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Watch removed
@@ -97,14 +97,14 @@ export const watchIso = async (req, res) => {
 };
 
 export const unwatchIso = async (req, res) => {
-  const { organization: organizationName, isoId } = req.params;
+  const { organization: organizationName, name } = req.params;
   try {
     const organization = await Organization.findOne({ where: { name: organizationName } });
     if (!organization) {
       return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
-    const iso = await ISO.findOne({ where: { id: isoId, organizationId: organization.id } });
+    const iso = await ISO.findOne({ where: { name, organizationId: organization.id } });
     if (!iso) {
       return res.status(404).send({ message: req.__('isos.notFound') });
     }

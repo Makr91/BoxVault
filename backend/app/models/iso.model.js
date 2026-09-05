@@ -7,21 +7,6 @@ export default (sequelize, Sequelize) => {
     description: {
       type: Sequelize.STRING,
     },
-    fileName: {
-      type: Sequelize.STRING,
-      field: 'filename',
-    },
-    size: {
-      type: Sequelize.BIGINT,
-    },
-    checksum: {
-      type: Sequelize.STRING,
-      allowNull: false,
-    },
-    checksumType: {
-      type: Sequelize.STRING,
-      defaultValue: 'sha256',
-    },
     isPublic: {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
@@ -31,15 +16,18 @@ export default (sequelize, Sequelize) => {
       allowNull: false,
       defaultValue: true,
     },
-    storagePath: {
-      type: Sequelize.STRING,
-    },
-    downloadCount: {
-      type: Sequelize.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
+    metadata: {
+      type: Sequelize.JSON,
+      allowNull: true,
     },
   });
+
+  ISO.associate = function (models) {
+    ISO.hasMany(models.isoVersions, {
+      foreignKey: 'isoId',
+      as: 'versions',
+    });
+  };
 
   return ISO;
 };

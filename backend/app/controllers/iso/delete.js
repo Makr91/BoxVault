@@ -1,16 +1,14 @@
-import fs from 'fs';
-import { join } from 'path';
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-import { getIsoStorageRoot } from './helpers.js';
-const { iso: ISO } = db;
+import { removeUnreferencedIsoFiles } from './helpers.js';
+const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
 /**
  * @swagger
- * /api/organization/{organization}/iso/{isoId}:
+ * /api/organization/{organization}/iso/{name}:
  *   delete:
  *     summary: Delete an ISO
- *     description: Delete an ISO file and its database record. Physical file is only deleted if no other records reference it (deduplication).
+ *     description: Delete an ISO with its versions and file records. A physical file is removed only when no other ISO file record shares its checksum (deduplication).
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -22,11 +20,11 @@ const { iso: ISO } = db;
  *           type: string
  *         description: Organization name
  *       - in: path
- *         name: isoId
+ *         name: name
  *         required: true
  *         schema:
- *           type: integer
- *         description: ID of the ISO to delete
+ *           type: string
+ *         description: ISO name
  *     responses:
  *       200:
  *         description: ISO deleted successfully
@@ -36,42 +34,27 @@ const { iso: ISO } = db;
  *         description: Internal server error
  */
 const deleteIso = async (req, res) => {
-  const { isoId } = req.params;
+  const { name } = req.params;
 
   try {
     const iso = await ISO.findOne({
-      where: {
-        id: isoId,
-        organizationId: req.organizationId,
-      },
+      where: { name, organizationId: req.organizationId },
+      include: [
+        {
+          model: IsoVersion,
+          as: 'versions',
+          include: [{ model: IsoFile, as: 'files' }],
+        },
+      ],
     });
     if (!iso) {
       return res.status(404).send({ message: req.__('isos.notFound') });
     }
 
-    const { checksum } = iso;
-    const { storagePath } = iso;
+    const files = iso.versions.flatMap(version => version.files.map(file => file.toJSON()));
 
-    // Delete the DB record first
     await iso.destroy();
-
-    // Check if any OTHER ISOs use this checksum/file
-    const count = await ISO.count({
-      where: { checksum },
-    });
-
-    if (count === 0) {
-      // No other records reference this file, safe to delete physical file
-      const fullPath = join(getIsoStorageRoot(), storagePath);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-        log.file.info(`ISO Physical Delete: Removed ${fullPath} as no references remain.`);
-      }
-    } else {
-      log.file.info(
-        `ISO Delete: Kept physical file ${storagePath} because ${count} other records reference it.`
-      );
-    }
+    await removeUnreferencedIsoFiles(files);
 
     return res.send({ message: req.__('isos.deleted') });
   } catch (err) {

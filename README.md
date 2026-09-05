@@ -25,7 +25,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 
 ## Technologies Used
 
-- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), fetched as a release artifact and served from `backend/ui`
+- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), one build shared across the estate, fetched as a release artifact and served from `backend/ui`; it renders what `GET /api/status` (`backend/app/controllers/status.controller.js`) advertises: `auth: ["backend"]`, `collections: ["boxes", "isos"]` and the feature tokens `local-accounts`, `setup`, `admin`, `org-console`, `discover`, `invitations`, `uploads`, `watches`, `deploy`, `favorites`, `notifications`, `health`
 - **Backend**: Node.js, Express.js
 - **Database**: Sequelize ORM (Database configuration in `db.config.yaml`)
 - **Authentication**: JWT tokens

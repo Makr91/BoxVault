@@ -1,14 +1,15 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { canSeeIso, resolveIsoViewer } from './visibility.js';
-const { iso: ISO, organization: Organization } = db;
+import { sumIsoDownloads } from './helpers.js';
+const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
 
 /**
  * @swagger
- * /api/organization/{organization}/iso/{isoId}:
+ * /api/organization/{organization}/iso/{name}:
  *   get:
  *     summary: Get ISO details
- *     description: Retrieve details for a specific ISO. A public, published ISO is readable by anyone; any other ISO requires membership of its organization, by JWT or by a service-account key of the organization.
+ *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires membership of its organization, by JWT or by a service-account key of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -18,11 +19,11 @@ const { iso: ISO, organization: Organization } = db;
  *           type: string
  *         description: Organization name
  *       - in: path
- *         name: isoId
+ *         name: name
  *         required: true
  *         schema:
- *           type: integer
- *         description: ID of the ISO
+ *           type: string
+ *         description: ISO name
  *       - in: header
  *         name: x-access-token
  *         schema:
@@ -30,7 +31,7 @@ const { iso: ISO, organization: Organization } = db;
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: ISO details
+ *         description: ISO details with versions, files, organization and total downloadCount
  *       403:
  *         description: The ISO is not visible to the caller
  *       404:
@@ -39,7 +40,7 @@ const { iso: ISO, organization: Organization } = db;
  *         description: Internal server error
  */
 const findOne = async (req, res) => {
-  const { organization: organizationName, isoId } = req.params;
+  const { organization: organizationName, name } = req.params;
 
   try {
     const organization = await Organization.findOne({ where: { name: organizationName } });
@@ -47,10 +48,15 @@ const findOne = async (req, res) => {
       return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
     const iso = await ISO.findOne({
-      where: {
-        id: isoId,
-        organizationId: organization.id,
-      },
+      where: { name, organizationId: organization.id },
+      include: [
+        {
+          model: IsoVersion,
+          as: 'versions',
+          include: [{ model: IsoFile, as: 'files' }],
+        },
+        { model: Organization, as: 'organization', attributes: ['name', 'emailHash', 'logo'] },
+      ],
     });
     if (!iso) {
       return res.status(404).send({ message: req.__('isos.notFound') });
@@ -59,7 +65,7 @@ const findOne = async (req, res) => {
     if (!canSeeIso(viewer, iso)) {
       return res.status(403).send({ message: req.__('auth.forbidden') });
     }
-    return res.send(iso);
+    return res.send({ ...iso.toJSON(), downloadCount: sumIsoDownloads(iso) });
   } catch (err) {
     log.error.error('Error finding ISO', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });

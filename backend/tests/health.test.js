@@ -216,6 +216,8 @@ const mockIsoHelpers = {
   getIsoStorageRoot: jest.fn().mockReturnValue('/iso-storage'),
   cleanupTempFile: jest.fn(),
   getSecureIsoPath: jest.fn(),
+  sumIsoDownloads: jest.fn().mockReturnValue(0),
+  removeUnreferencedIsoFiles: jest.fn(),
 };
 
 // Mock FS module
