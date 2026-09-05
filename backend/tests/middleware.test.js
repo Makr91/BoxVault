@@ -1,6 +1,10 @@
 import { jest } from '@jest/globals';
 import { PassThrough, Writable } from 'stream';
+import { createRequire } from 'module';
 import jwt from 'jsonwebtoken';
+
+const require = createRequire(import.meta.url);
+const originalCrypto = require('crypto');
 
 // Mock express-rate-limit
 const mockRateLimit = jest.fn(options => {
@@ -160,8 +164,11 @@ const mockHash = {
   update: jest.fn().mockReturnThis(),
   digest: jest.fn().mockReturnValue('validchecksum'),
 };
+const mockCreateHash = jest.fn().mockReturnValue(mockHash);
 jest.unstable_mockModule('crypto', () => ({
-  createHash: jest.fn().mockReturnValue(mockHash),
+  ...originalCrypto,
+  createHash: mockCreateHash,
+  default: { ...originalCrypto, createHash: mockCreateHash },
 }));
 
 const mockFsHelper = {
@@ -935,7 +942,7 @@ describe('Middleware Tests', () => {
       mockFs.mkdirSync.mockImplementation(() => {});
 
       // Mock config to return very small limit
-      mockConfigLoader.loadConfig.mockReturnValue({
+      mockConfigLoader.loadConfig.mockReturnValueOnce({
         boxvault: { box_max_file_size: { value: 0.0000001 } }, // Very small limit
       });
 

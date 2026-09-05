@@ -105,7 +105,7 @@ describe('Hub notification producer', () => {
         response: { status: 429, data: { type: 'https://hub.example.com/problems/rate-limit' } },
       });
 
-      await expect(send({ title: 'Hello', body: 'World' })).resolves.toBeUndefined();
+      await expect(send({ title: 'Hello', body: 'World' })).resolves.toBe(false);
       expect(mockLog.app.warn).toHaveBeenCalledWith(
         'Hub notification failed',
         expect.objectContaining({
@@ -118,7 +118,7 @@ describe('Hub notification producer', () => {
     it('should never throw when the service token cannot be minted', async () => {
       mockExternalInvites.getS2sToken.mockRejectedValue(new Error('token endpoint down'));
 
-      await expect(send({ title: 'Hello', body: 'World' })).resolves.toBeUndefined();
+      await expect(send({ title: 'Hello', body: 'World' })).resolves.toBe(false);
       expect(mockAxios.post).not.toHaveBeenCalled();
     });
   });

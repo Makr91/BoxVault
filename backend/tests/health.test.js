@@ -16,7 +16,7 @@ const hostnameOf = value => {
 
 // Define FS Mockss
 const mockExistsSync = jest.fn();
-const mockReadFileSync = jest.fn();
+const mockReadFileSync = jest.fn((...args) => originalFs.readFileSync(...args));
 const mockMkdirSync = jest.fn();
 const mockStatSync = jest.fn();
 const mockAccessSync = jest.fn();
