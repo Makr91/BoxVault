@@ -16,8 +16,9 @@ const NOTIFY_ENDPOINT = `${ISSUER}/api/notify`;
 const axiosGet = jest.fn();
 const axiosPost = jest.fn();
 const axiosDelete = jest.fn();
+const axiosPatch = jest.fn();
 jest.unstable_mockModule('axios', () => ({
-  default: { get: axiosGet, post: axiosPost, delete: axiosDelete },
+  default: { get: axiosGet, post: axiosPost, delete: axiosDelete, patch: axiosPatch },
 }));
 
 const passThrough = () => (req, res, next) => {
@@ -120,6 +121,12 @@ describe('Identity-provider delegation', () => {
       user_id: owner.id,
       provider: ISSUER,
       subject: `owner-uuid-${uniqueId}`,
+      external_email: owner.email,
+    });
+    await db.credential.create({
+      user_id: owner.id,
+      provider: 'https://second-idp.example',
+      subject: `owner-second-${uniqueId}`,
       external_email: owner.email,
     });
     for (const org of [externalOrg, noUuidOrg, localOrg]) {
@@ -538,6 +545,16 @@ describe('Identity-provider delegation', () => {
       });
     });
 
+    it('should tolerate a hub answer without an expiry and invite an existing non-member', async () => {
+      axiosPost.mockResolvedValue({ data: {} });
+      const res = await request(app)
+        .post('/api/auth/invite')
+        .set('x-access-token', ownerToken)
+        .send({ email: requester.email, organizationName: externalOrgName });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.invitationTokenExpires).toBeNull();
+    });
+
     it('should surface a hub validation or authorization refusal', async () => {
       axiosPost.mockRejectedValueOnce({
         response: { status: 400, data: { detail: 'bad address' } },
@@ -608,6 +625,54 @@ describe('Identity-provider delegation', () => {
       axiosDelete.mockRejectedValue(new Error('boom'));
       const res = await remove(ownerToken, `ext:${externalOrgName}:i1`);
       expect(res.statusCode).toBe(502);
+    });
+  });
+
+  describe('preferences of a federated account', () => {
+    const patch = body =>
+      request(app).patch('/api/user/preferences').set('x-access-token', ownerToken).send(body);
+
+    beforeAll(async () => {
+      await owner.update({ authProvider: 'oidc' });
+    });
+
+    afterAll(async () => {
+      jest.restoreAllMocks();
+      await owner.update({ authProvider: 'local' });
+    });
+
+    it('should mirror the preference once the provider accepted it', async () => {
+      axiosPatch.mockResolvedValue({ status: 200, data: {} });
+      const res = await patch({ theme: 'dark' });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.theme).toBe('dark');
+      expect(axiosPatch).toHaveBeenCalledWith(
+        `${ISSUER}/api/user/preferences`,
+        { theme: 'dark' },
+        {
+          headers: {
+            Authorization: 'Bearer owner-access-token',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    });
+
+    it('should surface the provider refusal and answer 502 for other failures', async () => {
+      axiosPatch.mockRejectedValueOnce({ response: { status: 400, data: { error: 'bad tag' } } });
+      const refused = await patch({ language: 'xx' });
+      expect(refused.statusCode).toBe(400);
+      expect(refused.body.message).toBe('bad tag');
+      axiosPatch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      const failed = await patch({ language: 'en' });
+      expect(failed.statusCode).toBe(502);
+    });
+
+    it('should answer 500 when the local mirror cannot be written', async () => {
+      axiosPatch.mockResolvedValue({ status: 200, data: {} });
+      jest.spyOn(db.user.prototype, 'update').mockRejectedValueOnce(new Error('down'));
+      const res = await patch({ theme: 'light' });
+      expect(res.statusCode).toBe(500);
     });
   });
 });

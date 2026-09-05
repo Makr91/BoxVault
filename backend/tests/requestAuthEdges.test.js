@@ -167,6 +167,28 @@ describe('Request authentication edge cases', () => {
     expect(axiosGet).not.toHaveBeenCalled();
   });
 
+  it('should forget replayed proof identifiers once they expire', async () => {
+    jest.useFakeTimers({ now: Date.now() });
+    try {
+      const first = await mintIdpToken({ cnf: { jkt: dpopJkt } });
+      const firstProof = await mintProof(first);
+      expect(
+        await resolveRequestAuth(requestWith({ authorization: `DPoP ${first}`, dpop: firstProof }))
+      ).not.toBeNull();
+
+      jest.setSystemTime(Date.now() + 301 * 1000);
+      const second = await mintIdpToken({ cnf: { jkt: dpopJkt } });
+      const secondProof = await mintProof(second);
+      expect(
+        await resolveRequestAuth(
+          requestWith({ authorization: `DPoP ${second}`, dpop: secondProof })
+        )
+      ).not.toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it.each([
     ['type', { header: { typ: 'jwt' } }, 'unsupported DPoP proof'],
     ['algorithm', { header: { alg: 'RS256' }, key: idpKeys.privateKey }, 'unsupported DPoP proof'],

@@ -244,6 +244,24 @@ describe('Notifications API', () => {
         await db.pushSubscription.findOne({ where: { endpoint: `${endpoint}/second` } })
       ).toBeNull();
     });
+
+    it('should answer 500 when the subscription table fails', async () => {
+      jest.spyOn(db.pushSubscription, 'findOne').mockRejectedValueOnce(new Error('down'));
+      const store = await request(app)
+        .post('/api/notifications/subscriptions')
+        .set('x-access-token', localToken)
+        .send({ endpoint: `${endpoint}/third`, keys: { p256dh: 'p', auth: 'a' } });
+      expect(store.statusCode).toBe(500);
+      expect(store.body).toEqual({ error: 'SUBSCRIPTION_STORE_FAILED' });
+      jest.spyOn(db.pushSubscription, 'destroy').mockRejectedValueOnce(new Error('down'));
+      const remove = await request(app)
+        .delete('/api/notifications/subscriptions')
+        .set('x-access-token', localToken)
+        .send({ endpoint: `${endpoint}/third` });
+      expect(remove.statusCode).toBe(500);
+      expect(remove.body).toEqual({ error: 'SUBSCRIPTION_DELETE_FAILED' });
+      jest.restoreAllMocks();
+    });
   });
 
   describe('POST /api/notifications/test/channel', () => {

@@ -161,6 +161,7 @@ describe('Public configuration endpoints', () => {
             JSON.stringify({
               probe: { secret: { value: '********' }, plain: { value: 'changed' }, extra: 1 },
               __proto__: { polluted: true },
+              constructor: { polluted: true },
             })
           )
         );

@@ -69,6 +69,7 @@ const writeAuthConfig = mutate => {
 const enableScim = config => {
   config.auth.scim = { enabled: { value: true }, audience: { value: AUDIENCE } };
   config.auth.oidc.providers = {
+    noenable: { issuer: { value: 'https://no-enable.example' } },
     scimidp: {
       enabled: { value: true },
       issuer: { value: ISSUER },
@@ -77,6 +78,9 @@ const enableScim = config => {
     undiscovered: { enabled: { value: true }, issuer: { value: UNDISCOVERED_ISSUER } },
   };
 };
+
+const failing = (model, method) =>
+  jest.spyOn(model, method).mockRejectedValueOnce(new Error('database down'));
 
 const mintToken = ({
   audience = AUDIENCE,
@@ -884,7 +888,49 @@ describe('SCIM receiver', () => {
     });
   });
 
+  describe('database failures', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should answer 500 on every user route when the credential table fails', async () => {
+      failing(db.credential, 'findByIssuerAndSubject');
+      expect((await scimPost('/Users', userBody({ externalId: 'x' }))).statusCode).toBe(500);
+      failing(db.credential, 'findByIssuerAndSubject');
+      expect((await scimGet('/Users', { filter: 'externalId eq "x"' })).statusCode).toBe(500);
+      failing(db.credential, 'findOne');
+      expect((await scimPut(`/Users/${userId}`, userBody())).statusCode).toBe(500);
+      failing(db.credential, 'findOne');
+      expect((await scimDelete(`/Users/${userId}`)).statusCode).toBe(500);
+    });
+
+    it('should answer 500 on every group route when the group table fails', async () => {
+      failing(db.scimGroup, 'findOne');
+      expect((await scimPost('/Groups', groupBody('admin'))).statusCode).toBe(500);
+      failing(db.scimGroup, 'findOne');
+      expect(
+        (await scimGet('/Groups', { filter: `externalId eq "${orgUuid}:admin"` })).statusCode
+      ).toBe(500);
+      failing(db.scimGroup, 'findOne');
+      expect((await scimPut('/Groups/1', groupBody('admin'))).statusCode).toBe(500);
+      failing(db.scimGroup, 'findOne');
+      expect((await scimDelete('/Groups/1')).statusCode).toBe(500);
+    });
+
+    it('should re-provision over an orphaned credential', async () => {
+      jest.spyOn(db.user, 'findByPk').mockResolvedValueOnce(null);
+      const res = await scimPost('/Users', userBody());
+      expect(res.statusCode).toBe(201);
+      expect(Number(res.body.id)).toBe(userId);
+      expect(await db.credential.count({ where: { provider: ISSUER, subject: userUuid } })).toBe(1);
+    });
+  });
+
   describe('DELETE /scim/v2/Users/:id', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('should answer 404 for an unknown or non-numeric id', async () => {
       const unknown = await scimDelete('/Users/999999');
       expect(unknown.statusCode).toBe(404);
@@ -898,6 +944,13 @@ describe('SCIM receiver', () => {
       expect(await db.user.findByPk(secondUserId)).toBeNull();
       const again = await scimDelete(`/Users/${secondUserId}`);
       expect(again.statusCode).toBe(404);
+    });
+
+    it('should discard an orphaned credential and answer 404', async () => {
+      jest.spyOn(db.user, 'findByPk').mockResolvedValueOnce(null);
+      const res = await scimDelete(`/Users/${userId}`);
+      expect(res.statusCode).toBe(404);
+      expect(await db.credential.count({ where: { provider: ISSUER, user_id: userId } })).toBe(0);
     });
   });
 });

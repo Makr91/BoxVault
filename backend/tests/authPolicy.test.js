@@ -273,6 +273,76 @@ describe('Local authentication policy', () => {
     });
   });
 
+  describe('defaults when the local knobs are absent', () => {
+    let restore;
+
+    beforeAll(() => {
+      restore = updateConfig('auth', config => {
+        config.auth.local = { local_allow_new_organizations: { value: true } };
+      });
+    });
+
+    afterAll(() => {
+      restore();
+    });
+
+    it('should fall back to the default password length and hashing cost', async () => {
+      const weak = await signup({ password: 'short' });
+      expect(weak.statusCode).toBe(400);
+      const strong = await signup({ password: 'Strong123!', name: '  Named Person  ' });
+      expect(strong.statusCode).toBe(201);
+      const created = await db.user.findOne({ where: { name: 'Named Person' } });
+      expect(created).not.toBeNull();
+    });
+
+    it('should sign in with the default session timeout and provider tag', async () => {
+      await account.update({ authProvider: null });
+      try {
+        const res = await signin({
+          username: account.username,
+          password: PASSWORD,
+          stayLoggedIn: true,
+        });
+        expect(res.statusCode).toBe(200);
+        expect(res.body.provider).toBe('local');
+        expect(res.body.stayLoggedIn).toBe(true);
+      } finally {
+        await account.update({ authProvider: 'local' });
+      }
+    });
+
+    it('should answer 401 for a username without a password', async () => {
+      const res = await signin({ username: `ghost-${uniqueId}` });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should reject a signup without a body', async () => {
+      const res = await request(app).post('/api/auth/signup');
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('account deletion with a second owner', () => {
+    it('should delete an owner whose organization keeps another owner', async () => {
+      const shared = await db.organization.create({ name: `Shared-${uniqueId}` });
+      const role = await db.role.findOne({ where: { name: 'user' } });
+      const leaving = await db.user.create({
+        username: `leaving-${uniqueId}`,
+        email: `leaving-${uniqueId}@example.com`,
+        password: 'password',
+        verified: true,
+      });
+      await leaving.setRoles([role]);
+      await db.UserOrg.create({ user_id: leaving.id, organization_id: shared.id, role: 'owner' });
+      await db.UserOrg.create({ user_id: account.id, organization_id: shared.id, role: 'owner' });
+      const res = await request(app)
+        .delete(`/api/users/${leaving.id}`)
+        .set('x-access-token', signFor(leaving));
+      expect(res.statusCode).toBe(200);
+      expect(await db.user.findByPk(leaving.id)).toBeNull();
+    });
+  });
+
   describe('name and address guards', () => {
     it('should reject an organization name with consecutive periods', async () => {
       const res = await request(app)

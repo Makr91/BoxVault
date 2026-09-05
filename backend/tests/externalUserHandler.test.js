@@ -163,7 +163,9 @@ describe('External user handling from identity-provider claims', () => {
       picture: 'https://cdn.example/fresh.png',
       preferences: { language: 'es', theme: 'dark' },
       zoneinfo: 'Europe/Berlin',
-      organizations: [{ uuid: alphaUuid, name: 'Alpha Org', roles: ['admin'], primary: true }],
+      organizations: [
+        { uuid: `fresh-org-${uniqueId}`, name: 'Fresh Org', roles: ['admin'], primary: true },
+      ],
     };
 
     it('should provision a new account from the claims', async () => {
@@ -180,8 +182,8 @@ describe('External user handling from identity-provider claims', () => {
       expect(created.preferredTheme).toBe('dark');
       expect(created.timezone).toBe('Europe/Berlin');
       expect(created.authProvider).toBe('oidc');
-      const alpha = await membershipOf(created, alphaUuid);
-      expect(alpha.role).toBe('admin');
+      const fresh = await membershipOf(created, `fresh-org-${uniqueId}`);
+      expect(fresh.role).toBe('admin');
       expect(await db.credential.count({ where: { user_id: created.id, provider: ISSUER } })).toBe(
         1
       );
@@ -233,6 +235,46 @@ describe('External user handling from identity-provider claims', () => {
       );
       expect(lonely.primary_organization_id).toBeNull();
       expect(await db.UserOrg.count({ where: { user_id: lonely.id } })).toBe(0);
+
+      const again = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        {
+          iss: ISSUER,
+          sub: lonelyEmail,
+          email: lonelyEmail,
+          email_verified: true,
+          organizations: [{ name: 'still no uuid' }],
+        },
+        db,
+        authConfig
+      );
+      expect(again.id).toBe(lonely.id);
+      expect(again.primary_organization_id).toBeNull();
+    });
+
+    it('should link an account without an organization when the claim is empty', async () => {
+      const orphanEmail = `orphan-${uniqueId}@example.com`;
+      const orphan = await db.user.create({
+        username: `orphan-${uniqueId}`,
+        email: orphanEmail,
+        password: 'password',
+        verified: true,
+      });
+      const linked = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        {
+          iss: ISSUER,
+          sub: `orphan-sub-${uniqueId}`,
+          email: orphanEmail,
+          email_verified: true,
+          organizations: [],
+        },
+        db,
+        authConfig
+      );
+      expect(linked.id).toBe(orphan.id);
+      expect(linked.authProvider).toBe('oidc');
+      expect(linked.primary_organization_id).toBeNull();
     });
 
     it('should refuse to link an existing account through an unverified mailbox', async () => {

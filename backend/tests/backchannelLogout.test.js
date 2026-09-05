@@ -264,4 +264,12 @@ describe('OIDC back-channel logout', () => {
     await emailUser.reload();
     expect(emailUser.sessionsInvalidAfter).not.toBeNull();
   });
+
+  it('should report a failed revocation', async () => {
+    jest.spyOn(db.user, 'update').mockRejectedValueOnce(new Error('database down'));
+    const res = await postLogout(await mintLogoutToken({ claims: { sub: subjectUuid } }));
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error_description).toBe('logout failed');
+    jest.restoreAllMocks();
+  });
 });

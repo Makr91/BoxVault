@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import jwt from 'jsonwebtoken';
+import { createServer } from 'http';
+import { Readable } from 'stream';
 import { fileURLToPath } from 'url';
 import app from '../server.js';
 import db from '../app/models/index.js';
@@ -40,6 +42,8 @@ describe('Stale chunk directory sweep', () => {
   let org;
   let owner;
   let ownerToken;
+  let server;
+  let baseUrl;
 
   const uploadUrl = `/api/organization/${orgName}/box/${boxName}/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload`;
 
@@ -54,6 +58,11 @@ describe('Stale chunk directory sweep', () => {
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
+    server = createServer(app);
+    await new Promise(resolve => {
+      server.listen(0, resolve);
+    });
+    baseUrl = `http://127.0.0.1:${server.address().port}`;
     org = await db.organization.create({ name: orgName });
     owner = await db.user.create({
       username: `sweep-owner-${uniqueId}`,
@@ -82,6 +91,10 @@ describe('Stale chunk directory sweep', () => {
   });
 
   afterAll(async () => {
+    server.closeAllConnections();
+    await new Promise(resolve => {
+      server.close(resolve);
+    });
     await db.box.destroy({ where: { organizationId: org.id } });
     await org.destroy();
     await owner.destroy();
@@ -142,5 +155,36 @@ describe('Stale chunk directory sweep', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.details.chunksReceived).toBe(2);
     expect(fs.existsSync(stale)).toBe(true);
+  });
+
+  it('should assemble the file from a chunked final part and skip an unknown checksum type', async () => {
+    const body = Readable.from(
+      (function* generate() {
+        yield Buffer.from('chunk-2');
+      })()
+    );
+    const response = await fetch(`${baseUrl}${uploadUrl}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'x-access-token': ownerToken,
+        'x-chunk-index': '2',
+        'x-total-chunks': '3',
+        'x-checksum': 'abc',
+        'x-checksum-type': 'crc32',
+      },
+      body,
+      duplex: 'half',
+    });
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.details).toMatchObject({ isComplete: true, status: 'complete' });
+    const assembled = getSecureBoxPath(orgName, boxName, '1.0.0', 'virtualbox', 'amd64');
+    expect(fs.readFileSync(path.join(assembled, 'vagrant.box')).toString()).toBe(
+      'chunk-0chunk-1chunk-2'
+    );
+    expect(fs.existsSync(path.join(assembled, '.temp'))).toBe(false);
+    const record = await db.files.findOne({ where: { fileName: 'vagrant.box' } });
+    expect(record.checksumType).toBe('CRC32');
   });
 });
