@@ -68,6 +68,7 @@ const create = async (req, res) => {
       published: published ?? true,
       isPublic: isPublic || false,
       organizationId: req.organizationId,
+      userId: req.userId,
       metadata: contentFields.metadata ?? null,
     });
 

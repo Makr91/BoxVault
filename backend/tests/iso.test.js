@@ -184,6 +184,32 @@ describe('ISO API', () => {
       );
     });
 
+    it('should show an unpublished ISO only to the member who created it', async () => {
+      await db.iso.update(
+        { published: false },
+        { where: { name: isoName, organizationId: org.id } }
+      );
+      const creator = await request(app)
+        .get(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', adminToken);
+      expect(creator.statusCode).toBe(200);
+      expect(creator.body.some(entry => entry.name === isoName)).toBe(true);
+
+      const member = await request(app)
+        .get(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', authToken);
+      expect(member.statusCode).toBe(200);
+      expect(member.body.some(entry => entry.name === isoName)).toBe(false);
+
+      const detail = await request(app).get(isoBase).set('x-access-token', authToken);
+      expect(detail.statusCode).toBe(403);
+
+      await db.iso.update(
+        { published: true },
+        { where: { name: isoName, organizationId: org.id } }
+      );
+    });
+
     it('should list public published ISOs for anonymous callers', async () => {
       await db.iso.update({ isPublic: true }, { where: { name: isoName, organizationId: org.id } });
       const res = await request(app).get(`/api/organization/${orgName}/iso`);

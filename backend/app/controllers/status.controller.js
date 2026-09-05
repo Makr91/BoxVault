@@ -17,6 +17,7 @@ const STATUS = {
   },
   auth: ['backend'],
   collections: ['boxes', 'isos'],
+  config: ['app', 'auth', 'db', 'mail'],
   features: [
     'local-accounts',
     'setup',
@@ -30,7 +31,10 @@ const STATUS = {
     'favorites',
     'notifications',
     'health',
+    'search',
+    'events',
   ],
+  events: { path: '/api/events', topics: ['session', 'notifications'] },
   links: { docs: '/docs', contact: '' },
   ticket: null,
 };
@@ -40,7 +44,7 @@ const STATUS = {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins), collections names the collection registry entries to mount in order, features is the gate every route, menu row and control checks with hasFeature, and ticket is null because BoxVault serves its ticket config at /api/config/ticket.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins), collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -49,7 +53,7 @@ const STATUS = {
  *           application/json:
  *             schema:
  *               type: object
- *               required: [role, version, brand, auth, collections, features, links, ticket]
+ *               required: [role, version, brand, auth, collections, config, features, events, links, ticket]
  *               properties:
  *                 role:
  *                   type: string
@@ -84,12 +88,32 @@ const STATUS = {
  *                   items:
  *                     type: string
  *                   example: [boxes, isos]
- *                 features:
+ *                 config:
  *                   type: array
- *                   description: Kebab-case feature tokens. local-accounts gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); health gates the footer health heart
+ *                   description: Config file names the admin page draws one tab each for, served at /api/config/<name>
  *                   items:
  *                     type: string
- *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health]
+ *                   example: [app, auth, db, mail]
+ *                 features:
+ *                   type: array
+ *                   description: Kebab-case feature tokens. local-accounts gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); health gates the footer health heart; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path
+ *                   items:
+ *                     type: string
+ *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, search, events]
+ *                 events:
+ *                   type: object
+ *                   required: [path, topics]
+ *                   description: The one server-sent event stream of the universal events contract, opened once per tab by the UI runtime
+ *                   properties:
+ *                     path:
+ *                       type: string
+ *                       example: /api/events
+ *                     topics:
+ *                       type: array
+ *                       description: Every topic this host streams; session sends session-terminated, notifications sends unread-count
+ *                       items:
+ *                         type: string
+ *                       example: [session, notifications]
  *                 links:
  *                   type: object
  *                   required: [docs, contact]

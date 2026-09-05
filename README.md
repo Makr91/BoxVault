@@ -25,7 +25,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 
 ## Technologies Used
 
-- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), one build shared across the estate, fetched as a release artifact and served from `backend/ui`; it renders what `GET /api/status` (`backend/app/controllers/status.controller.js`) advertises: `auth: ["backend"]`, `collections: ["boxes", "isos"]` and the feature tokens `local-accounts`, `setup`, `admin`, `org-console`, `discover`, `invitations`, `uploads`, `watches`, `deploy`, `favorites`, `notifications`, `health`
+- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), one build shared across the estate, fetched as a release artifact and served from `backend/ui`; it renders what `GET /api/status` (`backend/app/controllers/status.controller.js`) advertises: `auth: ["backend"]`, `collections: ["boxes", "isos"]`, `config: ["app", "auth", "db", "mail"]`, `events: { path: "/api/events", topics: ["session", "notifications"] }` and the feature tokens `local-accounts`, `setup`, `admin`, `org-console`, `discover`, `invitations`, `uploads`, `watches`, `deploy`, `favorites`, `notifications`, `health`, `search`, `events`
 - **Backend**: Node.js, Express.js
 - **Database**: Sequelize ORM (Database configuration in `db.config.yaml`)
 - **Authentication**: JWT tokens
@@ -146,6 +146,10 @@ For detailed packaging and build instructions, see [packaging/README.md](packagi
 
 - `GET /api/organizations`: Retrieve all organizations.
 - `POST /api/organizations`: Create a new organization.
+
+### Events
+
+- `GET /api/events?topics=session,notifications`: The one server-sent event stream of the universal events contract; `session` sends `session-terminated`, `notifications` sends `unread-count`.
 
 ## Contributing
 

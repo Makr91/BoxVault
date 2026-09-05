@@ -321,6 +321,10 @@
   "errors": {
     "operationFailed": "Operación fallida."
   },
+  "search": {
+    "queryTooShort": "La búsqueda debe tener al menos 2 caracteres.",
+    "error": "Ocurrió un error al buscar."
+  },
   "config": {
     "gravatarNotFound": "Configuración de Gravatar no encontrada.",
     "hyperweaverNotConfigured": "Hyperweaver no está configurado.",

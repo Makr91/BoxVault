@@ -20,9 +20,21 @@ export default (sequelize, Sequelize) => {
       type: Sequelize.JSON,
       allowNull: true,
     },
+    userId: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
   });
 
   ISO.associate = function (models) {
+    ISO.belongsTo(models.user, {
+      foreignKey: 'userId',
+      as: 'user',
+    });
     ISO.hasMany(models.isoVersions, {
       foreignKey: 'isoId',
       as: 'versions',

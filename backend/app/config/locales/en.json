@@ -321,6 +321,10 @@
   "errors": {
     "operationFailed": "Operation failed."
   },
+  "search": {
+    "queryTooShort": "Search query must be at least 2 characters long.",
+    "error": "Some error occurred while searching."
+  },
   "config": {
     "gravatarNotFound": "Gravatar configuration not found.",
     "hyperweaverNotConfigured": "Hyperweaver is not configured.",

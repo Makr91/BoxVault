@@ -42,12 +42,14 @@ import architectureRoutes from './app/routes/architecture.routes.js';
 import serviceAccountRoutes from './app/routes/service_account.routes.js';
 import favoritesRoutes from './app/routes/favorites.routes.js';
 import notificationRoutes from './app/routes/notification.routes.js';
+import eventsRoutes from './app/routes/events.routes.js';
 import setupRoutes from './app/routes/setup.routes.js';
 import sslRoutes from './app/routes/ssl.routes.js';
 import isoRoutes from './app/routes/iso.routes.js';
 import systemRoutes from './app/routes/system.routes.js';
 import clientErrorsRoutes from './app/routes/client_errors.routes.js';
 import scimRoutes from './app/routes/scim.routes.js';
+import searchRoutes from './app/routes/search.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -535,11 +537,13 @@ const initializeApp = async () => {
     app.use('/api', serviceAccountRoutes);
     app.use('/api', favoritesRoutes);
     app.use('/api', notificationRoutes);
+    app.use('/api', eventsRoutes);
     app.use('/api', setupRoutes);
     app.use('/api', sslRoutes);
     app.use('/api', isoRoutes);
     app.use('/api', systemRoutes);
     app.use('/api', clientErrorsRoutes);
+    app.use('/api', searchRoutes);
     // SCIM 2.0 receiver for auth-server provisioning pushes (contract URL is
     // /scim/v2, not under /api). Bearer-JWT authenticated inside the router.
     app.use('/scim/v2', scimRoutes);

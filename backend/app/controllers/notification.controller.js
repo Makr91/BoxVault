@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
+import { notifyUnreadCount } from '../utils/events.js';
 import { sendHubNotification } from '../utils/notifyHub.js';
 import { resolveUserRecipients } from '../utils/notifyRecipients.js';
 import { getVapidPublicKey, sendPushToUsers } from '../utils/webPush.js';
@@ -31,19 +32,33 @@ const respondAuthServerError = (res, error) => {
   return res.status(502).json({ error: 'AUTH_SERVER_UNAVAILABLE' });
 };
 
-const proxyNotificationRequest = async (req, res, sendRequest) => {
+const pushUnreadCount = async (req, headers) => {
+  try {
+    const response = await axios.get(buildNotificationsUrl(req, '/unread-count'), { headers });
+    notifyUnreadCount(req.userId, response.data?.count ?? 0);
+  } catch (error) {
+    log.app.warn('Unread count refresh failed', { error: error.message });
+  }
+};
+
+const proxyNotificationRequest = async (req, res, sendRequest, { pushCount = false } = {}) => {
   const oidcAccessToken = extractOidcAccessToken(req);
 
   if (!oidcAccessToken) {
     return res.status(401).json({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
   }
 
+  const headers = buildAuthHeaders(oidcAccessToken);
   try {
-    const response = await sendRequest(buildAuthHeaders(oidcAccessToken));
-    return res.status(response.status).json(response.data || {});
+    const response = await sendRequest(headers);
+    res.status(response.status).json(response.data || {});
   } catch (error) {
     return respondAuthServerError(res, error);
   }
+  if (pushCount) {
+    await pushUnreadCount(req, headers);
+  }
+  return undefined;
 };
 
 const buildListQuery = query => {
@@ -265,18 +280,31 @@ export const getUnreadCount = (req, res) =>
   );
 
 export const markNotificationRead = (req, res) =>
-  proxyNotificationRequest(req, res, headers =>
-    axios.post(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}/read`), null, {
-      headers,
-    })
+  proxyNotificationRequest(
+    req,
+    res,
+    headers =>
+      axios.post(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}/read`), null, {
+        headers,
+      }),
+    { pushCount: true }
   );
 
 export const markAllNotificationsRead = (req, res) =>
-  proxyNotificationRequest(req, res, headers =>
-    axios.post(buildNotificationsUrl(req, '/read-all'), null, { headers })
+  proxyNotificationRequest(
+    req,
+    res,
+    headers => axios.post(buildNotificationsUrl(req, '/read-all'), null, { headers }),
+    { pushCount: true }
   );
 
 export const deleteNotification = (req, res) =>
-  proxyNotificationRequest(req, res, headers =>
-    axios.delete(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}`), { headers })
+  proxyNotificationRequest(
+    req,
+    res,
+    headers =>
+      axios.delete(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}`), {
+        headers,
+      }),
+    { pushCount: true }
   );

@@ -4,7 +4,7 @@ import { log } from '../../utils/Logger.js';
 import { findProviderByIssuer } from '../../utils/oidcProviders.js';
 import { getRemoteJwks } from '../../utils/jwks.js';
 import { getOidcConfiguration } from '../../auth/passport.js';
-import { notifySessionTerminated } from '../../utils/sessionEvents.js';
+import { notifySessionTerminated } from '../../utils/events.js';
 import db from '../../models/index.js';
 
 const { credential: Credential, user: User } = db;

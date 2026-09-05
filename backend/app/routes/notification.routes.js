@@ -12,7 +12,6 @@ import {
   sendTestToast,
   sendTestChannel,
 } from '../controllers/notification.controller.js';
-import { openSessionEventStream } from '../utils/sessionEvents.js';
 
 const router = Router();
 
@@ -29,8 +28,6 @@ const notificationAuth = [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser]
 const subscriptionAuth = [authJwt.verifyToken, authJwt.isUser];
 
 router.get('/notifications/vapid-key', getVapidKey);
-
-router.get('/notifications/events', subscriptionAuth, openSessionEventStream);
 
 router.post('/notifications/subscriptions', subscriptionAuth, createSubscription);
 
