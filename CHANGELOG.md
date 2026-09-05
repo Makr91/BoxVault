@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.79.0](https://github.com/Makr91/BoxVault/compare/v0.78.0...v0.79.0) (2026-09-05)
+
+
+### Features
+
+* answer the universal event stream and name the config files ([5d39371](https://github.com/Makr91/BoxVault/commit/5d39371f8bcff57d91dc7b40bf5fc153cdcbc7cc))
+
+
+### Bug Fixes
+
+* cover database failure paths and harden the mocked test harness ([ca5521d](https://github.com/Makr91/BoxVault/commit/ca5521d0903ce004ca8bfb523fd591f0423c0dd1))
+* make the backend test chain green and lift coverage to 97 percent ([a54f730](https://github.com/Makr91/BoxVault/commit/a54f7309cb70b1fdbf64da6c561572d6bd7d9615))
+
 ## [0.78.0](https://github.com/Makr91/BoxVault/compare/v0.77.1...v0.78.0) (2026-09-05)
 
 
