@@ -7,7 +7,7 @@ import { log } from '../../utils/Logger.js';
  * /api/config/ticket:
  *   get:
  *     summary: Get ticket system configuration
- *     description: Retrieve ticket system configuration settings (public endpoint)
+ *     description: The ticket_system section of the app configuration as plain values (public endpoint)
  *     tags: [Configuration]
  *     responses:
  *       200:
@@ -21,13 +21,15 @@ import { log } from '../../utils/Logger.js';
  *                   type: object
  *                   properties:
  *                     enabled:
- *                       type: object
+ *                       type: boolean
  *                     base_url:
- *                       type: object
+ *                       type: string
  *                     req_type:
- *                       type: object
+ *                       type: string
+ *                     fallback_customer_id:
+ *                       type: string
  *                     context:
- *                       type: object
+ *                       type: string
  *       404:
  *         description: Ticket system not configured
  *       500:
