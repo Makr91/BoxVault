@@ -113,7 +113,7 @@ jobs:
 
       - name: Copy application files to Debian package
         run: |
-          cp -r backend/app backend/server.js backend/package.json backend/ui "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
+          cp -r backend/app backend/scripts backend/server.js backend/package.json backend/ui "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
           cp -r backend/node_modules "${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/boxvault/"
 
       - name: Copy configuration files to Debian package

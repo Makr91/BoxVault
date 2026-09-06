@@ -43,7 +43,7 @@ const prepareUpdate = (configName, configData) => {
  * /api/setup:
  *   put:
  *     summary: Write every configuration file from the setup page
- *     description: The body is { configs: { <name>: <file> } }. Every file is evaluated against its schema; a 422 carries every failing value of every file with pointers into the body as sent (/configs/app/boxvault/origin) and nothing is written while any fails. The setup token is consumed on success.
+ *     description: "The body is { configs: { <name>: <file> } }. Every file is evaluated against its schema; a 422 carries every failing value of every file with pointers into the body as sent (/configs/app/boxvault/origin) and nothing is written while any fails. The setup token is consumed on success."
  *     tags: [Setup]
  *     security:
  *       - JwtAuth: []

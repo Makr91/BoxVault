@@ -102,7 +102,11 @@ install_app() {
     if [ -d "$SRCDIR/backend/app" ]; then
         logcmd cp -r $SRCDIR/backend/app .
     fi
-    
+
+    if [ -d "$SRCDIR/backend/scripts" ]; then
+        logcmd cp -r $SRCDIR/backend/scripts .
+    fi
+
     # Copy the fetched UI
     if [ -d "$SRCDIR/backend/ui" ]; then
         logcmd cp -r $SRCDIR/backend/ui .
