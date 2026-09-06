@@ -147,11 +147,11 @@ const info = async (req, res) => {
             providerName,
             architectureName,
           },
-          authConfig.auth?.jwt?.download_link_expiry?.value || '1h'
+          authConfig.auth?.jwt?.download_link_expiry || '1h'
         );
 
         // Create secure download URL
-        const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+        const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
         return res.send({
           fileName: fileRecord.fileName,
@@ -197,11 +197,11 @@ const info = async (req, res) => {
           providerName,
           architectureName,
         },
-        authConfig.auth?.jwt?.download_link_expiry?.value || '1h'
+        authConfig.auth?.jwt?.download_link_expiry || '1h'
       );
 
       // Create secure download URL
-      const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+      const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
       return res.send({
         fileName: fileRecord.fileName,

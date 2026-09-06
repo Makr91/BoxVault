@@ -45,9 +45,12 @@ case "$1" in
                 fi
             fi
         else
-            # Upgrade (previous version exists) - existing configs are automatically preserved
-            echo "Upgrade from version $2 detected - preserving all existing configuration files"
-            echo "Configuration files in /etc/boxvault/ will NOT be modified"
+            # Upgrade (previous version exists) - existing configs are migrated in place
+            echo "Upgrade from version $2 detected - migrating configuration files"
+            (cd /opt/boxvault && CONFIG_DIR=/etc/boxvault NODE_ENV=production node scripts/migrate-config.js)
+            chown boxvault:boxvault /etc/boxvault/*.config.yaml /etc/boxvault/*.config.yaml.bak
+            chmod 600 /etc/boxvault/*.config.yaml /etc/boxvault/*.config.yaml.bak
+            echo "Configuration files in /etc/boxvault/ migrated; the previous copies sit beside them as .bak"
             echo "Database files in /var/lib/boxvault/ will NOT be modified"
             echo "Configuration templates are available in /opt/boxvault/config-templates/ for reference"
         fi
@@ -117,7 +120,7 @@ get_port_from_config() {
     
     if [ -f "$config_file" ]; then
         # Extract port value using grep and sed
-        grep -A 2 "$port_key:" "$config_file" | grep "value:" | sed 's/.*value: *\([0-9]*\).*/\1/' | head -1
+        grep "^  $port_key:" "$config_file" | sed 's/.*: *\([0-9]*\).*/\1/' | head -1
     else
         echo ""
     fi

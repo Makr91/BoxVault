@@ -18,10 +18,10 @@ describe('Architecture API', () => {
   const testBox = {
     name: boxName,
     description: 'Test box for architecture API testing',
-    isPublic: true,
+    is_public: true,
   };
   const testVersion = {
-    version: '1.0.0',
+    version_number: '1.0.0',
     description: 'Test version for architecture API testing',
   };
   const testProvider = {
@@ -102,7 +102,7 @@ describe('Architecture API', () => {
     // Create test provider
     await request(app)
       .post(
-        `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+        `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
       )
       .set('x-access-token', authToken)
       .send(testProvider);
@@ -131,7 +131,7 @@ describe('Architecture API', () => {
     it('should return list of architectures', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -142,7 +142,7 @@ describe('Architecture API', () => {
     it('should fail with invalid provider', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/invalid-provider/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/invalid-provider/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -154,7 +154,7 @@ describe('Architecture API', () => {
     const newArchitecture = {
       name: 'amd64',
       description: 'Test architecture',
-      defaultBox: true,
+      default_box: true,
     };
 
     afterEach(async () => {
@@ -162,7 +162,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${newArchitecture.name}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${newArchitecture.name}`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -174,7 +174,7 @@ describe('Architecture API', () => {
     it('should create new architecture', async () => {
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(newArchitecture);
@@ -182,14 +182,14 @@ describe('Architecture API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('name', newArchitecture.name);
       expect(res.body).toHaveProperty('description', newArchitecture.description);
-      expect(res.body).toHaveProperty('defaultBox', newArchitecture.defaultBox);
+      expect(res.body).toHaveProperty('defaultBox', newArchitecture.default_box);
     });
 
     it('should fail creating duplicate architecture', async () => {
       // First create the architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(newArchitecture);
@@ -197,29 +197,43 @@ describe('Architecture API', () => {
       // Try to create same architecture again
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(newArchitecture);
 
       expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/name',
+          rule: 'unique',
+          params: { scope: testProvider.name },
+        }),
+      ]);
     });
 
     it('should validate architecture name', async () => {
       const invalidArch = {
         name: 'invalid!arch',
         description: 'Invalid architecture name',
-        defaultBox: true,
+        default_box: true,
       };
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(invalidArch);
 
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/name',
+          rule: 'pattern',
+          params: { pattern: 'identifier' },
+        }),
+      ]);
     });
   });
 
@@ -227,14 +241,14 @@ describe('Architecture API', () => {
     const architecture = {
       name: 'amd64',
       description: 'Test architecture',
-      defaultBox: true,
+      default_box: true,
     };
 
     beforeEach(async () => {
       // Create test architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(architecture);
@@ -245,7 +259,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${architecture.name}`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -257,20 +271,20 @@ describe('Architecture API', () => {
     it('should return architecture details', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${architecture.name}`
         )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('name', architecture.name);
       expect(res.body).toHaveProperty('description', architecture.description);
-      expect(res.body).toHaveProperty('defaultBox', architecture.defaultBox);
+      expect(res.body).toHaveProperty('defaultBox', architecture.default_box);
     });
 
     it('should fail with invalid architecture name', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/invalid-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/invalid-arch`
         )
         .set('x-access-token', authToken);
 
@@ -282,14 +296,14 @@ describe('Architecture API', () => {
     const architecture = {
       name: 'amd64',
       description: 'Initial description',
-      defaultBox: true,
+      default_box: true,
     };
 
     beforeEach(async () => {
       // Create test architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(architecture);
@@ -300,7 +314,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${architecture.name}`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -312,19 +326,19 @@ describe('Architecture API', () => {
     it('should update architecture details', async () => {
       const updateData = {
         description: 'Updated description',
-        defaultBox: false,
+        default_box: false,
       };
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${architecture.name}`
         )
         .set('x-access-token', authToken)
         .send(updateData);
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('description', updateData.description);
-      expect(res.body).toHaveProperty('defaultBox', updateData.defaultBox);
+      expect(res.body).toHaveProperty('defaultBox', false);
     });
   });
 
@@ -332,14 +346,14 @@ describe('Architecture API', () => {
     const architecture = {
       name: 'amd64',
       description: 'Architecture to delete',
-      defaultBox: true,
+      default_box: true,
     };
 
     beforeEach(async () => {
       // Create test architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send(architecture);
@@ -348,7 +362,7 @@ describe('Architecture API', () => {
     it('should delete architecture', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${architecture.name}`
         )
         .set('x-access-token', authToken);
 
@@ -357,7 +371,7 @@ describe('Architecture API', () => {
       // Verify architecture is deleted
       const checkRes = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${architecture.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${architecture.name}`
         )
         .set('x-access-token', authToken);
 
@@ -370,18 +384,18 @@ describe('Architecture API', () => {
       // Create first default architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
-        .send({ name: 'arch-1', defaultBox: true });
+        .send({ name: 'arch-1', default_box: true });
 
       // Create second default architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
-        .send({ name: 'arch-2', defaultBox: true });
+        .send({ name: 'arch-2', default_box: true });
 
       // Check first architecture
       const arch1 = await db.architectures.findOne({ where: { name: 'arch-1' } });
@@ -397,14 +411,14 @@ describe('Architecture API', () => {
       // Add one more to be sure
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'arch-to-delete-1' });
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -427,7 +441,7 @@ describe('Architecture API', () => {
     it('should return 404 if provider not found', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -438,7 +452,7 @@ describe('Architecture API', () => {
     it('should return 404 if provider not found', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -452,7 +466,7 @@ describe('Architecture API', () => {
       it('should return 404 if organization not found', async () => {
         const res = await request(app)
           .post(
-            `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', authToken)
           .send({ name: archName });
@@ -462,7 +476,7 @@ describe('Architecture API', () => {
       it('should return 404 if box not found', async () => {
         const res = await request(app)
           .post(
-            `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', authToken)
           .send({ name: archName });
@@ -474,7 +488,7 @@ describe('Architecture API', () => {
         await db.box.update({ isPublic: false }, { where: { name: testBox.name } });
         const res = await request(app)
           .post(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', regularUserToken)
           .send({ name: archName });
@@ -494,7 +508,7 @@ describe('Architecture API', () => {
       it('should return 404 if provider not found', async () => {
         const res = await request(app)
           .post(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture`
           )
           .set('x-access-token', authToken)
           .send({ name: archName });
@@ -507,7 +521,7 @@ describe('Architecture API', () => {
         // Create an architecture to try deleting
         await request(app)
           .post(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', authToken)
           .send({ name: archName });
@@ -516,7 +530,7 @@ describe('Architecture API', () => {
       it('should return 403 if permission denied', async () => {
         const res = await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${archName}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${archName}`
           )
           .set('x-access-token', regularUserToken);
         expect(res.statusCode).toBe(403);
@@ -525,7 +539,7 @@ describe('Architecture API', () => {
       it('should return 404 if architecture not found', async () => {
         const res = await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/non-existent-arch`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/non-existent-arch`
           )
           .set('x-access-token', authToken);
         expect(res.statusCode).toBe(404);
@@ -536,7 +550,7 @@ describe('Architecture API', () => {
       it('should return 403 if permission denied', async () => {
         const res = await request(app)
           .put(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${archName}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${archName}`
           )
           .set('x-access-token', regularUserToken)
           .send({ description: 'Updated' });
@@ -565,7 +579,7 @@ describe('Architecture API', () => {
 
         const res = await request(app)
           .get(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${archName}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${archName}`
           )
           .set('x-access-token', nonMemberToken);
 
@@ -586,7 +600,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'error-arch' });
@@ -599,7 +613,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'error-fallback-arch' });
@@ -612,7 +626,7 @@ describe('Architecture API', () => {
       // Ensure architecture exists first
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'update-error-arch' });
@@ -621,7 +635,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/update-error-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/update-error-arch`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -633,7 +647,7 @@ describe('Architecture API', () => {
       // Ensure architecture exists first
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'delete-error-arch' });
@@ -643,7 +657,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/delete-error-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/delete-error-arch`
         )
         .set('x-access-token', authToken);
 
@@ -655,7 +669,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/any-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/any-arch`
         )
         .set('x-access-token', authToken);
 
@@ -667,7 +681,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test-arch`
         )
         .set('x-access-token', authToken);
 
@@ -679,7 +693,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test-arch`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -692,7 +706,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test-arch`
         )
         .set('x-access-token', authToken);
 
@@ -705,7 +719,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -728,7 +742,7 @@ describe('Architecture API', () => {
     it('should return 404 if provider not found (create.js line 134)', async () => {
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-arch' });
@@ -742,7 +756,7 @@ describe('Architecture API', () => {
     it('should return 404 if box not found (delete.js line 85)', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${testProvider.name}/architecture/test-arch`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test-arch`
         )
         .set('x-access-token', authToken);
 
@@ -753,7 +767,7 @@ describe('Architecture API', () => {
     it('should return 404 if provider not found (delete.js line 116)', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture/test-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture/test-arch`
         )
         .set('x-access-token', authToken);
 
@@ -767,7 +781,7 @@ describe('Architecture API', () => {
       // Create test architecture for findOne tests
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'findone-arch', description: 'FindOne test' });
@@ -777,7 +791,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/findone-arch`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/findone-arch`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -792,7 +806,7 @@ describe('Architecture API', () => {
       // Request existing architecture as member
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/findone-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/findone-arch`
         )
         .set('x-access-token', authToken);
 
@@ -815,7 +829,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/findone-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/findone-arch`
         )
         .set('x-access-token', authToken);
 
@@ -831,7 +845,7 @@ describe('Architecture API', () => {
         isPublic: true,
         versions: [
           {
-            versionNumber: testVersion.version,
+            versionNumber: testVersion.version_number,
             providers: [], // Empty array - provider won't be found
           },
         ],
@@ -840,7 +854,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/findone-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/findone-arch`
         )
         .set('x-access-token', authToken);
 
@@ -853,7 +867,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/non-existent-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/non-existent-arch`
         )
         .set('x-access-token', authToken);
 
@@ -867,7 +881,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/non-existent-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/non-existent-arch`
         )
         .set('x-access-token', authToken);
 
@@ -881,7 +895,7 @@ describe('Architecture API', () => {
     beforeEach(async () => {
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'update-fs-arch', description: 'Update test' });
@@ -891,7 +905,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -905,7 +919,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${testProvider.name}/architecture/update-fs-arch`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/update-fs-arch`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -931,7 +945,7 @@ describe('Architecture API', () => {
     it('should return 404 if provider not found (update.js line 171)', async () => {
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture/update-fs-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture/update-fs-arch`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -943,7 +957,7 @@ describe('Architecture API', () => {
     it('should update only description without name (update.js line 195)', async () => {
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/update-fs-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/update-fs-arch`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Only description updated' });
@@ -959,7 +973,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/update-fs-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/update-fs-arch`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Should fail' });
@@ -976,7 +990,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1001,14 +1015,14 @@ describe('Architecture API', () => {
       // Ensure no architectures exist
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
       // Try to delete again
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1019,7 +1033,7 @@ describe('Architecture API', () => {
     it('should return 403 if permission denied (deleteall.js line 95)', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', regularUserToken);
 
@@ -1032,7 +1046,7 @@ describe('Architecture API', () => {
       // Create architecture for these tests
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'findall-arch' });
@@ -1042,7 +1056,7 @@ describe('Architecture API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -1053,7 +1067,7 @@ describe('Architecture API', () => {
     it('should return 404 if box not found (findall.js line 92)', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1073,7 +1087,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1091,7 +1105,7 @@ describe('Architecture API', () => {
         isPublic: true,
         versions: [
           {
-            versionNumber: testVersion.version,
+            versionNumber: testVersion.version_number,
             providers: [],
           },
         ],
@@ -1100,7 +1114,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1131,7 +1145,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', nonMemberToken);
 
@@ -1147,7 +1161,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1190,14 +1204,14 @@ describe('Architecture API', () => {
       // Create test architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'sa-arch' });
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/sa-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/sa-arch`
         )
         .set('x-access-token', serviceAccountToken);
 
@@ -1207,7 +1221,7 @@ describe('Architecture API', () => {
       // Cleanup
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/sa-arch`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/sa-arch`
         )
         .set('x-access-token', authToken);
     });
@@ -1221,7 +1235,7 @@ describe('Architecture API', () => {
       // Create architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: oldName });
@@ -1230,7 +1244,7 @@ describe('Architecture API', () => {
       const oldPath = getSecureBoxPath(
         orgName,
         testBox.name,
-        testVersion.version,
+        testVersion.version_number,
         testProvider.name,
         oldName
       );
@@ -1240,7 +1254,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${oldName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${oldName}`
         )
         .set('x-access-token', authToken)
         .send({ name: newName });
@@ -1251,7 +1265,7 @@ describe('Architecture API', () => {
       const newPath = getSecureBoxPath(
         orgName,
         testBox.name,
-        testVersion.version,
+        testVersion.version_number,
         testProvider.name,
         newName
       );
@@ -1264,7 +1278,7 @@ describe('Architecture API', () => {
       }
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${newName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${newName}`
         )
         .set('x-access-token', authToken);
     });
@@ -1276,7 +1290,7 @@ describe('Architecture API', () => {
       // Create architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: oldName });
@@ -1301,7 +1315,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${oldName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${oldName}`
         )
         .set('x-access-token', authToken)
         .send({ name: newName });
@@ -1318,7 +1332,7 @@ describe('Architecture API', () => {
       // Cleanup
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${newName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${newName}`
         )
         .set('x-access-token', authToken);
     });
@@ -1326,14 +1340,14 @@ describe('Architecture API', () => {
     it('should update architecture without name change (skips rename logic)', async () => {
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'no-rename', description: 'Original' });
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/no-rename`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/no-rename`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated Description Only' }); // No name change
@@ -1344,7 +1358,7 @@ describe('Architecture API', () => {
 
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/no-rename`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/no-rename`
         )
         .set('x-access-token', authToken);
     });
@@ -1378,7 +1392,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', outsiderToken)
         .send({ name: 'perm-test-arch' });
@@ -1392,17 +1406,17 @@ describe('Architecture API', () => {
       // Create architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
-        .send({ name: 'defaultbox-test', defaultBox: false });
+        .send({ name: 'defaultbox-test', default_box: false });
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/defaultbox-test`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/defaultbox-test`
         )
         .set('x-access-token', authToken)
-        .send({ defaultBox: true }); // Only defaultBox, no name or description
+        .send({ default_box: true }); // Only default_box, no name or description
 
       expect(res.statusCode).toBe(200);
       expect(res.body.defaultBox).toBe(true);
@@ -1410,7 +1424,7 @@ describe('Architecture API', () => {
       // Cleanup
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/defaultbox-test`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/defaultbox-test`
         )
         .set('x-access-token', authToken);
     });
@@ -1420,7 +1434,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1433,7 +1447,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1446,7 +1460,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1459,7 +1473,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1472,7 +1486,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test`
         )
         .set('x-access-token', authToken);
 
@@ -1484,7 +1498,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/NonExistentProvider/architecture/test`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/NonExistentProvider/architecture/test`
         )
         .set('x-access-token', authToken);
 
@@ -1496,7 +1510,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1508,7 +1522,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test`
         )
         .set('x-access-token', authToken)
         .send({ description: 'test' });
@@ -1521,7 +1535,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test`
         )
         .set('x-access-token', authToken);
 
@@ -1533,7 +1547,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'error-test' });
@@ -1544,7 +1558,7 @@ describe('Architecture API', () => {
     it('should handle CREATE organization not found (create.js lines 102-106)', async () => {
       const res = await request(app)
         .post(
-          `/api/organization/NonExistentOrgDirect/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/NonExistentOrgDirect/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-arch' });
@@ -1556,7 +1570,7 @@ describe('Architecture API', () => {
     it('should handle CREATE box not found (create.js lines 112-116)', async () => {
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/NonExistentBoxDirect/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/NonExistentBoxDirect/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-arch' });
@@ -1568,7 +1582,7 @@ describe('Architecture API', () => {
     it('should handle FINDONE organization not found (findone.js lines 105-109)', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/NonExistentOrgDirect/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/test`
+          `/api/organization/NonExistentOrgDirect/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test`
         )
         .set('x-access-token', authToken);
 
@@ -1579,7 +1593,7 @@ describe('Architecture API', () => {
     it('should handle FINDONE box not found (findone.js lines 131-135)', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/NonExistentBoxDirect/version/${testVersion.version}/provider/${testProvider.name}/architecture/test`
+          `/api/organization/${orgName}/box/NonExistentBoxDirect/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/test`
         )
         .set('x-access-token', authToken);
 
@@ -1593,7 +1607,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/definitely-not-exists`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/definitely-not-exists`
         )
         .set('x-access-token', authToken);
 
@@ -1610,7 +1624,7 @@ describe('Architecture API', () => {
       // Ensure at least one architecture exists
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: 'member-access-arch' });
@@ -1618,7 +1632,7 @@ describe('Architecture API', () => {
       // Request as authenticated member (authToken is for admin who is member)
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1628,7 +1642,7 @@ describe('Architecture API', () => {
       // Cleanup
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken);
 
@@ -1640,7 +1654,7 @@ describe('Architecture API', () => {
       await db.box.update({ isPublic: false }, { where: { name: testBox.name } });
 
       const res = await request(app).get(
-        `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+        `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
       );
       // No token provided
 
@@ -1671,7 +1685,7 @@ describe('Architecture API', () => {
       // Create architecture
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
         )
         .set('x-access-token', authToken)
         .send({ name: oldName });
@@ -1696,7 +1710,7 @@ describe('Architecture API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${oldName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${oldName}`
         )
         .set('x-access-token', authToken)
         .send({ name: newName });
@@ -1712,7 +1726,7 @@ describe('Architecture API', () => {
       // Cleanup
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${testProvider.name}/architecture/${newName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${newName}`
         )
         .set('x-access-token', authToken);
     });

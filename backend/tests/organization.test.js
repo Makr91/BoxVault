@@ -352,8 +352,14 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken)
         .send({ org_code: 'ABCDEF' });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('already in use');
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/org_code',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+      ]);
 
       await otherOrg.destroy();
     });
@@ -364,8 +370,14 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken)
         .send({ org_code: 'INVALID' });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('Invalid organization code');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/org_code',
+          rule: 'pattern',
+          params: { pattern: 'orgCode' },
+        }),
+      ]);
     });
 
     it('should update org_code successfully', async () => {
@@ -473,7 +485,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only', defaultRole: 'member' });
+        .send({ access_mode: 'invite_only', default_role: 'member' });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessMode', 'invite_only');
@@ -483,36 +495,36 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invalid_mode' });
+        .send({ access_mode: 'invalid_mode' });
 
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/access_mode', rule: 'enum' }),
+      ]);
     });
 
     it('should fail with invalid default role', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only', defaultRole: 'invalid_role' });
+        .send({ access_mode: 'invite_only', default_role: 'invalid_role' });
 
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/default_role', rule: 'enum' }),
+      ]);
     });
 
-    it('should fail with invalid default role', async () => {
+    it('should fail without an access mode', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only', defaultRole: 'invalid_role' });
+        .send({ default_role: 'member' });
 
-      expect(res.statusCode).toBe(400);
-    });
-
-    it('should fail with invalid default role', async () => {
-      const res = await request(app)
-        .put(`/api/organization/${orgName}/access-mode`)
-        .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only', defaultRole: 'invalid_role' });
-
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/access_mode', rule: 'required' }),
+      ]);
     });
 
     it('should handle database errors during access mode update', async () => {
@@ -521,16 +533,16 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only' });
+        .send({ access_mode: 'invite_only' });
 
       expect(res.statusCode).toBe(500);
     });
 
-    it('should update access mode without defaultRole', async () => {
+    it('should update access mode without default_role', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'private' });
+        .send({ access_mode: 'private' });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessMode', 'private');
@@ -567,7 +579,10 @@ describe('Organization API', () => {
         .set('x-access-token', authToken)
         .send({ description: 'This should fail' });
 
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/organization', rule: 'required' }),
+      ]);
     });
 
     it('should fail to create an organization with empty name', async () => {
@@ -576,16 +591,10 @@ describe('Organization API', () => {
         .set('x-access-token', authToken)
         .send({ organization: '' });
 
-      expect(res.statusCode).toBe(400);
-    });
-
-    it('should fail to create an organization with empty name', async () => {
-      const res = await request(app)
-        .post('/api/organization')
-        .set('x-access-token', authToken)
-        .send({ organization: '' });
-
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/organization', rule: 'required' }),
+      ]);
     });
 
     it('should fail to update with duplicate organization name', async () => {
@@ -597,9 +606,14 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken)
         .send({ organization: otherOrg.name });
 
-      // The DB has a unique constraint on the name, so this will cause a 500 error.
-      // A better implementation would be to add a middleware to check for duplicates and return a 409.
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/organization',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+      ]);
 
       await otherOrg.destroy();
     });
@@ -622,7 +636,14 @@ describe('Organization API', () => {
         .set('x-access-token', authToken)
         .send({ organization: orgName }); // Use an existing org name
 
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/organization',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+      ]);
     });
   });
 
@@ -1276,7 +1297,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'private' });
+        .send({ access_mode: 'private' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1371,7 +1392,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only' });
+        .send({ access_mode: 'invite_only' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1465,7 +1486,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ accessMode: 'invite_only' });
+        .send({ access_mode: 'invite_only' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();

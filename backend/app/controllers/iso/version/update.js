@@ -3,40 +3,6 @@ import { log } from '../../../utils/Logger.js';
 const { isoVersions: IsoVersion } = db;
 
 /**
- * Validate the optional release-notes/deprecation fields of an ISO version
- * update. A request setting deprecated:true must carry (or the version must
- * already store) a non-empty deprecation reason.
- * @param {Object} req - Express request (body + i18n)
- * @param {Object} version - The version being updated
- * @returns {string|null} 400 rejection message, or null when acceptable
- */
-const getVersionContentRejection = (req, version) => {
-  const { releaseNotes, deprecated, deprecationReason } = req.body;
-
-  if (typeof releaseNotes !== 'undefined' && releaseNotes !== null) {
-    if (typeof releaseNotes !== 'string') {
-      return req.__('isos.versions.invalidReleaseNotes');
-    }
-  }
-  if (typeof deprecated !== 'undefined' && typeof deprecated !== 'boolean') {
-    return req.__('isos.versions.invalidDeprecated');
-  }
-  if (typeof deprecationReason !== 'undefined' && deprecationReason !== null) {
-    if (typeof deprecationReason !== 'string' || deprecationReason.length > 512) {
-      return req.__('isos.versions.invalidDeprecationReason');
-    }
-  }
-  if (deprecated === true) {
-    const effectiveReason =
-      typeof deprecationReason !== 'undefined' ? deprecationReason : version.deprecationReason;
-    if (typeof effectiveReason !== 'string' || !effectiveReason.trim()) {
-      return req.__('versions.deprecationReasonRequired');
-    }
-  }
-  return null;
-};
-
-/**
  * @swagger
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}:
  *   put:
@@ -72,14 +38,14 @@ const getVersionContentRejection = (req, version) => {
  *             properties:
  *               description:
  *                 type: string
- *               releaseNotes:
+ *               release_notes:
  *                 type: string
  *                 nullable: true
  *                 description: Version release notes (absent = unchanged)
  *               deprecated:
  *                 type: boolean
- *                 description: Setting true requires a non-empty deprecationReason (in this request or already stored)
- *               deprecationReason:
+ *                 description: Setting true requires a non-empty deprecation_reason in this request
+ *               deprecation_reason:
  *                 type: string
  *                 maxLength: 512
  *                 nullable: true
@@ -87,16 +53,25 @@ const getVersionContentRejection = (req, version) => {
  *     responses:
  *       200:
  *         description: Version updated successfully
- *       400:
- *         description: Invalid field
  *       404:
  *         description: Organization, ISO or version not found
+ *       422:
+ *         description: A value breaks a rule of the version form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  */
 const update = async (req, res) => {
   const { versionNumber } = req.params;
-  const { description, releaseNotes, deprecated, deprecationReason } = req.body;
+  const {
+    description,
+    release_notes: releaseNotes,
+    deprecated,
+    deprecation_reason: deprecationReason,
+  } = req.body;
 
   try {
     const { isoData: iso } = req;
@@ -106,11 +81,6 @@ const update = async (req, res) => {
     });
     if (!version) {
       return res.status(404).send({ message: req.__('isos.versions.notFound') });
-    }
-
-    const contentRejection = getVersionContentRejection(req, version);
-    if (contentRejection) {
-      return res.status(400).send({ message: contentRejection });
     }
 
     const updatePayload = {};

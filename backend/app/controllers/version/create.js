@@ -1,5 +1,6 @@
 // create.js
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { notifyVersionCreated } from './notifications.js';
 const { versions: Version, UserOrg } = db;
@@ -32,7 +33,7 @@ const { versions: Version, UserOrg } = db;
  *           schema:
  *             $ref: '#/components/schemas/CreateVersionRequest'
  *     responses:
- *       200:
+ *       201:
  *         description: Version created successfully
  *         content:
  *           application/json:
@@ -48,6 +49,18 @@ const { versions: Version, UserOrg } = db;
  *                 message:
  *                   type: string
  *                   example: "Organization not found with name: example-org."
+ *       409:
+ *         description: A version with that number already exists for the box
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the version form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -60,11 +73,10 @@ const { versions: Version, UserOrg } = db;
  *                   example: "Some error occurred while creating the Version."
  */
 export const create = async (req, res) => {
-  const { description } = req.body;
-  const versionNumber = req.body.versionNumber || req.body.version;
+  const { description, version_number: versionNumber } = req.body;
 
   try {
-    // Organization and Box are already verified and attached by verifyVersion middleware
+    // Organization and Box are already verified and attached by attachBox middleware
     const { organizationData, boxData: box } = req;
 
     // Check if user owns the box OR has admin/owner role
@@ -76,6 +88,13 @@ export const create = async (req, res) => {
       return res.status(403).send({
         message: req.__('versions.create.permissionDenied'),
       });
+    }
+
+    const existingVersion = await Version.findOne({
+      where: { versionNumber, boxId: box.id },
+    });
+    if (existingVersion) {
+      return conflict(res, req, '/version_number', box.name);
     }
 
     // Create the version

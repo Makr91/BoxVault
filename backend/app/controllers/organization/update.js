@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
 const { organization: Organization } = db;
@@ -11,7 +12,7 @@ const { organization: Organization } = db;
  * /api/organization/{organizationName}:
  *   put:
  *     summary: Update an organization
- *     description: Update organization information including name, description, email, and website
+ *     description: Update organization information including name, description, email, and organization code
  *     tags: [Organizations]
  *     security:
  *       - bearerAuth: []
@@ -31,7 +32,7 @@ const { organization: Organization } = db;
  *             properties:
  *               organization:
  *                 type: string
- *                 description: New organization name
+ *                 description: New organization name (the slug pattern of /api/rules, unique)
  *               description:
  *                 type: string
  *                 description: Organization description
@@ -39,10 +40,10 @@ const { organization: Organization } = db;
  *                 type: string
  *                 format: email
  *                 description: Organization email
- *               website:
+ *               org_code:
  *                 type: string
- *                 format: uri
- *                 description: Organization website URL
+ *                 pattern: '^[0-9A-F]{6}$'
+ *                 description: Organization code (the orgCode pattern of /api/rules, unique)
  *     responses:
  *       200:
  *         description: Organization updated successfully
@@ -62,6 +63,18 @@ const { organization: Organization } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: The new name or organization code is already taken
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the organization form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -100,26 +113,23 @@ const getExternalEditRejection = (org, fields, req) => {
 };
 
 /**
- * Validate a submitted org_code (6-hex format, globally unique).
+ * The taken value of a rename or a code change, as a `unique` failure.
  * @param {Object} org - Organization instance
+ * @param {string|undefined} organization - Trimmed new name from the request body
  * @param {string|undefined} orgCode - Trimmed org_code from the request body
- * @param {Object} req - Express request (for i18n)
- * @returns {Promise<{status: number, message: string}|null>}
+ * @returns {Promise<{pointer: string}|null>} The pointer of the taken value, or null
  */
-const getOrgCodeRejection = async (org, orgCode, req) => {
-  if (orgCode === undefined || orgCode === null || orgCode === '') {
-    return null;
+const getTakenValue = async (org, organization, orgCode) => {
+  if (organization && organization !== org.name) {
+    const existingOrg = await Organization.findOne({ where: { name: organization } });
+    if (existingOrg) {
+      return { pointer: '/organization' };
+    }
   }
-  if (!/^[0-9A-F]{6}$/.test(orgCode)) {
-    return { status: 400, message: req.__('organizations.invalidOrgCode') };
-  }
-  if (orgCode !== org.org_code) {
+  if (orgCode && orgCode !== org.org_code) {
     const existingOrg = await Organization.findOne({ where: { org_code: orgCode } });
     if (existingOrg) {
-      return {
-        status: 400,
-        message: req.__('organizations.orgCodeInUse', { org_code: orgCode }),
-      };
+      return { pointer: '/org_code' };
     }
   }
   return null;
@@ -165,6 +175,10 @@ export const update = async (req, res) => {
       where: { name: organizationName },
     });
 
+    if (!org) {
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+    }
+
     const externalRejection = getExternalEditRejection(
       org,
       { organization, email, description, org_code },
@@ -174,19 +188,19 @@ export const update = async (req, res) => {
       return res.status(externalRejection.status).send({ message: externalRejection.message });
     }
 
-    moveOrgDirectory(oldFilePath, newFilePath);
-
-    const orgCodeRejection = await getOrgCodeRejection(org, org_code, req);
-    if (orgCodeRejection) {
-      return res.status(orgCodeRejection.status).send({ message: orgCodeRejection.message });
+    const taken = await getTakenValue(org, organization, org_code);
+    if (taken) {
+      return conflict(res, req, taken.pointer, 'global');
     }
+
+    moveOrgDirectory(oldFilePath, newFilePath);
 
     await org.update({
       name: organization !== undefined ? organization : org.name,
       description: description !== undefined ? description : org.description,
       email: email !== undefined ? email : org.email,
       emailHash: email ? generateEmailHash(email) : org.emailHash,
-      org_code: org_code !== undefined ? org_code : org.org_code,
+      org_code: org_code ? org_code : org.org_code,
     });
 
     // Reload to ensure persistence and get fresh data

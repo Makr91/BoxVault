@@ -1,6 +1,14 @@
 import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
-const { user: User, organization: Organization, UserOrg } = db;
+const {
+  user: User,
+  organization: Organization,
+  UserOrg,
+  box: Box,
+  iso: ISO,
+  versions: Version,
+  providers: Provider,
+} = db;
 
 /**
  * Middleware to verify user has membership in the organization specified in route
@@ -10,25 +18,25 @@ const isOrgMember = async (req, res, next) => {
     const { organization: orgName } = req.params;
 
     if (!orgName) {
-      return res.status(400).send({ message: 'Organization parameter required!' });
+      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
     }
 
     // Membership check — service accounts impersonate their owning user
     // (req.userId is the owning user's id), so they take the same path.
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: 'User not found!' });
+      return res.status(401).send({ message: req.__('users.userNotFound') });
     }
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     const membership = await UserOrg.findUserOrgRole(user.id, organization.id);
     if (!membership) {
       return res.status(403).send({
-        message: 'User is not a member of this organization!',
+        message: req.__('organizations.userNotMember'),
       });
     }
 
@@ -44,7 +52,7 @@ const isOrgMember = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: 'Error checking organization membership' });
+    return res.status(500).send({ message: req.__('organizations.membershipCheckError') });
   }
 };
 
@@ -56,12 +64,12 @@ const isOrgAdmin = async (req, res, next) => {
     const { organization: orgName } = req.params;
 
     if (!orgName) {
-      return res.status(400).send({ message: 'Organization parameter required!' });
+      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: 'User not found!' });
+      return res.status(401).send({ message: req.__('users.userNotFound') });
     }
 
     // Check if user is global admin first (bypasses org-specific checks)
@@ -70,7 +78,7 @@ const isOrgAdmin = async (req, res, next) => {
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     if (isGlobalAdmin) {
@@ -83,7 +91,7 @@ const isOrgAdmin = async (req, res, next) => {
     const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
     if (!hasRole) {
       return res.status(403).send({
-        message: 'Require Admin or Owner role in this organization!',
+        message: req.__('organizations.requireAdminOrOwner'),
       });
     }
 
@@ -98,7 +106,7 @@ const isOrgAdmin = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: 'Error checking organization permissions' });
+    return res.status(500).send({ message: req.__('organizations.permissionCheckError') });
   }
 };
 
@@ -110,12 +118,12 @@ const isOrgOwner = async (req, res, next) => {
     const { organization: orgName } = req.params;
 
     if (!orgName) {
-      return res.status(400).send({ message: 'Organization parameter required!' });
+      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: 'User not found!' });
+      return res.status(401).send({ message: req.__('users.userNotFound') });
     }
 
     // Check if user is global admin first (bypasses org-specific checks)
@@ -124,7 +132,7 @@ const isOrgOwner = async (req, res, next) => {
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     if (isGlobalAdmin) {
@@ -137,7 +145,7 @@ const isOrgOwner = async (req, res, next) => {
     const hasRole = await UserOrg.hasRole(user.id, organization.id, 'owner');
     if (!hasRole) {
       return res.status(403).send({
-        message: 'Require Owner role in this organization!',
+        message: req.__('organizations.requireOwner'),
       });
     }
 
@@ -152,27 +160,27 @@ const isOrgOwner = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: 'Error checking organization permissions' });
+    return res.status(500).send({ message: req.__('organizations.permissionCheckError') });
   }
 };
 
 /**
  * Middleware to verify user has admin or owner role in organization.
- * Resolves the org from req.params.organization or req.body.organizationName
+ * Resolves the org from req.params.organization or req.body.organization_name
  * (same resolution as rejectExternallyManagedOrg) so body-driven routes like
  * POST /auth/invite can be gated per-org too.
  */
 const isOrgAdminOrOwner = async (req, res, next) => {
   try {
-    const orgName = req.params.organization || req.body?.organizationName;
+    const orgName = req.params.organization || req.body?.organization_name;
 
     if (!orgName) {
-      return res.status(400).send({ message: 'Organization parameter required!' });
+      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: 'User not found!' });
+      return res.status(401).send({ message: req.__('users.userNotFound') });
     }
 
     // Check if user is global admin first (bypasses org-specific checks)
@@ -181,7 +189,7 @@ const isOrgAdminOrOwner = async (req, res, next) => {
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: 'Organization not found!' });
+      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
     if (isGlobalAdmin) {
@@ -195,7 +203,7 @@ const isOrgAdminOrOwner = async (req, res, next) => {
     const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
     if (!hasRole) {
       return res.status(403).send({
-        message: 'Require Admin or Owner role in this organization!',
+        message: req.__('organizations.requireAdminOrOwner'),
       });
     }
 
@@ -210,7 +218,7 @@ const isOrgAdminOrOwner = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: 'Error checking organization permissions' });
+    return res.status(500).send({ message: req.__('organizations.permissionCheckError') });
   }
 };
 
@@ -222,12 +230,12 @@ const isOrgAdminOrOwner = async (req, res, next) => {
  * on every login — local writes would be silently overwritten. Local orgs
  * (external_issuer null) are unaffected.
  *
- * Resolves the org from req.params.organization or req.body.organizationName.
+ * Resolves the org from req.params.organization or req.body.organization_name.
  * Falls through when the org doesn't exist (later middleware handles 404).
  */
 const rejectExternallyManagedOrg = async (req, res, next) => {
   try {
-    const orgName = req.params.organization || req.body?.organizationName;
+    const orgName = req.params.organization || req.body?.organization_name;
 
     if (!orgName) {
       return next();
@@ -249,9 +257,133 @@ const rejectExternallyManagedOrg = async (req, res, next) => {
     log.error.error('External-org write guard error:', {
       error: err.message,
       stack: err.stack,
-      organization: req.params.organization || req.body?.organizationName,
+      organization: req.params.organization || req.body?.organization_name,
     });
-    return res.status(500).send({ message: 'Error checking organization management source' });
+    return res.status(500).send({ message: req.__('organizations.managementCheckError') });
+  }
+};
+
+/**
+ * Middleware resolving the organization and box named by the route and
+ * attaching them as req.organizationData and req.boxData; 404 when either is missing.
+ */
+const attachBox = async (req, res, next) => {
+  const { organization, boxId } = req.params;
+
+  try {
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+    });
+
+    if (!organizationData) {
+      return res.status(404).send({
+        message: req.__('organizations.organizationNotFoundWithName', { organization }),
+      });
+    }
+
+    const box = await Box.findOne({
+      where: { name: boxId, organizationId: organizationData.id },
+    });
+
+    if (!box) {
+      return res.status(404).send({
+        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
+      });
+    }
+
+    req.organizationData = organizationData;
+    req.boxData = box;
+
+    return next();
+  } catch (err) {
+    log.error.error('Error attaching box entities:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
+  }
+};
+
+/**
+ * Middleware resolving the version and provider named by the route beneath
+ * req.boxData and attaching them as req.versionData and req.providerData; 404
+ * when either is missing. The provider is resolved only when the route names one.
+ */
+const attachProvider = async (req, res, next) => {
+  const { organization, boxId, versionNumber, providerName } = req.params;
+
+  try {
+    const version = await Version.findOne({
+      where: { versionNumber, boxId: req.boxData.id },
+    });
+
+    if (!version) {
+      return res.status(404).send({
+        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
+      });
+    }
+
+    req.versionData = version;
+
+    if (providerName === undefined) {
+      return next();
+    }
+
+    const provider = await Provider.findOne({
+      where: { name: providerName, versionId: version.id },
+    });
+
+    if (!provider) {
+      return res.status(404).send({
+        message: req.__('providers.providerNotFoundInVersion', {
+          providerName,
+          versionNumber,
+          boxId,
+        }),
+      });
+    }
+
+    req.providerData = provider;
+
+    return next();
+  } catch (err) {
+    log.error.error('Error attaching provider entities:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
+  }
+};
+
+/**
+ * Middleware resolving the organization and ISO named by the route and
+ * attaching them as req.organizationData and req.isoData; 404 when either is missing.
+ */
+const attachIso = async (req, res, next) => {
+  const { organization, name } = req.params;
+
+  try {
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+    });
+
+    if (!organizationData) {
+      return res
+        .status(404)
+        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+    }
+
+    const iso = await ISO.findOne({
+      where: { name, organizationId: organizationData.id },
+    });
+
+    if (!iso) {
+      return res
+        .status(404)
+        .send({ message: req.__('isos.notFoundWithName', { name, organization }) });
+    }
+
+    req.organizationData = organizationData;
+    req.isoData = iso;
+
+    return next();
+  } catch (err) {
+    log.error.error('Error attaching ISO entities:', err);
+    return res.status(500).send({ message: req.__('errors.operationFailed') });
   }
 };
 
@@ -290,5 +422,8 @@ export {
   isOrgOwner,
   isOrgAdminOrOwner,
   rejectExternallyManagedOrg,
+  attachBox,
+  attachProvider,
+  attachIso,
   getUserOrgContext,
 };

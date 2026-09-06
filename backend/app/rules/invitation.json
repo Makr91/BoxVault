@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "required": ["email", "organization_name"],
+  "properties": {
+    "email": { "$ref": "#/$defs/email" },
+    "organization_name": { "$ref": "#/$defs/slug" },
+    "invite_role": { "type": "string", "enum": ["member", "admin"] }
+  }
+}

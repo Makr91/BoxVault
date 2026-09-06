@@ -6,8 +6,8 @@ const PROVIDER = 'oidc-claimsidp';
 
 const authConfig = {
   auth: {
-    oidc: { providers: { claimsidp: { enabled: { value: true }, issuer: { value: ISSUER } } } },
-    external: { provisioning_fallback_action: { value: 'require_invite' } },
+    oidc: { providers: { claimsidp: { enabled: true, issuer: ISSUER } } },
+    external: { provisioning_fallback_action: 'require_invite' },
   },
 };
 

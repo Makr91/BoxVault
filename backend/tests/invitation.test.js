@@ -61,45 +61,45 @@ const mockableConfigLoader = {
     if (name === 'mail') {
       return {
         smtp_connect: {
-          host: { value: 'smtp.example.com' },
-          port: { value: 587 },
-          secure: { value: false },
-          rejectUnauthorized: { value: false },
+          host: 'smtp.example.com',
+          port: 587,
+          secure: false,
+          rejectUnauthorized: false,
         },
         smtp_settings: {
-          from: { value: 'noreply@example.com' },
-          alert_emails: { value: [] },
+          from: 'noreply@example.com',
+          alert_emails: [],
         },
         smtp_auth: {
-          user: { value: 'user' },
-          password: { value: 'pass' },
+          user: 'user',
+          password: 'pass',
         },
       };
     }
     if (name === 'auth') {
       return {
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
+          jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
         },
       };
     }
     if (name === 'app') {
       return {
         boxvault: {
-          origin: { value: 'http://localhost:3000' },
-          box_max_file_size: { value: 10 },
-          api_listen_port_unencrypted: { value: 5000 },
-          api_listen_port_encrypted: { value: 5001 },
+          origin: 'http://localhost:3000',
+          box_max_file_size: 10,
+          api_listen_port_unencrypted: 5000,
+          api_listen_port_encrypted: 5001,
         },
-        logging: { level: { value: 'silent' } },
+        logging: { level: 'silent' },
       };
     }
     if (name === 'db') {
       return {
         sql: {
-          dialect: { value: 'sqlite' },
-          storage: { value: ':memory:' },
-          logging: { value: false },
+          dialect: 'sqlite',
+          storage: ':memory:',
+          logging: false,
         },
       };
     }
@@ -109,6 +109,17 @@ const mockableConfigLoader = {
   getSetupTokenPath: jest.fn().mockReturnValue('/tmp/setup.token'),
   getRateLimitConfig: jest.fn().mockReturnValue({ window_minutes: 15, max_requests: 100 }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
+  checkConfigs: jest.fn().mockReturnValue([]),
+  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
+  readConfigFile: jest.fn(name => mockableConfigLoader.loadConfig(name)),
+  fillDefaults: jest.fn((schema, config) => {
+    void schema;
+    return config;
+  }),
+  validateConfig: jest.fn().mockReturnValue([]),
+  unknownKeys: jest.fn().mockReturnValue([]),
+  loadConfigs: jest.fn(),
+  CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
 
 jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
@@ -117,6 +128,14 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   getSetupTokenPath: (...args) => mockableConfigLoader.getSetupTokenPath(...args),
   getRateLimitConfig: (...args) => mockableConfigLoader.getRateLimitConfig(...args),
   getI18nConfig: (...args) => mockableConfigLoader.getI18nConfig(...args),
+  checkConfigs: (...args) => mockableConfigLoader.checkConfigs(...args),
+  loadSchema: (...args) => mockableConfigLoader.loadSchema(...args),
+  readConfigFile: (...args) => mockableConfigLoader.readConfigFile(...args),
+  fillDefaults: (...args) => mockableConfigLoader.fillDefaults(...args),
+  validateConfig: (...args) => mockableConfigLoader.validateConfig(...args),
+  unknownKeys: (...args) => mockableConfigLoader.unknownKeys(...args),
+  loadConfigs: (...args) => mockableConfigLoader.loadConfigs(...args),
+  CONFIG_NAMES: mockableConfigLoader.CONFIG_NAMES,
   default: mockableConfigLoader,
 }));
 
@@ -141,7 +160,7 @@ describe('Invitation API', () => {
   let invitationId;
 
   const uniqueId = Date.now().toString(36);
-  const orgName = `InviteOrg_${uniqueId}`;
+  const orgName = `InviteOrg-${uniqueId}`;
   const adminName = `InviteAdmin_${uniqueId}`;
   const userName = `InviteUser_${uniqueId}`;
   const inviteeEmail = `invitee-${uniqueId}@example.com`;
@@ -215,7 +234,7 @@ describe('Invitation API', () => {
         .set('x-access-token', userToken)
         .send({
           email: inviteeEmail,
-          organizationName: orgName,
+          organization_name: orgName,
         });
       expect(res.statusCode).toBe(403);
     });
@@ -226,8 +245,8 @@ describe('Invitation API', () => {
         .set('x-access-token', adminToken)
         .send({
           email: inviteeEmail,
-          organizationName: orgName,
-          inviteRole: 'member',
+          organization_name: orgName,
+          invite_role: 'member',
         });
 
       expect(res.statusCode).toBe(200);
@@ -250,30 +269,33 @@ describe('Invitation API', () => {
         .set('x-access-token', adminToken)
         .send({
           email: 'test@test.com',
-          organizationName: 'NonExistentOrg',
+          organization_name: 'NonExistentOrg',
         });
       expect(res.statusCode).toBe(404);
     });
 
-    it('should return 400 if invalid role', async () => {
+    it('should return 422 if invalid role', async () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
         .send({
           email: 'test@test.com',
-          organizationName: orgName,
-          inviteRole: 'owner', // Only member/admin allowed
+          organization_name: orgName,
+          invite_role: 'owner', // Only member/admin allowed
         });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/invite_role', rule: 'enum' }),
+      ]);
     });
 
-    it('should return 400 when organization name is missing', async () => {
+    it('should return 422 when email and organization name are missing', async () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
         .send({});
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Organization parameter required!');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors.map(error => error.pointer)).toEqual(['/email', '/organization_name']);
     });
 
     it('should handle database errors', async () => {
@@ -281,10 +303,10 @@ describe('Invitation API', () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
-        .send({ email: inviteeEmail, organizationName: orgName });
+        .send({ email: inviteeEmail, organization_name: orgName });
       jest.restoreAllMocks();
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Error checking organization permissions');
+      expect(res.body.message).toBe('organizations.permissionCheckError');
     });
 
     it('should handle app config loading failure', async () => {
@@ -299,7 +321,7 @@ describe('Invitation API', () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
-        .send({ email: 'app-config-fail@example.com', organizationName: orgName });
+        .send({ email: 'app-config-fail@example.com', organization_name: orgName });
 
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toContain('invitations.send.error');
@@ -319,7 +341,7 @@ describe('Invitation API', () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
-        .send({ email: 'smtp-fail@example.com', organizationName: orgName });
+        .send({ email: 'smtp-fail@example.com', organization_name: orgName });
 
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toContain('invitations.send.error');
@@ -335,7 +357,7 @@ describe('Invitation API', () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', adminToken)
-        .send({ email: 'transport-fail@example.com', organizationName: orgName });
+        .send({ email: 'transport-fail@example.com', organization_name: orgName });
 
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toBe('invitations.send.error');
@@ -447,7 +469,7 @@ describe('Invitation API', () => {
     });
 
     it('sendInvitation should default to member role', async () => {
-      req.body = { email: 'test@test.com', organizationName: orgName };
+      req.body = { email: 'test@test.com', organization_name: orgName };
       // Mock organization find
       jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
       // Mock create
@@ -487,7 +509,7 @@ describe('Invitation API', () => {
     });
 
     it('sendInvitation should handle fallback error message', async () => {
-      req.body = { email: 'test@test.com', organizationName: orgName };
+      req.body = { email: 'test@test.com', organization_name: orgName };
       jest.spyOn(db.organization, 'findOne').mockRejectedValue(new Error(''));
       await sendInvitation(req, res);
       expect(res.status).toHaveBeenCalledWith(500);

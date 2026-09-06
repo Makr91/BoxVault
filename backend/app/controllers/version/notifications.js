@@ -4,7 +4,7 @@ import { fanOutWatchEvent } from '../../utils/watchEvents.js';
 import db from '../../models/index.js';
 
 const buildVersionEvent = (organization, boxName, versionNumber) => {
-  const origin = loadConfig('app').boxvault.origin.value;
+  const { origin } = loadConfig('app').boxvault;
   return {
     isExternal: Boolean(organization.external_issuer && organization.external_org_id),
     orgSegment: organization.external_org_id || organization.name,

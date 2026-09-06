@@ -67,15 +67,15 @@ const writeAuthConfig = mutate => {
 };
 
 const enableScim = config => {
-  config.auth.scim = { enabled: { value: true }, audience: { value: AUDIENCE } };
+  config.auth.scim = { enabled: true, audience: AUDIENCE };
   config.auth.oidc.providers = {
-    noenable: { issuer: { value: 'https://no-enable.example' } },
+    noenable: { issuer: 'https://no-enable.example' },
     scimidp: {
-      enabled: { value: true },
-      issuer: { value: ISSUER },
-      client_id: { value: 'boxvault-scim' },
+      enabled: true,
+      issuer: ISSUER,
+      client_id: 'boxvault-scim',
     },
-    undiscovered: { enabled: { value: true }, issuer: { value: UNDISCOVERED_ISSUER } },
+    undiscovered: { enabled: true, issuer: UNDISCOVERED_ISSUER },
   };
 };
 
@@ -185,7 +185,7 @@ describe('SCIM receiver', () => {
   describe('scimAuth', () => {
     it('should refuse every request while SCIM is disabled', async () => {
       const restore = writeAuthConfig(config => {
-        config.auth.scim.enabled = { value: false };
+        config.auth.scim.enabled = false;
       });
       try {
         const res = await scimGet('/Users', { filter: `externalId eq "${userUuid}"` });
@@ -246,7 +246,7 @@ describe('SCIM receiver', () => {
 
     it('should refuse to validate without a configured audience', async () => {
       const restore = writeAuthConfig(config => {
-        delete config.auth.scim.audience;
+        config.auth.scim.audience = '';
       });
       try {
         const res = await scimGet('/Users', { filter: `externalId eq "${userUuid}"` });

@@ -1,5 +1,6 @@
 // create.js
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateOrgCode } from '../../utils/identity.js';
 const { organization: Organization, UserOrg } = db;
@@ -24,23 +25,29 @@ const { organization: Organization, UserOrg } = db;
  *             properties:
  *               organization:
  *                 type: string
- *                 description: Organization name
+ *                 description: Organization name (the slug pattern of /api/rules, unique)
  *               description:
  *                 type: string
  *                 description: Organization description
  *     responses:
- *       200:
+ *       201:
  *         description: Organization created successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Organization'
- *       400:
- *         description: Bad request - organization name cannot be empty
+ *       409:
+ *         description: An organization with that name already exists
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the organization form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -52,6 +59,13 @@ const { organization: Organization, UserOrg } = db;
 export const create = async (req, res) => {
   // Save Organization in the database
   try {
+    const existingOrganization = await Organization.findOne({
+      where: { name: req.body.organization },
+    });
+    if (existingOrganization) {
+      return conflict(res, req, '/organization', 'global');
+    }
+
     // Create a Organization
     const organization = {
       name: req.body.organization,

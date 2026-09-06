@@ -112,7 +112,7 @@ describe('Version events fanned out to watchers', () => {
     const res = await request(app)
       .post(versionUrl(localOrgName))
       .set('x-access-token', ownerToken)
-      .send({ versionNumber: '1.0.0', description: 'first' });
+      .send({ version_number: '1.0.0', description: 'first' });
     expect(res.statusCode).toBe(201);
     await settle();
   });
@@ -121,7 +121,7 @@ describe('Version events fanned out to watchers', () => {
     const res = await request(app)
       .post(versionUrl(externalOrgName))
       .set('x-access-token', ownerToken)
-      .send({ versionNumber: '1.0.0', description: 'first' });
+      .send({ version_number: '1.0.0', description: 'first' });
     expect(res.statusCode).toBe(201);
     await settle();
   });
@@ -130,7 +130,7 @@ describe('Version events fanned out to watchers', () => {
     const res = await request(app)
       .post(`/api/organization/${localOrgName}/box/${draftName}/version`)
       .set('x-access-token', ownerToken)
-      .send({ versionNumber: '0.1.0' });
+      .send({ version_number: '0.1.0' });
     expect(res.statusCode).toBe(201);
   });
 
@@ -151,8 +151,16 @@ describe('Version events fanned out to watchers', () => {
       )
     );
     responses.forEach(res => {
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.headers['content-type']).toContain('application/problem+json');
     });
+    expect(responses.map(res => res.body.errors[0].rule)).toEqual([
+      'type',
+      'type',
+      'maxLength',
+      'required',
+      'required',
+    ]);
   });
 
   it('should deprecate the version once and notify the watchers', async () => {
@@ -171,7 +179,11 @@ describe('Version events fanned out to watchers', () => {
     const again = await request(app)
       .put(versionUrl(localOrgName, '/1.0.0'))
       .set('x-access-token', ownerToken)
-      .send({ deprecated: true, description: 'still deprecated' });
+      .send({
+        deprecated: true,
+        deprecation_reason: 'superseded',
+        description: 'still deprecated',
+      });
     expect(again.statusCode).toBe(200);
     expect(again.body.description).toBe('still deprecated');
   });

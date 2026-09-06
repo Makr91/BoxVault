@@ -42,7 +42,7 @@ const ORG_CODE_PATTERN = /^[0-9A-F]{6}$/;
  * @returns {Promise<string>} Six uppercase hex characters
  */
 const generateOrgCode = async (db, transaction = null) => {
-  const configuredSeed = loadConfig('app').boxvault?.org_code_seed?.value;
+  const configuredSeed = loadConfig('app').boxvault?.org_code_seed;
   const normalizedSeed =
     typeof configuredSeed === 'string' ? configuredSeed.trim().toUpperCase() : '';
   const seed = ORG_CODE_PATTERN.test(normalizedSeed) ? normalizedSeed : DEFAULT_ORG_CODE_SEED;

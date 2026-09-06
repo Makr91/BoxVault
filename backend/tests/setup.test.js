@@ -2,6 +2,7 @@ import request from 'supertest';
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
+import yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
 import app from '../server.js';
 import { getSetupTokenPath } from '../app/utils/config-loader.js';
@@ -97,29 +98,50 @@ describe('Setup API', () => {
       expect(res.statusCode).toBe(403);
     });
 
-    it('should return configs with valid authorization', async () => {
+    it('should return every config with its secrets masked', async () => {
       const res = await request(app)
         .get('/api/setup')
         .set('Authorization', `Bearer ${authorizedToken}`);
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('configs');
-      expect(res.body.configs).toHaveProperty('app');
-      expect(res.body.configs).toHaveProperty('db');
+      expect(Object.keys(res.body.configs)).toEqual(['app', 'auth', 'db', 'mail']);
+      expect(res.body.configs.auth.auth.jwt.jwt_secret).toBe('********');
+      expect(res.body.configs.db.sql.dialect).toBe('sqlite');
     });
 
     it('should handle read errors', async () => {
-      // Mock fs.readFile to fail
-      jest.spyOn(fs, 'readFile').mockImplementation((filePath, encoding, cb) => {
-        void filePath;
-        void encoding;
-        cb(new Error('Read Error'));
-      });
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
+      try {
+        const res = await request(app)
+          .get('/api/setup')
+          .set('Authorization', `Bearer ${authorizedToken}`);
+        expect(res.statusCode).toBe(500);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+        consoleErrorSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('GET /api/setup/schema', () => {
+    it('should fail without authorization', async () => {
+      const res = await request(app).get('/api/setup/schema');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return the schema of every config', async () => {
       const res = await request(app)
-        .get('/api/setup')
+        .get('/api/setup/schema')
         .set('Authorization', `Bearer ${authorizedToken}`);
-      expect(res.statusCode).toBe(500);
+
+      expect(res.statusCode).toBe(200);
+      expect(Object.keys(res.body.schemas)).toEqual(['app', 'auth', 'db', 'mail']);
+      expect(res.body.schemas.db.properties.database_type.enum).toEqual(['mysql', 'sqlite']);
+      expect(res.body.schemas.auth.properties.auth.properties.jwt.required).toEqual(['jwt_secret']);
     });
   });
 
@@ -184,7 +206,7 @@ describe('Setup API', () => {
       const newConfig = {
         app: {
           boxvault: {
-            origin: { value: 'http://localhost:4000' },
+            origin: 'http://localhost:4000',
           },
         },
       };
@@ -200,6 +222,35 @@ describe('Setup API', () => {
       expect(fs.existsSync(setupTokenPath)).toBe(false);
     });
 
+    it('should refuse a failing value of any file with pointers and write nothing', async () => {
+      fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
+      await reauthorize();
+      const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+      const dbConfigPath = path.join(__dirname, '../app/config/db.test.config.yaml');
+      const appBefore = fs.readFileSync(appConfigPath, 'utf8');
+      const dbBefore = fs.readFileSync(dbConfigPath, 'utf8');
+
+      const res = await request(app)
+        .put('/api/setup')
+        .set('Authorization', `Bearer ${authorizedToken}`)
+        .send({
+          configs: {
+            app: { boxvault: { api_listen_port_unencrypted: 70000 } },
+            db: { sql: { logging: 'yes' } },
+          },
+        });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.errors.map(error => error.pointer)).toEqual([
+        '/configs/app/boxvault/api_listen_port_unencrypted',
+        '/configs/db/sql/logging',
+      ]);
+      expect(fs.readFileSync(appConfigPath, 'utf8')).toBe(appBefore);
+      expect(fs.readFileSync(dbConfigPath, 'utf8')).toBe(dbBefore);
+      expect(fs.existsSync(setupTokenPath)).toBe(true);
+    });
+
     it('should handle database type updates', async () => {
       // Re-create setup token for this test since previous test deleted it
       fs.writeFileSync(setupTokenPath, setupToken, 'utf8');
@@ -207,8 +258,8 @@ describe('Setup API', () => {
 
       const dbConfig = {
         db: {
-          database_type: { value: 'mysql' },
-          sql: { dialect: { value: 'sqlite' } }, // Should be overwritten by database_type
+          database_type: 'mysql',
+          sql: { dialect: 'sqlite' },
         },
       };
 
@@ -218,6 +269,9 @@ describe('Setup API', () => {
         .send({ configs: dbConfig });
 
       expect(res.statusCode).toBe(200);
+      const dbConfigPath = path.join(__dirname, '../app/config/db.test.config.yaml');
+      const written = yaml.load(fs.readFileSync(dbConfigPath, 'utf8'));
+      expect(written.sql.dialect).toBe('mysql');
     });
 
     it('should handle update errors', async () => {
@@ -227,11 +281,8 @@ describe('Setup API', () => {
       }
       await reauthorize();
 
-      // Mock fs.readFile to fail during config read
-      jest.spyOn(fs, 'readFile').mockImplementation((filePath, encoding, cb) => {
-        void filePath;
-        void encoding;
-        cb(new Error('Read Error'));
+      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
+        throw new Error('Read Error');
       });
 
       const res = await request(app)
@@ -284,7 +335,7 @@ describe('Setup API', () => {
       const res = await request(app)
         .put('/api/setup')
         .set('Authorization', `Bearer ${authorizedToken}`)
-        .send({ configs: { unknown_config: { value: 'test' } } });
+        .send({ configs: { unknown_config: { some: 'test' } } });
 
       expect(res.statusCode).toBe(200);
     });
@@ -312,13 +363,9 @@ describe('Setup API', () => {
 
   describe('Setup Controller Coverage', () => {
     it('should handle errors in isSetupComplete (check.js)', async () => {
-      const readFileSpy = jest
-        .spyOn(fs, 'readFile')
-        .mockImplementation((filePath, encoding, cb) => {
-          void filePath;
-          void encoding;
-          cb(new Error('Read Error'));
-        });
+      const readFileSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
+        throw new Error('Read Error');
+      });
 
       const res = await request(app).get('/api/setup/status');
       expect(res.statusCode).toBe(500);
@@ -326,19 +373,16 @@ describe('Setup API', () => {
       readFileSpy.mockRestore();
     });
 
-    it('should handle YAML parse errors in readConfig (helpers.js)', async () => {
+    it('should handle YAML parse errors in readConfigFile', async () => {
       await reauthorize();
       const readFileSpy = jest
-        .spyOn(fs, 'readFile')
-        .mockImplementation((filePath, encoding, cb) => {
-          void filePath;
-          void encoding;
-          cb(null, 'invalid: yaml: : content');
-        });
+        .spyOn(fs, 'readFileSync')
+        .mockReturnValue('invalid: yaml: : content');
 
       const res = await request(app)
-        .get('/api/setup')
-        .set('Authorization', `Bearer ${authorizedToken}`);
+        .put('/api/setup')
+        .set('Authorization', `Bearer ${authorizedToken}`)
+        .send({ configs: { app: {} } });
 
       expect(res.statusCode).toBe(500);
 
@@ -352,14 +396,11 @@ describe('Setup API', () => {
       }
       await reauthorize();
 
-      // Mock readFile to return config without sql block for db config
-      const readFileSpy = jest.spyOn(fs, 'readFile').mockImplementation((pathArg, encoding, cb) => {
-        void encoding;
-        if (pathArg.toString().includes('db')) {
-          cb(null, 'other_setting: value');
-        } else {
-          cb(null, 'key: value');
+      const readFileSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(pathArg => {
+        if (pathArg.toString().includes('db.test.config')) {
+          return 'other_setting: value';
         }
+        return 'key: value';
       });
 
       // Mock write operations to prevent actual file system writes and ensure success
@@ -383,7 +424,7 @@ describe('Setup API', () => {
         .send({
           configs: {
             db: {
-              database_type: { value: 'postgres' },
+              database_type: 'mysql',
             },
           },
         });

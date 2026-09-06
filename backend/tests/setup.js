@@ -18,93 +18,75 @@ const __dirname = path.dirname(__filename);
 
 // Load test configuration
 const dbConfig = {
+  schemaVersion: 1,
   sql: {
-    dialect: {
-      value: process.env.TEST_DB_DIALECT || 'sqlite',
-    },
-    storage: {
-      value: ':memory:', // Use in-memory SQLite for tests
-    },
-    logging: {
-      value: false, // Disable SQL logging during tests
-    },
+    dialect: process.env.TEST_DB_DIALECT || 'sqlite',
+    storage: ':memory:',
+    logging: false,
   },
 };
 
 const appConfig = {
+  schemaVersion: 1,
   boxvault: {
-    box_storage_directory: {
-      value: path.join(__dirname, '__test_storage__'),
-    },
-    box_max_file_size: {
-      value: 1, // 1GB for tests
-    },
-    origin: {
-      value: 'http://localhost:3000', // Required for CORS in server.js
-    },
-    api_url: {
-      value: 'http://localhost:3000/api',
-    },
-    api_listen_port_unencrypted: {
-      value: process.env.TEST_PORT || 5001,
-    },
-    api_listen_port_encrypted: {
-      value: 5002,
-    },
+    box_storage_directory: path.join(__dirname, '__test_storage__'),
+    box_max_file_size: 1,
+    origin: 'http://localhost:3000',
+    api_url: 'http://localhost:3000/api',
+    api_listen_port_unencrypted: Number(process.env.TEST_PORT) || 5001,
+    api_listen_port_encrypted: 5002,
   },
   gravatar: {
-    enabled: { value: true },
-    default: { value: 'identicon' },
+    base_url: '',
   },
   ticket_system: {
-    enabled: { value: true },
-    url: { value: 'https://example.com/ticket' },
+    enabled: true,
+    base_url: 'https://example.com/ticket',
   },
   rate_limiting: {
-    window_minutes: { value: 15 },
-    max_requests: { value: 1000000 },
-    file_operations_max_requests: { value: 1000000 },
-    download_max_requests: { value: 1000000 },
-    download_link_max_requests: { value: 1000000 },
-    architecture_operations_max_requests: { value: 1000000 },
+    window_minutes: 15,
+    max_requests: 1000000,
+    file_operations_max_requests: 1000000,
+    download_max_requests: 1000000,
+    download_link_max_requests: 1000000,
+    architecture_operations_max_requests: 1000000,
   },
 };
 
 const authConfig = {
+  schemaVersion: 1,
   auth: {
     jwt: {
-      jwt_secret: {
-        value: 'test-secret',
-      },
-      jwt_expiration: {
-        value: '1h',
-      },
-      jwt_issuer: {
-        value: 'boxvault',
-      },
-      jwt_audience: {
-        value: 'boxvault-api',
-      },
+      jwt_secret: 'test-secret',
+      jwt_expiration: '1h',
+      jwt_issuer: 'boxvault',
+      jwt_audience: 'boxvault-api',
+      local_enabled: true,
     },
     local: {
-      local_enabled: { value: true },
-      local_require_email_verification: { value: false },
-      local_password_min_length: { value: 6 },
-      local_password_require_uppercase: { value: false },
-      local_password_require_lowercase: { value: false },
-      local_password_require_numbers: { value: false },
-      local_password_require_symbols: { value: false },
-      local_bcrypt_rounds: { value: 8 },
-      local_session_timeout: { value: 24 },
-      local_allow_new_organizations: { value: true },
+      local_require_email_verification: false,
+      local_password_min_length: 6,
+      local_password_require_uppercase: false,
+      local_password_require_lowercase: false,
+      local_password_require_numbers: false,
+      local_password_require_symbols: false,
+      local_bcrypt_rounds: 8,
+      local_session_timeout: 24,
+      local_allow_new_organizations: true,
     },
     oidc: {
       providers: {},
     },
     external: {
-      provisioning_fallback_action: { value: 'require_invite' },
+      provisioning_fallback_action: 'require_invite',
     },
   },
+};
+
+const mailConfig = {
+  schemaVersion: 1,
+  smtp_connect: { host: 'localhost', port: 1025 },
+  smtp_settings: { from: 'noreply@example.com' },
 };
 
 // Write test configs to separate files
@@ -112,10 +94,12 @@ const configDir = path.join(__dirname, '../app/config');
 const dbConfigPath = path.join(configDir, 'db.test.config.yaml');
 const appConfigPath = path.join(configDir, 'app.test.config.yaml');
 const authConfigPath = path.join(configDir, 'auth.test.config.yaml');
+const mailConfigPath = path.join(configDir, 'mail.test.config.yaml');
 
 fs.writeFileSync(dbConfigPath, yaml.dump(dbConfig));
 fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
 fs.writeFileSync(authConfigPath, yaml.dump(authConfig));
+fs.writeFileSync(mailConfigPath, yaml.dump(mailConfig));
 
 // Require models AFTER configs are written to avoid "undefined" errors
 const { default: db } = await import('../app/models/index.js');
@@ -230,10 +214,12 @@ afterAll(async () => {
   }
 
   // Clean up test config
-  [dbConfigPath, appConfigPath, authConfigPath].forEach(configPath => {
-    if (fs.existsSync(configPath)) {
-      fs.unlinkSync(configPath);
-    }
+  [dbConfigPath, appConfigPath, authConfigPath, mailConfigPath].forEach(configPath => {
+    [configPath, `${configPath}.bak`].forEach(file => {
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+      }
+    });
   });
 
   // Restore console mocks

@@ -44,8 +44,8 @@ export const getGravatarProfile = async (req, res) => {
 
   try {
     const appConfig = loadConfig('app');
-    const baseUrl = appConfig.gravatar?.base_url?.value;
-    const apiKey = appConfig.gravatar?.api_key?.value;
+    const baseUrl = appConfig.gravatar?.base_url;
+    const apiKey = appConfig.gravatar?.api_key;
 
     if (!baseUrl) {
       return res.status(404).send({ message: req.__('config.gravatarNotFound') });

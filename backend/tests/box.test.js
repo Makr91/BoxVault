@@ -115,8 +115,23 @@ describe('Box API', () => {
         .set('x-access-token', authToken)
         .send(boxData);
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('already exists');
+      expect(res.statusCode).toBe(409);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'unique', params: { scope: orgName } }),
+      ]);
+    });
+
+    it('should refuse a box name outside the slug pattern', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/box`)
+        .set('x-access-token', authToken)
+        .send({ name: 'bad_box' });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'pattern', params: { pattern: 'slug' } }),
+      ]);
     });
 
     it('should fail if organization does not exist', async () => {
@@ -218,7 +233,7 @@ describe('Box API', () => {
     });
 
     it('PUT /api/organization/:organization/box/:name - should update box details', async () => {
-      const updateData = { description: 'An updated description', isPublic: true };
+      const updateData = { description: 'An updated description', is_public: true };
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${existingBoxName}`)
         .set('x-access-token', authToken)
@@ -226,7 +241,7 @@ describe('Box API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('description', updateData.description);
-      expect(res.body).toHaveProperty('isPublic', updateData.isPublic);
+      expect(res.body).toHaveProperty('isPublic', true);
     });
 
     it('PUT /api/organization/:organization/box/:name - should fail if organization does not exist', async () => {
@@ -983,7 +998,7 @@ describe('Box API', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Organization context missing',
+          message: 'organizations.contextMissing',
         })
       );
     });
@@ -2011,9 +2026,9 @@ describe('Box API', () => {
       });
 
       const updateData = {
-        githubRepo: 'user/repo',
-        workflowFile: 'deploy.yml',
-        cicdUrl: 'https://jenkins.example.com',
+        github_repo: 'user/repo',
+        workflow_file: 'deploy.yml',
+        cicd_url: 'https://jenkins.example.com',
       };
 
       const res = await request(app)
@@ -2022,9 +2037,9 @@ describe('Box API', () => {
         .send(updateData);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.githubRepo).toBe(updateData.githubRepo);
-      expect(res.body.workflowFile).toBe(updateData.workflowFile);
-      expect(res.body.cicdUrl).toBe(updateData.cicdUrl);
+      expect(res.body.githubRepo).toBe(updateData.github_repo);
+      expect(res.body.workflowFile).toBe(updateData.workflow_file);
+      expect(res.body.cicdUrl).toBe(updateData.cicd_url);
 
       await box.destroy();
     });

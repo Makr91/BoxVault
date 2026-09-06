@@ -27,8 +27,8 @@ const expiryThresholds = warnDays => [...new Set([warnDays, 7, 1])].filter(days 
 
 const sweepServiceAccountExpiry = async () => {
   const appConfig = loadConfig('app');
-  const origin = appConfig.boxvault?.origin?.value || '';
-  const warnDays = appConfig.monitoring?.sa_expiry_warning_days?.value ?? 14;
+  const origin = appConfig.boxvault?.origin || '';
+  const warnDays = appConfig.monitoring?.sa_expiry_warning_days ?? 14;
   const thresholds = expiryThresholds(warnDays);
   const { Op } = db.Sequelize;
   const horizon = new Date(Date.now() + (Math.max(...thresholds) + 1) * DAY_MS);
@@ -82,10 +82,10 @@ const resolveCertPath = certPathValue => {
 
 const sweepSslExpiry = async () => {
   const appConfig = loadConfig('app');
-  const origin = appConfig.boxvault?.origin?.value || '';
-  const warnDays = appConfig.monitoring?.ssl_expiry_warning_days?.value ?? 30;
+  const origin = appConfig.boxvault?.origin || '';
+  const warnDays = appConfig.monitoring?.ssl_expiry_warning_days ?? 30;
   const thresholds = expiryThresholds(warnDays);
-  const certPathValue = appConfig.ssl?.cert_path?.value;
+  const certPathValue = appConfig.ssl?.cert_path;
   if (!certPathValue) {
     return;
   }

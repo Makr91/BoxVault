@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authJwt } from '../middleware/index.js';
+import { authJwt, validateBody } from '../middleware/index.js';
 import {
   create,
   findAll,
@@ -17,7 +17,11 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post('/service-accounts', [authJwt.verifyToken, authJwt.isUser], create);
+router.post(
+  '/service-accounts',
+  [authJwt.verifyToken, authJwt.isUser, validateBody('serviceAccount')],
+  create
+);
 router.get('/service-accounts', [authJwt.verifyToken, authJwt.isUser], findAll);
 router.get(
   '/service-accounts/organizations',

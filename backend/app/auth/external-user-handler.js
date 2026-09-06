@@ -173,7 +173,7 @@ const assignDefaultRoleIfNeeded = async (user, db, authConfig) => {
   const roles = await user.getRoles();
   if (!roles || roles.length === 0) {
     const { role: Role } = db;
-    const defaultRoleName = authConfig.auth?.external?.provisioning_default_role?.value || 'user';
+    const defaultRoleName = authConfig.auth?.external?.provisioning_default_role || 'user';
     const defaultRole = await Role.findOne({ where: { name: defaultRoleName } });
 
     if (defaultRole) {
@@ -246,12 +246,12 @@ const resolveOrgFromInvitation = async (email, db) => {
  * @returns {Promise<number|null>} Organization ID or null
  */
 const resolveOrgFromDomainMapping = async (domain, db, authConfig) => {
-  if (!authConfig.auth?.external?.domain_mapping_enabled?.value) {
+  if (!authConfig.auth?.external?.domain_mapping_enabled) {
     return null;
   }
 
   try {
-    const mappingsJson = authConfig.auth.external?.domain_mappings?.value || '{}';
+    const mappingsJson = authConfig.auth.external?.domain_mappings || '{}';
     const mappings = JSON.parse(mappingsJson);
 
     // Mappings are keyed by org_code (the stable identity key; names are
@@ -288,7 +288,7 @@ const resolveOrgFromDomainMapping = async (domain, db, authConfig) => {
  */
 const applyProvisioningFallback = async (domain, db, authConfig) => {
   const fallbackAction =
-    authConfig.auth?.external?.provisioning_fallback_action?.value || 'require_invite';
+    authConfig.auth?.external?.provisioning_fallback_action || 'require_invite';
 
   switch (fallbackAction) {
     case 'require_invite':
@@ -597,7 +597,7 @@ const resolveSubject = profile => {
 const resolveCredentialNamespace = (provider, profile, authConfig) => {
   const isOidc = provider.startsWith('oidc-');
   const configuredIssuer = isOidc
-    ? authConfig.auth?.oidc?.providers?.[provider.slice('oidc-'.length)]?.issuer?.value
+    ? authConfig.auth?.oidc?.providers?.[provider.slice('oidc-'.length)]?.issuer
     : null;
   const issuer = profile.iss || configuredIssuer || null;
   if (isOidc && !issuer) {

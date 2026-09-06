@@ -2,8 +2,9 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
-const { providers: Provider, organization: _organization, box: _box, UserOrg, versions } = db;
+const { providers: Provider, UserOrg } = db;
 
 /**
  * @swagger
@@ -76,6 +77,18 @@ const { providers: Provider, organization: _organization, box: _box, UserOrg, ve
  *                 message:
  *                   type: string
  *                   example: "Provider virtualbox not found for version 1.0.0 in box ubuntu-server in organization myorg."
+ *       409:
+ *         description: A provider with the new name already exists for the version
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the provider form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -94,25 +107,7 @@ export const update = async (req, res) => {
   const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, name || providerName);
 
   try {
-    const organizationData = await _organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await _box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    const { organizationData, boxData: box, versionData: version } = req;
 
     // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
@@ -125,14 +120,13 @@ export const update = async (req, res) => {
       });
     }
 
-    const version = await versions.findOne({
-      where: { versionNumber, boxId: box.id },
-    });
-
-    if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
+    if (name && name !== providerName) {
+      const existingProvider = await Provider.findOne({
+        where: { name, versionId: version.id },
       });
+      if (existingProvider) {
+        return conflict(res, req, '/name', version.versionNumber);
+      }
     }
 
     // Create the new directory if it doesn't exist

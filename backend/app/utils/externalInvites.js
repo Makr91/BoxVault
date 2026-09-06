@@ -52,8 +52,8 @@ const getS2sToken = async (issuer, scope) => {
   }
 
   const authConfig = loadConfig('auth');
-  const clientId = authConfig.auth?.oidc?.s2s_client_id?.value || DEFAULT_S2S_CLIENT_ID;
-  const clientSecret = authConfig.auth?.oidc?.s2s_client_secret?.value;
+  const clientId = authConfig.auth?.oidc?.s2s_client_id || DEFAULT_S2S_CLIENT_ID;
+  const clientSecret = authConfig.auth?.oidc?.s2s_client_secret;
   if (!clientSecret) {
     throw new Error(
       'auth.oidc.s2s_client_secret is not configured; cannot mint service-to-service tokens'

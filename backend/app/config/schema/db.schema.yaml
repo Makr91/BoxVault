@@ -1,0 +1,160 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Database Config
+schemaVersion: 1
+sections:
+  database:
+    title: Database
+    order: 1
+properties:
+  schemaVersion:
+    type: integer
+    readOnly: true
+    default: 1
+    title: Schema version
+  database_type:
+    type: string
+    enum:
+      - mysql
+      - sqlite
+    default: sqlite
+    section: database
+    subsection: generalSettings
+    title: Database type
+    description: MySQL for production, SQLite for simple deployments
+    order: 1
+    requiresRestart: true
+  sql:
+    type: object
+    section: database
+    subsection: databaseConnection
+    title: Database Connection
+    properties:
+      host:
+        type: string
+        format: hostname
+        default: localhost
+        title: Host
+        description: Database host
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 1
+        requiresRestart: true
+      port:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        default: 3306
+        title: Port
+        description: Database port
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 2
+        requiresRestart: true
+      logging:
+        type: boolean
+        default: false
+        title: Log SQL
+        description: Log SQL queries to the backend console
+        order: 3
+        requiresRestart: true
+      user:
+        type: string
+        default: boxvault
+        title: User
+        description: Database user
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 4
+        requiresRestart: true
+      password:
+        type: string
+        writeOnly: true
+        default: ''
+        title: Password
+        description: Database password
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 5
+        requiresRestart: true
+      database:
+        type: string
+        default: boxvault
+        title: Database
+        description: Database name
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 6
+        requiresRestart: true
+      storage:
+        type: string
+        default: /var/lib/boxvault/database/boxvault.db
+        title: SQLite file
+        description: SQLite database file path
+        dependsOn: database_type
+        showWhen:
+          - sqlite
+        order: 7
+        requiresRestart: true
+      dialect:
+        type: string
+        readOnly: true
+        default: ''
+        title: Dialect
+        description: Database dialect, set from the database type
+        order: 8
+        requiresRestart: true
+  mysql_pool:
+    type: object
+    section: database
+    subsection: connectionPool
+    title: Connection Pool
+    properties:
+      max:
+        type: integer
+        minimum: 1
+        default: 5
+        title: Maximum connections
+        description: Maximum number of connections in the pool
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 1
+        requiresRestart: true
+      min:
+        type: integer
+        minimum: 0
+        default: 0
+        title: Minimum connections
+        description: Minimum number of connections in the pool
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 2
+        requiresRestart: true
+      acquire:
+        type: integer
+        minimum: 1
+        default: 30000
+        title: Acquire timeout (ms)
+        description: Milliseconds the pool waits for a connection before failing
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 3
+        requiresRestart: true
+      idle:
+        type: integer
+        minimum: 1
+        default: 10000
+        title: Idle timeout (ms)
+        description: Milliseconds a connection may sit idle before it is released
+        dependsOn: database_type
+        showWhen:
+          - mysql
+        order: 4
+        requiresRestart: true

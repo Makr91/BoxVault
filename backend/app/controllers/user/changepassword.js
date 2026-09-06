@@ -1,8 +1,9 @@
 // changepassword.js
 import { hashSync } from 'bcryptjs';
 import { log } from '../../utils/Logger.js';
+import { refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { getBcryptRounds, getPasswordPolicyError } from '../auth/helpers.js';
+import { getBcryptRounds, getPasswordPolicyErrors } from '../auth/helpers.js';
 const { user: User } = db;
 
 /**
@@ -28,12 +29,12 @@ const { user: User } = db;
  *           schema:
  *             type: object
  *             required:
- *               - newPassword
+ *               - new_password
  *             properties:
- *               newPassword:
+ *               new_password:
  *                 type: string
  *                 format: password
- *                 description: New password
+ *                 description: New password, at least the host's configured minimum (15 by default) and at most 128 characters
  *     responses:
  *       200:
  *         description: Password changed successfully
@@ -51,6 +52,12 @@ const { user: User } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       422:
+ *         description: The password breaks a rule of the password form or is on the blocklist
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -60,13 +67,12 @@ const { user: User } = db;
  */
 export const changePassword = async (req, res) => {
   const { userId } = req.params;
-  const { newPassword } = req.body;
+  const { new_password: newPassword } = req.body;
 
   try {
-    // Password policy knobs (#18) apply to password changes too
-    const passwordPolicyError = getPasswordPolicyError(newPassword, req);
-    if (passwordPolicyError) {
-      return res.status(400).send({ message: passwordPolicyError });
+    const passwordErrors = getPasswordPolicyErrors(newPassword, '/new_password');
+    if (passwordErrors.length > 0) {
+      return refuse(res, req, passwordErrors);
     }
 
     const user = await User.findByPk(userId);

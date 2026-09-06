@@ -1,5 +1,6 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { conflict } from '../../../utils/problem.js';
 const { isoVersions: IsoVersion } = db;
 
 /**
@@ -30,29 +31,45 @@ const { isoVersions: IsoVersion } = db;
  *           schema:
  *             type: object
  *             required:
- *               - versionNumber
+ *               - version_number
  *             properties:
- *               versionNumber:
+ *               version_number:
  *                 type: string
+ *                 description: Version number (the identifier pattern of /api/rules, unique in the ISO)
  *               description:
  *                 type: string
  *     responses:
  *       201:
  *         description: Version created
- *       400:
- *         description: Invalid version number
  *       404:
  *         description: Organization or ISO not found
  *       409:
  *         description: The version already exists for this ISO
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the version form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  */
 const create = async (req, res) => {
-  const { versionNumber, description } = req.body;
+  const { version_number: versionNumber, description } = req.body;
 
   try {
     const { isoData: iso } = req;
+
+    const existingVersion = await IsoVersion.findOne({
+      where: { versionNumber, isoId: iso.id },
+    });
+    if (existingVersion) {
+      return conflict(res, req, '/version_number', iso.name);
+    }
 
     const version = await IsoVersion.create({
       versionNumber,

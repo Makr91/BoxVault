@@ -8,7 +8,7 @@ const notifyInvitationAccepted = async (invitation, organization, acceptedEmail)
     if (!invitation.invited_by) {
       return;
     }
-    const origin = loadConfig('app').boxvault.origin.value;
+    const { origin } = loadConfig('app').boxvault;
     const recipients = await resolveUserRecipients([invitation.invited_by]);
     await Promise.all(
       recipients.map(({ issuer, uuid }) =>

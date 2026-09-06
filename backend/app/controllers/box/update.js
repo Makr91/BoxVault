@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { conflict, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
@@ -37,16 +38,26 @@ const { box: Box } = db;
  *             properties:
  *               name:
  *                 type: string
- *                 description: New box name
+ *                 description: New box name (the slug pattern of /api/rules, unique in the organization)
  *               description:
  *                 type: string
  *                 description: Box description
  *               published:
  *                 type: boolean
  *                 description: Whether the box is published
- *               isPublic:
+ *               is_public:
  *                 type: boolean
  *                 description: Whether the box is publicly accessible
+ *               github_repo:
+ *                 type: string
+ *                 description: GitHub repository building the box
+ *               workflow_file:
+ *                 type: string
+ *                 description: Workflow file of the build
+ *               cicd_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Link to the build pipeline
  *               shortDescription:
  *                 type: string
  *                 maxLength: 255
@@ -73,6 +84,18 @@ const { box: Box } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: A box with the new name already exists in the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the box form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -86,23 +109,23 @@ export const update = async (req, res) => {
     name: updatedName,
     description,
     published,
-    isPublic,
-    githubRepo,
-    workflowFile,
-    cicdUrl,
+    is_public,
+    github_repo,
+    workflow_file,
+    cicd_url,
   } = req.body;
   const oldFilePath = getSecureBoxPath(organization, name);
   const newFilePath = getSecureBoxPath(organization, updatedName || name);
 
-  const { error: contentError, fields: contentFields } = parseBoxContentFields(req.body);
-  if (contentError) {
-    return res.status(400).send({ message: contentError });
+  const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(req.body);
+  if (contentErrors.length > 0) {
+    return refuse(res, req, contentErrors);
   }
 
   try {
     if (!req.organizationId) {
       return res.status(500).send({
-        message: 'Organization context missing',
+        message: req.__('organizations.contextMissing'),
       });
     }
 
@@ -126,6 +149,15 @@ export const update = async (req, res) => {
       });
     }
 
+    if (updatedName && updatedName !== name) {
+      const existingBox = await Box.findOne({
+        where: { name: updatedName, organizationId: req.organizationId },
+      });
+      if (existingBox) {
+        return conflict(res, req, '/name', organization);
+      }
+    }
+
     // Create the new directory if it doesn't exist
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
@@ -143,10 +175,10 @@ export const update = async (req, res) => {
       name: updatedName || name,
       description: description !== undefined ? description : box.description,
       published: published !== undefined ? published : box.published,
-      isPublic: isPublic !== undefined ? isPublic : box.isPublic,
-      githubRepo: githubRepo !== undefined ? githubRepo : box.githubRepo,
-      workflowFile: workflowFile !== undefined ? workflowFile : box.workflowFile,
-      cicdUrl: cicdUrl !== undefined ? cicdUrl : box.cicdUrl,
+      isPublic: is_public !== undefined ? is_public : box.isPublic,
+      githubRepo: github_repo !== undefined ? github_repo : box.githubRepo,
+      workflowFile: workflow_file !== undefined ? workflow_file : box.workflowFile,
+      cicdUrl: cicd_url !== undefined ? cicd_url : box.cicdUrl,
       // Content fields carry only the keys present in the body (absent = unchanged)
       ...contentFields,
     });

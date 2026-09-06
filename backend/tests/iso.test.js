@@ -122,7 +122,10 @@ describe('ISO API', () => {
         .post(`/api/organization/${orgName}/iso`)
         .set('x-access-token', adminToken)
         .send({ name: '../etc/passwd' });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'pattern', params: { pattern: 'slug' } }),
+      ]);
     });
 
     it('should reject a duplicate ISO name with 409', async () => {
@@ -131,6 +134,9 @@ describe('ISO API', () => {
         .set('x-access-token', adminToken)
         .send({ name: isoName });
       expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'unique', params: { scope: orgName } }),
+      ]);
     });
 
     it('should reject a plain member', async () => {
@@ -146,7 +152,7 @@ describe('ISO API', () => {
         .post(`/api/organization/${orgName}/iso`)
         .set('x-access-token', adminToken)
         .send({ name: 'bad-metadata', metadata: 'nope' });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
     });
   });
 
@@ -297,7 +303,7 @@ describe('ISO API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/iso/rename-me`)
         .set('x-access-token', adminToken)
-        .send({ name: 'renamed-iso', isPublic: true });
+        .send({ name: 'renamed-iso', is_public: true });
       expect(res.statusCode).toBe(200);
       expect(res.body.name).toBe('renamed-iso');
       expect(res.body.isPublic).toBe(true);
@@ -432,7 +438,7 @@ describe('ISO API', () => {
       const res = await request(app)
         .post(`${isoBase}/version`)
         .set('x-access-token', adminToken)
-        .send({ versionNumber, description: 'First' });
+        .send({ version_number: versionNumber, description: 'First' });
       expect(res.statusCode).toBe(201);
       expect(res.body.versionNumber).toBe(versionNumber);
       expect(res.body.description).toBe('First');
@@ -443,23 +449,37 @@ describe('ISO API', () => {
       const res = await request(app)
         .post(`${isoBase}/version`)
         .set('x-access-token', adminToken)
-        .send({ versionNumber });
+        .send({ version_number: versionNumber });
       expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/version_number',
+          rule: 'unique',
+          params: { scope: isoName },
+        }),
+      ]);
     });
 
     it('should reject an invalid version number', async () => {
       const res = await request(app)
         .post(`${isoBase}/version`)
         .set('x-access-token', adminToken)
-        .send({ versionNumber: '../1' });
-      expect(res.statusCode).toBe(400);
+        .send({ version_number: '../1' });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/version_number',
+          rule: 'pattern',
+          params: { pattern: 'identifier' },
+        }),
+      ]);
     });
 
     it('should reject a plain member', async () => {
       const res = await request(app)
         .post(`${isoBase}/version`)
         .set('x-access-token', authToken)
-        .send({ versionNumber: '2.0.0' });
+        .send({ version_number: '2.0.0' });
       expect(res.statusCode).toBe(403);
     });
 
@@ -467,7 +487,7 @@ describe('ISO API', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/iso/no-such-iso/version`)
         .set('x-access-token', adminToken)
-        .send({ versionNumber: '2.0.0' });
+        .send({ version_number: '2.0.0' });
       expect(res.statusCode).toBe(404);
     });
 
@@ -501,13 +521,16 @@ describe('ISO API', () => {
         .put(versionBase)
         .set('x-access-token', adminToken)
         .send({ deprecated: true });
-      expect(missingReason.statusCode).toBe(400);
+      expect(missingReason.statusCode).toBe(422);
+      expect(missingReason.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/deprecation_reason', rule: 'required' }),
+      ]);
 
       const res = await request(app).put(versionBase).set('x-access-token', adminToken).send({
         description: 'Updated',
-        releaseNotes: 'Notes',
+        release_notes: 'Notes',
         deprecated: true,
-        deprecationReason: 'Superseded',
+        deprecation_reason: 'Superseded',
       });
       expect(res.statusCode).toBe(200);
       expect(res.body.description).toBe('Updated');
@@ -518,7 +541,7 @@ describe('ISO API', () => {
       const restored = await request(app)
         .put(versionBase)
         .set('x-access-token', adminToken)
-        .send({ deprecated: false, deprecationReason: null });
+        .send({ deprecated: false, deprecation_reason: null });
       expect(restored.statusCode).toBe(200);
       expect(restored.body.deprecated).toBe(false);
     });
@@ -527,15 +550,18 @@ describe('ISO API', () => {
       const res = await request(app)
         .put(versionBase)
         .set('x-access-token', adminToken)
-        .send({ releaseNotes: 42 });
-      expect(res.statusCode).toBe(400);
+        .send({ release_notes: 42 });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/release_notes', rule: 'type' }),
+      ]);
     });
 
     it('should delete a version and answer 404 afterwards', async () => {
       await request(app)
         .post(`${isoBase}/version`)
         .set('x-access-token', adminToken)
-        .send({ versionNumber: '0.9.0' })
+        .send({ version_number: '0.9.0' })
         .expect(201);
 
       const res = await request(app)
@@ -636,7 +662,7 @@ describe('ISO API', () => {
       const configPath = getConfigPath('app');
       const originalConfig = fs.readFileSync(configPath, 'utf8');
       const config = yaml.load(originalConfig);
-      config.boxvault.box_max_file_size.value = 0.000001;
+      config.boxvault.box_max_file_size = 0.000001;
       fs.writeFileSync(configPath, yaml.dump(config));
 
       try {
@@ -912,7 +938,7 @@ describe('ISO API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/iso/delete-me/version`)
         .set('x-access-token', adminToken)
-        .send({ versionNumber: '1.0.0' })
+        .send({ version_number: '1.0.0' })
         .expect(201);
       await request(app)
         .post(
@@ -977,7 +1003,7 @@ describe('ISO API', () => {
       const configPath = getConfigPath('app');
       const originalConfig = fs.readFileSync(configPath, 'utf8');
       const config = yaml.load(originalConfig);
-      config.boxvault.iso_storage_directory = { value: '/tmp/custom-iso' };
+      config.boxvault.iso_storage_directory = '/tmp/custom-iso';
       fs.writeFileSync(configPath, yaml.dump(config));
 
       try {

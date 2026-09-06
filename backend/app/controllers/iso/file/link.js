@@ -78,10 +78,10 @@ const getDownloadLink = async (req, res) => {
         versionNumber,
         architecture,
       },
-      authConfig.auth?.jwt?.download_link_expiry?.value || '1h'
+      authConfig.auth?.jwt?.download_link_expiry || '1h'
     );
 
-    const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/iso/${name}/version/${versionNumber}/architecture/${architecture}/file/download?token=${downloadToken}`;
+    const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/iso/${name}/version/${versionNumber}/architecture/${architecture}/file/download?token=${downloadToken}`;
 
     return res.status(200).json({ downloadUrl });
   } catch (err) {

@@ -6,6 +6,7 @@ import {
   getTicketConfig,
   getHyperweaverConfig,
   getConfig,
+  getConfigSchema,
   updateConfig,
   restartServer,
 } from '../controllers/config.controller.js';
@@ -24,6 +25,16 @@ router.use((req, res, next) => {
 router.get('/gravatar/profile/:emailHash', getGravatarProfile);
 router.get('/config/ticket', getTicketConfig);
 router.get('/config/hyperweaver', getHyperweaverConfig);
+router.post(
+  '/config/restart',
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  restartServer
+);
+router.get(
+  '/config/:configName/schema',
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  getConfigSchema
+);
 router.get(
   '/config/:configName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
@@ -33,11 +44,6 @@ router.put(
   '/config/:configName',
   [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
   updateConfig
-);
-router.post(
-  '/config/restart',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
-  restartServer
 );
 
 export default router;

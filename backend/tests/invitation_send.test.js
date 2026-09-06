@@ -104,7 +104,7 @@ describe('Invitation send - one live invitation per organization and address', (
   it('should scope the live-invitation lookup to the organization and unaccepted state', async () => {
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     // The address is matched in JS rather than in the WHERE clause, because
     // collation decides case-sensitivity otherwise and a differently-cased
@@ -120,7 +120,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockDb.invitation.findAll.mockResolvedValue([pending]);
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     expect(pending.update).toHaveBeenCalledTimes(1);
     expect(mockDb.invitation.create).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe('Invitation send - one live invitation per organization and address', (
   it('should create the first invitation for an address', async () => {
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     expect(mockDb.invitation.create).toHaveBeenCalledTimes(1);
     expect(mockDb.invitation.create).toHaveBeenCalledWith(
@@ -154,7 +154,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockDb.invitation.findAll.mockResolvedValue([pending]);
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     expect(mockDb.invitation.create).not.toHaveBeenCalled();
     expect(pending.update).toHaveBeenCalledTimes(1);
@@ -171,7 +171,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockDb.invitation.findAll.mockResolvedValue([pending]);
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     const [[patch]] = pending.update.mock.calls;
     expect(patch.token).toMatch(/^[0-9a-f]{40}$/);
@@ -199,7 +199,7 @@ describe('Invitation send - one live invitation per organization and address', (
     const res = buildResponse();
 
     const before = Date.now();
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
     const after = Date.now();
 
     const [[patch]] = pending.update.mock.calls;
@@ -210,7 +210,7 @@ describe('Invitation send - one live invitation per organization and address', (
 
   it('should honour the configured invitation expiry when reusing a row', async () => {
     mockConfigLoader.loadConfig.mockReturnValue({
-      auth: { jwt: { invitation_token_expiry_hours: { value: 72 } } },
+      auth: { jwt: { invitation_token_expiry_hours: 72 } },
     });
     const pending = {
       id: 9,
@@ -222,7 +222,7 @@ describe('Invitation send - one live invitation per organization and address', (
     const res = buildResponse();
 
     const before = Date.now();
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
     const after = Date.now();
 
     const [[patch]] = pending.update.mock.calls;
@@ -241,7 +241,7 @@ describe('Invitation send - one live invitation per organization and address', (
     const res = buildResponse();
 
     await sendInvitation(
-      buildRequest({ email: INVITEE, organizationName: ORG_NAME, inviteRole: 'admin' }),
+      buildRequest({ email: INVITEE, organization_name: ORG_NAME, invite_role: 'admin' }),
       res
     );
 
@@ -262,7 +262,7 @@ describe('Invitation send - one live invitation per organization and address', (
     const res = buildResponse();
 
     await sendInvitation(
-      buildRequest({ email: INVITEE, organizationName: ORG_NAME }, { userId: 77 }),
+      buildRequest({ email: INVITEE, organization_name: ORG_NAME }, { userId: 77 }),
       res
     );
 
@@ -273,7 +273,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockUserLanguage.resolveEmailLanguage.mockResolvedValue('es');
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     expect(mockUserLanguage.resolveEmailLanguage).toHaveBeenCalledWith(INVITEE, organization);
     expect(mockMail.sendInvitationMail).toHaveBeenCalledWith(
@@ -295,7 +295,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockDb.invitation.findAll.mockResolvedValue([pending]);
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     const [[patch]] = pending.update.mock.calls;
     expect(sentPayload(res)).toEqual({
@@ -312,7 +312,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'member' });
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     expect(res.status).toHaveBeenCalledWith(409);
     expect(mockDb.invitation.findAll).not.toHaveBeenCalled();
@@ -326,7 +326,7 @@ describe('Invitation send - one live invitation per organization and address', (
     mockExternalInvites.createExternalInvite.mockResolvedValue({ expires_at: 1234 });
     const res = buildResponse();
 
-    await sendInvitation(buildRequest({ email: INVITEE, organizationName: ORG_NAME }), res);
+    await sendInvitation(buildRequest({ email: INVITEE, organization_name: ORG_NAME }), res);
 
     expect(mockDb.invitation.findAll).not.toHaveBeenCalled();
     expect(mockDb.invitation.create).not.toHaveBeenCalled();

@@ -155,7 +155,10 @@ describe('Box and ISO content validation and visibility', () => {
         .post(boxUrl())
         .set('x-access-token', ownerToken)
         .send({ name: 'bad..box' });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/name', rule: 'pattern', params: { pattern: 'slug' } })
+      );
     });
 
     it('should reject malformed content fields on create', async () => {
@@ -163,12 +166,18 @@ describe('Box and ISO content validation and visibility', () => {
         .post(boxUrl())
         .set('x-access-token', ownerToken)
         .send({ name: boxName, shortDescription: 'x'.repeat(256) });
-      expect(longShort.statusCode).toBe(400);
+      expect(longShort.statusCode).toBe(422);
+      expect(longShort.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/shortDescription', rule: 'maxLength' })
+      );
       const badReadme = await request(app)
         .post(boxUrl())
         .set('x-access-token', ownerToken)
         .send({ name: boxName, readme: 5 });
-      expect(badReadme.statusCode).toBe(400);
+      expect(badReadme.statusCode).toBe(422);
+      expect(badReadme.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/readme', rule: 'type' })
+      );
     });
 
     it('should create the box with sanitized metadata and update its content fields', async () => {
@@ -179,7 +188,7 @@ describe('Box and ISO content validation and visibility', () => {
           name: boxName,
           description: 'content box',
           published: true,
-          isPublic: true,
+          is_public: true,
           shortDescription: 'short',
           readme: '# hi',
           metadata: { distro: 'debian', junk: true },
@@ -192,7 +201,7 @@ describe('Box and ISO content validation and visibility', () => {
         .put(boxUrl(`/${boxName}`))
         .set('x-access-token', ownerToken)
         .send({ readme: 7 });
-      expect(badUpdate.statusCode).toBe(400);
+      expect(badUpdate.statusCode).toBe(422);
 
       const cleared = await request(app)
         .put(boxUrl(`/${boxName}`))
@@ -208,18 +217,18 @@ describe('Box and ISO content validation and visibility', () => {
       const version = await request(app)
         .post(boxUrl(`/${privateName}/version`))
         .set('x-access-token', ownerToken)
-        .send({ versionNumber: 'a..b' });
-      expect(version.statusCode).toBe(400);
+        .send({ version_number: 'a..b' });
+      expect(version.statusCode).toBe(422);
       const provider = await request(app)
         .post(boxUrl(`/${privateName}/version/1.0.0/provider`))
         .set('x-access-token', ownerToken)
         .send({ name: 'bad..provider' });
-      expect(provider.statusCode).toBe(400);
+      expect(provider.statusCode).toBe(422);
       const architecture = await request(app)
         .post(boxUrl(`/${privateName}/version/1.0.0/provider/virtualbox/architecture`))
         .set('x-access-token', ownerToken)
         .send({ name: 'bad..arch' });
-      expect(architecture.statusCode).toBe(400);
+      expect(architecture.statusCode).toBe(422);
     });
   });
 
@@ -286,7 +295,7 @@ describe('Box and ISO content validation and visibility', () => {
 
     it('should honour the configured download link expiry', async () => {
       const restore = updateConfig('auth', config => {
-        config.auth.jwt.download_link_expiry = { value: '2h' };
+        config.auth.jwt.download_link_expiry = '2h';
       });
       try {
         const res = await request(app)
@@ -324,12 +333,12 @@ describe('Box and ISO content validation and visibility', () => {
         .post(`/api/organization/${orgName}/iso`)
         .set('x-access-token', ownerToken)
         .send({ name: isoName, metadata: 'bad' });
-      expect(bad.statusCode).toBe(400);
+      expect(bad.statusCode).toBe(422);
 
       const created = await request(app)
         .post(`/api/organization/${orgName}/iso`)
         .set('x-access-token', ownerToken)
-        .send({ name: isoName, isPublic: true, metadata: { distro: 'ubuntu', junk: 1 } });
+        .send({ name: isoName, is_public: true, metadata: { distro: 'ubuntu', junk: 1 } });
       expect(created.statusCode).toBe(201);
       expect(created.body.metadata).toEqual({ distro: 'ubuntu' });
 
@@ -337,7 +346,7 @@ describe('Box and ISO content validation and visibility', () => {
         .put(isoUrl(isoName))
         .set('x-access-token', ownerToken)
         .send({ metadata: [] });
-      expect(badUpdate.statusCode).toBe(400);
+      expect(badUpdate.statusCode).toBe(422);
     });
 
     it('should discover ISOs for a raw key', async () => {
@@ -375,7 +384,7 @@ describe('Box and ISO content validation and visibility', () => {
 
     it('should refuse a file over the size cap by length and by stream', async () => {
       const restore = updateConfig('app', config => {
-        config.boxvault.box_max_file_size = { value: 0.000001 };
+        config.boxvault.box_max_file_size = 0.000001;
       });
       try {
         const declared = await upload(Buffer.alloc(2048, 1));

@@ -33,7 +33,35 @@
     "passwordRequiresLowercase": "La contraseña debe contener al menos una letra minúscula.",
     "passwordRequiresNumber": "La contraseña debe contener al menos un número.",
     "passwordRequiresSymbol": "La contraseña debe contener al menos un símbolo especial.",
-    "vagrantInvalidToken": "Token de cuenta de servicio inválido o caducado."
+    "vagrantInvalidToken": "Token de cuenta de servicio inválido o caducado.",
+    "roleDoesNotExist": "El rol no existe: {{role}}."
+  },
+  "problems": {
+    "validation": "La solicitud no pasó la validación.",
+    "conflict": "Un valor de la solicitud ya está en uso.",
+    "badRequest": "La solicitud no se pudo leer.",
+    "forbidden": "La solicitud no está permitida.",
+    "notFound": "El recurso no se encontró.",
+    "internal": "El servidor no pudo completar la solicitud.",
+    "configValidation": "La configuración no pasó la validación."
+  },
+  "validation": {
+    "required": "{{field}} es obligatorio.",
+    "type": "{{field}} debe ser de tipo {{type}}.",
+    "minLength": "{{field}} debe tener al menos {{minLength}} caracteres.",
+    "maxLength": "{{field}} debe tener como máximo {{maxLength}} caracteres.",
+    "pattern": "{{field}} debe coincidir con {{pattern}}.",
+    "minimum": "{{field}} debe ser al menos {{minimum}}.",
+    "maximum": "{{field}} debe ser como máximo {{maximum}}.",
+    "range": "{{field}} debe estar entre {{minimum}} y {{maximum}}.",
+    "enum": "{{field}} debe ser uno de: {{enum}}.",
+    "format": "{{field}} debe ser un {{format}} válido.",
+    "minItems": "{{field}} debe tener al menos {{minItems}} elementos.",
+    "maxItems": "{{field}} debe tener como máximo {{maxItems}} elementos.",
+    "unique": "{{field}} ya está en uso en {{scope}}.",
+    "blocklist": "{{field}} está en la lista de bloqueo.",
+    "writable": "{{field}} no es escribible por el usuario del servicio.",
+    "reachable": "{{field}} no respondió."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organización no encontrada con el nombre: {{organization}}.",
@@ -77,7 +105,14 @@
     "externallyManagedProfile": "Esta organización está gestionada por tu proveedor de identidad. Su perfil (correo electrónico, descripción y código de organización) se sincroniza desde el proveedor y no se puede editar en BoxVault.",
     "alreadyMember": "Ya eres miembro de esta organización.",
     "joinedAsAdmin": "Te has unido a la organización {{organization}} como propietario.",
-    "joinError": "Error al unirse a la organización"
+    "joinError": "Error al unirse a la organización",
+    "parameterRequired": "¡Se requiere el parámetro de organización!",
+    "requireAdminOrOwner": "¡Se requiere el rol de administrador o propietario en esta organización!",
+    "requireOwner": "¡Se requiere el rol de propietario en esta organización!",
+    "membershipCheckError": "Error al verificar la membresía de la organización",
+    "permissionCheckError": "Error al verificar los permisos de la organización",
+    "managementCheckError": "Error al verificar el origen de gestión de la organización",
+    "contextMissing": "Falta el contexto de la organización"
   },
   "boxes": {
     "boxNotFoundInOrg": "Box {{boxId}} no encontrada en la organización {{organization}}.",
@@ -137,6 +172,9 @@
     "create": {
       "permissionDenied": "Solo puedes crear versiones para Boxes que posees, o necesitas rol de administrador/propietario.",
       "error": "Ocurrió un error al crear la Versión."
+    },
+    "update": {
+      "permissionDenied": "Solo puedes actualizar versiones de Boxes que posees, o necesitas rol de administrador/propietario."
     },
     "delete": {
       "permissionDenied": "Solo puedes eliminar versiones de Boxes que posees, o necesitas rol de administrador/propietario."
@@ -320,6 +358,9 @@
   },
   "errors": {
     "operationFailed": "Operación fallida."
+  },
+  "serviceAccounts": {
+    "membershipRequired": "¡Debes ser miembro de esta organización para crear cuentas de servicio!"
   },
   "search": {
     "queryTooShort": "La búsqueda debe tener al menos 2 caracteres.",

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { conflict, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from '../box/helpers.js';
 import { notifyIsoPublished } from './notifications.js';
 const { iso: ISO, organization: Organization } = db;
@@ -34,10 +35,10 @@ const { iso: ISO, organization: Organization } = db;
  *             properties:
  *               name:
  *                 type: string
- *                 description: New ISO name
+ *                 description: New ISO name (the slug pattern of /api/rules, unique in the organization)
  *               description:
  *                 type: string
- *               isPublic:
+ *               is_public:
  *                 type: boolean
  *               published:
  *                 type: boolean
@@ -49,23 +50,31 @@ const { iso: ISO, organization: Organization } = db;
  *     responses:
  *       200:
  *         description: ISO updated successfully
- *       400:
- *         description: Invalid name or metadata
  *       404:
  *         description: ISO not found
  *       409:
  *         description: An ISO with the new name already exists in the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the ISO form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  */
 const update = async (req, res) => {
-  const { name } = req.params;
+  const { organization, name } = req.params;
   const body = req.body || {};
-  const { name: updatedName, description, published, isPublic } = body;
+  const { name: updatedName, description, published, is_public: isPublic } = body;
 
-  const { error: contentError, fields: contentFields } = parseBoxContentFields(body);
-  if (contentError) {
-    return res.status(400).send({ message: contentError });
+  const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(body);
+  if (contentErrors.length > 0) {
+    return refuse(res, req, contentErrors);
   }
 
   try {
@@ -74,6 +83,15 @@ const update = async (req, res) => {
     });
     if (!iso) {
       return res.status(404).send({ message: req.__('isos.notFound') });
+    }
+
+    if (updatedName && updatedName !== name) {
+      const existingIso = await ISO.findOne({
+        where: { name: updatedName, organizationId: req.organizationId },
+      });
+      if (existingIso) {
+        return conflict(res, req, '/name', organization);
+      }
     }
 
     const wasPublished = iso.published;
@@ -87,8 +105,8 @@ const update = async (req, res) => {
     });
 
     if (updatedIso.published && !wasPublished) {
-      const organization = await Organization.findByPk(updatedIso.organizationId);
-      notifyIsoPublished(organization, updatedIso);
+      const organizationData = await Organization.findByPk(updatedIso.organizationId);
+      notifyIsoPublished(organizationData, updatedIso);
     }
 
     return res.send(updatedIso);

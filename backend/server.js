@@ -4,7 +4,12 @@ import { existsSync, mkdirSync, chmodSync, readFileSync, writeFileSync, watch } 
 import { isAbsolute, join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import responseTime from 'response-time';
-import { loadConfig, getConfigPath, getSetupTokenPath } from './app/utils/config-loader.js';
+import {
+  loadConfig,
+  getConfigPath,
+  getSetupTokenPath,
+  checkConfigs,
+} from './app/utils/config-loader.js';
 import { log, morganMiddleware } from './app/utils/Logger.js';
 import { startNotificationSweeps } from './app/utils/notificationSweeps.js';
 import { ensureVapidKeys } from './app/utils/webPush.js';
@@ -27,6 +32,7 @@ import {
 } from './app/middleware/index.js';
 import db from './app/models/index.js';
 import statusRoutes from './app/routes/status.routes.js';
+import rulesRoutes from './app/routes/rules.routes.js';
 import healthRoutes from './app/routes/health.routes.js';
 import authRoutes from './app/routes/auth.routes.js';
 import mailRoutes from './app/routes/mail.routes.js';
@@ -60,32 +66,43 @@ const { json, urlencoded } = express;
 const SequelizeStore = connectSessionSequelize(session.Store);
 const { csrf } = lusca;
 
-let boxConfig;
-try {
-  boxConfig = loadConfig('app');
-} catch (e) {
-  log.app.error('Failed to load box configuration', { error: e.message });
-  // Fallback defaults to prevent crash during tests or misconfiguration
-  boxConfig = {
-    boxvault: {
-      origin: { value: 'http://localhost:3000' },
-      box_max_file_size: { value: 1 },
-      api_listen_port_unencrypted: { value: 5000 },
-      api_listen_port_encrypted: { value: 5001 },
-    },
-    ssl: {
-      cert_path: { value: '' },
-      key_path: { value: '' },
-    },
-  };
-}
+/**
+ * Evaluate every configuration file against its schema before anything
+ * else runs: one line per failing pointer, one warning per unknown key, and
+ * a thrown error when any file fails so the host refuses to start.
+ * @throws {Error} When a configuration file fails its schema
+ */
+const refuseBadConfigs = () => {
+  const results = checkConfigs();
+  results.forEach(({ name, errors, unknown }) => {
+    unknown.forEach(pointer => {
+      log.app.warn('Unknown configuration key ignored', { config: name, pointer });
+    });
+    errors.forEach(error => {
+      log.app.error('Configuration value failed its schema', {
+        config: name,
+        pointer: error.pointer,
+        rule: error.rule,
+        params: error.params,
+      });
+    });
+  });
+  const failing = results.filter(({ errors }) => errors.length > 0).map(({ name }) => name);
+  if (failing.length > 0) {
+    throw new Error(`Configuration failed validation: ${failing.join(', ')}`);
+  }
+};
+
+refuseBadConfigs();
+
+const boxConfig = loadConfig('app');
 
 const dbConfigPath = getConfigPath('db');
 
 const isDialectConfigured = () => {
   try {
     const dbConfig = loadConfig('db');
-    const dialect = dbConfig.sql.dialect.value;
+    const { dialect } = dbConfig.sql;
     return dialect !== undefined && dialect !== null && dialect.trim() !== '';
   } catch (error) {
     log.database.error('Error reading db.config.yaml', { error: error.message });
@@ -108,8 +125,8 @@ const isSSLConfigured = () => {
     return false;
   }
 
-  const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
-  const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
+  const certPath = resolveSSLPath(boxConfig.ssl.cert_path);
+  const keyPath = resolveSSLPath(boxConfig.ssl.key_path);
   return existsSync(certPath) && existsSync(keyPath);
 };
 
@@ -117,12 +134,12 @@ const isSSLConfigured = () => {
  * Generate SSL certificates if they don't exist and generate_ssl is enabled
  */
 const generateSSLCertificatesIfNeeded = () => {
-  if (!boxConfig.ssl || !boxConfig.ssl.generate_ssl || !boxConfig.ssl.generate_ssl.value) {
+  if (!boxConfig.ssl || !boxConfig.ssl.generate_ssl) {
     return false; // SSL generation disabled
   }
 
-  const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
-  const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
+  const keyPath = resolveSSLPath(boxConfig.ssl.key_path);
+  const certPath = resolveSSLPath(boxConfig.ssl.cert_path);
 
   // Check if certificates already exist
   if (existsSync(keyPath) && existsSync(certPath)) {
@@ -226,7 +243,7 @@ const app = express();
 // boolean to Express's expected value: true -> 1 (trust exactly one hop, which
 // is silent under express-rate-limit and not X-Forwarded-For spoofable),
 // false -> false (trust nothing). Defaults to trusting when unset.
-const trustProxy = boxConfig.boxvault.trust_proxy?.value ?? true;
+const trustProxy = boxConfig.boxvault.trust_proxy ?? true;
 app.set('trust proxy', trustProxy ? 1 : false);
 
 // Increase server limits
@@ -278,13 +295,13 @@ app.use(
   })
 );
 
-const allowedOrigins = (boxConfig.boxvault.allowed_origins?.value || [])
+const allowedOrigins = (boxConfig.boxvault.allowed_origins || [])
   .map(origin => origin.trim())
   .filter(Boolean);
 
 // Enhanced CORS for Cloudflare
 const corsOptions = {
-  origin: [boxConfig.boxvault.origin.value, ...allowedOrigins],
+  origin: [boxConfig.boxvault.origin, ...allowedOrigins],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'x-access-token',
@@ -303,7 +320,11 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Calculate max size from config (converting GB to bytes)
-const maxSize = boxConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
+const maxSize = boxConfig.boxvault.box_max_file_size * 1024 * 1024 * 1024;
+
+// i18n internationalization middleware
+app.use(i18nMiddleware);
+log.app.info('i18n internationalization middleware applied');
 
 // Configure body parsers with appropriate limits, but exclude file upload route
 app.use((req, res, next) => {
@@ -321,11 +342,7 @@ app.use((req, res, next) => {
     // Apply body parsing for non-upload routes
     json({ limit: maxSize })(req, res, err => {
       if (err) {
-        log.error.error('JSON parsing error:', err);
-        if (err.type === 'entity.too.large') {
-          return res.status(413).json({ error: 'Request too large' });
-        }
-        return res.status(400).json({ error: 'Invalid JSON body' });
+        return next(err);
       }
       return urlencoded({ extended: true, limit: maxSize })(req, res, next);
     });
@@ -396,7 +413,7 @@ const initializeApp = async () => {
       log.error.error(`Failed to load auth configuration: ${e.message}`);
     }
 
-    const jwtSecret = authConfig?.auth?.jwt?.jwt_secret?.value;
+    const jwtSecret = authConfig?.auth?.jwt?.jwt_secret;
     if (!jwtSecret || jwtSecret.length < 32) {
       log.app.warn(
         'auth.jwt.jwt_secret is missing or shorter than 32 characters; configure a strong random secret of at least 32 characters.'
@@ -505,10 +522,6 @@ const initializeApp = async () => {
     app.use(oidcSessionCsrf);
     log.app.info('CSRF protection applied to session-cookie OIDC routes');
 
-    // i18n internationalization middleware
-    app.use(i18nMiddleware);
-    log.app.info('i18n internationalization middleware applied');
-
     // Initialize roles, but not in test environment as setup.js handles it
     if (process.env.NODE_ENV !== 'test') {
       await initial();
@@ -521,6 +534,7 @@ const initializeApp = async () => {
     log.app.info('Loading application routes...');
 
     app.use('/api', statusRoutes);
+    app.use('/api', rulesRoutes);
     app.use('/api', healthRoutes);
     app.use('/api', authRoutes);
     app.use('/api', mailRoutes);
@@ -624,9 +638,6 @@ if (isConfigured) {
   const setupToken = getOrGenerateSetupToken();
   log.app.info(`Setup token: ${setupToken}`);
 
-  // Apply i18n middleware for setup routes
-  app.use(i18nMiddleware);
-
   // Load only the setup route
   app.use('/api', statusRoutes);
   app.use('/api', setupRoutes);
@@ -635,6 +646,8 @@ if (isConfigured) {
     void req;
     res.sendFile(join(static_path, 'index.html'));
   });
+
+  app.use(errorHandler);
 
   // Watch for changes in the db.config.yaml file
   if (process.env.NODE_ENV !== 'test') {
@@ -668,8 +681,8 @@ if (isConfigured) {
   }
 }
 
-const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted.value || 5000;
-const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted.value || 5001;
+const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted || 5000;
+const HTTPS_PORT = boxConfig.boxvault.api_listen_port_encrypted || 5001;
 
 // HTTP Server starter function (must be defined before IIFE uses it)
 const startHTTPServer = (port = HTTP_PORT) => {
@@ -713,8 +726,8 @@ const startServer = () => {
 
   if (isSSLConfigured()) {
     try {
-      const certPath = resolveSSLPath(boxConfig.ssl.cert_path.value);
-      const keyPath = resolveSSLPath(boxConfig.ssl.key_path.value);
+      const certPath = resolveSSLPath(boxConfig.ssl.cert_path);
+      const keyPath = resolveSSLPath(boxConfig.ssl.key_path);
 
       const privateKey = readFileSync(keyPath, 'utf8');
       const certificate = readFileSync(certPath, 'utf8');

@@ -22,6 +22,8 @@ const BOX_METADATA_KEYS = [
   'driver_version',
 ];
 
+const SHORT_DESCRIPTION_MAX_LENGTH = 255;
+
 /**
  * Sanitize the pipeline-pushed box facts.
  * @param {*} metadata - Raw metadata value from the request body
@@ -46,25 +48,37 @@ const sanitizeBoxMetadata = metadata => {
  * treat absence as "unchanged" and create can default the rest to null.
  * Wire names are camelCase, matching the box object idiom (isPublic).
  * @param {Object} body - Request body
- * @returns {{error: string|null, fields: Object}} 400 message, or collected fields
+ * @returns {{errors: Array<{pointer: string, rule: string, params: Object}>, fields: Object}} Failing rules, or collected fields
  */
 const parseBoxContentFields = body => {
   const fields = {};
   const { shortDescription, readme, metadata } = body;
 
   if (typeof shortDescription !== 'undefined') {
-    if (
-      shortDescription !== null &&
-      (typeof shortDescription !== 'string' || shortDescription.length > 255)
-    ) {
-      return { error: 'shortDescription must be a string of at most 255 characters.', fields };
+    if (shortDescription !== null && typeof shortDescription !== 'string') {
+      return {
+        errors: [{ pointer: '/shortDescription', rule: 'type', params: { type: 'string' } }],
+        fields,
+      };
+    }
+    if (shortDescription !== null && shortDescription.length > SHORT_DESCRIPTION_MAX_LENGTH) {
+      return {
+        errors: [
+          {
+            pointer: '/shortDescription',
+            rule: 'maxLength',
+            params: { maxLength: SHORT_DESCRIPTION_MAX_LENGTH },
+          },
+        ],
+        fields,
+      };
     }
     fields.shortDescription = shortDescription;
   }
 
   if (typeof readme !== 'undefined') {
     if (readme !== null && typeof readme !== 'string') {
-      return { error: 'readme must be a string.', fields };
+      return { errors: [{ pointer: '/readme', rule: 'type', params: { type: 'string' } }], fields };
     }
     fields.readme = readme;
   }
@@ -75,13 +89,16 @@ const parseBoxContentFields = body => {
     } else {
       const sanitized = sanitizeBoxMetadata(metadata);
       if (!sanitized) {
-        return { error: 'metadata must be a plain JSON object.', fields };
+        return {
+          errors: [{ pointer: '/metadata', rule: 'type', params: { type: 'object' } }],
+          fields,
+        };
       }
       fields.metadata = sanitized;
     }
   }
 
-  return { error: null, fields };
+  return { errors: [], fields };
 };
 
 /**

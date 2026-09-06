@@ -126,7 +126,7 @@ describe('Stale chunk directory sweep', () => {
   it('should honour the configured age and ignore a malformed knob', async () => {
     const twoHours = makeTempDir([staleOrg, 'two-hours', '1.0.0', 'vb', 'amd64'], 2 * HOUR_MS);
     const restore = updateAppConfig(config => {
-      config.boxvault.upload_stale_temp_max_age_hours = { value: 1 };
+      config.boxvault.upload_stale_temp_max_age_hours = 1;
     });
     try {
       const res = await sendChunk(0);
@@ -138,7 +138,7 @@ describe('Stale chunk directory sweep', () => {
 
     const kept = makeTempDir([staleOrg, 'kept', '1.0.0', 'vb', 'amd64'], 2 * HOUR_MS);
     const restoreMalformed = updateAppConfig(config => {
-      config.boxvault.upload_stale_temp_max_age_hours = { value: 'soon' };
+      config.boxvault.upload_stale_temp_max_age_hours = 'soon';
     });
     try {
       const res = await sendChunk(0);

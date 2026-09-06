@@ -106,7 +106,7 @@ describe('Local authentication policy', () => {
 
     it('should refuse local accounts while local authentication is switched off', async () => {
       const restore = updateConfig('auth', config => {
-        config.auth.jwt.local_enabled = { value: false };
+        config.auth.jwt.local_enabled = false;
       });
       try {
         const res = await signin({ username: account.username, password: PASSWORD });
@@ -130,7 +130,7 @@ describe('Local authentication policy', () => {
 
     it('should refuse an unverified account when verification is required', async () => {
       const restore = updateConfig('auth', config => {
-        config.auth.local.local_require_email_verification = { value: true };
+        config.auth.local.local_require_email_verification = true;
       });
       await account.update({ verified: false });
       try {
@@ -165,11 +165,11 @@ describe('Local authentication policy', () => {
 
     beforeAll(() => {
       restore = updateConfig('auth', config => {
-        config.auth.local.local_password_min_length = { value: 8 };
-        config.auth.local.local_password_require_uppercase = { value: true };
-        config.auth.local.local_password_require_lowercase = { value: true };
-        config.auth.local.local_password_require_numbers = { value: true };
-        config.auth.local.local_password_require_symbols = { value: true };
+        config.auth.local.local_password_min_length = 8;
+        config.auth.local.local_password_require_uppercase = true;
+        config.auth.local.local_password_require_lowercase = true;
+        config.auth.local.local_password_require_numbers = true;
+        config.auth.local.local_password_require_symbols = true;
       });
     });
 
@@ -181,21 +181,39 @@ describe('Local authentication policy', () => {
       const cases = ['short', 'lowercase1!', 'UPPERCASE1!', 'NoNumbers!', 'NoSymbols1'];
       const responses = await Promise.all(cases.map(password => signup({ password })));
       responses.forEach(res => {
-        expect(res.statusCode).toBe(400);
+        expect(res.statusCode).toBe(422);
+        expect(res.body.errors[0].pointer).toBe('/password');
       });
+      expect(responses[0].body.errors[0].rule).toBe('minLength');
+      expect(responses[1].body.errors[0]).toEqual(
+        expect.objectContaining({ rule: 'pattern', params: { pattern: 'uppercase' } })
+      );
+    });
+
+    it('should refuse a blocklisted password', async () => {
+      const res = await signup({ password: 'Correcthorsebatterystaple1!' });
+      expect(res.statusCode).toBe(201);
+      const blocked = await signup({ password: 'passwordpassword' });
+      expect(blocked.statusCode).toBe(422);
+      expect(blocked.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/password', rule: 'blocklist' })
+      );
     });
 
     it('should apply the same policy to password changes', async () => {
       const weak = await request(app)
         .put(`/api/users/${account.id}/change-password`)
         .set('x-access-token', signFor(account))
-        .send({ newPassword: 'short' });
-      expect(weak.statusCode).toBe(400);
+        .send({ new_password: 'short' });
+      expect(weak.statusCode).toBe(422);
+      expect(weak.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/new_password', rule: 'minLength' })
+      );
 
       const missing = await request(app)
         .put('/api/users/999999/change-password')
         .set('x-access-token', signFor(admin))
-        .send({ newPassword: 'Strong123!' });
+        .send({ new_password: 'Strong123!' });
       expect(missing.statusCode).toBe(404);
     });
   });
@@ -203,12 +221,33 @@ describe('Local authentication policy', () => {
   describe('signup gates', () => {
     it('should reject an unsafe username', async () => {
       const res = await signup({ username: 'bad..name' });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/username',
+          rule: 'pattern',
+          params: { pattern: 'slug' },
+        }),
+      ]);
+    });
+
+    it('should refuse a taken username and email with 409', async () => {
+      const res = await signup({ username: account.username, email: account.email });
+      expect(res.statusCode).toBe(409);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/username',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+        expect.objectContaining({ pointer: '/email', rule: 'unique', params: { scope: 'global' } }),
+      ]);
     });
 
     it('should refuse a new personal organization when the knob is off', async () => {
       const restore = updateConfig('auth', config => {
-        config.auth.local.local_allow_new_organizations = { value: false };
+        config.auth.local.local_allow_new_organizations = false;
       });
       try {
         const res = await signup({});
@@ -230,25 +269,25 @@ describe('Local authentication policy', () => {
           ...overrides,
         });
 
-      const unknown = await signup({ email, invitationToken: 'no-such-token' });
+      const unknown = await signup({ email, invitation_token: 'no-such-token' });
       expect(unknown.statusCode).toBe(400);
 
       const used = await invitation({ accepted: true });
-      expect((await signup({ email, invitationToken: used.token })).statusCode).toBe(400);
+      expect((await signup({ email, invitation_token: used.token })).statusCode).toBe(400);
 
       const stale = await invitation({ expires: new Date(Date.now() - DAY_MS) });
-      expect((await signup({ email, invitationToken: stale.token })).statusCode).toBe(400);
+      expect((await signup({ email, invitation_token: stale.token })).statusCode).toBe(400);
       await stale.reload();
       expect(stale.expired).toBe(true);
 
       const addressed = await invitation();
       const mismatch = await signup({
         email: `someone-else-${uniqueId}@example.com`,
-        invitationToken: addressed.token,
+        invitation_token: addressed.token,
       });
       expect(mismatch.statusCode).toBe(400);
 
-      const joined = await signup({ email, invitationToken: addressed.token });
+      const joined = await signup({ email, invitation_token: addressed.token });
       expect(joined.statusCode).toBe(201);
       const created = await db.user.findOne({ where: { email } });
       const membership = await db.UserOrg.findUserOrgRole(created.id, org.id);
@@ -261,7 +300,7 @@ describe('Local authentication policy', () => {
         org_code: 'FFFFFF',
       });
       const restore = updateConfig('app', config => {
-        config.boxvault.org_code_seed = { value: 'FFFFFF' };
+        config.boxvault.org_code_seed = 'FFFFFF';
       });
       try {
         const res = await signup({});
@@ -278,7 +317,7 @@ describe('Local authentication policy', () => {
 
     beforeAll(() => {
       restore = updateConfig('auth', config => {
-        config.auth.local = { local_allow_new_organizations: { value: true } };
+        config.auth.local = { local_allow_new_organizations: true };
       });
     });
 
@@ -287,9 +326,21 @@ describe('Local authentication policy', () => {
     });
 
     it('should fall back to the default password length and hashing cost', async () => {
-      const weak = await signup({ password: 'short' });
-      expect(weak.statusCode).toBe(400);
-      const strong = await signup({ password: 'Strong123!', name: '  Named Person  ' });
+      const weak = await signup({ password: 'Strong123!' });
+      expect(weak.statusCode).toBe(422);
+      expect(weak.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/password',
+          rule: 'minLength',
+          params: { minLength: 15 },
+        }),
+      ]);
+      const rules = await request(app).get('/api/rules');
+      expect(rules.body.forms.password.properties.new_password.minLength).toBe(15);
+      const strong = await signup({
+        password: 'Strong passphrase 123!',
+        name: '  Named Person  ',
+      });
       expect(strong.statusCode).toBe(201);
       const created = await db.user.findOne({ where: { name: 'Named Person' } });
       expect(created).not.toBeNull();
@@ -301,7 +352,7 @@ describe('Local authentication policy', () => {
         const res = await signin({
           username: account.username,
           password: PASSWORD,
-          stayLoggedIn: true,
+          stay_logged_in: true,
         });
         expect(res.statusCode).toBe(200);
         expect(res.body.provider).toBe('local');
@@ -311,14 +362,32 @@ describe('Local authentication policy', () => {
       }
     });
 
-    it('should answer 401 for a username without a password', async () => {
+    it('should answer 422 for a username without a password', async () => {
       const res = await signin({ username: `ghost-${uniqueId}` });
-      expect(res.statusCode).toBe(401);
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/password', rule: 'required' }),
+      ]);
     });
 
     it('should reject a signup without a body', async () => {
       const res = await request(app).post('/api/auth/signup');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors.map(error => error.pointer)).toEqual([
+        '/username',
+        '/email',
+        '/password',
+      ]);
+    });
+
+    it('should answer 400 as a problem for a body that cannot be read', async () => {
+      const res = await request(app)
+        .post('/api/auth/signup')
+        .set('Content-Type', 'application/json')
+        .send('{"username":');
       expect(res.statusCode).toBe(400);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
     });
   });
 
@@ -349,15 +418,38 @@ describe('Local authentication policy', () => {
         .post('/api/organization')
         .set('x-access-token', signFor(account))
         .send({ organization: 'bad..org' });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
     });
 
     it('should answer 404 when changing the email of an unknown user', async () => {
       const res = await request(app)
         .put('/api/users/999999/change-email')
         .set('x-access-token', signFor(admin))
-        .send({ newEmail: `nobody-${uniqueId}@example.com` });
+        .send({ new_email: `nobody-${uniqueId}@example.com` });
       expect(res.statusCode).toBe(404);
+    });
+
+    it('should refuse an email another account already uses', async () => {
+      const res = await request(app)
+        .put(`/api/users/${account.id}/change-email`)
+        .set('x-access-token', signFor(account))
+        .send({ new_email: orgAdmin.email });
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/new_email', rule: 'unique' }),
+      ]);
+      const malformed = await request(app)
+        .put(`/api/users/${account.id}/change-email`)
+        .set('x-access-token', signFor(account))
+        .send({ new_email: 'not-an-email' });
+      expect(malformed.statusCode).toBe(422);
+      expect(malformed.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/new_email',
+          rule: 'format',
+          params: { format: 'email' },
+        }),
+      ]);
     });
 
     it('should let only owners invite administrators', async () => {
@@ -366,8 +458,8 @@ describe('Local authentication policy', () => {
         .set('x-access-token', signFor(orgAdmin))
         .send({
           email: `admin-invitee-${uniqueId}@example.com`,
-          organizationName: orgName,
-          inviteRole: 'admin',
+          organization_name: orgName,
+          invite_role: 'admin',
         });
       expect(res.statusCode).toBe(403);
     });

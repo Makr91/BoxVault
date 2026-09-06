@@ -19,7 +19,7 @@ describe('Version API', () => {
   const testBox = {
     name: boxName,
     description: 'Test box for version API testing',
-    isPublic: true,
+    is_public: true,
   };
 
   beforeAll(async () => {
@@ -127,7 +127,7 @@ describe('Version API', () => {
 
   describe('POST /api/organization/:organization/box/:boxId/version', () => {
     const newVersion = {
-      version: '1.0.0',
+      version_number: '1.0.0',
       description: 'Test version',
     };
 
@@ -135,7 +135,9 @@ describe('Version API', () => {
       // Clean up - delete test version if it exists
       try {
         await request(app)
-          .delete(`/api/organization/${orgName}/box/${testBox.name}/version/${newVersion.version}`)
+          .delete(
+            `/api/organization/${orgName}/box/${testBox.name}/version/${newVersion.version_number}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         void err;
@@ -150,7 +152,7 @@ describe('Version API', () => {
         .send(newVersion);
 
       expect(res.statusCode).toBe(201);
-      expect(res.body).toHaveProperty('versionNumber', newVersion.version);
+      expect(res.body).toHaveProperty('versionNumber', newVersion.version_number);
       expect(res.body).toHaveProperty('description', newVersion.description);
     });
 
@@ -168,13 +170,32 @@ describe('Version API', () => {
         .send(newVersion);
 
       expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/version_number',
+          rule: 'unique',
+          params: { scope: testBox.name },
+        }),
+      ]);
+    });
+
+    it('should refuse a version number starting with a period', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
+        .set('x-access-token', authToken)
+        .send({ version_number: '.hidden' });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/version_number', rule: 'pattern' })
+      );
     });
 
     it('should fail if permission denied (regular user)', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', regularUserToken)
-        .send({ version: '1.1.0', description: 'Unauthorized' });
+        .send({ version_number: '1.1.0', description: 'Unauthorized' });
 
       expect(res.statusCode).toBe(403);
     });
@@ -182,7 +203,7 @@ describe('Version API', () => {
 
   describe('GET /api/organization/:organization/box/:boxId/version/:version', () => {
     const version = {
-      version: '1.0.0',
+      version_number: '1.0.0',
       description: 'Test version',
     };
 
@@ -198,7 +219,9 @@ describe('Version API', () => {
       // Clean up
       try {
         await request(app)
-          .delete(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+          .delete(
+            `/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         void err;
@@ -208,11 +231,11 @@ describe('Version API', () => {
 
     it('should return version details', async () => {
       const res = await request(app)
-        .get(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .get(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`)
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('versionNumber', version.version);
+      expect(res.body).toHaveProperty('versionNumber', version.version_number);
       expect(res.body).toHaveProperty('description', version.description);
     });
 
@@ -226,7 +249,7 @@ describe('Version API', () => {
 
     it('should return 401 with invalid token', async () => {
       const res = await request(app)
-        .get(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .get(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`)
         .set('x-access-token', 'invalid-token');
 
       expect(res.statusCode).toBe(401);
@@ -243,7 +266,7 @@ describe('Version API', () => {
 
   describe('PUT /api/organization/:organization/box/:boxId/version/:version', () => {
     const version = {
-      version: '1.0.0',
+      version_number: '1.0.0',
       description: 'Initial description',
     };
 
@@ -259,7 +282,9 @@ describe('Version API', () => {
       // Clean up
       try {
         await request(app)
-          .delete(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+          .delete(
+            `/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`
+          )
           .set('x-access-token', authToken);
       } catch (err) {
         void err;
@@ -273,7 +298,7 @@ describe('Version API', () => {
       };
 
       const res = await request(app)
-        .put(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .put(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`)
         .set('x-access-token', authToken)
         .send(updateData);
 
@@ -292,7 +317,7 @@ describe('Version API', () => {
 
     it('should fail if permission denied (regular user)', async () => {
       const res = await request(app)
-        .put(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .put(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`)
         .set('x-access-token', regularUserToken)
         .send({ description: 'Unauthorized Update' });
 
@@ -302,7 +327,7 @@ describe('Version API', () => {
 
   describe('DELETE /api/organization/:organization/box/:boxId/version/:version', () => {
     const version = {
-      version: '1.0.0',
+      version_number: '1.0.0',
       description: 'Version to delete',
     };
 
@@ -316,14 +341,16 @@ describe('Version API', () => {
 
     it('should delete version', async () => {
       const res = await request(app)
-        .delete(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .delete(
+          `/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`
+        )
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
 
       // Verify version is deleted
       const checkRes = await request(app)
-        .get(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .get(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`)
         .set('x-access-token', authToken);
 
       expect(checkRes.statusCode).toBe(404);
@@ -339,7 +366,9 @@ describe('Version API', () => {
 
     it('should fail if permission denied (regular user)', async () => {
       const res = await request(app)
-        .delete(`/api/organization/${orgName}/box/${testBox.name}/version/${version.version}`)
+        .delete(
+          `/api/organization/${orgName}/box/${testBox.name}/version/${version.version_number}`
+        )
         .set('x-access-token', regularUserToken);
 
       // Note: The controller might return 403 or 404 depending on order of checks.
@@ -448,7 +477,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: vNum, description: 'To Rename' });
+        .send({ version_number: vNum, description: 'To Rename' });
 
       // Ensure directory exists
       const oldPath = getSecureBoxPath(orgName, testBox.name, vNum);
@@ -459,7 +488,7 @@ describe('Version API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${testBox.name}/version/${vNum}`)
         .set('x-access-token', authToken)
-        .send({ versionNumber: newVNum });
+        .send({ version_number: newVNum });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.versionNumber).toBe(newVNum);
@@ -488,7 +517,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: vNum, description: 'To Rename Target Exists' });
+        .send({ version_number: vNum, description: 'To Rename Target Exists' });
 
       // Mock fs.existsSync to return true for the new path (simulating it exists)
       // and true for old path (so it tries to rename)
@@ -508,7 +537,7 @@ describe('Version API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${testBox.name}/version/${vNum}`)
         .set('x-access-token', authToken)
-        .send({ versionNumber: newVNum });
+        .send({ version_number: newVNum });
 
       expect(res.statusCode).toBe(200);
 
@@ -524,7 +553,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '2.0.0', description: 'To be deleted' });
+        .send({ version_number: '2.0.0', description: 'To be deleted' });
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/box/${testBox.name}/version`)
@@ -575,7 +604,7 @@ describe('Version API', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '2.0.0', description: 'Error version' });
+        .send({ version_number: '2.0.0', description: 'Error version' });
 
       expect(res.statusCode).toBe(500);
     });
@@ -586,7 +615,7 @@ describe('Version API', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '2.1.0', description: 'Error version' });
+        .send({ version_number: '2.1.0', description: 'Error version' });
 
       expect(res.statusCode).toBe(500);
     });
@@ -597,7 +626,7 @@ describe('Version API', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '2.1.0', description: 'Error version' });
+        .send({ version_number: '2.1.0', description: 'Error version' });
 
       expect(res.statusCode).toBe(500);
     });
@@ -607,7 +636,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '3.0.0' });
+        .send({ version_number: '3.0.0' });
 
       jest.spyOn(db.versions, 'findOne').mockRejectedValue(new Error('DB Error'));
 
@@ -624,7 +653,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '3.1.0' });
+        .send({ version_number: '3.1.0' });
 
       jest.spyOn(db.versions, 'findOne').mockRejectedValue(new Error(''));
 
@@ -641,7 +670,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '3.1.0' });
+        .send({ version_number: '3.1.0' });
 
       jest.spyOn(db.versions, 'findOne').mockRejectedValue(new Error(''));
 
@@ -658,7 +687,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '4.0.0' });
+        .send({ version_number: '4.0.0' });
 
       jest.spyOn(db.versions, 'findOne').mockRejectedValue(new Error('DB Error'));
 
@@ -674,7 +703,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '4.1.0' });
+        .send({ version_number: '4.1.0' });
 
       jest.spyOn(db.versions, 'findOne').mockRejectedValue(new Error(''));
 
@@ -690,7 +719,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '4.1.0' });
+        .send({ version_number: '4.1.0' });
 
       jest.spyOn(db.versions, 'findOne').mockRejectedValue(new Error(''));
 
@@ -739,7 +768,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '6.0.0' });
+        .send({ version_number: '6.0.0' });
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/box/${testBox.name}/version/6.0.0`)
@@ -780,7 +809,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '8.0.0' });
+        .send({ version_number: '8.0.0' });
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/box/${testBox.name}/version/8.0.0`)
@@ -805,7 +834,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: '9.0.0' });
+        .send({ version_number: '9.0.0' });
 
       const res = await request(app)
         .delete(`/api/organization/${orgName}/box/${testBox.name}/version`)
@@ -836,7 +865,7 @@ describe('Version API', () => {
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
-        .send({ version: vNum, description: 'Cleanup Test' });
+        .send({ version_number: vNum, description: 'Cleanup Test' });
 
       // Mock fs.existsSync to return true for both old and new paths
       // This simulates:
@@ -864,7 +893,7 @@ describe('Version API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${testBox.name}/version/${vNum}`)
         .set('x-access-token', authToken)
-        .send({ versionNumber: newVNum });
+        .send({ version_number: newVNum });
 
       expect(res.statusCode).toBe(200);
       expect(rmSyncSpy).toHaveBeenCalled();

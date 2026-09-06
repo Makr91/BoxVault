@@ -64,7 +64,7 @@ export const testSmtp = async (req, res) => {
 
     log.app.info('Sending test email...');
     const info = await transporter.sendMail({
-      from: smtpConfig.smtp_settings.from.value,
+      from: smtpConfig.smtp_settings.from,
       to: req.body.testEmail,
       subject: req.__('mail.testEmailSubject'),
       text: req.__('mail.testEmailBody'),

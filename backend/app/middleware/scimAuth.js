@@ -53,7 +53,7 @@ const scimError = (res, status, detail, scimType = null) => {
 const scimAuth = async (req, res, next) => {
   const authConfig = loadConfig('auth');
 
-  if (!authConfig.auth?.scim?.enabled?.value) {
+  if (!authConfig.auth?.scim?.enabled) {
     return scimError(res, 403, 'SCIM provisioning is disabled on this BoxVault instance');
   }
 
@@ -93,7 +93,7 @@ const scimAuth = async (req, res, next) => {
     return scimError(res, 503, 'Identity provider metadata not available yet');
   }
 
-  const audience = authConfig.auth.scim.audience?.value;
+  const { audience } = authConfig.auth.scim;
   if (!audience) {
     // Refuse to validate without an audience: skipping the aud check would
     // accept tokens minted for any other client at this issuer.

@@ -197,7 +197,7 @@ const update = (req, res) => {
 
   // Set a longer timeout for the request from config
   const appConfig = loadConfig('app');
-  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
+  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours || 24;
   const uploadTimeoutMs = uploadTimeoutHours * 60 * 60 * 1000;
   req.setTimeout(uploadTimeoutMs);
   res.setTimeout(uploadTimeoutMs);

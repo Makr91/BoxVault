@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { conflict, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
@@ -33,7 +34,7 @@ const { box: Box } = db;
  *             properties:
  *               name:
  *                 type: string
- *                 description: Box name
+ *                 description: Box name (the slug pattern of /api/rules, unique in the organization)
  *               description:
  *                 type: string
  *                 description: Box description
@@ -41,10 +42,20 @@ const { box: Box } = db;
  *                 type: boolean
  *                 description: Whether the box is published
  *                 default: false
- *               isPublic:
+ *               is_public:
  *                 type: boolean
  *                 description: Whether the box is publicly accessible
  *                 default: false
+ *               github_repo:
+ *                 type: string
+ *                 description: GitHub repository building the box
+ *               workflow_file:
+ *                 type: string
+ *                 description: Workflow file of the build
+ *               cicd_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Link to the build pipeline
  *               shortDescription:
  *                 type: string
  *                 maxLength: 255
@@ -59,18 +70,24 @@ const { box: Box } = db;
  *                 nullable: true
  *                 description: Structured box facts pushed by the build pipeline (whitelisted top-level keys only, unknown keys stripped silently)
  *     responses:
- *       200:
+ *       201:
  *         description: Box created successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Box'
- *       400:
- *         description: Bad request - name cannot be empty
+ *       409:
+ *         description: A box with that name already exists in the organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the box form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -80,14 +97,22 @@ const { box: Box } = db;
  */
 export const create = async (req, res) => {
   const { organization } = req.params;
-  const { name, description, published, isPublic, githubRepo, workflowFile, cicdUrl } = req.body;
+  const { name, description, published, is_public, github_repo, workflow_file, cicd_url } =
+    req.body;
 
-  const { error: contentError, fields: contentFields } = parseBoxContentFields(req.body);
-  if (contentError) {
-    return res.status(400).send({ message: contentError });
+  const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(req.body);
+  if (contentErrors.length > 0) {
+    return refuse(res, req, contentErrors);
   }
 
   try {
+    const existingBox = await Box.findOne({
+      where: { name, organizationId: req.organizationId },
+    });
+    if (existingBox) {
+      return conflict(res, req, '/name', organization);
+    }
+
     const newFilePath = getSecureBoxPath(organization, name);
 
     // Create the new directory if it doesn't exist
@@ -97,15 +122,15 @@ export const create = async (req, res) => {
 
     // Create a Box
     const box = {
-      name: req.body.name,
+      name,
       description,
       published: published || false,
-      isPublic: isPublic || false,
+      isPublic: is_public || false,
       userId: req.userId,
       organizationId: req.organizationId,
-      githubRepo: githubRepo || null,
-      workflowFile: workflowFile || null,
-      cicdUrl: cicdUrl || null,
+      githubRepo: github_repo || null,
+      workflowFile: workflow_file || null,
+      cicdUrl: cicd_url || null,
       shortDescription: contentFields.shortDescription ?? null,
       readme: contentFields.readme ?? null,
       metadata: contentFields.metadata ?? null,

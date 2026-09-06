@@ -1,8 +1,10 @@
 // changeemail.js
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
-const { user: User } = db;
+const { user: User, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -27,9 +29,9 @@ const { user: User } = db;
  *           schema:
  *             type: object
  *             required:
- *               - newEmail
+ *               - new_email
  *             properties:
- *               newEmail:
+ *               new_email:
  *                 type: string
  *                 format: email
  *                 description: New email address
@@ -50,6 +52,18 @@ const { user: User } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Another account already uses that email
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: The email breaks a rule of the email form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -59,12 +73,19 @@ const { user: User } = db;
  */
 export const changeEmail = async (req, res) => {
   const { userId } = req.params;
-  const { newEmail } = req.body;
+  const { new_email: newEmail } = req.body;
 
   try {
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).send({ message: req.__('users.userNotFound') });
+    }
+
+    const existingUser = await User.findOne({
+      where: { email: newEmail, id: { [Op.ne]: user.id } },
+    });
+    if (existingUser) {
+      return conflict(res, req, '/new_email', 'global');
     }
 
     user.email = newEmail;

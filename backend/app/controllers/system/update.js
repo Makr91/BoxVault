@@ -75,7 +75,7 @@ export const getUpdateStatus = async (req, res) => {
   void req;
   const packageName = 'boxvault';
   const appConfig = loadConfig('app');
-  const packagesUrl = appConfig.boxvault?.repository_packages_url?.value;
+  const packagesUrl = appConfig.boxvault?.repository_packages_url;
 
   const getVersion = command =>
     new Promise((resolve, reject) => {

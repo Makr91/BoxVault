@@ -1,401 +1,49 @@
+schemaVersion: 1
 auth:
   enabled_strategies:
-    type: array
-    value:
-      - local
-      - jwt
-      - oidc
-    description: List of enabled authentication strategies
-    section: Authentication
-    subsection: General
-    subsection_key: generalSettings
-    required: true
-    order: 1
-  default_strategy:
-    type: select
-    value: local
-    options:
-      - local
-      - jwt
-      - oidc
-    description: Default authentication strategy
-    section: Authentication
-    subsection: General
-    subsection_key: generalSettings
-    required: true
-    order: 2
+    - local
+    - jwt
+    - oidc
+  default_strategy: local
   jwt:
-    jwt_secret:
-      type: password
-      value: ${JWT_SECRET}
-      description: JWT signing secret (use strong random string)
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: true
-      order: 1
-    jwt_expiration:
-      type: string
-      value: 24h
-      description: JWT token expiration time (e.g., '24h', '7d', '1h')
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: true
-      order: 2
-    jwt_issuer:
-      type: string
-      value: boxvault
-      description: JWT token issuer identifier
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: true
-      order: 3
-    jwt_audience:
-      type: string
-      value: boxvault
-      description: JWT token audience identifier
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: true
-      order: 4
-    download_link_expiry:
-      type: string
-      value: 1h
-      description: Download link token expiration time (e.g., '1h', '30m', '2h')
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: false
-      order: 5
-    invitation_token_expiry_hours:
-      type: integer
-      value: 24
-      min: 1
-      max: 168
-      description: Hours until invitation tokens expire
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: false
-      order: 6
-    verification_token_expiry_hours:
-      type: integer
-      value: 24
-      min: 1
-      max: 168
-      description: Hours until email verification tokens expire
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: false
-      order: 7
-    service_account_max_expiry_days:
-      type: integer
-      value: 365
-      min: 1
-      max: 3650
-      description: Maximum days a service account token can be valid
-      section: Authentication
-      subsection: JWT Settings
-      subsection_key: jwtSettings
-      required: false
-      order: 8
-    local_enabled:
-      type: boolean
-      value: true
-      description: Enable username/password authentication
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 1
+    jwt_secret: ${JWT_SECRET}
+    jwt_expiration: 24h
+    jwt_issuer: boxvault
+    jwt_audience: boxvault
+    download_link_expiry: 1h
+    invitation_token_expiry_hours: 24
+    verification_token_expiry_hours: 24
+    service_account_max_expiry_days: 365
+    local_enabled: true
   local:
-    local_require_email_verification:
-      type: boolean
-      value: true
-      description: Require email verification for new local accounts
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 2
-    local_password_min_length:
-      type: integer
-      value: 8
-      min: 4
-      max: 128
-      description: Minimum password length for local accounts
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 3
-    local_password_require_uppercase:
-      type: boolean
-      value: false
-      description: Require uppercase letters in passwords
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 4
-    local_password_require_lowercase:
-      type: boolean
-      value: false
-      description: Require lowercase letters in passwords
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 5
-    local_password_require_numbers:
-      type: boolean
-      value: false
-      description: Require numbers in passwords
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 6
-    local_password_require_symbols:
-      type: boolean
-      value: false
-      description: Require special symbols in passwords
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 7
-    local_bcrypt_rounds:
-      type: integer
-      value: 10
-      min: 8
-      max: 15
-      description: Bcrypt hashing rounds (higher = more secure but slower)
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 8
-    local_session_timeout:
-      type: integer
-      value: 24
-      min: 1
-      max: 168
-      description: Session timeout in hours
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 9
-    local_allow_new_organizations:
-      type: boolean
-      value: false
-      description: Allow users to create new organizations during registration
-      section: Authentication
-      subsection: Local Authentication
-      subsection_key: localAuthentication
-      required: true
-      order: 10
+    local_require_email_verification: true
+    local_password_min_length: 15
+    local_password_require_uppercase: false
+    local_password_require_lowercase: false
+    local_password_require_numbers: false
+    local_password_require_symbols: false
+    local_bcrypt_rounds: 10
+    local_session_timeout: 24
+    local_allow_new_organizations: false
   oidc:
-    type: object
-    description: Configure OpenID Connect authentication providers
-    section: Authentication
-    subsection: OIDC Providers
-    subsection_key: oidcProviders
-    required: false
-    order: 50
-    token_refresh_threshold_minutes:
-      type: integer
-      value: 5
-      min: 1
-      max: 30
-      description: Minutes before OIDC token expiry to trigger automatic refresh
-      section: Authentication
-      subsection: OIDC Settings
-      subsection_key: oidcSettings
-      required: false
-      order: 51
-    token_default_expiry_minutes:
-      type: integer
-      value: 30
-      min: 5
-      max: 120
-      description: Default OIDC token expiry in minutes (if not provided by auth server)
-      section: Authentication
-      subsection: OIDC Settings
-      subsection_key: oidcSettings
-      required: false
-      order: 52
-    default_provider:
-      type: string
-      value: ''
-      description: >-
-        Provider name to feature as the primary sign-in option when multiple
-        OIDC providers are enabled. Must match a key under providers. Leave
-        blank for no default.
-      section: Authentication
-      subsection: OIDC Settings
-      subsection_key: oidcSettings
-      required: false
-      order: 53
-    silent_login:
-      type: boolean
-      value: false
-      description: >-
-        Attempt a silent (prompt=none) sign-in with the default provider when
-        an unauthenticated user opens the login page. Users with an active
-        identity-provider session are logged in without interaction.
-      section: Authentication
-      subsection: OIDC Settings
-      subsection_key: oidcSettings
-      required: false
-      order: 54
+    token_refresh_threshold_minutes: 5
+    token_default_expiry_minutes: 30
+    default_provider: ''
+    silent_login: false
     providers: {}
   resource_server:
-    enabled:
-      type: boolean
-      value: false
-      description: >-
-        Accept access tokens issued by a configured OIDC provider as Bearer
-        credentials (e.g. from a desktop app), authenticating the matching
-        BoxVault user without a manually-generated API key.
-      section: Authentication
-      subsection: Resource Server
-      subsection_key: resourceServer
-      required: false
-      order: 1
-    audience:
-      type: string
-      value: boxvault
-      description: >-
-        Expected audience (aud) claim in access tokens presented to BoxVault as a
-        resource server. Must match the audience the OIDC provider issues for the
-        client. Leave blank to skip audience validation.
-      section: Authentication
-      subsection: Resource Server
-      subsection_key: resourceServer
-      required: false
-      order: 2
+    enabled: false
+    audience: boxvault
   external:
-    domain_mapping_enabled:
-      type: boolean
-      value: true
-      description: Enable automatic organization assignment based on email domain
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: true
-      order: 1
-    domain_mappings:
-      type: textarea
-      value: |
-        {
-          "A55D94": ["m4kr.net", "philotic.cloud"]
-        }
-      description: >-
-        JSON mapping of organization codes to email domains. Format:
-        {"ORG_CODE": ["domain1.com", "domain2.com"]}. Users with matching email
-        domains will be auto-assigned to the specified organization.
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: false
-      conditional:
-        field: authentication.external_domain_mapping_enabled
-        value: true
-      order: 2
-    provisioning_enabled:
-      type: boolean
-      value: true
-      description: Enable automatic user provisioning for external authentication
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: true
-      order: 2
-    provisioning_policy:
-      type: select
-      value: invite_only
-      options:
-        - invite_only
-        - auto_provision
-        - manual_approval
-        - disabled
-      description: Policy for handling new external users
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: false
-      depends_on: provisioning_enabled
-      show_when:
-        - true
-      order: 3
-    provisioning_default_role:
-      type: select
-      value: user
-      options:
-        - user
-        - admin
-        - super-admin
-      description: Default role for auto-provisioned users
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: false
-      depends_on: provisioning_enabled
-      show_when:
-        - true
-      order: 4
-    provisioning_fallback_action:
-      type: select
-      value: create_org
-      options:
-        - require_invite
-        - create_org
-        - deny_access
-      description: Action when no organization mapping found
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: false
-      depends_on: provisioning_enabled
-      show_when:
-        - true
-      order: 5
-    profile_sync_enabled:
-      type: boolean
-      value: true
-      description: Sync user profile from external providers
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: true
-      order: 6
-    profile_update_on_login:
-      type: boolean
-      value: true
-      description: Update profile information on each login
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: false
-      depends_on: profile_sync_enabled
-      show_when:
-        - true
-      order: 7
-    profile_sync_fields:
-      type: string
-      value: displayName,email,groups
-      description: Comma-separated list of profile fields to sync
-      section: Authentication
-      subsection: External Providers
-      subsection_key: externalProviders
-      required: false
-      depends_on: profile_sync_enabled
-      show_when:
-        - true
-      order: 8
+    domain_mapping_enabled: true
+    domain_mappings: |
+      {
+        "A55D94": ["m4kr.net", "philotic.cloud"]
+      }
+    provisioning_enabled: true
+    provisioning_policy: invite_only
+    provisioning_default_role: user
+    provisioning_fallback_action: create_org
+    profile_sync_enabled: true
+    profile_update_on_login: true
+    profile_sync_fields: displayName,email,groups

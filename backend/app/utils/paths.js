@@ -11,7 +11,7 @@ const getStorageRoot = () => {
   if (!STORAGE_ROOT) {
     try {
       const appConfig = loadConfig('app');
-      STORAGE_ROOT = appConfig.boxvault.box_storage_directory.value;
+      STORAGE_ROOT = appConfig.boxvault.box_storage_directory;
     } catch {
       // Fallback to default if config not available
       STORAGE_ROOT = '/var/lib/boxvault/storage';

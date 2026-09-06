@@ -23,13 +23,13 @@ const mockConfigLoader = {
     if (name === 'auth') {
       return {
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' } },
-          oidc: { providers: { idp: { enabled: { value: true }, issuer: { value: ISSUER } } } },
-          resource_server: { enabled: { value: true }, audience: { value: AUDIENCE } },
+          jwt: { jwt_secret: 'test-secret' },
+          oidc: { providers: { idp: { enabled: true, issuer: ISSUER } } },
+          resource_server: { enabled: true, audience: AUDIENCE },
         },
       };
     }
-    return { boxvault: { origin: { value: ORIGIN } } };
+    return { boxvault: { origin: ORIGIN } };
   }),
 };
 

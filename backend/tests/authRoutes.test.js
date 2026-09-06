@@ -91,16 +91,16 @@ describe('OIDC login routes', () => {
     restoreConfig = writeAuthConfig(config => {
       config.auth.oidc.providers = {
         loginidp: {
-          enabled: { value: true },
-          issuer: { value: ISSUER },
-          client_id: { value: 'boxvault' },
-          display_name: { value: 'Login IdP' },
-          icon_url: { value: 'https://login-idp.example/icon.svg' },
+          enabled: true,
+          issuer: ISSUER,
+          client_id: 'boxvault',
+          display_name: 'Login IdP',
+          icon_url: 'https://login-idp.example/icon.svg',
         },
         disabledidp: {
-          enabled: { value: false },
-          issuer: { value: 'https://off.example' },
-          display_name: { value: 'Off' },
+          enabled: false,
+          issuer: 'https://off.example',
+          display_name: 'Off',
         },
       };
     });
@@ -264,7 +264,7 @@ describe('OIDC login routes', () => {
 
   it('should purge expired handoff codes', async () => {
     const restore = writeAuthConfig(config => {
-      config.auth.oidc.login_handoff_ttl_seconds = { value: 1 };
+      config.auth.oidc.login_handoff_ttl_seconds = 1;
     });
     try {
       const first = codeOf(await completeLogin(user));

@@ -1,0 +1,17 @@
+{
+  "slug": {
+    "type": "string",
+    "pattern": "^(?!.*\\.\\.)[A-Za-z0-9.-]+$",
+    "minLength": 1,
+    "maxLength": 255
+  },
+  "identifier": {
+    "type": "string",
+    "pattern": "^(?!.*\\.\\.)[0-9a-zA-Z][0-9a-zA-Z._-]*$",
+    "maxLength": 255
+  },
+  "email": { "type": "string", "format": "email", "maxLength": 255 },
+  "orgCode": { "type": "string", "pattern": "^[0-9A-F]{6}$" },
+  "providerName": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+  "hex": { "type": "string", "pattern": "^[a-fA-F0-9]+$" }
+}

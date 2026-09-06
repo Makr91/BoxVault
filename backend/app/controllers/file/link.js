@@ -111,7 +111,7 @@ const getDownloadLink = async (req, res) => {
     }
 
     // Generate a secure download token with configurable expiry
-    const downloadLinkExpiry = authConfig.auth?.jwt?.download_link_expiry?.value || '1h';
+    const downloadLinkExpiry = authConfig.auth?.jwt?.download_link_expiry || '1h';
     const downloadToken = generateDownloadToken(
       {
         userId,
@@ -126,7 +126,7 @@ const getDownloadLink = async (req, res) => {
     );
 
     // Return the secure download URL
-    const downloadUrl = `${appConfig.boxvault.api_url.value}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+    const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
     return res.status(200).json({ downloadUrl });
   } catch (err) {

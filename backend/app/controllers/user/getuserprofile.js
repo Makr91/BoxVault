@@ -105,8 +105,8 @@ export const getUserProfile = async (req, res) => {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    const token = sign({ id: user.id }, authConfig.auth.jwt.jwt_secret.value, {
-      expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
+    const token = sign({ id: user.id }, authConfig.auth.jwt.jwt_secret, {
+      expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
       ...getJwtClaimOptions(),
     });
 

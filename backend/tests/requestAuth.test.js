@@ -20,20 +20,20 @@ const mockLog = {
   error: { error: jest.fn() },
 };
 
-const resourceServer = { enabled: { value: true }, audience: { value: AUDIENCE } };
+const resourceServer = { enabled: true, audience: AUDIENCE };
 
 const mockConfigLoader = {
   loadConfig: jest.fn(name => {
     if (name === 'auth') {
       return {
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' } },
-          oidc: { providers: { idp: { enabled: { value: true }, issuer: { value: ISSUER } } } },
+          jwt: { jwt_secret: 'test-secret' },
+          oidc: { providers: { idp: { enabled: true, issuer: ISSUER } } },
           resource_server: resourceServer,
         },
       };
     }
-    return { boxvault: { origin: { value: ORIGIN } } };
+    return { boxvault: { origin: ORIGIN } };
   }),
 };
 
@@ -128,8 +128,8 @@ const mockResponse = () => ({ status: jest.fn().mockReturnThis(), send: jest.fn(
 describe('Request authentication', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    resourceServer.enabled.value = true;
-    resourceServer.audience.value = AUDIENCE;
+    resourceServer.enabled = true;
+    resourceServer.audience = AUDIENCE;
     mockDb.service_account.findOne.mockResolvedValue(null);
     mockDb.credential.findByIssuerAndSubject.mockResolvedValue({ user_id: 7 });
     mockDb.user.findByPk.mockResolvedValue({ id: 7, suspended: false, sessionsInvalidAfter: null });
@@ -237,7 +237,7 @@ describe('Request authentication', () => {
     });
 
     it('refuses an identity-provider token while the resource server is disabled', async () => {
-      resourceServer.enabled.value = false;
+      resourceServer.enabled = false;
       const token = await mintIdpToken();
       expect(
         await resolveRequestAuth(requestWith({ authorization: `Bearer ${token}` }))
@@ -249,7 +249,7 @@ describe('Request authentication', () => {
     });
 
     it('refuses to validate without a configured audience', async () => {
-      resourceServer.audience.value = '';
+      resourceServer.audience = '';
       const token = await mintIdpToken();
       expect(
         await resolveRequestAuth(requestWith({ authorization: `Bearer ${token}` }))
@@ -363,7 +363,7 @@ describe('Request authentication', () => {
     });
 
     it('verifyToken answers 401 to a refused identity-provider token', async () => {
-      resourceServer.enabled.value = false;
+      resourceServer.enabled = false;
       const token = await mintIdpToken();
       const res = mockResponse();
       const next = jest.fn();

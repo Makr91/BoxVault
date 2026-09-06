@@ -52,14 +52,14 @@ jest.unstable_mockModule('../app/auth/passport.js', () => ({
 const mockConfig = {
   auth: {
     auth: {
-      jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
+      jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
       oidc: {
-        token_refresh_threshold_minutes: { value: 10 },
+        token_refresh_threshold_minutes: 10,
         providers: {
           testprovider: {
-            issuer: { value: 'http://mock-auth-server.com' },
-            client_secret: { value: 'mock-secret' },
-            token_endpoint_auth_method: { value: 'client_secret_post' },
+            issuer: 'http://mock-auth-server.com',
+            client_secret: 'mock-secret',
+            token_endpoint_auth_method: 'client_secret_post',
           },
         },
       },
@@ -75,25 +75,25 @@ const mockConfigLoader = {
     if (name === 'app') {
       return {
         boxvault: {
-          origin: { value: 'http://localhost:3000' },
-          api_url: { value: 'http://localhost:3000/api' },
-          box_max_file_size: { value: 1 },
-          api_listen_port_unencrypted: { value: 5000 },
-          api_listen_port_encrypted: { value: 5001 },
+          origin: 'http://localhost:3000',
+          api_url: 'http://localhost:3000/api',
+          box_max_file_size: 1,
+          api_listen_port_unencrypted: 5000,
+          api_listen_port_encrypted: 5001,
         },
         ssl: {
-          cert_path: { value: '' },
-          key_path: { value: '' },
+          cert_path: '',
+          key_path: '',
         },
-        logging: { level: { value: 'silent' } },
+        logging: { level: 'silent' },
       };
     }
     if (name === 'db') {
       return {
         sql: {
-          dialect: { value: 'sqlite' },
-          storage: { value: ':memory:' },
-          logging: { value: false },
+          dialect: 'sqlite',
+          storage: ':memory:',
+          logging: false,
         },
       };
     }
@@ -101,6 +101,16 @@ const mockConfigLoader = {
   }),
   getConfigPath: jest.fn(),
   getSetupTokenPath: jest.fn(),
+  checkConfigs: jest.fn().mockReturnValue([]),
+  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
+  readConfigFile: jest.fn(name => mockConfigLoader.loadConfig(name)),
+  fillDefaults: jest.fn((schema, config) => {
+    void schema;
+    return config;
+  }),
+  validateConfig: jest.fn().mockReturnValue([]),
+  unknownKeys: jest.fn().mockReturnValue([]),
+  CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
   getRateLimitConfig: jest.fn().mockReturnValue({
     window_minutes: 15,
     max_requests: 1000,

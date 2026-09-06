@@ -12,52 +12,56 @@ export default () => {
   const isSilent = process.env.SUPPRESS_LOGS === 'true';
 
   const dbConfig = {
+    schemaVersion: 1,
     sql: {
-      dialect: { value: process.env.TEST_DB_DIALECT || 'sqlite' },
-      storage: { value: ':memory:' },
-      logging: { value: false },
+      dialect: process.env.TEST_DB_DIALECT || 'sqlite',
+      storage: ':memory:',
+      logging: false,
     },
   };
 
   const appConfig = {
+    schemaVersion: 1,
     boxvault: {
-      box_storage_directory: { value: path.join(__dirname, '__test_storage__') },
-      box_max_file_size: { value: 1 },
-      origin: { value: 'http://localhost:3000' },
-      api_url: { value: 'http://localhost:3000/api' },
-      api_listen_port_unencrypted: { value: 5001 },
-      api_listen_port_encrypted: { value: 5002 },
+      box_storage_directory: path.join(__dirname, '__test_storage__'),
+      box_max_file_size: 1,
+      origin: 'http://localhost:3000',
+      api_url: 'http://localhost:3000/api',
+      api_listen_port_unencrypted: 5001,
+      api_listen_port_encrypted: 5002,
     },
     gravatar: {
-      enabled: { value: true },
-      default: { value: 'identicon' },
+      base_url: '',
     },
     ticket_system: {
-      enabled: { value: true },
-      url: { value: 'https://example.com/ticket' },
+      enabled: true,
+      base_url: 'https://example.com/ticket',
     },
     internationalization: {
-      default_language: { value: 'en' },
+      default_language: 'en',
     },
     logging: {
-      level: { value: isSilent ? 'silent' : 'error' },
-      console_enabled: { value: !isSilent },
+      level: 'error',
+      console_enabled: !isSilent,
     },
   };
 
   const authConfig = {
+    schemaVersion: 1,
     auth: {
       jwt: {
-        jwt_secret: { value: 'test-secret' },
-        jwt_expiration: { value: '1h' },
-        jwt_issuer: { value: 'boxvault' },
-        jwt_audience: { value: 'boxvault-api' },
+        jwt_secret: 'test-secret',
+        jwt_expiration: '1h',
+        jwt_issuer: 'boxvault',
+        jwt_audience: 'boxvault-api',
       },
     },
   };
 
   const mailConfig = {
-    smtp_connect: { host: { value: 'localhost' }, port: { value: 1025 } },
+    schemaVersion: 1,
+    smtp_connect: { host: 'localhost', port: 1025 },
+    smtp_settings: { from: 'noreply@example.com' },
   };
 
   const configDir = path.join(__dirname, '../app/config');

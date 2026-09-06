@@ -14,7 +14,7 @@ const { versions, box, providers, architectures, files } = db;
 const getMaxFileSize = () => {
   try {
     const appConfig = loadConfig('app');
-    return appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024; // Convert GB to bytes
+    return appConfig.boxvault.box_max_file_size * 1024 * 1024 * 1024; // Convert GB to bytes
   } catch (e) {
     log.error.error(`Failed to load app configuration: ${e.message}`);
     return 10 * 1024 * 1024 * 1024; // Default to 10GB
@@ -401,12 +401,12 @@ const sweepStaleTempDirs = () => {
     log.app.warn(`Stale temp sweep skipped, app config unavailable: ${e.message}`);
     return;
   }
-  const storageRoot = appConfig.boxvault?.box_storage_directory?.value;
+  const storageRoot = appConfig.boxvault?.box_storage_directory;
   if (!storageRoot || !safeExistsSync(storageRoot)) {
     return;
   }
 
-  const configuredMaxAgeHours = appConfig.boxvault?.upload_stale_temp_max_age_hours?.value;
+  const configuredMaxAgeHours = appConfig.boxvault?.upload_stale_temp_max_age_hours;
   const maxAgeHours =
     typeof configuredMaxAgeHours === 'number' && configuredMaxAgeHours > 0
       ? configuredMaxAgeHours

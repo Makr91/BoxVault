@@ -71,8 +71,7 @@ export const resendVerificationMail = async (req, res) => {
     // Auth config is pre-loaded and validated by middleware, so no need for try-catch here.
     const authConfig = loadConfig('auth');
     user.verificationToken = randomBytes(20).toString('hex');
-    const verificationExpiryHours =
-      authConfig?.auth?.jwt?.verification_token_expiry_hours?.value || 24;
+    const verificationExpiryHours = authConfig?.auth?.jwt?.verification_token_expiry_hours || 24;
     user.verificationTokenExpires = Date.now() + verificationExpiryHours * 60 * 60 * 1000;
 
     await user.save();

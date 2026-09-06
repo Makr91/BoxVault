@@ -1,6 +1,6 @@
 // check.js
 import { log } from '../../utils/Logger.js';
-import { configPaths, readConfig } from './helpers.js';
+import { readConfigFile } from '../../utils/config-loader.js';
 
 /**
  * @swagger
@@ -29,15 +29,13 @@ import { configPaths, readConfig } from './helpers.js';
  *               type: string
  *               example: "Failed to check setup status"
  */
-export const isSetupComplete = async (req, res) => {
+export const isSetupComplete = (req, res) => {
   log.app.debug('Check setup complete', { method: req.method });
 
   try {
-    const dbConfig = await readConfig(configPaths.db);
-    const isConfigured =
-      dbConfig.sql.dialect.value !== undefined &&
-      dbConfig.sql.dialect.value !== null &&
-      dbConfig.sql.dialect.value.trim() !== '';
+    const dbConfig = readConfigFile('db');
+    const dialect = dbConfig.sql?.dialect;
+    const isConfigured = typeof dialect === 'string' && dialect.trim() !== '';
     return res.send({ setupComplete: isConfigured });
   } catch (error) {
     log.error.error('Error checking setup status:', error);

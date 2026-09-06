@@ -88,7 +88,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
       }
     } else if (token) {
       try {
-        const decoded = verify(token, authConfig.auth.jwt.jwt_secret.value);
+        const decoded = verify(token, authConfig.auth.jwt.jwt_secret);
         userId = decoded.id;
         const isServiceAccount = decoded.isServiceAccount || false;
 

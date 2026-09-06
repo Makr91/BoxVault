@@ -12,13 +12,14 @@ const mockLog = {
 
 const mockConfigLoader = {
   loadConfig: jest.fn(),
+  readConfigFile: jest.fn(),
   getConfigPath: jest.fn().mockReturnValue('/etc/boxvault/app.config.yaml'),
 };
 
 const mockConfigHelpers = {
   writeConfig: jest.fn(),
   maskSecrets: jest.fn(),
-  restoreSecretSentinels: jest.fn(),
+  restoreSecrets: jest.fn(),
   SECRET_SENTINEL: '__SECRET__',
 };
 
@@ -45,10 +46,10 @@ const NOTIFICATION = {
 
 const configuredAppConfig = () => ({
   notifications: {
-    enabled: { value: true },
-    vapid_subject: { value: 'mailto:ops@example.com' },
-    vapid_public_key: { value: 'public-key' },
-    vapid_private_key: { value: 'private-key' },
+    enabled: true,
+    vapid_subject: 'mailto:ops@example.com',
+    vapid_public_key: 'public-key',
+    vapid_private_key: 'private-key',
   },
 });
 
@@ -87,9 +88,9 @@ describe('Web Push', () => {
     it('should be null when the keypair has not been generated yet', () => {
       mockConfigLoader.loadConfig.mockReturnValue({
         notifications: {
-          enabled: { value: true },
-          vapid_public_key: { value: '' },
-          vapid_private_key: { value: '' },
+          enabled: true,
+          vapid_public_key: '',
+          vapid_private_key: '',
         },
       });
       expect(getVapidPublicKey()).toBeNull();
@@ -97,7 +98,7 @@ describe('Web Push', () => {
 
     it('should be null when the feature is switched off', () => {
       const config = configuredAppConfig();
-      config.notifications.enabled.value = false;
+      config.notifications.enabled = false;
       mockConfigLoader.loadConfig.mockReturnValue(config);
       expect(getVapidPublicKey()).toBeNull();
     });
@@ -107,9 +108,9 @@ describe('Web Push', () => {
     it('should send nothing when no VAPID keypair is configured', async () => {
       mockConfigLoader.loadConfig.mockReturnValue({
         notifications: {
-          enabled: { value: true },
-          vapid_public_key: { value: '' },
-          vapid_private_key: { value: '' },
+          enabled: true,
+          vapid_public_key: '',
+          vapid_private_key: '',
         },
       });
 
@@ -121,7 +122,7 @@ describe('Web Push', () => {
 
     it('should send nothing when only the private key is missing', async () => {
       const config = configuredAppConfig();
-      config.notifications.vapid_private_key.value = '';
+      config.notifications.vapid_private_key = '';
       mockConfigLoader.loadConfig.mockReturnValue(config);
 
       await expect(sendPushToUsers([1], NOTIFICATION)).resolves.toBe(0);
@@ -137,7 +138,7 @@ describe('Web Push', () => {
 
     it('should send nothing when the feature is switched off', async () => {
       const config = configuredAppConfig();
-      config.notifications.enabled.value = false;
+      config.notifications.enabled = false;
       mockConfigLoader.loadConfig.mockReturnValue(config);
 
       await expect(sendPushToUsers([1], NOTIFICATION)).resolves.toBe(0);

@@ -19,7 +19,7 @@ const oidcTokenRefresh = async (req, res, next) => {
   try {
     const authConfig = loadConfig('auth');
     // Decode JWT to check OIDC token expiration
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, getJwtClaimOptions());
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret, getJwtClaimOptions());
 
     // Only process OIDC-authenticated users
     if (!decoded.provider || !decoded.provider.startsWith('oidc-')) {
@@ -42,8 +42,7 @@ const oidcTokenRefresh = async (req, res, next) => {
     const timeUntilExpiry = expiresAt - now;
 
     // Get refresh threshold from config (default 5 minutes)
-    const refreshThresholdMinutes =
-      authConfig.auth?.oidc?.token_refresh_threshold_minutes?.value || 5;
+    const refreshThresholdMinutes = authConfig.auth?.oidc?.token_refresh_threshold_minutes || 5;
     const refreshThreshold = refreshThresholdMinutes * 60 * 1000;
 
     // If token expires in more than 5 minutes, no need to refresh
@@ -90,7 +89,7 @@ const oidcTokenRefresh = async (req, res, next) => {
 
       // Get client authentication from config
       const providerConfig = authConfig.auth.oidc.providers[providerName];
-      const clientSecret = providerConfig.client_secret?.value;
+      const clientSecret = providerConfig.client_secret;
 
       // Prepare refresh token request
       const params = new URLSearchParams({
@@ -100,7 +99,7 @@ const oidcTokenRefresh = async (req, res, next) => {
       });
 
       // Determine auth method
-      const authMethod = providerConfig.token_endpoint_auth_method?.value || 'client_secret_basic';
+      const authMethod = providerConfig.token_endpoint_auth_method || 'client_secret_basic';
 
       const headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -127,7 +126,7 @@ const oidcTokenRefresh = async (req, res, next) => {
       });
 
       // Calculate new expiration time
-      const defaultExpiryMinutes = authConfig.auth?.oidc?.token_default_expiry_minutes?.value || 30;
+      const defaultExpiryMinutes = authConfig.auth?.oidc?.token_default_expiry_minutes || 30;
       const newExpiresAt = newTokens.expires_in
         ? Date.now() + newTokens.expires_in * 1000
         : Date.now() + defaultExpiryMinutes * 60 * 1000;
@@ -152,11 +151,11 @@ const oidcTokenRefresh = async (req, res, next) => {
 
       const newJwtToken = jwt.sign(
         { ...refreshedClaims, ...refreshedTokens },
-        authConfig.auth.jwt.jwt_secret.value,
+        authConfig.auth.jwt.jwt_secret,
         {
           algorithm: 'HS256',
           allowInsecureKeySizes: true,
-          expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
+          expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
           ...getJwtClaimOptions(),
         }
       );

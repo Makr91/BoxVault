@@ -180,7 +180,7 @@ export const findOne = async (req, res) => {
     const token = req.headers['x-access-token'];
     if (token) {
       try {
-        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+        const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
       } catch {
@@ -250,7 +250,7 @@ export const findOne = async (req, res) => {
     let response;
     if (req.isVagrantRequest) {
       // Format response for Vagrant metadata request
-      const baseUrl = appConfig.boxvault.origin.value;
+      const baseUrl = appConfig.boxvault.origin;
       // Always use the requested name from vagrantInfo
       // Use the requested name from vagrantInfo if available, otherwise construct it
       const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;

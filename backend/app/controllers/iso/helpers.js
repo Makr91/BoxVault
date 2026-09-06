@@ -10,11 +10,11 @@ const { Op } = Sequelize;
 const getIsoStorageRoot = () => {
   const appConfig = loadConfig('app');
 
-  if (appConfig.boxvault?.iso_storage_directory?.value) {
-    return appConfig.boxvault.iso_storage_directory.value;
+  if (appConfig.boxvault?.iso_storage_directory) {
+    return appConfig.boxvault.iso_storage_directory;
   }
 
-  const storageDir = appConfig.boxvault.box_storage_directory.value;
+  const storageDir = appConfig.boxvault.box_storage_directory;
   return join(storageDir, 'iso');
 };
 

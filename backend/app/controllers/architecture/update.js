@@ -2,15 +2,9 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
-const {
-  architectures: Architecture,
-  providers: Provider,
-  organization: _organization,
-  box: _box,
-  UserOrg,
-  versions,
-} = db;
+const { architectures: Architecture, UserOrg } = db;
 
 /**
  * @swagger
@@ -66,9 +60,12 @@ const {
  *             properties:
  *               name:
  *                 type: string
- *                 description: New architecture name
+ *                 description: New architecture name (the identifier pattern of /api/rules, unique in the provider)
  *                 example: arm64
- *               defaultBox:
+ *               description:
+ *                 type: string
+ *                 description: Architecture description
+ *               default_box:
  *                 type: boolean
  *                 description: Whether this should be the default architecture for the provider
  *                 example: true
@@ -91,6 +88,18 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: An architecture with the new name already exists for the provider
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the architecture form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -100,7 +109,7 @@ const {
  */
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const { name, description, defaultBox } = req.body;
+  const { name, description, default_box: defaultBox } = req.body;
 
   const oldFilePath = getSecureBoxPath(
     organization,
@@ -118,25 +127,7 @@ export const update = async (req, res) => {
   );
 
   try {
-    const organizationData = await _organization.findOne({
-      where: { name: organization },
-    });
-
-    if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
-    }
-
-    const box = await _box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
-
-    if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
-    }
+    const { organizationData, boxData: box, providerData: provider } = req;
 
     // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
@@ -149,28 +140,13 @@ export const update = async (req, res) => {
       });
     }
 
-    const version = await versions.findOne({
-      where: { versionNumber, boxId: box.id },
-    });
-
-    if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
+    if (name && name !== architectureName) {
+      const existingArchitecture = await Architecture.findOne({
+        where: { name, providerId: provider.id },
       });
-    }
-
-    const provider = await Provider.findOne({
-      where: { name: providerName, versionId: version.id },
-    });
-
-    if (!provider) {
-      return res.status(404).send({
-        message: req.__('providers.providerNotFoundInVersion', {
-          providerName,
-          versionNumber,
-          boxId,
-        }),
-      });
+      if (existingArchitecture) {
+        return conflict(res, req, '/name', provider.name);
+      }
     }
 
     // Create the new directory if it doesn't exist

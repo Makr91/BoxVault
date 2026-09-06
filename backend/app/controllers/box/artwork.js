@@ -28,7 +28,7 @@ const getArtworkSizeCap = () => {
   let maxSizeMb = 5;
   try {
     const appConfig = configLoader.loadConfig('app');
-    maxSizeMb = appConfig.boxvault?.artwork_max_size_mb?.value || 5;
+    maxSizeMb = appConfig.boxvault?.artwork_max_size_mb || 5;
   } catch (e) {
     log.error.error(`Failed to load app configuration: ${e.message}`);
   }
@@ -91,7 +91,7 @@ const resolveRequestUserId = req => {
   }
   try {
     const authConfig = configLoader.loadConfig('auth');
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
     return decoded.id;
   } catch {
     return null;

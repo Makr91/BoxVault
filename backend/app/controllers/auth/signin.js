@@ -67,7 +67,7 @@ const findSigninServiceAccount = (username, password) =>
  */
 const getLocalSigninRejection = (user, password, authConfig, req) => {
   // Username/password authentication can be switched off entirely (#18)
-  if (authConfig.auth?.jwt?.local_enabled?.value === false) {
+  if (authConfig.auth?.jwt?.local_enabled === false) {
     return { status: 403, body: { message: req.__('auth.localAuthDisabled') } };
   }
 
@@ -88,7 +88,7 @@ const getLocalSigninRejection = (user, password, authConfig, req) => {
   // Email-verification enforcement for local accounts (#18): when the knob
   // is on, unverified accounts may not sign in. Checked after password
   // verification so the status is only revealed to the account holder.
-  if (authConfig.auth?.local?.local_require_email_verification?.value && !user.verified) {
+  if (authConfig.auth?.local?.local_require_email_verification && !user.verified) {
     return { status: 403, body: { message: req.__('auth.emailNotVerified') } };
   }
 
@@ -140,10 +140,10 @@ const buildSigninToken = ({
 }) => {
   // Use the configured session timeout for stayLoggedIn sessions (#18:
   // auth.local.local_session_timeout, hours), default expiry otherwise.
-  const sessionTimeoutHours = authConfig.auth?.local?.local_session_timeout?.value || 24;
+  const sessionTimeoutHours = authConfig.auth?.local?.local_session_timeout || 24;
   const tokenExpiry = stayLoggedIn
     ? `${sessionTimeoutHours}h`
-    : authConfig.auth.jwt.jwt_expiration.value || '24h';
+    : authConfig.auth.jwt.jwt_expiration || '24h';
 
   return jwt.sign(
     {
@@ -154,7 +154,7 @@ const buildSigninToken = ({
       provider,
       organizations: userOrganizations, // Multi-org data for frontend
     },
-    authConfig.auth.jwt.jwt_secret.value,
+    authConfig.auth.jwt.jwt_secret,
     {
       algorithm: 'HS256',
       allowInsecureKeySizes: true,
@@ -188,7 +188,7 @@ const buildSigninToken = ({
  *                 type: string
  *                 format: password
  *                 description: Password or service account token
- *               stayLoggedIn:
+ *               stay_logged_in:
  *                 type: boolean
  *                 description: Whether to extend token expiration time
  *                 default: false
@@ -259,6 +259,12 @@ const buildSigninToken = ({
  *                 message:
  *                   type: string
  *                   example: "Invalid username or password."
+ *       422:
+ *         description: The username or password is missing
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -269,7 +275,7 @@ const buildSigninToken = ({
 export const signin = async (req, res) => {
   try {
     const authConfig = loadConfig('auth');
-    const { username, password, stayLoggedIn } = req.body || {};
+    const { username, password, stay_logged_in: stayLoggedIn } = req.body || {};
 
     // First, try to find a regular user
     let user = await findSigninUser(username);

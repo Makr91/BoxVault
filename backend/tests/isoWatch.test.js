@@ -136,7 +136,7 @@ describe('ISO watches and ISO route guards', () => {
       .post(`/api/organization/${orgName}/iso`)
       .set('x-access-token', ownerToken)
       .send({ name: 'bad..name' });
-    expect(dotted.statusCode).toBe(400);
+    expect(dotted.statusCode).toBe(422);
 
     const untouched = await request(app)
       .put(isoUrl(publicName))
@@ -197,9 +197,9 @@ describe('ISO watches and ISO route guards', () => {
       expect(missing.statusCode).toBe(404);
 
       const cases = [
-        { releaseNotes: 5 },
+        { release_notes: 5 },
         { deprecated: 'yes' },
-        { deprecationReason: 'x'.repeat(513) },
+        { deprecation_reason: 'x'.repeat(513) },
         { deprecated: true },
       ];
       const responses = await Promise.all(
@@ -211,7 +211,7 @@ describe('ISO watches and ISO route guards', () => {
         )
       );
       responses.forEach(res => {
-        expect(res.statusCode).toBe(400);
+        expect(res.statusCode).toBe(422);
       });
 
       const updated = await request(app)
@@ -219,9 +219,9 @@ describe('ISO watches and ISO route guards', () => {
         .set('x-access-token', ownerToken)
         .send({
           description: 'first',
-          releaseNotes: 'notes',
+          release_notes: 'notes',
           deprecated: true,
-          deprecationReason: 'old',
+          deprecation_reason: 'old',
         });
       expect(updated.statusCode).toBe(200);
       expect(updated.body).toMatchObject({

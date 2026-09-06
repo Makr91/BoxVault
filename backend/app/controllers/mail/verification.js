@@ -21,13 +21,13 @@ export const sendVerificationMail = async (
 
     const transporter = createTransporter();
 
-    const frontendUrl = appConfig?.boxvault?.origin?.value || 'http://localhost:3000';
+    const frontendUrl = appConfig?.boxvault?.origin || 'http://localhost:3000';
     // Change this line to point to the profile page
     const verificationLink = `${frontendUrl}/profile?token=${verificationToken}`;
     const expirationDate = new Date(expirationTime).toLocaleString();
 
     const mailOptions = {
-      from: smtpConfig.smtp_settings.from.value,
+      from: smtpConfig.smtp_settings.from,
       to: user.email,
       subject: t('mail.verificationSubject', locale),
       html: `

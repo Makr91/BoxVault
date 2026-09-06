@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": { "$ref": "#/$defs/identifier", "unique": "version" },
+    "description": { "type": "string" }
+  }
+}

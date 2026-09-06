@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authJwt, oidcTokenRefresh, verifyOrgAccess } from '../middleware/index.js';
+import { authJwt, oidcTokenRefresh, verifyOrgAccess, validateBody } from '../middleware/index.js';
 import {
   createJoinRequest,
   getUserJoinRequests,
@@ -22,7 +22,7 @@ router.use((req, res, next) => {
 // User actions - join requests
 router.post(
   '/organization/:organization/requests',
-  [authJwt.verifyToken, authJwt.isUser],
+  [authJwt.verifyToken, authJwt.isUser, validateBody('joinRequest')],
   createJoinRequest
 );
 

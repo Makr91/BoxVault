@@ -582,7 +582,7 @@ describe('User API', () => {
         .set('x-access-token', userToken)
         .send({
           currentPassword: 'aSecurePassword123',
-          newPassword: 'aNewSecurePassword456',
+          new_password: 'aNewSecurePassword456',
         });
 
       expect(res.statusCode).toBe(200);
@@ -600,7 +600,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/change-email`)
         .set('x-access-token', userToken)
-        .send({ newEmail });
+        .send({ new_email: newEmail });
 
       expect(res.statusCode).toBe(200);
 
@@ -641,7 +641,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/999999/change-email`)
         .set('x-access-token', userToken)
-        .send({ newEmail: 'fail@test.com' });
+        .send({ new_email: 'fail@test.com' });
       expect(res.statusCode).toBe(403);
       expect(res.body.message).toContain('Require Admin role or account ownership!');
     });
@@ -887,7 +887,7 @@ describe('User API', () => {
       const parsedConfig = yaml.load(originalConfig);
 
       // 2. Modify config to remove expiration
-      delete parsedConfig.auth.jwt.jwt_expiration.value;
+      delete parsedConfig.auth.jwt.jwt_expiration;
       fs.writeFileSync(configPath, yaml.dump(parsedConfig));
 
       try {
@@ -913,7 +913,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/change-email`)
         .set('x-access-token', userToken)
-        .send({ newEmail: 'fail@test.com' });
+        .send({ new_email: 'fail@test.com' });
       expect(res.statusCode).toBe(500);
     });
 
@@ -924,7 +924,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/change-password`)
         .set('x-access-token', userToken)
-        .send({ currentPassword: 'old', newPassword: 'aPolicyCompliantPassword' });
+        .send({ currentPassword: 'old', new_password: 'aPolicyCompliantPassword' });
       expect(res.statusCode).toBe(500);
     });
 
@@ -932,7 +932,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/999999/change-password`)
         .set('x-access-token', userToken)
-        .send({ newPassword: 'new' });
+        .send({ new_password: 'new' });
       expect(res.statusCode).toBe(403);
     });
 

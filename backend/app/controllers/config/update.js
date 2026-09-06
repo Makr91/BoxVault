@@ -1,47 +1,21 @@
 // update.js
-import { loadConfig, getConfigPath } from '../../utils/config-loader.js';
+import {
+  loadSchema,
+  readConfigFile,
+  fillDefaults,
+  validateConfig,
+  getConfigPath,
+} from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { writeConfig, restoreSecretSentinels } from './helpers.js';
-
-/**
- * Helper function for deep merging objects.
- * @param {object} item - The item to check.
- * @returns {boolean} - True if the item is a non-array object.
- */
-const isObject = item => item && typeof item === 'object' && !Array.isArray(item);
-
-const mergeDeep = (target, ...sources) => {
-  if (!sources.length) {
-    return target;
-  }
-  const source = sources.shift();
-
-  if (isObject(target) && isObject(source)) {
-    for (const key in source) {
-      // Never merge prototype-polluting keys from untrusted input
-      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-        continue;
-      }
-      if (isObject(source[key])) {
-        if (!target[key]) {
-          Object.assign(target, { [key]: {} });
-        }
-        mergeDeep(target[key], source[key]);
-      } else {
-        Object.assign(target, { [key]: source[key] });
-      }
-    }
-  }
-
-  return mergeDeep(target, ...sources);
-};
+import { refuse } from '../../utils/problem.js';
+import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpers.js';
 
 /**
  * @swagger
  * /api/config/{configName}:
  *   put:
  *     summary: Update configuration by name
- *     description: Update configuration data for a specific config type. Requires admin privileges.
+ *     description: The body is the whole file or a subtree of it. Masked secrets (******** or blank on a writeOnly key) keep their stored value; the merged result is evaluated against the file's schema and refused with 422 and one errors[] entry per failing value before anything touches the file; the file is then written atomically with a backup beside it. Requires admin privileges.
  *     tags: [Configuration]
  *     security:
  *       - JwtAuth: []
@@ -60,19 +34,24 @@ const mergeDeep = (target, ...sources) => {
  *         application/json:
  *           schema:
  *             type: object
- *             description: Configuration data to update (structure varies by config type)
+ *             description: The plain configuration file or a subtree of it
  *             additionalProperties: true
  *             example:
  *               boxvault:
- *                 api_url:
- *                   value: "https://api.example.com"
+ *                 api_url: "https://api.example.com"
  *     responses:
  *       200:
  *         description: Configuration updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 requiresRestart:
+ *                   type: boolean
+ *                   description: Whether a changed key needs a restart to take effect
  *       401:
  *         description: Authentication required
  *         content:
@@ -85,6 +64,12 @@ const mergeDeep = (target, ...sources) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: A value breaks a rule of the file's schema
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -96,18 +81,22 @@ export const updateConfig = async (req, res) => {
   const { configName } = req.params;
   try {
     const filePath = getConfigPath(configName);
-    const currentConfig = loadConfig(configName);
+    const schema = loadSchema(configName);
+    const currentConfig = readConfigFile(configName);
 
-    // #44: a sentinel (or blank) value on a password-typed knob means
-    // "unchanged" — put the stored value back before merging so the mask
-    // never reaches the YAML on disk.
-    restoreSecretSentinels(req.body, currentConfig);
+    restoreSecrets(schema, req.body, currentConfig);
 
-    // Deep merge the request body into the current configuration
-    const updatedConfig = mergeDeep({}, currentConfig, req.body);
+    const updatedConfig = mergeDeep(currentConfig, req.body);
+    const errors = validateConfig(configName, fillDefaults(schema, updatedConfig));
+    if (errors.length > 0) {
+      return refuse(res, req, errors, req.__('problems.configValidation'));
+    }
 
     await writeConfig(filePath, updatedConfig);
-    return res.send({ message: req.__('config.updated') });
+    return res.send({
+      message: req.__('config.updated'),
+      requiresRestart: requiresRestart(schema, currentConfig, updatedConfig),
+    });
   } catch (err) {
     log.error.error('Error updating config:', err);
     return res.status(500).send({ message: req.__('config.updateError') });

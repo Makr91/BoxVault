@@ -100,8 +100,8 @@ describe('Identity-provider delegation', () => {
     await global.testHelpers.waitForAppReady(app);
     restoreConfig = writeAuthConfig(config => {
       config.auth.oidc.providers = {
-        hubidp: { enabled: { value: true }, issuer: { value: ISSUER } },
-        undiscovered: { enabled: { value: true }, issuer: { value: UNDISCOVERED_ISSUER } },
+        hubidp: { enabled: true, issuer: ISSUER },
+        undiscovered: { enabled: true, issuer: UNDISCOVERED_ISSUER },
       };
     });
 
@@ -185,8 +185,8 @@ describe('Identity-provider delegation', () => {
 
     it('should mint with the client credentials and cache the token per scope', async () => {
       const restore = writeAuthConfig(config => {
-        config.auth.oidc.s2s_client_id = { value: 'boxvault-s2s' };
-        config.auth.oidc.s2s_client_secret = { value: 'shared-secret' };
+        config.auth.oidc.s2s_client_id = 'boxvault-s2s';
+        config.auth.oidc.s2s_client_secret = 'shared-secret';
       });
       try {
         axiosPost.mockResolvedValueOnce({ data: { access_token: 'tok-1', expires_in: 3600 } });
@@ -209,7 +209,7 @@ describe('Identity-provider delegation', () => {
 
     it('should mint again when the cached token is about to expire', async () => {
       const restore = writeAuthConfig(config => {
-        config.auth.oidc.s2s_client_secret = { value: 'shared-secret' };
+        config.auth.oidc.s2s_client_secret = 'shared-secret';
       });
       try {
         const scope = `scope-${uniqueId}-short`;
@@ -246,7 +246,7 @@ describe('Identity-provider delegation', () => {
 
     it('should report failure when no service token can be minted', async () => {
       const restore = writeAuthConfig(config => {
-        config.auth.oidc.notifications_enabled = { value: true };
+        config.auth.oidc.notifications_enabled = true;
       });
       try {
         await expect(send()).resolves.toBe(false);
@@ -261,8 +261,8 @@ describe('Identity-provider delegation', () => {
 
       beforeAll(() => {
         restoreHub = writeAuthConfig(config => {
-          config.auth.oidc.notifications_enabled = { value: true };
-          config.auth.oidc.s2s_client_secret = { value: 'shared-secret' };
+          config.auth.oidc.notifications_enabled = true;
+          config.auth.oidc.s2s_client_secret = 'shared-secret';
         });
       });
 
@@ -344,8 +344,8 @@ describe('Identity-provider delegation', () => {
 
     beforeAll(() => {
       restoreHub = writeAuthConfig(config => {
-        config.auth.oidc.notifications_enabled = { value: true };
-        config.auth.oidc.s2s_client_secret = { value: 'shared-secret' };
+        config.auth.oidc.notifications_enabled = true;
+        config.auth.oidc.s2s_client_secret = 'shared-secret';
       });
     });
 
@@ -519,7 +519,7 @@ describe('Identity-provider delegation', () => {
       request(app)
         .post('/api/auth/invite')
         .set('x-access-token', token)
-        .send({ email: `invitee-${uniqueId}@example.com`, organizationName });
+        .send({ email: `invitee-${uniqueId}@example.com`, organization_name: organizationName });
 
     it('should require an identity-provider session', async () => {
       const res = await invite(localToken);
@@ -550,7 +550,7 @@ describe('Identity-provider delegation', () => {
       const res = await request(app)
         .post('/api/auth/invite')
         .set('x-access-token', ownerToken)
-        .send({ email: requester.email, organizationName: externalOrgName });
+        .send({ email: requester.email, organization_name: externalOrgName });
       expect(res.statusCode).toBe(200);
       expect(res.body.invitationTokenExpires).toBeNull();
     });

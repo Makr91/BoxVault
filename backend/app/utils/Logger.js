@@ -17,13 +17,13 @@ export const getLoggingConfig = () => {
 const loggingConfig = getLoggingConfig();
 
 export const extractLoggerConfig = config => ({
-  level: config.level?.value || 'info',
-  console_enabled: config.console_enabled?.value !== false,
-  log_directory: config.log_directory?.value || '/var/log/boxvault',
-  performance_threshold_ms: config.performance_threshold_ms?.value || 1000,
-  enable_compression: config.enable_compression?.value !== false,
-  compression_age_days: config.compression_age_days?.value || 7,
-  max_files: config.max_files?.value || 30,
+  level: config.level || 'info',
+  console_enabled: config.console_enabled !== false,
+  log_directory: config.log_directory || '/var/log/boxvault',
+  performance_threshold_ms: config.performance_threshold_ms || 1000,
+  enable_compression: config.enable_compression !== false,
+  compression_age_days: config.compression_age_days || 7,
+  max_files: config.max_files || 30,
   categories: {},
 });
 
@@ -32,8 +32,8 @@ const extractedConfig = extractLoggerConfig(loggingConfig);
 export const processCategories = (categories, defaultLevel) => {
   const result = {};
   if (categories) {
-    for (const [category, config] of Object.entries(categories)) {
-      result[category] = config?.value || defaultLevel;
+    for (const [category, level] of Object.entries(categories)) {
+      result[category] = level || defaultLevel;
     }
   }
   return result;

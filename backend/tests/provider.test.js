@@ -26,10 +26,10 @@ describe('Provider API', () => {
   const testBox = {
     name: boxName,
     description: 'Test box for provider API testing',
-    isPublic: true,
+    is_public: true,
   };
   const testVersion = {
-    version: '1.0.0',
+    version_number: '1.0.0',
     description: 'Test version for provider API testing',
   };
 
@@ -142,7 +142,7 @@ describe('Provider API', () => {
     it('should return list of providers', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -161,7 +161,7 @@ describe('Provider API', () => {
     it('should return 404 if organization not found', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -170,7 +170,7 @@ describe('Provider API', () => {
     it('should return 404 if box not found', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -195,7 +195,7 @@ describe('Provider API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${newProvider.name}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${newProvider.name}`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -207,7 +207,7 @@ describe('Provider API', () => {
     it('should create new provider', async () => {
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send(newProvider);
@@ -221,7 +221,7 @@ describe('Provider API', () => {
       // First create the provider
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send(newProvider);
@@ -229,18 +229,25 @@ describe('Provider API', () => {
       // Try to create same provider again
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send(newProvider);
 
       expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/name',
+          rule: 'unique',
+          params: { scope: testVersion.version_number },
+        }),
+      ]);
     });
 
     it('should fail if user does not have permission (regular user)', async () => {
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', regularToken)
         .send({ name: 'unauthorized-provider' });
@@ -259,7 +266,7 @@ describe('Provider API', () => {
       // Create test provider
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send(provider);
@@ -270,7 +277,7 @@ describe('Provider API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -282,7 +289,7 @@ describe('Provider API', () => {
     it('should return provider details', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken);
 
@@ -294,7 +301,7 @@ describe('Provider API', () => {
     it('should fail with invalid provider name', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/invalid-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/invalid-provider`
         )
         .set('x-access-token', authToken);
 
@@ -304,7 +311,7 @@ describe('Provider API', () => {
     it('should return 404 if organization not found', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -313,7 +320,7 @@ describe('Provider API', () => {
     it('should return 404 if box not found', async () => {
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/NonExistentBox/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -330,7 +337,7 @@ describe('Provider API', () => {
       // Create test provider
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send(provider);
@@ -341,7 +348,7 @@ describe('Provider API', () => {
       try {
         await request(app)
           .delete(
-            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+            `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
           )
           .set('x-access-token', authToken);
       } catch (err) {
@@ -357,7 +364,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken)
         .send(updateData);
@@ -369,7 +376,7 @@ describe('Provider API', () => {
     it('should fail to update non-existent provider', async () => {
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/non-existent-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/non-existent-provider`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated description' });
@@ -380,7 +387,7 @@ describe('Provider API', () => {
     it('should fail if user does not have permission', async () => {
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', regularToken)
         .send({ description: 'Hacked description' });
@@ -392,7 +399,7 @@ describe('Provider API', () => {
       const newName = 'renamed-provider';
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken)
         .send({ name: newName });
@@ -406,7 +413,7 @@ describe('Provider API', () => {
       // We should manually delete 'renamed-provider' here to keep it clean.
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${newName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${newName}`
         )
         .set('x-access-token', authToken);
     });
@@ -422,7 +429,7 @@ describe('Provider API', () => {
       // Create test provider
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send(provider);
@@ -431,7 +438,7 @@ describe('Provider API', () => {
     it('should delete provider', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken);
 
@@ -440,7 +447,7 @@ describe('Provider API', () => {
       // Verify provider is deleted
       const checkRes = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken);
 
@@ -450,7 +457,7 @@ describe('Provider API', () => {
     it('should fail to delete non-existent provider', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/non-existent-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/non-existent-provider`
         )
         .set('x-access-token', authToken);
 
@@ -460,7 +467,7 @@ describe('Provider API', () => {
     it('should fail if user does not have permission', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', regularToken);
 
@@ -479,7 +486,7 @@ describe('Provider API', () => {
       // 2. Delete Provider
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/${provider.name}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${provider.name}`
         )
         .set('x-access-token', authToken);
 
@@ -496,14 +503,14 @@ describe('Provider API', () => {
       // Create a provider to delete
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'provider-to-delete', description: 'To delete' });
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -512,7 +519,7 @@ describe('Provider API', () => {
       // Verify deletion
       const listRes = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -522,7 +529,7 @@ describe('Provider API', () => {
     it('should fail if user does not have permission', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', regularToken);
 
@@ -532,7 +539,7 @@ describe('Provider API', () => {
     it('should return 404 if organization not found', async () => {
       const res = await request(app)
         .delete(
-          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/NonExistentOrg/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
@@ -628,7 +635,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'error-provider' });
@@ -640,7 +647,7 @@ describe('Provider API', () => {
       // Ensure provider exists first so we don't get 404
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-provider', description: 'To be updated' });
@@ -649,7 +656,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -661,7 +668,7 @@ describe('Provider API', () => {
       // Ensure provider exists first
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-provider', description: 'To be deleted' });
@@ -670,7 +677,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -682,7 +689,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -694,7 +701,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'error-provider-2' });
@@ -708,7 +715,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-provider' });
@@ -722,7 +729,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-provider' });
@@ -736,7 +743,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .post(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken)
         .send({ name: 'test-provider' });
@@ -750,7 +757,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -765,7 +772,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .put(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken)
         .send({ description: 'Updated' });
@@ -779,7 +786,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -795,7 +802,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -820,7 +827,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -833,7 +840,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -846,7 +853,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider/test-provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/test-provider`
         )
         .set('x-access-token', authToken);
 
@@ -859,7 +866,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -871,7 +878,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .get(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -884,7 +891,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -896,7 +903,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -914,7 +921,7 @@ describe('Provider API', () => {
 
       const res = await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version}/provider`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`
         )
         .set('x-access-token', authToken);
 
@@ -938,6 +945,9 @@ describe('Provider API', () => {
           name: 'test-provider',
         },
         userId: 1,
+        organizationData: { id: 1, name: orgName },
+        boxData: { id: 1, userId: 1, name: boxName },
+        versionData: { id: 1, versionNumber: '1.0.0' },
         __: key => key,
         headers: {},
       };
@@ -953,10 +963,8 @@ describe('Provider API', () => {
 
     // create.js coverage
     it('create should handle existing directory (create.js)', async () => {
-      jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
-      jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
+      jest.spyOn(db.providers, 'findOne').mockResolvedValue(null);
       jest.spyOn(db.providers, 'create').mockResolvedValue({ id: 1, name: 'test-provider' });
 
       // Mock existsSync to return true (directory exists)
@@ -1013,23 +1021,24 @@ describe('Provider API', () => {
     });
 
     // update.js coverage
-    it('update should return 404 if version not found (update.js)', async () => {
-      jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
+    it('update should answer 409 when the new name is taken (update.js)', async () => {
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
-      jest.spyOn(db.versions, 'findOne').mockResolvedValue(null);
+      jest.spyOn(db.providers, 'findOne').mockResolvedValue({ id: 2, name: 'new-name' });
+      res.type = jest.fn().mockReturnThis();
+
+      req.body.name = 'new-name';
 
       await update(req, res);
-      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.status).toHaveBeenCalledWith(409);
     });
 
     it('update should clean up old directory if it exists after rename (update.js)', async () => {
-      jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
-      jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
       jest.spyOn(db.providers, 'update').mockResolvedValue([1]);
-      jest.spyOn(db.providers, 'findOne').mockResolvedValue({ name: 'new-name' });
+      jest
+        .spyOn(db.providers, 'findOne')
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ name: 'new-name' });
 
       req.body.name = 'new-name';
 
@@ -1152,17 +1161,11 @@ describe('Provider API', () => {
       expect(res.status).toHaveBeenCalledWith(404);
     });
 
-    it('update should return 404 if organization not found (update.js)', async () => {
-      jest.spyOn(db.organization, 'findOne').mockResolvedValue(null);
+    it('update should answer 403 when the caller may not edit the box (update.js)', async () => {
+      jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'member' });
+      req.boxData = { id: 1, userId: 2, name: boxName };
       await update(req, res);
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it('update should return 404 if box not found (update.js)', async () => {
-      jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.box, 'findOne').mockResolvedValue(null);
-      await update(req, res);
-      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.status).toHaveBeenCalledWith(403);
     });
 
     it('delete should handle generic error without message (delete.js)', async () => {

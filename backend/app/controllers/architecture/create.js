@@ -1,14 +1,8 @@
 // create.js
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
-const {
-  architectures: Architecture,
-  providers: Provider,
-  organization: _organization,
-  box: _box,
-  UserOrg,
-  versions,
-} = db;
+const { architectures: Architecture, UserOrg } = db;
 
 /**
  * @swagger
@@ -59,14 +53,24 @@ const {
  *             properties:
  *               name:
  *                 type: string
- *                 description: Architecture name
+ *                 description: Architecture name (the identifier pattern of /api/rules, unique in the provider)
  *                 example: amd64
- *               defaultBox:
+ *               description:
+ *                 type: string
+ *                 description: Architecture description
+ *               default_box:
  *                 type: boolean
  *                 description: Whether this should be the default architecture for the provider
  *                 example: true
+ *               checksum_type:
+ *                 type: string
+ *                 enum: [NULL, MD5, SHA1, SHA256, SHA384, SHA512]
+ *                 description: Checksum type of the file uploaded afterwards
+ *               checksum:
+ *                 type: string
+ *                 description: Hex checksum of the file uploaded afterwards
  *     responses:
- *       200:
+ *       201:
  *         description: Architecture created successfully
  *         content:
  *           application/json:
@@ -84,6 +88,18 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: An architecture with that name already exists for the provider
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the architecture form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -92,18 +108,10 @@ const {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 export const create = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName } = req.params;
-  const { name, description, defaultBox } = req.body;
+  const { name, description, default_box: defaultBox } = req.body;
 
   try {
-    // Get entities for permission check and provider ID
-    const organizationData = await _organization.findOne({
-      where: { name: organization },
-    });
-
-    const box = await _box.findOne({
-      where: { name: boxId, organizationId: organizationData.id },
-    });
+    const { organizationData, boxData: box, providerData: provider } = req;
 
     // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
@@ -116,14 +124,12 @@ export const create = async (req, res) => {
       });
     }
 
-    // Get version and provider (already validated by middleware)
-    const version = await versions.findOne({
-      where: { versionNumber, boxId: box.id },
+    const existingArchitecture = await Architecture.findOne({
+      where: { name, providerId: provider.id },
     });
-
-    const provider = await Provider.findOne({
-      where: { name: providerName, versionId: version.id },
-    });
+    if (existingArchitecture) {
+      return conflict(res, req, '/name', provider.name);
+    }
 
     if (defaultBox) {
       // Set all other architectures' defaultBox to false

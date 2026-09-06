@@ -5,7 +5,7 @@ import { resolveOrgManagerRecipients } from '../../utils/notifyRecipients.js';
 
 const notifyJoinRequestCreated = async (organization, requester, requestId) => {
   try {
-    const origin = loadConfig('app').boxvault.origin.value;
+    const { origin } = loadConfig('app').boxvault;
     const notification = {
       title: `Join request for ${organization.name}`,
       body: `${requester.username} (${requester.email}) requested to join.`,

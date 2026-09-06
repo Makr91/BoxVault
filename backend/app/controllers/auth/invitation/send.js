@@ -83,15 +83,19 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *             type: object
  *             required:
  *               - email
- *               - organizationName
+ *               - organization_name
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
  *                 description: Email address to send invitation to
- *               organizationName:
+ *               organization_name:
  *                 type: string
  *                 description: Name of the organization to invite user to
+ *               invite_role:
+ *                 type: string
+ *                 enum: [member, admin]
+ *                 description: Role the invitee joins with (member by default)
  *     responses:
  *       200:
  *         description: Invitation sent successfully
@@ -121,6 +125,12 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       422:
+ *         description: A value breaks a rule of the invitation form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -129,7 +139,7 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *               $ref: '#/components/schemas/Error'
  */
 export const sendInvitation = async (req, res) => {
-  const { email, organizationName, inviteRole } = req.body || {};
+  const { email, organization_name: organizationName, invite_role: inviteRole } = req.body || {};
 
   try {
     const authConfig = loadConfig('auth');
@@ -140,14 +150,7 @@ export const sendInvitation = async (req, res) => {
       return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
     }
 
-    // Validate invited role - only member and admin allowed, never owner
-    const validRoles = ['member', 'admin'];
     const role = inviteRole || 'member';
-    if (!validRoles.includes(role)) {
-      return res.status(400).send({
-        message: req.__('invitations.invalidRole'),
-      });
-    }
 
     if (role === 'admin') {
       const inviterRole = await resolveInviterOrgRole(req, organization);
@@ -175,7 +178,7 @@ export const sendInvitation = async (req, res) => {
     }
 
     const invitationToken = randomBytes(20).toString('hex');
-    const invitationExpiryHours = authConfig.auth?.jwt?.invitation_token_expiry_hours?.value || 24;
+    const invitationExpiryHours = authConfig.auth?.jwt?.invitation_token_expiry_hours || 24;
     const invitationTokenExpires = Date.now() + invitationExpiryHours * 60 * 60 * 1000;
 
     // One live invitation per (organization, address), matching the identity

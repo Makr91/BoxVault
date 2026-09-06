@@ -91,7 +91,7 @@ export const findAllByBox = async (req, res) => {
   if (token) {
     try {
       // Verify the token and extract the user ID
-      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value);
+      const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
       userId = decoded.id;
     } catch {
       return res.status(401).send({ message: req.__('auth.unauthorized') });

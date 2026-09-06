@@ -1,0 +1,524 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: App Config
+schemaVersion: 1
+sections:
+  application:
+    title: Application
+    order: 1
+properties:
+  schemaVersion:
+    type: integer
+    readOnly: true
+    default: 1
+    title: Schema version
+  boxvault:
+    type: object
+    section: application
+    subsection: boxvaultSettings
+    title: BoxVault Settings
+    required:
+      - origin
+      - api_url
+      - api_listen_port_unencrypted
+      - api_listen_port_encrypted
+      - box_storage_directory
+      - box_max_file_size
+    properties:
+      origin:
+        type: string
+        format: uri
+        title: Origin
+        description: The origin URL for BoxVault
+        order: 1
+        requiresRestart: true
+      api_url:
+        type: string
+        format: uri
+        title: API URL
+        description: The API URL for BoxVault
+        order: 2
+      api_listen_port_unencrypted:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        default: 80
+        title: HTTP port
+        description: The port BoxVault listens on for HTTP (may not be the proxied port)
+        order: 3
+        requiresRestart: true
+      api_listen_port_encrypted:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        default: 443
+        title: HTTPS port
+        description: The port BoxVault listens on for HTTPS (may not be the proxied port)
+        order: 4
+        requiresRestart: true
+      box_storage_directory:
+        type: string
+        default: /var/lib/boxvault/storage
+        title: Box storage directory
+        description: The directory on the OS in which the boxes are stored
+        order: 5
+        requiresRestart: true
+      box_max_file_size:
+        type: integer
+        minimum: 1
+        default: 10
+        title: Maximum box size (GB)
+        description: The largest box upload accepted, in GB
+        order: 6
+        requiresRestart: true
+      iso_storage_directory:
+        type: string
+        default: ''
+        title: ISO storage directory
+        description: The directory on the OS in which the ISOs are stored; empty uses box_storage_directory/iso
+        order: 7
+      repository_packages_url:
+        type: string
+        default: ''
+        title: Repository Packages URL
+        description: Direct URL to the Packages file of your Debian repository for update checks
+        order: 8
+      trust_proxy:
+        type: boolean
+        default: true
+        title: Trust proxy
+        description: Trust the X-Forwarded-For header from a proxy or CDN in front of BoxVault
+        order: 9
+        requiresRestart: true
+      org_code_seed:
+        type: string
+        pattern: '^[0-9A-F]{6}$'
+        default: B00000
+        title: Organization code seed
+        description: Starting point, inclusive, for the sequential organization codes of locally created organizations
+        order: 10
+      allowed_origins:
+        type: array
+        items:
+          type: string
+          format: uri
+        default: []
+        title: Allowed origins
+        description: Additional browser origins allowed to call the BoxVault API cross-origin
+        order: 11
+        requiresRestart: true
+      upload_timeout_hours:
+        type: integer
+        minimum: 1
+        maximum: 72
+        default: 24
+        title: Upload timeout (hours)
+        description: Maximum hours allowed for a file upload before it times out
+        order: 12
+      download_timeout_hours:
+        type: integer
+        minimum: 1
+        maximum: 72
+        default: 24
+        title: Download timeout (hours)
+        description: Maximum hours allowed for a file download before it times out
+        order: 13
+      upload_stale_temp_max_age_hours:
+        type: integer
+        minimum: 1
+        maximum: 720
+        default: 24
+        title: Stale upload age (hours)
+        description: Hours an abandoned chunked-upload directory may sit untouched before the sweep removes it
+        order: 14
+      artwork_max_size_mb:
+        type: integer
+        minimum: 1
+        default: 5
+        title: Maximum artwork size (MB)
+        description: The maximum size of an uploaded box artwork image, in MB
+        order: 15
+  gravatar:
+    type: object
+    section: application
+    subsection: gravatarSettings
+    title: Gravatar Settings
+    properties:
+      base_url:
+        type: string
+        format: uri
+        default: https://api.gravatar.com/v3/profiles/
+        title: Gravatar base URL
+        description: The base URL of the Gravatar profile API
+        order: 1
+      api_key:
+        type: string
+        writeOnly: true
+        default: ''
+        title: Gravatar API key
+        description: API key sent to Gravatar by the server-side profile proxy
+        order: 2
+  ticket_system:
+    type: object
+    section: application
+    subsection: ticketSystem
+    title: Ticket System
+    properties:
+      enabled:
+        type: boolean
+        default: false
+        title: Enabled
+        description: Enable the ticket and support request integration
+        order: 1
+      base_url:
+        type: string
+        default: ''
+        title: Base URL
+        description: Base URL of the ticket system
+        order: 2
+      req_type:
+        type: string
+        default: sso
+        title: Request type
+        description: Default request type parameter
+        order: 3
+      context:
+        type: string
+        default: https://github.com/Makr91/BoxVault
+        title: Context URL
+        description: Context URL for the ticket system, usually the repository URL
+        order: 4
+  hyperweaver:
+    type: object
+    section: application
+    subsection: hyperweaverSettings
+    title: Hyperweaver Settings
+    properties:
+      url:
+        type: string
+        default: ''
+        title: Hyperweaver URL
+        description: The base URL of the Hyperweaver UI the Deploy button links to; empty hides the button
+        order: 1
+  ssl:
+    type: object
+    section: application
+    subsection: sslSettings
+    title: SSL Settings
+    properties:
+      generate_ssl:
+        type: boolean
+        default: true
+        title: Generate SSL certificates
+        description: Generate self-signed SSL certificates when none exist
+        order: 1
+        requiresRestart: true
+      cert_path:
+        type: string
+        default: /etc/boxvault/ssl/public.crt
+        title: Certificate path
+        description: Path to the SSL certificate file
+        upload: true
+        order: 2
+        requiresRestart: true
+      key_path:
+        type: string
+        default: /etc/boxvault/ssl/private.key
+        title: Private key path
+        description: Path to the SSL private key file
+        upload: true
+        order: 3
+        requiresRestart: true
+  logging:
+    type: object
+    section: application
+    subsection: loggingSettings
+    title: Logging Settings
+    properties:
+      level:
+        type: string
+        enum:
+          - error
+          - warn
+          - info
+          - debug
+        default: info
+        title: Log level
+        description: Default logging level for every category
+        order: 1
+        requiresRestart: true
+      console_enabled:
+        type: boolean
+        default: true
+        title: Console output
+        description: Write log lines to the console outside production
+        order: 2
+        requiresRestart: true
+      log_directory:
+        type: string
+        default: /var/log/boxvault
+        title: Log directory
+        description: Directory where log files are stored
+        order: 3
+        requiresRestart: true
+      performance_threshold_ms:
+        type: integer
+        minimum: 1
+        default: 1000
+        title: Slow operation threshold (ms)
+        description: Operations slower than this many milliseconds are logged as slow
+        order: 4
+      enable_compression:
+        type: boolean
+        default: true
+        title: Compress archived logs
+        description: Gzip archived log files
+        order: 5
+      compression_age_days:
+        type: integer
+        minimum: 1
+        default: 7
+        title: Compression age (days)
+        description: Days before an archived log is compressed
+        order: 6
+      max_files:
+        type: integer
+        minimum: 1
+        default: 30
+        title: Archived files kept
+        description: Maximum number of archived log files kept per log
+        order: 7
+      categories:
+        type: object
+        subsection: loggingCategories
+        title: Logging Categories
+        additionalProperties:
+          type: string
+          enum:
+            - error
+            - warn
+            - info
+            - debug
+  frontend_logging:
+    type: object
+    section: application
+    subsection: frontendLogging
+    title: Frontend Logging
+    properties:
+      enabled:
+        type: boolean
+        default: true
+        title: Enabled
+        description: Enable browser logging in the frontend
+        order: 1
+      level:
+        type: string
+        enum:
+          - error
+          - warn
+          - info
+          - debug
+          - trace
+        default: info
+        title: Log level
+        description: Default frontend logging level
+        order: 2
+      categories:
+        type: object
+        subsection: frontendLoggingCategories
+        title: Frontend Logging Categories
+        additionalProperties:
+          type: string
+          enum:
+            - error
+            - warn
+            - info
+            - debug
+            - trace
+  monitoring:
+    type: object
+    section: application
+    subsection: monitoring
+    title: Monitoring
+    properties:
+      disk_space_warning_threshold:
+        type: integer
+        minimum: 1
+        maximum: 99
+        default: 90
+        title: Disk warning threshold (%)
+        description: Disk usage percentage that raises a warning
+        order: 1
+      disk_space_critical_threshold:
+        type: integer
+        minimum: 1
+        maximum: 99
+        default: 95
+        title: Disk critical threshold (%)
+        description: Disk usage percentage that raises a critical alert
+        order: 2
+      alert_frequency_hours:
+        type: integer
+        minimum: 0
+        maximum: 168
+        default: 24
+        title: Alert frequency (hours)
+        description: Minimum hours between system alerts
+        order: 3
+      sa_expiry_warning_days:
+        type: integer
+        minimum: 1
+        default: 14
+        title: Service account expiry warning (days)
+        description: Days before a service account expires that its owner is warned
+        order: 4
+      ssl_expiry_warning_days:
+        type: integer
+        minimum: 1
+        default: 30
+        title: SSL expiry warning (days)
+        description: Days before the SSL certificate expires that administrators are warned
+        order: 5
+  rate_limiting:
+    type: object
+    section: application
+    subsection: rateLimiting
+    title: Rate Limiting
+    properties:
+      window_minutes:
+        type: integer
+        minimum: 1
+        default: 15
+        title: Window (minutes)
+        description: Time window for rate limiting
+        order: 1
+        requiresRestart: true
+      max_requests:
+        type: integer
+        minimum: 1
+        default: 1000
+        title: Maximum requests
+        description: Requests allowed per window
+        order: 2
+        requiresRestart: true
+      message:
+        type: string
+        default: Too many requests from this IP, please try again later.
+        title: Rate limit message
+        description: Message shown to rate-limited clients
+        order: 3
+        requiresRestart: true
+      skip_successful_requests:
+        type: boolean
+        default: false
+        title: Skip successful requests
+        description: Do not count successful requests toward the limit
+        order: 4
+        requiresRestart: true
+      skip_failed_requests:
+        type: boolean
+        default: false
+        title: Skip failed requests
+        description: Do not count failed requests toward the limit
+        order: 5
+        requiresRestart: true
+      file_operations_max_requests:
+        type: integer
+        minimum: 1
+        default: 2000
+        title: File operation requests
+        description: File operation requests allowed per window
+        order: 6
+        requiresRestart: true
+      download_max_requests:
+        type: integer
+        minimum: 1
+        default: 2000
+        title: Download requests
+        description: Download requests allowed per window
+        order: 7
+        requiresRestart: true
+      download_link_max_requests:
+        type: integer
+        minimum: 1
+        default: 100
+        title: Download link requests
+        description: Download link requests allowed per window
+        order: 8
+        requiresRestart: true
+      architecture_operations_max_requests:
+        type: integer
+        minimum: 1
+        default: 500
+        title: Architecture operation requests
+        description: Architecture operation requests allowed per window
+        order: 9
+        requiresRestart: true
+  internationalization:
+    type: object
+    section: application
+    subsection: internationalization
+    title: Internationalization
+    properties:
+      default_language:
+        type: string
+        default: en
+        title: Default language
+        description: Language used when none is detected
+        order: 1
+      supported_languages:
+        type: array
+        items:
+          type: string
+        default: []
+        title: Supported languages
+        description: Languages offered; empty detects them from the locale files
+        order: 2
+      fallback_language:
+        type: string
+        default: en
+        title: Fallback language
+        description: Language used when a translation is missing
+        order: 3
+      auto_detect:
+        type: boolean
+        default: true
+        title: Detect language
+        description: Detect the language from the request
+        order: 4
+      force_language:
+        type: string
+        default: ''
+        title: Forced language
+        description: Language applied to every request regardless of preference; empty disables
+        order: 5
+  notifications:
+    type: object
+    section: application
+    subsection: notificationSettings
+    title: Notification Settings
+    properties:
+      enabled:
+        type: boolean
+        default: true
+        title: Push notifications
+        description: Send browser and OS toast notifications from BoxVault's own service worker
+        order: 1
+      vapid_subject:
+        type: string
+        default: mailto:admin@localhost
+        title: VAPID subject
+        description: Contact URI sent to push services so they can reach the operator
+        order: 2
+      vapid_public_key:
+        type: string
+        default: ''
+        title: VAPID public key
+        description: Public half of the VAPID keypair; generated on first start when empty
+        order: 3
+      vapid_private_key:
+        type: string
+        writeOnly: true
+        default: ''
+        title: VAPID private key
+        description: Private half of the VAPID keypair; generated on first start when empty
+        order: 4

@@ -8,7 +8,7 @@ const mockConfigLoader = {
   loadConfig: jest.fn().mockReturnValue({
     logging: {
       // Minimal config to trigger defaults/fallbacks during initial load (Line 20)
-      log_directory: { value: `/tmp/logs_${uniqueId}` },
+      log_directory: `/tmp/logs_${uniqueId}`,
     },
   }),
 };
@@ -92,14 +92,14 @@ describe('Logger Utility', () => {
     // Update mock to return full config for tests
     mockConfigLoader.loadConfig.mockReturnValue({
       logging: {
-        level: { value: 'info' },
-        console_enabled: { value: true },
-        log_directory: { value: `/tmp/logs_${uniqueId}` },
-        performance_threshold_ms: { value: 100 },
-        enable_compression: { value: true },
-        compression_age_days: { value: 7 },
+        level: 'info',
+        console_enabled: true,
+        log_directory: `/tmp/logs_${uniqueId}`,
+        performance_threshold_ms: 100,
+        enable_compression: true,
+        compression_age_days: 7,
         categories: {
-          test_cat: { value: 'debug' },
+          test_cat: 'debug',
         },
       },
     });
@@ -440,7 +440,7 @@ describe('Logger Utility', () => {
     }
   });
 
-  it('getLoggingConfig should return empty object if logging config missing', () => {
+  it('getLoggingConfig should return the schema defaults if logging config missing', () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
 
@@ -448,7 +448,10 @@ describe('Logger Utility', () => {
     const readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('boxvault: {}');
 
     try {
-      expect(getLoggingConfig()).toEqual({});
+      expect(getLoggingConfig()).toMatchObject({
+        level: 'info',
+        log_directory: '/var/log/boxvault',
+      });
     } finally {
       process.env.NODE_ENV = originalEnv;
       readSpy.mockRestore();
@@ -457,18 +460,16 @@ describe('Logger Utility', () => {
 
   it('processCategories should use default level if value missing', () => {
     const categories = {
-      test: { value: 'debug' },
-      fallback: {}, // missing value
-      nullConfig: null, // Line 32 coverage
+      test: 'debug',
+      fallback: '',
+      nullConfig: null,
       undefinedConfig: undefined,
-      nullValue: { value: null },
     };
     const result = processCategories(categories, 'info');
     expect(result.test).toBe('debug');
     expect(result.fallback).toBe('info');
     expect(result.nullConfig).toBe('info');
     expect(result.undefinedConfig).toBe('info');
-    expect(result.nullValue).toBe('info');
   });
 
   it('processCategories should handle null categories', () => {
@@ -479,13 +480,13 @@ describe('Logger Utility', () => {
   it('reloadLoggerConfig should execute correctly', () => {
     // First call to populate categories
     mockConfigLoader.loadConfig.mockReturnValueOnce({
-      logging: { categories: { cat1: { value: 'debug' } } },
+      logging: { categories: { cat1: 'debug' } },
     });
     reloadLoggerConfig();
 
     // Second call to trigger cleanup loop (Line 59)
     mockConfigLoader.loadConfig.mockReturnValueOnce({
-      logging: { categories: { cat2: { value: 'info' } } },
+      logging: { categories: { cat2: 'info' } },
     });
     reloadLoggerConfig();
   });
@@ -497,7 +498,7 @@ describe('Logger Utility', () => {
   });
 
   it('extractLoggerConfig should use provided values', () => {
-    const input = { level: { value: 'debug' }, performance_threshold_ms: { value: 500 } };
+    const input = { level: 'debug', performance_threshold_ms: 500 };
     const config = extractLoggerConfig(input);
     expect(config.level).toBe('debug');
     expect(config.performance_threshold_ms).toBe(500);
@@ -626,7 +627,7 @@ describe('Logger Utility', () => {
   });
 
   it('applyConfigCategories should apply categories if present', () => {
-    applyConfigCategories({ categories: { test: { value: 'info' } } });
+    applyConfigCategories({ categories: { test: 'info' } });
   });
 
   it('ensureLogDirectory should create directory if it does not exist', () => {
@@ -662,14 +663,14 @@ describe('Logger Utility', () => {
     // This handles cases where Logger.js is cached and using real config-loader
     mockConfigLoader.loadConfig.mockReturnValue({
       logging: {
-        level: { value: 'info' },
-        console_enabled: { value: true },
-        log_directory: { value: `/tmp/logs_${uniqueId}` },
-        performance_threshold_ms: { value: 100 },
-        enable_compression: { value: true },
-        compression_age_days: { value: 7 },
+        level: 'info',
+        console_enabled: true,
+        log_directory: `/tmp/logs_${uniqueId}`,
+        performance_threshold_ms: 100,
+        enable_compression: true,
+        compression_age_days: 7,
         categories: {
-          test_cat: { value: 'debug' },
+          test_cat: 'debug',
         },
       },
     });

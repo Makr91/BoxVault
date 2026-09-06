@@ -214,13 +214,13 @@ describe('Database failures answer 500 and never crash the request', () => {
       const duplicate = await request(app)
         .post(isoUrl(isoName, '/version'))
         .set('x-access-token', ownerToken)
-        .send({ versionNumber: '2.0.0' });
+        .send({ version_number: '2.0.0' });
       expect(duplicate.statusCode).toBe(500);
       failing(db.isoVersions, 'create');
       const create = await request(app)
         .post(isoUrl(isoName, '/version'))
         .set('x-access-token', ownerToken)
-        .send({ versionNumber: '2.0.0' });
+        .send({ version_number: '2.0.0' });
       expect(create.statusCode).toBe(500);
       failing(db.isoVersions, 'findOne');
       const update = await request(app)
@@ -345,7 +345,7 @@ describe('Database failures answer 500 and never crash the request', () => {
       const created = await request(app)
         .post(boxUrl('/version'))
         .set('x-access-token', ownerToken)
-        .send({ versionNumber: '3.0.0' });
+        .send({ version_number: '3.0.0' });
       expect(created.statusCode).toBe(201);
       await settle();
       failing(db.boxWatcher, 'findAll');

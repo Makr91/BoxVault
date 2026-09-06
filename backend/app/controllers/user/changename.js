@@ -3,8 +3,6 @@ import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { user: User } = db;
 
-const MAX_NAME_LENGTH = 255;
-
 /**
  * @swagger
  * /api/users/{userId}/change-name:
@@ -30,6 +28,7 @@ const MAX_NAME_LENGTH = 255;
  *             properties:
  *               name:
  *                 type: string
+ *                 maxLength: 255
  *                 nullable: true
  *                 description: New display name, or empty to clear it
  *     responses:
@@ -45,18 +44,18 @@ const MAX_NAME_LENGTH = 255;
  *                 name:
  *                   type: string
  *                   nullable: true
- *       400:
- *         description: Name is not a string, or is too long
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       404:
  *         description: User not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       422:
+ *         description: The name is not a string, or is too long
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -67,15 +66,7 @@ const MAX_NAME_LENGTH = 255;
 export const changeName = async (req, res) => {
   const { userId } = req.params;
   const { name } = req.body || {};
-
-  if (typeof name !== 'undefined' && name !== null && typeof name !== 'string') {
-    return res.status(400).send({ message: req.__('users.nameInvalid') });
-  }
-
   const trimmed = typeof name === 'string' ? name.trim() : '';
-  if (trimmed.length > MAX_NAME_LENGTH) {
-    return res.status(400).send({ message: req.__('users.nameTooLong') });
-  }
 
   try {
     const user = await User.findByPk(userId);

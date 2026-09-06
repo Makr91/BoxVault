@@ -15,8 +15,7 @@ const findProviderByIssuer = issuer => {
   const providersConfig = loadConfig('auth').auth?.oidc?.providers || {};
   return (
     Object.keys(providersConfig).find(
-      name =>
-        providersConfig[name]?.enabled?.value && providersConfig[name]?.issuer?.value === issuer
+      name => providersConfig[name]?.enabled === true && providersConfig[name]?.issuer === issuer
     ) || null
   );
 };

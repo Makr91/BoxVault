@@ -1,6 +1,6 @@
 // architecture.routes.js
 import { Router } from 'express';
-import { authJwt, verifyArchitecture, sessionAuth } from '../middleware/index.js';
+import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
 import { architectureOperationLimiter } from '../middleware/rateLimiter.js';
 import {
   findAllByProvider,
@@ -38,8 +38,9 @@ router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture',
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
-  verifyArchitecture.validateArchitecture,
-  verifyArchitecture.checkArchitectureDuplicate,
+  verifyOrgAccess.attachBox,
+  verifyOrgAccess.attachProvider,
+  validateBody('architecture'),
   create
 );
 
@@ -47,7 +48,9 @@ router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
-  verifyArchitecture.validateArchitecture,
+  verifyOrgAccess.attachBox,
+  verifyOrgAccess.attachProvider,
+  validateBody('architecture', { partial: true }),
   update
 );
 

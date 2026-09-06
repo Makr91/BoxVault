@@ -94,12 +94,12 @@ describe('OIDC back-channel logout', () => {
     restoreConfig = writeAuthConfig(config => {
       config.auth.oidc.providers = {
         logoutidp: {
-          enabled: { value: true },
-          issuer: { value: ISSUER },
-          client_id: { value: CLIENT_ID },
+          enabled: true,
+          issuer: ISSUER,
+          client_id: CLIENT_ID,
         },
-        noclient: { enabled: { value: true }, issuer: { value: NO_CLIENT_ISSUER } },
-        undiscovered: { enabled: { value: true }, issuer: { value: UNDISCOVERED_ISSUER } },
+        noclient: { enabled: true, issuer: NO_CLIENT_ISSUER },
+        undiscovered: { enabled: true, issuer: UNDISCOVERED_ISSUER },
       };
     });
 
@@ -246,7 +246,7 @@ describe('OIDC back-channel logout', () => {
     const refresh = await request(app)
       .post('/api/auth/refresh-token')
       .set('x-access-token', session)
-      .send({ stayLoggedIn: true });
+      .send({ stay_logged_in: true });
     expect(refresh.statusCode).toBe(401);
     expect(refresh.body.error).toBe('TOKEN_INVALID');
   });

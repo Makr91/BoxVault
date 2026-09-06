@@ -192,7 +192,7 @@ describe('Atomic File Writer', () => {
     it('should use configured storage path', async () => {
       mockConfigLoader.loadConfig.mockReturnValue({
         boxvault: {
-          box_storage_directory: { value: '/custom/storage' },
+          box_storage_directory: '/custom/storage',
         },
       });
 
@@ -211,7 +211,7 @@ describe('Atomic File Writer', () => {
   describe('Auth Utilities', () => {
     beforeEach(() => {
       mockConfigLoader.loadConfig.mockReturnValue({
-        auth: { jwt: { jwt_secret: { value: 'secret' } } },
+        auth: { jwt: { jwt_secret: 'secret' } },
       });
       mockJwt.verify.mockReset();
       mockJwt.sign.mockReset();

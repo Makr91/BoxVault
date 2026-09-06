@@ -1,6 +1,6 @@
 // version.routes.js
 import { Router } from 'express';
-import { authJwt, verifyVersion } from '../middleware/index.js';
+import { authJwt, validateBody, verifyOrgAccess } from '../middleware/index.js';
 import {
   create,
   update,
@@ -25,9 +25,8 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyVersion.validateVersion,
-    verifyVersion.attachEntities,
-    verifyVersion.checkVersionDuplicate,
+    verifyOrgAccess.attachBox,
+    validateBody('version'),
   ],
   create
 );
@@ -37,34 +36,33 @@ router.put(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyVersion.validateVersion,
-    verifyVersion.attachEntities,
-    verifyVersion.checkVersionDuplicate,
+    verifyOrgAccess.attachBox,
+    validateBody('version', { partial: true }),
   ],
   update
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version',
-  [verifyVersion.attachEntities],
+  [verifyOrgAccess.attachBox],
   findAllByBox
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber',
-  [verifyVersion.attachEntities],
+  [verifyOrgAccess.attachBox],
   findOne
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyVersion.attachEntities],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachBox],
   deleteVersion
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyVersion.attachEntities],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachBox],
   deleteAllByBox
 );
 

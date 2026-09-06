@@ -37,6 +37,13 @@ const mockConfigLoader = {
   getRateLimitConfig: actualConfigLoader.getRateLimitConfig,
   getI18nConfig: actualConfigLoader.getI18nConfig,
   loadConfigs: actualConfigLoader.loadConfigs,
+  checkConfigs: actualConfigLoader.checkConfigs,
+  loadSchema: actualConfigLoader.loadSchema,
+  readConfigFile: actualConfigLoader.readConfigFile,
+  fillDefaults: actualConfigLoader.fillDefaults,
+  validateConfig: actualConfigLoader.validateConfig,
+  unknownKeys: actualConfigLoader.unknownKeys,
+  CONFIG_NAMES: actualConfigLoader.CONFIG_NAMES,
 };
 
 jest.unstable_mockModule('fs', () => ({
@@ -243,7 +250,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/Packages' },
+              repository_packages_url: 'https://repo.example.com/Packages',
             },
           };
         }
@@ -289,7 +296,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/Packages' },
+              repository_packages_url: 'https://repo.example.com/Packages',
             },
           };
         }
@@ -329,7 +336,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/Packages' },
+              repository_packages_url: 'https://repo.example.com/Packages',
             },
           };
         }
@@ -365,7 +372,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/debian/' },
+              repository_packages_url: 'https://repo.example.com/debian/',
             },
           };
         }
@@ -424,7 +431,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/Packages' },
+              repository_packages_url: 'https://repo.example.com/Packages',
             },
           };
         }
@@ -459,7 +466,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/Packages' },
+              repository_packages_url: 'https://repo.example.com/Packages',
             },
           };
         }
@@ -500,7 +507,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'http://repo.example.com/Packages' },
+              repository_packages_url: 'http://repo.example.com/Packages',
             },
           };
         }
@@ -542,7 +549,7 @@ describe('System API', () => {
         if (name === 'app') {
           return {
             boxvault: {
-              repository_packages_url: { value: 'https://repo.example.com/Packages' },
+              repository_packages_url: 'https://repo.example.com/Packages',
             },
           };
         }

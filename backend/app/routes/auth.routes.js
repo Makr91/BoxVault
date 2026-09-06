@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { verifySignUp, authJwt, oidcTokenRefresh, verifyOrgAccess } from '../middleware/index.js';
+import {
+  verifySignUp,
+  authJwt,
+  oidcTokenRefresh,
+  verifyOrgAccess,
+  validateBody,
+} from '../middleware/index.js';
 import {
   signup,
   signin,
@@ -45,7 +51,7 @@ const purgeExpiredHandoffCodes = () => {
 const createLoginHandoffCode = token => {
   purgeExpiredHandoffCodes();
   const authConfig = loadConfig('auth');
-  const ttlSeconds = authConfig.auth?.oidc?.login_handoff_ttl_seconds?.value || 60;
+  const ttlSeconds = authConfig.auth?.oidc?.login_handoff_ttl_seconds || 60;
   const code = randomBytes(32).toString('hex');
   loginHandoffCodes.set(code, { token, expiresAt: Date.now() + ttlSeconds * 1000 });
   return code;
@@ -108,12 +114,8 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post(
-  '/auth/signup',
-  [verifySignUp.checkDuplicateUsernameOrEmail, verifySignUp.checkRolesExisted],
-  signup
-);
-router.post('/auth/signin', signin);
+router.post('/auth/signup', [validateBody('register'), verifySignUp.checkRolesExisted], signup);
+router.post('/auth/signin', validateBody('login'), signin);
 router.get('/auth/verify-mail/:token', verifyMail);
 router.get('/auth/validate-invitation/:token', validateInvitationToken);
 router.post(
@@ -136,7 +138,8 @@ router.post(
     oidcTokenRefresh,
     authJwt.verifyToken,
     authJwt.isUser,
-    // Resolves the org from req.body.organizationName (no :organization segment).
+    validateBody('invitation'),
+    // Resolves the org from req.body.organization_name (no :organization segment).
     // Externally-managed orgs are NOT rejected here: the controller delegates
     // their invites to the auth server instead of writing a local invitation.
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -198,10 +201,10 @@ router.get('/auth/oidc/issuers', (req, res) => {
     const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
 
     Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
-      if (providerConfig.enabled?.value && providerConfig.issuer?.value) {
+      if (providerConfig.enabled === true && providerConfig.issuer) {
         trustedIssuers.push({
           provider: providerName,
-          issuer: providerConfig.issuer.value,
+          issuer: providerConfig.issuer,
         });
       }
     });
@@ -278,7 +281,7 @@ router.get('/auth/methods', async (req, res) => {
   void req;
   try {
     const authConfig = loadConfig('auth');
-    const localEnabled = authConfig.auth?.jwt?.local_enabled?.value !== false;
+    const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
     const methods = [
       {
         id: 'local',
@@ -290,12 +293,12 @@ router.get('/auth/methods', async (req, res) => {
     const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
 
     Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
-      if (providerConfig.enabled?.value && providerConfig.display_name?.value) {
+      if (providerConfig.enabled === true && providerConfig.display_name) {
         methods.push({
           id: `oidc-${providerName}`,
-          name: providerConfig.display_name.value,
+          name: providerConfig.display_name,
           enabled: true,
-          icon_url: providerConfig.icon_url?.value || null,
+          icon_url: providerConfig.icon_url || null,
         });
       }
     });
@@ -305,12 +308,11 @@ router.get('/auth/methods', async (req, res) => {
       methods: methods.map(m => m.id),
     });
 
-    const defaultProvider = authConfig.auth?.oidc?.default_provider?.value || null;
-    const silentLogin = !!authConfig.auth?.oidc?.silent_login?.value;
+    const defaultProvider = authConfig.auth?.oidc?.default_provider || null;
+    const silentLogin = !!authConfig.auth?.oidc?.silent_login;
     const userCount = await User.count();
     const localRegistrationEnabled =
-      localEnabled &&
-      (userCount === 0 || !!authConfig.auth?.local?.local_allow_new_organizations?.value);
+      localEnabled && (userCount === 0 || !!authConfig.auth?.local?.local_allow_new_organizations);
 
     return res.json({
       methods,
@@ -434,7 +436,7 @@ router.get('/auth/oidc/callback', async (req, res) => {
 
     // CRITICAL FIX: Use req.originalUrl instead of req.url
     // req.url doesn't include the /api/ prefix when route is mounted
-    const currentUrl = new URL(appConfig.boxvault.origin.value + req.originalUrl);
+    const currentUrl = new URL(appConfig.boxvault.origin + req.originalUrl);
 
     log.auth.debug('OIDC callback URL', {
       currentUrl: currentUrl.toString(),
@@ -465,7 +467,7 @@ router.get('/auth/oidc/callback', async (req, res) => {
     const claims = tokens.claims();
 
     const oidcConfig = authConfig.auth?.oidc;
-    const expiryValue = oidcConfig?.token_default_expiry_minutes?.value;
+    const expiryValue = oidcConfig?.token_default_expiry_minutes;
     const defaultExpiryMinutes = expiryValue || 30;
 
     let oidcExpiresAt;
@@ -486,11 +488,11 @@ router.get('/auth/oidc/callback', async (req, res) => {
         oidc_refresh_token: tokens.refresh_token, // Store for automatic token refresh
         oidc_expires_at: oidcExpiresAt, // Store expiration time for refresh check
       },
-      authConfig.auth.jwt.jwt_secret.value,
+      authConfig.auth.jwt.jwt_secret,
       {
         algorithm: 'HS256',
         allowInsecureKeySizes: true, // This should be optional configurable ie moved into the config
-        expiresIn: authConfig.auth.jwt.jwt_expiration.value || '24h',
+        expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
         ...getJwtClaimOptions(),
       }
     );
@@ -632,7 +634,7 @@ router.get('/auth/oidc/:provider', async (req, res) => {
       return res.redirect('/?error=provider_not_found');
     }
 
-    if (!providerConfig.enabled?.value) {
+    if (providerConfig.enabled !== true) {
       log.auth.error('OIDC provider not enabled', { provider });
       return res.redirect('/?error=provider_not_enabled');
     }
@@ -663,7 +665,7 @@ router.get('/auth/oidc/:provider', async (req, res) => {
     });
 
     // Generate authorization URL
-    const redirectUri = `${appConfig.boxvault.origin.value}/api/auth/oidc/callback`;
+    const redirectUri = `${appConfig.boxvault.origin}/api/auth/oidc/callback`;
     const authUrl = await buildAuthorizationUrl(
       provider,
       redirectUri,
@@ -744,7 +746,7 @@ router.post('/auth/oidc/logout', (req, res) => {
     const appConfig = loadConfig('app');
 
     // Verify and decode token
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret.value, getJwtClaimOptions());
+    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret, getJwtClaimOptions());
 
     log.auth.info('OIDC logout request', {
       userId: decoded.id,
@@ -755,7 +757,7 @@ router.post('/auth/oidc/logout', (req, res) => {
     if (decoded.provider?.startsWith('oidc-')) {
       const providerName = decoded.provider.replace('oidc-', '');
       const state = randomState();
-      const postLogoutRedirectUri = `${appConfig.boxvault.origin.value}/login?logout=success`;
+      const postLogoutRedirectUri = `${appConfig.boxvault.origin}/login?logout=success`;
 
       log.auth.info('Attempting RP-initiated logout', {
         provider: providerName,

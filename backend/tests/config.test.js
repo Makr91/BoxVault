@@ -15,6 +15,7 @@ import {
   getConfigPath,
   loadConfig,
   loadConfigs,
+  checkConfigs,
   getSetupTokenPath,
   getRateLimitConfig,
   getI18nConfig,
@@ -24,6 +25,16 @@ import { writeConfig } from '../app/controllers/config/helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const authConfigPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
+const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+
+const withFile = (filePath, mutate) => {
+  const original = fs.readFileSync(filePath, 'utf8');
+  const config = yaml.load(original);
+  mutate(config);
+  fs.writeFileSync(filePath, yaml.dump(config));
+  return () => fs.writeFileSync(filePath, original);
+};
 
 describe('Config API', () => {
   let adminToken;
@@ -106,11 +117,67 @@ describe('Config API', () => {
     });
   });
 
+  describe('GET /api/config/:configName/schema', () => {
+    it('should answer the schema document for an admin', async () => {
+      const res = await request(app)
+        .get('/api/config/app/schema')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
+      expect(res.body.schemaVersion).toBe(1);
+      expect(res.body.properties.boxvault.properties.origin.format).toBe('uri');
+      expect(res.body.properties.gravatar.properties.api_key.writeOnly).toBe(true);
+    });
+
+    it('should refuse the schema for a non-admin', async () => {
+      const res = await request(app)
+        .get('/api/config/app/schema')
+        .set('x-access-token', nonAdminToken);
+
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('masked secrets', () => {
+    it('should mask every writeOnly value on read', async () => {
+      const res = await request(app).get('/api/config/auth').set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.auth.jwt.jwt_secret).toBe('********');
+      expect(res.body.auth.jwt.jwt_issuer).toBe('boxvault');
+    });
+
+    it('should keep the stored secret when the mask comes back and report a restart', async () => {
+      const original = fs.readFileSync(authConfigPath, 'utf8');
+      try {
+        const unchanged = await request(app)
+          .put('/api/config/auth')
+          .set('x-access-token', adminToken)
+          .send({ auth: { jwt: { jwt_secret: '********', jwt_expiration: '2h' } } });
+        expect(unchanged.statusCode).toBe(200);
+        expect(unchanged.body.requiresRestart).toBe(false);
+        const written = yaml.load(fs.readFileSync(authConfigPath, 'utf8'));
+        expect(written.auth.jwt.jwt_secret).toBe('test-secret');
+        expect(written.auth.jwt.jwt_expiration).toBe('2h');
+
+        const restart = await request(app)
+          .put('/api/config/auth')
+          .set('x-access-token', adminToken)
+          .send({ auth: { jwt: { jwt_issuer: 'other-issuer' } } });
+        expect(restart.statusCode).toBe(200);
+        expect(restart.body.requiresRestart).toBe(true);
+      } finally {
+        fs.writeFileSync(authConfigPath, original);
+      }
+    });
+  });
+
   describe('PUT /api/config/:configName', () => {
     it('should update a config for an admin', async () => {
       const updatePayload = {
         internationalization: {
-          default_language: { value: 'es' },
+          default_language: 'es',
         },
       };
 
@@ -121,15 +188,14 @@ describe('Config API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('message', 'Configuration updated successfully.');
+      expect(res.body.requiresRestart).toBe(false);
     });
 
-    it('should handle deep merge with new nested keys (covers update.js mergeDeep)', async () => {
-      // This payload introduces a new nested section that doesn't exist in the default config
-      // This forces mergeDeep to hit the branch where it creates a new object (lines 19 & 22)
+    it('should keep unknown nested keys through the deep merge', async () => {
       const updatePayload = {
         boxvault: {
           new_nested_section: {
-            some_key: { value: 'new-value' },
+            some_key: 'new-value',
           },
         },
       };
@@ -140,26 +206,66 @@ describe('Config API', () => {
         .send(updatePayload);
 
       expect(res.statusCode).toBe(200);
+      const written = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
+      expect(written.boxvault.new_nested_section.some_key).toBe('new-value');
     });
 
-    it('should handle deep merge where target is primitive and source is object (covers update.js line 19)', async () => {
-      // boxvault.origin.value is a string (primitive) in the default config.
-      // We try to update it with an object. This forces isObject(target) to be false
-      // inside the recursive mergeDeep call, covering the else/skip branch.
-      const updatePayload = {
-        boxvault: {
-          origin: {
-            value: { nested: 'object' },
-          },
-        },
-      };
-
+    it('should refuse a value that breaks the schema with a pointer and write nothing', async () => {
+      const before = fs.readFileSync(appConfigPath, 'utf8');
       const res = await request(app)
         .put('/api/config/app')
         .set('x-access-token', adminToken)
-        .send(updatePayload);
+        .send({ boxvault: { origin: { nested: 'object' }, api_listen_port_encrypted: 70000 } });
 
-      expect(res.statusCode).toBe(200);
+      expect(res.statusCode).toBe(422);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/validation');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/boxvault/origin', rule: 'type' }),
+        expect.objectContaining({ pointer: '/boxvault/api_listen_port_encrypted', rule: 'range' }),
+      ]);
+      expect(fs.readFileSync(appConfigPath, 'utf8')).toBe(before);
+    });
+  });
+
+  describe('boot refusal', () => {
+    it('should report the failing pointers of every file', () => {
+      const restore = withFile(appConfigPath, config => {
+        config.boxvault.api_listen_port_unencrypted = 'eighty';
+        config.stray = true;
+      });
+      try {
+        const results = checkConfigs();
+        const appResult = results.find(result => result.name === 'app');
+        expect(appResult.errors).toEqual([
+          expect.objectContaining({
+            pointer: '/boxvault/api_listen_port_unencrypted',
+            rule: 'type',
+          }),
+        ]);
+        expect(appResult.unknown).toContain('/stray');
+        expect(results.filter(result => result.errors.length > 0).map(r => r.name)).toEqual([
+          'app',
+        ]);
+      } finally {
+        restore();
+      }
+    });
+
+    it('should refuse to start the host while a file fails its schema', async () => {
+      const restore = withFile(appConfigPath, config => {
+        config.boxvault.api_listen_port_unencrypted = 'eighty';
+      });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        jest.resetModules();
+        await expect(import('../server.js')).rejects.toThrow(
+          'Configuration failed validation: app'
+        );
+      } finally {
+        restore();
+        consoleErrorSpy.mockRestore();
+      }
     });
   });
 
@@ -196,7 +302,7 @@ describe('Config API', () => {
       const authConfigYaml = `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }
+    jwt_secret: test-secret
 `;
 
       // Spy on fs.readFileSync to throw error
@@ -247,7 +353,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }`;
+    jwt_secret: test-secret`;
         }
         throw new Error('Config Load Error');
       });
@@ -277,7 +383,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }`;
+    jwt_secret: test-secret`;
         }
         throw new Error('Config Load Error');
       });
@@ -306,7 +412,7 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }`;
+    jwt_secret: test-secret`;
         }
         if (p.includes('app')) {
           return 'boxvault: {}'; // Valid yaml, missing gravatar
@@ -326,7 +432,7 @@ auth:
       }
     });
 
-    it('GET /api/config/ticket - should return 404 if ticket config is missing', async () => {
+    it('GET /api/config/ticket - should answer the schema defaults when the section is absent', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
 
@@ -336,18 +442,18 @@ auth:
           return `
 auth:
   jwt:
-    jwt_secret: { value: 'test-secret' }`;
+    jwt_secret: test-secret`;
         }
         if (p.includes('app')) {
-          return 'boxvault: {}'; // Valid yaml, missing ticket_system
+          return 'boxvault: {}';
         }
         return '';
       });
 
       try {
         const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
-        expect(res.statusCode).toBe(404);
-        expect(res.body.message).toBe('Ticket system not configured.');
+        expect(res.statusCode).toBe(200);
+        expect(res.body.ticket_system.enabled).toBe(false);
       } finally {
         process.env.NODE_ENV = originalEnv;
         readFileSyncSpy.mockRestore();
@@ -355,29 +461,9 @@ auth:
     });
 
     it('PUT /api/config/:configName - should handle file write error', async () => {
-      // Mock read to succeed
-      const readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        if (filePath.toString().includes('auth')) {
-          return `
-auth:
-  jwt:
-    jwt_secret: { value: 'test-secret' }`;
-        }
-        return 'key: value';
+      const writeFileSpy = jest.spyOn(fs, 'copyFileSync').mockImplementation(() => {
+        throw new Error('Write Error');
       });
-
-      // Mock write to fail (simulating atomic write failure)
-      const writeFileSpy = jest
-        .spyOn(fs, 'writeFile')
-        .mockImplementation((filePath, data, options, cb) => {
-          void filePath;
-          void data;
-          let callback = cb;
-          if (typeof options === 'function') {
-            callback = options;
-          }
-          callback(new Error('Write Error'));
-        });
 
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -385,12 +471,12 @@ auth:
         const res = await request(app)
           .put('/api/config/app')
           .set('x-access-token', adminToken)
-          .send({ key: 'new-value' });
+          .set('Accept-Language', 'en')
+          .send({ internationalization: { default_language: 'en' } });
 
         expect(res.statusCode).toBe(500);
         expect(res.body.message).toBe('Failed to update configuration');
       } finally {
-        readFileSyncSpy.mockRestore();
         writeFileSpy.mockRestore();
         consoleErrorSpy.mockRestore();
       }
@@ -460,7 +546,8 @@ auth:
         jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYamlContent);
 
         const config = loadConfig('app');
-        expect(config).toEqual({ key: 'value' });
+        expect(config.key).toBe('value');
+        expect(config.boxvault.api_listen_port_unencrypted).toBe(80);
       });
 
       it('should return mock config in test environment if loading fails', () => {
@@ -481,7 +568,7 @@ auth:
         jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYamlContent);
 
         const config = loadConfig('auth');
-        expect(config).toEqual({ key: 'value' });
+        expect(config.key).toBe('value');
         expect(config.logging).toBeUndefined();
       });
 
@@ -494,7 +581,7 @@ auth:
 
         const config = loadConfig('app');
         expect(config.logging).toBeDefined();
-        expect(config.logging.level.value).toBe('silent');
+        expect(config.logging.level).toBe('silent');
       });
     });
 
@@ -551,9 +638,9 @@ auth:
         process.env.NODE_ENV = 'development';
         const mockYaml = `
 rate_limiting:
-  window_minutes: { value: 30 }
-  max_requests: { value: 500 }
-  message: { value: 'Slow down' }
+  window_minutes: 30
+  max_requests: 500
+  message: 'Slow down'
 `;
         jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
 
@@ -595,8 +682,8 @@ rate_limiting:
         process.env.NODE_ENV = 'development';
         const mockYaml = `
 internationalization:
-  default_language: { value: 'es' }
-  auto_detect: { value: false }
+  default_language: 'es'
+  auto_detect: false
 `;
         jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
 
@@ -668,8 +755,8 @@ internationalization:
       // Update config to force Spanish
       const config = yaml.load(originalConfig);
       config.internationalization = {
-        force_language: { value: 'es' },
-        default_language: { value: 'en' },
+        force_language: 'es',
+        default_language: 'en',
       };
       fs.writeFileSync(configPath, yaml.dump(config));
 
@@ -820,7 +907,7 @@ internationalization:
 
       const config = loadConfig('db');
       expect(config.sql).toBeDefined();
-      expect(config.sql.dialect.value).toBe('sqlite');
+      expect(config.sql.dialect).toBe('sqlite');
     });
 
     it('should return mock db config when load fails in test env', () => {
@@ -831,7 +918,7 @@ internationalization:
 
       const config = loadConfig('db');
       expect(config.sql).toBeDefined();
-      expect(config.sql.dialect.value).toBe('sqlite');
+      expect(config.sql.dialect).toBe('sqlite');
     });
 
     it('should return mock db config when load fails in test env (explicit db check)', () => {
@@ -842,7 +929,7 @@ internationalization:
 
       const config = loadConfig('db');
       expect(config.sql).toBeDefined();
-      expect(config.sql.dialect.value).toBe('sqlite');
+      expect(config.sql.dialect).toBe('sqlite');
     });
 
     it('should return mock db config when load fails in test env (explicit db check)', () => {
@@ -853,7 +940,7 @@ internationalization:
 
       const config = loadConfig('db');
       expect(config.sql).toBeDefined();
-      expect(config.sql.dialect.value).toBe('sqlite');
+      expect(config.sql.dialect).toBe('sqlite');
     });
 
     it('should return empty object for unknown config in test env (fallback)', () => {
@@ -873,14 +960,14 @@ internationalization:
 
       const mockYaml = `
 logging:
-  level: { value: 'info' }
-  console_enabled: { value: true }
+  level: 'info'
+  console_enabled: true
 `;
       jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
 
       const config = loadConfig('app');
-      expect(config.logging.level.value).toBe('silent');
-      expect(config.logging.console_enabled.value).toBe(false);
+      expect(config.logging.level).toBe('silent');
+      expect(config.logging.console_enabled).toBe(false);
     });
 
     it('getRateLimitConfig should return defaults on error', () => {
@@ -917,12 +1004,12 @@ logging:
 
       const mockYaml = `
 logging:
-  level: { value: 'info' }
+  level: 'info'
 `;
       jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
 
       const config = loadConfig('app');
-      expect(config.logging.level.value).toBe('error');
+      expect(config.logging.level).toBe('error');
 
       process.env.SUPPRESS_LOGS = originalSuppress;
     });
@@ -937,7 +1024,7 @@ logging:
       });
 
       const config = loadConfig('app');
-      expect(config.logging.level.value).toBe('error');
+      expect(config.logging.level).toBe('error');
 
       process.env.SUPPRESS_LOGS = originalSuppress;
     });
@@ -947,10 +1034,10 @@ logging:
       process.env.NODE_ENV = 'test';
       process.env.SUPPRESS_LOGS = 'false';
 
-      jest.spyOn(fs, 'readFileSync').mockReturnValue('logging: { level: { value: "info" } }');
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('logging: { level: "info" }');
 
       const config = loadConfig('app');
-      expect(config.logging.level.value).toBe('error');
+      expect(config.logging.level).toBe('error');
 
       process.env.SUPPRESS_LOGS = originalSuppress;
     });

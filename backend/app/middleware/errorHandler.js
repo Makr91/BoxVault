@@ -2,11 +2,20 @@ import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { log } from '../utils/Logger.js';
+import { problem } from '../utils/problem.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const errorHandler = (err, req, res, next) => {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request too large' });
+  }
+
+  if (err.type === 'entity.parse.failed') {
+    return problem(res, req, { status: 400, type: 'bad-request' });
+  }
+
   // Log the error with full details
   log.error.error('Express error handler', {
     error: err.message,

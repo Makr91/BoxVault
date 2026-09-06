@@ -56,7 +56,7 @@ describe('Notifications API', () => {
     await global.testHelpers.waitForAppReady(app);
     restoreAuth = updateConfig('auth', config => {
       config.auth.oidc.providers = {
-        notifyidp: { enabled: { value: true }, issuer: { value: ISSUER } },
+        notifyidp: { enabled: true, issuer: ISSUER },
       };
     });
 
@@ -124,10 +124,10 @@ describe('Notifications API', () => {
     beforeAll(() => {
       restoreApp = updateConfig('app', config => {
         config.notifications = {
-          enabled: { value: true },
-          vapid_subject: { value: 'mailto:ops@example.com' },
-          vapid_public_key: { value: 'public-key' },
-          vapid_private_key: { value: 'private-key' },
+          enabled: true,
+          vapid_subject: 'mailto:ops@example.com',
+          vapid_public_key: 'public-key',
+          vapid_private_key: 'private-key',
         };
       });
     });

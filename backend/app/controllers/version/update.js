@@ -2,47 +2,10 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { notifyVersionDeprecated } from './notifications.js';
 const { versions: Version, UserOrg } = db;
-
-/**
- * Validate the optional release-notes/deprecation fields of a version update.
- * A request setting deprecated:true must carry (or the version must already
- * store) a non-empty deprecation reason.
- * @param {Object} req - Express request (body + i18n)
- * @param {Object} version - The version being updated
- * @returns {string|null} 400 rejection message, or null when acceptable
- */
-const getVersionContentRejection = (req, version) => {
-  const {
-    release_notes: releaseNotes,
-    deprecated,
-    deprecation_reason: deprecationReason,
-  } = req.body;
-
-  if (typeof releaseNotes !== 'undefined' && releaseNotes !== null) {
-    if (typeof releaseNotes !== 'string') {
-      return 'release_notes must be a string.';
-    }
-  }
-  if (typeof deprecated !== 'undefined' && typeof deprecated !== 'boolean') {
-    return 'deprecated must be a boolean.';
-  }
-  if (typeof deprecationReason !== 'undefined' && deprecationReason !== null) {
-    if (typeof deprecationReason !== 'string' || deprecationReason.length > 512) {
-      return 'deprecation_reason must be a string of at most 512 characters.';
-    }
-  }
-  if (deprecated === true) {
-    const effectiveReason =
-      typeof deprecationReason !== 'undefined' ? deprecationReason : version.deprecationReason;
-    if (typeof effectiveReason !== 'string' || !effectiveReason.trim()) {
-      return req.__('versions.deprecationReasonRequired');
-    }
-  }
-  return null;
-};
 
 /**
  * @swagger
@@ -94,6 +57,18 @@ const getVersionContentRejection = (req, version) => {
  *                 message:
  *                   type: string
  *                   example: "Box example-box not found in organization example-org."
+ *       409:
+ *         description: A version with the new number already exists for the box
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       422:
+ *         description: A value breaks a rule of the version form
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -108,7 +83,7 @@ const getVersionContentRejection = (req, version) => {
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
   const {
-    versionNumber: newVersionNumber,
+    version_number: newVersionNumber,
     description,
     release_notes: releaseNotes,
     deprecated,
@@ -119,7 +94,7 @@ export const update = async (req, res) => {
   const newFilePath = getSecureBoxPath(organization, boxId, newVersionNumber || versionNumber);
 
   try {
-    // Organization and Box are already verified and attached by verifyVersion middleware
+    // Organization and Box are already verified and attached by attachBox middleware
     const { organizationData, boxData: box } = req;
 
     // Check if user owns the box OR has admin/owner role
@@ -129,7 +104,7 @@ export const update = async (req, res) => {
 
     if (!canUpdate) {
       return res.status(403).send({
-        message: 'You can only update versions of boxes you own, or you need admin/owner role.',
+        message: req.__('versions.update.permissionDenied'),
       });
     }
 
@@ -143,9 +118,13 @@ export const update = async (req, res) => {
       });
     }
 
-    const contentRejection = getVersionContentRejection(req, version);
-    if (contentRejection) {
-      return res.status(400).send({ message: contentRejection });
+    if (newVersionNumber && newVersionNumber !== versionNumber) {
+      const existingVersion = await Version.findOne({
+        where: { versionNumber: newVersionNumber, boxId: box.id },
+      });
+      if (existingVersion) {
+        return conflict(res, req, '/version_number', box.name);
+      }
     }
 
     // Only THIS request flipping deprecated false -> true triggers a hub

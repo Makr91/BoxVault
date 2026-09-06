@@ -72,13 +72,13 @@ const buildAuthorizationUrl = async (
 
   const authParams = {
     redirect_uri: redirectUri,
-    scope: providerConfig.scope?.value || 'openid profile email',
+    scope: providerConfig.scope || 'openid profile email',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   };
 
-  const prompt = promptOverride || providerConfig.prompt?.value;
+  const prompt = promptOverride || providerConfig.prompt;
   if (prompt) {
     authParams.prompt = prompt;
   }
@@ -112,7 +112,7 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
 
     // CRITICAL: Get redirect_uri from app config to ensure consistency
     const appConfig = loadConfig('app');
-    const redirectUri = `${appConfig.boxvault.origin.value}/api/auth/oidc/callback`;
+    const redirectUri = `${appConfig.boxvault.origin}/api/auth/oidc/callback`;
 
     log.auth.debug('Token exchange parameters', {
       provider: providerName,
@@ -254,10 +254,12 @@ const setupOidcProviders = async authConfig => {
   const providerPromises = Object.entries(oidcProvidersConfig).map(
     async ([providerName, providerConfig]) => {
       try {
-        const enabled = providerConfig.enabled?.value;
-        const issuer = providerConfig.issuer?.value;
-        const clientId = providerConfig.client_id?.value;
-        const clientSecret = providerConfig.client_secret?.value;
+        const {
+          enabled,
+          issuer,
+          client_id: clientId,
+          client_secret: clientSecret,
+        } = providerConfig;
 
         if (!enabled) {
           log.app.info(`Skipping disabled OIDC provider: ${providerName}`);
@@ -276,8 +278,7 @@ const setupOidcProviders = async authConfig => {
         log.app.info(`Configuring OIDC provider: ${providerName}`, { issuer });
 
         // Get token endpoint auth method from provider config (ARMOR pattern)
-        const authMethod =
-          providerConfig.token_endpoint_auth_method?.value || 'client_secret_basic';
+        const authMethod = providerConfig.token_endpoint_auth_method || 'client_secret_basic';
 
         log.app.info(`Using token endpoint auth method: ${authMethod}`, { provider: providerName });
 

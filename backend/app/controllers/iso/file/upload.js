@@ -75,7 +75,7 @@ const FILENAME_MAX_LENGTH = 255;
  */
 const upload = async (req, res) => {
   const appConfig = loadConfig('app');
-  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours?.value || 24;
+  const uploadTimeoutHours = appConfig.boxvault?.upload_timeout_hours || 24;
   const uploadTimeoutMs = uploadTimeoutHours * 60 * 60 * 1000;
   req.setTimeout(uploadTimeoutMs);
 
@@ -98,7 +98,7 @@ const upload = async (req, res) => {
     }
 
     const contentLength = parseInt(req.headers['content-length'], 10);
-    const maxFileSize = appConfig.boxvault.box_max_file_size.value * 1024 * 1024 * 1024;
+    const maxFileSize = appConfig.boxvault.box_max_file_size * 1024 * 1024 * 1024;
     if (contentLength > maxFileSize) {
       const error = new Error('File too large');
       error.code = 'LIMIT_FILE_SIZE';
@@ -176,7 +176,7 @@ const upload = async (req, res) => {
   } catch (err) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).send({
-        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size.value }),
+        message: req.__('files.fileTooLarge', { size: appConfig.boxvault.box_max_file_size }),
         error: 'FILE_TOO_LARGE',
       });
     }

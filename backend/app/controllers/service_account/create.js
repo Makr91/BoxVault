@@ -1,7 +1,6 @@
 import { randomBytes } from 'crypto';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { loadConfig } from '../../utils/config-loader.js';
 import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
 
 const { service_account: ServiceAccount, user: User, UserOrg } = db;
@@ -31,18 +30,24 @@ const { service_account: ServiceAccount, user: User, UserOrg } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ServiceAccount'
- *       400:
- *         description: Invalid request data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Authentication required
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: The caller is not a member of the organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: A value breaks a rule of the service account form, the expiry ceiling among them
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -52,26 +57,17 @@ const { service_account: ServiceAccount, user: User, UserOrg } = db;
  */
 export const create = async (req, res) => {
   try {
-    const authConfig = loadConfig('auth');
-    const { description, expirationDays, organizationId } = req.body;
+    const {
+      description,
+      expiration_days: expirationDays,
+      organization_id: organizationId,
+    } = req.body;
     const { userId } = req;
-
-    if (!organizationId) {
-      return res.status(400).send({ message: 'Organization ID is required!' });
-    }
-
-    // Validate expiration days against configured maximum
-    const maxExpiryDays = authConfig.auth?.jwt?.service_account_max_expiry_days?.value || 365;
-    if (expirationDays > maxExpiryDays) {
-      return res.status(400).send({
-        message: `Service account expiration cannot exceed ${maxExpiryDays} days.`,
-      });
-    }
 
     const userRole = await UserOrg.findUserOrgRole(userId, organizationId);
     if (!userRole) {
       return res.status(403).send({
-        message: 'You must be a member of this organization to create service accounts!',
+        message: req.__('serviceAccounts.membershipRequired'),
       });
     }
 

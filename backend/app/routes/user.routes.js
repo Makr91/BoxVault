@@ -1,6 +1,12 @@
 // user.routes.js
 import { Router } from 'express';
-import { authJwt, verifySignUp, verifyOrgAccess, oidcTokenRefresh } from '../middleware/index.js';
+import {
+  authJwt,
+  verifySignUp,
+  verifyOrgAccess,
+  oidcTokenRefresh,
+  validateBody,
+} from '../middleware/index.js';
 import {
   changePassword,
   changeEmail,
@@ -36,17 +42,17 @@ router.use((req, res, next) => {
 
 router.put(
   '/users/:userId/change-password',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin, validateBody('password')],
   changePassword
 );
 router.put(
   '/users/:userId/change-email',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin, validateBody('email')],
   changeEmail
 );
 router.put(
   '/users/:userId/change-name',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  [authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin, validateBody('displayName')],
   changeName
 );
 router.put(
@@ -101,12 +107,7 @@ router.get(
 );
 router.post(
   '/organization/:organization/users',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifySignUp.checkDuplicateUsernameOrEmail,
-    verifySignUp.checkRolesExisted,
-  ],
+  [authJwt.verifyToken, authJwt.isUser, validateBody('register'), verifySignUp.checkRolesExisted],
   signup
 );
 router.get(

@@ -63,7 +63,7 @@ const issuerOf = token => {
 };
 
 const htuOf = req => {
-  const { origin } = new URL(loadConfig('app').boxvault.origin.value);
+  const { origin } = new URL(loadConfig('app').boxvault.origin);
   const [path] = req.originalUrl.split('?');
   return `${origin}${path}`;
 };
@@ -167,10 +167,10 @@ const resolveExternalAuth = async (req, { scheme, token }) => {
     return null;
   }
   const authConfig = loadConfig('auth');
-  if (!authConfig.auth?.resource_server?.enabled?.value) {
+  if (!authConfig.auth?.resource_server?.enabled) {
     throw new Error('resource server disabled');
   }
-  const audience = authConfig.auth.resource_server.audience?.value;
+  const { audience } = authConfig.auth.resource_server;
   if (!audience) {
     throw new Error('auth.resource_server.audience is not configured');
   }

@@ -1,5 +1,5 @@
 // get.js
-import { loadConfig } from '../../utils/config-loader.js';
+import { loadConfig, loadSchema } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { maskSecrets } from './helpers.js';
 
@@ -8,7 +8,7 @@ import { maskSecrets } from './helpers.js';
  * /api/config/{configName}:
  *   get:
  *     summary: Get configuration by name
- *     description: Retrieve configuration data for a specific config type (app, auth, db, mail)
+ *     description: Retrieve one configuration file as plain JSON with every writeOnly value of its schema masked as ********
  *     tags: [Configuration]
  *     security:
  *       - JwtAuth: []
@@ -28,7 +28,7 @@ import { maskSecrets } from './helpers.js';
  *           application/json:
  *             schema:
  *               type: object
- *               description: Configuration data (structure varies by config type)
+ *               description: The plain configuration file, secrets masked
  *               additionalProperties: true
  *       401:
  *         description: Authentication required
@@ -47,9 +47,7 @@ export const getConfig = (req, res) => {
   const { configName } = req.params;
   try {
     const data = loadConfig(configName);
-    // #44: secret-bearing values (type: password) are masked in HTTP read
-    // responses only; the YAML on disk stays plain.
-    return res.send(maskSecrets(data));
+    return res.send(maskSecrets(loadSchema(configName), data));
   } catch (err) {
     log.error.error('Error getting config:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });

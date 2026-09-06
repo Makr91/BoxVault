@@ -122,8 +122,8 @@ describe('Service Account API', () => {
         .set('x-access-token', adminToken)
         .send({
           description: 'Test SA',
-          expirationDays: 30,
-          organizationId: testOrg.id,
+          expiration_days: 30,
+          organization_id: testOrg.id,
         });
 
       expect(res.statusCode).toBe(201);
@@ -131,31 +131,39 @@ describe('Service Account API', () => {
       expect(res.body.token).toBeDefined();
     });
 
-    it('should fail if organizationId is missing', async () => {
+    it('should fail if organization_id is missing', async () => {
       const res = await request(app)
         .post('/api/service-accounts')
         .set('x-access-token', adminToken)
         .send({
           description: 'Test SA',
-          expirationDays: 30,
+          expiration_days: 30,
         });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('Organization ID is required');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/organization_id', rule: 'required' }),
+      ]);
     });
 
-    it('should fail if expirationDays exceeds maximum', async () => {
+    it('should fail if expiration_days exceeds maximum', async () => {
       const res = await request(app)
         .post('/api/service-accounts')
         .set('x-access-token', adminToken)
         .send({
           description: 'Test SA',
-          expirationDays: 1000, // Assuming default max is 365
-          organizationId: testOrg.id,
+          expiration_days: 1000,
+          organization_id: testOrg.id,
         });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('expiration cannot exceed');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/expiration_days',
+          rule: 'range',
+          params: { minimum: 1, maximum: 365 },
+        }),
+      ]);
     });
 
     it('should allow regular user to create service account', async () => {
@@ -164,8 +172,8 @@ describe('Service Account API', () => {
         .set('x-access-token', userToken)
         .send({
           description: 'Test SA',
-          expirationDays: 30,
-          organizationId: testOrg.id,
+          expiration_days: 30,
+          organization_id: testOrg.id,
         });
 
       expect(res.statusCode).toBe(201);
@@ -179,8 +187,8 @@ describe('Service Account API', () => {
         .set('x-access-token', outsiderToken)
         .send({
           description: 'Outsider SA',
-          expirationDays: 30,
-          organizationId: testOrg.id,
+          expiration_days: 30,
+          organization_id: testOrg.id,
         });
 
       expect(res.statusCode).toBe(403);
@@ -195,8 +203,8 @@ describe('Service Account API', () => {
         .set('x-access-token', adminToken)
         .send({
           description: 'Test SA',
-          expirationDays: 30,
-          organizationId: testOrg.id,
+          expiration_days: 30,
+          organization_id: testOrg.id,
         });
 
       expect(res.statusCode).toBe(500);

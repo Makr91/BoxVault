@@ -337,7 +337,7 @@ describe('Authentication API', () => {
       const res = await request(app).post('/api/auth/signin').send({
         username: user.username,
         password: 'password',
-        stayLoggedIn: true,
+        stay_logged_in: true,
       });
 
       expect(res.statusCode).toBe(200);
@@ -346,10 +346,11 @@ describe('Authentication API', () => {
       await user.destroy();
     });
 
-    it('should handle signin with empty request body (signin.js line 113)', async () => {
-      const res = await request(app).post('/api/auth/signin').send(); // Empty body
+    it('should refuse a signin with an empty request body', async () => {
+      const res = await request(app).post('/api/auth/signin').send();
 
-      expect(res.statusCode).toBe(500); // Fails with 500 due to undefined username in DB query
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors.map(error => error.pointer)).toEqual(['/username', '/password']);
     });
 
     it('should handle service account with no organization (signin.js line 172)', async () => {
@@ -390,7 +391,7 @@ describe('Authentication API', () => {
 
       const restore = updateConfig('auth', config => {
         if (config.auth.jwt) {
-          config.auth.jwt.jwt_expiration = {}; // Remove value
+          delete config.auth.jwt.jwt_expiration;
         }
         return config;
       });
@@ -535,7 +536,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', userToken)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessToken');
@@ -570,7 +571,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', userToken)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(500);
     });
@@ -617,10 +618,10 @@ describe('Authentication API', () => {
         }
         config.auth.oidc.providers = {
           testprovider: {
-            enabled: { value: true },
-            issuer: { value: 'https://oidc.example.com' },
-            client_id: { value: 'client-id' },
-            client_secret: { value: 'client-secret' },
+            enabled: true,
+            issuer: 'https://oidc.example.com',
+            client_id: 'client-id',
+            client_secret: 'client-secret',
           },
         };
         return config;
@@ -646,7 +647,7 @@ describe('Authentication API', () => {
         const res = await request(app)
           .post('/api/auth/refresh-token')
           .set('x-access-token', oidcJwt)
-          .send({ stayLoggedIn: true });
+          .send({ stay_logged_in: true });
 
         expect(res.statusCode).toBe(200);
         expect(res.headers['x-refreshed-token']).toBeDefined();
@@ -715,7 +716,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', token)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.provider).toBe('gitlab');
@@ -733,7 +734,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', token)
-        .send({ stayLoggedIn: false });
+        .send({ stay_logged_in: false });
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('accessToken');
@@ -758,7 +759,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', token)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.provider).toBe('oidc-testprovider');
@@ -781,7 +782,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', token)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(200);
 
@@ -813,7 +814,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', token)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.provider).toBe('local');
@@ -832,14 +833,14 @@ describe('Authentication API', () => {
         }
         config.auth.oidc.providers = {
           testprovider: {
-            enabled: { value: true },
-            issuer: { value: 'https://oidc.example.com' },
-            client_id: { value: 'client-id' },
-            client_secret: { value: 'client-secret' },
+            enabled: true,
+            issuer: 'https://oidc.example.com',
+            client_id: 'client-id',
+            client_secret: 'client-secret',
           },
         };
         // Ensure provisioning is enabled so handleOidcCallback doesn't throw Access Denied
-        config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+        config.auth.external.provisioning_fallback_action = 'create_org';
         return config;
       });
       await initializeStrategies();
@@ -903,10 +904,10 @@ describe('Authentication API', () => {
         }
         config.auth.oidc.providers = {
           testprovider: {
-            enabled: { value: true },
-            issuer: { value: 'https://oidc.example.com' },
-            client_id: { value: 'client-id' },
-            client_secret: { value: 'client-secret' },
+            enabled: true,
+            issuer: 'https://oidc.example.com',
+            client_id: 'client-id',
+            client_secret: 'client-secret',
           },
         };
         return config;
@@ -1003,13 +1004,19 @@ describe('Authentication API', () => {
           password: 'password123',
         });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Username or email already in use.');
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/username',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+      ]);
     });
   });
 
   describe('POST /api/auth/signup', () => {
-    const newUserUsername = `NewSignUpUser_${uniqueId}`;
+    const newUserUsername = `NewSignUpUser-${uniqueId}`;
     const newUserEmail = `newsignup_${uniqueId}@example.com`;
 
     afterEach(async () => {
@@ -1049,8 +1056,8 @@ describe('Authentication API', () => {
     it('should fail to register a user with a duplicate username', async () => {
       // Create a user to test against
       const hashedPassword = await bcrypt.hash('SoomePass', 8);
-      await db.user.create({
-        username: testUsername,
+      const taken = await db.user.create({
+        username: `taken-user-${uniqueId}`,
         email: `another-email-${uniqueId}@example.com`,
         password: hashedPassword,
         verified: true,
@@ -1059,13 +1066,33 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/signup')
         .send({
-          username: testUsername,
+          username: taken.username,
           email: `another-email-2-${uniqueId}@example.com`,
           password: 'password123',
         });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Username or email already in use.');
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors.map(error => error.pointer)).toEqual(['/username']);
+      await taken.destroy();
+    });
+
+    it('should refuse a username outside the slug pattern', async () => {
+      const res = await request(app)
+        .post('/api/auth/signup')
+        .send({
+          username: `Under_Score_${uniqueId}`,
+          email: `underscore-${uniqueId}@example.com`,
+          password: 'password123',
+        });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/username',
+          rule: 'pattern',
+          params: { pattern: 'slug' },
+        }),
+      ]);
     });
 
     it('should fail to register a user with a duplicate email', async () => {
@@ -1086,8 +1113,8 @@ describe('Authentication API', () => {
           password: 'password123',
         });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Username or email already in use.');
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors.map(error => error.pointer)).toEqual(['/email']);
     });
 
     it('should fail to register with expired invitation token', async () => {
@@ -1108,7 +1135,7 @@ describe('Authentication API', () => {
           username: `expired-${uniqueId}`,
           email: `expired-${uniqueId}@example.com`,
           password: 'password123',
-          invitationToken: expiredToken,
+          invitation_token: expiredToken,
         });
 
       expect(res.statusCode).toBe(400);
@@ -1123,7 +1150,7 @@ describe('Authentication API', () => {
           username: `invalid-invite-${uniqueId}`,
           email: `invalid-invite-${uniqueId}@example.com`,
           password: 'password123',
-          invitationToken: 'invalid-token-string',
+          invitation_token: 'invalid-token-string',
         });
 
       expect(res.statusCode).toBe(400);
@@ -1153,7 +1180,7 @@ describe('Authentication API', () => {
           username: `missing-org-user-${uniqueId}`,
           email: `missing-org-${uniqueId}@example.com`,
           password: 'password123',
-          invitationToken: inviteToken,
+          invitation_token: inviteToken,
         });
 
       expect(res.statusCode).toBe(400);
@@ -1182,7 +1209,7 @@ describe('Authentication API', () => {
           username: `invite-user-${uniqueId}`,
           email: `invite-success-${uniqueId}@example.com`,
           password: 'password123',
-          invitationToken: token,
+          invitation_token: token,
         });
 
       expect(res.statusCode).toBe(201);
@@ -1237,21 +1264,37 @@ describe('Authentication API', () => {
       logSpy.mockRestore();
     });
 
-    it('should handle signup with missing body (unit test for line 81)', async () => {
+    it('should refuse a blocklisted password before touching the database (unit test)', async () => {
       const { signup } = await import('../app/controllers/auth.controller.js');
-      const req = { body: undefined, __: k => k, getLocale: () => 'en' };
+      const req = {
+        body: {
+          username: `blocklisted-${uniqueId}`,
+          email: `blocklisted-${uniqueId}@example.com`,
+          password: 'correcthorsebatterystaple',
+        },
+        __: k => k,
+        getLocale: () => 'en',
+      };
       const res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
 
-      // Mock Organization.create to throw to stop execution and verify we got past destructuring
+      const findSpy = jest.spyOn(db.user, 'findOne');
       const createSpy = jest.spyOn(db.organization, 'create').mockRejectedValue(new Error('Stop'));
 
       await signup(req, res);
 
-      // Missing body fails the password policy check before anything else runs
-      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: [expect.objectContaining({ pointer: '/password', rule: 'blocklist' })],
+        })
+      );
+      expect(findSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      findSpy.mockRestore();
       createSpy.mockRestore();
     });
 
@@ -1300,7 +1343,7 @@ describe('Authentication API', () => {
       const res = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', userToken)
-        .send({ stayLoggedIn: true });
+        .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(500);
       await user.destroy();
@@ -1380,8 +1423,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -1406,9 +1449,9 @@ describe('Authentication API', () => {
             config.auth.oidc = {};
           }
           config.auth.oidc.providers = {
-            valid: { enabled: { value: true }, issuer: { value: 'https://valid.com' } },
-            noIssuer: { enabled: { value: true } },
-            disabled: { enabled: { value: false }, issuer: { value: 'https://disabled.com' } },
+            valid: { enabled: true, issuer: 'https://valid.com' },
+            noIssuer: { enabled: true },
+            disabled: { enabled: false, issuer: 'https://disabled.com' },
           };
           return config;
         });
@@ -1457,8 +1500,8 @@ describe('Authentication API', () => {
             config.auth.oidc = {};
           }
           config.auth.oidc.providers = {
-            malformed: { enabled: {}, issuer: { value: 'https://test.com' } },
-            missing: { issuer: { value: 'https://test.com' } },
+            malformed: { enabled: {}, issuer: 'https://test.com' },
+            missing: { issuer: 'https://test.com' },
           };
           return config;
         });
@@ -1481,9 +1524,9 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              display_name: { value: 'Test Provider' },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              display_name: 'Test Provider',
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -1507,9 +1550,9 @@ describe('Authentication API', () => {
             config.auth.oidc = {};
           }
           config.auth.oidc.providers = {
-            valid: { enabled: { value: true }, display_name: { value: 'Valid Provider' } },
-            noName: { enabled: { value: true } },
-            disabled: { enabled: { value: false }, display_name: { value: 'Disabled' } },
+            valid: { enabled: true, display_name: 'Valid Provider' },
+            noName: { enabled: true },
+            disabled: { enabled: false, display_name: 'Disabled' },
           };
           return config;
         });
@@ -1560,8 +1603,8 @@ describe('Authentication API', () => {
             config.auth.oidc = {};
           }
           config.auth.oidc.providers = {
-            malformed: { enabled: {}, display_name: { value: 'Test' } },
-            missing: { display_name: { value: 'Test' } },
+            malformed: { enabled: {}, display_name: 'Test' },
+            missing: { display_name: 'Test' },
           };
           return config;
         });
@@ -1585,10 +1628,10 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
           return config;
@@ -1622,7 +1665,7 @@ describe('Authentication API', () => {
             config.auth.oidc = {};
           }
           config.auth.oidc.providers = {
-            disabledprovider: { enabled: { value: false } },
+            disabledprovider: { enabled: false },
           };
           return config;
         });
@@ -1645,8 +1688,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -1677,8 +1720,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -1711,11 +1754,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -1805,8 +1848,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -1839,11 +1882,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -1876,11 +1919,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'deny_access' };
+          config.auth.external.provisioning_fallback_action = 'deny_access';
           return config;
         });
         await initializeStrategies();
@@ -1910,11 +1953,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_enabled = { value: false };
+          config.auth.external.provisioning_enabled = false;
           return config;
         });
         await initializeStrategies();
@@ -1943,17 +1986,15 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
-          config.auth.external.domain_mapping_enabled = { value: true };
+          config.auth.external.domain_mapping_enabled = true;
           // Mappings are keyed by org_code (stable identity key), not org name
-          config.auth.external.domain_mappings = {
-            value: JSON.stringify({ [orgCode]: ['mapped.com'] }),
-          };
+          config.auth.external.domain_mappings = JSON.stringify({ [orgCode]: ['mapped.com'] });
           return config;
         });
         await initializeStrategies();
@@ -1999,13 +2040,13 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2042,13 +2083,13 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2089,13 +2130,13 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2131,8 +2172,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -2165,14 +2206,14 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
-          config.auth.external.provisioning_default_role = { value: 'nonexistent_role' };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_default_role = 'nonexistent_role';
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2213,8 +2254,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -2246,8 +2287,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -2285,11 +2326,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2329,11 +2370,11 @@ describe('Authentication API', () => {
           delete config.auth.oidc.token_default_expiry_minutes;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2368,14 +2409,14 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.oidc.token_default_expiry_minutes = { value: 60 };
+          config.auth.oidc.token_default_expiry_minutes = 60;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2413,11 +2454,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2428,7 +2469,7 @@ describe('Authentication API', () => {
         restore(); // Restore to default first
         const restore2 = updateConfig('auth', config => {
           delete config.auth.oidc;
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
 
@@ -2465,14 +2506,13 @@ describe('Authentication API', () => {
           config.auth.oidc.token_default_expiry_minutes = {};
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
-        void restore;
         await initializeStrategies();
 
         await agent.get('/api/auth/oidc/testprovider');
@@ -2485,11 +2525,14 @@ describe('Authentication API', () => {
         };
         mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
 
-        const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-        expect(res.statusCode).toBe(302);
-
-        await db.user.destroy({ where: { email: 'malformed@test.com' } });
-        await db.organization.destroy({ where: { name: 'test.com' } });
+        try {
+          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
+          expect(res.statusCode).toBe(302);
+        } finally {
+          restore();
+          await db.user.destroy({ where: { email: 'malformed@test.com' } });
+          await db.organization.destroy({ where: { name: 'test.com' } });
+        }
       });
 
       it('should handle existing email user without credential (handleExistingEmailUser)', async () => {
@@ -2511,11 +2554,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2570,11 +2613,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2619,8 +2662,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -2673,16 +2716,14 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.domain_mapping_enabled = { value: true };
+          config.auth.external.domain_mapping_enabled = true;
           // Invalid mapping: value is string, not array
-          config.auth.external.domain_mappings = {
-            value: JSON.stringify({ SomeOrg: 'invalid-type' }),
-          };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.domain_mappings = JSON.stringify({ SomeOrg: 'invalid-type' });
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2749,7 +2790,7 @@ describe('Authentication API', () => {
           email_verified: true,
         };
         const authConfig = {
-          auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
+          auth: { external: { provisioning_fallback_action: 'create_org' } },
         };
 
         // Mock Credential.linkToUser to verify it's called (line 218 coverage via createNewExternalUser or handleExistingEmailUser)
@@ -2772,7 +2813,7 @@ describe('Authentication API', () => {
         const email = `direct-new-${Date.now()}@test.com`;
         const profile = { sub: 'direct-new-sub', email, iss: 'https://oidc.example.com' };
         const authConfig = {
-          auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
+          auth: { external: { provisioning_fallback_action: 'create_org' } },
         };
 
         const linkSpy = jest.spyOn(db.credential, 'linkToUser');
@@ -2799,13 +2840,13 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.domain_mapping_enabled = { value: true };
+          config.auth.external.domain_mapping_enabled = true;
           delete config.auth.external.domain_mappings; // Missing mappings
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -2833,7 +2874,7 @@ describe('Authentication API', () => {
         const email = `non-oidc-new-${Date.now()}@test.com`;
         const profile = { sub: 'non-oidc-sub', email };
         const authConfig = {
-          auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
+          auth: { external: { provisioning_fallback_action: 'create_org' } },
         };
 
         // Mock Credential.linkToUser
@@ -2890,7 +2931,7 @@ describe('Authentication API', () => {
 
         const profile = { sub: 'non-oidc-exist-sub', email, email_verified: true };
         const authConfig = {
-          auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
+          auth: { external: { provisioning_fallback_action: 'create_org' } },
         };
 
         await externalUserHandler.handleExternalUser('oauth2', profile, db, authConfig);
@@ -2921,7 +2962,7 @@ describe('Authentication API', () => {
 
         const profile = { sub: 'direct-cred-sub', email };
         const authConfig = {
-          auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
+          auth: { external: { provisioning_fallback_action: 'create_org' } },
         };
 
         await db.organization.destroy({ where: { name: 'test.com' } });
@@ -2960,8 +3001,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -3005,7 +3046,7 @@ describe('Authentication API', () => {
           email_verified: true,
         };
         const authConfig = {
-          auth: { external: { provisioning_fallback_action: { value: 'create_org' } } },
+          auth: { external: { provisioning_fallback_action: 'create_org' } },
         };
 
         // Mock Credential.linkToUser to throw
@@ -3031,12 +3072,12 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_default_role = { value: 'non_existent_role' };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_default_role = 'non_existent_role';
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3066,15 +3107,15 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.domain_mapping_enabled = { value: true };
-          config.auth.external.domain_mappings = {
-            value: JSON.stringify({ NonExistentOrg: ['mapped-fail.com'] }),
-          };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.domain_mapping_enabled = true;
+          config.auth.external.domain_mappings = JSON.stringify({
+            NonExistentOrg: ['mapped-fail.com'],
+          });
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3113,8 +3154,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -3150,8 +3191,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -3235,14 +3276,14 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.oidc.token_default_expiry_minutes = { value: 0 };
+          config.auth.oidc.token_default_expiry_minutes = 0;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3277,7 +3318,7 @@ describe('Authentication API', () => {
           if (config.auth) {
             config.auth.oidc = null;
           }
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3315,11 +3356,11 @@ describe('Authentication API', () => {
           config.auth.oidc.token_default_expiry_minutes = null;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3357,11 +3398,11 @@ describe('Authentication API', () => {
           delete config.auth.oidc.token_default_expiry_minutes;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3397,14 +3438,14 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.oidc.token_default_expiry_minutes = { value: null };
+          config.auth.oidc.token_default_expiry_minutes = null;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3439,14 +3480,14 @@ describe('Authentication API', () => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
-          config.auth.oidc.token_default_expiry_minutes = { value: false };
+          config.auth.oidc.token_default_expiry_minutes = false;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3485,11 +3526,11 @@ describe('Authentication API', () => {
           delete config.auth.oidc.token_default_expiry_minutes;
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3528,11 +3569,11 @@ describe('Authentication API', () => {
           config.auth.oidc.token_default_expiry_minutes = 30; // Primitive
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3570,11 +3611,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3600,8 +3641,8 @@ describe('Authentication API', () => {
           if (typeof pathArg === 'string' && pathArg.endsWith('auth.test.config.yaml')) {
             return yaml.dump({
               auth: {
-                jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
-                external: { provisioning_fallback_action: { value: 'create_org' } },
+                jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
+                external: { provisioning_fallback_action: 'create_org' },
               },
             });
           }
@@ -3673,7 +3714,7 @@ describe('Authentication API', () => {
 
         const restore = updateConfig('auth', config => {
           config.auth.oidc = 12345;
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3724,11 +3765,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3739,7 +3780,7 @@ describe('Authentication API', () => {
         restore(); // Restore to default first
         const restore2 = updateConfig('auth', config => {
           delete config.auth.oidc;
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
 
@@ -3771,11 +3812,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3823,11 +3864,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'require_invite' };
+          config.auth.external.provisioning_fallback_action = 'require_invite';
           return config;
         });
         await initializeStrategies();
@@ -3869,12 +3910,12 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           // Ensure fallback would fail if invitation logic didn't work
-          config.auth.external.provisioning_fallback_action = { value: 'deny_access' };
+          config.auth.external.provisioning_fallback_action = 'deny_access';
           return config;
         });
         await initializeStrategies();
@@ -3911,13 +3952,13 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.domain_mapping_enabled = { value: true };
-          config.auth.external.domain_mappings = { value: '{ invalid json' };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.domain_mapping_enabled = true;
+          config.auth.external.domain_mappings = '{ invalid json';
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -3949,11 +3990,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'unknown_policy' };
+          config.auth.external.provisioning_fallback_action = 'unknown_policy';
           return config;
         });
         await initializeStrategies();
@@ -3997,8 +4038,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -4045,11 +4086,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
-          config.auth.external.provisioning_fallback_action = { value: 'create_org' };
+          config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
         });
         await initializeStrategies();
@@ -4092,8 +4133,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -4147,10 +4188,10 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             no_end_session: {
-              enabled: { value: true },
-              issuer: { value: 'https://no-end.com' },
-              client_id: { value: 'client-id' },
-              client_secret: { value: 'client-secret' },
+              enabled: true,
+              issuer: 'https://no-end.com',
+              client_id: 'client-id',
+              client_secret: 'client-secret',
             },
           };
           return config;
@@ -4185,11 +4226,11 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             unknown_method: {
-              enabled: { value: true },
-              issuer: { value: 'https://unknown.com' },
-              client_id: { value: 'id' },
-              client_secret: { value: 'secret' },
-              token_endpoint_auth_method: { value: 'unknown_method_xyz' },
+              enabled: true,
+              issuer: 'https://unknown.com',
+              client_id: 'id',
+              client_secret: 'secret',
+              token_endpoint_auth_method: 'unknown_method_xyz',
             },
           };
           return config;
@@ -4218,8 +4259,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;
@@ -4301,18 +4342,18 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             post_provider: {
-              enabled: { value: true },
-              issuer: { value: 'https://post.com' },
-              client_id: { value: 'id' },
-              client_secret: { value: 'secret' },
-              token_endpoint_auth_method: { value: 'client_secret_post' },
+              enabled: true,
+              issuer: 'https://post.com',
+              client_id: 'id',
+              client_secret: 'secret',
+              token_endpoint_auth_method: 'client_secret_post',
             },
             none_provider: {
-              enabled: { value: true },
-              issuer: { value: 'https://none.com' },
-              client_id: { value: 'id' },
-              client_secret: { value: 'secret' },
-              token_endpoint_auth_method: { value: 'none' },
+              enabled: true,
+              issuer: 'https://none.com',
+              client_id: 'id',
+              client_secret: 'secret',
+              token_endpoint_auth_method: 'none',
             },
           };
           return config;
@@ -4357,10 +4398,10 @@ describe('Authentication API', () => {
         }
         config.auth.oidc.providers = {
           broken_provider: {
-            enabled: { value: true },
-            issuer: { value: 'https://broken.com' },
+            enabled: true,
+            issuer: 'https://broken.com',
             // client_id missing
-            client_secret: { value: 'secret' },
+            client_secret: 'secret',
           },
         };
         return config;
@@ -4383,10 +4424,10 @@ describe('Authentication API', () => {
         }
         config.auth.oidc.providers = {
           fail_discovery: {
-            enabled: { value: true },
-            issuer: { value: 'https://fail.com' },
-            client_id: { value: 'id' },
-            client_secret: { value: 'secret' },
+            enabled: true,
+            issuer: 'https://fail.com',
+            client_id: 'id',
+            client_secret: 'secret',
           },
         };
         return config;
@@ -4409,7 +4450,7 @@ describe('Authentication API', () => {
           config.auth.oidc = {};
         }
         config.auth.oidc.providers = {
-          testprovider: { enabled: { value: true }, issuer: { value: 'https://oidc.example.com' } },
+          testprovider: { enabled: true, issuer: 'https://oidc.example.com' },
         };
         return config;
       });
@@ -4444,7 +4485,7 @@ describe('Authentication API', () => {
           config.auth.oidc = {};
         }
         config.auth.oidc.providers = {
-          disabled_prov: { enabled: { value: false }, issuer: { value: 'https://disabled.com' } },
+          disabled_prov: { enabled: false, issuer: 'https://disabled.com' },
         };
         return config;
       });
@@ -4513,8 +4554,8 @@ describe('Authentication API', () => {
           }
           config.auth.oidc.providers = {
             testprovider: {
-              enabled: { value: true },
-              issuer: { value: 'https://oidc.example.com' },
+              enabled: true,
+              issuer: 'https://oidc.example.com',
             },
           };
           return config;

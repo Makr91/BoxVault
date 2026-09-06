@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authJwt, verifyOrganization, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
+import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
 import {
   discoverOrganizations,
   findAllWithUsers,
@@ -49,12 +49,7 @@ router.get('/organization/:organization', sessionAuth, findOne);
 
 router.post(
   '/organization',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrganization.validateOrganization,
-    verifyOrganization.checkOrganizationDuplicate,
-  ],
+  [authJwt.verifyToken, authJwt.isUser, validateBody('organization')],
   create
 );
 
@@ -64,7 +59,7 @@ router.put(
     authJwt.verifyToken,
     authJwt.isUser,
     verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrganization.validateOrganization,
+    validateBody('organization', { partial: true }),
   ],
   update
 );
@@ -96,7 +91,12 @@ router.put(
 // Organization-specific user management
 router.put(
   '/organization/:organization/access-mode',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    validateBody('accessMode'),
+  ],
   updateAccessMode
 );
 

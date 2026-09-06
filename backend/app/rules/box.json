@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": { "$ref": "#/$defs/slug", "unique": "organization" },
+    "description": { "type": "string" },
+    "is_public": { "type": "boolean" },
+    "published": { "type": "boolean" },
+    "github_repo": { "type": "string" },
+    "workflow_file": { "type": "string" },
+    "cicd_url": { "type": "string", "format": "uri" }
+  }
+}

@@ -11,20 +11,20 @@ try {
   // Fallback defaults to prevent crash
   dbConfig = {
     sql: {
-      logging: { value: false },
-      dialect: { value: 'sqlite' },
-      storage: { value: './database.sqlite' },
-      host: { value: 'localhost' },
-      port: { value: 3306 },
-      database: { value: 'boxvault' },
-      user: { value: 'root' },
-      password: { value: '' },
+      logging: false,
+      dialect: 'sqlite',
+      storage: './database.sqlite',
+      host: 'localhost',
+      port: 3306,
+      database: 'boxvault',
+      user: 'root',
+      password: '',
     },
     mysql_pool: {
-      max: { value: 5 },
-      min: { value: 0 },
-      acquire: { value: 30000 },
-      idle: { value: 10000 },
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
     },
   };
 }
@@ -36,7 +36,7 @@ const db = {};
 db.Sequelize = Sequelize;
 
 // Check if setup is required (setup token exists) or if dialect is missing
-const shouldSkipInitialization = !dbConfig?.sql?.dialect?.value;
+const shouldSkipInitialization = !dbConfig?.sql?.dialect;
 
 if (shouldSkipInitialization) {
   log.database.info(
@@ -46,36 +46,36 @@ if (shouldSkipInitialization) {
 } else {
   // Configure Sequelize based on database type
   const sequelizeConfig = {
-    logging: dbConfig.sql.logging.value,
-    dialect: dbConfig.sql.dialect.value,
+    logging: dbConfig.sql.logging,
+    dialect: dbConfig.sql.dialect,
   };
 
-  if (dbConfig.sql.dialect.value === 'sqlite') {
+  if (dbConfig.sql.dialect === 'sqlite') {
     // SQLite configuration
-    sequelizeConfig.storage = dbConfig.sql.storage.value;
+    sequelizeConfig.storage = dbConfig.sql.storage;
 
     // Ensure the directory exists for SQLite database file
-    const storageDir = dirname(dbConfig.sql.storage.value);
+    const storageDir = dirname(dbConfig.sql.storage);
     if (!existsSync(storageDir)) {
       mkdirSync(storageDir, { recursive: true, mode: 0o755 });
       log.database.info('Created SQLite database directory', { storageDir });
     }
   } else {
     // MySQL/other database configuration
-    sequelizeConfig.host = dbConfig.sql.host.value;
-    sequelizeConfig.port = dbConfig.sql.port.value;
+    sequelizeConfig.host = dbConfig.sql.host;
+    sequelizeConfig.port = dbConfig.sql.port;
     sequelizeConfig.pool = {
-      max: dbConfig.mysql_pool.max.value,
-      min: dbConfig.mysql_pool.min.value,
-      acquire: dbConfig.mysql_pool.acquire.value,
-      idle: dbConfig.mysql_pool.idle.value,
+      max: dbConfig.mysql_pool.max,
+      min: dbConfig.mysql_pool.min,
+      acquire: dbConfig.mysql_pool.acquire,
+      idle: dbConfig.mysql_pool.idle,
     };
   }
 
   const sequelize = new Sequelize(
-    dbConfig.sql.dialect.value === 'sqlite' ? null : dbConfig.sql.database.value,
-    dbConfig.sql.dialect.value === 'sqlite' ? null : dbConfig.sql.user.value,
-    dbConfig.sql.dialect.value === 'sqlite' ? null : dbConfig.sql.password.value,
+    dbConfig.sql.dialect === 'sqlite' ? null : dbConfig.sql.database,
+    dbConfig.sql.dialect === 'sqlite' ? null : dbConfig.sql.user,
+    dbConfig.sql.dialect === 'sqlite' ? null : dbConfig.sql.password,
     sequelizeConfig
   );
 

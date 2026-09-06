@@ -2,9 +2,7 @@ import { Router } from 'express';
 import {
   authJwt,
   verifyOrgAccess,
-  verifyIsoName,
-  verifyIsoVersion,
-  verifyVersion,
+  validateBody,
   verifyIsoFilePath,
   downloadAuth,
   sessionAuth,
@@ -54,8 +52,7 @@ router.post(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
-    verifyIsoName.validateIsoName,
-    verifyIsoName.checkIsoDuplicate,
+    validateBody('iso'),
   ],
   create
 );
@@ -66,8 +63,7 @@ router.put(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
-    verifyIsoName.validateIsoName,
-    verifyIsoName.checkIsoDuplicate,
+    validateBody('iso', { partial: true }),
   ],
   update
 );
@@ -102,9 +98,8 @@ router.post(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
-    verifyVersion.validateVersion,
-    verifyIsoVersion.attachEntities,
-    verifyIsoVersion.checkVersionDuplicate,
+    verifyOrgAccess.attachIso,
+    validateBody('version'),
   ],
   createVersion
 );
@@ -115,20 +110,21 @@ router.put(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
-    verifyIsoVersion.attachEntities,
+    verifyOrgAccess.attachIso,
+    validateBody('version', { partial: true }),
   ],
   updateVersion
 );
 
 router.get(
   '/organization/:organization/iso/:name/version',
-  [sessionAuth, verifyIsoVersion.attachEntities],
+  [sessionAuth, verifyOrgAccess.attachIso],
   findAllVersions
 );
 
 router.get(
   '/organization/:organization/iso/:name/version/:versionNumber',
-  [sessionAuth, verifyIsoVersion.attachEntities],
+  [sessionAuth, verifyOrgAccess.attachIso],
   findOneVersion
 );
 
@@ -138,7 +134,7 @@ router.delete(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
-    verifyIsoVersion.attachEntities,
+    verifyOrgAccess.attachIso,
   ],
   deleteVersion
 );

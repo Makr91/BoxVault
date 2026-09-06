@@ -35,7 +35,7 @@ const idpClaimsOf = source =>
  *           schema:
  *             type: object
  *             properties:
- *               stayLoggedIn:
+ *               stay_logged_in:
  *                 type: boolean
  *                 description: Whether to enable stay-logged-in for the new token
  *     responses:
@@ -82,7 +82,7 @@ export const refreshToken = async (req, res) => {
     const authConfig = loadConfig('auth');
     // Get user from request (set by authJwt middleware)
     const { user } = req;
-    const { stayLoggedIn } = req.body || {};
+    const { stay_logged_in: stayLoggedIn } = req.body || {};
 
     // Get user's organizations for multi-org JWT (pointer-first primary)
     const { userOrganizations, primaryOrgName } = await resolveUserOrganizations(user);
@@ -107,7 +107,7 @@ export const refreshToken = async (req, res) => {
         organizations: userOrganizations,
         ...idpClaims,
       },
-      authConfig.auth.jwt.jwt_secret.value,
+      authConfig.auth.jwt.jwt_secret,
       {
         algorithm: 'HS256',
         allowInsecureKeySizes: true,

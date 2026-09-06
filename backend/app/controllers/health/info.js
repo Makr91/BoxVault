@@ -150,8 +150,8 @@ const checkDiskUsage = async dirPath => {
     const percent = (used / total) * 100;
     const percentStr = percent.toFixed(1);
     const appConfig = loadConfig('app');
-    const criticalThreshold = appConfig.monitoring?.disk_space_critical_threshold?.value ?? 95;
-    const warningThreshold = appConfig.monitoring?.disk_space_warning_threshold?.value ?? 90;
+    const criticalThreshold = appConfig.monitoring?.disk_space_critical_threshold ?? 95;
+    const warningThreshold = appConfig.monitoring?.disk_space_warning_threshold ?? 90;
 
     if (percent > criticalThreshold) {
       return { status: 'warning', message: `CRITICAL: ${percentStr}% used` };
@@ -182,10 +182,10 @@ const checkOidcProviders = async () => {
     if (authConfig?.auth?.oidc?.providers) {
       const { providers } = authConfig.auth.oidc;
       for (const [key, provider] of Object.entries(providers)) {
-        if (provider.enabled?.value && provider.issuer?.value) {
+        if (provider.enabled === true && provider.issuer) {
           // Probe the discovery document OIDC actually depends on — issuer
           // roots legitimately answer 4xx (login walls) without OIDC being down.
-          const issuerBase = provider.issuer.value.replace(/\/+$/, '');
+          const issuerBase = provider.issuer.replace(/\/+$/, '');
           // eslint-disable-next-line no-await-in-loop
           services[`oidc_${key}`] = await checkUrl(
             `${issuerBase}/.well-known/openid-configuration`
@@ -210,27 +210,18 @@ const getVersionInfo = () => {
 };
 
 const getLoggingConfig = appConfig => {
-  const frontendLogging = appConfig.frontend_logging || {
-    enabled: { value: true },
-    level: { value: 'info' },
-    categories: {
-      app: { value: 'info' },
-      auth: { value: 'info' },
-      api: { value: 'info' },
-      file: { value: 'info' },
-      component: { value: 'debug' },
-    },
-  };
+  const frontendLogging = appConfig.frontend_logging || { enabled: true, level: 'info' };
+  const categories = frontendLogging.categories || {};
 
   return {
-    enabled: frontendLogging.enabled.value,
-    level: frontendLogging.level.value,
+    enabled: frontendLogging.enabled,
+    level: frontendLogging.level,
     categories: {
-      app: frontendLogging.categories.app?.value || 'info',
-      auth: frontendLogging.categories.auth?.value || 'info',
-      api: frontendLogging.categories.api?.value || 'info',
-      file: frontendLogging.categories.file?.value || 'info',
-      component: frontendLogging.categories.component?.value || 'debug',
+      app: categories.app || 'info',
+      auth: categories.auth || 'info',
+      api: categories.api || 'info',
+      file: categories.file || 'info',
+      component: categories.component || 'debug',
     },
   };
 };
@@ -246,27 +237,27 @@ const getDbStatus = async () => {
 };
 
 const sendDiskAlertEmail = async (boxDisk, isoDisk) => {
-  const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails?.value;
+  const alertEmails = loadConfig('mail')?.smtp_settings?.alert_emails;
   if (!alertEmails || alertEmails.length === 0) {
     return;
   }
   try {
     const mailConfig = loadConfig('mail');
     const transporter = nodemailer.createTransport({
-      host: mailConfig.smtp_connect.host.value,
-      port: mailConfig.smtp_connect.port.value,
-      secure: mailConfig.smtp_connect.secure.value,
+      host: mailConfig.smtp_connect.host,
+      port: mailConfig.smtp_connect.port,
+      secure: mailConfig.smtp_connect.secure,
       auth: {
-        user: mailConfig.smtp_auth.user.value,
-        pass: mailConfig.smtp_auth.password.value,
+        user: mailConfig.smtp_auth.user,
+        pass: mailConfig.smtp_auth.password,
       },
       tls: {
-        rejectUnauthorized: mailConfig.smtp_connect.rejectUnauthorized.value,
+        rejectUnauthorized: mailConfig.smtp_connect.rejectUnauthorized,
       },
     });
 
     await transporter.sendMail({
-      from: mailConfig.smtp_settings.from.value,
+      from: mailConfig.smtp_settings.from,
       to: alertEmails.join(', '),
       subject: 'Critical Disk Usage Alert',
       text: `High disk usage detected!\nBox: ${boxDisk.message}\nISO: ${isoDisk.message}`,
@@ -285,7 +276,7 @@ const sendDiskAlertEmail = async (boxDisk, isoDisk) => {
 const sendDiskAlertNotifications = async (boxDisk, isoDisk, appConfig) => {
   try {
     const recipients = await resolveGlobalAdminRecipients();
-    const origin = appConfig.boxvault?.origin?.value || '';
+    const origin = appConfig.boxvault?.origin || '';
     const hourBucket = new Date().toISOString().slice(0, 13);
     await Promise.all(
       recipients.map(({ issuer, uuid }) =>
@@ -314,7 +305,7 @@ const handleDiskAlerting = async (boxDisk, isoDisk, appConfig) => {
     return;
   }
 
-  const alertFrequencyHours = appConfig.monitoring?.alert_frequency_hours?.value ?? 24;
+  const alertFrequencyHours = appConfig.monitoring?.alert_frequency_hours ?? 24;
   const now = Date.now();
   // Alert at most once every X hours
   if (alertFrequencyHours === 0 || now - lastAlertTime > alertFrequencyHours * 60 * 60 * 1000) {
@@ -350,7 +341,7 @@ const getHealth = async (req, res) => {
     };
 
     // Check Storage
-    const boxStorageDir = appConfig.boxvault?.box_storage_directory?.value;
+    const boxStorageDir = appConfig.boxvault?.box_storage_directory;
     const isoStorageDir = getIsoStorageRoot();
     const boxDisk = await checkDiskUsage(boxStorageDir);
     const isoDisk = await checkDiskUsage(isoStorageDir);

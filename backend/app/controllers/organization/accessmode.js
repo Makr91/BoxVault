@@ -26,14 +26,14 @@ const { organization: Organization } = db;
  *           schema:
  *             type: object
  *             required:
- *               - accessMode
+ *               - access_mode
  *             properties:
- *               accessMode:
+ *               access_mode:
  *                 type: string
  *                 enum: [private, invite_only, request_to_join]
  *                 description: Organization visibility and access mode
  *                 example: "request_to_join"
- *               defaultRole:
+ *               default_role:
  *                 type: string
  *                 enum: [member, admin]
  *                 description: Default role for new members
@@ -55,12 +55,6 @@ const { organization: Organization } = db;
  *                 defaultRole:
  *                   type: string
  *                   example: "member"
- *       400:
- *         description: Invalid access mode or default role
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Authentication required
  *         content:
@@ -79,6 +73,12 @@ const { organization: Organization } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: The access mode or default role is not one of the allowed values
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -89,23 +89,7 @@ const { organization: Organization } = db;
 const updateAccessMode = async (req, res) => {
   try {
     const { organization: organizationName } = req.params;
-    const { accessMode, defaultRole } = req.body;
-
-    // Validate access mode
-    const validAccessModes = ['private', 'invite_only', 'request_to_join'];
-    if (!validAccessModes.includes(accessMode)) {
-      return res.status(400).send({
-        message: req.__('organizations.invalidAccessMode'),
-      });
-    }
-
-    // Validate default role
-    const validRoles = ['member', 'admin'];
-    if (defaultRole && !validRoles.includes(defaultRole)) {
-      return res.status(400).send({
-        message: req.__('organizations.invalidDefaultRole'),
-      });
-    }
+    const { access_mode: accessMode, default_role: defaultRole } = req.body;
 
     // Find the organization
     const organization = await Organization.findOne({ where: { name: organizationName } });

@@ -43,7 +43,7 @@ const verifyLogoutToken = async logoutToken => {
     return { error: 'identity provider metadata not available' };
   }
 
-  const clientId = loadConfig('auth').auth?.oidc?.providers?.[providerName]?.client_id?.value;
+  const clientId = loadConfig('auth').auth?.oidc?.providers?.[providerName]?.client_id;
   if (!clientId) {
     log.auth.warn('Back-channel logout: provider has no client_id configured', { providerName });
     return { error: 'provider client_id is not configured' };

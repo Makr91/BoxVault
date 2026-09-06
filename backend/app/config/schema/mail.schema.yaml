@@ -1,0 +1,103 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Mail Config
+schemaVersion: 1
+sections:
+  mail:
+    title: Mail
+    order: 1
+properties:
+  schemaVersion:
+    type: integer
+    readOnly: true
+    default: 1
+    title: Schema version
+  smtp_connect:
+    type: object
+    section: mail
+    subsection: smtpConnection
+    title: SMTP Connection
+    required:
+      - host
+      - port
+    properties:
+      host:
+        type: string
+        format: hostname
+        title: Host
+        description: SMTP server hostname
+        order: 1
+      port:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        default: 587
+        title: Port
+        description: SMTP server port
+        order: 2
+      secure:
+        type: boolean
+        default: true
+        title: TLS
+        description: Use TLS for the connection
+        order: 3
+      rejectUnauthorized:
+        type: boolean
+        default: true
+        title: Reject unauthorized TLS
+        description: Reject TLS connections whose certificate cannot be verified
+        order: 4
+  smtp_settings:
+    type: object
+    section: mail
+    subsection: smtpSettings
+    title: SMTP Settings
+    required:
+      - from
+    properties:
+      from:
+        type: string
+        format: email
+        title: From address
+        description: Default sender email address
+        order: 1
+      replyTo:
+        type: string
+        default: ''
+        title: Reply-to address
+        description: Default reply-to email address
+        order: 2
+      rateLimit:
+        type: integer
+        minimum: 1
+        default: 10
+        title: Rate limit
+        description: Maximum emails sent per second
+        order: 3
+      alert_emails:
+        type: array
+        items:
+          type: string
+          format: email
+        default: []
+        title: Alert recipients
+        description: Email addresses that receive system alerts such as low disk space
+        order: 4
+  smtp_auth:
+    type: object
+    section: mail
+    subsection: smtpAuthentication
+    title: SMTP Authentication
+    properties:
+      user:
+        type: string
+        default: ''
+        title: Username
+        description: SMTP username
+        order: 1
+      password:
+        type: string
+        writeOnly: true
+        default: ''
+        title: Password
+        description: SMTP password
+        order: 2

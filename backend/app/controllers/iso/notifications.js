@@ -17,7 +17,7 @@ const findIsoWatcherUserIds = async isoId => {
  */
 const notifyIsoPublished = async (organization, iso) => {
   try {
-    const origin = loadConfig('app').boxvault.origin.value;
+    const { origin } = loadConfig('app').boxvault;
     const orgSegment = organization.external_org_id || organization.name;
     await fanOutWatchEvent({
       organization,

@@ -118,7 +118,7 @@ const sendHubNotification = async ({
 }) => {
   try {
     const authConfig = loadConfig('auth');
-    if (!authConfig.auth?.oidc?.notifications_enabled?.value) {
+    if (!authConfig.auth?.oidc?.notifications_enabled) {
       log.app.debug('Hub notifications disabled; skipping', { idempotencyKey });
       return false;
     }

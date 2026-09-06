@@ -89,9 +89,15 @@ describe('Organization administration guards', () => {
 
     it('should reject a name that is not a string or is too long', async () => {
       const notString = await changeName(memberA.id, signFor(memberA), { name: 5 });
-      expect(notString.statusCode).toBe(400);
+      expect(notString.statusCode).toBe(422);
+      expect(notString.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/name', rule: 'type' })
+      );
       const tooLong = await changeName(memberA.id, signFor(memberA), { name: 'x'.repeat(256) });
-      expect(tooLong.statusCode).toBe(400);
+      expect(tooLong.statusCode).toBe(422);
+      expect(tooLong.body.errors[0]).toEqual(
+        expect.objectContaining({ pointer: '/name', rule: 'maxLength' })
+      );
     });
 
     it('should answer 404 for an unknown user', async () => {

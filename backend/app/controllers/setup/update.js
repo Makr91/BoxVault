@@ -1,48 +1,88 @@
 // update.js
 import fs from 'fs';
-import { getSetupTokenPath } from '../../utils/config-loader.js';
+import {
+  getSetupTokenPath,
+  loadSchema,
+  readConfigFile,
+  fillDefaults,
+  validateConfig,
+} from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { refuse } from '../../utils/problem.js';
 import { verifyAuthorizedToken } from './middleware.js';
-import { configPaths, readConfig, writeConfig, setAuthorizedSetupToken } from './helpers.js';
+import { configPaths, setAuthorizedSetupToken } from './helpers.js';
+import { writeConfig, restoreSecrets, mergeDeep } from '../config/helpers.js';
 
+/**
+ * Merge one submitted file onto the stored one, the database dialect set
+ * from the database type, and collect its failing rules with pointers into
+ * the body as sent.
+ * @param {string} configName - Name of config file
+ * @param {Object} configData - The submitted file or subtree
+ * @returns {{path: string, config: Object, errors: Array<{pointer: string, rule: string, params: Object}>}}
+ */
+const prepareUpdate = (configName, configData) => {
+  const schema = loadSchema(configName);
+  const currentConfig = readConfigFile(configName);
+  restoreSecrets(schema, configData, currentConfig);
+  const newConfig = mergeDeep(currentConfig, configData);
+
+  if (configName === 'db' && newConfig.database_type) {
+    newConfig.sql = { ...(newConfig.sql || {}), dialect: newConfig.database_type };
+  }
+
+  const errors = validateConfig(configName, fillDefaults(schema, newConfig)).map(error => ({
+    ...error,
+    pointer: `/configs/${configName}${error.pointer}`,
+  }));
+  return { path: configPaths[configName], config: newConfig, errors };
+};
+
+/**
+ * @swagger
+ * /api/setup:
+ *   put:
+ *     summary: Write every configuration file from the setup page
+ *     description: The body is { configs: { <name>: <file> } }. Every file is evaluated against its schema; a 422 carries every failing value of every file with pointers into the body as sent (/configs/app/boxvault/origin) and nothing is written while any fails. The setup token is consumed on success.
+ *     tags: [Setup]
+ *     security:
+ *       - JwtAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ConfigUpdateRequest'
+ *     responses:
+ *       200:
+ *         description: Configuration written
+ *       403:
+ *         description: Invalid setup token
+ *       422:
+ *         description: A value of one of the files breaks its schema
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       500:
+ *         description: Failed to write configurations
+ */
 export const updateConfigs = [
   verifyAuthorizedToken,
   async (req, res) => {
     const { configs } = req.body;
 
     try {
-      // Prepare all config updates
-      const configUpdates = await Promise.all(
-        Object.entries(configs).map(async ([configName, configData]) => {
-          if (configPaths[configName]) {
-            const currentConfig = await readConfig(configPaths[configName]);
-            const newConfig = { ...currentConfig, ...configData };
+      const updates = Object.entries(configs || {})
+        .filter(([configName]) => configPaths[configName])
+        .map(([configName, configData]) => prepareUpdate(configName, configData));
 
-            // Handle database type selection for db config
-            if (configName === 'db' && newConfig.database_type) {
-              const dbType = newConfig.database_type.value;
+      const errors = updates.flatMap(update => update.errors);
+      if (errors.length > 0) {
+        return refuse(res, req, errors, req.__('problems.configValidation'));
+      }
 
-              // Auto-set dialect based on database type
-              if (newConfig.sql && newConfig.sql.dialect) {
-                newConfig.sql.dialect.value = dbType;
-              }
-
-              // Note: SQLite directory creation is now handled in models/index.js
-              // when Sequelize is initialized, ensuring proper timing
-            }
-
-            return { path: configPaths[configName], config: newConfig };
-          }
-          return null;
-        })
-      );
-
-      // Write all configs
-      await Promise.all(
-        configUpdates
-          .filter(update => update !== null)
-          .map(update => writeConfig(update.path, update.config))
-      );
+      await Promise.all(updates.map(update => writeConfig(update.path, update.config)));
 
       // Remove the setup token file to prevent further setup
       const setupTokenPath = getSetupTokenPath();

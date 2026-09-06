@@ -32,12 +32,12 @@ const getAuthServerUrl = req => {
     const oidcProviders = authConfig.auth?.oidc?.providers || {};
     const providerConfig = oidcProviders[provider];
 
-    if (!providerConfig || !providerConfig.issuer?.value) {
+    if (!providerConfig || !providerConfig.issuer) {
       throw new Error(`Provider ${provider} not found in config`);
     }
 
     // Extract base URL from issuer
-    const issuerUrl = new URL(providerConfig.issuer.value);
+    const issuerUrl = new URL(providerConfig.issuer);
     return `${issuerUrl.protocol}//${issuerUrl.host}`;
   } catch (error) {
     log.error.error('Failed to get auth server URL:', error.message);

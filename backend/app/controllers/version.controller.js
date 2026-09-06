@@ -88,24 +88,24 @@
  *     CreateVersionRequest:
  *       type: object
  *       required:
- *         - versionNumber
+ *         - version_number
  *       properties:
- *         versionNumber:
+ *         version_number:
  *           type: string
- *           description: The version number
+ *           description: The version number (the identifier pattern of /api/rules, unique in the box)
  *         description:
  *           type: string
  *           description: Description of the version
  *       example:
- *         versionNumber: "1.0.0"
+ *         version_number: "1.0.0"
  *         description: "Initial release"
  *
  *     UpdateVersionRequest:
  *       type: object
  *       properties:
- *         versionNumber:
+ *         version_number:
  *           type: string
- *           description: The new version number
+ *           description: The new version number (the identifier pattern of /api/rules, unique in the box)
  *         description:
  *           type: string
  *           description: Updated description of the version
@@ -115,14 +115,14 @@
  *           description: Version release notes (absent = unchanged)
  *         deprecated:
  *           type: boolean
- *           description: Whether the version is deprecated. Setting true requires a non-empty deprecation_reason (in this request or already stored).
+ *           description: Whether the version is deprecated. Setting true requires a non-empty deprecation_reason in this request.
  *         deprecation_reason:
  *           type: string
  *           maxLength: 512
  *           nullable: true
  *           description: Why the version is deprecated (absent = unchanged)
  *       example:
- *         versionNumber: "1.0.1"
+ *         version_number: "1.0.1"
  *         description: "Bug fixes and improvements"
  *         release_notes: "Fixed the resize race on first boot"
  *         deprecated: false

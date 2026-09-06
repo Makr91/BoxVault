@@ -4,6 +4,7 @@ import {
   verifySetupToken,
   updateConfigs,
   getConfigs,
+  getSchemas,
   isSetupComplete,
   uploadSSL,
 } from '../controllers/setup.controller.js';
@@ -15,6 +16,7 @@ const router = Router();
 router.post('/setup/verify-token', verifySetupToken);
 router.put('/setup', updateConfigs);
 router.get('/setup', getConfigs);
+router.get('/setup/schema', getSchemas);
 router.get('/setup/status', isSetupComplete);
 router.post('/setup/upload-ssl', uploadSSL);
 

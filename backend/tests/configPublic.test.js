@@ -60,8 +60,8 @@ describe('Public configuration endpoints', () => {
 
       beforeAll(() => {
         restore = updateAppConfig(config => {
-          config.gravatar.base_url = { value: 'https://api.gravatar.example/v3/profiles/' };
-          config.gravatar.api_key = { value: 'secret-key' };
+          config.gravatar.base_url = 'https://api.gravatar.example/v3/profiles/';
+          config.gravatar.api_key = 'secret-key';
         });
       });
 
@@ -94,7 +94,7 @@ describe('Public configuration endpoints', () => {
 
     it('should call Gravatar without a key when none is configured', async () => {
       const restore = updateAppConfig(config => {
-        config.gravatar.base_url = { value: 'https://api.gravatar.example/v3/profiles/' };
+        config.gravatar.base_url = 'https://api.gravatar.example/v3/profiles/';
       });
       try {
         axiosGet.mockResolvedValue({ data: {} });
@@ -115,14 +115,12 @@ describe('Public configuration endpoints', () => {
 
     it('should answer the section once configured', async () => {
       const restore = updateAppConfig(config => {
-        config.hyperweaver = { enabled: { value: true }, url: { value: 'https://hw.example' } };
+        config.hyperweaver = { url: 'https://hw.example' };
       });
       try {
         const res = await request(app).get('/api/config/hyperweaver');
         expect(res.statusCode).toBe(200);
-        expect(res.body).toEqual({
-          hyperweaver: { enabled: { value: true }, url: { value: 'https://hw.example' } },
-        });
+        expect(res.body).toEqual({ hyperweaver: { url: 'https://hw.example' } });
       } finally {
         restore();
       }
@@ -134,9 +132,9 @@ describe('Public configuration endpoints', () => {
 
     beforeAll(() => {
       restore = updateAppConfig(config => {
-        config.probe = {
-          secret: { type: 'password', value: 'hidden-value' },
-          plain: { type: 'string', value: 'visible' },
+        config.gravatar = {
+          base_url: 'https://api.gravatar.example/v3/profiles/',
+          api_key: 'hidden-value',
         };
       });
     });
@@ -145,11 +143,11 @@ describe('Public configuration endpoints', () => {
       restore();
     });
 
-    it('should mask password knobs on read', async () => {
+    it('should mask writeOnly knobs on read', async () => {
       const res = await request(app).get('/api/config/app').set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.probe.secret.value).toBe('********');
-      expect(res.body.probe.plain.value).toBe('visible');
+      expect(res.body.gravatar.api_key).toBe('********');
+      expect(res.body.gravatar.base_url).toBe('https://api.gravatar.example/v3/profiles/');
     });
 
     it('should keep the stored secret when the sentinel comes back and ignore prototype keys', async () => {
@@ -159,7 +157,11 @@ describe('Public configuration endpoints', () => {
         .send(
           JSON.parse(
             JSON.stringify({
-              probe: { secret: { value: '********' }, plain: { value: 'changed' }, extra: 1 },
+              gravatar: {
+                api_key: '********',
+                base_url: 'https://changed.example/profiles/',
+                extra: 1,
+              },
               __proto__: { polluted: true },
               constructor: { polluted: true },
             })
@@ -167,9 +169,9 @@ describe('Public configuration endpoints', () => {
         );
       expect(res.statusCode).toBe(200);
       const written = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
-      expect(written.probe.secret.value).toBe('hidden-value');
-      expect(written.probe.plain.value).toBe('changed');
-      expect(written.probe.extra).toBe(1);
+      expect(written.gravatar.api_key).toBe('hidden-value');
+      expect(written.gravatar.base_url).toBe('https://changed.example/profiles/');
+      expect(written.gravatar.extra).toBe(1);
       expect(Object.hasOwn(written, 'polluted')).toBe(false);
     });
   });

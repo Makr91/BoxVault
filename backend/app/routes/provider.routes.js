@@ -1,6 +1,6 @@
 // provider.routes.js
 import { Router } from 'express';
-import { authJwt, verifyProvider, sessionAuth } from '../middleware/index.js';
+import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
 import {
   create,
   findAllByVersion,
@@ -25,8 +25,9 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyProvider.validateProvider,
-    verifyProvider.checkProviderDuplicate,
+    verifyOrgAccess.attachBox,
+    verifyOrgAccess.attachProvider,
+    validateBody('provider'),
   ],
   create
 );
@@ -45,7 +46,13 @@ router.get(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyProvider.validateProvider],
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.attachBox,
+    verifyOrgAccess.attachProvider,
+    validateBody('provider', { partial: true }),
+  ],
   update
 );
 

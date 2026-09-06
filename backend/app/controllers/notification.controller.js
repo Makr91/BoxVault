@@ -192,7 +192,7 @@ export const deleteSubscription = async (req, res) => {
 const testNotification = req => ({
   title: req.__('notifications.test.title'),
   body: req.__('notifications.test.body'),
-  navigate: `${loadConfig('app').boxvault.origin.value}/`,
+  navigate: `${loadConfig('app').boxvault.origin}/`,
   tag: 'boxvault-test',
 });
 

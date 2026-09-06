@@ -1,6 +1,6 @@
 // box.routes.js
 import { Router } from 'express';
-import { authJwt, sessionAuth, verifyBoxName, verifyOrgAccess } from '../middleware/index.js';
+import { authJwt, sessionAuth, validateBody, verifyOrgAccess } from '../middleware/index.js';
 import {
   discoverAll,
   getOrganizationBoxDetails,
@@ -44,8 +44,7 @@ router.post(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgMember,
-    verifyBoxName.validateBoxName,
-    verifyBoxName.checkBoxDuplicate,
+    validateBody('box'),
   ],
   create
 );
@@ -56,14 +55,13 @@ router.put(
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgMember,
-    verifyBoxName.validateBoxName,
-    verifyBoxName.checkBoxDuplicate,
+    validateBody('box', { partial: true }),
   ],
   update
 );
 
-// Raw image body — the verifyBoxName middleware pair reads a JSON body and so
-// only applies to create/rename; auth matches the box update chain.
+// Raw image body — the box rules read a JSON body and so only apply to
+// create/rename; auth matches the box update chain.
 router.post(
   '/organization/:organization/box/:name/artwork',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],

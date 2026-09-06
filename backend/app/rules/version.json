@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["version_number"],
+  "properties": {
+    "version_number": { "$ref": "#/$defs/identifier", "unique": "box" },
+    "description": { "type": "string" },
+    "release_notes": { "type": "string" },
+    "deprecated": { "type": "boolean" },
+    "deprecation_reason": { "type": "string", "maxLength": 512 }
+  },
+  "dependentRequired": { "deprecated": ["deprecation_reason"] }
+}

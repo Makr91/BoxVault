@@ -158,14 +158,79 @@ const options = {
             },
             password: {
               type: 'string',
-              minLength: 6,
-              description: 'Password (minimum 6 characters)',
-              example: 'securePassword123',
+              minLength: 15,
+              maxLength: 128,
+              description:
+                'Password, at least the configured minimum (15 by default) and at most 128 characters',
+              example: 'a long passphrase with spaces',
             },
-            organizationId: {
+            name: {
+              type: 'string',
+              maxLength: 255,
+              description: 'Optional display name',
+              example: 'New User',
+            },
+            invitation_token: {
+              type: 'string',
+              description: 'Optional invitation token for joining an organization',
+            },
+          },
+        },
+        Problem: {
+          type: 'object',
+          description:
+            'RFC 9457 problem details, the body of every refused write, sent as application/problem+json',
+          required: ['type', 'title', 'status', 'errors'],
+          properties: {
+            type: {
+              type: 'string',
+              format: 'uri',
+              description:
+                'A URI under https://auth.startcloud.com/probs/: validation, conflict, bad-request, forbidden, not-found or internal',
+              example: 'https://auth.startcloud.com/probs/validation',
+            },
+            title: {
+              type: 'string',
+              description: 'The human summary of the type',
+              example: 'The request did not pass validation.',
+            },
+            status: {
               type: 'integer',
-              description: 'Organization ID to join',
-              example: 1,
+              description: 'The HTTP status of this occurrence',
+              example: 422,
+            },
+            errors: {
+              type: 'array',
+              description: 'One entry per failing value',
+              items: {
+                type: 'object',
+                required: ['pointer', 'rule', 'params', 'detail'],
+                properties: {
+                  pointer: {
+                    type: 'string',
+                    description: 'RFC 6901 JSON Pointer into the request body as sent',
+                    example: '/name',
+                  },
+                  rule: {
+                    type: 'string',
+                    description:
+                      'The JSON Schema keyword that failed, or unique, checksum, blocklist, writable or reachable',
+                    example: 'pattern',
+                  },
+                  params: {
+                    type: 'object',
+                    description:
+                      'The keyword value the message needs: { minLength }, { pattern } as the $defs name, { scope } on unique',
+                    example: { pattern: 'slug' },
+                  },
+                  detail: {
+                    type: 'string',
+                    description:
+                      'The host sentence for logs and other clients, never shown by the UI',
+                    example: 'name must match slug',
+                  },
+                },
+              },
             },
           },
         },
@@ -628,21 +693,22 @@ const options = {
         },
         ServiceAccountCreateRequest: {
           type: 'object',
-          required: ['description', 'expirationDays', 'organizationId'],
+          required: ['organization_id'],
           properties: {
             description: {
               type: 'string',
               description: 'Description of the service account purpose',
               example: 'CI/CD automation account',
             },
-            expirationDays: {
+            expiration_days: {
               type: 'integer',
               minimum: 1,
               maximum: 365,
-              description: 'Number of days until token expires',
+              description:
+                'Number of days until token expires, at most auth.jwt.service_account_max_expiry_days',
               example: 30,
             },
-            organizationId: {
+            organization_id: {
               type: 'integer',
               description: 'Organization ID to scope the service account to',
               example: 1,

@@ -10,8 +10,8 @@ const { verify, sign } = jwt;
 const getJwtClaimOptions = () => {
   const authConfig = loadConfig('auth');
   return {
-    issuer: authConfig.auth.jwt.jwt_issuer?.value || 'boxvault',
-    audience: authConfig.auth.jwt.jwt_audience?.value || 'boxvault-api',
+    issuer: authConfig.auth.jwt.jwt_issuer || 'boxvault',
+    audience: authConfig.auth.jwt.jwt_audience || 'boxvault-api',
   };
 };
 
@@ -21,18 +21,13 @@ const getJwtClaimOptions = () => {
 const verifySessionToken = token => {
   const authConfig = loadConfig('auth');
   return new Promise((resolve, reject) => {
-    verify(
-      token,
-      authConfig.auth.jwt.jwt_secret.value,
-      getJwtClaimOptions(),
-      (err, decodedToken) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(decodedToken);
-        }
+    verify(token, authConfig.auth.jwt.jwt_secret, getJwtClaimOptions(), (err, decodedToken) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(decodedToken);
       }
-    );
+    });
   });
 };
 
@@ -54,7 +49,7 @@ const verifyDownloadToken = async token => {
 
 const generateDownloadToken = (payload, expiresIn = '1h') => {
   const authConfig = loadConfig('auth');
-  return sign({ ...payload, type: 'download' }, authConfig.auth.jwt.jwt_secret.value, {
+  return sign({ ...payload, type: 'download' }, authConfig.auth.jwt.jwt_secret, {
     expiresIn,
     ...getJwtClaimOptions(),
   });

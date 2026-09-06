@@ -33,7 +33,35 @@
     "passwordRequiresLowercase": "Password must contain at least one lowercase letter.",
     "passwordRequiresNumber": "Password must contain at least one number.",
     "passwordRequiresSymbol": "Password must contain at least one special symbol.",
-    "vagrantInvalidToken": "Invalid or expired service account token."
+    "vagrantInvalidToken": "Invalid or expired service account token.",
+    "roleDoesNotExist": "Role does not exist: {{role}}."
+  },
+  "problems": {
+    "validation": "The request did not pass validation.",
+    "conflict": "A value in the request is already taken.",
+    "badRequest": "The request could not be read.",
+    "forbidden": "The request is not allowed.",
+    "notFound": "The resource was not found.",
+    "internal": "The server could not complete the request.",
+    "configValidation": "The configuration did not pass validation."
+  },
+  "validation": {
+    "required": "{{field}} is required.",
+    "type": "{{field}} must be of type {{type}}.",
+    "minLength": "{{field}} must be at least {{minLength}} characters.",
+    "maxLength": "{{field}} must be at most {{maxLength}} characters.",
+    "pattern": "{{field}} must match {{pattern}}.",
+    "minimum": "{{field}} must be at least {{minimum}}.",
+    "maximum": "{{field}} must be at most {{maximum}}.",
+    "range": "{{field}} must be between {{minimum}} and {{maximum}}.",
+    "enum": "{{field}} must be one of: {{enum}}.",
+    "format": "{{field}} must be a valid {{format}}.",
+    "minItems": "{{field}} must have at least {{minItems}} items.",
+    "maxItems": "{{field}} must have at most {{maxItems}} items.",
+    "unique": "{{field}} is already taken in {{scope}}.",
+    "blocklist": "{{field}} is on the blocklist.",
+    "writable": "{{field}} is not writable by the service user.",
+    "reachable": "{{field}} did not answer."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organization not found with name: {{organization}}.",
@@ -77,7 +105,14 @@
     "externallyManagedProfile": "This organization is managed by your identity provider. Its profile (email, description, and organization code) is synced from the provider and cannot be edited in BoxVault.",
     "alreadyMember": "You are already a member of this organization.",
     "joinedAsAdmin": "Joined organization {{organization}} as owner.",
-    "joinError": "Error joining organization"
+    "joinError": "Error joining organization",
+    "parameterRequired": "Organization parameter required!",
+    "requireAdminOrOwner": "Require Admin or Owner role in this organization!",
+    "requireOwner": "Require Owner role in this organization!",
+    "membershipCheckError": "Error checking organization membership",
+    "permissionCheckError": "Error checking organization permissions",
+    "managementCheckError": "Error checking organization management source",
+    "contextMissing": "Organization context missing"
   },
   "boxes": {
     "boxNotFoundInOrg": "Box {{boxId}} not found in organization {{organization}}.",
@@ -137,6 +172,9 @@
     "create": {
       "permissionDenied": "You can only create versions for boxes you own, or you need admin/owner role.",
       "error": "Some error occurred while creating the Version."
+    },
+    "update": {
+      "permissionDenied": "You can only update versions of boxes you own, or you need admin/owner role."
     },
     "delete": {
       "permissionDenied": "You can only delete versions of boxes you own, or you need admin/owner role."
@@ -320,6 +358,9 @@
   },
   "errors": {
     "operationFailed": "Operation failed."
+  },
+  "serviceAccounts": {
+    "membershipRequired": "You must be a member of this organization to create service accounts!"
   },
   "search": {
     "queryTooShort": "Search query must be at least 2 characters long.",

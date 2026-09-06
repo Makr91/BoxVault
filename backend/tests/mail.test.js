@@ -77,44 +77,44 @@ const mockableConfigLoader = {
     if (name === 'mail') {
       return {
         smtp_connect: {
-          host: { value: 'smtp.example.com' },
-          port: { value: 587 },
-          secure: { value: false },
+          host: 'smtp.example.com',
+          port: 587,
+          secure: false,
         },
         smtp_settings: {
-          from: { value: 'noreply@example.com' },
-          alert_emails: { value: [] },
+          from: 'noreply@example.com',
+          alert_emails: [],
         },
         smtp_auth: {
-          user: { value: 'user' },
-          password: { value: 'pass' },
+          user: 'user',
+          password: 'pass',
         },
       };
     }
     if (name === 'auth') {
       return {
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
+          jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
         },
       };
     }
     if (name === 'app') {
       return {
         boxvault: {
-          origin: { value: 'http://localhost:3000' },
-          box_max_file_size: { value: 10 },
-          api_listen_port_unencrypted: { value: 5000 },
-          api_listen_port_encrypted: { value: 5001 },
+          origin: 'http://localhost:3000',
+          box_max_file_size: 10,
+          api_listen_port_unencrypted: 5000,
+          api_listen_port_encrypted: 5001,
         },
-        logging: { level: { value: 'silent' } },
+        logging: { level: 'silent' },
       };
     }
     if (name === 'db') {
       return {
         sql: {
-          dialect: { value: 'sqlite' },
-          storage: { value: ':memory:' },
-          logging: { value: false },
+          dialect: 'sqlite',
+          storage: ':memory:',
+          logging: false,
         },
       };
     }
@@ -124,6 +124,17 @@ const mockableConfigLoader = {
   getSetupTokenPath: jest.fn().mockReturnValue('/tmp/setup.token'),
   getRateLimitConfig: jest.fn().mockReturnValue({ window_minutes: 15, max_requests: 100 }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
+  checkConfigs: jest.fn().mockReturnValue([]),
+  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
+  readConfigFile: jest.fn(name => mockableConfigLoader.loadConfig(name)),
+  fillDefaults: jest.fn((schema, config) => {
+    void schema;
+    return config;
+  }),
+  validateConfig: jest.fn().mockReturnValue([]),
+  unknownKeys: jest.fn().mockReturnValue([]),
+  loadConfigs: jest.fn(),
+  CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
 
 jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
@@ -132,6 +143,14 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   getSetupTokenPath: (...args) => mockableConfigLoader.getSetupTokenPath(...args),
   getRateLimitConfig: (...args) => mockableConfigLoader.getRateLimitConfig(...args),
   getI18nConfig: (...args) => mockableConfigLoader.getI18nConfig(...args),
+  checkConfigs: (...args) => mockableConfigLoader.checkConfigs(...args),
+  loadSchema: (...args) => mockableConfigLoader.loadSchema(...args),
+  readConfigFile: (...args) => mockableConfigLoader.readConfigFile(...args),
+  fillDefaults: (...args) => mockableConfigLoader.fillDefaults(...args),
+  validateConfig: (...args) => mockableConfigLoader.validateConfig(...args),
+  unknownKeys: (...args) => mockableConfigLoader.unknownKeys(...args),
+  loadConfigs: (...args) => mockableConfigLoader.loadConfigs(...args),
+  CONFIG_NAMES: mockableConfigLoader.CONFIG_NAMES,
   default: mockableConfigLoader,
 }));
 
@@ -315,7 +334,7 @@ describe('Mail API', () => {
       mockableConfigLoader.loadConfig = jest.fn(name => {
         if (name === 'mail') {
           // This config is valid enough to pass the check in test.js, but not createTransporter
-          return { smtp_settings: { from: { value: 'test@from.com' } } };
+          return { smtp_settings: { from: 'test@from.com' } };
         }
         return originalLoadConfig(name);
       });

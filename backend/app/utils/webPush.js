@@ -4,7 +4,7 @@
 // carry BoxVault's identity rather than the auth server's. The hub is used
 // only for the in-page bell feed (see notifyHub.js).
 import webpush from 'web-push';
-import { loadConfig, getConfigPath } from './config-loader.js';
+import { loadConfig, getConfigPath, readConfigFile } from './config-loader.js';
 import { log } from './Logger.js';
 import { writeConfig } from '../controllers/config/helpers.js';
 import db from '../models/index.js';
@@ -12,53 +12,6 @@ import db from '../models/index.js';
 // 404/410 = the push service dropped the endpoint; 403 = the subscription was
 // minted against a different VAPID key and can never accept our messages.
 const DEAD_STATUS_CODES = [403, 404, 410];
-
-const SECTION_TEMPLATE = {
-  enabled: {
-    type: 'boolean',
-    value: true,
-    description:
-      "Send browser/OS toast notifications from BoxVault's own service worker, signed with BoxVault's own VAPID keys.",
-    section: 'Application',
-    subsection: 'Notification Settings',
-    subsection_key: 'notificationSettings',
-    required: false,
-    order: 1,
-  },
-  vapid_subject: {
-    type: 'string',
-    value: 'mailto:admin@localhost',
-    description:
-      'Contact URI (mailto: or https:) sent to push services so they can reach the operator about delivery problems.',
-    section: 'Application',
-    subsection: 'Notification Settings',
-    subsection_key: 'notificationSettings',
-    required: false,
-    order: 2,
-  },
-  vapid_public_key: {
-    type: 'string',
-    value: '',
-    description:
-      'Public half of the VAPID keypair, handed to browsers when they subscribe. Generated on first start when empty. Changing it invalidates every existing subscription.',
-    section: 'Application',
-    subsection: 'Notification Settings',
-    subsection_key: 'notificationSettings',
-    required: false,
-    order: 3,
-  },
-  vapid_private_key: {
-    type: 'password',
-    value: '',
-    description:
-      'Private half of the VAPID keypair, used to sign push messages. Generated on first start when empty.',
-    section: 'Application',
-    subsection: 'Notification Settings',
-    subsection_key: 'notificationSettings',
-    required: false,
-    order: 4,
-  },
-};
 
 /**
  * Read the VAPID details needed to sign a push message.
@@ -69,12 +22,12 @@ const getVapidDetails = () => {
   try {
     const section = loadConfig('app').notifications;
 
-    if (!section || section.enabled?.value === false) {
+    if (!section || section.enabled === false) {
       return null;
     }
 
-    const publicKey = section.vapid_public_key?.value;
-    const privateKey = section.vapid_private_key?.value;
+    const publicKey = section.vapid_public_key;
+    const privateKey = section.vapid_private_key;
 
     if (!publicKey || !privateKey) {
       return null;
@@ -83,7 +36,7 @@ const getVapidDetails = () => {
     return {
       publicKey,
       privateKey,
-      subject: section.vapid_subject?.value || 'mailto:admin@localhost',
+      subject: section.vapid_subject || 'mailto:admin@localhost',
     };
   } catch (err) {
     log.app.warn('Could not read push notification config', { error: err.message });
@@ -98,34 +51,23 @@ const getVapidDetails = () => {
 const getVapidPublicKey = () => getVapidDetails()?.publicKey || null;
 
 /**
- * Generate and persist a VAPID keypair when one is not configured yet, adding
- * the whole notifications section to app config if an older install lacks it.
+ * Generate and persist a VAPID keypair when one is not configured yet.
  * @returns {Promise<boolean>} True when the config was written
  */
 const ensureVapidKeys = async () => {
   try {
-    const config = loadConfig('app');
+    const config = readConfigFile('app');
+    const section = { ...(config.notifications || {}) };
 
-    if (!config.notifications) {
-      config.notifications = structuredClone(SECTION_TEMPLATE);
-    }
-
-    const section = config.notifications;
-    for (const [key, template] of Object.entries(SECTION_TEMPLATE)) {
-      if (!section[key]) {
-        section[key] = structuredClone(template);
-      }
-    }
-
-    if (section.vapid_public_key.value && section.vapid_private_key.value) {
+    if (section.vapid_public_key && section.vapid_private_key) {
       return false;
     }
 
     const keys = webpush.generateVAPIDKeys();
-    section.vapid_public_key.value = keys.publicKey;
-    section.vapid_private_key.value = keys.privateKey;
+    section.vapid_public_key = keys.publicKey;
+    section.vapid_private_key = keys.privateKey;
 
-    await writeConfig(getConfigPath('app'), config);
+    await writeConfig(getConfigPath('app'), { ...config, notifications: section });
     log.app.info('Generated BoxVault VAPID keypair for push notifications');
     return true;
   } catch (err) {

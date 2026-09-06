@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "required": ["username", "email", "password"],
+  "properties": {
+    "username": { "$ref": "#/$defs/slug", "minLength": 3, "maxLength": 64, "unique": "global" },
+    "email": { "$ref": "#/$defs/email", "unique": "global" },
+    "password": { "type": "string", "minLength": 15, "maxLength": 128 },
+    "name": { "type": "string", "maxLength": 255 },
+    "invitation_token": { "type": "string" }
+  }
+}

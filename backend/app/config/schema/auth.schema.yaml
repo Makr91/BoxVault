@@ -1,0 +1,432 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Auth Config
+schemaVersion: 1
+sections:
+  authentication:
+    title: Authentication
+    order: 1
+properties:
+  schemaVersion:
+    type: integer
+    readOnly: true
+    default: 1
+    title: Schema version
+  auth:
+    type: object
+    section: authentication
+    subsection: generalSettings
+    title: General
+    properties:
+      enabled_strategies:
+        type: array
+        items:
+          type: string
+          enum:
+            - local
+            - jwt
+            - oidc
+        default:
+          - local
+          - jwt
+          - oidc
+        title: Enabled strategies
+        description: Authentication strategies enabled
+        order: 1
+      default_strategy:
+        type: string
+        enum:
+          - local
+          - jwt
+          - oidc
+        default: local
+        title: Default strategy
+        description: Default authentication strategy
+        order: 2
+      jwt:
+        type: object
+        subsection: jwtSettings
+        title: JWT Settings
+        required:
+          - jwt_secret
+        properties:
+          jwt_secret:
+            type: string
+            writeOnly: true
+            minLength: 1
+            title: JWT secret
+            description: Secret signing every BoxVault session token; use a strong random string
+            order: 1
+            requiresRestart: true
+          jwt_expiration:
+            type: string
+            default: 24h
+            title: JWT expiration
+            description: Session token lifetime, such as 24h, 7d or 1h
+            order: 2
+          jwt_issuer:
+            type: string
+            default: boxvault
+            title: JWT issuer
+            description: Issuer claim stamped on every session token
+            order: 3
+            requiresRestart: true
+          jwt_audience:
+            type: string
+            default: boxvault-api
+            title: JWT audience
+            description: Audience claim stamped on every session token
+            order: 4
+            requiresRestart: true
+          download_link_expiry:
+            type: string
+            default: 1h
+            title: Download link expiry
+            description: Lifetime of a generated download link token, such as 1h or 30m
+            order: 5
+          invitation_token_expiry_hours:
+            type: integer
+            minimum: 1
+            maximum: 720
+            default: 24
+            title: Invitation expiry (hours)
+            description: Hours before an organization invitation token expires
+            order: 6
+          verification_token_expiry_hours:
+            type: integer
+            minimum: 1
+            maximum: 720
+            default: 24
+            title: Verification expiry (hours)
+            description: Hours before an email verification token expires
+            order: 7
+          service_account_max_expiry_days:
+            type: integer
+            minimum: 1
+            maximum: 3650
+            default: 365
+            title: Service account maximum lifetime (days)
+            description: Longest lifetime a service account token may be given
+            order: 8
+          local_enabled:
+            type: boolean
+            default: true
+            title: Local accounts
+            description: Enable username and password authentication
+            order: 9
+      local:
+        type: object
+        subsection: localAuthentication
+        title: Local Authentication
+        properties:
+          local_require_email_verification:
+            type: boolean
+            default: true
+            title: Require email verification
+            description: New local accounts must verify their email before signing in
+            order: 1
+          local_password_min_length:
+            type: integer
+            minimum: 4
+            maximum: 128
+            default: 15
+            title: Minimum password length
+            description: Shortest password a local account may set; 15 by the NIST recommendation
+            order: 2
+          local_password_require_uppercase:
+            type: boolean
+            default: false
+            title: Require uppercase
+            description: Passwords must contain an uppercase letter; off by the NIST recommendation
+            order: 3
+          local_password_require_lowercase:
+            type: boolean
+            default: false
+            title: Require lowercase
+            description: Passwords must contain a lowercase letter; off by the NIST recommendation
+            order: 4
+          local_password_require_numbers:
+            type: boolean
+            default: false
+            title: Require numbers
+            description: Passwords must contain a digit; off by the NIST recommendation
+            order: 5
+          local_password_require_symbols:
+            type: boolean
+            default: false
+            title: Require symbols
+            description: Passwords must contain a symbol; off by the NIST recommendation
+            order: 6
+          local_bcrypt_rounds:
+            type: integer
+            minimum: 8
+            maximum: 15
+            default: 10
+            title: Bcrypt rounds
+            description: Bcrypt hashing rounds; higher is slower and stronger
+            order: 7
+          local_session_timeout:
+            type: integer
+            minimum: 1
+            maximum: 168
+            default: 24
+            title: Session timeout (hours)
+            description: Lifetime of a stay-logged-in session
+            order: 8
+          local_allow_new_organizations:
+            type: boolean
+            default: false
+            title: Allow self-registration
+            description: Let users create a new organization when registering
+            order: 9
+      oidc:
+        type: object
+        subsection: oidcSettings
+        title: OIDC Settings
+        properties:
+          token_refresh_threshold_minutes:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 5
+            title: Token refresh threshold (minutes)
+            description: Refresh an OIDC access token when it expires within this many minutes
+            order: 1
+          token_default_expiry_minutes:
+            type: integer
+            minimum: 1
+            maximum: 1440
+            default: 30
+            title: Default token expiry (minutes)
+            description: Lifetime assumed for an OIDC access token without an expiration claim
+            order: 2
+          default_provider:
+            type: string
+            default: ''
+            title: Default provider
+            description: Provider featured as the primary sign-in option; must match a key under providers
+            order: 3
+          silent_login:
+            type: boolean
+            default: false
+            title: Silent login
+            description: Attempt a silent sign-in with the default provider when an unauthenticated user opens the login page
+            order: 4
+          login_handoff_ttl_seconds:
+            type: integer
+            minimum: 10
+            maximum: 600
+            default: 60
+            title: Login code lifetime (seconds)
+            description: Lifetime of the single-use login code minted after an OIDC callback
+            order: 5
+          s2s_client_id:
+            type: string
+            default: boxvault_s2s
+            title: Service client id
+            description: Client id of the dedicated service-to-service OAuth client
+            order: 6
+          s2s_client_secret:
+            type: string
+            writeOnly: true
+            default: ''
+            title: Service client secret
+            description: Client secret of the dedicated service-to-service client; blank disables delegation
+            order: 7
+          notifications_enabled:
+            type: boolean
+            default: false
+            title: Hub notifications
+            description: Send notifications to the auth server's notification hub for externally managed organizations
+            order: 8
+          providers:
+            type: object
+            subsection: oidcProviders
+            title: OIDC Providers
+            default: {}
+            additionalProperties:
+              type: object
+              required:
+                - issuer
+                - client_id
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                  title: Enabled
+                  description: Offer this provider on the login page
+                  order: 1
+                display_name:
+                  type: string
+                  default: ''
+                  title: Display name
+                  description: Name shown on the provider's login button
+                  order: 2
+                issuer:
+                  type: string
+                  format: uri
+                  title: Issuer
+                  description: OpenID Connect issuer URL
+                  order: 3
+                client_id:
+                  type: string
+                  title: Client id
+                  description: OAuth client id registered at the provider
+                  order: 4
+                client_secret:
+                  type: string
+                  writeOnly: true
+                  default: ''
+                  title: Client secret
+                  description: OAuth client secret registered at the provider
+                  order: 5
+                scope:
+                  type: string
+                  default: openid profile email
+                  title: Scope
+                  description: Scopes requested at authorization
+                  order: 6
+                prompt:
+                  type: string
+                  default: ''
+                  title: Prompt
+                  description: Prompt parameter sent at authorization; empty sends none
+                  order: 7
+                token_endpoint_auth_method:
+                  type: string
+                  enum:
+                    - client_secret_basic
+                    - client_secret_post
+                    - none
+                  default: client_secret_basic
+                  title: Token endpoint auth method
+                  description: How the client authenticates at the token endpoint
+                  order: 8
+                icon_url:
+                  type: string
+                  default: ''
+                  title: Icon URL
+                  description: Icon shown on the provider's login button
+                  order: 9
+      resource_server:
+        type: object
+        subsection: resourceServer
+        title: Resource Server
+        properties:
+          enabled:
+            type: boolean
+            default: false
+            title: Accept provider tokens
+            description: Accept access tokens issued by a configured OIDC provider as Bearer credentials
+            order: 1
+          audience:
+            type: string
+            default: boxvault
+            title: Audience
+            description: Expected audience claim of access tokens presented to BoxVault
+            order: 2
+      scim:
+        type: object
+        subsection: scimProvisioning
+        title: SCIM Provisioning
+        properties:
+          enabled:
+            type: boolean
+            default: false
+            title: Accept SCIM pushes
+            description: Accept SCIM 2.0 provisioning pushes from the configured OIDC auth server at /scim/v2
+            order: 1
+          audience:
+            type: string
+            default: boxvault
+            title: Audience
+            description: Expected audience claim of SCIM bearer tokens
+            order: 2
+      external:
+        type: object
+        subsection: externalProviders
+        title: External Providers
+        properties:
+          domain_mapping_enabled:
+            type: boolean
+            default: true
+            title: Domain mapping
+            description: Assign organizations automatically from the email domain
+            order: 1
+          domain_mappings:
+            type: string
+            default: '{}'
+            title: Domain mappings
+            description: JSON mapping of organization codes to email domains
+            dependsOn: domain_mapping_enabled
+            showWhen:
+              - true
+            order: 2
+          provisioning_enabled:
+            type: boolean
+            default: true
+            title: Provisioning
+            description: Provision users automatically at external authentication
+            order: 3
+          provisioning_policy:
+            type: string
+            enum:
+              - invite_only
+              - auto_provision
+              - manual_approval
+              - disabled
+            default: invite_only
+            title: Provisioning policy
+            description: How new external users are handled
+            dependsOn: provisioning_enabled
+            showWhen:
+              - true
+            order: 4
+          provisioning_default_role:
+            type: string
+            enum:
+              - user
+              - admin
+            default: user
+            title: Default role
+            description: Global role given to auto-provisioned users
+            dependsOn: provisioning_enabled
+            showWhen:
+              - true
+            order: 5
+          provisioning_fallback_action:
+            type: string
+            enum:
+              - require_invite
+              - create_org
+              - deny_access
+            default: require_invite
+            title: Fallback action
+            description: Action when no organization mapping matches
+            dependsOn: provisioning_enabled
+            showWhen:
+              - true
+            order: 6
+          profile_sync_enabled:
+            type: boolean
+            default: true
+            title: Profile sync
+            description: Sync the user profile from external providers
+            order: 7
+          profile_update_on_login:
+            type: boolean
+            default: true
+            title: Update profile at login
+            description: Update the profile on every login
+            dependsOn: profile_sync_enabled
+            showWhen:
+              - true
+            order: 8
+          profile_sync_fields:
+            type: string
+            default: displayName,email,groups
+            title: Synced fields
+            description: Comma-separated profile fields to sync
+            dependsOn: profile_sync_enabled
+            showWhen:
+              - true
+            order: 9

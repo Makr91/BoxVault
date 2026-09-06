@@ -4,7 +4,7 @@ import { log } from '../../utils/Logger.js';
 export const getHyperweaverConfig = (req, res) => {
   try {
     const data = loadConfig('app');
-    if (data && data.hyperweaver) {
+    if (data?.hyperweaver?.url) {
       return res.send({ hyperweaver: data.hyperweaver });
     }
     return res.status(404).send({ message: req.__('config.hyperweaverNotConfigured') });

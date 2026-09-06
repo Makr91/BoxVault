@@ -24,12 +24,12 @@ const createTransporter = () => {
   }
 
   return createTransport({
-    host: smtpConfig.smtp_connect.host.value,
-    port: smtpConfig.smtp_connect.port.value,
-    secure: smtpConfig.smtp_connect.secure.value,
+    host: smtpConfig.smtp_connect.host,
+    port: smtpConfig.smtp_connect.port,
+    secure: smtpConfig.smtp_connect.secure,
     auth: {
-      user: smtpConfig.smtp_auth.user.value,
-      pass: smtpConfig.smtp_auth.password.value,
+      user: smtpConfig.smtp_auth.user,
+      pass: smtpConfig.smtp_auth.password,
     },
   });
 };

@@ -95,7 +95,7 @@ describe('Notification sweeps', () => {
 
   it('should honour a configured warning window', async () => {
     const restore = updateAppConfig(config => {
-      config.monitoring = { sa_expiry_warning_days: { value: 3 } };
+      config.monitoring = { sa_expiry_warning_days: 3 };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
@@ -106,7 +106,7 @@ describe('Notification sweeps', () => {
 
   it('should skip the certificate sweep when the file is missing', async () => {
     const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: { value: 'missing-sweep.crt' } };
+      config.ssl = { cert_path: 'missing-sweep.crt' };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
@@ -117,7 +117,7 @@ describe('Notification sweeps', () => {
 
   it('should survive an unreadable certificate', async () => {
     const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: { value: garbagePath } };
+      config.ssl = { cert_path: garbagePath };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
@@ -128,8 +128,8 @@ describe('Notification sweeps', () => {
 
   it('should read the certificate and stay quiet outside the warning window', async () => {
     const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: { value: certPath } };
-      config.monitoring = { ssl_expiry_warning_days: { value: 30 } };
+      config.ssl = { cert_path: certPath };
+      config.monitoring = { ssl_expiry_warning_days: 30 };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
@@ -142,8 +142,8 @@ describe('Notification sweeps', () => {
     const cert = new X509Certificate(fs.readFileSync(certPath));
     const daysLeft = Math.ceil((new Date(cert.validTo).getTime() - Date.now()) / DAY_MS);
     const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: { value: certPath } };
-      config.monitoring = { ssl_expiry_warning_days: { value: daysLeft } };
+      config.ssl = { cert_path: certPath };
+      config.monitoring = { ssl_expiry_warning_days: daysLeft };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
