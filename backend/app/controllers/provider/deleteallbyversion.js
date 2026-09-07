@@ -1,14 +1,15 @@
 // deleteallbyversion.js
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+const { providers: Provider, organization: _organization, box: _box, versions } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   delete:
  *     summary: Delete all providers for a version
- *     description: Delete all providers associated with a specific box version
+ *     description: Delete all providers associated with a specific box version. The box owner, or an admin or owner of the organization, may delete; a service account acts inside its own organization at its effective role.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -111,9 +112,8 @@ export const deleteAllByVersion = async (req, res) => {
     }
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
       return res.status(403).send({

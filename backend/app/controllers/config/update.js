@@ -50,7 +50,7 @@ import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpe
  *               properties:
  *                 message:
  *                   type: string
- *                 requiresRestart:
+ *                 requires_restart:
  *                   type: boolean
  *                   description: Whether a changed key needs a restart to take effect
  *       401:
@@ -105,7 +105,7 @@ export const updateConfig = async (req, res) => {
     await writeConfig(filePath, updatedConfig);
     return res.send({
       message: req.__('config.updated'),
-      requiresRestart: requiresRestart(schema, currentConfig, updatedConfig),
+      requires_restart: requiresRestart(schema, currentConfig, updatedConfig),
     });
   } catch (err) {
     log.error.error('Error updating config:', err);

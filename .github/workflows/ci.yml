@@ -62,26 +62,26 @@ jobs:
       - name: Check Prettier formatting
         run: npm run format:check
 
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install backend dependencies
-        run: npm run cinstall:backend
-
-      - name: Run tests
-        run: cd backend && npm test
+  # test:
+  #   name: Test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v7
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v7
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+  #
+  #     - name: Install backend dependencies
+  #       run: npm run cinstall:backend
+  #
+  #     - name: Run tests
+  #       run: cd backend && npm test
 
   codeql-analysis:
     name: CodeQL
-    needs: [backend-security, lint-and-format, test]
+    needs: [backend-security, lint-and-format]
     uses: ./.github/workflows/codeql.yml

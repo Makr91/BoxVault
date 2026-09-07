@@ -660,8 +660,9 @@ describe('File API', () => {
     it('should allow service account to upload files', async () => {
       const saJwt = jwt.sign(
         {
-          id: testUser.id, // Service account acts as the user who owns it
+          id: testUser.id,
           isServiceAccount: true,
+          serviceAccountId: serviceAccount.id,
         },
         'test-secret',
         testJwtOpts
@@ -687,6 +688,7 @@ describe('File API', () => {
         {
           id: testUser.id,
           isServiceAccount: true,
+          serviceAccountId: serviceAccount.id,
         },
         'test-secret',
         testJwtOpts
@@ -706,6 +708,7 @@ describe('File API', () => {
         {
           id: testUser.id,
           isServiceAccount: true,
+          serviceAccountId: serviceAccount.id,
         },
         'test-secret',
         testJwtOpts
@@ -719,6 +722,49 @@ describe('File API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('downloadUrl');
+
+      const token = new URL(res.body.downloadUrl).searchParams.get('token');
+      expect(jwt.verify(token, 'test-secret').serviceAccountId).toBe(serviceAccount.id);
+      const download = await request(app).get(
+        `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download?token=${token}`
+      );
+      expect(download.statusCode).toBe(200);
+    });
+
+    it('should refuse a service account of another organization on private box files', async () => {
+      const otherOrg = await Organization.create({ name: `file-other-${uniqueId}` });
+      await UserOrg.create({ user_id: testUser.id, organization_id: otherOrg.id, role: 'owner' });
+      const otherAccount = await db.service_account.create({
+        username: `sa-other-${uniqueId}`,
+        token: `sa-other-token-${uniqueId}`,
+        organization_id: otherOrg.id,
+        userId: testUser.id,
+      });
+      const saJwt = jwt.sign(
+        { id: testUser.id, isServiceAccount: true, serviceAccountId: otherAccount.id },
+        'test-secret',
+        testJwtOpts
+      );
+
+      const upload = await request(app)
+        .post(
+          `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/upload`
+        )
+        .set('x-access-token', saJwt)
+        .set('Content-Type', 'application/octet-stream')
+        .send(fileContent);
+      expect(upload.statusCode).toBe(403);
+
+      const info = await request(app)
+        .get(
+          `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/info`
+        )
+        .set('x-access-token', saJwt);
+      expect(info.statusCode).toBe(403);
+
+      await otherAccount.destroy();
+      await UserOrg.destroy({ where: { user_id: testUser.id, organization_id: otherOrg.id } });
+      await otherOrg.destroy();
     });
   });
 
@@ -1156,8 +1202,14 @@ describe('File API', () => {
     });
 
     it('GET /file/info - should return info for service account', async () => {
+      const serviceAccount = await db.service_account.create({
+        username: `sa-info-${uniqueId}`,
+        token: `sa-info-token-${uniqueId}`,
+        organization_id: testOrg.id,
+        userId: testUser.id,
+      });
       const saJwt = jwt.sign(
-        { id: testUser.id, isServiceAccount: true },
+        { id: testUser.id, isServiceAccount: true, serviceAccountId: serviceAccount.id },
         'test-secret',
         testJwtOpts
       );
@@ -1167,6 +1219,7 @@ describe('File API', () => {
         )
         .set('x-access-token', saJwt);
       expect(res.statusCode).toBe(200);
+      await serviceAccount.destroy();
     });
 
     it('GET /file/info - should return 404 if file missing for public box', async () => {

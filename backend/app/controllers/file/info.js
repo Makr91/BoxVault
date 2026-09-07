@@ -2,15 +2,16 @@
 import { loadConfig } from '../../utils/config-loader.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
+import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { files: File, UserOrg } = db;
+const { files: File } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/info:
  *   get:
  *     summary: Get file information
- *     description: Retrieve information about a Vagrant box file including download URL and metadata
+ *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs membership of its organization; a service account is a member of its own organization only, at its effective role.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -110,8 +111,7 @@ const { files: File, UserOrg } = db;
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
-  const { userId, isServiceAccount } = req;
-  // req.userId and req.isServiceAccount are set by sessionAuth middleware or vagrantHandler
+  const { userId, isServiceAccount, serviceAccountId } = req;
 
   log.app.info('Auth context in info:', {
     userId,
@@ -141,6 +141,7 @@ const info = async (req, res) => {
           {
             userId,
             isServiceAccount,
+            serviceAccountId,
             organization,
             boxId,
             versionNumber,
@@ -172,7 +173,7 @@ const info = async (req, res) => {
       return res.status(403).send({ message: req.__('files.info.unauthorized') });
     }
 
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('files.info.unauthorized') });
     }

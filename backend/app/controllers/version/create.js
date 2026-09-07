@@ -132,14 +132,16 @@
 import { log } from '../../utils/Logger.js';
 import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { notifyVersionCreated } from './notifications.js';
-const { versions: Version, UserOrg } = db;
+const { versions: Version } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version:
  *   post:
  *     summary: Create a new version for a box
+ *     description: The box owner, or an admin or owner of the organization, may create a version; a service account acts inside its own organization at its effective role.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -210,9 +212,8 @@ export const create = async (req, res) => {
     const { organizationData, boxData: box } = req;
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canCreate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canCreate = canWriteBox(req, box, membership);
 
     if (!canCreate) {
       return res.status(403).send({

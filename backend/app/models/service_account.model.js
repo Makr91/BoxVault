@@ -19,6 +19,11 @@ export default (sequelize, Sequelize) => {
         allowNull: true,
         field: 'last_used_at',
       },
+      role: {
+        type: Sequelize.ENUM('member', 'admin', 'owner', 'superadmin'),
+        allowNull: false,
+        defaultValue: 'member',
+      },
       organization_id: {
         type: Sequelize.INTEGER,
         allowNull: false,

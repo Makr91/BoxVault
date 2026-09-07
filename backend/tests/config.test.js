@@ -170,7 +170,7 @@ describe('Config API', () => {
           .set('x-access-token', adminToken)
           .send({ auth: { jwt: { jwt_secret: '********', jwt_expiration: '2h' } } });
         expect(unchanged.statusCode).toBe(200);
-        expect(unchanged.body.requiresRestart).toBe(false);
+        expect(unchanged.body.requires_restart).toBe(false);
         const written = yaml.load(fs.readFileSync(authConfigPath, 'utf8'));
         expect(written.auth.jwt.jwt_secret).toBe('test-secret');
         expect(written.auth.jwt.jwt_expiration).toBe('2h');
@@ -180,7 +180,7 @@ describe('Config API', () => {
           .set('x-access-token', adminToken)
           .send({ auth: { jwt: { jwt_issuer: 'other-issuer' } } });
         expect(restart.statusCode).toBe(200);
-        expect(restart.body.requiresRestart).toBe(true);
+        expect(restart.body.requires_restart).toBe(true);
       } finally {
         fs.writeFileSync(authConfigPath, original);
         clearConfigCache();
@@ -203,7 +203,7 @@ describe('Config API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('message', 'Configuration updated successfully.');
-      expect(res.body.requiresRestart).toBe(false);
+      expect(res.body.requires_restart).toBe(false);
     });
 
     it('should keep unknown nested keys through the deep merge', async () => {

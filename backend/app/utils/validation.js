@@ -139,9 +139,14 @@ const CHECKS = [
   itemsCheck,
 ];
 
-const firstFailure = (rule, value, patternName) => {
-  for (const check of CHECKS) {
-    const failure = check(rule, value, patternName);
+const subschemaFailure = ({ schema, value, patternName, document, evaluate }) => {
+  const inner = resolve(schema, document);
+  return evaluate(inner.rule, value, inner.patternName || patternName, document);
+};
+
+const allOfCheck = ({ rule, value, patternName, document, evaluate }) => {
+  for (const schema of rule.allOf || []) {
+    const failure = subschemaFailure({ schema, value, patternName, document, evaluate });
     if (failure) {
       return failure;
     }
@@ -149,11 +154,38 @@ const firstFailure = (rule, value, patternName) => {
   return null;
 };
 
+const notCheck = ({ rule, value, patternName, document, evaluate }) => {
+  if (!rule.not) {
+    return null;
+  }
+  const passed = !subschemaFailure({ schema: rule.not, value, patternName, document, evaluate });
+  if (!passed) {
+    return null;
+  }
+  return patternName
+    ? { rule: 'pattern', params: { pattern: patternName } }
+    : { rule: 'not', params: {} };
+};
+
+const firstFailure = (rule, value, patternName, document) => {
+  for (const check of CHECKS) {
+    const failure = check(rule, value, patternName);
+    if (failure) {
+      return failure;
+    }
+  }
+  const nested = { rule, value, patternName, document, evaluate: firstFailure };
+  return allOfCheck(nested) || notCheck(nested);
+};
+
 /**
  * Evaluate one value against one schema: `type`, `required` (a blank
  * string counts as missing when the schema says `required: true`),
  * `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`,
- * `format`, `minItems`, `maxItems`, with `$ref` resolved within `document`.
+ * `format`, `minItems`, `maxItems`, `allOf` (every branch must pass) and
+ * `not` (the branch must fail), with `$ref` resolved within `document`. A
+ * failure anywhere inside a `$defs` pattern, its `allOf` and `not` branches
+ * included, is reported as `pattern` named by the `$defs` entry.
  *
  * @param {Object} schema - The value's schema
  * @param {*} value - The value
@@ -165,7 +197,7 @@ const validateValue = (schema, value, document = {}) => {
   if (isBlank(value)) {
     return rule.required === true ? [{ pointer: '', rule: 'required', params: {} }] : [];
   }
-  const failure = firstFailure(rule, value, patternName);
+  const failure = firstFailure(rule, value, patternName, document);
   return failure ? [{ pointer: '', ...failure }] : [];
 };
 

@@ -50,7 +50,7 @@ const fetchLatestVersionFromRepo = url =>
  * /api/system/update-check:
  *   get:
  *     summary: Check for application updates
- *     description: Checks if the application was installed via APT and if a newer version is available in the repository.
+ *     description: Checks if the application was installed via APT and if a newer version is available in the repository. Global admins only; a service account is refused unless it is a live superadmin account.
  *     tags: [System]
  *     security:
  *       - JwtAuth: []
@@ -70,6 +70,12 @@ const fetchLatestVersionFromRepo = url =>
  *                   type: string
  *                 latestVersion:
  *                   type: string
+ *       403:
+ *         description: The caller is not a global admin, or is a service account other than a live superadmin one
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getUpdateStatus = async (req, res) => {
   void req;

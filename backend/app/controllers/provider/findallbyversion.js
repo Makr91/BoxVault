@@ -1,13 +1,15 @@
 // findallbyversion.js
 import { log } from '../../utils/Logger.js';
+import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
+const { providers: Provider, organization: _organization, box: _box, versions } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   get:
  *     summary: Get all providers for a version
+ *     description: A private box needs membership of its organization; a service account is a member of its own organization only.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -130,7 +132,7 @@ export const findAllByVersion = async (req, res) => {
       return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('providers.unauthorized') });
     }

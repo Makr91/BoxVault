@@ -3,8 +3,7 @@ import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import db from '../../models/index.js';
-const { UserOrg } = db;
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
 
 /**
@@ -12,7 +11,7 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/upload:
  *   post:
  *     summary: Upload a Vagrant box file
- *     description: Upload a new Vagrant box file for a specific architecture and provider
+ *     description: Upload a new Vagrant box file for a specific architecture and provider. The box owner, or an admin or owner of the organization, may upload; a service account acts inside its own organization at its effective role.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -195,9 +194,8 @@ const upload = (req, res) => {
     const { box: boxData, architecture: architectureData } = req.entities;
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, boxData.organizationId);
-    const isOwner = boxData.userId === req.userId;
-    const canUpload = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, boxData.organizationId);
+    const canUpload = canWriteBox(req, boxData, membership);
 
     if (!canUpload) {
       log.app.error('Permission denied for upload', {

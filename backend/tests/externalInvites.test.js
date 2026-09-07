@@ -387,7 +387,7 @@ describe('Identity-provider delegation', () => {
         request(app)
           .post(`/api/organization/${externalOrgName}/requests/${externalRequestId}/approve`)
           .set('x-access-token', token)
-          .send({ assignedRole: 'member' });
+          .send({ assigned_role: 'member' });
 
       it('should require an identity-provider session', async () => {
         const res = await approve(localToken);

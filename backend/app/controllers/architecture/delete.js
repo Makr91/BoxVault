@@ -1,6 +1,7 @@
 // delete.js
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 const { architectures: Architecture, providers: Provider } = db;
 
 /**
@@ -8,7 +9,7 @@ const { architectures: Architecture, providers: Provider } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
  *   delete:
  *     summary: Delete a specific architecture
- *     description: Delete a specific architecture and its associated files from the system
+ *     description: Delete a specific architecture and its associated files from the system. The box owner, or an admin or owner of the organization, may delete; a service account acts inside its own organization at its effective role.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -99,9 +100,8 @@ const _delete = async (req, res) => {
     }
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await db.UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
       return res.status(403).send({

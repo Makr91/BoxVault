@@ -1,7 +1,7 @@
 import db from '../../models/index.js';
 import { isoWhereFor, resolveIsoViewer } from '../iso/visibility.js';
 
-const { user: User, role: Role, UserOrg, Sequelize, sequelize } = db;
+const { user: User, role: Role, Sequelize, sequelize } = db;
 const { Op } = Sequelize;
 
 const KINDS = ['organization', 'item', 'version', 'provider', 'architecture', 'artifact', 'user'];
@@ -120,34 +120,23 @@ const organizationWhereFor = (viewer, isAdmin) => {
 };
 
 /**
- * Whether the viewer holds the global admin role.
- * @param {{userId: number, orgIds: number[]}|null} viewer - From resolveIsoViewer
+ * Whether the viewer acts as a global admin: a user holding the role, or a
+ * live superadmin service account; any other service account never does,
+ * whatever its owner's global role.
+ * @param {{userId: number, isServiceAccount: boolean, isSuperadmin: boolean, orgIds: number[], managedOrgIds: number[]}|null} viewer - From resolveIsoViewer
  * @returns {Promise<boolean>} True for a global admin
  */
 const isGlobalAdmin = async viewer => {
   if (!viewer) {
     return false;
   }
+  if (viewer.isServiceAccount) {
+    return viewer.isSuperadmin;
+  }
   const user = await User.findByPk(viewer.userId, {
     include: [{ model: Role, as: 'roles', through: { attributes: [] } }],
   });
   return Boolean(user?.roles?.some(role => role.name === 'admin'));
-};
-
-/**
- * The ids of the organizations the viewer administers or owns.
- * @param {{userId: number, orgIds: number[]}|null} viewer - From resolveIsoViewer
- * @returns {Promise<number[]>} Organization ids
- */
-const managedOrgIds = async viewer => {
-  if (!viewer) {
-    return [];
-  }
-  const memberships = await UserOrg.findAll({
-    where: { user_id: viewer.userId, role: { [Op.in]: ['admin', 'owner'] } },
-    attributes: ['organization_id'],
-  });
-  return memberships.map(membership => membership.organization_id);
 };
 
 /**
@@ -219,7 +208,7 @@ const checksumMatches = (checksum, term) =>
 const buildContext = async (req, term, kinds) => {
   const viewer = await resolveIsoViewer(req);
   const isAdmin = await isGlobalAdmin(viewer);
-  const managed = kinds.includes('user') && !isAdmin ? await managedOrgIds(viewer) : [];
+  const managed = kinds.includes('user') && !isAdmin && viewer ? viewer.managedOrgIds : [];
   const escaped = escapeTerm(term);
   return {
     term,

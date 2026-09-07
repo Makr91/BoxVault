@@ -7,7 +7,7 @@ import { createTransporter, getSmtpConfig } from './helpers.js';
  * /api/mail/test-smtp:
  *   post:
  *     summary: Test SMTP configuration
- *     description: Send a test email to verify SMTP server configuration and connectivity
+ *     description: Send a test email to verify SMTP server configuration and connectivity. Global admins only; a service account is refused unless it is a live superadmin account.
  *     tags: [Mail]
  *     security:
  *       - JwtAuth: []
@@ -30,6 +30,12 @@ import { createTransporter, getSmtpConfig } from './helpers.js';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: The caller is not a global admin, or is a service account other than a live superadmin one
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: SMTP configuration error or email sending failed
  *         content:
@@ -65,7 +71,7 @@ export const testSmtp = async (req, res) => {
     log.app.info('Sending test email...');
     const info = await transporter.sendMail({
       from: smtpConfig.smtp_settings.from,
-      to: req.body.testEmail,
+      to: req.body.test_email,
       subject: req.__('mail.testEmailSubject'),
       text: req.__('mail.testEmailBody'),
     });

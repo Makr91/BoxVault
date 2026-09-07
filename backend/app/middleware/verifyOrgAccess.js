@@ -1,6 +1,11 @@
 import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
 import { problem } from '../utils/problem.js';
+import {
+  holdsGlobalAdmin,
+  resolveOrgMembership,
+  serviceAccountIsSuperadmin,
+} from '../utils/orgMembership.js';
 const {
   user: User,
   organization: Organization,
@@ -10,6 +15,8 @@ const {
   versions: Version,
   providers: Provider,
 } = db;
+
+const MANAGING_ROLES = ['admin', 'owner'];
 
 const parameterRequired = (req, res) =>
   problem(res, req, {
@@ -31,6 +38,17 @@ const forbidden = (req, res, key) =>
 const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
 
 /**
+ * Whether the caller acts as a global admin: a user holding ROLE_ADMIN, or a
+ * live superadmin service account; any other service account never does,
+ * whatever its owner's global role.
+ * @param {import('express').Request} req - The request
+ * @param {Object} user - The requesting user
+ * @returns {Promise<boolean>} True for a global admin
+ */
+const isGlobalAdmin = (req, user) =>
+  req.isServiceAccount ? serviceAccountIsSuperadmin(req.serviceAccountId) : holdsGlobalAdmin(user);
+
+/**
  * Middleware to verify user has membership in the organization specified in route
  */
 const isOrgMember = async (req, res, next) => {
@@ -41,8 +59,6 @@ const isOrgMember = async (req, res, next) => {
       return parameterRequired(req, res);
     }
 
-    // Membership check — service accounts impersonate their owning user
-    // (req.userId is the owning user's id), so they take the same path.
     const user = await User.findByPk(req.userId);
     if (!user) {
       return userNotFound(req, res);
@@ -53,7 +69,7 @@ const isOrgMember = async (req, res, next) => {
       return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
-    const membership = await UserOrg.findUserOrgRole(user.id, organization.id);
+    const membership = await resolveOrgMembership(req, organization.id);
     if (!membership) {
       return forbidden(req, res, 'organizations.userNotMember');
     }
@@ -90,29 +106,24 @@ const isOrgAdmin = async (req, res, next) => {
       return userNotFound(req, res);
     }
 
-    // Check if user is global admin first (bypasses org-specific checks)
-    const globalRoles = await user.getRoles();
-    const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
-
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
-    if (isGlobalAdmin) {
-      // Global admins can access any organization
+    if (await isGlobalAdmin(req, user)) {
       req.organizationId = organization.id;
       req.userOrgRole = 'owner';
       return next();
     }
 
-    const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
-    if (!hasRole) {
+    const membership = await resolveOrgMembership(req, organization.id);
+    if (!membership || !MANAGING_ROLES.includes(membership.role)) {
       return forbidden(req, res, 'organizations.requireAdminOrOwner');
     }
 
-    // Attach org context to request
     req.organizationId = organization.id;
+    req.userOrgRole = membership.role;
 
     return next();
   } catch (err) {
@@ -142,29 +153,24 @@ const isOrgOwner = async (req, res, next) => {
       return userNotFound(req, res);
     }
 
-    // Check if user is global admin first (bypasses org-specific checks)
-    const globalRoles = await user.getRoles();
-    const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
-
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
-    if (isGlobalAdmin) {
-      // Global admins can access any organization
+    if (await isGlobalAdmin(req, user)) {
       req.organizationId = organization.id;
       req.userOrgRole = 'owner';
       return next();
     }
 
-    const hasRole = await UserOrg.hasRole(user.id, organization.id, 'owner');
-    if (!hasRole) {
+    const membership = await resolveOrgMembership(req, organization.id);
+    if (!membership || membership.role !== 'owner') {
       return forbidden(req, res, 'organizations.requireOwner');
     }
 
-    // Attach org context to request
     req.organizationId = organization.id;
+    req.userOrgRole = membership.role;
 
     return next();
   } catch (err) {
@@ -197,30 +203,24 @@ const isOrgAdminOrOwner = async (req, res, next) => {
       return userNotFound(req, res);
     }
 
-    // Check if user is global admin first (bypasses org-specific checks)
-    const globalRoles = await user.getRoles();
-    const isGlobalAdmin = globalRoles.some(role => role.name === 'admin');
-
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
-    if (isGlobalAdmin) {
-      // Global admins can access any organization
+    if (await isGlobalAdmin(req, user)) {
       req.organizationId = organization.id;
-      req.userOrgRole = 'owner'; // Treat as org owner
+      req.userOrgRole = 'owner';
       return next();
     }
 
-    // Check org-specific role
-    const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
-    if (!hasRole) {
+    const membership = await resolveOrgMembership(req, organization.id);
+    if (!membership || !MANAGING_ROLES.includes(membership.role)) {
       return forbidden(req, res, 'organizations.requireAdminOrOwner');
     }
 
-    // Attach org context to request
     req.organizationId = organization.id;
+    req.userOrgRole = membership.role;
 
     return next();
   } catch (err) {

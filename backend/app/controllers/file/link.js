@@ -1,8 +1,7 @@
 // download.link.file.controller.js
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import db from '../../models/index.js';
-const { UserOrg } = db;
+import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 
 /**
@@ -10,7 +9,7 @@ import { generateDownloadToken } from '../../utils/auth.js';
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/get-download-link:
  *   post:
  *     summary: Generate a secure download link
- *     description: Generate a time-limited secure download link for a Vagrant box file
+ *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs membership of its organization; a service account is a member of its own organization only, at its effective role.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -84,12 +83,7 @@ import { generateDownloadToken } from '../../utils/auth.js';
 const getDownloadLink = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
 
-  // Get auth info from x-access-token
-  const { userId } = req;
-  const { isServiceAccount } = req;
-
-  // req.userId and req.isServiceAccount are set by sessionAuth middleware
-  // No need to manually check here as the middleware handles it
+  const { userId, isServiceAccount, serviceAccountId } = req;
 
   try {
     const appConfig = loadConfig('app');
@@ -104,7 +98,7 @@ const getDownloadLink = async (req, res) => {
         return res.status(403).send({ message: req.__('files.unauthorized') });
       }
 
-      const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+      const membership = await resolveOrgMembership(req, organizationData.id);
       if (!membership) {
         return res.status(403).send({ message: req.__('files.unauthorized') });
       }
@@ -116,6 +110,7 @@ const getDownloadLink = async (req, res) => {
       {
         userId,
         isServiceAccount,
+        serviceAccountId,
         organization,
         boxId,
         versionNumber,

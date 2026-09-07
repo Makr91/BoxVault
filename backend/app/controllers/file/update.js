@@ -1,8 +1,9 @@
 // update.file.controller.js
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { files: File, UserOrg } = db;
+const { files: File } = db;
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
 
 /**
@@ -10,7 +11,7 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/upload:
  *   put:
  *     summary: Update a Vagrant box file
- *     description: Update an existing Vagrant box file with a new version
+ *     description: Update an existing Vagrant box file with a new version. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -207,9 +208,8 @@ const update = (req, res) => {
     const { organization: organizationData, box, architecture } = req.entities;
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canUpdate = canWriteBox(req, box, membership);
 
     if (!canUpdate) {
       return res.status(403).send({

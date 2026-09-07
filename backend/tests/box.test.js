@@ -508,11 +508,11 @@ describe('Box API', () => {
     });
 
     it('should download a private box with a valid service account token', async () => {
-      // Generate JWT for service account simulation (since we bypass vagrantHandler which handles raw tokens)
       const saJwt = jwt.sign(
         {
-          id: user.id, // Service account acts as the user who owns it
+          id: user.id,
           isServiceAccount: true,
+          serviceAccountId: serviceAccount.id,
         },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
@@ -594,9 +594,8 @@ describe('Box API', () => {
         organization_id: organization.id,
         userId: user.id,
       });
-      // SA Token (JWT)
       saToken = jwt.sign(
-        { id: user.id, isServiceAccount: true, serviceAccountOrgId: organization.id },
+        { id: user.id, isServiceAccount: true, serviceAccountId: serviceAccount.id },
         'test-secret',
         { expiresIn: '1h' }
       );
@@ -658,6 +657,72 @@ describe('Box API', () => {
         .get(`/api/organization/${orgName}/box/${privateBoxName}`)
         .set('x-access-token', saToken);
       expect(res.statusCode).toBe(200);
+    });
+
+    it('should return 403 for a private box of another organization with a service account token', async () => {
+      const otherOrg = await db.organization.create({ name: `other-fo-${uniqueId}` });
+      const otherBox = await db.box.create({
+        name: `other-priv-${uniqueId}`,
+        isPublic: false,
+        published: true,
+        organizationId: otherOrg.id,
+        userId: user.id,
+      });
+      await db.UserOrg.create({ user_id: user.id, organization_id: otherOrg.id, role: 'owner' });
+
+      const res = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box/${otherBox.name}`)
+        .set('x-access-token', saToken);
+      expect(res.statusCode).toBe(403);
+
+      const asOwner = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box/${otherBox.name}`)
+        .set('x-access-token', authToken);
+      expect(asOwner.statusCode).toBe(200);
+
+      await otherBox.destroy();
+      await db.UserOrg.destroy({ where: { user_id: user.id, organization_id: otherOrg.id } });
+      await otherOrg.destroy();
+    });
+
+    it('should return 403 for a service account token whose creator left the organization', async () => {
+      const leaver = await db.user.create({
+        username: `sa-leaver-${uniqueId}`,
+        email: `sa-leaver-${uniqueId}@example.com`,
+        password: 'password',
+        verified: true,
+      });
+      await db.UserOrg.create({
+        user_id: leaver.id,
+        organization_id: organization.id,
+        role: 'admin',
+      });
+      const leaverAccount = await db.service_account.create({
+        username: `sa-leaver-acct-${uniqueId}`,
+        token: `sa-leaver-token-${uniqueId}`,
+        role: 'admin',
+        organization_id: organization.id,
+        userId: leaver.id,
+      });
+      const leaverToken = jwt.sign(
+        { id: leaver.id, isServiceAccount: true, serviceAccountId: leaverAccount.id },
+        'test-secret',
+        { expiresIn: '1h' }
+      );
+
+      const before = await request(app)
+        .get(`/api/organization/${orgName}/box/${privateBoxName}`)
+        .set('x-access-token', leaverToken);
+      expect(before.statusCode).toBe(200);
+
+      await db.UserOrg.destroy({ where: { user_id: leaver.id, organization_id: organization.id } });
+      const after = await request(app)
+        .get(`/api/organization/${orgName}/box/${privateBoxName}`)
+        .set('x-access-token', leaverToken);
+      expect(after.statusCode).toBe(403);
+
+      await leaverAccount.destroy();
+      await leaver.destroy();
     });
 
     it('should handle Vagrant request with valid Bearer token (skips x-access-token check)', async () => {

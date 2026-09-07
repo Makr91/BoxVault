@@ -132,9 +132,9 @@ const mockDb = {
   providers: { findOne: jest.fn() },
   architectures: { findOne: jest.fn() },
   files: { findOne: jest.fn(), create: jest.fn() },
-  service_account: { findOne: jest.fn() },
+  service_account: { findOne: jest.fn(), findByPk: jest.fn() },
   user: { findOne: jest.fn(), findByPk: jest.fn(), count: jest.fn() },
-  organization: { findOne: jest.fn() },
+  organization: { findOne: jest.fn(), findAll: jest.fn() },
   UserOrg: { findUserOrgRole: jest.fn(), hasRole: jest.fn() },
   Sequelize: { Op: { or: 'or', gt: 'gt', eq: 'eq' } },
   ROLES: ['user', 'admin'],
@@ -1521,6 +1521,60 @@ describe('Middleware Tests', () => {
       );
     });
 
+    it('isAdmin should refuse a service account whose owner is a global admin', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({ id: 5, role: 'owner', userId: 1 });
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
+      });
+      await authJwt.isAdmin(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/forbidden',
+          title: 'auth.serviceAccountsDenied',
+        })
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('isAdmin should pass a superadmin service account while its creator holds the role', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({ id: 5, role: 'superadmin', userId: 1 });
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
+      });
+      await authJwt.isAdmin(req, res, next);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('isAdmin should refuse a superadmin service account once its creator lost the role', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({ id: 5, role: 'superadmin', userId: 1 });
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
+      });
+      await authJwt.isAdmin(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('isSelfOrAdmin should refuse a service account', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      req.params.userId = 1;
+      mockDb.service_account.findByPk.mockResolvedValue({ id: 5, role: 'owner', userId: 1 });
+      await authJwt.isSelfOrAdmin(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(next).not.toHaveBeenCalled();
+    });
+
     it('verifyToken should return 403 if no token provided', async () => {
       req.headers['x-access-token'] = undefined;
       await authJwt.verifyToken(req, res, next);
@@ -1611,11 +1665,11 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgOwner should handle error in hasRole check', async () => {
+    it('isOrgOwner should handle error in the membership check', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockRejectedValue(new Error('DB Error'));
+      mockDb.UserOrg.findUserOrgRole.mockRejectedValueOnce(new Error('DB Error'));
 
       await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
@@ -1634,11 +1688,11 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('isOrgAdminOrOwner should handle error in hasRole check', async () => {
+    it('isOrgAdminOrOwner should handle error in the membership check', async () => {
       req.params.organization = 'org';
       mockDb.user.findByPk.mockResolvedValue({ id: 1, getRoles: jest.fn().mockResolvedValue([]) });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockRejectedValue(new Error('DB Error'));
+      mockDb.UserOrg.findUserOrgRole.mockRejectedValueOnce(new Error('DB Error'));
 
       await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
@@ -1706,22 +1760,62 @@ describe('Middleware Tests', () => {
       next = jest.fn();
     });
 
-    it('isOrgMember should allow service account if authorized', async () => {
+    it('isOrgMember should admit a service account of the organization at the lower of the two roles', async () => {
       req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({
+        id: 5,
+        role: 'owner',
+        userId: 1,
+        organization_id: 1,
+      });
       mockDb.user.findByPk.mockResolvedValue({ id: 1 });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'member' });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'admin' });
       await isOrgMember(req, res, next);
       expect(next).toHaveBeenCalled();
-      expect(req.userOrgRole).toBe('member');
+      expect(req.userOrgRole).toBe('admin');
+      expect(mockDb.UserOrg.findUserOrgRole).toHaveBeenCalledWith(1, 1);
     });
 
-    it('isOrgMember should deny service account if not authorized', async () => {
+    it('isOrgMember should deny a service account of another organization', async () => {
       req.isServiceAccount = true;
-      mockDb.service_account.findOne.mockResolvedValue(null);
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({
+        id: 5,
+        role: 'owner',
+        userId: 1,
+        organization_id: 2,
+      });
+      mockDb.user.findByPk.mockResolvedValue({ id: 1 });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'owner' });
+      await isOrgMember(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(mockDb.UserOrg.findUserOrgRole).not.toHaveBeenCalled();
+    });
+
+    it('isOrgMember should deny a service account whose creator left the organization', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({
+        id: 5,
+        role: 'member',
+        userId: 1,
+        organization_id: 1,
+      });
       mockDb.user.findByPk.mockResolvedValue({ id: 1 });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
       mockDb.UserOrg.findUserOrgRole.mockResolvedValue(null);
+      await isOrgMember(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('isOrgMember should deny a service account session without an account id', async () => {
+      req.isServiceAccount = true;
+      mockDb.service_account.findByPk.mockResolvedValue(null);
+      mockDb.user.findByPk.mockResolvedValue({ id: 1 });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
       await isOrgMember(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
     });
@@ -1785,9 +1879,61 @@ describe('Middleware Tests', () => {
         getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
       });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(false);
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'member' });
       await isOrgAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('isOrgAdmin should allow an org admin and record the role', async () => {
+      req.params.organization = 'org';
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'admin' });
+      await isOrgAdmin(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(req.userOrgRole).toBe('admin');
+    });
+
+    it('isOrgAdminOrOwner should not bypass for a service account whose owner is a global admin', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({
+        id: 5,
+        role: 'member',
+        userId: 1,
+        organization_id: 1,
+      });
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'owner' });
+      await isOrgAdminOrOwner(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('isOrgAdminOrOwner should treat a live superadmin service account as a global admin', async () => {
+      req.isServiceAccount = true;
+      req.serviceAccountId = 5;
+      mockDb.service_account.findByPk.mockResolvedValue({
+        id: 5,
+        role: 'superadmin',
+        userId: 1,
+        organization_id: 2,
+      });
+      mockDb.user.findByPk.mockResolvedValue({
+        id: 1,
+        getRoles: jest.fn().mockResolvedValue([{ name: 'admin' }]),
+      });
+      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
+      await isOrgAdminOrOwner(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(req.userOrgRole).toBe('owner');
     });
 
     it('isOrgOwner should allow global admin', async () => {
@@ -1808,10 +1954,11 @@ describe('Middleware Tests', () => {
         getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
       });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(true);
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'owner' });
 
       await isOrgOwner(req, res, next);
       expect(next).toHaveBeenCalled();
+      expect(req.userOrgRole).toBe('owner');
     });
 
     it('isOrgOwner should deny non-owner', async () => {
@@ -1820,7 +1967,7 @@ describe('Middleware Tests', () => {
         getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
       });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(false);
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'admin' });
 
       await isOrgOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
@@ -1845,7 +1992,7 @@ describe('Middleware Tests', () => {
         getRoles: jest.fn().mockResolvedValue([{ name: 'user' }]),
       });
       mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.UserOrg.hasRole.mockResolvedValue(false);
+      mockDb.UserOrg.findUserOrgRole.mockResolvedValue({ role: 'member' });
       await isOrgAdminOrOwner(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
     });

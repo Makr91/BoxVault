@@ -56,7 +56,7 @@ import { canSeeIso, resolveIsoViewer } from '../visibility.js';
  */
 const getDownloadLink = async (req, res) => {
   const { organization, name, versionNumber, architecture } = req.params;
-  const { userId, isServiceAccount } = req;
+  const { userId, isServiceAccount, serviceAccountId } = req;
 
   try {
     const appConfig = loadConfig('app');
@@ -73,6 +73,7 @@ const getDownloadLink = async (req, res) => {
       {
         userId,
         isServiceAccount,
+        serviceAccountId,
         organization,
         iso: name,
         versionNumber,

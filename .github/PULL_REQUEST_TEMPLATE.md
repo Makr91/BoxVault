@@ -20,20 +20,20 @@ Please describe the tests you ran to verify your changes:
 
 - [ ] Manual testing performed
 - [ ] Automated tests added/updated
-- [ ] Tested against BoxVault
-- [ ] Tested against the Provisioner Catalog
+- [ ] Tested on Debian/Ubuntu environment
+- [ ] API documentation tested (if applicable)
 
 **Test Configuration:**
 
-- Browser + Version:
+- OS Version:
 - Node.js Version:
-- Serving app (BoxVault / Catalog):
+- Installation Method: (package/source)
 
 ## Changes Made
 
 - [ ] Code follows the existing style patterns
 - [ ] Self-review of code completed
-- [ ] Every new string added to every language under `public/locales`
+- [ ] Comments added for complex logic
 - [ ] Documentation updated (if needed)
 - [ ] No new warnings introduced
 
@@ -48,14 +48,14 @@ Please describe the tests you ran to verify your changes:
 
 **Areas Affected:**
 
-- [ ] Shared chrome (navbar, footer, notices, search)
-- [ ] Shared pages (listing, item, account, admin)
-- [ ] Session / authentication
-- [ ] BoxVault app
-- [ ] Catalog app
-- [ ] Localization
-- [ ] Build / CI
+- [ ] Machine management
+- [ ] API endpoints
+- [ ] Authentication/security
+- [ ] Configuration
 - [ ] Documentation
+- [ ] Database/storage
+- [ ] Networking
+- [ ] Monitoring/logging
 
 ## Additional Context
 

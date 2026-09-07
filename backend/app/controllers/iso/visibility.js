@@ -1,37 +1,39 @@
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
+import { resolveViewer } from '../../utils/orgMembership.js';
 import {
   extractBearerToken,
   findServiceAccountByRawToken,
 } from '../../utils/serviceAccountAuth.js';
 
-const { UserOrg, Sequelize } = db;
+const { Sequelize } = db;
 const { Op } = Sequelize;
 
 const PUBLIC_ISO = { isPublic: true, published: true };
 
 /**
  * Resolve who is reading ISOs, the same optional-auth rule the box read routes
- * apply: a raw service-account key sees its own organization; a user already
- * authenticated by an earlier middleware, or resolved from the request's
- * session JWT or identity-provider token, sees every organization they belong
- * to; anonymous callers resolve to null and see only public, published ISOs.
+ * apply: a service account, by raw key or session JWT, sees its own
+ * organization at its effective role; a user already authenticated by an
+ * earlier middleware, or resolved from the request's session JWT or
+ * identity-provider token, sees every organization they belong to; anonymous
+ * callers resolve to null and see only public, published ISOs.
  * @param {import('express').Request} req - The request carrying the credentials
- * @returns {Promise<{userId: number, orgIds: number[]}|null>} The viewer and the
- *   ids of every organization the viewer belongs to, or null
+ * @returns {Promise<{userId: number, isServiceAccount: boolean, orgIds: number[], managedOrgIds: number[]}|null>}
+ *   The viewer of resolveViewer, or null
  */
 const resolveIsoViewer = async req => {
   const rawToken = extractBearerToken(req) || req.headers['x-access-token'];
   const serviceAccount = await findServiceAccountByRawToken(rawToken);
   if (serviceAccount) {
-    return { userId: serviceAccount.userId, orgIds: [serviceAccount.organization_id] };
+    return resolveViewer({
+      userId: serviceAccount.userId,
+      isServiceAccount: true,
+      serviceAccountId: serviceAccount.id,
+    });
   }
   if (req.userId) {
-    const memberships = await UserOrg.getUserOrganizations(req.userId);
-    return {
-      userId: req.userId,
-      orgIds: memberships.map(membership => membership.organization_id),
-    };
+    return resolveViewer(req);
   }
   return resolveJwtUser(req);
 };

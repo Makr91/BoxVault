@@ -64,7 +64,7 @@ const getRulesDocument = () => {
     forms: {
       ...FORM_RULES,
       register: withProperty(FORM_RULES.register, 'password', { minLength }),
-      password: withProperty(FORM_RULES.password, 'new_password', { minLength }),
+      password: withProperty(FORM_RULES.password, 'password', { minLength }),
       serviceAccount: withProperty(FORM_RULES.serviceAccount, 'expiration_days', { maximum }),
     },
   };

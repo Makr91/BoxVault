@@ -203,16 +203,16 @@ describe('Local authentication policy', () => {
       const weak = await request(app)
         .put(`/api/users/${account.id}/change-password`)
         .set('x-access-token', signFor(account))
-        .send({ new_password: 'short' });
+        .send({ password: 'short' });
       expect(weak.statusCode).toBe(422);
       expect(weak.body.errors[0]).toEqual(
-        expect.objectContaining({ pointer: '/new_password', rule: 'minLength' })
+        expect.objectContaining({ pointer: '/password', rule: 'minLength' })
       );
 
       const missing = await request(app)
         .put('/api/users/999999/change-password')
         .set('x-access-token', signFor(admin))
-        .send({ new_password: 'Strong123!' });
+        .send({ password: 'Strong123!' });
       expect(missing.statusCode).toBe(404);
     });
   });
@@ -335,7 +335,7 @@ describe('Local authentication policy', () => {
         }),
       ]);
       const rules = await request(app).get('/api/rules');
-      expect(rules.body.forms.password.properties.new_password.minLength).toBe(15);
+      expect(rules.body.forms.password.properties.password.minLength).toBe(15);
       const strong = await signup({
         password: 'Strong passphrase 123!',
         name: '  Named Person  ',

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { serviceAccountMembership } from '../../utils/orgMembership.js';
 const {
   UserOrg,
   service_account: ServiceAccount,
@@ -29,7 +30,7 @@ const findPersonalOrgUuids = async orgUuids => {
  * /api/user/organizations:
  *   get:
  *     summary: Get user's organizations
- *     description: Retrieve all organizations the authenticated user belongs to, including their roles in each
+ *     description: Retrieve all organizations the authenticated user belongs to, including their roles in each. A service account answers its single organization at its effective role, the lower of its stored role and its creator's current role there (owner for a live superadmin account), and an empty list once its creator no longer belongs there.
  *     tags: [Users]
  *     security:
  *       - JwtAuth: []
@@ -100,6 +101,11 @@ const getUserOrganizations = async (req, res) => {
         return res.send([]);
       }
 
+      const membership = await serviceAccountMembership(serviceAccount);
+      if (!membership) {
+        return res.send([]);
+      }
+
       const org = serviceAccount.organization;
       const organizations = [
         {
@@ -113,7 +119,7 @@ const getUserOrganizations = async (req, res) => {
             url: org.url,
             accessMode: org.access_mode,
           },
-          role: 'member',
+          role: membership.role,
           isPrimary: true,
           joinedAt: serviceAccount.createdAt,
         },

@@ -13,6 +13,7 @@ import {
 } from './app/utils/config-loader.js';
 import { log, morganMiddleware } from './app/utils/Logger.js';
 import { startNotificationSweeps } from './app/utils/notificationSweeps.js';
+import { startHealthWatch } from './app/controllers/health/info.js';
 import { ensureVapidKeys } from './app/utils/webPush.js';
 import { randomBytes, constants } from 'crypto';
 import { createServer } from 'http';
@@ -452,16 +453,8 @@ const initializeApp = async () => {
     );
 
     if (runsAsMain) {
-      try {
-        await db.sequelize.sync({ alter: true });
-        log.app.info('Database synced');
-      } catch (error) {
-        log.app.warn('Database sync with alter failed, falling back to standard sync', {
-          error: error.message,
-        });
-        await db.sequelize.sync();
-        log.app.info('Database synced (fallback)');
-      }
+      await db.sequelize.sync();
+      log.app.info('Database synced');
     }
 
     // Sync session store
@@ -607,6 +600,8 @@ const initializeApp = async () => {
       await ensureVapidKeys();
       startNotificationSweeps();
       log.app.info('Notification sweeps scheduled');
+      startHealthWatch();
+      log.app.info('Health watch scheduled');
     }
 
     log.app.info('BoxVault application initialized successfully');

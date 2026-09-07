@@ -679,6 +679,13 @@ const options = {
               description: 'Service account description',
               example: 'CI/CD automation account',
             },
+            role: {
+              type: 'string',
+              enum: ['member', 'admin', 'owner', 'superadmin'],
+              description:
+                'Stored role. member, admin and owner act inside the organization only, at the lower of this role and the creator’s current role there; superadmin acts as a global admin on every organization while its creator keeps ROLE_ADMIN.',
+              example: 'member',
+            },
             expiresAt: {
               type: 'string',
               format: 'date-time',
@@ -733,6 +740,14 @@ const options = {
               type: 'integer',
               description: 'Organization ID to scope the service account to',
               example: 1,
+            },
+            role: {
+              type: 'string',
+              enum: ['member', 'admin', 'owner', 'superadmin'],
+              default: 'member',
+              description:
+                'Role of the account, at most the creator’s own role in the organization; superadmin only for a global admin. Absent means member.',
+              example: 'member',
             },
           },
         },
@@ -797,9 +812,9 @@ const options = {
         },
         MailTestRequest: {
           type: 'object',
-          required: ['testEmail'],
+          required: ['test_email'],
           properties: {
-            testEmail: {
+            test_email: {
               type: 'string',
               format: 'email',
               description: 'Email address to send test message to',

@@ -192,7 +192,7 @@ describe('Request API Integration Tests', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${requestId}/approve`)
         .set('x-access-token', orgAdminToken)
-        .send({ assignedRole: 'member' });
+        .send({ assigned_role: 'member' });
       expect(res.statusCode).toBe(200);
 
       // Cleanup membership
@@ -204,7 +204,7 @@ describe('Request API Integration Tests', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${requestId}/approve`)
         .set('x-access-token', orgAdminToken)
-        .send({ assignedRole: 'member' });
+        .send({ assigned_role: 'member' });
       expect(res.statusCode).toBe(500);
     });
   });
@@ -315,7 +315,7 @@ describe('Request API Integration Tests', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests/${req.id}/approve`)
         .set('x-access-token', orgAdminToken)
-        .send({ assignedRole: 'invalid_role' });
+        .send({ assigned_role: 'invalid_role' });
 
       expect(res.statusCode).toBe(400);
 

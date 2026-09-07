@@ -36,7 +36,7 @@ const STATUS = {
     'search',
     'events',
   ],
-  events: { path: '/api/events', topics: ['session', 'notifications'] },
+  events: { path: '/api/events', topics: ['session', 'notifications', 'health'] },
   links: { docs: '/docs', contact: '' },
   ticket: null,
 };
@@ -149,10 +149,10 @@ const enabledIdp = providers => {
  *                       example: /api/events
  *                     topics:
  *                       type: array
- *                       description: Every topic this host streams; session sends session-terminated, notifications sends unread-count
+ *                       description: Every topic this host streams; session sends session-terminated, notifications sends unread-count, health sends health with the /api/health shape when the status or a service state changes
  *                       items:
  *                         type: string
- *                       example: [session, notifications]
+ *                       example: [session, notifications, health]
  *                 links:
  *                   type: object
  *                   required: [docs, contact]

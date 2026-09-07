@@ -6,8 +6,9 @@ import configLoader from '../../utils/config-loader.js';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { ensureDirSync, safeExistsSync, safeUnlink } from '../../utils/fsHelper.js';
 import { log } from '../../utils/Logger.js';
+import { ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { organization: Organization, box: Box, UserOrg } = db;
+const { organization: Organization, box: Box } = db;
 
 // Accepted upload Content-Type → stored filename; anything else is a 415.
 const ARTWORK_FILENAMES_BY_TYPE = {
@@ -74,16 +75,20 @@ const readRawBody = (req, maxBytes) =>
   });
 
 /**
- * Resolve the requesting user id the same way box findone does: an earlier
+ * Resolve the requesting caller the same way box findone does: an earlier
  * middleware may have set req.userId (external bearer token), else decode the
  * x-access-token JWT; invalid or absent tokens stay anonymous so public-box
  * access keeps working.
  * @param {Object} req - Express request
- * @returns {number|null}
+ * @returns {{userId: number, isServiceAccount: boolean, serviceAccountId: number|undefined}|null}
  */
-const resolveRequestUserId = req => {
+const resolveRequestCaller = req => {
   if (req.userId) {
-    return req.userId;
+    return {
+      userId: req.userId,
+      isServiceAccount: Boolean(req.isServiceAccount),
+      serviceAccountId: req.serviceAccountId,
+    };
   }
   const token = req.headers['x-access-token'];
   if (!token) {
@@ -92,7 +97,11 @@ const resolveRequestUserId = req => {
   try {
     const authConfig = configLoader.loadConfig('auth');
     const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
-    return decoded.id;
+    return {
+      userId: decoded.id,
+      isServiceAccount: Boolean(decoded.isServiceAccount),
+      serviceAccountId: decoded.serviceAccountId,
+    };
   } catch {
     return null;
   }
@@ -234,7 +243,7 @@ export const uploadArtwork = async (req, res) => {
  * /api/organization/{organization}/box/{name}/artwork:
  *   get:
  *     summary: Get box artwork
- *     description: Stream the stored box artwork image. Public for public boxes; private boxes require organization membership or box ownership (same access rules as box findone).
+ *     description: Stream the stored box artwork image. Public for public boxes; private boxes require organization membership or box ownership (same access rules as box findone, a service account being a member of its own organization only).
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -311,12 +320,12 @@ export const getArtwork = async (req, res) => {
 
     // Private boxes: same access rules as box findone (org member or box owner)
     if (!box.isPublic) {
-      const userId = resolveRequestUserId(req);
-      if (!userId) {
+      const caller = resolveRequestCaller(req);
+      if (!caller) {
         return res.status(403).send({ message: req.__('boxes.unauthorized') });
       }
-      const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
-      const hasAccess = !!membership || box.userId === userId;
+      const membership = await resolveOrgMembership(caller, organizationData.id);
+      const hasAccess = !!membership || ownsBox(caller, box, membership);
       if (!hasAccess) {
         return res.status(403).send({ message: req.__('boxes.unauthorized') });
       }

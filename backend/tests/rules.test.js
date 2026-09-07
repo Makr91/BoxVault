@@ -38,7 +38,15 @@ describe('GET /api/rules', () => {
   });
 
   it('should carry every pattern in $defs and reference it from the forms', () => {
-    expect(document.$defs.slug.pattern).toBe('^(?!.*\\.\\.)[A-Za-z0-9.-]+$');
+    expect(document.$defs.slug.allOf).toEqual([
+      { pattern: '^[A-Za-z0-9.-]+$' },
+      { not: { pattern: '\\.\\.' } },
+    ]);
+    expect(document.$defs.identifier.allOf).toEqual([
+      { pattern: '^[0-9a-zA-Z][0-9a-zA-Z._-]*$' },
+      { not: { pattern: '\\.\\.' } },
+    ]);
+    expect(Object.hasOwn(document.$defs.slug, 'pattern')).toBe(false);
     expect(document.$defs.orgCode.pattern).toBe('^[0-9A-F]{6}$');
     Object.values(document.forms).forEach(form => {
       Object.values(form.properties).forEach(property => {
@@ -54,8 +62,14 @@ describe('GET /api/rules', () => {
   it('should read the password minimum from the auth configuration', () => {
     expect(document.forms.register.properties.password.minLength).toBe(6);
     expect(document.forms.register.properties.password.maxLength).toBe(128);
-    expect(document.forms.password.properties.new_password.minLength).toBe(6);
+    expect(document.forms.password.properties.password.minLength).toBe(6);
     expect(document.forms.serviceAccount.properties.expiration_days.maximum).toBe(365);
+    expect(document.forms.serviceAccount.properties.role.enum).toEqual([
+      'member',
+      'admin',
+      'owner',
+      'superadmin',
+    ]);
   });
 
   it('should name the scope of every unique member', () => {

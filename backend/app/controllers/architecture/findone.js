@@ -1,5 +1,6 @@
 // findone.js
 import { log } from '../../utils/Logger.js';
+import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
 const {
   architectures: Architecture,
@@ -7,7 +8,6 @@ const {
   box: _box,
   versions,
   providers,
-  UserOrg,
 } = db;
 
 /**
@@ -15,7 +15,7 @@ const {
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
  *   get:
  *     summary: Get a specific architecture
- *     description: Retrieve details of a specific architecture. Requires authentication and appropriate access permissions.
+ *     description: Retrieve details of a specific architecture. A private box needs membership of its organization; a service account is a member of its own organization only, at its effective role.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -168,7 +168,7 @@ export const findOne = async (req, res) => {
     if (!req.userId) {
       return res.status(403).send({ message: req.__('architectures.unauthorized') });
     }
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
+    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('architectures.unauthorized') });
     }

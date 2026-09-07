@@ -6,14 +6,16 @@ import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 
 import db from '../../models/index.js';
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 
-const { versions: Version, UserOrg } = db;
+const { versions: Version } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}:
  *   delete:
  *     summary: Delete a specific version of a box
+ *     description: The box owner, or an admin or owner of the organization, may delete a version; a service account acts inside its own organization at its effective role.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -86,9 +88,8 @@ const _delete = async (req, res) => {
     }
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
       return res.status(403).send({

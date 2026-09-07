@@ -8,7 +8,7 @@ import { getIsoStorageRoot } from '../iso/helpers.js';
  * /api/system/storage:
  *   get:
  *     summary: Get storage usage information
- *     description: Retrieve disk space usage for Box and ISO storage locations. Requires Node.js v18.15.0 or later.
+ *     description: Retrieve disk space usage for Box and ISO storage locations. Requires Node.js v18.15.0 or later. Global admins only; a service account is refused unless it is a live superadmin account.
  *     tags: [System]
  *     security:
  *       - JwtAuth: []
@@ -24,6 +24,12 @@ import { getIsoStorageRoot } from '../iso/helpers.js';
  *                   $ref: '#/components/schemas/StorageInfo'
  *                 isos:
  *                   $ref: '#/components/schemas/StorageInfo'
+ *       403:
+ *         description: The caller is not a global admin, or is a service account other than a live superadmin one
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error.
  *       501:

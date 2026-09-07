@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import app from '../server.js';
 import db from '../app/models/index.js';
 import jwt from 'jsonwebtoken';
-import { notifySessionTerminated, notifyUnreadCount } from '../app/utils/events.js';
+import { notifyHealth, notifySessionTerminated, notifyUnreadCount } from '../app/utils/events.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const STREAM_TYPE = 'text/event-stream';
@@ -132,7 +132,7 @@ describe('Events API', () => {
       expect(res.body.features).toContain('events');
       expect(res.body.events).toEqual({
         path: '/api/events',
-        topics: ['session', 'notifications'],
+        topics: ['session', 'notifications', 'health'],
       });
       expect(res.body.config).toEqual(['app', 'auth', 'db', 'mail']);
     });
@@ -182,8 +182,32 @@ describe('Events API', () => {
       partial.close();
 
       const empty = await openStream({ headers: { 'x-access-token': userToken } });
-      expect(empty.frames()[0].data.topics).toEqual(['session', 'notifications']);
+      expect(empty.frames()[0].data.topics).toEqual(['session', 'notifications', 'health']);
       empty.close();
+    });
+
+    it('should deliver a health event to every subscriber of the topic', async () => {
+      const mine = await openStream({
+        headers: { 'x-access-token': userToken },
+        query: '?topics=health',
+      });
+      const theirs = await openStream({ headers: { 'x-access-token': otherToken } });
+      const health = {
+        status: 'warning',
+        timestamp: '2026-09-07T00:00:00.000Z',
+        services: { database: 'ok', storage_boxes: 'Warning', storage_isos: 'Good' },
+      };
+
+      notifyHealth(health);
+      const frames = await mine.readUntil(2);
+      expect(frames[1].event).toBe('health');
+      expect(frames[1].data).toEqual(health);
+      const otherFrames = await theirs.readUntil(2);
+      expect(otherFrames[1].event).toBe('health');
+      expect(otherFrames[1].data).toEqual(health);
+
+      mine.close();
+      theirs.close();
     });
 
     it('should deliver a broadcast to the user it names and to nobody else', async () => {

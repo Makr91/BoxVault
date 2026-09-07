@@ -29,9 +29,9 @@ const { user: User } = db;
  *           schema:
  *             type: object
  *             required:
- *               - new_password
+ *               - password
  *             properties:
- *               new_password:
+ *               password:
  *                 type: string
  *                 format: password
  *                 description: New password, at least the host's configured minimum (15 by default) and at most 128 characters
@@ -67,10 +67,10 @@ const { user: User } = db;
  */
 export const changePassword = async (req, res) => {
   const { userId } = req.params;
-  const { new_password: newPassword } = req.body;
+  const { password } = req.body;
 
   try {
-    const passwordErrors = getPasswordPolicyErrors(newPassword, '/new_password');
+    const passwordErrors = getPasswordPolicyErrors(password, '/password');
     if (passwordErrors.length > 0) {
       return refuse(res, req, passwordErrors);
     }
@@ -80,7 +80,7 @@ export const changePassword = async (req, res) => {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    user.password = hashSync(newPassword, getBcryptRounds());
+    user.password = hashSync(password, getBcryptRounds());
     await user.save();
 
     return res.status(200).send({ message: req.__('users.passwordChanged') });

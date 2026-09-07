@@ -1,14 +1,15 @@
 // findone.js
 import { log } from '../../utils/Logger.js';
+import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { providers: Provider, organization: _organization, box: _box, versions, UserOrg } = db;
+const { providers: Provider, organization: _organization, box: _box, versions } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   get:
  *     summary: Get a specific provider by name
- *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication.
+ *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication; a service account is a member of its own organization only.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -150,7 +151,7 @@ export const findOne = async (req, res) => {
       return res.status(403).send({ message: req.__('providers.unauthorized') });
     }
 
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('providers.unauthorized') });
     }

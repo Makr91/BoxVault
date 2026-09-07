@@ -5,7 +5,11 @@ import { problem, refuse, conflict } from '../app/utils/problem.js';
 
 const DOCUMENT = {
   $defs: {
-    slug: { type: 'string', pattern: '^(?!.*\\.\\.)[A-Za-z0-9.-]+$', minLength: 1 },
+    slug: {
+      type: 'string',
+      allOf: [{ pattern: '^[A-Za-z0-9.-]+$' }, { not: { pattern: '\\.\\.' } }],
+      minLength: 1,
+    },
   },
 };
 
@@ -41,13 +45,26 @@ describe('validateValue', () => {
     expect(validateValue({ type: 'integer' }, '42')).toEqual([]);
   });
 
-  it('should name a pattern by its $defs entry', () => {
+  it('should name a pattern by its $defs entry from any branch of its allOf', () => {
     expect(validateValue({ $ref: '#/$defs/slug' }, 'bad..name', DOCUMENT)).toEqual([
       { pointer: '', rule: 'pattern', params: { pattern: 'slug' } },
     ]);
+    expect(validateValue({ $ref: '#/$defs/slug' }, 'bad_name', DOCUMENT)).toEqual([
+      { pointer: '', rule: 'pattern', params: { pattern: 'slug' } },
+    ]);
+    expect(validateValue({ $ref: '#/$defs/slug' }, 'good.name', DOCUMENT)).toEqual([]);
     expect(validateValue({ $ref: '#/$defs/slug', maxLength: 3 }, 'good', DOCUMENT)).toEqual([
       { pointer: '', rule: 'maxLength', params: { maxLength: 3 } },
     ]);
+  });
+
+  it('should evaluate allOf and not outside a named pattern', () => {
+    const rule = { type: 'string', allOf: [{ minLength: 2 }, { not: { enum: ['no'] } }] };
+    expect(validateValue(rule, 'x')).toEqual([
+      { pointer: '', rule: 'minLength', params: { minLength: 2 } },
+    ]);
+    expect(validateValue(rule, 'no')).toEqual([{ pointer: '', rule: 'not', params: {} }]);
+    expect(validateValue(rule, 'yes')).toEqual([]);
   });
 
   it('should evaluate lengths, bounds, enums, formats and item counts', () => {

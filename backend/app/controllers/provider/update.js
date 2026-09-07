@@ -4,14 +4,15 @@ import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
-const { providers: Provider, UserOrg } = db;
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+const { providers: Provider } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   put:
  *     summary: Update a provider by name
- *     description: Update a provider's properties including name and description. Also handles file system directory renaming when provider name changes.
+ *     description: Update a provider's properties including name and description. Also handles file system directory renaming when provider name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -110,9 +111,8 @@ export const update = async (req, res) => {
     const { organizationData, boxData: box, versionData: version } = req;
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canUpdate = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canUpdate = canWriteBox(req, box, membership);
 
     if (!canUpdate) {
       return res.status(403).send({

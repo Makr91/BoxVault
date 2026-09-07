@@ -28,7 +28,7 @@ const requireCredential = (req, res, next) => {
  * /api/events:
  *   get:
  *     summary: The universal event stream
- *     description: One server-sent event stream per tab, the topics multiplexed on it. The first frame is retry 3000 and event ready with the current id and the subscribed topics; every event carries an id, a kebab-case event name and one JSON object; a comment heartbeat is sent every 25 seconds while idle. A Last-Event-ID inside the ring of the last 500 events or 5 minutes replays everything after it, one outside the ring answers event reset. Topic session sends session-terminated, topic notifications sends unread-count.
+ *     description: One server-sent event stream per tab, the topics multiplexed on it. The first frame is retry 3000 and event ready with the current id and the subscribed topics; every event carries an id, a kebab-case event name and one JSON object; a comment heartbeat is sent every 25 seconds while idle. A Last-Event-ID inside the ring of the last 500 events or 5 minutes replays everything after it, one outside the ring answers event reset. Topic session sends session-terminated, topic notifications sends unread-count, topic health sends health with the /api/health shape whenever the status or a service state changes.
  *     tags: [Events]
  *     security:
  *       - bearerAuth: []
@@ -38,7 +38,7 @@ const requireCredential = (req, res, next) => {
  *         schema:
  *           type: string
  *         description: Comma-separated topics to subscribe; unknown topics are ignored and an empty list subscribes every core topic
- *         example: session,notifications
+ *         example: session,notifications,health
  *       - in: header
  *         name: Last-Event-ID
  *         schema:

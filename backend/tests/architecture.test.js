@@ -1192,11 +1192,15 @@ describe('Architecture API', () => {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
 
-      serviceAccountToken = jwt.sign({ id: user.id, isServiceAccount: true }, 'test-secret', {
-        expiresIn: '1h',
-        issuer: 'boxvault',
-        audience: 'boxvault-api',
-      });
+      serviceAccountToken = jwt.sign(
+        { id: user.id, isServiceAccount: true, serviceAccountId: serviceAccount.id },
+        'test-secret',
+        {
+          expiresIn: '1h',
+          issuer: 'boxvault',
+          audience: 'boxvault-api',
+        }
+      );
     });
 
     afterAll(async () => {

@@ -1,5 +1,6 @@
 // findall.js
 import { log } from '../../../utils/Logger.js';
+import { resolveOrgMembership } from '../../../utils/orgMembership.js';
 import db from '../../../models/index.js';
 const {
   architectures: Architecture,
@@ -7,7 +8,6 @@ const {
   box: _box,
   versions,
   providers,
-  UserOrg,
 } = db;
 
 /**
@@ -15,7 +15,7 @@ const {
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
  *   get:
  *     summary: Get all architectures for a provider
- *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication.
+ *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication; a service account is a member of its own organization only.
  *     tags: [Architectures]
  *     parameters:
  *       - in: path
@@ -151,7 +151,7 @@ export const findAllByProvider = async (req, res) => {
       return res.status(403).send({ message: req.__('boxes.privateBoxAccessDenied') });
     }
 
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('architectures.unauthorized') });
     }

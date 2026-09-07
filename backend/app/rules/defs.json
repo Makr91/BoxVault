@@ -1,13 +1,13 @@
 {
   "slug": {
     "type": "string",
-    "pattern": "^(?!.*\\.\\.)[A-Za-z0-9.-]+$",
+    "allOf": [{ "pattern": "^[A-Za-z0-9.-]+$" }, { "not": { "pattern": "\\.\\." } }],
     "minLength": 1,
     "maxLength": 255
   },
   "identifier": {
     "type": "string",
-    "pattern": "^(?!.*\\.\\.)[0-9a-zA-Z][0-9a-zA-Z._-]*$",
+    "allOf": [{ "pattern": "^[0-9a-zA-Z][0-9a-zA-Z._-]*$" }, { "not": { "pattern": "\\.\\." } }],
     "maxLength": 255
   },
   "email": { "type": "string", "format": "email", "maxLength": 255 },

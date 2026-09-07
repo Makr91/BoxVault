@@ -73,6 +73,7 @@ const downloadAuth = async (req, res, next) => {
       req.downloadTokenDecoded = decoded;
       req.userId = decoded.userId;
       req.isServiceAccount = decoded.isServiceAccount;
+      req.serviceAccountId = decoded.serviceAccountId;
       return next();
     } catch {
       // Already logged by verifyDownloadToken

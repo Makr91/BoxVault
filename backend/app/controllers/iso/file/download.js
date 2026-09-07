@@ -2,15 +2,16 @@ import fs from 'fs';
 import { join } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { resolveOrgMembership } from '../../../utils/orgMembership.js';
 import { getIsoStorageRoot } from '../helpers.js';
-const { isoFiles: IsoFile, UserOrg } = db;
+const { isoFiles: IsoFile } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/download:
  *   get:
  *     summary: Download an ISO file
- *     description: Stream the ISO file of one architecture of a version, with range support. Public, published ISOs can be downloaded by anyone; any other ISO requires a download token scoped to this file or organization membership.
+ *     description: Stream the ISO file of one architecture of a version, with range support. Public, published ISOs can be downloaded by anyone; any other ISO requires a download token scoped to this file or organization membership, a service account being a member of its own organization only.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -89,7 +90,7 @@ const download = async (req, res) => {
         return res.status(403).send({ message: req.__('files.download.unauthorized') });
       }
 
-      const membership = await UserOrg.findUserOrgRole(userId, iso.organizationId);
+      const membership = await resolveOrgMembership(req, iso.organizationId);
       if (!membership) {
         return res.status(403).send({ message: req.__('files.download.unauthorized') });
       }

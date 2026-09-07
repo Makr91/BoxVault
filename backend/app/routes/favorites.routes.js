@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh } from '../middleware/index.js';
-import { getFavorites } from '../controllers/favorites/get.js';
-import { saveFavorites } from '../controllers/favorites/save.js';
 import { getUserInfoClaims } from '../controllers/favorites/claims.js';
 import { getUserFavorites, saveUserFavorites } from '../controllers/favorites/user.js';
 
@@ -14,16 +12,6 @@ router.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
   next();
 });
-
-// Get raw favorites JSON
-router.get('/favorites', [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser], getFavorites);
-
-// Save favorites JSON
-router.post(
-  '/favorites/save',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
-  saveFavorites
-);
 
 router.get(
   '/user/favorites',

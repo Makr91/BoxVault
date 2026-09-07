@@ -2,6 +2,7 @@ import { log } from '../utils/Logger.js';
 import db from '../models/index.js';
 import { authorizationCredential, resolveRequestAuth } from '../utils/requestAuth.js';
 import { problem } from '../utils/problem.js';
+import { serviceAccountIsSuperadmin } from '../utils/orgMembership.js';
 const { user: User, role: Role, organization } = db;
 
 const isTokenRevoked = (auth, sessionsInvalidAfter) =>
@@ -177,6 +178,10 @@ const isUser = async (req, res, next) => {
 
 const isSelfOrAdmin = async (req, res, next) => {
   try {
+    if (req.isServiceAccount && !(await serviceAccountIsSuperadmin(req.serviceAccountId))) {
+      return forbidden(req, res, 'auth.serviceAccountsDenied');
+    }
+
     const user = await loadActiveUser(req, res);
     if (!user) {
       return undefined;
@@ -241,6 +246,10 @@ const isUserOrServiceAccount = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
+    if (req.isServiceAccount && !(await serviceAccountIsSuperadmin(req.serviceAccountId))) {
+      return forbidden(req, res, 'auth.serviceAccountsDenied');
+    }
+
     const user = await loadActiveUser(req, res);
     if (!user) {
       return undefined;

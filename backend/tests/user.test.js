@@ -577,8 +577,7 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/change-password`)
         .set('x-access-token', userToken)
         .send({
-          currentPassword: 'aSecurePassword123',
-          new_password: 'aNewSecurePassword456',
+          password: 'aNewSecurePassword456',
         });
 
       expect(res.statusCode).toBe(200);
@@ -925,7 +924,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/${testUser.id}/change-password`)
         .set('x-access-token', userToken)
-        .send({ currentPassword: 'old', new_password: 'aPolicyCompliantPassword' });
+        .send({ password: 'aPolicyCompliantPassword' });
       expect(res.statusCode).toBe(500);
     });
 
@@ -933,7 +932,7 @@ describe('User API', () => {
       const res = await request(app)
         .put(`/api/users/999999/change-password`)
         .set('x-access-token', userToken)
-        .send({ new_password: 'new' });
+        .send({ password: 'new' });
       expect(res.statusCode).toBe(403);
     });
 

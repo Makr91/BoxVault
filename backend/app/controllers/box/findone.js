@@ -3,6 +3,7 @@ import configLoader from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import jwt from 'jsonwebtoken';
 import db from '../../models/index.js';
+import { ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { sumBoxDownloads } from './helpers.js';
 const {
   organization: Organization,
@@ -12,7 +13,6 @@ const {
   versions: Version,
   providers: Provider,
   files: File,
-  UserOrg,
 } = db;
 
 const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => {
@@ -106,7 +106,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  * /api/organization/{organization}/box/{name}:
  *   get:
  *     summary: Get a specific box
- *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests.
+ *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs membership of its organization or ownership of the box; a service account is a member of its own organization only, at its effective role.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -173,7 +173,7 @@ export const findOne = async (req, res) => {
   }
 
   let { userId } = req; // Set by vagrantHandler for Vagrant requests
-  let { isServiceAccount } = req; // Set by vagrantHandler for Vagrant requests
+  let { isServiceAccount, serviceAccountId } = req; // Set by vagrantHandler for Vagrant requests
 
   // If not set by vagrantHandler, try x-access-token
   if (!userId) {
@@ -183,10 +183,12 @@ export const findOne = async (req, res) => {
         const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
         userId = decoded.id;
         isServiceAccount = decoded.isServiceAccount || false;
+        ({ serviceAccountId } = decoded);
       } catch {
         // Don't warn about invalid tokens - user might be trying to access a public box
         userId = null;
         isServiceAccount = false;
+        serviceAccountId = undefined;
       }
     }
   }
@@ -294,13 +296,11 @@ export const findOne = async (req, res) => {
       return res.status(403).json({ message: req.__('boxes.unauthorized') });
     }
 
-    // Check if user is member of the organization
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const caller = { userId, isServiceAccount, serviceAccountId };
+    const membership = await resolveOrgMembership(caller, organizationData.id);
     const isMember = !!membership;
 
-    // Allow access if the user owns the box or is a member of the organization.
-    // Service accounts impersonate their owning user, so req.userId covers them.
-    const hasAccess = isMember || box.userId === userId;
+    const hasAccess = isMember || ownsBox(caller, box, membership);
 
     if (hasAccess) {
       return res.json(response);

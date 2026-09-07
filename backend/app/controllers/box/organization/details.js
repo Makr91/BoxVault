@@ -6,6 +6,7 @@ import {
   extractBearerToken,
   findServiceAccountByRawToken,
 } from '../../../utils/serviceAccountAuth.js';
+import { resolveOrgMembership } from '../../../utils/orgMembership.js';
 import { sumBoxDownloads } from '../helpers.js';
 import db from '../../../models/index.js';
 const {
@@ -16,7 +17,6 @@ const {
   versions: Version,
   providers: Provider,
   files: File,
-  UserOrg,
 } = db;
 const { verify } = jwt;
 
@@ -25,7 +25,7 @@ const { verify } = jwt;
  * /api/organization/{organization}/box:
  *   get:
  *     summary: Get organization box details
- *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility.
+ *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a service account being a member of its own organization only.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -66,6 +66,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
   const token = req.headers['x-access-token'];
   let userId = null;
   let userOrganizationId = null;
+  let isServiceAccount = false;
 
   let authConfig;
   try {
@@ -76,32 +77,32 @@ export const getOrganizationBoxDetails = async (req, res) => {
   }
 
   try {
-    if (req.userId && !req.isServiceAccount) {
+    if (req.userId) {
       ({ userId } = req);
+      isServiceAccount = Boolean(req.isServiceAccount);
       const orgData = await Organization.findOne({
         where: { name: organization },
       });
 
       if (orgData) {
-        const membership = await UserOrg.findUserOrgRole(userId, orgData.id);
+        const membership = await resolveOrgMembership(req, orgData.id);
         userOrganizationId = membership ? orgData.id : null;
       }
     } else if (token) {
       try {
         const decoded = verify(token, authConfig.auth.jwt.jwt_secret);
         userId = decoded.id;
-        const isServiceAccount = decoded.isServiceAccount || false;
+        isServiceAccount = Boolean(decoded.isServiceAccount);
+        const orgData = await Organization.findOne({
+          where: { name: organization },
+        });
 
-        // Check if user is member of the organization
-        if (!isServiceAccount) {
-          const orgData = await Organization.findOne({
-            where: { name: organization },
-          });
-
-          if (orgData) {
-            const membership = await UserOrg.findUserOrgRole(userId, orgData.id);
-            userOrganizationId = membership ? orgData.id : null;
-          }
+        if (orgData) {
+          const membership = await resolveOrgMembership(
+            { userId, isServiceAccount, serviceAccountId: decoded.serviceAccountId },
+            orgData.id
+          );
+          userOrganizationId = membership ? orgData.id : null;
         }
       } catch {
         // Not a valid JWT — may be a raw service-account key, checked below
@@ -116,13 +117,18 @@ export const getOrganizationBoxDetails = async (req, res) => {
 
       if (rawServiceAccount) {
         ({ userId } = rawServiceAccount);
+        isServiceAccount = true;
 
         const orgData = await Organization.findOne({
           where: { name: organization },
         });
 
-        if (orgData && rawServiceAccount.organization_id === orgData.id) {
-          userOrganizationId = orgData.id;
+        if (orgData) {
+          const membership = await resolveOrgMembership(
+            { userId, isServiceAccount, serviceAccountId: rawServiceAccount.id },
+            orgData.id
+          );
+          userOrganizationId = membership ? orgData.id : null;
         }
       } else if (token || extractBearerToken(req)) {
         log.app.warn('Unauthorized User.');
@@ -172,29 +178,21 @@ export const getOrganizationBoxDetails = async (req, res) => {
       ],
     });
 
-    // Filter boxes based on access rules
-    boxes = boxes.filter(box => {
-      // Allow access if:
-      // 1. Box is public
-      // 2. User belongs to organization
-      // 3. User owns the box (service accounts impersonate their owning user)
-      const hasAccess =
-        box.isPublic ||
-        (userId && userOrganizationId === organizationData.id) ||
-        box.userId === userId;
+    const isMember = Boolean(userId) && userOrganizationId === organizationData.id;
+    const ownsBoxes = Boolean(userId) && (!isServiceAccount || isMember);
 
-      // Filter pending boxes - only show to owner
+    boxes = boxes.filter(box => {
+      const hasAccess = box.isPublic || isMember || (ownsBoxes && box.userId === userId);
+
       if (!hasAccess) {
         return false;
       }
 
-      // Show published boxes to everyone with access
       if (box.published) {
         return true;
       }
 
-      // Show pending boxes only to the owner
-      return box.userId === userId;
+      return ownsBoxes && box.userId === userId;
     });
 
     // Map boxes to response format

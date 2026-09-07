@@ -10,6 +10,7 @@ import nodemailer from 'nodemailer';
 import { getSupportedLocales, getDefaultLocale } from '../../config/i18n.js';
 import { getIsoStorageRoot } from '../iso/helpers.js';
 import { log } from '../../utils/Logger.js';
+import { notifyHealth } from '../../utils/events.js';
 import { sendHubNotification } from '../../utils/notifyHub.js';
 import { resolveGlobalAdminRecipients } from '../../utils/notifyRecipients.js';
 
@@ -17,6 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let lastAlertTime = 0;
+let lastHealth = null;
 
 const OIDC_PROBE_TTL_MS = 60 * 1000;
 let oidcProbe = { expiresAt: 0, result: Promise.resolve({}) };
@@ -342,61 +344,70 @@ const calculateOverallStatus = services => {
   return 'ok';
 };
 
+/**
+ * The /api/health body: the overall status, the coarse state of every
+ * service, and the host facts the UI reads on boot.
+ * @returns {Promise<Object>} The health report
+ */
+const getHealthReport = async () => {
+  const appConfig = loadConfig('app');
+
+  const environment = isProduction ? 'production' : 'development';
+
+  const version = getVersionInfo();
+  const loggingConfig = getLoggingConfig(appConfig);
+
+  const services = {
+    database: await getDbStatus(),
+  };
+
+  // Check Storage
+  const boxStorageDir = appConfig.boxvault?.box_storage_directory;
+  const isoStorageDir = getIsoStorageRoot();
+  const boxDisk = await checkDiskUsage(boxStorageDir);
+  const isoDisk = await checkDiskUsage(isoStorageDir);
+  services.storage_boxes = mapStatus(boxDisk.status);
+  services.storage_isos = mapStatus(isoDisk.status);
+
+  // Alerting Logic
+  await handleDiskAlerting(boxDisk, isoDisk, appConfig);
+
+  // Check OIDC Providers (#54): the public payload carries ONE coarse,
+  // threshold-derived status word for the whole OIDC set — never counts,
+  // per-provider detail, or issuer identities.
+  const oidcServices = await checkOidcProviders();
+  const oidcStatuses = Object.values(oidcServices);
+  if (oidcStatuses.length > 0) {
+    let oidcStatus = 'Good';
+    if (oidcStatuses.some(s => String(s).startsWith('error'))) {
+      oidcStatus = 'Error';
+    } else if (oidcStatuses.some(s => String(s).startsWith('warning'))) {
+      oidcStatus = 'Warning';
+    }
+    services.oidc_providers = oidcStatus;
+  }
+
+  const overallStatus = calculateOverallStatus(services);
+
+  // Public payload stays coarse (#54): every services value is a bare status
+  // word (ok/Good/Warning/Error). Disk percentages and per-provider OIDC
+  // detail feed the overall status and internal alerting but are never
+  // exposed.
+  return {
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    version,
+    environment,
+    supported_languages: getSupportedLocales(),
+    default_language: getDefaultLocale(),
+    frontend_logging: loggingConfig,
+    services,
+  };
+};
+
 const getHealth = async (req, res) => {
   try {
-    const appConfig = loadConfig('app');
-
-    const environment = isProduction ? 'production' : 'development';
-
-    const version = getVersionInfo();
-    const loggingConfig = getLoggingConfig(appConfig);
-
-    const services = {
-      database: await getDbStatus(),
-    };
-
-    // Check Storage
-    const boxStorageDir = appConfig.boxvault?.box_storage_directory;
-    const isoStorageDir = getIsoStorageRoot();
-    const boxDisk = await checkDiskUsage(boxStorageDir);
-    const isoDisk = await checkDiskUsage(isoStorageDir);
-    services.storage_boxes = mapStatus(boxDisk.status);
-    services.storage_isos = mapStatus(isoDisk.status);
-
-    // Alerting Logic
-    await handleDiskAlerting(boxDisk, isoDisk, appConfig);
-
-    // Check OIDC Providers (#54): the public payload carries ONE coarse,
-    // threshold-derived status word for the whole OIDC set — never counts,
-    // per-provider detail, or issuer identities.
-    const oidcServices = await checkOidcProviders();
-    const oidcStatuses = Object.values(oidcServices);
-    if (oidcStatuses.length > 0) {
-      let oidcStatus = 'Good';
-      if (oidcStatuses.some(s => String(s).startsWith('error'))) {
-        oidcStatus = 'Error';
-      } else if (oidcStatuses.some(s => String(s).startsWith('warning'))) {
-        oidcStatus = 'Warning';
-      }
-      services.oidc_providers = oidcStatus;
-    }
-
-    const overallStatus = calculateOverallStatus(services);
-
-    // Public payload stays coarse (#54): every services value is a bare status
-    // word (ok/Good/Warning/Error). Disk percentages and per-provider OIDC
-    // detail feed the overall status and internal alerting but are never
-    // exposed.
-    return res.status(200).json({
-      status: overallStatus,
-      timestamp: new Date().toISOString(),
-      version,
-      environment,
-      supported_languages: getSupportedLocales(),
-      default_language: getDefaultLocale(),
-      frontend_logging: loggingConfig,
-      services,
-    });
+    return res.status(200).json(await getHealthReport());
   } catch (error) {
     log.error.error('Health check failed:', error);
     return res.status(500).json({
@@ -407,4 +418,39 @@ const getHealth = async (req, res) => {
   }
 };
 
-export { getHealth };
+const healthChanged = (previous, next) =>
+  previous === null ||
+  previous.status !== next.status ||
+  JSON.stringify(previous.services) !== JSON.stringify(next.services);
+
+/**
+ * Re-evaluate the health state and push it on the health topic when the
+ * status or any service state differs from the last broadcast.
+ * @returns {Promise<void>}
+ */
+const publishHealthChange = async () => {
+  try {
+    const { status, timestamp, services } = await getHealthReport();
+    const health = { status, timestamp, services };
+    if (healthChanged(lastHealth, health)) {
+      lastHealth = health;
+      notifyHealth(health);
+    }
+  } catch (error) {
+    log.error.error('Health watch failed:', error);
+  }
+};
+
+/**
+ * Evaluate the health state now and again on the OIDC probe cadence,
+ * broadcasting every change on the health topic.
+ * @returns {NodeJS.Timeout} The interval timer
+ */
+const startHealthWatch = () => {
+  publishHealthChange();
+  const timer = setInterval(publishHealthChange, OIDC_PROBE_TTL_MS);
+  timer.unref();
+  return timer;
+};
+
+export { getHealth, getHealthReport, publishHealthChange, startHealthWatch };

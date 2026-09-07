@@ -246,7 +246,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toContain('Test email sent successfully');
@@ -264,7 +264,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', userToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       expect(res.statusCode).toBe(403);
     });
@@ -275,7 +275,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toBe('mail.errorSendingEmail');
@@ -290,7 +290,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toBe('mail.errorSendingEmail');
@@ -305,7 +305,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       expect(res.statusCode).toBe(500);
       expect(res.body.message).toBe('mail.errorSendingEmail');
@@ -325,7 +325,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
 
@@ -348,7 +348,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ testEmail: 'test@example.com' });
+        .send({ test_email: 'test@example.com' });
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
 

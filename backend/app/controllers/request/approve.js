@@ -95,7 +95,7 @@ const approveViaIdpInvite = async (
  *           schema:
  *             type: object
  *             properties:
- *               assignedRole:
+ *               assigned_role:
  *                 type: string
  *                 enum: [member, admin]
  *                 description: Role to assign to the user (defaults to 'member')
@@ -148,7 +148,7 @@ const approveViaIdpInvite = async (
 export const approveJoinRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const assignedRoleInput = req.body?.assignedRole;
+    const assignedRoleInput = req.body?.assigned_role;
     const { userId: reviewerId, organizationId } = req;
 
     // Default to 'member' if not provided

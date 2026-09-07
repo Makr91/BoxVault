@@ -233,6 +233,16 @@ const mockIsoHelpers = {
   removeUnreferencedIsoFiles: jest.fn(),
 };
 
+const mockNotifyHealth = jest.fn();
+const mockEvents = {
+  TOPICS: ['session', 'notifications', 'health'],
+  openEventStream: jest.fn(),
+  broadcast: jest.fn(),
+  notifySessionTerminated: jest.fn(),
+  notifyUnreadCount: jest.fn(),
+  notifyHealth: mockNotifyHealth,
+};
+
 // Mock FS module
 jest.unstable_mockModule('fs', () => ({
   default: {
@@ -263,12 +273,14 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   default: mockConfigLoader,
 }));
 jest.unstable_mockModule('../app/controllers/iso/helpers.js', () => mockIsoHelpers);
+jest.unstable_mockModule('../app/utils/events.js', () => mockEvents);
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 
 // Import app after mocks
 const request = (await import('supertest')).default;
 const app = (await import('../server.js')).default;
 const db = (await import('../app/models/index.js')).default;
+const { publishHealthChange, startHealthWatch } = await import('../app/controllers/health/info.js');
 const http = (await import('http')).default;
 const https = (await import('https')).default;
 const { log } = await import('../app/utils/Logger.js');
@@ -1575,5 +1587,58 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
     expect(res.statusCode).toBe(200);
     expect(res.body.environment).toBe('production');
+  });
+
+  describe('the health topic', () => {
+    it('should broadcast the health shape only when the status or a service changes', async () => {
+      mockNotifyHealth.mockClear();
+
+      await publishHealthChange();
+      expect(mockNotifyHealth).toHaveBeenCalledTimes(1);
+      expect(mockNotifyHealth).toHaveBeenCalledWith({
+        status: 'ok',
+        timestamp: expect.any(String),
+        services: {
+          database: 'ok',
+          storage_boxes: 'Good',
+          storage_isos: 'Good',
+          oidc_providers: 'Good',
+        },
+      });
+
+      await publishHealthChange();
+      expect(mockNotifyHealth).toHaveBeenCalledTimes(1);
+
+      jest.spyOn(db.sequelize, 'authenticate').mockRejectedValue(new Error('DB Error'));
+      await publishHealthChange();
+      expect(mockNotifyHealth).toHaveBeenCalledTimes(2);
+      const [, [changed]] = mockNotifyHealth.mock.calls;
+      expect(changed.status).toBe('error');
+      expect(changed.services.database).toBe('Error');
+      expect(Object.keys(changed)).toEqual(['status', 'timestamp', 'services']);
+    });
+
+    it('should log and broadcast nothing when the evaluation fails', async () => {
+      mockNotifyHealth.mockClear();
+      mockConfigLoader.loadConfig.mockImplementation(() => {
+        throw new Error('Config Error');
+      });
+      const errorSpy = jest.spyOn(log.error, 'error').mockImplementation(() => {});
+
+      await publishHealthChange();
+
+      expect(mockNotifyHealth).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith('Health watch failed:', expect.any(Error));
+      errorSpy.mockRestore();
+    });
+
+    it('should schedule the watch on the OIDC probe cadence without holding the process open', () => {
+      const setIntervalSpy = jest.spyOn(global, 'setInterval');
+      const timer = startHealthWatch();
+      expect(setIntervalSpy).toHaveBeenCalledWith(publishHealthChange, OIDC_PROBE_TTL_MS);
+      expect(timer.hasRef()).toBe(false);
+      clearInterval(timer);
+      setIntervalSpy.mockRestore();
+    });
   });
 });

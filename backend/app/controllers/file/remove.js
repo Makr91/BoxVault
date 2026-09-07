@@ -2,8 +2,9 @@
 import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { files: File, UserOrg } = db;
+const { files: File } = db;
 import { safeUnlink, safeRm } from '../../utils/fsHelper.js';
 
 /**
@@ -11,7 +12,7 @@ import { safeUnlink, safeRm } from '../../utils/fsHelper.js';
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/delete:
  *   delete:
  *     summary: Delete a Vagrant box file
- *     description: Delete a Vagrant box file from both disk and database
+ *     description: Delete a Vagrant box file from both disk and database. The box owner, or an admin or owner of the organization, may delete; a service account acts inside its own organization at its effective role.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -87,9 +88,8 @@ const remove = async (req, res) => {
     const { organization: organizationData, box, architecture } = req.entities;
 
     // Check if user owns the box OR has admin/owner role
-    const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    const isOwner = box.userId === req.userId;
-    const canDelete = isOwner || (membership && ['admin', 'owner'].includes(membership.role));
+    const membership = await resolveOrgMembership(req, organizationData.id);
+    const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
       return res.status(403).json({

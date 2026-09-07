@@ -213,75 +213,14 @@ describe('Favorites API', () => {
     jest.clearAllMocks();
   });
 
-  describe('POST /api/favorites/save', () => {
-    it('should proxy save request to auth server', async () => {
-      axiosPost.mockResolvedValue({ status: 200 });
-      const favoritesPayload = [{ clientId: 'app1', order: 1 }];
+  describe('the retired raw favorites routes', () => {
+    it('should no longer answer POST /api/favorites/save', async () => {
       const res = await request(app)
         .post('/api/favorites/save')
         .set('x-access-token', oidcUserToken)
-        .send(favoritesPayload);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('message', 'Favorites saved successfully');
-
-      // Verify axios.post was called correctly
-      expect(axiosPost).toHaveBeenCalledWith(
-        'http://mock-auth-server.com/user/favorites/save', // Derived from config mock
-        JSON.stringify(favoritesPayload),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer valid-oidc-token',
-          }),
-        })
-      );
-    });
-
-    it('should return 401 if user is not OIDC authenticated', async () => {
-      const res = await request(app)
-        .post('/api/favorites/save')
-        .set('x-access-token', localUserToken)
-        .send([]);
-      expect(res.statusCode).toBe(401);
-    });
-
-    it('should handle object body in saveFavorites (non-array)', async () => {
-      axiosPost.mockResolvedValue({ status: 200 });
-      const favoritesObject = { some: 'data' }; // Not an array
-      const res = await request(app)
-        .post('/api/favorites/save')
-        .set('x-access-token', oidcUserToken)
-        .send(favoritesObject);
-
-      expect(res.statusCode).toBe(200);
-    });
-  });
-
-  describe('GET /api/favorites', () => {
-    it('should retrieve and format raw favorites from auth server', async () => {
-      axiosGet.mockResolvedValue({ data: { favorite_apps: mockFavoriteApps } });
-      const res = await request(app).get('/api/favorites').set('x-access-token', oidcUserToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      // The get.js controller maps the enriched data back to raw format
-      expect(res.body[0]).toHaveProperty('clientId', 'box-id-1');
-      expect(res.body[0]).toHaveProperty('customLabel', 'My Box');
-      expect(res.body[0]).not.toHaveProperty('clientName'); // Should not be in raw format
-    });
-
-    it('should return empty array for non-OIDC user', async () => {
-      const res = await request(app).get('/api/favorites').set('x-access-token', localUserToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-
-    it('should handle missing favorite_apps in response data', async () => {
-      axiosGet.mockResolvedValue({ data: {} }); // No favorite_apps property
-      const res = await request(app).get('/api/favorites').set('x-access-token', oidcUserToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
+        .send([{ clientId: 'app1', order: 1 }]);
+      expect(res.statusCode).toBe(404);
+      expect(axiosPost).not.toHaveBeenCalled();
     });
   });
 
@@ -396,35 +335,8 @@ describe('Favorites API', () => {
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle errors when saving favorites fails', async () => {
-      // Configure mock to reject
-      axiosPost.mockRejectedValueOnce(new Error('Auth server unavailable'));
-
-      const favoritesPayload = [{ clientId: 'app1', order: 1 }];
-      const res = await request(app)
-        .post('/api/favorites/save')
-        .set('x-access-token', oidcUserToken)
-        .send(favoritesPayload);
-
-      expect(res.statusCode).toBe(500);
-      expect(res.body).toHaveProperty('message');
-    });
-
-    it('should handle errors when getting favorites fails and return an empty array', async () => {
-      // Configure mock to reject
-      axiosGet.mockRejectedValueOnce(new Error('Auth server unavailable'));
-
-      const res = await request(app).get('/api/favorites').set('x-access-token', oidcUserToken);
-
-      // The controller is designed to return an empty array on error to prevent UI breakage
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-  });
-
   describe('Helper Edge Cases', () => {
-    it('should handle JWT with unknown provider', async () => {
+    it('should answer 502 for a JWT with an unknown provider', async () => {
       const unknownProviderToken = jwt.sign(
         {
           id: testUser.id,
@@ -435,20 +347,18 @@ describe('Favorites API', () => {
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
-      // Should fail in getAuthServerUrl because provider config is missing
-      // getFavorites catches the error and returns []
       const res = await request(app)
-        .get('/api/favorites')
+        .get('/api/user/favorites')
         .set('x-access-token', unknownProviderToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
+      expect(res.statusCode).toBe(502);
+      expect(res.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
       expect(mockLog.error.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error fetching favorites'),
-        expect.objectContaining({ error: expect.stringContaining('Provider unknown not found') })
+        'Failed to get auth server URL:',
+        expect.stringContaining('Provider unknown not found')
       );
     });
 
-    it('should handle JWT without provider claim', async () => {
+    it('should answer 502 for a JWT without a provider claim', async () => {
       const noProviderToken = jwt.sign(
         {
           id: testUser.id,
@@ -458,42 +368,21 @@ describe('Favorites API', () => {
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
-      const res = await request(app).get('/api/favorites').set('x-access-token', noProviderToken);
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-
-    it('should prioritize refreshed token from request object', async () => {
-      // This simulates the oidcTokenRefresh middleware attaching a new token
-      // We can't easily inject into req object via supertest, but we can verify logic via unit test of helper
-      // or by mocking the middleware to attach it.
-      // For integration test, we rely on the fact that if x-access-token is valid, it works.
-    });
-
-    it('should handle malformed JWT in extractOidcAccessToken', async () => {
       const res = await request(app)
-        .get('/api/favorites')
-        .set('x-access-token', 'malformed.token.structure');
-      expect(res.statusCode).toBe(401); // Middleware catches this first
+        .get('/api/user/favorites')
+        .set('x-access-token', noProviderToken);
+      expect(res.statusCode).toBe(502);
+      expect(res.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
     });
 
-    it('should handle config load failure in helper', async () => {
-      // 1. oidcTokenRefresh middleware (success)
-      mockConfigLoader.loadConfig.mockImplementationOnce(name => {
-        if (name === 'auth') {
-          return mockConfig.auth;
-        }
-        return {};
-      });
+    it('should refuse a malformed JWT before the helper runs', async () => {
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', 'malformed.token.structure');
+      expect(res.statusCode).toBe(401);
+    });
 
-      // 2. authJwt.verifyToken middleware (success)
-      mockConfigLoader.loadConfig.mockImplementationOnce(name => {
-        if (name === 'auth') {
-          return mockConfig.auth;
-        }
-        return {};
-      });
-
+    it('should answer 502 when the auth configuration cannot be loaded in the helper', async () => {
       mockConfigLoader.loadConfig.mockImplementationOnce(name => {
         if (name === 'auth') {
           return mockConfig.auth;
@@ -508,37 +397,48 @@ describe('Favorites API', () => {
         return {};
       });
 
-      // 3. helper function (failure)
+      mockConfigLoader.loadConfig.mockImplementationOnce(name => {
+        if (name === 'auth') {
+          return mockConfig.auth;
+        }
+        return {};
+      });
+
+      mockConfigLoader.loadConfig.mockImplementationOnce(name => {
+        if (name === 'auth') {
+          return mockConfig.auth;
+        }
+        return {};
+      });
+
       mockConfigLoader.loadConfig.mockImplementationOnce(() => {
         throw new Error('Config Load Error');
       });
 
-      // This should trigger getAuthServerUrl -> getAuthConfig -> catch block
-      const res = await request(app).get('/api/favorites').set('x-access-token', oidcUserToken);
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', oidcUserToken);
 
-      // Should fail because authConfig is empty
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual([]);
+      expect(res.statusCode).toBe(502);
+      expect(res.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
       expect(mockLog.error.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to load configuration')
       );
     });
 
-    it('should use refreshed OIDC access token if available', async () => {
-      // Create a token that is about to expire to trigger refresh
+    it('should use the refreshed OIDC access token when the session token is about to expire', async () => {
       const expiringToken = jwt.sign(
         {
           id: testUser.id,
           provider: 'oidc-testprovider',
           oidc_access_token: 'old-token',
           oidc_refresh_token: 'refresh-token',
-          oidc_expires_at: Date.now() + 5000, // Expiring in 5 seconds
+          oidc_expires_at: Date.now() + 5000,
         },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
 
-      // Mock the refresh call
       axiosPost.mockImplementation(() =>
         Promise.resolve({
           data: {
@@ -549,16 +449,17 @@ describe('Favorites API', () => {
         })
       );
 
-      // Mock the subsequent API call to use the NEW token
-      axiosGet.mockResolvedValue({ data: { favorite_apps: [] } });
+      axiosGet.mockResolvedValue({ status: 200, data: [] });
 
-      const res = await request(app).get('/api/favorites').set('x-access-token', expiringToken);
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', expiringToken);
 
       expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual([]);
 
-      // Verify axios.get was called with the NEW token
       expect(axiosGet).toHaveBeenCalledWith(
-        expect.any(String),
+        'http://mock-auth-server.com/api/user/favorites',
         expect.objectContaining({
           headers: expect.objectContaining({ Authorization: 'Bearer new-refreshed-token' }),
         })

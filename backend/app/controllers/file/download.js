@@ -3,8 +3,9 @@ import fs from 'fs';
 import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { files: File, UserOrg } = db;
+const { files: File } = db;
 
 // Helper to handle errors during download
 const handleError = (req, res, err) => {
@@ -34,7 +35,7 @@ const handleError = (req, res, err) => {
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/download:
  *   get:
  *     summary: Download a Vagrant box file
- *     description: Download the Vagrant box file with support for range requests and authentication
+ *     description: Download the Vagrant box file with support for range requests and authentication. A private box needs membership of its organization; a service account is a member of its own organization only, at its effective role.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -241,7 +242,7 @@ const download = (req, res) => {
       return res.status(403).send({ message: req.__('files.download.unauthorized') });
     }
 
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('files.download.unauthorized') });
     }

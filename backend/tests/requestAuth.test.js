@@ -427,7 +427,13 @@ describe('Request authentication', () => {
     it('resolveJwtUser returns the organizations of the identity-provider user', async () => {
       const token = await mintIdpToken();
       const viewer = await resolveJwtUser(requestWith({ authorization: `Bearer ${token}` }));
-      expect(viewer).toEqual({ userId: 7, orgIds: [2, 5] });
+      expect(viewer).toEqual({
+        userId: 7,
+        isServiceAccount: false,
+        isSuperadmin: false,
+        orgIds: [2, 5],
+        managedOrgIds: [],
+      });
     });
   });
 });

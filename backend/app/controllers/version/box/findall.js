@@ -2,15 +2,17 @@
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../../utils/config-loader.js';
 import { log } from '../../../utils/Logger.js';
+import { resolveOrgMembership } from '../../../utils/orgMembership.js';
 import db from '../../../models/index.js';
 
-const { versions: Version, UserOrg } = db;
+const { versions: Version } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version:
  *   get:
  *     summary: Get all versions for a box
+ *     description: A private box needs membership of its organization; a service account is a member of its own organization only.
  *     tags: [Versions]
  *     parameters:
  *       - in: path
@@ -87,12 +89,18 @@ export const findAllByBox = async (req, res) => {
   const authConfig = loadConfig('auth');
   const token = req.headers['x-access-token'];
   let userId = null;
+  let caller = null;
 
   if (token) {
     try {
       // Verify the token and extract the user ID
       const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
       userId = decoded.id;
+      caller = {
+        userId,
+        isServiceAccount: Boolean(decoded.isServiceAccount),
+        serviceAccountId: decoded.serviceAccountId,
+      };
     } catch {
       return res.status(401).send({ message: req.__('auth.unauthorized') });
     }
@@ -113,7 +121,7 @@ export const findAllByBox = async (req, res) => {
       return res.status(403).send({ message: req.__('versions.unauthorized') });
     }
 
-    const membership = await UserOrg.findUserOrgRole(userId, organizationData.id);
+    const membership = await resolveOrgMembership(caller, organizationData.id);
     if (!membership) {
       return res.status(403).send({ message: req.__('versions.unauthorized') });
     }

@@ -779,7 +779,7 @@ describe('ISO API', () => {
         userId: user.id,
       });
       const saToken = jwt.sign(
-        { id: user.id, isServiceAccount: true, serviceAccountOrgId: org.id },
+        { id: user.id, isServiceAccount: true, serviceAccountId: sa.id },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );

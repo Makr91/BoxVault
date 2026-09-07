@@ -5,7 +5,7 @@ const HEARTBEAT_MS = 25000;
 const RING_MAX_EVENTS = 500;
 const RING_MAX_AGE_MS = 5 * 60 * 1000;
 
-const TOPICS = ['session', 'notifications'];
+const TOPICS = ['session', 'notifications', 'health'];
 
 const ring = [];
 const subscribers = new Set();
@@ -172,4 +172,19 @@ const notifyUnreadCount = (userId, count) => {
   broadcast('notifications', 'unread-count', { count }, userId);
 };
 
-export { TOPICS, openEventStream, broadcast, notifySessionTerminated, notifyUnreadCount };
+/**
+ * Push the health state to every stream subscribed to the health topic.
+ * @param {{ status: string, timestamp: string, services: Object }} health - The /api/health shape
+ */
+const notifyHealth = health => {
+  broadcast('health', 'health', health);
+};
+
+export {
+  TOPICS,
+  openEventStream,
+  broadcast,
+  notifySessionTerminated,
+  notifyUnreadCount,
+  notifyHealth,
+};

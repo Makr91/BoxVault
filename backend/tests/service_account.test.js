@@ -1,8 +1,11 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import jwt from 'jsonwebtoken';
 import app from '../server.js';
 import db from '../app/models/index.js';
 import bcrypt from 'bcryptjs';
+
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
 const {
   service_account: ServiceAccount,
@@ -129,6 +132,95 @@ describe('Service Account API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body.username).toBeDefined();
       expect(res.body.token).toBeDefined();
+      expect(res.body.role).toBe('member');
+    });
+
+    it('should store the requested role up to the creator role in the organization', async () => {
+      const res = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', adminToken)
+        .send({
+          description: 'Admin SA',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'admin',
+        });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.role).toBe('admin');
+      const stored = await ServiceAccount.findByPk(res.body.id);
+      expect(stored.role).toBe('admin');
+    });
+
+    it('should refuse a role above the creator role in the organization', async () => {
+      const res = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', userToken)
+        .send({
+          description: 'Too high',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'admin',
+        });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/role', rule: 'enum', params: { enum: 'member' } }),
+      ]);
+    });
+
+    it('should refuse superadmin to a creator without the global admin role', async () => {
+      const res = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', userToken)
+        .send({
+          description: 'Not an admin',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'superadmin',
+        });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/role', rule: 'enum', params: { enum: 'member' } }),
+      ]);
+    });
+
+    it('should let a global admin create a superadmin service account', async () => {
+      const res = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', adminToken)
+        .send({
+          description: 'Superadmin SA',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'superadmin',
+        });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.role).toBe('superadmin');
+    });
+
+    it('should refuse a role outside the enum', async () => {
+      const res = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', adminToken)
+        .send({
+          description: 'Bad role',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'boss',
+        });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/role',
+          rule: 'enum',
+          params: { enum: 'member, admin, owner, superadmin' },
+        }),
+      ]);
     });
 
     it('should fail if organization_id is missing', async () => {
@@ -287,6 +379,158 @@ describe('Service Account API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(500);
+    });
+  });
+
+  describe('the role a service account acts with', () => {
+    let otherOrg;
+    let otherBox;
+    let ownerAccount;
+    let superadminAccount;
+
+    const signFor = account =>
+      jwt.sign(
+        { id: account.userId, isServiceAccount: true, serviceAccountId: account.id },
+        'test-secret',
+        { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+      );
+
+    beforeAll(async () => {
+      otherOrg = await Organization.create({ name: `SAOther_${uniqueId}`, access_mode: 'private' });
+      await UserOrg.create({ user_id: adminUser.id, organization_id: otherOrg.id, role: 'owner' });
+      otherBox = await db.box.create({
+        name: `sa-other-box-${uniqueId}`,
+        isPublic: false,
+        published: true,
+        organizationId: otherOrg.id,
+        userId: adminUser.id,
+      });
+      ownerAccount = await ServiceAccount.create({
+        username: `sa-owner-role-${uniqueId}`,
+        token: `sa-owner-role-token-${uniqueId}`,
+        role: 'owner',
+        userId: adminUser.id,
+        organization_id: testOrg.id,
+      });
+      superadminAccount = await ServiceAccount.create({
+        username: `sa-super-${uniqueId}`,
+        token: `sa-super-token-${uniqueId}`,
+        role: 'superadmin',
+        userId: adminUser.id,
+        organization_id: testOrg.id,
+      });
+    });
+
+    afterAll(async () => {
+      await otherBox.destroy();
+      await UserOrg.destroy({ where: { organization_id: otherOrg.id } });
+      await otherOrg.destroy();
+      const adminRole = await Role.findOne({ where: { name: 'admin' } });
+      await adminUser.setRoles([adminRole]);
+      await UserOrg.update(
+        { role: 'owner' },
+        { where: { user_id: adminUser.id, organization_id: testOrg.id } }
+      );
+    });
+
+    it('should answer the effective role, the lower of the stored role and the creator role', async () => {
+      const asOwner = await request(app)
+        .get('/api/user/organizations')
+        .set('x-access-token', signFor(ownerAccount));
+      expect(asOwner.statusCode).toBe(200);
+      expect(asOwner.body).toEqual([
+        expect.objectContaining({
+          organization: expect.objectContaining({ id: testOrg.id }),
+          role: 'owner',
+        }),
+      ]);
+
+      await UserOrg.update(
+        { role: 'member' },
+        { where: { user_id: adminUser.id, organization_id: testOrg.id } }
+      );
+      const demoted = await request(app)
+        .get('/api/user/organizations')
+        .set('x-access-token', signFor(ownerAccount));
+      expect(demoted.statusCode).toBe(200);
+      expect(demoted.body[0].role).toBe('member');
+
+      await UserOrg.destroy({ where: { user_id: adminUser.id, organization_id: testOrg.id } });
+      const removed = await request(app)
+        .get('/api/user/organizations')
+        .set('x-access-token', signFor(ownerAccount));
+      expect(removed.statusCode).toBe(200);
+      expect(removed.body).toEqual([]);
+
+      await UserOrg.create({
+        user_id: adminUser.id,
+        organization_id: testOrg.id,
+        role: 'owner',
+        is_primary: true,
+      });
+    });
+
+    it('should keep a service account out of the admin routes whatever its owner holds', async () => {
+      const res = await request(app)
+        .get('/api/system/storage')
+        .set('x-access-token', signFor(ownerAccount));
+      expect(res.statusCode).toBe(403);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+    });
+
+    it('should show a service account public items only in another organization', async () => {
+      const boxes = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box`)
+        .set('x-access-token', signFor(ownerAccount));
+      expect(boxes.statusCode).toBe(200);
+      expect(boxes.body).toEqual([]);
+
+      const box = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box/${otherBox.name}`)
+        .set('x-access-token', signFor(ownerAccount));
+      expect(box.statusCode).toBe(403);
+
+      const asUser = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box/${otherBox.name}`)
+        .set('x-access-token', adminToken);
+      expect(asUser.statusCode).toBe(200);
+    });
+
+    it('should let a superadmin service account act as a global admin until its creator loses the role', async () => {
+      const storage = await request(app)
+        .get('/api/system/storage')
+        .set('x-access-token', signFor(superadminAccount));
+      expect(storage.statusCode).not.toBe(403);
+
+      const box = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box/${otherBox.name}`)
+        .set('x-access-token', signFor(superadminAccount));
+      expect(box.statusCode).toBe(200);
+
+      const organizations = await request(app)
+        .get('/api/user/organizations')
+        .set('x-access-token', signFor(superadminAccount));
+      expect(organizations.statusCode).toBe(200);
+      expect(organizations.body[0].role).toBe('owner');
+
+      const userRole = await Role.findOne({ where: { name: 'user' } });
+      await adminUser.setRoles([userRole]);
+
+      const refused = await request(app)
+        .get('/api/system/storage')
+        .set('x-access-token', signFor(superadminAccount));
+      expect(refused.statusCode).toBe(403);
+
+      const hidden = await request(app)
+        .get(`/api/organization/${otherOrg.name}/box/${otherBox.name}`)
+        .set('x-access-token', signFor(superadminAccount));
+      expect(hidden.statusCode).toBe(403);
+
+      const revoked = await request(app)
+        .get('/api/user/organizations')
+        .set('x-access-token', signFor(superadminAccount));
+      expect(revoked.body).toEqual([]);
     });
   });
 });
