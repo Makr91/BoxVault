@@ -37,7 +37,7 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
   -d '{
     "username": "YOUR_USERNAME",
     "password": "YOUR_PASSWORD",
-    "stayLoggedIn": true
+    "stay_logged_in": true
   }'
 ```
 
@@ -49,7 +49,7 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
   "username": "username",
   "email": "email@example.com",
   "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "roles": ["user", "admin"],
+  "roles": ["ROLE_USER", "ROLE_ADMIN"],
   "organization": "myorg"
 }
 ```
@@ -63,16 +63,17 @@ curl -X POST https://boxvault.example.com/api/auth/signup \
     "username": "newuser",
     "email": "newuser@example.com",
     "password": "password123",
-    "invitationToken": "optional-invitation-token"
+    "invitation_token": "optional-invitation-token"
   }'
 ```
 
 ### Refresh Token
 
 ```bash
-# Only available if stayLoggedIn=true during signin
-curl -X GET https://boxvault.example.com/api/auth/refresh-token \
-  -H "x-access-token: YOUR_CURRENT_TOKEN"
+curl -X POST https://boxvault.example.com/api/auth/refresh-token \
+  -H "x-access-token: YOUR_CURRENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "stay_logged_in": true }'
 ```
 
 ---
@@ -86,7 +87,7 @@ curl -X POST https://boxvault.example.com/api/organization \
   -H "x-access-token: YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "myorg",
+    "organization": "myorg",
     "description": "My Organization",
     "email": "org@example.com"
   }'
@@ -100,7 +101,8 @@ curl -X POST https://boxvault.example.com/api/auth/invite \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newuser@example.com",
-    "organizationName": "myorg"
+    "organization_name": "myorg",
+    "invite_role": "member"
   }'
 ```
 
@@ -132,7 +134,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box \
   -d '{
     "name": "debian12",
     "description": "Debian 12 Server",
-    "isPublic": false
+    "is_public": false
   }'
 
 # Create box in a different organization "otherorg" (if you're a member)
@@ -142,7 +144,7 @@ curl -X POST https://boxvault.example.com/api/organization/otherorg/box \
   -d '{
     "name": "ubuntu22",
     "description": "Ubuntu 22.04 Server",
-    "isPublic": true
+    "is_public": true
   }'
 ```
 
@@ -159,7 +161,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/ve
   -H "x-access-token: YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "versionNumber": "1.0.0",
+    "version_number": "1.0.0",
     "description": "Initial release"
   }'
 ```
@@ -184,7 +186,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/box/debian12/ve
   -H "Content-Type: application/json" \
   -d '{
     "name": "amd64",
-    "defaultBox": true
+    "default_box": true
   }'
 ```
 
@@ -229,7 +231,7 @@ BoxVault provides multiple ways to download box files:
 1. **Direct browser download:**
 
    ```bash
-   curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/    providers/virtualbox/amd64/vagrant.box"
+   curl -O "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box"
    ```
 
 2. **Using Vagrant CLI:**
@@ -242,7 +244,7 @@ BoxVault provides multiple ways to download box files:
 
    ```bash
    # Get download link
-   curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/   version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
+   curl -X POST "https://boxvault.example.com/api/organization/myorg/box/debian12/version/1.0.0/provider/virtualbox/architecture/amd64/file/get-download-link" \
      -H "x-access-token: YOUR_JWT_TOKEN"
 
    # Download using returned URL
@@ -291,13 +293,16 @@ console.log(bytesToGB(1508591037)); // Outputs: "1.40"
 
 ### Create Service Account
 
+Any member of the organization may create one; `expiration_days` is capped by `auth.jwt.service_account_max_expiry_days`.
+
 ```bash
 curl -X POST https://boxvault.example.com/api/service-accounts \
-  -H "x-access-token: YOUR_ADMIN_JWT_TOKEN" \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "CI/CD Service Account",
-    "expirationDays": 365
+    "expiration_days": 365,
+    "organization_id": 1
   }'
 ```
 
@@ -307,12 +312,11 @@ curl -X POST https://boxvault.example.com/api/service-accounts \
 {
   "id": 1,
   "username": "mark-7fb6603d",
-  "token": "319b8554ee85c3df139dbbb98169b64a4b50f338968bdc145fd851eb68eff0f0",
-  "expiresAt": "2025-12-28T10:51:02.000Z",
   "description": "CI/CD Service Account",
+  "expiresAt": "2025-12-28T10:51:02.000Z",
+  "organization_id": 1,
   "createdAt": "2024-12-28T10:51:02.000Z",
-  "updatedAt": "2024-12-28T10:51:02.000Z",
-  "userId": 1
+  "token": "319b8554ee85c3df139dbbb98169b64a4b50f338968bdc145fd851eb68eff0f0"
 }
 ```
 
@@ -324,7 +328,7 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
   -d '{
     "username": "mark-7fb6603d",
     "password": "319b8554ee85c3df139dbbb98169b64a4b50f338968bdc145fd851eb68eff0f0",
-    "stayLoggedIn": true
+    "stay_logged_in": true
   }'
 ```
 
@@ -358,21 +362,13 @@ curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
 
 ### Test SMTP Configuration
 
+The SMTP server, sender and credentials come from `mail.config.yaml`; the body names the recipient only. Admin only.
+
 ```bash
 curl -X POST https://boxvault.example.com/api/mail/test-smtp \
-  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "x-access-token: YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "host": "smtp.example.com",
-    "port": 587,
-    "secure": true,
-    "auth": {
-      "user": "smtp-user",
-      "pass": "smtp-password"
-    },
-    "to": "recipient@example.com",
-    "from": "sender@example.com"
-  }'
+  -d '{ "test_email": "recipient@example.com" }'
 ```
 
 ---
@@ -381,16 +377,16 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 
 ### Common Error Responses
 
+Every refused request answers RFC 9457 problem details as `application/problem+json`: `type` is a URI under `https://auth.startcloud.com/probs/`, `title` its human summary, `status` the HTTP status, and `errors[]` one entry per failing value with a JSON Pointer into the body as sent. `detail` is for logs; the UI translates from `rule` and `params`.
+
 **Role-Based Access Errors:**
 
 ```json
 {
-  "error": "INSUFFICIENT_PERMISSIONS",
-  "message": "Require Admin Role",
-  "details": {
-    "requiredRole": "admin",
-    "currentRoles": ["user"]
-  }
+  "type": "https://auth.startcloud.com/probs/forbidden",
+  "title": "You may not do this.",
+  "status": 403,
+  "errors": []
 }
 ```
 
@@ -398,11 +394,10 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 
 ```json
 {
-  "error": "TOKEN_EXPIRED",
-  "message": "JWT token has expired",
-  "details": {
-    "expiredAt": "2024-01-01T00:00:00Z"
-  }
+  "type": "https://auth.startcloud.com/probs/authentication",
+  "title": "Sign in to continue.",
+  "status": 401,
+  "errors": []
 }
 ```
 
@@ -410,12 +405,10 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 
 ```json
 {
-  "error": "CHUNK_TOO_LARGE",
-  "message": "Upload chunk exceeds size limit",
-  "details": {
-    "maxSize": 104857600,
-    "receivedSize": 157286400
-  }
+  "type": "https://auth.startcloud.com/probs/payload-too-large",
+  "title": "The upload is larger than this server accepts.",
+  "status": 413,
+  "errors": []
 }
 ```
 
@@ -423,28 +416,41 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 
 ```json
 {
-  "error": "VALIDATION_ERROR",
-  "message": "Invalid input parameters",
-  "details": {
-    "name": "Only alphanumeric characters, hyphens and underscores allowed",
-    "version": "Must follow semantic versioning (x.y.z)"
-  }
+  "type": "https://auth.startcloud.com/probs/validation",
+  "title": "The request did not pass validation.",
+  "status": 422,
+  "errors": [
+    {
+      "pointer": "/name",
+      "rule": "pattern",
+      "params": { "pattern": "slug" },
+      "detail": "name must match slug"
+    },
+    {
+      "pointer": "/version_number",
+      "rule": "pattern",
+      "params": { "pattern": "identifier" },
+      "detail": "version_number must match identifier"
+    }
+  ]
 }
 ```
+
+A taken value answers `409` with type `conflict` and one `unique` entry whose `params.scope` names the scope it collided in; a body that could not be read answers `400` with type `bad-request`; a rate-limited request answers `429` with type `throttled` and a `Retry-After` header.
 
 ### HTTP Status Codes
 
 - `200 OK` - Request succeeded
 - `201 Created` - Resource created successfully
-- `400 Bad Request` - Invalid parameters
+- `400 Bad Request` - The body could not be read
 - `401 Unauthorized` - Missing or invalid authentication
 - `403 Forbidden` - Insufficient permissions
 - `404 Not Found` - Resource not found
-- `408 Request Timeout` - Upload timeout
-- `409 Conflict` - Resource already exists
-- `413 Payload Too Large` - Upload chunk too large
+- `409 Conflict` - A value is already taken in its scope
+- `413 Payload Too Large` - Upload larger than `box_max_file_size`
+- `422 Unprocessable Content` - A value breaks a rule
+- `429 Too Many Requests` - Rate limited, retry after `Retry-After`
 - `500 Internal Server Error` - Server error
-- `507 Insufficient Storage` - Not enough storage space
 
 ---
 
@@ -452,6 +458,6 @@ curl -X POST https://boxvault.example.com/api/mail/test-smtp \
 
 For the complete API reference with all endpoints, parameters, and responses, visit:
 
-- **[Interactive API Documentation](/api-docs/)** - Swagger UI with live testing
+- **[Interactive API Documentation](/api/docs/)** - Swagger UI with live testing
 - **[API Overview](../../api/)** - High-level API information
 - **[Authentication Guide](../authentication/)** - Detailed authentication setup

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { jest } from '@jest/globals';
 import { createHash } from 'crypto';
 import app from '../server.js';
 import db from '../app/models/index.js';
@@ -113,8 +114,20 @@ describe('Search API', () => {
   describe('GET /api/search', () => {
     it('should reject a query shorter than 2 characters', async () => {
       const res = await request(app).get('/api/search').query({ q: ' a ' });
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBeDefined();
+      expect(res.statusCode).toBe(422);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/validation');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/q', rule: 'minLength', params: { minLength: 2 } }),
+      ]);
+    });
+
+    it('should answer an internal problem when a finder fails', async () => {
+      jest.spyOn(db.box, 'findAll').mockRejectedValueOnce(new Error('database down'));
+      const res = await request(app).get('/api/search').query({ q: 'search-p' });
+      expect(res.statusCode).toBe(500);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
 
     it('should answer only public items to an anonymous caller', async () => {

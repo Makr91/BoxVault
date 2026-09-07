@@ -1,11 +1,9 @@
 import { Router } from 'express';
 import { authJwt, validateBody } from '../middleware/index.js';
-import {
-  create,
-  findAll,
-  getAvailableOrganizations,
-  delete as deleteServiceAccount,
-} from '../controllers/service_account.controller.js';
+import { create } from '../controllers/service_account/create.js';
+import { findAll } from '../controllers/service_account/findall.js';
+import { getAvailableOrganizations } from '../controllers/service_account/organizations.js';
+import { delete as deleteServiceAccount } from '../controllers/service_account/delete.js';
 
 const router = Router();
 

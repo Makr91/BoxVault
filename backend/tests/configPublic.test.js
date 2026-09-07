@@ -1,12 +1,9 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
+import { clearConfigCache, getConfigPath } from '../app/utils/config-loader.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+const appConfigPath = getConfigPath('app');
 
 const axiosGet = jest.fn();
 jest.unstable_mockModule('axios', () => ({
@@ -25,7 +22,11 @@ const updateAppConfig = mutate => {
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(appConfigPath, yaml.dump(config));
-  return () => fs.writeFileSync(appConfigPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(appConfigPath, original);
+    clearConfigCache();
+  };
 };
 
 const HASH = 'a'.repeat(32);

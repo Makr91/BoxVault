@@ -96,7 +96,7 @@ const getUserOrganizations = async (req, res) => {
         include: [{ model: Organization, as: 'organization' }],
       });
 
-      if (!serviceAccount || !serviceAccount.organization) {
+      if (!serviceAccount) {
         return res.send([]);
       }
 

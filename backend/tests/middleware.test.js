@@ -30,19 +30,19 @@ const mockConfigLoader = {
     if (name === 'auth') {
       return {
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
-          oidc: { token_refresh_threshold_minutes: { value: 5 } },
+          jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
+          oidc: { token_refresh_threshold_minutes: 5 },
         },
       };
     }
     return {
-      boxvault: { box_max_file_size: { value: 1 } }, // 1GB
+      boxvault: { box_max_file_size: 1 }, // 1GB
       rate_limiting: {
-        window_minutes: { value: 15 },
-        max_requests: { value: 100 },
-        message: { value: 'Too many requests' },
-        skip_successful_requests: { value: false },
-        skip_failed_requests: { value: false },
+        window_minutes: 15,
+        max_requests: 100,
+        message: 'Too many requests',
+        skip_successful_requests: false,
+        skip_failed_requests: false,
       },
     };
   }),
@@ -213,14 +213,6 @@ const { isOrgMember, isOrgAdmin, isOrgOwner, isOrgAdminOrOwner, getUserOrgContex
   await import('../app/middleware/verifyOrgAccess.js');
 const { verifyBoxFilePath } = await import('../app/middleware/verifyBoxFilePath.js');
 const { rateLimiter } = await import('../app/middleware/rateLimiter.js');
-const { validateBoxName } = await import('../app/middleware/verifyBoxName.js');
-const { validateProvider, checkProviderDuplicate } =
-  await import('../app/middleware/verifyProvider.js');
-const { validateVersion, checkVersionDuplicate, attachEntities } =
-  await import('../app/middleware/verifyVersion.js');
-const { default: verifyOrganization } = await import('../app/middleware/verifyOrganization.js');
-const { validateArchitecture, checkArchitectureDuplicate } =
-  await import('../app/middleware/verifyArchitecture.js');
 const { oidcTokenRefresh } = await import('../app/middleware/oidcTokenRefresh.js');
 const { downloadAuth } = await import('../app/middleware/downloadAuth.js');
 const { sessionAuth } = await import('../app/middleware/sessionAuth.js');
@@ -253,12 +245,15 @@ describe('Middleware Tests', () => {
           providerName: 'virtualbox',
           architectureName: 'amd64',
         },
+        __: key => key,
       });
       res = {
         setTimeout: jest.fn(),
         setHeader: jest.fn(),
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         json: jest.fn(),
+        send: jest.fn(),
         headersSent: false,
       };
     });
@@ -311,7 +306,15 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(413);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'FILE_TOO_LARGE' }));
+      expect(res.setHeader).toHaveBeenCalledWith('Connection', 'close');
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/payload-too-large',
+          title: 'files.fileTooLarge',
+          status: 413,
+        })
+      );
     });
 
     it('should reject invalid content-length', async () => {
@@ -321,7 +324,13 @@ describe('Middleware Tests', () => {
       req.headers['content-length'] = 'invalid';
       await uploadFile(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'INVALID_REQUEST' }));
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'problems.badRequest',
+        })
+      );
     });
   });
 
@@ -360,12 +369,15 @@ describe('Middleware Tests', () => {
       expect(next).toHaveBeenCalled();
     });
 
-    it('should handle HEAD requests for metadata', async () => {
+    it('should route HEAD requests for metadata like GET', async () => {
       req.method = 'HEAD';
       await vagrantHandler(req, res, next);
-      expect(res.set).toHaveBeenCalledWith('Content-Type', 'application/json');
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(next).not.toHaveBeenCalled();
+      expect(res.set).toHaveBeenCalledWith(
+        expect.objectContaining({ 'Content-Type': 'application/json' })
+      );
+      expect(req.url).toContain('/metadata');
+      expect(res.status).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
     });
 
     it('should rewrite download URLs', async () => {
@@ -632,13 +644,16 @@ describe('Middleware Tests', () => {
           providerName: 'virtualbox',
           architectureName: 'amd64',
         },
+        __: key => key,
       });
       req.end(Buffer.from('chunk data'));
       res = {
         setTimeout: jest.fn(),
         setHeader: jest.fn(),
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         json: jest.fn(),
+        send: jest.fn(),
         headersSent: false,
       };
 
@@ -652,7 +667,7 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Chunk upload completed',
+          message: 'files.upload.chunkCompleted',
         })
       );
     });
@@ -673,9 +688,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Missing chunks'),
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: expect.stringContaining('Missing chunks') })
       );
     });
 
@@ -697,9 +714,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('File size cannot exceed'),
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: expect.stringContaining('File size cannot exceed') })
       );
     });
 
@@ -721,9 +740,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Checksum verification failed',
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: 'Checksum verification failed' })
       );
     });
 
@@ -753,7 +774,7 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'File upload completed',
+          message: 'files.upload.completed',
           details: expect.objectContaining({ fileSize: 100 }),
         })
       );
@@ -784,24 +805,54 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: 'Checksum verification failed' })
+      );
+    });
+
+    it('should refuse a chunk without x-total-chunks', async () => {
+      req.headers['x-chunk-index'] = '0';
+      delete req.headers['x-total-chunks'];
+      await uploadFile(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Checksum verification failed',
+          errors: [expect.objectContaining({ pointer: '/x-total-chunks', rule: 'minimum' })],
         })
       );
     });
 
-    it('should return 400 if chunk headers are incomplete (missing total)', async () => {
-      req.headers['x-chunk-index'] = '0';
-      // Missing x-total-chunks
+    it('should refuse a chunk without x-chunk-index', async () => {
+      delete req.headers['x-chunk-index'];
+      req.headers['x-total-chunks'] = '2';
       await uploadFile(req, res);
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: [expect.objectContaining({ pointer: '/x-chunk-index', rule: 'type' })],
+        })
+      );
     });
 
-    it('should return 400 if chunk headers are incomplete (missing index)', async () => {
+    it('should refuse a chunk index beyond the total', async () => {
+      req.headers['x-chunk-index'] = '2';
       req.headers['x-total-chunks'] = '2';
-      // Missing x-chunk-index
       await uploadFile(req, res);
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: [
+            expect.objectContaining({
+              pointer: '/x-chunk-index',
+              rule: 'range',
+              params: { minimum: 0, maximum: 1 },
+            }),
+          ],
+        })
+      );
     });
 
     it('should handle chunked upload without content-length', async () => {
@@ -834,7 +885,7 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'File updated successfully',
+          message: 'files.upload.updated',
         })
       );
     });
@@ -909,6 +960,7 @@ describe('Middleware Tests', () => {
         url: '/upload',
         headers: { 'content-length': '100' },
         params: req.params,
+        __: key => key,
       });
 
       const mockStream = createMockStream();
@@ -943,16 +995,18 @@ describe('Middleware Tests', () => {
 
       // Mock config to return very small limit
       mockConfigLoader.loadConfig.mockReturnValueOnce({
-        boxvault: { box_max_file_size: { value: 0.0000001 } }, // Very small limit
+        boxvault: { box_max_file_size: 0.0000001 }, // Very small limit
       });
 
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('File size cannot exceed'),
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: expect.stringContaining('File size cannot exceed') })
       );
     });
 
@@ -996,9 +1050,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Write Error',
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: 'Write Error' })
       );
 
       // Verify cleanup: the whole temp dir is removed recursively
@@ -1062,7 +1118,7 @@ describe('Middleware Tests', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it('uploadFile should warn on unsupported checksum type', async () => {
+    it('uploadFile should refuse an unsupported checksum type', async () => {
       delete req.headers['x-chunk-index'];
       delete req.headers['x-total-chunks'];
       req.headers['x-checksum'] = 'somehash';
@@ -1071,9 +1127,13 @@ describe('Middleware Tests', () => {
       mockFs.statSync.mockReturnValue({ size: 100 });
 
       await uploadFile(req, res);
-      expect(mockLog.app.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Unsupported checksum type')
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: [expect.objectContaining({ pointer: '/x-checksum-type', rule: 'enum' })],
+        })
       );
+      expect(mockFs.createWriteStream).not.toHaveBeenCalled();
     });
 
     it('should handle checksum verification error during chunked upload', async () => {
@@ -1097,9 +1157,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Checksum Read Error',
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: 'Checksum Read Error' })
       );
       // Verify cleanup: temp dir removed recursively on failure
       expect(mockFs.rmdirSync).toHaveBeenCalled();
@@ -1122,12 +1184,15 @@ describe('Middleware Tests', () => {
           providerName: 'virtualbox',
           architectureName: 'amd64',
         },
+        __: key => key,
       });
       res = {
         setTimeout: jest.fn(),
         setHeader: jest.fn(),
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         json: jest.fn(),
+        send: jest.fn(),
         headersSent: false,
       };
 
@@ -1145,9 +1210,10 @@ describe('Middleware Tests', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           error: 'UPLOAD_ERROR',
-          message: 'Stream failed',
+          message: 'files.upload.error',
         })
       );
+      expect(mockLog.error.error).toHaveBeenCalledWith('Upload error:', error);
     });
 
     it('should handle SSL upload wrapper', async () => {
@@ -1256,78 +1322,12 @@ describe('Middleware Tests', () => {
     let next;
 
     beforeEach(() => {
-      req = { body: {} };
+      req = { body: {}, __: key => key };
       res = {
         status: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
       next = jest.fn();
-    });
-
-    describe('checkDuplicateUsernameOrEmail', () => {
-      it('should call next if username and email are unique', async () => {
-        req.body = { username: 'user', email: 'email@test.com' };
-        mockDb.user.findOne.mockResolvedValue(null); // For username
-        // The middleware chains promises, so we need to mock the second call too
-        // However, the implementation uses .then(), so we can't easily mock sequential calls to same function with different args in a simple way without implementation details.
-        // But since it calls findOne twice, we can mock it to return null both times.
-
-        await verifySignUp.checkDuplicateUsernameOrEmail(req, res, next);
-
-        // Wait for promises to resolve
-        await new Promise(resolve => {
-          setTimeout(resolve, 0);
-        });
-
-        expect(next).toHaveBeenCalled();
-      });
-
-      it('should return 400 if username exists', async () => {
-        req.body = { username: 'existing', email: 'email@test.com' };
-        mockDb.user.findOne.mockResolvedValueOnce({ id: 1 }); // Username exists
-
-        await verifySignUp.checkDuplicateUsernameOrEmail(req, res, next);
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.send).toHaveBeenCalledWith(
-          expect.objectContaining({
-            message: expect.stringContaining('Username is already in use'),
-          })
-        );
-        expect(next).not.toHaveBeenCalled();
-      });
-
-      it('should return 400 if email exists', async () => {
-        req.body = { username: 'new', email: 'existing@test.com' };
-        mockDb.user.findOne
-          .mockResolvedValueOnce(null) // Username unique
-          .mockResolvedValueOnce({ id: 1 }); // Email exists
-
-        await verifySignUp.checkDuplicateUsernameOrEmail(req, res, next);
-
-        // Wait for promises
-        await new Promise(resolve => {
-          setTimeout(resolve, 0);
-        });
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.send).toHaveBeenCalledWith(
-          expect.objectContaining({ message: expect.stringContaining('Email is already in use') })
-        );
-        expect(next).not.toHaveBeenCalled();
-      });
-    });
-
-    it('checkDuplicateUsernameOrEmail should handle error with fallback message', async () => {
-      req.body = { username: 'user', email: 'email@test.com' };
-      mockDb.user.findOne.mockRejectedValue(new Error(''));
-      await verifySignUp.checkDuplicateUsernameOrEmail(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Some error occurred while checking for duplicate username/email.',
-        })
-      );
     });
 
     it('checkRolesExisted should validate multiple roles', async () => {
@@ -1387,7 +1387,7 @@ describe('Middleware Tests', () => {
 
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.send).toHaveBeenCalledWith(
-          expect.objectContaining({ message: expect.stringContaining('Role does not exist') })
+          expect.objectContaining({ message: expect.stringContaining('auth.roleDoesNotExist') })
         );
         expect(next).not.toHaveBeenCalled();
       });
@@ -1405,7 +1405,7 @@ describe('Middleware Tests', () => {
         await verifySignUp.checkRolesExisted(req, res, next);
         expect(res.status).toHaveBeenCalledWith(500);
         expect(res.send).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Some error occurred while checking roles.' })
+          expect.objectContaining({ message: 'errors.operationFailed' })
         );
       });
     });
@@ -1424,9 +1424,11 @@ describe('Middleware Tests', () => {
         headers: {},
         path: '/',
         header: jest.fn(name => req.headers[name.toLowerCase()]),
+        __: key => key,
       };
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
       next = jest.fn();
@@ -1466,6 +1468,14 @@ describe('Middleware Tests', () => {
       req.isServiceAccount = false;
       authJwt.isServiceAccount(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/forbidden',
+          title: 'auth.requireServiceAccount',
+          status: 403,
+        })
+      );
     });
 
     it('isUser should deny service account', async () => {
@@ -1503,12 +1513,24 @@ describe('Middleware Tests', () => {
       mockDb.user.findByPk.mockResolvedValue(null);
       await authJwt.isAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/authentication',
+          title: 'users.userNotFound',
+        })
+      );
     });
 
     it('verifyToken should return 403 if no token provided', async () => {
       req.headers['x-access-token'] = undefined;
       await authJwt.verifyToken(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/forbidden',
+          title: 'auth.noTokenProvided',
+        })
+      );
     });
 
     it('verifyToken should handle service account token without org id', async () => {
@@ -1643,9 +1665,10 @@ describe('Middleware Tests', () => {
     let next;
 
     beforeEach(() => {
-      req = { headers: { 'x-access-token': 'invalid-token' }, path: '/api/test' };
+      req = { headers: { 'x-access-token': 'invalid-token' }, path: '/api/test', __: key => key };
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
       next = jest.fn();
@@ -1673,9 +1696,11 @@ describe('Middleware Tests', () => {
         params: { organization: 'test-org' },
         userId: 1,
         isServiceAccount: false,
+        __: key => key,
       };
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
       next = jest.fn();
@@ -1705,6 +1730,13 @@ describe('Middleware Tests', () => {
       mockDb.user.findByPk.mockResolvedValue(null);
       await isOrgMember(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/authentication',
+          title: 'users.userNotFound',
+        })
+      );
     });
 
     it('isOrgMember should deny if organization not found', async () => {
@@ -1712,6 +1744,12 @@ describe('Middleware Tests', () => {
       mockDb.organization.findOne.mockResolvedValue(null);
       await isOrgMember(req, res, next);
       expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/not-found',
+          title: 'organizations.organizationNotFound',
+        })
+      );
     });
 
     it('isOrgMember should deny if user is not a member', async () => {
@@ -1720,6 +1758,12 @@ describe('Middleware Tests', () => {
       mockDb.UserOrg.findUserOrgRole.mockResolvedValue(null);
       await isOrgMember(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/forbidden',
+          title: 'organizations.userNotMember',
+        })
+      );
     });
 
     it('isOrgAdmin should allow global admin', async () => {
@@ -1849,6 +1893,7 @@ describe('Middleware Tests', () => {
       res = {
         headersSent: false,
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         json: jest.fn(),
         send: jest.fn(),
         sendFile: jest.fn(),
@@ -1903,7 +1948,12 @@ describe('Middleware Tests', () => {
         },
         __: k => k,
       };
-      res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      res = {
+        status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        send: jest.fn(),
+      };
       next = jest.fn();
     });
 
@@ -1915,7 +1965,14 @@ describe('Middleware Tests', () => {
 
       await verifyBoxFilePath(req, res, next);
       expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'NOT_FOUND' }));
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/not-found',
+          title: 'providers.providerNotFound',
+          status: 404,
+        })
+      );
     });
 
     it('should return 404 if architecture not found', async () => {
@@ -1933,16 +1990,21 @@ describe('Middleware Tests', () => {
       mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
       await verifyBoxFilePath(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'files.pathVerificationError',
+      });
     });
   });
 
   describe('Rate Limiter Middleware', () => {
-    it('handler should log warning and return 429', () => {
+    it('handler should log warning and answer a throttled problem', () => {
       const { handler } = rateLimiter.options;
-      const req = { ip: '127.0.0.1', method: 'GET', url: '/', get: jest.fn() };
+      const req = { ip: '127.0.0.1', method: 'GET', url: '/', get: jest.fn(), __: key => key };
       const res = {
         status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
+        type: jest.fn().mockReturnThis(),
+        send: jest.fn(),
         getHeader: jest.fn(),
       };
 
@@ -1950,82 +2012,22 @@ describe('Middleware Tests', () => {
 
       expect(mockLog.api.warn).toHaveBeenCalledWith('Rate limit exceeded', expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(429);
-    });
-  });
-
-  describe('Validation Middleware', () => {
-    let req;
-    let res;
-    let next;
-
-    beforeEach(() => {
-      req = { body: {}, query: {}, params: {}, method: 'POST' };
-      res = { status: jest.fn().mockReturnThis(), send: jest.fn() };
-      next = jest.fn();
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith({
+        type: 'https://auth.startcloud.com/probs/throttled',
+        title: 'Too many requests',
+        status: 429,
+        errors: [],
+      });
     });
 
-    it('validateBoxName should reject invalid names', () => {
-      req.body = { name: 'Invalid Name!' };
-      validateBoxName(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('validateProvider should reject invalid names', () => {
-      req.body = { name: 'Invalid Name!' };
-      validateProvider(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('validateProvider should skip validation for PUT without name', () => {
-      req.method = 'PUT';
-      req.body = {};
-      validateProvider(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('validateVersion should reject missing version', () => {
-      validateVersion(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('validateVersion should reject invalid version format', () => {
-      req.body = { version: 'Invalid!' };
-      validateVersion(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('validateArchitecture should reject invalid names', () => {
-      req.body = { name: 'Invalid!' };
-      validateArchitecture(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('validateArchitecture should reject names starting with hyphen', () => {
-      req.body = { name: '-arch' };
-      validateArchitecture(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('start with a hyphen') })
-      );
-    });
-
-    it('validateArchitecture should reject names starting with period', () => {
-      req.body = { name: '.arch' };
-      validateArchitecture(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('verifyOrganization.validateOrganization should reject invalid names', () => {
-      req.body = { organization: 'Invalid!' };
-      verifyOrganization.validateOrganization(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('verifyOrganization.checkOrganizationDuplicate should handle database errors', async () => {
-      req.body = { organization: 'org' };
-      mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
-      await verifyOrganization.checkOrganizationDuplicate(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
+    it('every limiter should answer through the same handler', async () => {
+      const limiters = await import('../app/middleware/rateLimiter.js');
+      const handlers = Object.values(limiters).map(limiter => limiter.options.handler);
+      expect(handlers).toHaveLength(6);
+      handlers.forEach(handler => {
+        expect(handler).toBe(rateLimiter.options.handler);
+      });
     });
   });
 
@@ -2046,6 +2048,7 @@ describe('Middleware Tests', () => {
       });
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
         json: jest.fn(),
         sendFile: jest.fn(),
@@ -2060,12 +2063,19 @@ describe('Middleware Tests', () => {
       req.headers['x-access-token'] = 'invalid.token';
       await authJwt.verifyToken(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ error: 'TOKEN_INVALID' }));
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/authentication',
+          title: 'auth.unauthorized',
+          status: 401,
+        })
+      );
     });
 
     it('authJwt.verifyToken should deny service account on refresh endpoint', async () => {
       mockConfigLoader.loadConfig.mockReturnValue({
-        auth: { jwt: { jwt_secret: { value: 'test-secret' } } },
+        auth: { jwt: { jwt_secret: 'test-secret' } },
       });
 
       const token = jwt.sign({ id: 1, isServiceAccount: true }, 'test-secret', JWT_CLAIM_OPTIONS);
@@ -2075,216 +2085,9 @@ describe('Middleware Tests', () => {
       await authJwt.verifyToken(req, res, next);
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Service accounts cannot refresh tokens' })
-      );
-    });
-
-    // verifyBoxName.js coverage
-    it('verifyBoxName.checkBoxDuplicate should handle database errors', async () => {
-      req.params = { organization: 'org', name: 'box' };
-      req.body = { name: 'newbox' };
-      mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
-
-      const { checkBoxDuplicate } = await import('../app/middleware/verifyBoxName.js');
-      await checkBoxDuplicate(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    // verifyBoxName.js coverage
-    it('verifyBoxName.checkBoxDuplicate should skip if PUT and no name', async () => {
-      req.method = 'PUT';
-      req.body = {};
-      const { checkBoxDuplicate } = await import('../app/middleware/verifyBoxName.js');
-      await checkBoxDuplicate(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
-
-    // verifyBoxName.js coverage
-    it('verifyBoxName.checkBoxDuplicate should skip check if currentName equals newName', async () => {
-      req.params = { organization: 'org', name: 'same' };
-      req.body = { name: 'same' };
-      await import('../app/middleware/verifyBoxName.js').then(m =>
-        m.checkBoxDuplicate(req, res, next)
-      );
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('verifyBoxName.checkBoxDuplicate should return 404 if org not found', async () => {
-      req.params = { organization: 'NonExistent', name: 'old' };
-      req.body = { name: 'new' };
-      mockDb.organization.findOne.mockResolvedValue(null);
-
-      const { checkBoxDuplicate } = await import('../app/middleware/verifyBoxName.js');
-      await checkBoxDuplicate(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it('verifyBoxName.checkBoxDuplicate should handle error with fallback message', async () => {
-      req.params = { organization: 'org', name: 'box' };
-      req.body = { name: 'newbox' };
-      mockDb.organization.findOne.mockRejectedValue(new Error('')); // Empty message
-
-      const { checkBoxDuplicate } = await import('../app/middleware/verifyBoxName.js');
-      await checkBoxDuplicate(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Some error occurred while checking the box.',
-        })
-      );
-    });
-
-    // verifyProvider.js coverage
-    it('verifyProvider.validateProvider should reject names starting with hyphen', () => {
-      req.body = { name: '-invalid' };
-      validateProvider(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    // verifyProvider.js coverage
-    it('verifyProvider.checkProviderDuplicate should handle database errors', async () => {
-      req.params = { organization: 'org', boxId: 'box', versionNumber: '1.0.0' };
-      req.body = { name: 'provider' };
-      mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
-
-      await checkProviderDuplicate(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('verifyProvider.checkProviderDuplicate should handle error with fallback message', async () => {
-      req.params = { organization: 'org', boxId: 'box', versionNumber: '1.0.0' };
-      req.body = { name: 'provider' };
-      mockDb.organization.findOne.mockRejectedValue(new Error(''));
-
-      await checkProviderDuplicate(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Some error occurred while checking the provider.',
-        })
-      );
-    });
-
-    it('verifyProvider.checkProviderDuplicate should return 409 if provider exists', async () => {
-      req.params = { organization: 'org', boxId: 'box', versionNumber: '1.0.0' };
-      req.body = { name: 'provider' };
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.box.findOne.mockResolvedValue({ id: 1 });
-      mockDb.versions.findOne.mockResolvedValue({ id: 1 });
-      mockDb.providers.findOne.mockResolvedValue({ id: 1 }); // Exists
-
-      await checkProviderDuplicate(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(409);
-    });
-
-    it('verifyProvider.checkProviderDuplicate should call next if no duplicate', async () => {
-      req.params = { organization: 'org', boxId: 'box', versionNumber: '1.0.0' };
-      req.body = { name: 'new-provider' };
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.box.findOne.mockResolvedValue({ id: 1 });
-      mockDb.versions.findOne.mockResolvedValue({ id: 1 });
-      mockDb.providers.findOne.mockResolvedValue(null);
-      await checkProviderDuplicate(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
-
-    // verifyVersion.js coverage
-    it('verifyVersion.validateVersion should reject names starting with period', () => {
-      req.body = { version: '.invalid' };
-      validateVersion(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('verifyVersion.checkVersionDuplicate should skip if version matches current', async () => {
-      req.params = { versionNumber: '1.0.0' };
-      req.body = { versionNumber: '1.0.0' };
-      req.organizationData = {};
-      req.boxData = {};
-
-      await checkVersionDuplicate(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('verifyVersion.checkVersionDuplicate should handle database errors', async () => {
-      req.params = { versionNumber: '1.0.0' };
-      req.body = { versionNumber: '1.0.1' };
-      req.organizationData = { name: 'org' };
-      req.boxData = { id: 1 };
-
-      mockDb.versions.findOne.mockRejectedValue(new Error('DB Error'));
-
-      await checkVersionDuplicate(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('verifyVersion.attachEntities should handle database errors', async () => {
-      req.params = { organization: 'org', boxId: 'box' };
-      mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
-
-      await attachEntities(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('verifyVersion.attachEntities should return 404 if organization not found', async () => {
-      req.params = { organization: 'NonExistent' };
-      mockDb.organization.findOne.mockResolvedValue(null);
-      await attachEntities(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it('verifyVersion.attachEntities should handle error with fallback message', async () => {
-      req.params = { organization: 'org', boxId: 'box' };
-      mockDb.organization.findOne.mockRejectedValue(new Error(''));
-
-      await attachEntities(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Some error occurred while checking the version.',
-        })
-      );
-    });
-
-    it('verifyVersion.checkVersionDuplicate should return 409 if version exists', async () => {
-      req.params = { versionNumber: '1.0.0' };
-      req.body = { versionNumber: '1.0.1' };
-      req.organizationData = { name: 'org' };
-      req.boxData = { id: 1 };
-
-      mockDb.versions.findOne.mockResolvedValue({ id: 1 }); // Exists
-
-      await checkVersionDuplicate(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(409);
-    });
-
-    it('verifyVersion.attachEntities should call next if all entities found', async () => {
-      req.params = { organization: 'org', boxId: 'box' };
-      mockDb.organization.findOne.mockResolvedValue({ id: 1 });
-      mockDb.box.findOne.mockResolvedValue({ id: 1 });
-      await attachEntities(req, res, next);
-      expect(next).toHaveBeenCalled();
-      expect(req.organizationData).toBeDefined();
-      expect(req.boxData).toBeDefined();
-    });
-
-    it('verifyVersion.checkVersionDuplicate should handle error with fallback message', async () => {
-      req.params = { versionNumber: '1.0.0' };
-      req.body = { versionNumber: '1.0.1' };
-      req.organizationData = { name: 'org' };
-      req.boxData = { id: 1 };
-
-      mockDb.versions.findOne.mockRejectedValue(new Error(''));
-
-      await checkVersionDuplicate(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Some error occurred while checking the version.',
+          type: 'https://auth.startcloud.com/probs/forbidden',
+          title: 'auth.serviceAccountCannotRefresh',
         })
       );
     });
@@ -2294,6 +2097,13 @@ describe('Middleware Tests', () => {
       req.params.organization = undefined;
       await isOrgAdmin(req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'organizations.parameterRequired',
+        })
+      );
     });
 
     it('verifyOrgAccess.isOrgOwner should return 400 if organization param missing', async () => {
@@ -2372,65 +2182,22 @@ describe('Middleware Tests', () => {
       expect(res.send).toHaveBeenCalledWith('Internal server error');
     });
 
-    it('errorHandler should hide error details in production', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
+    it('errorHandler should answer a problem body on API routes', () => {
       const err = new Error('Sensitive Info');
       req.path = '/api/test';
 
       errorHandler(err, req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Internal server error',
-        })
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'https://auth.startcloud.com/probs/internal' })
       );
-
-      process.env.NODE_ENV = originalEnv;
     });
 
     it('errorHandler should handle missing req object', () => {
       const err = new Error('Test');
       errorHandler(err, null, res, next);
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('verifyOrganization.checkOrganizationDuplicate should call next if no duplicate', async () => {
-      req.body = { organization: 'new-org' };
-      mockDb.organization.findOne.mockResolvedValue(null);
-      await verifyOrganization.checkOrganizationDuplicate(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('verifyOrganization.checkOrganizationDuplicate should handle error with fallback message', async () => {
-      req.body = { organization: 'org' };
-      mockDb.organization.findOne.mockRejectedValue(new Error(''));
-
-      await verifyOrganization.checkOrganizationDuplicate(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Some error occurred while checking the organization.',
-        })
-      );
-    });
-
-    // verifyArchitecture.js coverage
-    it('verifyArchitecture.checkArchitectureDuplicate should handle database errors', async () => {
-      req.params = {
-        organization: 'org',
-        boxId: 'box',
-        versionNumber: '1.0.0',
-        providerName: 'prov',
-      };
-      req.body = { name: 'arch' };
-
-      mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
-
-      await checkArchitectureDuplicate(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
@@ -2541,13 +2308,13 @@ describe('Middleware Tests', () => {
 
       mockConfigLoader.loadConfig.mockReturnValue({
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' } },
+          jwt: { jwt_secret: 'test-secret' },
           oidc: {
-            token_refresh_threshold_minutes: { value: 5 },
+            token_refresh_threshold_minutes: 5,
             providers: {
               test: {
-                client_secret: { value: 'secret' },
-                token_endpoint_auth_method: { value: 'client_secret_basic' },
+                client_secret: 'secret',
+                token_endpoint_auth_method: 'client_secret_basic',
               },
             },
           },
@@ -2586,13 +2353,13 @@ describe('Middleware Tests', () => {
 
       mockConfigLoader.loadConfig.mockReturnValue({
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' } },
+          jwt: { jwt_secret: 'test-secret' },
           oidc: {
-            token_refresh_threshold_minutes: { value: 5 },
+            token_refresh_threshold_minutes: 5,
             providers: {
               test: {
-                client_secret: { value: 'secret' },
-                token_endpoint_auth_method: { value: 'unknown' },
+                client_secret: 'secret',
+                token_endpoint_auth_method: 'unknown',
               },
             },
           },
@@ -2626,13 +2393,13 @@ describe('Middleware Tests', () => {
 
       mockConfigLoader.loadConfig.mockReturnValue({
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
+          jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
           oidc: {
-            token_refresh_threshold_minutes: { value: 5 },
+            token_refresh_threshold_minutes: 5,
             providers: {
               test: {
-                client_secret: { value: 'secret' },
-                token_endpoint_auth_method: { value: 'client_secret_post' },
+                client_secret: 'secret',
+                token_endpoint_auth_method: 'client_secret_post',
               },
             },
           },
@@ -2670,10 +2437,10 @@ describe('Middleware Tests', () => {
       // Mock config without jwt_expiration
       mockConfigLoader.loadConfig.mockReturnValue({
         auth: {
-          jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: {} }, // Empty object to avoid crash on .value access
+          jwt: { jwt_secret: 'test-secret' },
           oidc: {
-            token_refresh_threshold_minutes: { value: 5 },
-            providers: { test: { client_secret: { value: 's' } } },
+            token_refresh_threshold_minutes: 5,
+            providers: { test: { client_secret: 's' } },
           },
         },
       });
@@ -2712,10 +2479,10 @@ describe('Middleware Tests', () => {
         if (name === 'auth') {
           return {
             auth: {
-              jwt: { jwt_secret: { value: 'test-secret' }, jwt_expiration: { value: '1h' } },
+              jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
               oidc: {
-                token_refresh_threshold_minutes: { value: 5 },
-                providers: { test: { client_secret: { value: 's' } } },
+                token_refresh_threshold_minutes: 5,
+                providers: { test: { client_secret: 's' } },
               },
             },
           };
@@ -2776,9 +2543,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('File size mismatch'),
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: expect.stringContaining('File size mismatch') })
       );
     });
 
@@ -2832,9 +2601,11 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Version 1.0.0 not found'),
-        })
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
+        expect.objectContaining({ message: expect.stringContaining('Version 1.0.0 not found') })
       );
     });
 
@@ -2858,6 +2629,10 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      );
+      expect(mockLog.error.error).toHaveBeenCalledWith(
+        'Upload error:',
         expect.objectContaining({
           message: expect.stringContaining('Provider virtualbox not found'),
         })
@@ -2900,9 +2675,8 @@ describe('Middleware Tests', () => {
       expect(res.json).not.toHaveBeenCalled();
     });
 
-    it('uploadFile should handle unsupported checksum type', async () => {
-      req.headers['x-checksum'] = 'somehash';
-      req.headers['x-checksum-type'] = 'unknown-algo';
+    it('uploadFile should accept the NULL checksum type', async () => {
+      req.headers['x-checksum-type'] = 'NULL';
       req.params = {
         organization: 'org',
         boxId: 'box',
@@ -2922,28 +2696,8 @@ describe('Middleware Tests', () => {
 
       await uploadFile(req, res);
       expect(res.status).toHaveBeenCalledWith(200);
-    });
-
-    it('checkDuplicateUsernameOrEmail should handle database error', async () => {
-      req.body = { username: 'user', email: 'email@test.com' };
-      mockDb.user.findOne.mockImplementation(() => Promise.reject(new Error('DB Error')));
-
-      await verifySignUp.checkDuplicateUsernameOrEmail(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    it('checkDuplicateUsernameOrEmail should handle error with fallback message', async () => {
-      req.body = { username: 'user', email: 'email@test.com' };
-      mockDb.user.findOne.mockRejectedValue(new Error(''));
-
-      await verifySignUp.checkDuplicateUsernameOrEmail(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Some error occurred while checking for duplicate username/email.',
-        })
+      expect(mockDb.files.create).toHaveBeenCalledWith(
+        expect.objectContaining({ checksum: null, checksumType: 'NULL' })
       );
     });
   });

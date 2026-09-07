@@ -124,6 +124,9 @@ const mockConfigLoader = {
   }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
   loadConfigs: jest.fn(),
+  clearConfigCache: jest.fn(),
+  getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  isProduction: true,
 };
 jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   ...mockConfigLoader,
@@ -142,11 +145,13 @@ const mockFavoriteApps = [
 
 const axiosPost = jest.fn();
 const axiosGet = jest.fn();
+const axiosPut = jest.fn();
 
 jest.unstable_mockModule('axios', () => ({
   default: {
     get: axiosGet,
     post: axiosPost,
+    put: axiosPut,
   },
 }));
 
@@ -166,6 +171,8 @@ describe('Favorites API', () => {
   const uniqueId = Date.now().toString(36);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+
     // Create a user to get a valid JWT for the auth middleware
     const hashedPassword = await bcrypt.hash('password', 8);
     testUser = await db.user.create({
@@ -275,6 +282,78 @@ describe('Favorites API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual([]);
+    });
+  });
+
+  describe('GET /api/user/favorites', () => {
+    it('should forward to the identity provider and answer its body unmapped', async () => {
+      const favorites = [{ clientId: 'app1', customLabel: 'One', order: 1 }];
+      axiosGet.mockResolvedValue({ status: 200, data: favorites });
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', oidcUserToken);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(favorites);
+      expect(axiosGet).toHaveBeenCalledWith('http://mock-auth-server.com/api/user/favorites', {
+        headers: { Authorization: 'Bearer valid-oidc-token', 'Content-Type': 'application/json' },
+      });
+    });
+
+    it('should answer an empty list to a session without an OIDC access token', async () => {
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', localUserToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual([]);
+      expect(axiosGet).not.toHaveBeenCalled();
+    });
+
+    it('should pass the identity provider refusal through and answer 502 when it is down', async () => {
+      axiosGet.mockRejectedValueOnce({ message: 'Forbidden', response: { status: 403, data: {} } });
+      const refused = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', oidcUserToken);
+      expect(refused.statusCode).toBe(403);
+      expect(refused.body).toEqual({ error: 'NOTIFICATIONS_NOT_AUTHORIZED' });
+
+      axiosGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      const down = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', oidcUserToken);
+      expect(down.statusCode).toBe(502);
+      expect(down.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
+    });
+  });
+
+  describe('PUT /api/user/favorites', () => {
+    it('should forward the body to the identity provider and answer its status', async () => {
+      const favorites = [{ clientId: 'app1', customLabel: 'One', order: 1 }];
+      axiosPut.mockResolvedValue({ status: 200, data: favorites });
+      const res = await request(app)
+        .put('/api/user/favorites')
+        .set('x-access-token', oidcUserToken)
+        .send(favorites);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(favorites);
+      expect(axiosPut).toHaveBeenCalledWith(
+        'http://mock-auth-server.com/api/user/favorites',
+        favorites,
+        {
+          headers: { Authorization: 'Bearer valid-oidc-token', 'Content-Type': 'application/json' },
+        }
+      );
+    });
+
+    it('should require an OIDC access token', async () => {
+      const res = await request(app)
+        .put('/api/user/favorites')
+        .set('x-access-token', localUserToken)
+        .send([]);
+      expect(res.statusCode).toBe(401);
+      expect(res.body).toEqual({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
+      expect(axiosPut).not.toHaveBeenCalled();
     });
   });
 

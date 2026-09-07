@@ -219,9 +219,6 @@ const recomputeOrgMemberships = async (db, org, issuer, orgUuid, transaction) =>
   for (const group of groups) {
     const members = Array.isArray(group.members) ? group.members : [];
     for (const memberUuid of members) {
-      if (!memberUuid) {
-        continue;
-      }
       const current = winningRoles.get(memberUuid);
       if (!current || GROUP_ROLE_PRECEDENCE[group.role] > GROUP_ROLE_PRECEDENCE[current]) {
         winningRoles.set(memberUuid, group.role);

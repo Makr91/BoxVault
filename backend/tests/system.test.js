@@ -43,6 +43,9 @@ const mockConfigLoader = {
   fillDefaults: actualConfigLoader.fillDefaults,
   validateConfig: actualConfigLoader.validateConfig,
   unknownKeys: actualConfigLoader.unknownKeys,
+  clearConfigCache: actualConfigLoader.clearConfigCache,
+  getConfigDir: actualConfigLoader.getConfigDir,
+  isProduction: actualConfigLoader.isProduction,
   CONFIG_NAMES: actualConfigLoader.CONFIG_NAMES,
 };
 

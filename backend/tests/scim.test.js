@@ -3,12 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { createServer } from 'http';
-import { fileURLToPath } from 'url';
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const authConfigPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
+const authConfigPath = getConfigPath('auth');
 
 const ISSUER = 'https://scim-idp.example';
 const UNDISCOVERED_ISSUER = 'https://undiscovered-idp.example';
@@ -63,7 +61,11 @@ const writeAuthConfig = mutate => {
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  return () => fs.writeFileSync(authConfigPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(authConfigPath, original);
+    clearConfigCache();
+  };
 };
 
 const enableScim = config => {

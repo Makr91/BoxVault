@@ -1,13 +1,13 @@
-schemaVersion: 1
+schemaVersion: 2
 smtp_connect:
   host: smtp.example.com
   port: 587
   secure: true
-  rejectUnauthorized: true
+  reject_unauthorized: true
 smtp_settings:
   from: noreply@your-domain.com
-  replyTo: support@your-domain.com
-  rateLimit: 10
+  reply_to: support@your-domain.com
+  rate_limit: 10
   alert_emails: []
 smtp_auth:
   user: your-smtp-username

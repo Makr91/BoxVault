@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
-import { getStorageInfo, getUpdateStatus } from '../controllers/system.controller.js';
+import { getStorageInfo } from '../controllers/system/storage.js';
+import { getUpdateStatus } from '../controllers/system/update.js';
 
 const router = Router();
 

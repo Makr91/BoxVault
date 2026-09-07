@@ -18,6 +18,7 @@ describe('External user handling from identity-provider claims', () => {
   const gammaUuid = `gamma-${uniqueId}`;
   const logoUuid = `logo-${uniqueId}`;
   const clashUuid = `clash-uuid-${uniqueId}`;
+  const reservedUuid = `reserved-uuid-${uniqueId}`;
   let localOrg;
   let user;
 
@@ -137,6 +138,13 @@ describe('External user handling from identity-provider claims', () => {
       await sync(user, [{ uuid: clashUuid, name: 'ClashOrg' }]);
       const mirrored = await orgByUuid(clashUuid);
       expect(mirrored.name).toBe(`ClashOrg-${clashUuid}`);
+    });
+
+    it('should step past a reserved path segment when slugging the claimed name', async () => {
+      await sync(user, [{ uuid: reservedUuid, name: 'Admin' }]);
+      const mirrored = await orgByUuid(reservedUuid);
+      expect(mirrored.name).toBe(`Admin-${reservedUuid.slice(0, 6)}`);
+      expect(mirrored.display_name).toBe('Admin');
     });
 
     it('should roll back and rethrow when a claimed organization cannot be mirrored', async () => {

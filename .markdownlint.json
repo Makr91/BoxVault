@@ -1,0 +1,12 @@
+{
+  "default": true,
+  "MD013": false,
+  "MD025": {
+    "front_matter_title": ""
+  },
+  "MD033": {
+    "allowed_elements": ["div", "p", "em", "ul", "li", "a", "img", "style"]
+  },
+  "MD041": false,
+  "MD060": false
+}

@@ -157,14 +157,6 @@ const vagrantHandler = async (req, res, next) => {
     architecture: parsedUrl.architecture,
   };
 
-  // For HEAD requests, handle metadata detection (ONLY if not a download)
-  if (req.method === 'HEAD' && !parsedUrl.isDownload) {
-    // Only set Content-Type to indicate this is metadata
-    res.set('Content-Type', 'application/json');
-    res.status(200).end();
-    return undefined;
-  }
-
   // For box downloads
   if (parsedUrl.isDownload) {
     // For box downloads, rewrite Vagrant's URL format to our API endpoint

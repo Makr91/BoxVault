@@ -3,6 +3,26 @@ import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { user: User, organization: Organization, UserOrg } = db;
 
+const USER_ATTRIBUTES = [
+  'id',
+  'username',
+  'name',
+  'email',
+  'emailHash',
+  'verified',
+  'suspended',
+  'preferredLanguage',
+  'locale',
+  'preferredTheme',
+  'timezone',
+  'authProvider',
+  'avatar_url',
+  'primary_organization_id',
+  'entitlements',
+  'createdAt',
+  'updatedAt',
+];
+
 /**
  * @swagger
  * /api/organization/{organizationName}/users/{userName}:
@@ -64,6 +84,7 @@ export const findOne = async (req, res) => {
     // Find user by username first
     const user = await User.findOne({
       where: { username: userName },
+      attributes: USER_ATTRIBUTES,
     });
 
     if (!user) {
@@ -81,9 +102,7 @@ export const findOne = async (req, res) => {
       });
     }
 
-    const { password, ...userWithoutPassword } = user.toJSON();
-    void password;
-    return res.status(200).send(userWithoutPassword);
+    return res.status(200).send(user);
   } catch (err) {
     log.error.error('Error retrieving user:', err);
     return res.status(500).send({

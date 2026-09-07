@@ -721,7 +721,8 @@ describe('Provider API', () => {
         .send({ name: 'test-provider' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Organization');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Organization');
     });
 
     it('should return 404 if box not found during creation', async () => {
@@ -735,7 +736,8 @@ describe('Provider API', () => {
         .send({ name: 'test-provider' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
     });
 
     it('should return 404 if version not found during creation', async () => {
@@ -749,7 +751,8 @@ describe('Provider API', () => {
         .send({ name: 'test-provider' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
     });
 
     it('should return 404 if provider not found during update', async () => {

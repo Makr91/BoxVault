@@ -1,12 +1,19 @@
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const { version } = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
 
 const options = {
   definition: {
     openapi: '3.0.0',
     info: {
       title: 'BoxVault API',
-      version: '0.7.2',
+      version,
       description: 'API for BoxVault - Vagrant Box Repository Management System',
       license: {
         name: 'GPL-3.0',
@@ -37,11 +44,17 @@ const options = {
     components: {
       securitySchemes: {
         JwtAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-access-token',
+          description:
+            'The BoxVault session JWT, minted by POST /api/auth/signin or the OIDC code exchange, sent as the x-access-token header. It is not accepted on the Authorization header.',
+        },
+        bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT',
           description:
-            'JWT token authentication. First login at [/api/auth/signin](./api/auth/signin) to get your JWT token, then use format: Bearer <jwt_token>',
+            'Authorization: Bearer carries either an access token of a configured identity provider (verified against its JWKS while auth.resource_server.enabled is on; a key-bound token uses the DPoP scheme with a proof) or a raw service-account key. A BoxVault session JWT presented here is refused.',
         },
       },
       schemas: {
@@ -186,7 +199,7 @@ const options = {
               type: 'string',
               format: 'uri',
               description:
-                'A URI under https://auth.startcloud.com/probs/: validation, conflict, bad-request, forbidden, not-found or internal',
+                'A URI under https://auth.startcloud.com/probs/: validation, conflict, bad-request, authentication, forbidden, not-found, payload-too-large, throttled or internal',
               example: 'https://auth.startcloud.com/probs/validation',
             },
             title: {
@@ -671,6 +684,14 @@ const options = {
               format: 'date-time',
               description: 'Token expiration timestamp',
               example: '2025-02-04T17:18:00.324Z',
+            },
+            last_used_at: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description:
+                'When a raw key or session JWT of this service account was last accepted; null until its first use',
+              example: '2025-01-20T08:41:12.004Z',
             },
             userId: {
               type: 'integer',

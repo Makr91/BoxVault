@@ -9,7 +9,7 @@ permalink: /configuration/
 
 {: .no_toc }
 
-BoxVault configuration options and settings.
+BoxVault configuration files, their keys and how they are validated.
 
 ## Table of contents
 
@@ -22,98 +22,143 @@ BoxVault configuration options and settings.
 
 ## Overview
 
-BoxVault uses configuration files to manage database connections, authentication settings, file storage, and other application parameters. Configuration can be managed through environment variables or configuration files.
+BoxVault reads four plain YAML files, `app.config.yaml`, `auth.config.yaml`, `db.config.yaml` and `mail.config.yaml`, each described by a JSON Schema shipped beside the code in `backend/app/config/schema/<name>.schema.yaml`. Every value is a literal in its file: there is no JSON form, no environment override and no `${VAR}` interpolation.
 
 ## Configuration Files
 
-BoxVault supports multiple configuration formats:
+| Environment | Directory                             | File name                |
+| ----------- | ------------------------------------- | ------------------------ |
+| production  | `CONFIG_DIR`, default `/etc/boxvault` | `<name>.config.yaml`     |
+| development | `backend/app/config/`                 | `<name>.dev.config.yaml` |
 
-- **YAML** - Primary configuration format
-- **JSON** - Alternative configuration format
-- **Environment Variables** - Override any configuration setting
+`CONFIG_DIR` is the only environment variable BoxVault reads. Production against development is chosen by which config directory exists. The Debian unit sets `CONFIG_DIR=/etc/boxvault`, and a fresh install copies the four files from `/opt/boxvault/config-templates/` into `/etc/boxvault/`; the CI derives the development files from the same templates in `packaging/config/`.
 
-### Default Configuration Locations
-
-BoxVault looks for configuration files in the following order:
-
-1. `./config/` (relative to application root)
-2. `/etc/boxvault/`
-3. `~/.boxvault/`
+Every file carries `schemaVersion` at its root, `1` for `app`, `auth` and `db` and `2` for `mail`, and `snake_case` keys. A missing key takes the schema's `default`; a key the schema does not know is logged as a warning and ignored. The files are `0600`, owned by the `boxvault` service user, because `auth.config.yaml`, `db.config.yaml` and `mail.config.yaml` carry secrets.
 
 ## Database Configuration
 
-Configure your database connection:
+`db.config.yaml`, as the package ships it:
 
 ```yaml
-database:
-  dialect: "sqlite" # or "mysql", "postgresql", "mariadb"
-  host: "localhost"
+schemaVersion: 1
+database_type: sqlite
+sql:
+  host: localhost
   port: 3306
-  database: "boxvault"
-  username: "boxvault"
-  password: "your-password"
-  storage: "./data/boxvault.db" # SQLite only
   logging: false
+  user: boxvault
+  password: CHANGE_THIS_PASSWORD
+  database: boxvault
+  storage: /var/lib/boxvault/database/boxvault.db
+  dialect: ''
+mysql_pool:
+  max: 5
+  min: 0
+  acquire: 30000
+  idle: 5000
 ```
+
+| Key                                                              | Meaning                                                                                                                                              |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database_type`                                                  | `mysql` or `sqlite`; nothing else is accepted                                                                                                        |
+| `sql.host`, `sql.port`, `sql.user`, `sql.password`, `sql.database` | the MySQL connection, drawn only while `database_type` is `mysql`                                                                                    |
+| `sql.storage`                                                    | the SQLite file, drawn only while `database_type` is `sqlite`                                                                                        |
+| `sql.logging`                                                    | log every SQL statement                                                                                                                              |
+| `sql.dialect`                                                    | read-only, set from `database_type` by the setup page; while it is empty BoxVault stays in setup mode and serves only `/api/status` and `/api/setup/*` |
+| `mysql_pool.max`, `mysql_pool.min`, `mysql_pool.acquire`, `mysql_pool.idle` | the MySQL connection pool                                                                                                                            |
 
 ## Authentication Configuration
 
-JWT and authentication settings:
+The keys of `auth.config.yaml` an operator changes first:
 
 ```yaml
+schemaVersion: 1
 auth:
   jwt:
-    secret: "your-jwt-secret-key"
-    expiresIn: "24h"
-  bcrypt:
-    rounds: 12
+    jwt_secret: a-random-string-of-at-least-32-characters
+    jwt_expiration: 24h
+    jwt_issuer: boxvault
+    jwt_audience: boxvault-api
+    service_account_max_expiry_days: 365
+    local_enabled: true
+  local:
+    local_require_email_verification: true
+    local_password_min_length: 15
+    local_bcrypt_rounds: 10
+    local_session_timeout: 24
+    local_allow_new_organizations: false
 ```
+
+`auth.jwt.jwt_secret` signs every session token and is required; BoxVault warns at boot when it is shorter than 32 characters. `auth.jwt.jwt_expiration` is the token lifetime (`24h`, `7d`, `1h`); a stay-logged-in session lives `auth.local.local_session_timeout` hours instead. `auth.local.local_bcrypt_rounds` is the bcrypt cost of local passwords. The `auth.oidc`, `auth.resource_server`, `auth.scim` and `auth.external` sections configure identity providers and are described by the schema served at `GET /api/config/auth/schema`.
 
 ## File Storage Configuration
 
-Configure where Vagrant boxes are stored:
+In `app.config.yaml`:
 
 ```yaml
-storage:
-  boxStorageDirectory: "./storage/boxes"
-  maxFileSize: "2GB"
-  allowedExtensions: [".box"]
-  tempDirectory: "./storage/temp"
+boxvault:
+  box_storage_directory: /var/lib/boxvault/storage
+  box_max_file_size: 10
+  iso_storage_directory: ''
 ```
+
+`box_max_file_size` is in GB and caps every upload; an empty `iso_storage_directory` stores ISOs under `<box_storage_directory>/iso`.
 
 ## Server Configuration
 
-HTTP server settings:
+In `app.config.yaml`:
 
 ```yaml
-server:
-  port: 3000
-  host: "0.0.0.0"
-  cors:
-    enabled: true
-    origin: "*"
-  ssl:
-    enabled: false
-    cert: "./ssl/cert.pem"
-    key: "./ssl/key.pem"
+boxvault:
+  origin: https://boxvault.example.com
+  api_url: https://boxvault.example.com/api
+  api_listen_port_unencrypted: 80
+  api_listen_port_encrypted: 443
+  trust_proxy: true
+  allowed_origins: []
+ssl:
+  generate_ssl: true
+  cert_path: /etc/boxvault/ssl/public.crt
+  key_path: /etc/boxvault/ssl/private.key
 ```
+
+`boxvault.origin` is the URL browsers reach BoxVault at and the one CORS origin always allowed; `boxvault.allowed_origins` adds more. `api_listen_port_unencrypted` and `api_listen_port_encrypted` are the ports the process binds; the package binds 80 and 443 with `CAP_NET_BIND_SERVICE`. When both `ssl.cert_path` and `ssl.key_path` exist BoxVault serves HTTPS on the encrypted port and redirects the unencrypted one to it; `ssl.generate_ssl: true` writes a self-signed pair there when none exists. `trust_proxy: true` trusts one `X-Forwarded-For` hop in front of BoxVault.
+
+### Other app.config.yaml sections
+
+| Section                | Purpose                                                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `gravatar`             | `base_url` and `api_key` of the server-side Gravatar profile proxy                                                                       |
+| `ticket_system`        | `enabled`, `base_url`, `req_type`, `fallback_customer_id` and `context` of the Help ticket link, served at `GET /api/config/ticket`      |
+| `hyperweaver`          | `url` of the Hyperweaver UI the Deploy button links to; empty hides the button                                                           |
+| `monitoring`           | disk thresholds, alert frequency, service-account and SSL expiry warnings                                                                |
+| `rate_limiting`        | see the [Authentication Guide](guides/authentication/#rate-limiting)                                                                     |
+| `internationalization` | `default_language`, `supported_languages`, `fallback_language`, `auto_detect`, `force_language`                                          |
+| `frontend_logging`     | the levels the STARTcloud UI logs at, served in `GET /api/health`                                                                        |
+| `notifications`        | the push notification keys, below                                                                                                        |
 
 ## Email Configuration
 
-SMTP settings for notifications:
+`mail.config.yaml`:
 
 ```yaml
-email:
-  enabled: false
-  smtp:
-    host: "smtp.example.com"
-    port: 587
-    secure: false
-    auth:
-      user: "noreply@example.com"
-      pass: "your-password"
-  from: "BoxVault <noreply@example.com>"
+schemaVersion: 2
+smtp_connect:
+  host: smtp.example.com
+  port: 587
+  secure: true
+  reject_unauthorized: true
+smtp_settings:
+  from: noreply@your-domain.com
+  reply_to: support@your-domain.com
+  rate_limit: 10
+  alert_emails: []
+smtp_auth:
+  user: your-smtp-username
+  password: CHANGE_THIS_SMTP_PASSWORD
 ```
+
+`smtp_connect.host`, `smtp_connect.port` and `smtp_settings.from` are required. `reject_unauthorized` refuses a TLS certificate that cannot be verified, `rate_limit` caps the emails sent per second and `alert_emails` lists the recipients of disk-space alerts. `POST /api/mail/test-smtp` sends a test message with these settings.
 
 ## User Profile Fields
 
@@ -239,84 +284,50 @@ feed still requires an OIDC login because the feed lives on the hub.
 
 ## Logging Configuration
 
-Application logging settings:
+In `app.config.yaml`:
 
 ```yaml
 logging:
-  level: "info" # debug, info, warn, error
-  file: "./logs/boxvault.log"
-  maxSize: "10MB"
-  maxFiles: 5
-  console: true
+  level: info
+  console_enabled: true
+  log_directory: /var/log/boxvault
+  performance_threshold_ms: 1000
+  enable_compression: true
+  compression_age_days: 7
+  max_files: 30
+  categories:
+    app: info
+    api: info
+    database: warn
+    auth: info
+    file: info
 ```
 
-## Environment Variables
-
-Override any configuration using environment variables with the `BOXVAULT_` prefix:
-
-```bash
-# Database
-export BOXVAULT_DATABASE_HOST=localhost
-export BOXVAULT_DATABASE_PORT=5432
-export BOXVAULT_DATABASE_DATABASE=boxvault
-
-# Authentication
-export BOXVAULT_AUTH_JWT_SECRET=your-secret-key
-
-# Storage
-export BOXVAULT_STORAGE_BOXSTORAGEDIRECTORY=/var/lib/boxvault/boxes
-
-# Server
-export BOXVAULT_SERVER_PORT=8080
-```
+`level` is `error`, `warn`, `info` or `debug` and `categories` overrides it per category. Log files live under `log_directory`; `max_files` archived files are kept per log and gzipped after `compression_age_days` while `enable_compression` is on.
 
 ## Production Configuration
 
-Recommended settings for production:
+The templates in `packaging/config/` are the production starting point; `postinst` installs them into `/etc/boxvault/` and the setup page writes the values. Every value is literal, so a secret is written into the file itself, never as `${VAR}`. The values every deployment changes:
 
-```yaml
-database:
-  dialect: "postgresql"
-  host: "db.example.com"
-  port: 5432
-  database: "boxvault_prod"
-  username: "boxvault"
-  password: "${DB_PASSWORD}"
-  logging: false
-
-auth:
-  jwt:
-    secret: "${JWT_SECRET}"
-    expiresIn: "1h"
-  bcrypt:
-    rounds: 14
-
-storage:
-  boxStorageDirectory: "/var/lib/boxvault/boxes"
-  maxFileSize: "5GB"
-  tempDirectory: "/tmp/boxvault"
-
-server:
-  port: 3000
-  host: "127.0.0.1"
-  cors:
-    enabled: true
-    origin: ["https://boxvault.example.com"]
-  ssl:
-    enabled: true
-    cert: "/etc/ssl/certs/boxvault.pem"
-    key: "/etc/ssl/private/boxvault.key"
-
-logging:
-  level: "warn"
-  file: "/var/log/boxvault/boxvault.log"
-  console: false
-```
+| Key                                            | Value                                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `boxvault.origin`, `boxvault.api_url`          | the public URL and its `/api`                                                           |
+| `auth.jwt.jwt_secret`                          | a random string of at least 32 characters                                               |
+| `database_type` and `sql.*`                    | `sqlite` with `sql.storage`, or `mysql` with the connection                             |
+| `smtp_connect`, `smtp_settings`, `smtp_auth`   | the mail server, since local sign-in requires a verified email by default               |
 
 ## Configuration Validation
 
-BoxVault validates configuration on startup and will report any errors or missing required settings. Use the `--validate-config` flag to check configuration without starting the server:
+Every boot evaluates each file against its schema, defaults filled first, and refuses to start when any value fails, logging one line per failing pointer and a warning per unknown key. There is no separate validation flag; `node server.js` is the check.
 
-```bash
-npm start -- --validate-config
-```
+The admin page and the setup page evaluate the same schema before writing:
+
+| Route                                                        | Answer                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/config/<name>`                                     | the file as JSON, `writeOnly` values masked; admin only                                                                                                                                                                                     |
+| `GET /api/config/<name>/schema`                              | the schema document; admin only                                                                                                                                                                                                             |
+| `PUT /api/config/<name>`                                     | validates the merged file, answers `422` as `application/problem+json` with a pointer per failing value, then writes the file atomically with a backup beside it; the `200` carries `requires_restart` when a changed key needs one |
+| `POST /api/config/restart`                                   | exits for the process manager; admin only                                                                                                                                                                                                   |
+| `GET /api/setup`, `GET /api/setup/schema`, `PUT /api/setup`  | every file at once under the setup token, pointers as `/configs/<name>/…`                                                                                                                                                                   |
+
+An upgrade runs `scripts/migrate-config.js` from `postinst`: the files are migrated in place to the schema's `schemaVersion`, new keys filled from their defaults, and the previous copies kept beside them as `.bak`.

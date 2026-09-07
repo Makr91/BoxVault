@@ -12,7 +12,9 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
 import {
+  isProduction,
   getConfigPath,
+  clearConfigCache,
   loadConfig,
   loadConfigs,
   checkConfigs,
@@ -25,16 +27,26 @@ import { writeConfig } from '../app/controllers/config/helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const authConfigPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
-const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+const authConfigPath = getConfigPath('auth');
+const appConfigPath = getConfigPath('app');
 
 const withFile = (filePath, mutate) => {
   const original = fs.readFileSync(filePath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(filePath, yaml.dump(config));
-  return () => fs.writeFileSync(filePath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(filePath, original);
+    clearConfigCache();
+  };
 };
+
+const minimalAuthYaml = `
+auth:
+  jwt:
+    jwt_secret: test-secret
+`;
 
 describe('Config API', () => {
   let adminToken;
@@ -89,7 +101,9 @@ describe('Config API', () => {
     it('should reject unauthenticated access to gravatar config', async () => {
       const res = await request(app).get('/api/config/gravatar');
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toBe('No token provided!');
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toBe('No token provided!');
     });
   });
 
@@ -169,6 +183,7 @@ describe('Config API', () => {
         expect(restart.body.requiresRestart).toBe(true);
       } finally {
         fs.writeFileSync(authConfigPath, original);
+        clearConfigCache();
       }
     });
   });
@@ -294,243 +309,142 @@ describe('Config API', () => {
   });
 
   describe('Config Controller Error Handling', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+      clearConfigCache();
+    });
+
     it('GET /api/config/:configName - should handle file read errors', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      // Minimal auth config to pass middleware
-      const authConfigYaml = `
-auth:
-  jwt:
-    jwt_secret: test-secret
-`;
-
-      // Spy on fs.readFileSync to throw error
-      const readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
+      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
         if (filePath.toString().includes('auth')) {
-          return authConfigYaml;
+          return minimalAuthYaml;
         }
         throw new Error('File system error');
       });
-      // Suppress console.error
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      clearConfigCache();
 
-      try {
-        const res = await request(app)
-          .get('/api/config/app')
-          .set('Accept-Language', 'en')
-          .set('x-access-token', adminToken);
+      const res = await request(app)
+        .get('/api/config/app')
+        .set('Accept-Language', 'en')
+        .set('x-access-token', adminToken);
 
-        expect(res.statusCode).toBe(500);
-        expect(res.body.message).toBe('Operation failed.');
-      } finally {
-        process.env.NODE_ENV = originalEnv;
-        readFileSyncSpy.mockRestore();
-        consoleErrorSpy.mockRestore();
-        consoleWarnSpy.mockRestore();
-      }
+      expect(res.statusCode).toBe(500);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
 
-    it('PUT /api/config/:configName - should handle invalid config name', async () => {
+    it('PUT /api/config/:configName - should answer 404 for a name outside status.config', async () => {
       const res = await request(app)
         .put('/api/config/invalidConfigName')
         .set('x-access-token', adminToken)
         .set('Accept-Language', 'en')
         .send({ some: 'value' });
 
-      // getConfigPath throws error for invalid names, controller should catch it
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Failed to update configuration');
+      expect(res.statusCode).toBe(404);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
     });
 
-    it('GET /api/config/gravatar - should handle config load error', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      const readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
+    it('GET /api/config/gravatar - should answer 404 for a name outside status.config while the loader fails', async () => {
+      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
         if (filePath.toString().includes('auth')) {
-          return `
-auth:
-  jwt:
-    jwt_secret: test-secret`;
+          return minimalAuthYaml;
         }
         throw new Error('Config Load Error');
       });
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      clearConfigCache();
 
-      try {
-        const res = await request(app)
-          .get('/api/config/gravatar')
-          .set('x-access-token', adminToken);
-        expect(res.statusCode).toBe(500);
-        expect(res.body.message).toBe('Operation failed.');
-      } finally {
-        process.env.NODE_ENV = originalEnv;
-        readFileSyncSpy.mockRestore();
-        consoleErrorSpy.mockRestore();
-        consoleWarnSpy.mockRestore();
-      }
+      const res = await request(app).get('/api/config/gravatar').set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(404);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
     });
 
     it('GET /api/config/ticket - should handle config load error', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      const readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
+      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
         if (filePath.toString().includes('auth')) {
-          return `
-auth:
-  jwt:
-    jwt_secret: test-secret`;
+          return minimalAuthYaml;
         }
         throw new Error('Config Load Error');
       });
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      clearConfigCache();
 
-      try {
-        const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
-        expect(res.statusCode).toBe(500);
-        expect(res.body.message).toBe('Operation failed.');
-      } finally {
-        process.env.NODE_ENV = originalEnv;
-        readFileSyncSpy.mockRestore();
-        consoleErrorSpy.mockRestore();
-        consoleWarnSpy.mockRestore();
-      }
+      const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('Operation failed.');
     });
 
-    it('GET /api/config/gravatar - should reject non-whitelisted config name', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      const readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
+    it('GET /api/config/gravatar - should answer 404 while the section is absent', async () => {
+      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
         const p = filePath.toString();
         if (p.includes('auth')) {
-          return `
-auth:
-  jwt:
-    jwt_secret: test-secret`;
-        }
-        if (p.includes('app')) {
-          return 'boxvault: {}'; // Valid yaml, missing gravatar
-        }
-        return '';
-      });
-
-      try {
-        const res = await request(app)
-          .get('/api/config/gravatar')
-          .set('x-access-token', adminToken);
-        expect(res.statusCode).toBe(500);
-        expect(res.body.message).toBe('Operation failed.');
-      } finally {
-        process.env.NODE_ENV = originalEnv;
-        readFileSyncSpy.mockRestore();
-      }
-    });
-
-    it('GET /api/config/ticket - should answer the schema defaults when the section is absent', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      const readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        const p = filePath.toString();
-        if (p.includes('auth')) {
-          return `
-auth:
-  jwt:
-    jwt_secret: test-secret`;
+          return minimalAuthYaml;
         }
         if (p.includes('app')) {
           return 'boxvault: {}';
         }
         return '';
       });
+      clearConfigCache();
 
-      try {
-        const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
-        expect(res.statusCode).toBe(200);
-        expect(res.body.ticket_system.enabled).toBe(false);
-      } finally {
-        process.env.NODE_ENV = originalEnv;
-        readFileSyncSpy.mockRestore();
-      }
+      const res = await request(app).get('/api/config/gravatar').set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('GET /api/config/ticket - should answer the schema defaults when the section is absent', async () => {
+      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
+        const p = filePath.toString();
+        if (p.includes('auth')) {
+          return minimalAuthYaml;
+        }
+        if (p.includes('app')) {
+          return 'boxvault: {}';
+        }
+        return '';
+      });
+      clearConfigCache();
+
+      const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.ticket_system.enabled).toBe(false);
     });
 
     it('PUT /api/config/:configName - should handle file write error', async () => {
-      const writeFileSpy = jest.spyOn(fs, 'copyFileSync').mockImplementation(() => {
+      jest.spyOn(fs, 'copyFileSync').mockImplementation(() => {
         throw new Error('Write Error');
       });
+      jest.spyOn(console, 'error').mockImplementation(() => {});
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const res = await request(app)
+        .put('/api/config/app')
+        .set('x-access-token', adminToken)
+        .set('Accept-Language', 'en')
+        .send({ internationalization: { default_language: 'en' } });
 
-      try {
-        const res = await request(app)
-          .put('/api/config/app')
-          .set('x-access-token', adminToken)
-          .set('Accept-Language', 'en')
-          .send({ internationalization: { default_language: 'en' } });
-
-        expect(res.statusCode).toBe(500);
-        expect(res.body.message).toBe('Failed to update configuration');
-      } finally {
-        writeFileSpy.mockRestore();
-        consoleErrorSpy.mockRestore();
-      }
+      expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('Failed to update configuration');
     });
   });
 
   describe('Config Loader Utility', () => {
-    const originalNodeEnv = process.env.NODE_ENV;
-    const originalConfigDir = process.env.CONFIG_DIR;
-
     afterEach(() => {
-      process.env.NODE_ENV = originalNodeEnv;
-      if (originalConfigDir === undefined) {
-        delete process.env.CONFIG_DIR;
-      } else {
-        process.env.CONFIG_DIR = originalConfigDir;
-      }
       jest.restoreAllMocks();
+      clearConfigCache();
     });
 
     describe('getConfigPath', () => {
-      it('should return production path when NODE_ENV is production', () => {
-        process.env.NODE_ENV = 'production';
-        process.env.CONFIG_DIR = '/custom/config';
-
-        const configPath = getConfigPath('app');
-        expect(configPath).toBe('/custom/config/app.config.yaml');
+      it('should place every file in CONFIG_DIR', () => {
+        expect(getConfigPath('app')).toBe(path.join(process.env.CONFIG_DIR, 'app.config.yaml'));
       });
 
-      it('should return default production path if CONFIG_DIR is not set', () => {
-        process.env.NODE_ENV = 'production';
-        delete process.env.CONFIG_DIR;
-
-        const configPath = getConfigPath('app');
-        expect(configPath).toBe('/etc/boxvault/app.config.yaml');
-      });
-
-      it('should return test path when NODE_ENV is test', () => {
-        process.env.NODE_ENV = 'test';
-
-        const configPath = getConfigPath('app');
-        expect(configPath).toContain('app.test.config.yaml');
-      });
-
-      it('should return dev path when NODE_ENV is development', () => {
-        process.env.NODE_ENV = 'development';
-        const configPath = getConfigPath('app');
-        expect(configPath).toContain('app.dev.config.yaml');
-      });
-
-      it('should return dev path when NODE_ENV is undefined', () => {
-        delete process.env.NODE_ENV;
-        const configPath = getConfigPath('app');
-        expect(configPath).toContain('app.dev.config.yaml');
+      it('should run as production while CONFIG_DIR exists', () => {
+        expect(isProduction).toBe(true);
       });
 
       it('should throw error for invalid config names', () => {
@@ -540,55 +454,42 @@ auth:
 
     describe('loadConfig', () => {
       it('should load and parse a valid config file', () => {
-        process.env.NODE_ENV = 'development';
-        const mockYamlContent = 'key: value';
-
-        jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYamlContent);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue('key: value');
+        clearConfigCache();
 
         const config = loadConfig('app');
         expect(config.key).toBe('value');
         expect(config.boxvault.api_listen_port_unencrypted).toBe(80);
       });
 
-      it('should return mock config in test environment if loading fails', () => {
-        process.env.NODE_ENV = 'test';
+      it('should throw when the file cannot be read', () => {
+        jest.spyOn(console, 'error').mockImplementation(() => {});
         jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
           throw new Error('File not found');
         });
+        clearConfigCache();
 
-        const config = loadConfig('app');
-
-        expect(config).toBeDefined();
-        expect(config.boxvault).toBeDefined();
+        expect(() => loadConfig('app')).toThrow('File not found');
       });
 
-      it('should load config in test environment without overriding logging if not app config', () => {
-        process.env.NODE_ENV = 'test';
-        const mockYamlContent = 'key: value';
-        jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYamlContent);
+      it('should answer the cached file until the cache is cleared', () => {
+        const readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('key: value');
+        clearConfigCache();
 
-        const config = loadConfig('auth');
-        expect(config.key).toBe('value');
-        expect(config.logging).toBeUndefined();
-      });
+        loadConfig('auth');
+        loadConfig('auth');
+        expect(readSpy).toHaveBeenCalledTimes(1);
 
-      it('should add default logging config in test environment if missing', () => {
-        process.env.NODE_ENV = 'test';
-        process.env.SUPPRESS_LOGS = 'true';
-
-        // Mock fs.readFileSync to return config without logging
-        jest.spyOn(fs, 'readFileSync').mockReturnValue('boxvault: {}');
-
-        const config = loadConfig('app');
-        expect(config.logging).toBeDefined();
-        expect(config.logging.level).toBe('silent');
+        clearConfigCache();
+        loadConfig('auth');
+        expect(readSpy).toHaveBeenCalledTimes(2);
       });
     });
 
     describe('loadConfigs', () => {
       it('should load multiple configs', () => {
-        process.env.NODE_ENV = 'development';
         jest.spyOn(fs, 'readFileSync').mockReturnValue('dummy: content');
+        clearConfigCache();
 
         const configs = loadConfigs(['app', 'db']);
 
@@ -596,46 +497,16 @@ auth:
         expect(configs).toHaveProperty('db');
         expect(fs.readFileSync).toHaveBeenCalledTimes(2);
       });
-
-      it('should load multiple mock configs in test env on failure', () => {
-        process.env.NODE_ENV = 'test';
-        jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-          throw new Error('Fail');
-        });
-
-        const configs = loadConfigs(['app', 'db']);
-        expect(configs.app.boxvault).toBeDefined();
-        expect(configs.db.sql).toBeDefined();
-      });
     });
 
     describe('getSetupTokenPath', () => {
-      it('should return production path', () => {
-        process.env.NODE_ENV = 'production';
-        process.env.CONFIG_DIR = '/etc/boxvault';
-
-        expect(getSetupTokenPath()).toBe('/etc/boxvault/setup.token');
-      });
-
-      it('should return default production path if CONFIG_DIR is not set', () => {
-        process.env.NODE_ENV = 'production';
-        delete process.env.CONFIG_DIR;
-
-        expect(getSetupTokenPath()).toBe('/etc/boxvault/setup.token');
-      });
-
-      it('should return relative path in development', () => {
-        process.env.NODE_ENV = 'development';
-
-        const tokenPath = getSetupTokenPath();
-        expect(tokenPath).toContain('setup.token');
-        expect(path.isAbsolute(tokenPath)).toBe(true);
+      it('should place the token beside the config files', () => {
+        expect(getSetupTokenPath()).toBe(path.join(process.env.CONFIG_DIR, 'setup.token'));
       });
     });
 
     describe('getRateLimitConfig', () => {
       it('should return configured values', () => {
-        process.env.NODE_ENV = 'development';
         const mockYaml = `
 rate_limiting:
   window_minutes: 30
@@ -643,6 +514,7 @@ rate_limiting:
   message: 'Slow down'
 `;
         jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
+        clearConfigCache();
 
         const config = getRateLimitConfig();
 
@@ -652,24 +524,24 @@ rate_limiting:
       });
 
       it('should return defaults on error', () => {
-        process.env.NODE_ENV = 'production';
-        // Mock console.warn to suppress output
         jest.spyOn(console, 'warn').mockImplementation(() => {});
         jest.spyOn(console, 'error').mockImplementation(() => {});
         jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
           throw new Error('Config missing');
         });
+        clearConfigCache();
 
         const config = getRateLimitConfig();
 
         expect(config.window_minutes).toBe(15);
         expect(config.max_requests).toBe(1000);
+        expect(config.auth_max_requests).toBe(20);
         expect(console.warn).toHaveBeenCalled();
       });
 
       it('should return defaults if config is empty', () => {
-        process.env.NODE_ENV = 'test';
         jest.spyOn(fs, 'readFileSync').mockReturnValue('rate_limiting: {}');
+        clearConfigCache();
 
         const config = getRateLimitConfig();
         expect(config.window_minutes).toBe(15);
@@ -679,13 +551,13 @@ rate_limiting:
 
     describe('getI18nConfig', () => {
       it('should return configured values', () => {
-        process.env.NODE_ENV = 'development';
         const mockYaml = `
 internationalization:
   default_language: 'es'
   auto_detect: false
 `;
         jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
+        clearConfigCache();
 
         const config = getI18nConfig();
 
@@ -694,12 +566,12 @@ internationalization:
       });
 
       it('should return defaults on error', () => {
-        process.env.NODE_ENV = 'production';
         jest.spyOn(console, 'warn').mockImplementation(() => {});
         jest.spyOn(console, 'error').mockImplementation(() => {});
         jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
           throw new Error('Config missing');
         });
+        clearConfigCache();
 
         const config = getI18nConfig();
 
@@ -708,8 +580,8 @@ internationalization:
       });
 
       it('should return defaults if config is empty', () => {
-        process.env.NODE_ENV = 'test';
         jest.spyOn(fs, 'readFileSync').mockReturnValue('internationalization: {}');
+        clearConfigCache();
 
         const config = getI18nConfig();
         expect(config.default_language).toBe('en');
@@ -727,15 +599,15 @@ internationalization:
   });
 
   describe('i18n Configuration & Middleware', () => {
-    const configPath = path.join(__dirname, '../app/config/app.test.config.yaml');
     let originalConfig;
 
     beforeAll(() => {
-      originalConfig = fs.readFileSync(configPath, 'utf8');
+      originalConfig = fs.readFileSync(appConfigPath, 'utf8');
     });
 
     afterEach(() => {
-      fs.writeFileSync(configPath, originalConfig);
+      fs.writeFileSync(appConfigPath, originalConfig);
+      clearConfigCache();
     });
 
     it('should use t() helper', () => {
@@ -758,7 +630,8 @@ internationalization:
         force_language: 'es',
         default_language: 'en',
       };
-      fs.writeFileSync(configPath, yaml.dump(config));
+      fs.writeFileSync(appConfigPath, yaml.dump(config));
+      clearConfigCache();
 
       // Make request (should be in Spanish regardless of header)
       await request(app)
@@ -865,207 +738,21 @@ internationalization:
     });
   });
 
-  describe('Config Loader Mock Fallback', () => {
-    const originalEnv = process.env.NODE_ENV;
-
+  describe('Config Loader Error Handling', () => {
     afterEach(() => {
-      process.env.NODE_ENV = originalEnv;
       jest.restoreAllMocks();
+      clearConfigCache();
     });
 
-    it('should return mock config when load fails in test env', () => {
-      process.env.NODE_ENV = 'test';
-
-      // Mock fs.readFileSync to throw
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Failed');
-      });
-
-      // Test app config mock
-      const appConfig = loadConfig('app');
-      expect(appConfig.boxvault).toBeDefined();
-      expect(appConfig.logging).toBeDefined();
-
-      // Test auth config mock
-      const authConfig = loadConfig('auth');
-      expect(authConfig.auth).toBeDefined();
-
-      // Test db config mock
-      const dbConfig = loadConfig('db');
-      expect(dbConfig.sql).toBeDefined();
-
-      // Test unknown config mock
-      const unknownConfig = loadConfig('mail'); // mail not in getMockConfig switch
-      expect(unknownConfig).toEqual({});
-    });
-
-    it('should return mock db config when load fails in test env', () => {
-      process.env.NODE_ENV = 'test';
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Failed');
-      });
-
-      const config = loadConfig('db');
-      expect(config.sql).toBeDefined();
-      expect(config.sql.dialect).toBe('sqlite');
-    });
-
-    it('should return mock db config when load fails in test env', () => {
-      process.env.NODE_ENV = 'test';
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Failed');
-      });
-
-      const config = loadConfig('db');
-      expect(config.sql).toBeDefined();
-      expect(config.sql.dialect).toBe('sqlite');
-    });
-
-    it('should return mock db config when load fails in test env (explicit db check)', () => {
-      process.env.NODE_ENV = 'test';
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Failed');
-      });
-
-      const config = loadConfig('db');
-      expect(config.sql).toBeDefined();
-      expect(config.sql.dialect).toBe('sqlite');
-    });
-
-    it('should return mock db config when load fails in test env (explicit db check)', () => {
-      process.env.NODE_ENV = 'test';
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Failed');
-      });
-
-      const config = loadConfig('db');
-      expect(config.sql).toBeDefined();
-      expect(config.sql.dialect).toBe('sqlite');
-    });
-
-    it('should return empty object for unknown config in test env (fallback)', () => {
-      process.env.NODE_ENV = 'test';
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Failed');
-      });
-
-      // 'mail' is not in the getMockConfig switch in config-loader.js provided in context
-      const config = loadConfig('mail');
-      expect(config).toEqual({});
-    });
-
-    it('should override logging config in test environment', () => {
-      process.env.NODE_ENV = 'test';
-      process.env.SUPPRESS_LOGS = 'true';
-
-      const mockYaml = `
-logging:
-  level: 'info'
-  console_enabled: true
-`;
-      jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
-
-      const config = loadConfig('app');
-      expect(config.logging.level).toBe('silent');
-      expect(config.logging.console_enabled).toBe(false);
-    });
-
-    it('getRateLimitConfig should return defaults on error', () => {
-      // Mock loadConfig to throw
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Error');
-      });
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const config = getRateLimitConfig();
-      expect(config.window_minutes).toBe(15);
-      expect(config.max_requests).toBe(100000);
-
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('getI18nConfig should return defaults on error', () => {
-      // Mock loadConfig to throw
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Config Load Error');
-      });
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const config = getI18nConfig();
-      expect(config.default_language).toBe('en');
-
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('should set logging level to error when SUPPRESS_LOGS is false in test env', () => {
-      const originalSuppress = process.env.SUPPRESS_LOGS;
-      process.env.NODE_ENV = 'test';
-      process.env.SUPPRESS_LOGS = 'false';
-
-      const mockYaml = `
-logging:
-  level: 'info'
-`;
-      jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
-
-      const config = loadConfig('app');
-      expect(config.logging.level).toBe('error');
-
-      process.env.SUPPRESS_LOGS = originalSuppress;
-    });
-
-    it('should return mock config with error log level when SUPPRESS_LOGS is false (getMockConfig)', () => {
-      const originalSuppress = process.env.SUPPRESS_LOGS;
-      process.env.NODE_ENV = 'test';
-      process.env.SUPPRESS_LOGS = 'false';
-
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Fail');
-      });
-
-      const config = loadConfig('app');
-      expect(config.logging.level).toBe('error');
-
-      process.env.SUPPRESS_LOGS = originalSuppress;
-    });
-
-    it('should set logging level to error when SUPPRESS_LOGS is false in test env', () => {
-      const originalSuppress = process.env.SUPPRESS_LOGS;
-      process.env.NODE_ENV = 'test';
-      process.env.SUPPRESS_LOGS = 'false';
-
-      jest.spyOn(fs, 'readFileSync').mockReturnValue('logging: { level: "info" }');
-
-      const config = loadConfig('app');
-      expect(config.logging.level).toBe('error');
-
-      process.env.SUPPRESS_LOGS = originalSuppress;
-    });
-  });
-
-  describe('Config Loader Error Handling (Non-Test Env)', () => {
-    const originalEnv = process.env.NODE_ENV;
-
-    afterEach(() => {
-      process.env.NODE_ENV = originalEnv;
-      jest.restoreAllMocks();
-    });
-
-    it('loadConfig should log error in non-test environment', () => {
-      process.env.NODE_ENV = 'development';
+    it('loadConfig should log the failure before rethrowing', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
         throw new Error('Read Error');
       });
+      clearConfigCache();
 
-      try {
-        loadConfig('app');
-      } catch (e) {
-        void e;
-        // Expected to throw in non-test env
-      }
-
+      expect(() => loadConfig('app')).toThrow('Read Error');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to load configuration',
         expect.any(Object)
@@ -1073,15 +760,13 @@ logging:
     });
 
     it('getRateLimitConfig should log warning and return defaults on error', () => {
-      process.env.NODE_ENV = 'development';
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      void consoleErrorSpy;
+      jest.spyOn(console, 'error').mockImplementation(() => {});
 
-      // Force loadConfig to throw
       jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
         throw new Error('Read Error');
       });
+      clearConfigCache();
 
       const config = getRateLimitConfig();
       expect(config.window_minutes).toBe(15);
@@ -1092,14 +777,13 @@ logging:
     });
 
     it('getI18nConfig should log warning and return defaults on error', () => {
-      process.env.NODE_ENV = 'development';
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      void consoleErrorSpy;
+      jest.spyOn(console, 'error').mockImplementation(() => {});
 
       jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
         throw new Error('Read Error');
       });
+      clearConfigCache();
 
       const config = getI18nConfig();
       expect(config.default_language).toBe('en');
@@ -1136,6 +820,17 @@ logging:
       };
       jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
 
+      jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
+        isProduction: false,
+        getI18nConfig: jest.fn().mockReturnValue({
+          default_language: 'en',
+          auto_detect: true,
+          supported_languages: ['en'],
+        }),
+        loadConfig: jest.fn(),
+        getConfigPath: jest.fn(),
+      }));
+
       // Re-import to trigger configure
       await import('../app/config/i18n.js');
 
@@ -1143,13 +838,8 @@ logging:
       const [[config]] = mockConfigure.mock.calls;
 
       // Test logDebugFn
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
       config.logDebugFn('debug msg');
       expect(mockLog.app.debug).toHaveBeenCalledWith('i18n debug', { message: 'debug msg' });
-
-      process.env.NODE_ENV = originalEnv;
 
       // Test logWarnFn
       config.logWarnFn('warn msg');
@@ -1212,6 +902,7 @@ logging:
 
       // Mock config-loader to ensure default language is 'en'
       jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
+        isProduction: false,
         getI18nConfig: jest.fn().mockReturnValue({
           default_language: 'en',
           auto_detect: true,
@@ -1261,6 +952,7 @@ logging:
 
       // Mock config-loader to ensure default language is 'en'
       jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
+        isProduction: false,
         getI18nConfig: jest.fn().mockReturnValue({
           default_language: 'en',
           auto_detect: true,
@@ -1302,6 +994,7 @@ logging:
         log: { app: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       }));
       jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
+        isProduction: false,
         getI18nConfig: jest.fn().mockReturnValue({
           default_language: null, // Force null to be passed to findBestMatchingLocale
           auto_detect: true,

@@ -142,7 +142,8 @@ describe('Events API', () => {
     it('should answer 401 without a session', async () => {
       const stream = await openStream();
       expect(stream.status).toBe(401);
-      expect(stream.body.error).toBe('TOKEN_INVALID');
+      expect(stream.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(stream.body.title).toBe('Unauthorized!');
     });
 
     it('should answer 401 to an invalid session', async () => {

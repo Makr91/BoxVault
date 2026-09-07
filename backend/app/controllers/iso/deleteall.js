@@ -8,7 +8,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso:
  *   delete:
  *     summary: Delete all ISOs in an organization
- *     description: Delete every ISO of the organization with their versions and file records. A physical file is removed only when no ISO file record of any organization references it any more (deduplication).
+ *     description: Delete every ISO of the organization with their versions and file records. A physical file is removed only when no other ISO file record shares its storage path (deduplication within the organization).
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []

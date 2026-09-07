@@ -13,7 +13,7 @@ import { log } from './Logger.js';
 import { verifySessionToken } from './auth.js';
 import { findProviderByIssuer } from './oidcProviders.js';
 import { getRemoteJwks } from './jwks.js';
-import { findServiceAccountByRawToken } from './serviceAccountAuth.js';
+import { findServiceAccountByRawToken, touchServiceAccount } from './serviceAccountAuth.js';
 import { getOidcConfiguration } from '../auth/passport.js';
 import externalUserHandler from '../auth/external-user-handler.js';
 import db from '../models/index.js';
@@ -51,8 +51,10 @@ const authorizationCredential = req => {
   return { scheme, token };
 };
 
+const isJwt = token => token.split('.').length === 3;
+
 const issuerOf = token => {
-  if (token.split('.').length !== 3) {
+  if (!isJwt(token)) {
     return null;
   }
   try {
@@ -222,6 +224,9 @@ const resolveExternalAuth = async (req, { scheme, token }) => {
 const resolveSessionAuth = async token => {
   try {
     const claims = await verifySessionToken(token);
+    if (claims.isServiceAccount && claims.serviceAccountId) {
+      await touchServiceAccount(claims.serviceAccountId);
+    }
     return {
       userId: claims.id,
       isServiceAccount: claims.isServiceAccount || false,
@@ -244,7 +249,8 @@ const resolveSessionAuth = async token => {
  * session JWT on x-access-token; an access token of a configured identity
  * provider on Authorization, as Bearer or, when key-bound, as DPoP with a
  * proof; a raw service-account key on Authorization: Bearer or x-access-token.
- * A refused credential logs its reason and resolves to null.
+ * A refused credential logs its reason and resolves to null; a JWT that fails
+ * verification is refused outright and never retried as a raw key.
  * @param {import('express').Request} req - The request
  * @param {{sessionOnly?: boolean}} [options] - sessionOnly accepts the session JWT alone
  * @returns {Promise<{userId: number, isServiceAccount: boolean, serviceAccountId?: number,
@@ -258,6 +264,9 @@ const resolveRequestAuth = async (req, { sessionOnly = false } = {}) => {
     const session = await resolveSessionAuth(sessionToken);
     if (session) {
       return session;
+    }
+    if (isJwt(sessionToken)) {
+      return null;
     }
   }
   if (sessionOnly) {
@@ -276,7 +285,7 @@ const resolveRequestAuth = async (req, { sessionOnly = false } = {}) => {
     }
   }
   const rawKeys = [credential?.scheme === 'Bearer' ? credential.token : null, sessionToken].filter(
-    Boolean
+    rawKey => rawKey && !isJwt(rawKey)
   );
   const accounts = await Promise.all(rawKeys.map(rawKey => findServiceAccountByRawToken(rawKey)));
   const serviceAccount = accounts.find(Boolean);

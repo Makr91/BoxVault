@@ -82,13 +82,13 @@ export default (sequelize, Sequelize) => {
    * All stored role groups of one org for one issuer.
    * @param {string} issuer - OIDC issuer
    * @param {string} orgUuid - Auth-server org UUID
-   * @param {Object|null} transaction - Optional transaction
+   * @param {Object} transaction - Active transaction
    * @returns {Promise<ScimGroup[]>}
    */
-  ScimGroup.findByOrg = function (issuer, orgUuid, transaction = null) {
+  ScimGroup.findByOrg = function (issuer, orgUuid, transaction) {
     return this.findAll({
       where: { issuer, org_uuid: orgUuid },
-      ...(transaction ? { transaction } : {}),
+      transaction,
     });
   };
 

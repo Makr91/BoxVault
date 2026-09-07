@@ -55,7 +55,7 @@ properties:
       logging:
         type: boolean
         default: false
-        title: Log SQL
+        title: SQL query logging
         description: Log SQL queries to the backend console
         order: 3
         requiresRestart: true

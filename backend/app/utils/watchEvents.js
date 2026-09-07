@@ -141,7 +141,7 @@ const fanOutWatchEvent = async ({
   const localized = composeForPush([fallbackLanguage, ...languagesByUserId.values()], message);
   const pushGroups = new Map();
   for (const userId of new Set([...watcherUserIds, ...orgMemberUserIds])) {
-    const language = languagesByUserId.get(userId) || fallbackLanguage;
+    const language = languagesByUserId.get(userId);
     if (!pushGroups.has(language)) {
       pushGroups.set(language, []);
     }
@@ -150,7 +150,7 @@ const fanOutWatchEvent = async ({
 
   await Promise.all(
     [...pushGroups.entries()].map(([language, userIds]) =>
-      sendPushToUsers(userIds, localized.get(language) || localized.get(fallbackLanguage))
+      sendPushToUsers(userIds, localized.get(language))
     )
   );
 };

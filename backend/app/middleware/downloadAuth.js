@@ -2,6 +2,7 @@ import { log } from '../utils/Logger.js';
 import {
   findServiceAccountByRawToken,
   hashServiceAccountToken,
+  touchServiceAccount,
 } from '../utils/serviceAccountAuth.js';
 import { verifyDownloadToken } from '../utils/auth.js';
 import db from '../models/index.js';
@@ -40,6 +41,8 @@ const validateBasicAuth = async (username, password) => {
       return { suspended: true };
     }
 
+    await touchServiceAccount(serviceAccount.id);
+
     return {
       userId: serviceAccount.user.id,
       isServiceAccount: true,
@@ -73,42 +76,37 @@ const downloadAuth = async (req, res, next) => {
       return next();
     } catch {
       // Already logged by verifyDownloadToken
-      return res.status(403).send({ message: 'Invalid or expired download token.' });
+      return res.status(403).send({ message: req.__('files.invalidDownloadToken') });
     }
   }
 
   // 2. Check for Authorization: Basic header (service account credentials)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Basic ')) {
-    try {
-      const encoded = authHeader.substring(6);
-      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-      const separatorIndex = decoded.indexOf(':');
+    const encoded = authHeader.substring(6);
+    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+    const separatorIndex = decoded.indexOf(':');
 
-      if (separatorIndex === -1) {
-        return res.status(401).send({ message: 'Invalid basic auth format.' });
-      }
-
-      const username = decoded.substring(0, separatorIndex);
-      const password = decoded.substring(separatorIndex + 1);
-
-      const authInfo = await validateBasicAuth(username, password);
-      if (!authInfo) {
-        return res.status(401).send({ message: 'Invalid credentials.' });
-      }
-
-      if (authInfo.suspended) {
-        return res.status(403).send({ message: req.__('auth.accountSuspended') });
-      }
-
-      req.userId = authInfo.userId;
-      req.isServiceAccount = authInfo.isServiceAccount;
-      req.serviceAccountId = authInfo.serviceAccountId;
-      return next();
-    } catch (err) {
-      log.app.warn('Error processing basic auth:', err.message);
-      return res.status(401).send({ message: 'Invalid credentials.' });
+    if (separatorIndex === -1) {
+      return res.status(401).send({ message: req.__('auth.invalidBasicAuthFormat') });
     }
+
+    const username = decoded.substring(0, separatorIndex);
+    const password = decoded.substring(separatorIndex + 1);
+
+    const authInfo = await validateBasicAuth(username, password);
+    if (!authInfo) {
+      return res.status(401).send({ message: req.__('auth.invalidCredentials') });
+    }
+
+    if (authInfo.suspended) {
+      return res.status(403).send({ message: req.__('auth.accountSuspended') });
+    }
+
+    req.userId = authInfo.userId;
+    req.isServiceAccount = authInfo.isServiceAccount;
+    req.serviceAccountId = authInfo.serviceAccountId;
+    return next();
   }
 
   // 3. Check for Authorization: Bearer header (raw service account token)

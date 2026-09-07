@@ -3,6 +3,26 @@ import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { organization: Organization, user: User, role: Role, box: Box } = db;
 
+const MEMBER_ATTRIBUTES = [
+  'id',
+  'username',
+  'name',
+  'email',
+  'emailHash',
+  'verified',
+  'suspended',
+  'preferredLanguage',
+  'locale',
+  'preferredTheme',
+  'timezone',
+  'authProvider',
+  'avatar_url',
+  'primary_organization_id',
+  'entitlements',
+  'createdAt',
+  'updatedAt',
+];
+
 /**
  * @swagger
  * /api/organizations-with-users:
@@ -59,6 +79,7 @@ export const findAllWithUsers = async (req, res) => {
         {
           model: User,
           as: 'members',
+          attributes: MEMBER_ATTRIBUTES,
           // Junction role = the user's role IN THIS ORG (distinct from the
           // global `roles` include below)
           through: { attributes: ['role'] },
@@ -88,10 +109,9 @@ export const findAllWithUsers = async (req, res) => {
       return {
         ...org.toJSON(),
         members: org.members.map(user => {
-          const { password, UserOrg: membership, ...userWithoutPassword } = user.toJSON();
-          void password;
+          const { UserOrg: membership, ...member } = user.toJSON();
           return {
-            ...userWithoutPassword,
+            ...member,
             orgRole: membership?.role || null,
             totalBoxes: countOrgBoxes(user),
           };

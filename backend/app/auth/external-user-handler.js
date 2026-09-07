@@ -1,6 +1,6 @@
 import { log } from '../utils/Logger.js';
 import { generateEmailHash, generateOrgCode, isHttpUrl } from '../utils/identity.js';
-import { upsertExternalOrg } from '../utils/externalOrgs.js';
+import { findFreeOrgName, upsertExternalOrg } from '../utils/externalOrgs.js';
 
 /**
  * Pick the per-org role from an auth-server organizations claim entry. The
@@ -295,9 +295,10 @@ const applyProvisioningFallback = async (domain, db, authConfig) => {
       throw new Error(`Access denied: Invitation required for domain ${domain}`);
 
     case 'create_org': {
+      const orgCode = await generateOrgCode(db);
       const newOrg = await db.organization.create({
-        name: domain,
-        org_code: await generateOrgCode(db),
+        name: await findFreeOrgName(db.organization, domain, orgCode, null),
+        org_code: orgCode,
         description: `Auto-created organization for domain ${domain}`,
       });
       return newOrg.id;
@@ -530,7 +531,7 @@ const createNewExternalUser = async (
     preferredTheme: resolvePreferredTheme(profile),
     timezone: resolveTimezone(profile),
     email,
-    password: 'external',
+    password: null,
     emailHash: generateEmailHash(email),
     verified: true,
     primary_organization_id: organizationId,

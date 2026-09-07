@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-const { user: User, Sequelize, UserOrg } = db;
+const { user: User, Sequelize, UserOrg, invitation: Invitation } = db;
 
 const ROLE_RANK = { owner: 3, admin: 2, member: 1 };
 
@@ -12,8 +12,8 @@ const ROLE_RANK = { owner: 3, admin: 2, member: 1 };
  * members. Global platform admins act with owner rank in any org (the
  * route middleware stamps req.userOrgRole = 'owner' for them). Removes only
  * the target's membership in this organization — never their account and
- * never their other memberships. Keeps the last-owner guard and reassigns the
- * primary organization when needed.
+ * never their other memberships. Reassigns the primary organization when
+ * needed.
  *
  * @param {Object} req - Express request (userId, userOrgRole?, organizationId via middleware)
  * @param {Object} res - Express response
@@ -44,19 +44,6 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
     });
   }
 
-  // An organization must always keep at least one owner
-  if (membership.role === 'owner') {
-    const ownerCount = await UserOrg.count({
-      where: { organization_id: organizationId, role: 'owner' },
-    });
-
-    if (ownerCount === 1) {
-      return res.status(400).send({
-        message: req.__('organizations.cannotRemoveLastOwner'),
-      });
-    }
-  }
-
   // Check if this is their primary organization
   if (membership.is_primary) {
     // Count other organizations
@@ -85,6 +72,10 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
 
   // Remove user from organization
   await membership.destroy();
+
+  await Invitation.destroy({
+    where: { email: user.email, organizationId, accepted: false },
+  });
 
   log.api.info('User removed from organization', {
     userId: user.id,

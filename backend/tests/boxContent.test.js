@@ -5,17 +5,13 @@ import yaml from 'js-yaml';
 import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
 import { Readable } from 'stream';
-import { fileURLToPath } from 'url';
 import app from '../server.js';
 import db from '../app/models/index.js';
+import { clearConfigCache, getConfigPath } from '../app/utils/config-loader.js';
 import { getSecureBoxPath } from '../app/utils/paths.js';
 import { getIsoStorageRoot } from '../app/controllers/iso/helpers.js';
 import { generateDownloadToken } from '../app/utils/auth.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const configDir = path.join(__dirname, '../app/config');
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
@@ -26,12 +22,16 @@ const binaryParser = (response, callback) => {
 };
 
 const updateConfig = (configName, mutate) => {
-  const configPath = path.join(configDir, `${configName}.test.config.yaml`);
+  const configPath = getConfigPath(configName);
   const original = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(configPath, yaml.dump(config));
-  return () => fs.writeFileSync(configPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(configPath, original);
+    clearConfigCache();
+  };
 };
 
 describe('Box and ISO content validation and visibility', () => {
@@ -165,10 +165,10 @@ describe('Box and ISO content validation and visibility', () => {
       const longShort = await request(app)
         .post(boxUrl())
         .set('x-access-token', ownerToken)
-        .send({ name: boxName, shortDescription: 'x'.repeat(256) });
+        .send({ name: boxName, short_description: 'x'.repeat(256) });
       expect(longShort.statusCode).toBe(422);
       expect(longShort.body.errors[0]).toEqual(
-        expect.objectContaining({ pointer: '/shortDescription', rule: 'maxLength' })
+        expect.objectContaining({ pointer: '/short_description', rule: 'maxLength' })
       );
       const badReadme = await request(app)
         .post(boxUrl())
@@ -189,7 +189,7 @@ describe('Box and ISO content validation and visibility', () => {
           description: 'content box',
           published: true,
           is_public: true,
-          shortDescription: 'short',
+          short_description: 'short',
           readme: '# hi',
           metadata: { distro: 'debian', junk: true },
         });
@@ -206,7 +206,7 @@ describe('Box and ISO content validation and visibility', () => {
       const cleared = await request(app)
         .put(boxUrl(`/${boxName}`))
         .set('x-access-token', ownerToken)
-        .send({ shortDescription: null, readme: null, metadata: null });
+        .send({ short_description: null, readme: null, metadata: null });
       expect(cleared.statusCode).toBe(200);
       expect(cleared.body.shortDescription).toBeNull();
       expect(cleared.body.readme).toBeNull();

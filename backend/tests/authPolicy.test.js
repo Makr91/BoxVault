@@ -1,29 +1,28 @@
 import request from 'supertest';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
 import jwt from 'jsonwebtoken';
 import { hashSync } from 'bcryptjs';
-import { fileURLToPath } from 'url';
 import app from '../server.js';
 import db from '../app/models/index.js';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const configDir = path.join(__dirname, '../app/config');
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const PASSWORD = 'Secret123!';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const updateConfig = (configName, mutate) => {
-  const configPath = path.join(configDir, `${configName}.test.config.yaml`);
+  const configPath = getConfigPath(configName);
   const original = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(configPath, yaml.dump(config));
-  return () => fs.writeFileSync(configPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(configPath, original);
+    clearConfigCache();
+  };
 };
 
 describe('Local authentication policy', () => {

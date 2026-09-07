@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
 import { authorizationCredential } from '../utils/requestAuth.js';
 import { openEventStream } from '../utils/events.js';
+import { problem } from '../utils/problem.js';
 
 const router = Router();
 
@@ -13,7 +14,11 @@ router.use((req, res, next) => {
 
 const requireCredential = (req, res, next) => {
   if (!req.headers['x-access-token'] && !authorizationCredential(req)) {
-    return res.status(401).send({ message: 'Unauthorized!', error: 'TOKEN_INVALID' });
+    return problem(res, req, {
+      status: 401,
+      type: 'authentication',
+      title: req.__('auth.unauthorized'),
+    });
   }
   return next();
 };

@@ -218,7 +218,7 @@ export const uploadArtwork = async (req, res) => {
 
     // A re-upload under a different image type would leave the old file behind
     if (box.artwork && box.artwork !== fileName) {
-      safeUnlink(getSecureBoxPath(organization, name, box.artwork));
+      await safeUnlink(getSecureBoxPath(organization, name, box.artwork));
     }
 
     const updatedBox = await box.update({ artwork: fileName });

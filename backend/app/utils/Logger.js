@@ -3,7 +3,7 @@ import morgan from 'morgan';
 import fs from 'fs';
 import { join, dirname, basename } from 'path';
 import zlib from 'zlib';
-import { loadConfig } from './config-loader.js';
+import { isProduction, loadConfig } from './config-loader.js';
 
 export const getLoggingConfig = () => {
   try {
@@ -24,6 +24,7 @@ export const extractLoggerConfig = config => ({
   enable_compression: config.enable_compression !== false,
   compression_age_days: config.compression_age_days || 7,
   max_files: config.max_files || 30,
+  silent: config.silent === true,
   categories: {},
 });
 
@@ -240,6 +241,7 @@ const logger = winston.createLogger({
   level: extractedConfig.level,
   format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
   transports,
+  silent: extractedConfig.silent,
 });
 
 const accessLogger = winston.createLogger({
@@ -253,6 +255,7 @@ const accessLogger = winston.createLogger({
       maxFiles: extractedConfig.max_files,
     }),
   ],
+  silent: extractedConfig.silent,
 });
 
 const consoleFormatTemplate = ({ level, message, timestamp, category: cat, ...meta }) => {
@@ -276,7 +279,7 @@ export const createCategoryLogger = (category, filename) => {
     })
   );
 
-  if (extractedConfig.console_enabled && process.env.NODE_ENV !== 'production') {
+  if (extractedConfig.console_enabled && !isProduction) {
     categoryTransports.push(
       new winston.transports.Console({
         level: categoryLevel,
@@ -295,7 +298,7 @@ export const createCategoryLogger = (category, filename) => {
     defaultMeta: { category, service: 'boxvault' },
     transports: categoryTransports,
     exitOnError: false,
-    silent: extractedConfig.level === 'silent',
+    silent: extractedConfig.silent,
   });
 };
 

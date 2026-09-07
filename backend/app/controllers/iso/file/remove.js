@@ -1,14 +1,14 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { removeUnreferencedIsoFiles } from '../helpers.js';
-const { isoFiles: IsoFile } = db;
+const { isoFiles: IsoFile, sequelize } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/delete:
  *   delete:
  *     summary: Delete an ISO file
- *     description: Delete the file record of one architecture of an ISO version. The physical file is removed only when no other ISO file record shares its checksum (deduplication).
+ *     description: Delete the file record of one architecture of an ISO version in a transaction. The physical file is removed after the commit, and only when no other ISO file record shares its storage path (deduplication within the organization).
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -60,7 +60,15 @@ const remove = async (req, res) => {
 
     const removed = fileRecord.toJSON();
 
-    await fileRecord.destroy();
+    const transaction = await sequelize.transaction();
+    try {
+      await fileRecord.destroy({ transaction });
+      await transaction.commit();
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+
     await removeUnreferencedIsoFiles([removed]);
 
     return res.send({ message: req.__('files.deleted') });

@@ -1,12 +1,11 @@
 // getuserprofile.js
-import jwt from 'jsonwebtoken';
-const { sign } = jwt;
-
 import { loadConfig } from '../../utils/config-loader.js';
-import { getJwtClaimOptions } from '../../utils/auth.js';
+import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { user: User, role: Role, organization: Organization, UserOrg } = db;
+import { buildSigninToken } from '../auth/signin.js';
+import { idpClaimsOf } from '../auth/token.js';
+const { user: User, role: Role, organization: Organization } = db;
 
 /**
  * @swagger
@@ -105,20 +104,19 @@ export const getUserProfile = async (req, res) => {
       return res.status(404).send({ message: req.__('users.userNotFound') });
     }
 
-    const token = sign({ id: user.id }, authConfig.auth.jwt.jwt_secret, {
-      expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
-      ...getJwtClaimOptions(),
+    const { userOrganizations: organizations } = await resolveUserOrganizations(user);
+    const claims = req.tokenClaims || {};
+    const token = buildSigninToken({
+      user,
+      isServiceAccount: false,
+      stayLoggedIn: req.stayLoggedIn,
+      provider: claims.provider || user.authProvider || 'local',
+      userOrganizations: organizations,
+      authConfig,
+      idpClaims: idpClaimsOf(claims),
     });
 
     const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
-
-    // Multi-org membership for the frontend (mirrors signin.js / refresh-token)
-    const userOrgs = await UserOrg.getUserOrganizations(user.id);
-    const organizations = userOrgs.map(userOrg => ({
-      name: userOrg.organization.name,
-      role: userOrg.role,
-      isPrimary: userOrg.is_primary,
-    }));
 
     return res.status(200).send({
       id: user.id,

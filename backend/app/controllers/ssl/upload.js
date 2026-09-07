@@ -2,6 +2,7 @@ import { realpathSync, existsSync, mkdirSync, createWriteStream } from 'fs';
 import { resolve as pathResolve, join, dirname } from 'path';
 import { log } from '../../utils/Logger.js';
 import { isPathInside } from '../../utils/paths.js';
+import { getConfigDir } from '../../utils/config-loader.js';
 
 export const uploadSSL = async (req, res) => {
   const { targetPath } = req.query;
@@ -19,7 +20,7 @@ export const uploadSSL = async (req, res) => {
   }
 
   // SECURITY: Validate target path to prevent traversal and unauthorized writes
-  const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
+  const configDir = getConfigDir();
   let configRoot;
   try {
     // Normalize allowed root and resolve symlinks

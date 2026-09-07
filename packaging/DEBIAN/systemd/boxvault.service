@@ -13,7 +13,6 @@ Restart=on-failure
 RestartSec=10
 
 # Environment variables
-Environment=NODE_ENV=production
 Environment=CONFIG_DIR=/etc/boxvault
 
 # Security settings

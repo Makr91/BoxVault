@@ -1,15 +1,13 @@
 // config.routes.js
 import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
-import {
-  getGravatarProfile,
-  getTicketConfig,
-  getHyperweaverConfig,
-  getConfig,
-  getConfigSchema,
-  updateConfig,
-  restartServer,
-} from '../controllers/config.controller.js';
+import { getGravatarProfile } from '../controllers/config/gravatar.js';
+import { getTicketConfig } from '../controllers/config/ticket.js';
+import { getHyperweaverConfig } from '../controllers/config/hyperweaver.js';
+import { getConfig } from '../controllers/config/get.js';
+import { getConfigSchema } from '../controllers/config/schema.js';
+import { updateConfig } from '../controllers/config/update.js';
+import { restartServer } from '../controllers/config/restart.js';
 
 const router = Router();
 

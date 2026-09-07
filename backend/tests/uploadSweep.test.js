@@ -3,16 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import jwt from 'jsonwebtoken';
+import { createHash } from 'crypto';
 import { createServer } from 'http';
 import { Readable } from 'stream';
-import { fileURLToPath } from 'url';
 import app from '../server.js';
 import db from '../app/models/index.js';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 import { getSecureBoxPath, getStorageRoot } from '../app/utils/paths.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+const appConfigPath = getConfigPath('app');
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const HOUR_MS = 60 * 60 * 1000;
@@ -22,7 +21,11 @@ const updateAppConfig = mutate => {
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(appConfigPath, yaml.dump(config));
-  return () => fs.writeFileSync(appConfigPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(appConfigPath, original);
+    clearConfigCache();
+  };
 };
 
 const makeTempDir = (segments, ageMs) => {
@@ -157,7 +160,32 @@ describe('Stale chunk directory sweep', () => {
     expect(fs.existsSync(stale)).toBe(true);
   });
 
-  it('should assemble the file from a chunked final part and skip an unknown checksum type', async () => {
+  it('should refuse an unknown checksum type on the final part and keep the chunks', async () => {
+    const assembled = getSecureBoxPath(orgName, boxName, '1.0.0', 'virtualbox', 'amd64');
+    const response = await fetch(`${baseUrl}${uploadUrl}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'x-access-token': ownerToken,
+        'x-chunk-index': '2',
+        'x-total-chunks': '3',
+        'x-checksum': 'abc',
+        'x-checksum-type': 'crc32',
+      },
+      body: Buffer.from('chunk-2'),
+    });
+    expect(response.status).toBe(400);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+    const payload = await response.json();
+    expect(payload.type).toBe('https://auth.startcloud.com/probs/bad-request');
+    expect(payload.errors).toEqual([
+      expect.objectContaining({ pointer: '/x-checksum-type', rule: 'enum' }),
+    ]);
+    expect(fs.existsSync(path.join(assembled, '.temp'))).toBe(true);
+  });
+
+  it('should assemble the file from a chunked final part with a known checksum type', async () => {
+    const checksum = createHash('sha256').update('chunk-0chunk-1chunk-2').digest('hex');
     const body = Readable.from(
       (function* generate() {
         yield Buffer.from('chunk-2');
@@ -170,8 +198,8 @@ describe('Stale chunk directory sweep', () => {
         'x-access-token': ownerToken,
         'x-chunk-index': '2',
         'x-total-chunks': '3',
-        'x-checksum': 'abc',
-        'x-checksum-type': 'crc32',
+        'x-checksum': checksum,
+        'x-checksum-type': 'sha256',
       },
       body,
       duplex: 'half',
@@ -185,6 +213,6 @@ describe('Stale chunk directory sweep', () => {
     );
     expect(fs.existsSync(path.join(assembled, '.temp'))).toBe(false);
     const record = await db.files.findOne({ where: { fileName: 'vagrant.box' } });
-    expect(record.checksumType).toBe('CRC32');
+    expect(record.checksumType).toBe('SHA256');
   });
 });

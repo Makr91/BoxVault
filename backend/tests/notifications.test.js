@@ -1,12 +1,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const configDir = path.join(__dirname, '../app/config');
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 
 const ISSUER = 'https://notify-idp.example';
 
@@ -32,12 +27,16 @@ const jwt = (await import('jsonwebtoken')).default;
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
 const updateConfig = (configName, mutate) => {
-  const configPath = path.join(configDir, `${configName}.test.config.yaml`);
+  const configPath = getConfigPath(configName);
   const original = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(configPath, yaml.dump(config));
-  return () => fs.writeFileSync(configPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(configPath, original);
+    clearConfigCache();
+  };
 };
 
 describe('Notifications API', () => {
@@ -391,6 +390,27 @@ describe('Notifications API', () => {
         `${ISSUER}/api/notifications/n1`,
         expect.any(Object)
       );
+    });
+
+    it('should clear the inbox and refresh the unread count', async () => {
+      axiosDelete.mockResolvedValue({ status: 204 });
+      axiosGet.mockResolvedValue({ status: 200, data: { count: 0 } });
+      const res = await request(app).delete('/api/notifications').set('x-access-token', oidcToken);
+      expect(res.statusCode).toBe(204);
+      expect(axiosDelete).toHaveBeenCalledWith(`${ISSUER}/api/notifications`, {
+        headers: { Authorization: 'Bearer idp-access-token', 'Content-Type': 'application/json' },
+      });
+      expect(axiosGet).toHaveBeenCalledWith(
+        `${ISSUER}/api/notifications/unread-count`,
+        expect.any(Object)
+      );
+    });
+
+    it('should require an identity-provider session to clear the inbox', async () => {
+      const res = await request(app).delete('/api/notifications').set('x-access-token', localToken);
+      expect(res.statusCode).toBe(401);
+      expect(res.body).toEqual({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
+      expect(axiosDelete).not.toHaveBeenCalled();
     });
   });
 });

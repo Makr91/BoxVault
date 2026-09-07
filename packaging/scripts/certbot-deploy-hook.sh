@@ -58,7 +58,7 @@ try:
         config = yaml.safe_load(f)
     
     # Get origin URL from BoxVault config
-    origin_url = config['boxvault']['origin']['value']
+    origin_url = config['boxvault']['origin']
     
     # Extract domain (e.g., 'https://boxvault.example.com' -> 'boxvault.example.com')
     parsed_url = urllib.parse.urlparse(origin_url)

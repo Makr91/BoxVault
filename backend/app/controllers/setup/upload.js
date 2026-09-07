@@ -3,15 +3,13 @@ import { join } from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { log } from '../../utils/Logger.js';
+import { getConfigDir } from '../../utils/config-loader.js';
 import { verifyAuthorizedToken } from './middleware.js';
 
 // This is a self-contained multer setup for handling SSL uploads during setup.
 // It avoids using the box-specific upload middleware.
 
-const getSSLUploadPath = () => {
-  const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
-  return join(configDir, 'ssl');
-};
+const getSSLUploadPath = () => join(getConfigDir(), 'ssl');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateOrgCode } from '../../utils/identity.js';
+import { isReservedSegment } from '../../utils/reservedSegments.js';
 const { organization: Organization, UserOrg } = db;
 
 /**
@@ -36,8 +37,14 @@ const { organization: Organization, UserOrg } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Organization'
+ *       403:
+ *         description: New organizations are switched off (auth.local.local_allow_new_organizations) and the caller is not a global admin
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       409:
- *         description: An organization with that name already exists
+ *         description: An organization with that name already exists, or the name is a reserved path segment
  *         content:
  *           application/problem+json:
  *             schema:
@@ -59,6 +66,10 @@ const { organization: Organization, UserOrg } = db;
 export const create = async (req, res) => {
   // Save Organization in the database
   try {
+    if (isReservedSegment(req.body.organization)) {
+      return conflict(res, req, '/organization', 'global');
+    }
+
     const existingOrganization = await Organization.findOne({
       where: { name: req.body.organization },
     });

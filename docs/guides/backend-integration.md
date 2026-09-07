@@ -23,7 +23,7 @@ Integrate BoxVault with your existing infrastructure and CI/CD pipelines.
 
 ## Overview
 
-BoxVault provides comprehensive APIs for integrating with existing development workflows, CI/CD pipelines, and infrastructure automation tools.
+BoxVault provides comprehensive APIs for integrating with existing development workflows, CI/CD pipelines, and infrastructure automation tools. Automation authenticates with a raw service-account token on `Authorization: Bearer`; the box, version, provider and architecture must exist before a file is uploaded, and the upload is the raw request body with `Content-Type: application/octet-stream` and an optional `X-Checksum` and `X-Checksum-Type` pair.
 
 ## CI/CD Integration
 
@@ -50,22 +50,15 @@ jobs:
       - name: Upload to BoxVault
         env:
           BOXVAULT_URL: ${{ secrets.BOXVAULT_URL }}
-          BOXVAULT_CLIENT_ID: ${{ secrets.BOXVAULT_CLIENT_ID }}
-          BOXVAULT_CLIENT_SECRET: ${{ secrets.BOXVAULT_CLIENT_SECRET }}
+          BOXVAULT_TOKEN: ${{ secrets.BOXVAULT_TOKEN }}
         run: |
-          # Get authentication token
-          TOKEN=$(curl -s -X POST $BOXVAULT_URL/api/auth/service-account \
-            -H "Content-Type: application/json" \
-            -d "{\"clientId\":\"$BOXVAULT_CLIENT_ID\",\"clientSecret\":\"$BOXVAULT_CLIENT_SECRET\"}" \
-            | jq -r '.accessToken')
-
-          # Extract version from tag
           VERSION=${GITHUB_REF#refs/tags/v}
 
-          # Upload box file
-          curl -X POST $BOXVAULT_URL/api/organization/myorg/box/ubuntu-20.04/version/$VERSION/provider/virtualbox/architecture/amd64/file \
-            -H "x-access-token: $TOKEN" \
-            -F "file=@ubuntu-20.04.box"
+          curl --fail -X POST "$BOXVAULT_URL/api/organization/myorg/box/ubuntu-20.04/version/$VERSION/provider/virtualbox/architecture/amd64/file/upload" \
+            -H "Authorization: Bearer $BOXVAULT_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            -H "X-File-Name: ubuntu-20.04.box" \
+            --upload-file ubuntu-20.04.box
 ```
 
 ### GitLab CI
@@ -87,14 +80,11 @@ upload-box:
   stage: upload
   script:
     - |
-      TOKEN=$(curl -s -X POST $BOXVAULT_URL/api/auth/service-account \
-        -H "Content-Type: application/json" \
-        -d "{\"clientId\":\"$BOXVAULT_CLIENT_ID\",\"clientSecret\":\"$BOXVAULT_CLIENT_SECRET\"}" \
-        | jq -r '.accessToken')
-
-      curl -X POST $BOXVAULT_URL/api/organization/myorg/box/ubuntu-20.04/version/$CI_COMMIT_TAG/provider/virtualbox/architecture/amd64/file \
-        -H "x-access-token: $TOKEN" \
-        -F "file=@ubuntu-20.04.box"
+      curl --fail -X POST "$BOXVAULT_URL/api/organization/myorg/box/ubuntu-20.04/version/$CI_COMMIT_TAG/provider/virtualbox/architecture/amd64/file/upload" \
+        -H "Authorization: Bearer $BOXVAULT_TOKEN" \
+        -H "Content-Type: application/octet-stream" \
+        -H "X-File-Name: ubuntu-20.04.box" \
+        --upload-file ubuntu-20.04.box
   only:
     - tags
 ```
@@ -107,8 +97,7 @@ pipeline {
 
     environment {
         BOXVAULT_URL = credentials('boxvault-url')
-        BOXVAULT_CLIENT_ID = credentials('boxvault-client-id')
-        BOXVAULT_CLIENT_SECRET = credentials('boxvault-client-secret')
+        BOXVAULT_TOKEN = credentials('boxvault-token')
     }
 
     stages {
@@ -120,23 +109,13 @@ pipeline {
 
         stage('Upload') {
             steps {
-                script {
-                    def token = sh(
-                        script: """
-                            curl -s -X POST \$BOXVAULT_URL/api/auth/service-account \
-                                -H "Content-Type: application/json" \
-                                -d '{"clientId":"'\$BOXVAULT_CLIENT_ID'","clientSecret":"'\$BOXVAULT_CLIENT_SECRET'"}' \
-                                | jq -r '.accessToken'
-                        """,
-                        returnStdout: true
-                    ).trim()
-
-                    sh """
-                        curl -X POST \$BOXVAULT_URL/api/organization/myorg/box/ubuntu-20.04/version/${env.BUILD_NUMBER}/provider/virtualbox/architecture/amd64/file \
-                            -H "x-access-token: ${token}" \
-                            -F "file=@ubuntu-20.04.box"
-                    """
-                }
+                sh """
+                    curl --fail -X POST \$BOXVAULT_URL/api/organization/myorg/box/ubuntu-20.04/version/${env.BUILD_NUMBER}/provider/virtualbox/architecture/amd64/file/upload \
+                        -H "Authorization: Bearer \$BOXVAULT_TOKEN" \
+                        -H "Content-Type: application/octet-stream" \
+                        -H "X-File-Name: ubuntu-20.04.box" \
+                        --upload-file ubuntu-20.04.box
+                """
             }
         }
     }
@@ -144,40 +123,6 @@ pipeline {
 ```
 
 ## Infrastructure as Code
-
-### Terraform Integration
-
-```hcl
-# Configure BoxVault provider (hypothetical)
-terraform {
-  required_providers {
-    boxvault = {
-      source = "boxvault/boxvault"
-      version = "~> 1.0"
-    }
-  }
-}
-
-provider "boxvault" {
-  endpoint = var.boxvault_url
-  token    = var.boxvault_token
-}
-
-# Create organization
-resource "boxvault_organization" "example" {
-  name        = "example-org"
-  description = "Example organization"
-  is_public   = false
-}
-
-# Create box
-resource "boxvault_box" "ubuntu" {
-  organization = boxvault_organization.example.name
-  name         = "ubuntu-20.04"
-  description  = "Ubuntu 20.04 LTS"
-  is_public    = true
-}
-```
 
 ### Ansible Integration
 
@@ -192,28 +137,15 @@ resource "boxvault_box" "ubuntu" {
     version: "1.0.0"
 
   tasks:
-    - name: Get authentication token
-      uri:
-        url: "{{ boxvault_url }}/api/auth/service-account"
-        method: POST
-        body_format: json
-        body:
-          clientId: "{{ boxvault_client_id }}"
-          clientSecret: "{{ boxvault_client_secret }}"
-      register: auth_response
-
     - name: Upload box file
       uri:
-        url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ box_name }}/version/{{ version }}/provider/virtualbox/architecture/amd64/file"
+        url: "{{ boxvault_url }}/api/organization/{{ organization }}/box/{{ box_name }}/version/{{ version }}/provider/virtualbox/architecture/amd64/file/upload"
         method: POST
         headers:
-          x-access-token: "{{ auth_response.json.accessToken }}"
-        body_format: form-multipart
-        body:
-          file:
-            filename: "{{ box_name }}.box"
-            content: "{{ lookup('file', box_name + '.box') | b64encode }}"
-            mime_type: application/octet-stream
+          Authorization: "Bearer {{ boxvault_token }}"
+          Content-Type: application/octet-stream
+          X-File-Name: "{{ box_name }}.box"
+        src: "{{ box_name }}.box"
 ```
 
 ## API Integration Examples
@@ -221,31 +153,24 @@ resource "boxvault_box" "ubuntu" {
 ### Python SDK
 
 ```python
-import requests
 import os
+import requests
 
 class BoxVaultClient:
-    def __init__(self, base_url, client_id=None, client_secret=None):
+    def __init__(self, base_url, token):
         self.base_url = base_url.rstrip('/')
-        self.token = None
-
-        if client_id and client_secret:
-            self.authenticate_service_account(client_id, client_secret)
-
-    def authenticate_service_account(self, client_id, client_secret):
-        response = requests.post(
-            f"{self.base_url}/api/auth/service-account",
-            json={"clientId": client_id, "clientSecret": client_secret}
-        )
-        response.raise_for_status()
-        self.token = response.json()["accessToken"]
+        self.headers = {"Authorization": f"Bearer {token}"}
 
     def upload_box(self, org, box, version, provider, arch, file_path):
         with open(file_path, 'rb') as f:
             response = requests.post(
-                f"{self.base_url}/api/organization/{org}/box/{box}/version/{version}/provider/{provider}/architecture/{arch}/file",
-                headers={"x-access-token": self.token},
-                files={"file": f}
+                f"{self.base_url}/api/organization/{org}/box/{box}/version/{version}/provider/{provider}/architecture/{arch}/file/upload",
+                headers={
+                    **self.headers,
+                    "Content-Type": "application/octet-stream",
+                    "X-File-Name": os.path.basename(file_path),
+                },
+                data=f
             )
         response.raise_for_status()
         return response.json()
@@ -253,22 +178,18 @@ class BoxVaultClient:
     def list_boxes(self, org):
         response = requests.get(
             f"{self.base_url}/api/organization/{org}/box",
-            headers={"x-access-token": self.token}
+            headers=self.headers
         )
         response.raise_for_status()
         return response.json()
 
-# Usage
 client = BoxVaultClient(
     "https://boxvault.example.com",
-    os.environ["BOXVAULT_CLIENT_ID"],
-    os.environ["BOXVAULT_CLIENT_SECRET"]
+    os.environ["BOXVAULT_TOKEN"]
 )
 
-# Upload a box
 client.upload_box("myorg", "ubuntu-20.04", "1.0.0", "virtualbox", "amd64", "ubuntu.box")
 
-# List boxes
 boxes = client.list_boxes("myorg")
 print(f"Found {len(boxes)} boxes")
 ```
@@ -277,42 +198,27 @@ print(f"Found {len(boxes)} boxes")
 
 ```javascript
 const axios = require("axios");
-const FormData = require("form-data");
 const fs = require("fs");
+const path = require("path");
 
 class BoxVaultClient {
-  constructor(baseUrl, clientId, clientSecret) {
+  constructor(baseUrl, token) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
-    this.token = null;
-
-    if (clientId && clientSecret) {
-      this.authenticateServiceAccount(clientId, clientSecret);
-    }
-  }
-
-  async authenticateServiceAccount(clientId, clientSecret) {
-    const response = await axios.post(
-      `${this.baseUrl}/api/auth/service-account`,
-      {
-        clientId,
-        clientSecret,
-      },
-    );
-    this.token = response.data.accessToken;
+    this.headers = { Authorization: `Bearer ${token}` };
   }
 
   async uploadBox(org, box, version, provider, arch, filePath) {
-    const form = new FormData();
-    form.append("file", fs.createReadStream(filePath));
-
     const response = await axios.post(
-      `${this.baseUrl}/api/organization/${org}/box/${box}/version/${version}/provider/${provider}/architecture/${arch}/file`,
-      form,
+      `${this.baseUrl}/api/organization/${org}/box/${box}/version/${version}/provider/${provider}/architecture/${arch}/file/upload`,
+      fs.createReadStream(filePath),
       {
         headers: {
-          "x-access-token": this.token,
-          ...form.getHeaders(),
+          ...this.headers,
+          "Content-Type": "application/octet-stream",
+          "Content-Length": fs.statSync(filePath).size,
+          "X-File-Name": path.basename(filePath),
         },
+        maxBodyLength: Infinity,
       },
     );
     return response.data;
@@ -321,22 +227,17 @@ class BoxVaultClient {
   async listBoxes(org) {
     const response = await axios.get(
       `${this.baseUrl}/api/organization/${org}/box`,
-      {
-        headers: { "x-access-token": this.token },
-      },
+      { headers: this.headers },
     );
     return response.data;
   }
 }
 
-// Usage
 const client = new BoxVaultClient(
   "https://boxvault.example.com",
-  process.env.BOXVAULT_CLIENT_ID,
-  process.env.BOXVAULT_CLIENT_SECRET,
+  process.env.BOXVAULT_TOKEN,
 );
 
-// Upload a box
 await client.uploadBox(
   "myorg",
   "ubuntu-20.04",
@@ -346,77 +247,8 @@ await client.uploadBox(
   "ubuntu.box",
 );
 
-// List boxes
 const boxes = await client.listBoxes("myorg");
 console.log(`Found ${boxes.length} boxes`);
-```
-
-## Webhook Integration
-
-### Setting up Webhooks
-
-BoxVault can send webhooks for various events:
-
-```bash
-# Create webhook
-curl -X POST http://localhost:3000/api/admin/webhooks \
-  -H "x-access-token: ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://your-app.com/webhooks/boxvault",
-    "events": ["box.uploaded", "box.deleted", "user.created"],
-    "secret": "webhook-secret"
-  }'
-```
-
-### Webhook Handler Example
-
-```javascript
-const express = require("express");
-const crypto = require("crypto");
-
-const app = express();
-app.use(express.json());
-
-app.post("/webhooks/boxvault", (req, res) => {
-  const signature = req.headers["x-boxvault-signature"];
-  const payload = JSON.stringify(req.body);
-  const secret = process.env.WEBHOOK_SECRET;
-
-  // Verify signature
-  const expectedSignature = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-
-  if (signature !== `sha256=${expectedSignature}`) {
-    return res.status(401).send("Invalid signature");
-  }
-
-  // Handle event
-  const { event, data } = req.body;
-
-  switch (event) {
-    case "box.uploaded":
-      console.log(
-        `Box uploaded: ${data.organization}/${data.box} v${data.version}`,
-      );
-      // Trigger deployment, notifications, etc.
-      break;
-
-    case "box.deleted":
-      console.log(`Box deleted: ${data.organization}/${data.box}`);
-      // Clean up references, notify teams, etc.
-      break;
-
-    case "user.created":
-      console.log(`New user: ${data.username}`);
-      // Send welcome email, setup permissions, etc.
-      break;
-  }
-
-  res.status(200).send("OK");
-});
 ```
 
 ## Monitoring and Observability
@@ -424,24 +256,12 @@ app.post("/webhooks/boxvault", (req, res) => {
 ### Health Checks
 
 ```bash
-# Basic health check
-curl http://localhost:3000/health
+curl https://boxvault.example.com/api/health
 
-# Detailed status
-curl http://localhost:3000/api/status
+curl https://boxvault.example.com/api/status
 ```
 
-### Metrics Integration
-
-```yaml
-# Prometheus configuration
-scrape_configs:
-  - job_name: "boxvault"
-    static_configs:
-      - targets: ["localhost:3000"]
-    metrics_path: "/metrics"
-    scrape_interval: 30s
-```
+`GET /api/health` answers `{ status, timestamp, version, environment, supported_languages, default_language, frontend_logging, services }` without authentication; `status` is `ok`, `warning` or `error`.
 
 ### Log Aggregation
 
@@ -477,7 +297,6 @@ index_name boxvault
 - Store credentials securely (environment variables, secrets management)
 - Use service accounts for automation
 - Implement proper token rotation
-- Validate webhook signatures
 
 ### Performance
 

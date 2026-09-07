@@ -5,6 +5,7 @@
 // expiresAt in the future OR null (never expires).
 import { createHash } from 'crypto';
 import db from '../models/index.js';
+import { log } from './Logger.js';
 const { service_account: ServiceAccount, user: User, Sequelize } = db;
 
 export const hashServiceAccountToken = token => createHash('sha256').update(token).digest('hex');
@@ -15,6 +16,21 @@ export const extractBearerToken = req => {
     return authHeader.substring(7);
   }
   return null;
+};
+
+/**
+ * Stamp last_used_at on a service account whose raw key or JWT was just
+ * accepted. A stamp that cannot be written is logged and never refuses the
+ * request.
+ * @param {number} id - Service account id
+ * @returns {Promise<void>}
+ */
+export const touchServiceAccount = async id => {
+  try {
+    await ServiceAccount.update({ last_used_at: new Date() }, { where: { id } });
+  } catch (err) {
+    log.auth.warn('Service account last_used_at not recorded', { id, error: err.message });
+  }
 };
 
 export const findServiceAccountByRawToken = async token => {
@@ -49,6 +65,8 @@ export const findServiceAccountByRawToken = async token => {
   if (serviceAccount.user.suspended) {
     return null;
   }
+
+  await touchServiceAccount(serviceAccount.id);
 
   return serviceAccount;
 };

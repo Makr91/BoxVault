@@ -7,27 +7,23 @@ import {
   oidcTokenRefresh,
   validateBody,
 } from '../middleware/index.js';
-import {
-  changePassword,
-  changeEmail,
-  changeName,
-  getUserProfile,
-  getUserOrganizations,
-  updatePreferences,
-  leaveOrganization,
-  setPrimaryOrganization,
-  isOnlyUserInOrg,
-  findOne,
-  update,
-  delete as deleteUser,
-} from '../controllers/user.controller.js';
-import {
-  suspendUser,
-  resumeUser,
-  deleteUser as deleteUserAuth,
-  signup,
-} from '../controllers/auth.controller.js';
-import { listUserWatches } from '../controllers/box.controller.js';
+import { changePassword } from '../controllers/user/changepassword.js';
+import { changeEmail } from '../controllers/user/changeemail.js';
+import { changeName } from '../controllers/user/changename.js';
+import { getUserProfile } from '../controllers/user/getuserprofile.js';
+import { getUserOrganizations } from '../controllers/user/organizations.js';
+import { updatePreferences } from '../controllers/user/preferences.js';
+import { leaveOrganization } from '../controllers/user/leave.js';
+import { setPrimaryOrganization } from '../controllers/user/setprimary.js';
+import { isOnlyUserInOrg } from '../controllers/user/isonlyuserinorg.js';
+import { findOne } from '../controllers/user/findone.js';
+import { update } from '../controllers/user/update.js';
+import { delete as deleteUser } from '../controllers/user/delete.js';
+import { suspendUser } from '../controllers/auth/user/suspend.js';
+import { resumeUser } from '../controllers/auth/user/resume.js';
+import { deleteUser as deleteUserAuth } from '../controllers/auth/user/delete.js';
+import { signup } from '../controllers/auth/signup.js';
+import { listUserWatches } from '../controllers/box/watch.js';
 import { listUserIsoWatches } from '../controllers/iso/watch.js';
 
 const router = Router();
@@ -107,7 +103,13 @@ router.get(
 );
 router.post(
   '/organization/:organization/users',
-  [authJwt.verifyToken, authJwt.isUser, validateBody('register'), verifySignUp.checkRolesExisted],
+  [
+    authJwt.verifyToken,
+    authJwt.isUser,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    validateBody('register'),
+    verifySignUp.checkRolesExisted,
+  ],
   signup
 );
 router.get(

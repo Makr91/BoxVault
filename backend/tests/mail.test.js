@@ -134,6 +134,9 @@ const mockableConfigLoader = {
   validateConfig: jest.fn().mockReturnValue([]),
   unknownKeys: jest.fn().mockReturnValue([]),
   loadConfigs: jest.fn(),
+  clearConfigCache: jest.fn(),
+  getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  isProduction: false,
   CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
 
@@ -150,6 +153,9 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   validateConfig: (...args) => mockableConfigLoader.validateConfig(...args),
   unknownKeys: (...args) => mockableConfigLoader.unknownKeys(...args),
   loadConfigs: (...args) => mockableConfigLoader.loadConfigs(...args),
+  clearConfigCache: (...args) => mockableConfigLoader.clearConfigCache(...args),
+  getConfigDir: (...args) => mockableConfigLoader.getConfigDir(...args),
+  isProduction: mockableConfigLoader.isProduction,
   CONFIG_NAMES: mockableConfigLoader.CONFIG_NAMES,
   default: mockableConfigLoader,
 }));
@@ -395,7 +401,7 @@ describe('Mail API', () => {
 
       findSpy.mockRestore();
       expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.body.message).toBe('auth.verificationError');
     });
 
     it('should handle database errors', async () => {
@@ -407,7 +413,7 @@ describe('Mail API', () => {
 
       findSpy.mockRestore();
       expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.body.message).toBe('auth.verificationError');
     });
 
     it('should return 401 if user does not exist in DB', async () => {
@@ -420,7 +426,8 @@ describe('Mail API', () => {
         .set('x-access-token', nonExistentUserToken);
 
       expect(res.statusCode).toBe(401);
-      expect(res.body.message).toContain('User not found!');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(res.body.title).toContain('users.userNotFound');
     });
 
     it('should return 403 if user has no roles', async () => {
@@ -441,7 +448,8 @@ describe('Mail API', () => {
         .set('x-access-token', noPrimOrgToken);
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Require User or Admin Role!');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('auth.requireUserOrAdmin');
 
       await noPrimOrgUser.destroy();
     });
@@ -456,7 +464,7 @@ describe('Mail API', () => {
 
       findSpy.mockRestore();
       expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.body.message).toBe('auth.verificationError');
     });
 
     it('should handle mail config loading failure', async () => {
@@ -491,7 +499,7 @@ describe('Mail API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(503);
-      expect(res.body.message).toContain('Error verifying authentication');
+      expect(res.body.message).toContain('auth.verificationError');
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
 

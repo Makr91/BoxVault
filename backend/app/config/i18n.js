@@ -2,7 +2,7 @@ import i18n from 'i18n';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readdirSync, existsSync } from 'fs';
-import { getI18nConfig } from '../utils/config-loader.js';
+import { getI18nConfig, isProduction } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 
 const { configure, init } = i18n;
@@ -64,11 +64,11 @@ configure({
   objectNotation: true,
   updateFiles: false,
   syncFiles: false,
-  autoReload: process.env.NODE_ENV === 'development',
+  autoReload: !isProduction,
   indent: '  ',
   extension: '.json',
   logDebugFn(msg) {
-    if (process.env.NODE_ENV === 'development') {
+    if (!isProduction) {
       log.app.debug('i18n debug', { message: msg });
     }
   },

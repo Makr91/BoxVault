@@ -34,14 +34,29 @@
     "passwordRequiresNumber": "Password must contain at least one number.",
     "passwordRequiresSymbol": "Password must contain at least one special symbol.",
     "vagrantInvalidToken": "Invalid or expired service account token.",
-    "roleDoesNotExist": "Role does not exist: {{role}}."
+    "roleDoesNotExist": "Role does not exist: {{role}}.",
+    "noTokenProvided": "No token provided!",
+    "serviceAccountCannotRefresh": "Service accounts cannot refresh tokens",
+    "verificationError": "Error verifying authentication",
+    "requireServiceAccount": "Require Service Account Role!",
+    "serviceAccountsDenied": "Access denied for service accounts. This endpoint is for users only.",
+    "requireUserOrAdmin": "Require User or Admin Role!",
+    "requireAdminOrSelf": "Require Admin role or account ownership!",
+    "requireAdmin": "Require Admin Role!",
+    "permissionCheckError": "Error checking user permissions",
+    "invalidBasicAuthFormat": "Invalid basic auth format.",
+    "issuersLoadError": "Failed to load trusted issuers",
+    "methodsLoadError": "Failed to load authentication methods"
   },
   "problems": {
     "validation": "The request did not pass validation.",
     "conflict": "A value in the request is already taken.",
     "badRequest": "The request could not be read.",
+    "authentication": "Authentication is required.",
     "forbidden": "The request is not allowed.",
     "notFound": "The resource was not found.",
+    "payloadTooLarge": "The request is too large.",
+    "throttled": "Too many requests.",
     "internal": "The server could not complete the request.",
     "configValidation": "The configuration did not pass validation."
   },
@@ -304,6 +319,8 @@
       "externalError": "The identity provider could not send the invitation. It is safe to try again — resending replaces the pending invitation for that address."
     },
     "invalidOrExpired": "Invalid or expired invitation token.",
+    "tokenRequired": "Invitation token is required.",
+    "valid": "Invitation token is valid.",
     "validate": {
       "error": "Some error occurred while validating the invitation token."
     },
@@ -360,7 +377,9 @@
     "operationFailed": "Operation failed."
   },
   "serviceAccounts": {
-    "membershipRequired": "You must be a member of this organization to create service accounts!"
+    "membershipRequired": "You must be a member of this organization to create service accounts!",
+    "deleted": "Service account deleted successfully.",
+    "notFound": "Service account not found."
   },
   "search": {
     "queryTooShort": "Search query must be at least 2 characters long.",
@@ -414,10 +433,17 @@
     "fileTooLarge": "File size cannot be larger than {{size}}GB!",
     "uploadTimeout": "Upload timed out - Request took too long to complete",
     "noStorageSpace": "Not enough storage space available",
+    "pathVerificationError": "An error occurred while verifying the file path.",
     "upload": {
       "permissionDenied": "You can only upload files for boxes you own, or you need admin/owner role.",
-      "error": "Could not upload the file"
+      "error": "Could not upload the file",
+      "completed": "File upload completed",
+      "updated": "File updated successfully",
+      "chunkCompleted": "Chunk upload completed"
     }
+  },
+  "health": {
+    "checkFailed": "Health check failed"
   },
   "setup": {
     "checkError": "Failed to check setup status",

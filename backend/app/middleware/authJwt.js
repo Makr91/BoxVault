@@ -1,20 +1,30 @@
 import { log } from '../utils/Logger.js';
 import db from '../models/index.js';
 import { authorizationCredential, resolveRequestAuth } from '../utils/requestAuth.js';
+import { problem } from '../utils/problem.js';
 const { user: User, role: Role, organization } = db;
 
 const isTokenRevoked = (auth, sessionsInvalidAfter) =>
   Boolean(
-    !auth.isServiceAccount &&
     auth.claims?.iat &&
     sessionsInvalidAfter &&
     auth.claims.iat * 1000 < new Date(sessionsInvalidAfter).getTime()
   );
 
+const unauthenticated = (req, res) =>
+  problem(res, req, {
+    status: 401,
+    type: 'authentication',
+    title: req.__('auth.unauthorized'),
+  });
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
+
 const verifyToken = async (req, res, next) => {
   try {
     if (!req.headers['x-access-token'] && !authorizationCredential(req)) {
-      return res.status(403).send({ message: 'No token provided!' });
+      return forbidden(req, res, 'auth.noTokenProvided');
     }
 
     const refreshRoute = req.path.endsWith('/auth/refresh-token');
@@ -22,10 +32,7 @@ const verifyToken = async (req, res, next) => {
 
     if (!auth) {
       log.error.error('Request authentication failed', { path: req.path });
-      return res.status(401).send({
-        message: 'Unauthorized!',
-        error: 'TOKEN_INVALID',
-      });
+      return unauthenticated(req, res);
     }
 
     req.userId = auth.userId;
@@ -41,7 +48,7 @@ const verifyToken = async (req, res, next) => {
 
     if (refreshRoute) {
       if (auth.isServiceAccount) {
-        return res.status(403).send({ message: 'Service accounts cannot refresh tokens' });
+        return forbidden(req, res, 'auth.serviceAccountCannotRefresh');
       }
 
       const user = await User.findByPk(auth.userId, {
@@ -61,30 +68,28 @@ const verifyToken = async (req, res, next) => {
       });
 
       if (!user) {
-        return res.status(401).send({ message: 'User not found' });
-      }
-
-      if (user.suspended) {
-        return res.status(403).send({ message: req.__('auth.accountSuspended') });
-      }
-
-      if (isTokenRevoked(auth, user.sessionsInvalidAfter)) {
-        return res.status(401).send({
-          message: 'Unauthorized!',
-          error: 'TOKEN_INVALID',
+        return problem(res, req, {
+          status: 401,
+          type: 'authentication',
+          title: req.__('users.userNotFound'),
         });
       }
 
+      if (user.suspended) {
+        return forbidden(req, res, 'auth.accountSuspended');
+      }
+
+      if (isTokenRevoked(auth, user.sessionsInvalidAfter)) {
+        return unauthenticated(req, res);
+      }
+
       req.user = user;
-    } else if (!auth.isServiceAccount && auth.claims?.iat) {
+    } else if (auth.claims?.iat) {
       const revocationRow = await User.findByPk(auth.userId, {
         attributes: ['sessionsInvalidAfter'],
       });
       if (revocationRow && isTokenRevoked(auth, revocationRow.sessionsInvalidAfter)) {
-        return res.status(401).send({
-          message: 'Unauthorized!',
-          error: 'TOKEN_INVALID',
-        });
+        return unauthenticated(req, res);
       }
     }
 
@@ -103,7 +108,7 @@ const verifyToken = async (req, res, next) => {
       stack: err.stack,
     });
     return res.status(503).send({
-      message: 'Error verifying authentication',
+      message: req.__('auth.verificationError'),
     });
   }
 };
@@ -113,7 +118,7 @@ const isServiceAccount = (req, res, next) => {
     return next();
   }
 
-  return res.status(403).send({ message: 'Require Service Account Role!' });
+  return forbidden(req, res, 'auth.requireServiceAccount');
 };
 
 // Shared gate step: load the requesting user (for service accounts, the owning
@@ -122,14 +127,16 @@ const isServiceAccount = (req, res, next) => {
 const loadActiveUser = async (req, res) => {
   const user = await User.findByPk(req.userId);
   if (!user) {
-    res.status(401).send({
-      message: 'User not found!',
+    problem(res, req, {
+      status: 401,
+      type: 'authentication',
+      title: req.__('users.userNotFound'),
     });
     return null;
   }
 
   if (user.suspended) {
-    res.status(403).send({ message: req.__('auth.accountSuspended') });
+    forbidden(req, res, 'auth.accountSuspended');
     return null;
   }
 
@@ -140,9 +147,7 @@ const isUser = async (req, res, next) => {
   try {
     // First, check if it's not a service account
     if (req.isServiceAccount) {
-      return res.status(403).send({
-        message: 'Access denied for service accounts. This endpoint is for users only.',
-      });
+      return forbidden(req, res, 'auth.serviceAccountsDenied');
     }
 
     const user = await loadActiveUser(req, res);
@@ -157,9 +162,7 @@ const isUser = async (req, res, next) => {
       return next();
     }
 
-    return res.status(403).send({
-      message: 'Require User or Admin Role!',
-    });
+    return forbidden(req, res, 'auth.requireUserOrAdmin');
   } catch (err) {
     log.error.error('Auth middleware error:', {
       error: err.message,
@@ -167,7 +170,7 @@ const isUser = async (req, res, next) => {
       userId: req.userId,
     });
     return res.status(500).send({
-      message: 'Error checking user permissions',
+      message: req.__('auth.permissionCheckError'),
     });
   }
 };
@@ -187,9 +190,7 @@ const isSelfOrAdmin = async (req, res, next) => {
       return next();
     }
 
-    return res.status(403).send({
-      message: 'Require Admin role or account ownership!',
-    });
+    return forbidden(req, res, 'auth.requireAdminOrSelf');
   } catch (err) {
     log.error.error('Auth middleware error:', {
       error: err.message,
@@ -197,7 +198,7 @@ const isSelfOrAdmin = async (req, res, next) => {
       userId: req.userId,
     });
     return res.status(500).send({
-      message: 'Error checking user permissions',
+      message: req.__('auth.permissionCheckError'),
     });
   }
 };
@@ -225,9 +226,7 @@ const isUserOrServiceAccount = async (req, res, next) => {
       return next();
     }
 
-    return res.status(403).send({
-      message: 'Require User or Admin Role!',
-    });
+    return forbidden(req, res, 'auth.requireUserOrAdmin');
   } catch (err) {
     log.error.error('Auth middleware error:', {
       error: err.message,
@@ -235,7 +234,7 @@ const isUserOrServiceAccount = async (req, res, next) => {
       userId: req.userId,
     });
     return res.status(500).send({
-      message: 'Error checking user permissions',
+      message: req.__('auth.permissionCheckError'),
     });
   }
 };
@@ -254,9 +253,7 @@ const isAdmin = async (req, res, next) => {
       return next();
     }
 
-    return res.status(403).send({
-      message: 'Require Admin Role!',
-    });
+    return forbidden(req, res, 'auth.requireAdmin');
   } catch (err) {
     log.error.error('Auth middleware error:', {
       error: err.message,
@@ -264,7 +261,7 @@ const isAdmin = async (req, res, next) => {
       userId: req.userId,
     });
     return res.status(500).send({
-      message: 'Error checking user permissions',
+      message: req.__('auth.permissionCheckError'),
     });
   }
 };

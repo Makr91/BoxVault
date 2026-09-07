@@ -1,5 +1,6 @@
 // update.js
 import {
+  CONFIG_NAMES,
   loadSchema,
   readConfigFile,
   fillDefaults,
@@ -7,7 +8,7 @@ import {
   getConfigPath,
 } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { refuse } from '../../utils/problem.js';
+import { problem, refuse } from '../../utils/problem.js';
 import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpers.js';
 
 /**
@@ -64,6 +65,12 @@ import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpe
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: The name is not one of the files status.config lists
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: A value breaks a rule of the file's schema
  *         content:
@@ -79,6 +86,9 @@ import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpe
  */
 export const updateConfig = async (req, res) => {
   const { configName } = req.params;
+  if (!CONFIG_NAMES.includes(configName)) {
+    return problem(res, req, { status: 404, type: 'not-found' });
+  }
   try {
     const filePath = getConfigPath(configName);
     const schema = loadSchema(configName);

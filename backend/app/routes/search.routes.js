@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { sessionAuth } from '../middleware/index.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
-import { search } from '../controllers/search.controller.js';
+import { search } from '../controllers/search/search.js';
 
 const router = Router();
 
@@ -11,6 +10,6 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/search', rateLimiter, sessionAuth, search);
+router.get('/search', sessionAuth, search);
 
 export default router;

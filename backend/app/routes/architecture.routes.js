@@ -2,14 +2,12 @@
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
 import { architectureOperationLimiter } from '../middleware/rateLimiter.js';
-import {
-  findAllByProvider,
-  findOne,
-  create,
-  update,
-  delete as deleteArchitecture,
-  deleteAllByProvider,
-} from '../controllers/architecture.controller.js';
+import { findAllByProvider } from '../controllers/architecture/provider/findall.js';
+import { findOne } from '../controllers/architecture/findone.js';
+import { create } from '../controllers/architecture/create.js';
+import { update } from '../controllers/architecture/update.js';
+import { delete as deleteArchitecture } from '../controllers/architecture/delete.js';
+import { deleteAllByProvider } from '../controllers/architecture/provider/deleteall.js';
 
 const router = Router();
 

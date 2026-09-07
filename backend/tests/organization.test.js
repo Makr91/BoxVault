@@ -6,7 +6,23 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
+import yaml from 'js-yaml';
 import { getSecureBoxPath } from '../app/utils/paths.js';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+
+const authConfigPath = getConfigPath('auth');
+
+const writeAuthConfig = mutate => {
+  const original = fs.readFileSync(authConfigPath, 'utf8');
+  const config = yaml.load(original);
+  mutate(config);
+  fs.writeFileSync(authConfigPath, yaml.dump(config));
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(authConfigPath, original);
+    clearConfigCache();
+  };
+};
 
 describe('Organization API', () => {
   let authToken;
@@ -401,9 +417,12 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
     });
 
-    it('should handle file system errors during rename', async () => {
-      const fsErrOrg = await db.organization.create({ name: `FsErr-${uniqueId}` });
-      const oldPath = getSecureBoxPath(fsErrOrg.name);
+    it('should roll the rename back when the directory cannot be moved', async () => {
+      const oldName = `FsErr-${uniqueId}`;
+      const newName = `FsErrUpdated-${uniqueId}`;
+      const fsErrOrg = await db.organization.create({ name: oldName });
+      const oldPath = getSecureBoxPath(oldName);
+      const newPath = getSecureBoxPath(newName);
       if (!fs.existsSync(oldPath)) {
         fs.mkdirSync(oldPath, { recursive: true });
       }
@@ -413,18 +432,17 @@ describe('Organization API', () => {
       });
 
       const res = await request(app)
-        .put(`/api/organization/${fsErrOrg.name}`)
+        .put(`/api/organization/${oldName}`)
         .set('x-access-token', adminToken)
-        .send({ organization: `FsErrUpdated-${uniqueId}` });
+        .send({ organization: newName });
 
-      // Controller catches error and proceeds with DB update
-      expect(res.statusCode).toBe(200);
-      expect(res.body.organization.name).toBe(`FsErrUpdated-${uniqueId}`);
+      expect(res.statusCode).toBe(500);
+      await fsErrOrg.reload();
+      expect(fsErrOrg.name).toBe(oldName);
 
       renameSpy.mockRestore();
-      if (fs.existsSync(oldPath)) {
-        fs.rmdirSync(oldPath);
-      }
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      fs.rmSync(newPath, { recursive: true, force: true });
       await fsErrOrg.destroy();
     });
 
@@ -644,6 +662,79 @@ describe('Organization API', () => {
           params: { scope: 'global' },
         }),
       ]);
+    });
+
+    it('should refuse a reserved path segment as an organization name', async () => {
+      const responses = await Promise.all(
+        ['admin', 'Notifications', 'org-console'].map(name =>
+          request(app)
+            .post('/api/organization')
+            .set('x-access-token', authToken)
+            .send({ organization: name })
+        )
+      );
+      responses.forEach(res => {
+        expect(res.statusCode).toBe(409);
+        expect(res.headers['content-type']).toContain('application/problem+json');
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/conflict');
+        expect(res.body.errors).toEqual([
+          expect.objectContaining({
+            pointer: '/organization',
+            rule: 'unique',
+            params: { scope: 'global' },
+          }),
+        ]);
+      });
+      expect(await db.organization.count({ where: { name: 'admin' } })).toBe(0);
+    });
+
+    it('should refuse renaming an organization to a reserved path segment', async () => {
+      const res = await request(app)
+        .put(`/api/organization/${orgName}`)
+        .set('x-access-token', adminToken)
+        .send({ organization: 'search' });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/organization',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+      ]);
+      await organization.reload();
+      expect(organization.name).toBe(orgName);
+    });
+
+    it('should refuse new organizations while the knob is off, except to a global admin', async () => {
+      const restore = writeAuthConfig(config => {
+        config.auth.local = { ...(config.auth.local || {}), local_allow_new_organizations: false };
+      });
+      const gatedName = `GatedOrg-${uniqueId}`;
+      const adminGatedName = `AdminGatedOrg-${uniqueId}`;
+      try {
+        const refused = await request(app)
+          .post('/api/organization')
+          .set('x-access-token', authToken)
+          .send({ organization: gatedName });
+        expect(refused.statusCode).toBe(403);
+        expect(refused.headers['content-type']).toContain('application/problem+json');
+        expect(refused.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+        expect(refused.body.title).toBe(
+          'Self-registration is disabled. Ask for an invitation to join an organization.'
+        );
+        expect(await db.organization.count({ where: { name: gatedName } })).toBe(0);
+
+        const allowed = await request(app)
+          .post('/api/organization')
+          .set('x-access-token', adminToken)
+          .send({ organization: adminGatedName });
+        expect(allowed.statusCode).toBe(201);
+        expect(allowed.body.name).toBe(adminGatedName);
+      } finally {
+        restore();
+        await db.organization.destroy({ where: { name: adminGatedName } });
+      }
     });
   });
 

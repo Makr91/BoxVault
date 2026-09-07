@@ -9,7 +9,19 @@ const __dirname = dirname(__filename);
 
 const CONFIG_NAMES = ['app', 'auth', 'db', 'mail'];
 
+const PRODUCTION_CONFIG_DIR = process.env.CONFIG_DIR || '/etc/boxvault';
+const DEV_CONFIG_DIR = join(__dirname, '../config');
+const isProduction = fs.existsSync(PRODUCTION_CONFIG_DIR);
+const CONFIG_DIR = isProduction ? PRODUCTION_CONFIG_DIR : DEV_CONFIG_DIR;
+
 const schemaCache = new Map();
+const configCache = new Map();
+
+/**
+ * The directory the config files, the setup token and the config backups live in
+ * @returns {string} Full path of the config directory
+ */
+const getConfigDir = () => CONFIG_DIR;
 
 /**
  * Get the appropriate config file path based on environment
@@ -23,14 +35,8 @@ const getConfigPath = configName => {
     throw new Error(`Invalid config name: ${configName}`);
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
-    return `${configDir}/${configName}.config.yaml`;
-  }
-  if (process.env.NODE_ENV === 'test') {
-    return join(__dirname, `../config/${configName}.test.config.yaml`);
-  }
-  return join(__dirname, `../config/${configName}.dev.config.yaml`);
+  const fileName = isProduction ? `${configName}.config.yaml` : `${configName}.dev.config.yaml`;
+  return join(CONFIG_DIR, fileName);
 };
 
 /**
@@ -140,73 +146,25 @@ const unknownKeys = (schema, config, base = '') => {
 const validateConfig = (configName, config) => validateObject(loadSchema(configName), config);
 
 /**
- * Get mock configuration for test environment
- * @param {string} configName - Name of config file
- * @returns {Object} Mock config object
- */
-const getMockConfig = configName => {
-  const isSilent = process.env.SUPPRESS_LOGS === 'true';
-  if (configName === 'app') {
-    return {
-      boxvault: {
-        origin: 'http://localhost:3000',
-        api_url: 'http://localhost:3000/api',
-        box_max_file_size: 1,
-        api_listen_port_unencrypted: 5000,
-        api_listen_port_encrypted: 5001,
-        box_storage_directory: '/tmp/boxvault/storage',
-      },
-      internationalization: {
-        default_language: 'en',
-        supported_languages: ['en'],
-        auto_detect: true,
-      },
-      logging: {
-        level: isSilent ? 'silent' : 'error',
-        console_enabled: !isSilent,
-      },
-      rate_limiting: { window_minutes: 15, max_requests: 100000 },
-      gravatar: {
-        enabled: true,
-        default: 'identicon',
-      },
-      ticket_system: {
-        enabled: true,
-        url: 'https://example.com/ticket',
-      },
-    };
-  }
-  if (configName === 'auth') {
-    return {
-      auth: {
-        jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
-        oidc: { providers: {} },
-        local: {
-          local_enabled: true,
-          local_require_email_verification: false,
-        },
-      },
-    };
-  }
-  if (configName === 'db') {
-    return {
-      sql: {
-        dialect: 'sqlite',
-        storage: ':memory:',
-        logging: false,
-      },
-    };
-  }
-  return {};
-};
-
-/**
- * Read one plain YAML config file as it is on disk, without defaults
+ * Read one plain YAML config file as it is on disk, without defaults; the
+ * parsed file is cached until a write clears the cache
  * @param {string} configName - Name of config file
  * @returns {Object} Parsed config object
  * @throws {Error} If config file cannot be read or parsed
  */
-const readConfigFile = configName => load(fs.readFileSync(getConfigPath(configName), 'utf8')) || {};
+const readConfigFile = configName => {
+  if (!configCache.has(configName)) {
+    configCache.set(configName, load(fs.readFileSync(getConfigPath(configName), 'utf8')) || {});
+  }
+  return structuredClone(configCache.get(configName));
+};
+
+/**
+ * Forget every cached config file so the next read comes from disk
+ */
+const clearConfigCache = () => {
+  configCache.clear();
+};
 
 /**
  * Load and parse a YAML config file, every missing key filled from its
@@ -219,31 +177,14 @@ const loadConfig = configName => {
   const configPath = getConfigPath(configName);
 
   try {
-    const config = fillDefaults(loadSchema(configName), readConfigFile(configName));
-
-    // In test environment, override logging config to respect SUPPRESS_LOGS
-    if (process.env.NODE_ENV === 'test' && configName === 'app') {
-      const isSilent = process.env.SUPPRESS_LOGS === 'true';
-      config.logging = {
-        ...config.logging,
-        level: isSilent ? 'silent' : 'error',
-        console_enabled: !isSilent,
-      };
-    }
-    return config;
+    return fillDefaults(loadSchema(configName), readConfigFile(configName));
   } catch (error) {
-    if (process.env.NODE_ENV !== 'test') {
-      // eslint-disable-next-line no-console -- Chicken-and-egg: Logger depends on config-loader, so console is the only option for config load errors at startup
-      console.error('Failed to load configuration', {
-        configName,
-        configPath,
-        error: error.message,
-      });
-    }
-    // In test environment, return mock config to prevent crash
-    if (process.env.NODE_ENV === 'test') {
-      return getMockConfig(configName);
-    }
+    // eslint-disable-next-line no-console -- Chicken-and-egg: Logger depends on config-loader, so console is the only option for config load errors at startup
+    console.error('Failed to load configuration', {
+      configName,
+      configPath,
+      error: error.message,
+    });
     throw error;
   }
 };
@@ -280,18 +221,10 @@ const checkConfigs = () =>
   });
 
 /**
- * Get the setup token file path based on environment
+ * Get the setup token file path, beside the config files
  * @returns {string} Full path to setup token file
  */
-const getSetupTokenPath = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // Production: use CONFIG_DIR environment variable or default to /etc/boxvault/
-    const setupConfigDir = process.env.CONFIG_DIR || '/etc/boxvault';
-    return `${setupConfigDir}/setup.token`;
-  }
-  // Development: use relative path from project root
-  return join(__dirname, '../../setup.token');
-};
+const getSetupTokenPath = () => join(CONFIG_DIR, 'setup.token');
 
 /**
  * Get rate limiting configuration with defaults
@@ -314,6 +247,7 @@ const getRateLimitConfig = () => {
       download_link_max_requests: appConfig.rate_limiting?.download_link_max_requests || 100,
       architecture_operations_max_requests:
         appConfig.rate_limiting?.architecture_operations_max_requests || 500,
+      auth_max_requests: appConfig.rate_limiting?.auth_max_requests || 20,
     };
   } catch (error) {
     // Return defaults if config not available
@@ -329,6 +263,7 @@ const getRateLimitConfig = () => {
       download_max_requests: 2000,
       download_link_max_requests: 100,
       architecture_operations_max_requests: 500,
+      auth_max_requests: 20,
     };
   }
 };
@@ -363,12 +298,15 @@ const getI18nConfig = () => {
 
 export {
   CONFIG_NAMES,
+  isProduction,
+  getConfigDir,
   getConfigPath,
   loadSchema,
   fillDefaults,
   unknownKeys,
   validateConfig,
   readConfigFile,
+  clearConfigCache,
   loadConfig,
   loadConfigs,
   checkConfigs,
@@ -379,12 +317,15 @@ export {
 
 export default {
   CONFIG_NAMES,
+  isProduction,
+  getConfigDir,
   getConfigPath,
   loadSchema,
   fillDefaults,
   unknownKeys,
   validateConfig,
   readConfigFile,
+  clearConfigCache,
   loadConfig,
   loadConfigs,
   checkConfigs,

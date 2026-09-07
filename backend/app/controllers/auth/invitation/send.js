@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import db from '../../../models/index.js';
 const { organization: Organization, invitation: Invitation, user: User, UserOrg } = db;
 import { log } from '../../../utils/Logger.js';
-import { sendInvitationMail } from '../../mail.controller.js';
+import { sendInvitationMail } from '../../mail/invitation.js';
 import { loadConfig } from '../../../utils/config-loader.js';
 import { createExternalInvite } from '../../../utils/externalInvites.js';
 import { resolveEmailLanguage } from '../../../utils/userLanguage.js';

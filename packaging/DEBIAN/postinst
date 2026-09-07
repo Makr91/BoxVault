@@ -31,23 +31,24 @@ case "$1" in
                     if [ -f "/opt/boxvault/config-templates/$config_file" ]; then
                         cp "/opt/boxvault/config-templates/$config_file" "/etc/boxvault/$config_file"
                         chown boxvault:boxvault "/etc/boxvault/$config_file"
+                        chmod 600 "/etc/boxvault/$config_file"
                         echo "Installed default $config_file from template"
                     fi
                 fi
             done
-            
+
             # Only generate JWT secret if config file has the default placeholder
             if [ -f /etc/boxvault/auth.config.yaml ]; then
-                if grep -q "CHANGE_THIS_SECRET_KEY_IN_PRODUCTION" /etc/boxvault/auth.config.yaml; then
+                if grep -qF 'jwt_secret: ${JWT_SECRET}' /etc/boxvault/auth.config.yaml; then
                     JWT_SECRET=$(openssl rand -hex 32)
-                    sed -i "s/CHANGE_THIS_SECRET_KEY_IN_PRODUCTION/${JWT_SECRET}/g" /etc/boxvault/auth.config.yaml
+                    sed -i "s|jwt_secret: \${JWT_SECRET}|jwt_secret: ${JWT_SECRET}|" /etc/boxvault/auth.config.yaml
                     echo "Generated and updated JWT secret in auth.config.yaml"
                 fi
             fi
         else
             # Upgrade (previous version exists) - existing configs are migrated in place
             echo "Upgrade from version $2 detected - migrating configuration files"
-            (cd /opt/boxvault && CONFIG_DIR=/etc/boxvault NODE_ENV=production node scripts/migrate-config.js)
+            (cd /opt/boxvault && node scripts/migrate-config.js)
             chown boxvault:boxvault /etc/boxvault/*.config.yaml /etc/boxvault/*.config.yaml.bak
             chmod 600 /etc/boxvault/*.config.yaml /etc/boxvault/*.config.yaml.bak
             echo "Configuration files in /etc/boxvault/ migrated; the previous copies sit beside them as .bak"

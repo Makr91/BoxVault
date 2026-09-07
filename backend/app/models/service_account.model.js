@@ -14,6 +14,11 @@ export default (sequelize, Sequelize) => {
       description: {
         type: Sequelize.STRING,
       },
+      last_used_at: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        field: 'last_used_at',
+      },
       organization_id: {
         type: Sequelize.INTEGER,
         allowNull: false,

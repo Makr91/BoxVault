@@ -5,7 +5,7 @@ import { log } from '../../utils/Logger.js';
 import { refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { user: User, role: Role, organization: Organization, invitation: Invitation, UserOrg } = db;
-import { sendVerificationMail } from '../mail.controller.js';
+import { sendVerificationMail } from '../mail/verification.js';
 import { generateEmailHash, generateOrgCode } from '../../utils/identity.js';
 import { getBcryptRounds, getPasswordPolicyErrors } from './helpers.js';
 import { loadConfig } from '../../utils/config-loader.js';

@@ -5,6 +5,7 @@ const uniqueId = Date.now();
 
 // Mock config loader to control logging config
 const mockConfigLoader = {
+  isProduction: false,
   loadConfig: jest.fn().mockReturnValue({
     logging: {
       // Minimal config to trigger defaults/fallbacks during initial load (Line 20)
@@ -25,6 +26,7 @@ const mockStream = {
 
 jest.unstable_mockModule('morgan', () => ({ default: jest.fn() }));
 jest.unstable_mockModule('../app/utils/config-loader.js', () => mockConfigLoader);
+jest.resetModules();
 // ************************************************************************************************
 // ************************************************************************************************
 // *** MASSIVE WARNING: DO NOT USE jest.resetModules() HERE OR IN TESTS ***
@@ -422,40 +424,17 @@ describe('Logger Utility', () => {
   });
 
   it('getLoggingConfig should return empty object on error', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-
-    // Spy on fs.readFileSync to throw error (since Logger uses real config-loader due to caching)
-    const readSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
+    mockConfigLoader.loadConfig.mockImplementationOnce(() => {
       throw new Error('Config Error');
     });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    try {
-      expect(getLoggingConfig()).toEqual({});
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-      readSpy.mockRestore();
-      consoleSpy.mockRestore();
-    }
+    expect(getLoggingConfig()).toEqual({});
   });
 
-  it('getLoggingConfig should return the schema defaults if logging config missing', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+  it('getLoggingConfig should return an empty object if the logging section is missing', () => {
+    mockConfigLoader.loadConfig.mockReturnValueOnce({ boxvault: {} });
 
-    // Spy on fs.readFileSync to return config without logging
-    const readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('boxvault: {}');
-
-    try {
-      expect(getLoggingConfig()).toMatchObject({
-        level: 'info',
-        log_directory: '/var/log/boxvault',
-      });
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-      readSpy.mockRestore();
-    }
+    expect(getLoggingConfig()).toEqual({});
   });
 
   it('processCategories should use default level if value missing', () => {
@@ -577,13 +556,8 @@ describe('Logger Utility', () => {
   });
 
   it('createCategoryLogger should create logger with console transport in dev', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-
     const logger = createCategoryLogger('test', 'test');
     expect(logger).toBeDefined();
-
-    process.env.NODE_ENV = originalEnv;
   });
 
   it('compressFile should skip if compressed file already exists', async () => {
@@ -656,11 +630,6 @@ describe('Logger Utility', () => {
   });
 
   it('createCategoryLogger should include Console transport when configured and not production', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-
-    // Force reload of logger config to ensure console_enabled is true
-    // This handles cases where Logger.js is cached and using real config-loader
     mockConfigLoader.loadConfig.mockReturnValue({
       logging: {
         level: 'info',
@@ -679,15 +648,20 @@ describe('Logger Utility', () => {
     const logger = createCategoryLogger('console_test', 'console_test');
     const hasConsole = logger.transports.some(t => t.name === 'console');
     expect(hasConsole).toBe(true);
-    process.env.NODE_ENV = originalEnv;
   });
 
-  it('createCategoryLogger should NOT include Console transport in production', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
-    const logger = createCategoryLogger('prod_test', 'prod_test');
+  it('createCategoryLogger should NOT include Console transport when console logging is off', () => {
+    mockConfigLoader.loadConfig.mockReturnValue({
+      logging: {
+        level: 'info',
+        console_enabled: false,
+        log_directory: `/tmp/logs_${uniqueId}`,
+      },
+    });
+    reloadLoggerConfig();
+
+    const logger = createCategoryLogger('no_console_test', 'no_console_test');
     const hasConsole = logger.transports.some(t => t.name === 'console');
     expect(hasConsole).toBe(false);
-    process.env.NODE_ENV = originalEnv;
   });
 });

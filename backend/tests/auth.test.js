@@ -1,22 +1,20 @@
 import { jest } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
-
-// Helper to safely modify config files during tests
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const configDir = path.join(__dirname, '../app/config');
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 
 const updateConfig = (configName, updateFn) => {
-  const configPath = path.join(configDir, `${configName}.test.config.yaml`);
+  const configPath = getConfigPath(configName);
   const fileContent = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(fileContent);
   const newConfig = updateFn(config);
   fs.writeFileSync(configPath, yaml.dump(newConfig));
-  return () => fs.writeFileSync(configPath, fileContent);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(configPath, fileContent);
+    clearConfigCache();
+  };
 };
 
 // Define mocks at the top level
@@ -52,11 +50,12 @@ const mockAxios = {
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 
 // Mock the mail controller before importing app
-jest.unstable_mockModule('../app/controllers/mail.controller.js', () => ({
+const mockSendVerificationMail = jest.fn().mockResolvedValue(true);
+jest.unstable_mockModule('../app/controllers/mail/verification.js', () => ({
   sendInvitationMail: jest.fn(),
   testSmtp: jest.fn(),
   resendVerificationMail: jest.fn(),
-  sendVerificationMail: jest.fn().mockResolvedValue(true),
+  sendVerificationMail: mockSendVerificationMail,
 }));
 
 // Mock Logger to prevent filesystem access and allow spying
@@ -177,7 +176,6 @@ const {
   getOidcConfiguration,
   initializeStrategies,
 } = await import('../app/auth/passport.js');
-const { passport } = await import('../app/auth/passport.js');
 
 // BoxVault JWT verification enforces issuer/audience; these match the test
 // auth fixture (jwt_issuer/jwt_audience) and the code defaults.
@@ -234,11 +232,9 @@ describe('Authentication API', () => {
     it('should fail with invalid credentials', async () => {
       // Create user for this test
       const hashedPassword = await bcrypt.hash('SoomePass', 8);
-      await db.user.create({
-        username: testUsername,
-        email: testEmail,
-        password: hashedPassword,
-        verified: true,
+      await db.user.findOrCreate({
+        where: { username: testUsername },
+        defaults: { email: testEmail, password: hashedPassword, verified: true },
       });
 
       const res = await request(app).post('/api/auth/signin').send({
@@ -740,6 +736,31 @@ describe('Authentication API', () => {
       expect(res.body).toHaveProperty('accessToken');
     });
 
+    it('should mint the refreshed token with the signin lifetimes', async () => {
+      const token = jwt.sign({ id: testUserForRefresh.id, stayLoggedIn: false }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
+
+      const plain = await request(app)
+        .post('/api/auth/refresh-token')
+        .set('x-access-token', token)
+        .send({ stay_logged_in: false });
+      expect(plain.statusCode).toBe(200);
+      const plainClaims = jwt.decode(plain.body.accessToken);
+      expect(plainClaims.exp - plainClaims.iat).toBe(60 * 60);
+      expect(plainClaims.serviceAccountId).toBeNull();
+
+      const kept = await request(app)
+        .post('/api/auth/refresh-token')
+        .set('x-access-token', token)
+        .send({ stay_logged_in: true });
+      expect(kept.statusCode).toBe(200);
+      const keptClaims = jwt.decode(kept.body.accessToken);
+      expect(keptClaims.exp - keptClaims.iat).toBe(24 * 60 * 60);
+      expect(keptClaims.stayLoggedIn).toBe(true);
+    });
+
     it('should keep the identity-provider claims and provider tag through a refresh', async () => {
       const oidcExpiresAt = Date.now() + 60 * 60 * 1000;
       const token = jwt.sign(
@@ -1097,10 +1118,11 @@ describe('Authentication API', () => {
 
     it('should fail to register a user with a duplicate email', async () => {
       // Create a user to test against
+      const takenEmail = `duplicate-email-${uniqueId}@example.com`;
       const hashedPassword = await bcrypt.hash('SoomePass', 8);
       await db.user.create({
         username: `another-user-${uniqueId}`,
-        email: testEmail,
+        email: takenEmail,
         password: hashedPassword,
         verified: true,
       });
@@ -1109,7 +1131,7 @@ describe('Authentication API', () => {
         .post('/api/auth/signup')
         .send({
           username: `another-user-2-${uniqueId}`,
-          email: testEmail,
+          email: takenEmail,
           password: 'password123',
         });
 
@@ -1236,11 +1258,8 @@ describe('Authentication API', () => {
     });
 
     it('should log error if verification email fails (async)', async () => {
-      const { log } = await import('../app/utils/Logger.js');
-      const { sendVerificationMail } = await import('../app/controllers/mail.controller.js');
-
-      const logSpy = jest.spyOn(log.error, 'error');
-      sendVerificationMail.mockRejectedValueOnce(new Error('Async Mail Fail'));
+      const failure = new Error('Async Mail Fail');
+      mockSendVerificationMail.mockRejectedValueOnce(failure);
 
       const res = await request(app)
         .post('/api/auth/signup')
@@ -1251,21 +1270,22 @@ describe('Authentication API', () => {
         });
 
       expect(res.statusCode).toBe(201);
+      expect(mockSendVerificationMail).toHaveBeenCalledTimes(1);
+      await expect(mockSendVerificationMail.mock.results[0].value).rejects.toBe(failure);
 
       // Wait for async operation to complete
       await new Promise(resolve => {
         setTimeout(resolve, 100);
       });
 
-      expect(logSpy).toHaveBeenCalledWith(
+      expect(mockLog.error.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to send verification email'),
         expect.any(Error)
       );
-      logSpy.mockRestore();
     });
 
     it('should refuse a blocklisted password before touching the database (unit test)', async () => {
-      const { signup } = await import('../app/controllers/auth.controller.js');
+      const { signup } = await import('../app/controllers/auth/signup.js');
       const req = {
         body: {
           username: `blocklisted-${uniqueId}`,
@@ -3214,11 +3234,12 @@ describe('Authentication API', () => {
         // 4. Simulate missing auth config using spy instead of disk write to preserve session
         const originalReadFileSync = fs.readFileSync;
         const fsSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((pathArg, options) => {
-          if (typeof pathArg === 'string' && pathArg.endsWith('auth.test.config.yaml')) {
+          if (typeof pathArg === 'string' && pathArg.endsWith('auth.config.yaml')) {
             return ''; // Empty config -> {}
           }
           return originalReadFileSync(pathArg, options);
         });
+        clearConfigCache();
 
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
@@ -3638,7 +3659,7 @@ describe('Authentication API', () => {
         // 3. Simulate missing OIDC config via spy
         const originalReadFileSync = fs.readFileSync;
         const fsSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((pathArg, options) => {
-          if (typeof pathArg === 'string' && pathArg.endsWith('auth.test.config.yaml')) {
+          if (typeof pathArg === 'string' && pathArg.endsWith('auth.config.yaml')) {
             return yaml.dump({
               auth: {
                 jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
@@ -3648,6 +3669,7 @@ describe('Authentication API', () => {
           }
           return originalReadFileSync(pathArg, options);
         });
+        clearConfigCache();
 
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
@@ -4290,49 +4312,37 @@ describe('Authentication API', () => {
         }
       });
 
-      it('should handle config loading error in /issuers', async () => {
-        const originalEnv = process.env.NODE_ENV;
-        const originalConfigDir = process.env.CONFIG_DIR;
-
+      const withUnreadableAuthConfig = async run => {
+        const originalReadFileSync = fs.readFileSync;
+        const fsSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((pathArg, options) => {
+          if (typeof pathArg === 'string' && pathArg.endsWith('auth.config.yaml')) {
+            throw new Error('Config Read Error');
+          }
+          return originalReadFileSync(pathArg, options);
+        });
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        clearConfigCache();
         try {
-          process.env.NODE_ENV = 'production';
-          process.env.CONFIG_DIR = '/non/existent/dir';
+          await run();
+        } finally {
+          fsSpy.mockRestore();
+          consoleSpy.mockRestore();
+          clearConfigCache();
+        }
+      };
 
-          // Suppress console.error from config-loader
-          const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-          const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
+      it('should handle config loading error in /issuers', async () => {
+        await withUnreadableAuthConfig(async () => {
           const res = await request(app).get('/api/auth/oidc/issuers');
           expect(res.statusCode).toBe(500);
-
-          consoleSpy.mockRestore();
-          warnSpy.mockRestore();
-        } finally {
-          process.env.NODE_ENV = originalEnv;
-          process.env.CONFIG_DIR = originalConfigDir;
-        }
+        });
       });
 
       it('should handle config loading error in /methods', async () => {
-        const originalEnv = process.env.NODE_ENV;
-        const originalConfigDir = process.env.CONFIG_DIR;
-
-        try {
-          process.env.NODE_ENV = 'production';
-          process.env.CONFIG_DIR = '/non/existent/dir';
-
-          const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-          const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
+        await withUnreadableAuthConfig(async () => {
           const res = await request(app).get('/api/auth/methods');
           expect(res.statusCode).toBe(500);
-
-          consoleSpy.mockRestore();
-          warnSpy.mockRestore();
-        } finally {
-          process.env.NODE_ENV = originalEnv;
-          process.env.CONFIG_DIR = originalConfigDir;
-        }
+        });
       });
 
       it('should configure providers with different auth methods', async () => {
@@ -4371,22 +4381,6 @@ describe('Authentication API', () => {
         } finally {
           restore();
         }
-      });
-
-      it('should deserialize user from session', async () => {
-        const user = await db.user.create({ username: 'session-user', email: 'session@test.com' });
-
-        global.__mockSessionContext.injection = {
-          passport: { user: user.id },
-        };
-
-        const findSpy = jest.spyOn(db.user, 'findByPk');
-        await request(app).get('/api/health'); // Trigger middleware
-
-        expect(findSpy).toHaveBeenCalledWith(user.id);
-
-        await user.destroy();
-        global.__mockSessionContext.injection = null;
       });
     });
 
@@ -4498,25 +4492,6 @@ describe('Authentication API', () => {
       expect(mockOpenIdClient.discovery).not.toHaveBeenCalled();
 
       restore();
-    });
-
-    it('should serialize user', done => {
-      const user = { id: 123 };
-      passport.serializeUser(user, (err, id) => {
-        expect(err).toBeNull();
-        expect(id).toBe(123);
-        done();
-      });
-    });
-
-    it('should handle deserialize user error', done => {
-      const findSpy = jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
-      passport.deserializeUser(123, (err, user) => {
-        expect(err).toBeDefined();
-        expect(user).toBeNull();
-        findSpy.mockRestore();
-        done();
-      });
     });
 
     describe('POST /api/auth/oidc/logout', () => {

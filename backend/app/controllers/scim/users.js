@@ -242,7 +242,7 @@ const provisionScimUser = async (externalId, issuer, state) => {
       locale: state.locale,
       timezone: state.timezone,
       email: state.email,
-      password: 'external',
+      password: null,
       emailHash: generateEmailHash(state.email),
       verified: state.emailVerified === true,
       suspended: state.suspended,

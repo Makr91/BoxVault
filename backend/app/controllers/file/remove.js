@@ -106,7 +106,7 @@ const remove = async (req, res) => {
     });
 
     // Attempt to delete the file from the disk
-    safeUnlink(filePath);
+    await safeUnlink(filePath);
 
     // Proceed to delete the database record regardless of file deletion success
     try {
@@ -118,7 +118,7 @@ const remove = async (req, res) => {
       }
 
       // Attempt to delete the architecture directory
-      safeRm(basefilePath, { recursive: true, force: true });
+      await safeRm(basefilePath, { recursive: true, force: true });
 
       return res.status(200).send({
         message: req.__('files.deleted'),

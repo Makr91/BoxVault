@@ -1,27 +1,19 @@
 import fs from 'fs';
 import { log } from './Logger.js';
 
-const safeUnlink = filePath => {
+const safeUnlink = async filePath => {
   try {
-    fs.unlink(filePath, err => {
-      if (err) {
-        log.app.info(`Could not delete the file from disk: ${err}`);
-      }
-    });
+    await fs.promises.unlink(filePath);
   } catch (err) {
-    log.app.error(`Error in safeUnlink: ${err.message}`);
+    log.app.warn(`Could not delete the file from disk: ${err.message}`, { path: filePath });
   }
 };
 
-const safeRm = (path, options) => {
+const safeRm = async (path, options) => {
   try {
-    fs.rm(path, options, err => {
-      if (err) {
-        log.app.info(`Could not delete the directory: ${err}`);
-      }
-    });
+    await fs.promises.rm(path, options);
   } catch (err) {
-    log.app.error(`Error in safeRm: ${err.message}`);
+    log.app.warn(`Could not delete the directory: ${err.message}`, { path });
   }
 };
 

@@ -92,11 +92,6 @@ export default (sequelize, Sequelize) => {
       updatedAt: 'updated_at',
       indexes: [
         {
-          unique: true,
-          fields: ['user_id', 'organization_id', 'status'],
-          name: 'unique_user_org_request',
-        },
-        {
           fields: ['organization_id', 'status'],
           name: 'idx_org_requests_org_status',
         },

@@ -10,7 +10,7 @@ permalink: /api/
 
 {: .no_toc }
 
-The BoxVault API provides comprehensive RESTful endpoints for user management, organization control, and box repository management. This API handles authentication, authorization, and box management for the BoxVault web interface.
+The BoxVault API provides RESTful endpoints for user management, organization control, and box repository management. This API handles authentication, authorization, and box management for the STARTcloud UI that BoxVault serves.
 
 ## Table of contents
 
@@ -23,20 +23,24 @@ The BoxVault API provides comprehensive RESTful endpoints for user management, o
 
 ## Authentication
 
-All API endpoints require authentication using JWT tokens in the x-access-token header format:
+A BoxVault session JWT travels in the `x-access-token` header:
 
 ```http
 x-access-token: <jwt_token>
 ```
 
+A raw service-account key or, while `auth.resource_server.enabled` is on, an access token of a configured identity provider travels in the `Authorization` header instead (`Bearer`, or `DPoP` with a proof for a key-bound token). The credentials of a request are resolved in that order: session JWT, identity-provider token, raw service-account key.
+
+Public routes answer without a token: `GET /api/status`, `GET /api/rules`, `GET /api/health`, `GET /api/discover`, and every read route guarded by `sessionAuth` (the organization, box, metadata, artwork and file-info routes), which answers public items to an anonymous caller and private ones to a member.
+
 See the [Authentication Guide](../guides/authentication/) for detailed setup instructions.
 
 ## Base URL
 
-The API is served from your BoxVault server:
+The API is served from your BoxVault server on `boxvault.api_listen_port_encrypted` and `boxvault.api_listen_port_unencrypted` of `app.config.yaml`, 443 and 80 in the package:
 
-- **HTTPS (Recommended)**: `https://your-server:5001`
-- **HTTP**: `http://your-server:5000`
+- **HTTPS (Recommended)**: `https://your-server`
+- **HTTP**: `http://your-server`, redirecting to HTTPS while a certificate is configured
 
 ## OpenAPI Specification
 
@@ -91,44 +95,69 @@ The BoxVault API is organized into the following categories:
 
 ## Rate Limiting
 
-The API currently does not implement rate limiting, but this may be added in future versions for production deployments.
-
-## Error Handling
-
-The API uses standard HTTP status codes and returns JSON error responses:
+Every request passes a global limiter of `rate_limiting.max_requests` per `rate_limiting.window_minutes` (1000 per 15 minutes by the schema default, 100 in the packaged template). File operations, downloads, download links and architecture operations carry their own ceilings (`file_operations_max_requests`, `download_max_requests`, `download_link_max_requests`, `architecture_operations_max_requests`) on the same window. A refused request answers `429` as `application/problem+json` with `RateLimit-*` and `Retry-After` headers:
 
 ```json
 {
-  "success": false,
-  "message": "Error description"
+  "type": "https://auth.startcloud.com/probs/throttled",
+  "title": "Too many requests; try again later.",
+  "status": 429,
+  "errors": []
 }
 ```
+
+## Error Handling
+
+A refused write answers RFC 9457 problem details as `application/problem+json`: `422` for a rule failure, `409` when the one failing rule is `unique`, and `400` for a body that could not be read, with one `errors[]` entry per failing value:
+
+```json
+{
+  "type": "https://auth.startcloud.com/probs/validation",
+  "title": "The request did not pass validation.",
+  "status": 422,
+  "errors": [
+    {
+      "pointer": "/name",
+      "rule": "pattern",
+      "params": { "pattern": "slug" },
+      "detail": "name must match slug"
+    }
+  ]
+}
+```
+
+An unhandled failure answers `500` in the same shape with type `https://auth.startcloud.com/probs/internal` and no `errors` entries. A refused gate answers the same shape with no `errors` entries: `401` with type `https://auth.startcloud.com/probs/authentication` for no token or an expired one, `403` with type `https://auth.startcloud.com/probs/forbidden` for a missing role or membership, and `404` with type `https://auth.startcloud.com/probs/not-found` for a parent that does not exist.
 
 Common status codes:
 
 - `200` - Success
 - `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized (Invalid or expired JWT token)
+- `400` - Bad Request (the body could not be read)
+- `401` - Unauthorized (Invalid or expired token)
 - `403` - Forbidden (Insufficient permissions)
 - `404` - Not Found
+- `409` - Conflict (a value is already taken in its scope)
+- `422` - Unprocessable Content (a value breaks a rule)
+- `429` - Too Many Requests
 - `500` - Internal Server Error
 
 ## Response Format
 
-Successful responses follow this format:
+Successful responses are flat: the record or list itself, with no envelope. A creation answers `201` with the created record, a sign-in answers the account fields and `accessToken` at the top level, and a message-only answer is `{ "message": "…" }`.
 
 ```json
 {
-  "success": true,
-  "message": "Operation completed successfully",
-  "data": {
-    // Response data here
-  }
+  "id": 1,
+  "name": "debian12",
+  "description": "Debian 12 Server",
+  "published": false,
+  "isPublic": false,
+  "organizationId": 1,
+  "userId": 1
 }
 ```
 
 ## Related APIs
 
 - **[BoxVault Backend](/)** - Box repository management and file storage
-- **[BoxVault API Reference](/api-docs/)** - Backend API documentation
+- **[BoxVault API Reference](/api/docs/)** - Backend API documentation

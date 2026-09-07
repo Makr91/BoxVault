@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 
 const errorHandler = (err, req, res, next) => {
   if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Request too large' });
+    return problem(res, req, { status: 413, type: 'payload-too-large' });
   }
 
   if (err.type === 'entity.parse.failed') {
@@ -47,10 +47,7 @@ const errorHandler = (err, req, res, next) => {
       path: req.path,
       error: err.message,
     });
-    return res.status(500).json({
-      error: 'INTERNAL_SERVER_ERROR',
-      message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
-    });
+    return problem(res, req, { status: 500, type: 'internal' });
   }
 
   // Serve React app with error state for non-API routes

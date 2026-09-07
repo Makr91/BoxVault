@@ -1,13 +1,11 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh, verifyOrgAccess, validateBody } from '../middleware/index.js';
-import {
-  createJoinRequest,
-  getUserJoinRequests,
-  cancelJoinRequest,
-  getOrgJoinRequests,
-  approveJoinRequest,
-  denyJoinRequest,
-} from '../controllers/request.controller.js';
+import { createJoinRequest } from '../controllers/request/create.js';
+import { getUserJoinRequests } from '../controllers/request/getUserRequests.js';
+import { cancelJoinRequest } from '../controllers/request/cancel.js';
+import { getOrgJoinRequests } from '../controllers/request/getOrgRequests.js';
+import { approveJoinRequest } from '../controllers/request/approve.js';
+import { denyJoinRequest } from '../controllers/request/deny.js';
 
 const router = Router();
 

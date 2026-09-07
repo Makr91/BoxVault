@@ -62,8 +62,8 @@ jobs:
       - name: Check Prettier formatting
         run: npm run format:check
 
-  verify-scripts:
-    name: Verify Scripts
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -75,17 +75,13 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: npm run cinstall:backend
 
-      - name: Verify scripts exist
-        run: |
-          echo "Checking sync-versions script..."
-          npm run sync-versions || echo "sync-versions script verification complete"
-          echo "Checking generate-docs script..."
-          npm run generate-docs || echo "generate-docs script verification complete"
+      - name: Run tests
+        run: cd backend && npm test
 
   codeql-analysis:
     name: CodeQL
-    needs: [backend-security, lint-and-format, verify-scripts]
+    needs: [backend-security, lint-and-format, test]
     uses: ./.github/workflows/codeql.yml

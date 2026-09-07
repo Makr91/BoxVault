@@ -12,7 +12,7 @@ import {
   getSecureIsoPath,
   cleanupTempFile,
 } from '../app/controllers/iso/helpers.js';
-import { getConfigPath } from '../app/utils/config-loader.js';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 import { log } from '../app/utils/Logger.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
@@ -578,7 +578,8 @@ describe('ISO API', () => {
 
   describe('ISO files', () => {
     const checksum = sha256(fileContent);
-    const storedPath = () => join(getIsoStorageRoot(), `${checksum}.iso`);
+    const storagePath = () => `${org.id}/${checksum}.iso`;
+    const storedPath = () => join(getIsoStorageRoot(), String(org.id), `${checksum}.iso`);
 
     it('should upload a file for an architecture', async () => {
       const res = await request(app)
@@ -618,7 +619,7 @@ describe('ISO API', () => {
         .send(fileContent);
       expect(res.statusCode).toBe(201);
       expect(res.body.checksum).toBe(checksum);
-      expect(res.body.storagePath).toBe(`${checksum}.iso`);
+      expect(res.body.storagePath).toBe(storagePath());
     });
 
     it('should reject a path traversal filename', async () => {
@@ -664,6 +665,7 @@ describe('ISO API', () => {
       const config = yaml.load(originalConfig);
       config.boxvault.box_max_file_size = 0.000001;
       fs.writeFileSync(configPath, yaml.dump(config));
+      clearConfigCache();
 
       try {
         const res = await request(app)
@@ -673,9 +675,12 @@ describe('ISO API', () => {
           .set('Content-Type', 'application/octet-stream')
           .send(Buffer.alloc(2048));
         expect(res.statusCode).toBe(413);
-        expect(res.body.error).toBe('FILE_TOO_LARGE');
+        expect(res.headers['content-type']).toContain('application/problem+json');
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/payload-too-large');
+        expect(res.body.title).toBe('File size cannot be larger than 0.000001GB!');
       } finally {
         fs.writeFileSync(configPath, originalConfig);
+        clearConfigCache();
       }
     });
 
@@ -890,7 +895,7 @@ describe('ISO API', () => {
         .get(`${versionBase}/architecture/arm64/file/download`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
-      await ghost.update({ storagePath: `${checksum}.iso` });
+      await ghost.update({ storagePath: storagePath() });
     });
 
     it('should handle a download error (500)', async () => {
@@ -949,7 +954,7 @@ describe('ISO API', () => {
         .set('Content-Type', 'application/octet-stream')
         .send(content)
         .expect(201);
-      const filePath = join(getIsoStorageRoot(), `${sha256(content)}.iso`);
+      const filePath = join(getIsoStorageRoot(), String(org.id), `${sha256(content)}.iso`);
       expect(fs.existsSync(filePath)).toBe(true);
 
       const res = await request(app)
@@ -1005,11 +1010,13 @@ describe('ISO API', () => {
       const config = yaml.load(originalConfig);
       config.boxvault.iso_storage_directory = '/tmp/custom-iso';
       fs.writeFileSync(configPath, yaml.dump(config));
+      clearConfigCache();
 
       try {
         expect(getIsoStorageRoot()).toBe('/tmp/custom-iso');
       } finally {
         fs.writeFileSync(configPath, originalConfig);
+        clearConfigCache();
       }
     });
 

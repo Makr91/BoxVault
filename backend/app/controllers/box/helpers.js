@@ -1,5 +1,5 @@
 // helpers.js — shared validation for the optional box content fields pushed by
-// the publish pipeline (shortDescription, readme, metadata).
+// the publish pipeline (short_description, readme, metadata).
 
 // Whitelisted top-level keys of the structured box facts; unknown keys are
 // stripped silently, whitelisted values pass through as given.
@@ -46,18 +46,19 @@ const sanitizeBoxMetadata = metadata => {
  * Validate and collect the optional box content fields shared by box create
  * and update. Only keys present in the body land in fields, so update can
  * treat absence as "unchanged" and create can default the rest to null.
- * Wire names are camelCase, matching the box object idiom (isPublic).
+ * Wire names are snake_case; the collected fields carry the model attribute
+ * names (shortDescription).
  * @param {Object} body - Request body
  * @returns {{errors: Array<{pointer: string, rule: string, params: Object}>, fields: Object}} Failing rules, or collected fields
  */
 const parseBoxContentFields = body => {
   const fields = {};
-  const { shortDescription, readme, metadata } = body;
+  const { short_description: shortDescription, readme, metadata } = body;
 
   if (typeof shortDescription !== 'undefined') {
     if (shortDescription !== null && typeof shortDescription !== 'string') {
       return {
-        errors: [{ pointer: '/shortDescription', rule: 'type', params: { type: 'string' } }],
+        errors: [{ pointer: '/short_description', rule: 'type', params: { type: 'string' } }],
         fields,
       };
     }
@@ -65,7 +66,7 @@ const parseBoxContentFields = body => {
       return {
         errors: [
           {
-            pointer: '/shortDescription',
+            pointer: '/short_description',
             rule: 'maxLength',
             params: { maxLength: SHORT_DESCRIPTION_MAX_LENGTH },
           },

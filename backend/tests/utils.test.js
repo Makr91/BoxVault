@@ -17,6 +17,10 @@ const mockFs = {
   rmSync: jest.fn(),
   mkdirSync: jest.fn(),
   existsSync: jest.fn(),
+  promises: {
+    unlink: jest.fn(),
+    rm: jest.fn(),
+  },
 };
 
 const mockConfigLoader = {
@@ -305,45 +309,36 @@ describe('Atomic File Writer', () => {
   });
 
   describe('FS Helper Utilities', () => {
-    it('safeUnlink should log info on error', () => {
-      mockFs.unlink.mockImplementation((path, cb) => {
-        void path;
-        cb(new Error('Unlink Error'));
-      });
-      safeUnlink('file.txt');
-      expect(mockLog.app.info).toHaveBeenCalledWith(
-        expect.stringContaining('Could not delete the file')
+    it('safeUnlink should remove the file', async () => {
+      mockFs.promises.unlink.mockResolvedValue();
+      await safeUnlink('file.txt');
+      expect(mockFs.promises.unlink).toHaveBeenCalledWith('file.txt');
+      expect(mockLog.app.warn).not.toHaveBeenCalled();
+    });
+
+    it('safeUnlink should warn when the file cannot be removed', async () => {
+      mockFs.promises.unlink.mockRejectedValue(new Error('Unlink Error'));
+      await safeUnlink('file.txt');
+      expect(mockLog.app.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Could not delete the file from disk: Unlink Error'),
+        { path: 'file.txt' }
       );
     });
 
-    it('safeUnlink should log error on exception', () => {
-      mockFs.unlink.mockImplementation(() => {
-        throw new Error('Sync Error');
-      });
-      safeUnlink('file.txt');
-      expect(mockLog.app.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error in safeUnlink')
-      );
+    it('safeRm should remove the directory with its options', async () => {
+      mockFs.promises.rm.mockResolvedValue();
+      await safeRm('dir', { recursive: true });
+      expect(mockFs.promises.rm).toHaveBeenCalledWith('dir', { recursive: true });
+      expect(mockLog.app.warn).not.toHaveBeenCalled();
     });
 
-    it('safeRm should log info on error', () => {
-      mockFs.rm.mockImplementation((path, options, cb) => {
-        void path;
-        void options;
-        cb(new Error('Rm Error'));
-      });
-      safeRm('dir', {});
-      expect(mockLog.app.info).toHaveBeenCalledWith(
-        expect.stringContaining('Could not delete the directory')
+    it('safeRm should warn when the directory cannot be removed', async () => {
+      mockFs.promises.rm.mockRejectedValue(new Error('Rm Error'));
+      await safeRm('dir', {});
+      expect(mockLog.app.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Could not delete the directory: Rm Error'),
+        { path: 'dir' }
       );
-    });
-
-    it('safeRm should log error on exception', () => {
-      mockFs.rm.mockImplementation(() => {
-        throw new Error('Sync Error');
-      });
-      safeRm('dir', {});
-      expect(mockLog.app.error).toHaveBeenCalledWith(expect.stringContaining('Error in safeRm'));
     });
 
     it('safeRmdirSync should remove dir if exists', () => {

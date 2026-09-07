@@ -130,12 +130,13 @@ const updateUserOrgRole = async (req, res) => {
     }
 
     // Update the role
+    const previousRole = membership.role;
     await membership.update({ role });
 
     log.api.info('User organization role updated', {
       userId,
       organizationId,
-      oldRole: membership.role,
+      oldRole: previousRole,
       newRole: role,
       updatedBy: req.userId,
     });

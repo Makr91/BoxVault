@@ -1,11 +1,14 @@
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { loadConfig } from '../utils/config-loader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const { version } = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
+
+const STORAGE_PREFIX = 'boxvault';
 
 const STATUS = {
   role: 'boxvault',
@@ -15,11 +18,9 @@ const STATUS = {
     logoUrl: '/brand/boxvault.svg',
     repo: 'https://github.com/Makr91/BoxVault',
   },
-  auth: ['backend'],
   collections: ['boxes', 'isos'],
   config: ['app', 'auth', 'db', 'mail'],
   features: [
-    'local-accounts',
     'setup',
     'admin',
     'org-console',
@@ -31,6 +32,7 @@ const STATUS = {
     'favorites',
     'notifications',
     'health',
+    'footer',
     'search',
     'events',
   ],
@@ -40,11 +42,29 @@ const STATUS = {
 };
 
 /**
+ * The browser OIDC client of the first enabled provider, in map order
+ * @param {Object} providers - The auth.oidc.providers map, defaults filled
+ * @returns {{issuer: string, clientId: string, scopes: string, storagePrefix: string}|null} The idp block, or null without an enabled provider
+ */
+const enabledIdp = providers => {
+  const provider = Object.values(providers).find(entry => entry.enabled === true && entry.issuer);
+  if (!provider) {
+    return null;
+  }
+  return {
+    issuer: provider.issuer,
+    clientId: provider.client_id,
+    scopes: provider.scope,
+    storagePrefix: STORAGE_PREFIX,
+  };
+};
+
+/**
  * @swagger
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins), collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -77,11 +97,30 @@ const STATUS = {
  *                       example: https://github.com/Makr91/BoxVault
  *                 auth:
  *                   type: array
- *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session; idp is browser OIDC against an issuer named in idp
+ *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session, answered while local accounts are on; idp is browser OIDC against the issuer named in idp, answered while local accounts are off and a provider is enabled
  *                   items:
  *                     type: string
  *                     enum: [backend, idp]
  *                   example: [backend]
+ *                 idp:
+ *                   type: object
+ *                   description: The browser OIDC client, present only when auth is idp; taken from the first enabled entry of auth.oidc.providers in map order
+ *                   required: [issuer, clientId, scopes, storagePrefix]
+ *                   properties:
+ *                     issuer:
+ *                       type: string
+ *                       example: https://auth.example.com
+ *                     clientId:
+ *                       type: string
+ *                       example: boxvault
+ *                     scopes:
+ *                       type: string
+ *                       description: Space-separated scopes requested at authorization
+ *                       example: openid profile email
+ *                     storagePrefix:
+ *                       type: string
+ *                       description: Prefix of the browser storage keys the UI keeps the session under
+ *                       example: boxvault
  *                 collections:
  *                   type: array
  *                   description: Collection registry entries to mount, in order; the first is implicit (no route segment)
@@ -96,10 +135,10 @@ const STATUS = {
  *                   example: [app, auth, db, mail]
  *                 features:
  *                   type: array
- *                   description: Kebab-case feature tokens. local-accounts gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); health gates the footer health heart; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path
+ *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path
  *                   items:
  *                     type: string
- *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, search, events]
+ *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, footer, search, events]
  *                 events:
  *                   type: object
  *                   required: [path, topics]
@@ -132,7 +171,15 @@ const STATUS = {
  */
 const getStatus = (req, res) => {
   void req;
-  return res.json(STATUS);
+  const authConfig = loadConfig('auth');
+  const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
+  const idp = localEnabled ? null : enabledIdp(authConfig.auth?.oidc?.providers || {});
+  return res.json({
+    ...STATUS,
+    auth: idp ? ['idp'] : ['backend'],
+    ...(idp ? { idp } : {}),
+    features: localEnabled ? ['local-accounts', ...STATUS.features] : STATUS.features,
+  });
 };
 
 export { getStatus };

@@ -82,10 +82,6 @@ export const getActiveInvitations = async (req, res) => {
       where: { name: organizationName },
     });
 
-    if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
-    }
-
     // Customer orgs are IdP-truth: their invites live on the auth server.
     // Map their records into the exact shape the frontend already consumes;
     // ids are prefixed `ext:<org>:<invite_id>` so the delete route can route

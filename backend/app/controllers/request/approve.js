@@ -22,9 +22,6 @@ const approveViaIdpInvite = async (
   { request, organization, assignedRole, reviewerId }
 ) => {
   const requester = await User.findByPk(request.user_id);
-  if (!requester) {
-    return res.status(404).send({ message: req.__('requests.notFound') });
-  }
 
   const oidcAccessToken = extractOidcAccessToken(req);
   if (!oidcAccessToken) {

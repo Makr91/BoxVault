@@ -25,7 +25,7 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
 
 ## Technologies Used
 
-- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), one build shared across the estate, fetched as a release artifact and served from `backend/ui`; it renders what `GET /api/status` (`backend/app/controllers/status.controller.js`) advertises: `auth: ["backend"]`, `collections: ["boxes", "isos"]`, `config: ["app", "auth", "db", "mail"]`, `events: { path: "/api/events", topics: ["session", "notifications"] }` and the feature tokens `local-accounts`, `setup`, `admin`, `org-console`, `discover`, `invitations`, `uploads`, `watches`, `deploy`, `favorites`, `notifications`, `health`, `search`, `events`
+- **Frontend**: the [STARTcloud UI](https://github.com/STARTcloud/startcloud-ui), one build shared across the estate, fetched as a release artifact and served from `backend/ui`; it renders what `GET /api/status` (`backend/app/controllers/status.controller.js`) advertises: `auth: ["backend"]` while `auth.jwt.local_enabled` is on, or `auth: ["idp"]` with an `idp` object (`issuer`, `clientId`, `scopes`, `storagePrefix`) from the first enabled `auth.oidc.providers` entry while it is off, `collections: ["boxes", "isos"]`, `config: ["app", "auth", "db", "mail"]`, `events: { path: "/api/events", topics: ["session", "notifications"] }` and the feature tokens `local-accounts` (only while `auth.jwt.local_enabled` is on), `setup`, `admin`, `org-console`, `discover`, `invitations`, `uploads`, `watches`, `deploy`, `favorites`, `notifications`, `health`, `footer`, `search`, `events`
 - **Backend**: Node.js, Express.js
 - **Database**: Sequelize ORM (Database configuration in `db.config.yaml`)
 - **Authentication**: JWT tokens
@@ -56,8 +56,8 @@ BoxVault is a cloud-based storage solution for Virtual Machine images and templa
    The UI version is pinned by `startcloudUiVersion` in `backend/package.json`; every STARTcloud UI release dispatches `dependency-update` here and `.github/workflows/dependency-bump.yml` answers with a `bump/startcloud-ui` pull request for a human to merge.
 
 3. **Configure the application**:
-   - Update the database configuration in `backend/app/config/db.config.yaml`.
-   - Update the authentication configuration in `backend/app/config/auth.config.yaml`.
+   - Development reads `backend/app/config/<name>.dev.config.yaml` for `app`, `auth`, `db` and `mail`; the CI derives them from `packaging/config/*.yaml`.
+   - Production reads `<name>.config.yaml` under `CONFIG_DIR` (default `/etc/boxvault`), the one environment variable BoxVault reads.
 
 4. **Run the application**:
 
@@ -74,43 +74,22 @@ BoxVault provides pre-built Debian packages for easy production deployment:
 
    ```bash
    # Download from GitHub releases
-   wget https://github.com/Makr91/BoxVault/releases/latest/download/ boxvault_VERSION_amd64.deb
+   wget https://github.com/Makr91/BoxVault/releases/latest/download/boxvault_VERSION_amd64.deb
    ```
 
-2. **Install prerequisites**:
+2. **Install BoxVault**:
 
    ```bash
-   # Install MySQL/MariaDB
-   sudo apt install mysql-server
-   # OR
-   sudo apt install mariadb-server
-
-   # Create database and user
-   sudo mysql -e "CREATE DATABASE boxvault;"
-   sudo mysql -e "CREATE USER 'boxvault'@'localhost' IDENTIFIED BY 'your_password';"
-   sudo mysql -e "GRANT ALL PRIVILEGES ON boxvault.* TO 'boxvault'@'localhost';"
-   sudo mysql -e "FLUSH PRIVILEGES;"
-   ```
-
-3. **Install BoxVault**:
-
-   ```bash
-   # Install the package
    sudo gdebi -n boxvault_VERSION_amd64.deb
-
-   # Configure database connection
-   sudo nano /etc/boxvault/db.config.yaml
-
-   # Start the service
    sudo systemctl enable --now boxvault
-
-   # Check status
    sudo systemctl status boxvault
    ```
 
-4. **Access BoxVault**:
-   - Open your browser to `http://localhost:3000`
-   - Complete the initial setup
+   SQLite is the packaged database (`database_type: sqlite` in `/etc/boxvault/db.config.yaml`) and needs nothing else; MySQL is optional and configured on the setup page, see the [Installation Guide](docs/guides/installation.md).
+
+3. **Access BoxVault**:
+   - Open your browser to `https://localhost` (the package listens on 443 and 80, `boxvault.api_listen_port_encrypted` and `api_listen_port_unencrypted` in `app.config.yaml`)
+   - Complete the initial setup with the setup token `postinst` printed (`/etc/boxvault/setup.token`)
 
 For detailed packaging and build instructions, see [packaging/README.md](packaging/README.md).
 
@@ -132,20 +111,22 @@ For detailed packaging and build instructions, see [packaging/README.md](packagi
 
 ### Boxes
 
-- `GET /api/boxes`: Retrieve all boxes.
-- `POST /api/boxes`: Create a new box.
-- `PUT /api/boxes/:id`: Update a box.
-- `DELETE /api/boxes/:id`: Delete a box.
+- `GET /api/organization/:organization/box`: Retrieve the boxes of an organization.
+- `GET /api/organization/:organization/box/:name`: Retrieve a box.
+- `POST /api/organization/:organization/box`: Create a new box.
+- `PUT /api/organization/:organization/box/:name`: Update a box.
+- `DELETE /api/organization/:organization/box/:name`: Delete a box.
 
 ### Files
 
-- `POST /api/files/upload`: Upload a file.
-- `DELETE /api/files/:id`: Delete a file.
+- `POST /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload`: Upload a file.
+- `DELETE /api/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete`: Delete a file.
 
 ### Organizations
 
-- `GET /api/organizations`: Retrieve all organizations.
-- `POST /api/organizations`: Create a new organization.
+- `GET /api/organization`: Retrieve the organizations of the caller.
+- `POST /api/organization`: Create a new organization.
+- `GET /api/organizations/discover`: Retrieve the discoverable organizations.
 
 ### Events
 
@@ -163,4 +144,4 @@ Contributions are welcome! Please follow these steps:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL-3.0 License. See the [LICENSE.md](LICENSE.md) file for details.

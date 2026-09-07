@@ -1,13 +1,32 @@
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-const { service_account: ServiceAccount } = db;
+const { service_account: ServiceAccount, user: User, UserOrg } = db;
+
+/**
+ * Whether the caller may revoke the service account: its creator, a global
+ * admin, or an owner or admin of the account's organization.
+ * @param {Object} serviceAccount - Service account instance
+ * @param {number} userId - The caller's user id
+ * @returns {Promise<boolean>}
+ */
+const canRevoke = async (serviceAccount, userId) => {
+  if (serviceAccount.userId === userId) {
+    return true;
+  }
+  const user = await User.findByPk(userId);
+  const roles = await user.getRoles();
+  if (roles.some(role => role.name === 'admin')) {
+    return true;
+  }
+  return UserOrg.hasRole(userId, serviceAccount.organization_id, ['admin', 'owner']);
+};
 
 /**
  * @swagger
  * /api/service-accounts/{id}:
  *   delete:
  *     summary: Delete a service account
- *     description: Delete a service account by ID (only the owner can delete their service accounts)
+ *     description: Revoke a service account by ID. Its creator, an owner or admin of its organization, and a global admin may revoke it.
  *     tags: [Service Accounts]
  *     security:
  *       - JwtAuth: []
@@ -33,7 +52,7 @@ const { service_account: ServiceAccount } = db;
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Service account not found or not owned by user
+ *         description: Service account not found, or the caller may not revoke it
  *         content:
  *           application/json:
  *             schema:
@@ -50,12 +69,13 @@ const _delete = async (req, res) => {
     const { id } = req.params;
     const { userId } = req;
 
-    const deleted = await ServiceAccount.destroy({ where: { id, userId } });
-
-    if (deleted) {
-      return res.send({ message: 'Service account deleted successfully.' });
+    const serviceAccount = await ServiceAccount.findByPk(id);
+    if (!serviceAccount || !(await canRevoke(serviceAccount, userId))) {
+      return res.status(404).send({ message: req.__('serviceAccounts.notFound') });
     }
-    return res.status(404).send({ message: 'Service account not found.' });
+
+    await ServiceAccount.destroy({ where: { id: serviceAccount.id } });
+    return res.send({ message: req.__('serviceAccounts.deleted') });
   } catch (err) {
     log.error.error('Error deleting service account:', err);
     return res.status(500).send({ message: req.__('errors.operationFailed') });

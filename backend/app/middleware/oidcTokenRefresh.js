@@ -154,7 +154,6 @@ const oidcTokenRefresh = async (req, res, next) => {
         authConfig.auth.jwt.jwt_secret,
         {
           algorithm: 'HS256',
-          allowInsecureKeySizes: true,
           expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
           ...getJwtClaimOptions(),
         }

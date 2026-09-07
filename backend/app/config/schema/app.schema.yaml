@@ -85,7 +85,7 @@ properties:
       trust_proxy:
         type: boolean
         default: true
-        title: Trust proxy
+        title: Proxy trust
         description: Trust the X-Forwarded-For header from a proxy or CDN in front of BoxVault
         order: 9
         requiresRestart: true
@@ -166,7 +166,7 @@ properties:
       enabled:
         type: boolean
         default: false
-        title: Enabled
+        title: Ticket system
         description: Enable the ticket and support request integration
         order: 1
       base_url:
@@ -187,6 +187,13 @@ properties:
         title: Context URL
         description: Context URL for the ticket system, usually the repository URL
         order: 4
+      fallback_customer_id:
+        type: string
+        maxLength: 64
+        default: ''
+        title: Fallback customer id
+        description: Customer id sent with a help ticket when neither the active organization nor the user carries one
+        order: 5
   hyperweaver:
     type: object
     section: application
@@ -208,7 +215,7 @@ properties:
       generate_ssl:
         type: boolean
         default: true
-        title: Generate SSL certificates
+        title: Self-signed certificate generation
         description: Generate self-signed SSL certificates when none exist
         order: 1
         requiresRestart: true
@@ -270,7 +277,7 @@ properties:
       enable_compression:
         type: boolean
         default: true
-        title: Compress archived logs
+        title: Archived log compression
         description: Gzip archived log files
         order: 5
       compression_age_days:
@@ -287,6 +294,13 @@ properties:
         title: Archived files kept
         description: Maximum number of archived log files kept per log
         order: 7
+      silent:
+        type: boolean
+        default: false
+        title: Silent logging
+        description: Write no log lines to any transport
+        order: 8
+        requiresRestart: true
       categories:
         type: object
         subsection: loggingCategories
@@ -307,7 +321,7 @@ properties:
       enabled:
         type: boolean
         default: true
-        title: Enabled
+        title: Frontend logging
         description: Enable browser logging in the frontend
         order: 1
       level:
@@ -410,14 +424,14 @@ properties:
       skip_successful_requests:
         type: boolean
         default: false
-        title: Skip successful requests
+        title: Successful request exemption
         description: Do not count successful requests toward the limit
         order: 4
         requiresRestart: true
       skip_failed_requests:
         type: boolean
         default: false
-        title: Skip failed requests
+        title: Failed request exemption
         description: Do not count failed requests toward the limit
         order: 5
         requiresRestart: true
@@ -453,6 +467,14 @@ properties:
         description: Architecture operation requests allowed per window
         order: 9
         requiresRestart: true
+      auth_max_requests:
+        type: integer
+        minimum: 1
+        default: 20
+        title: Sign-in requests
+        description: Sign-in and sign-up requests allowed per window
+        order: 10
+        requiresRestart: true
   internationalization:
     type: object
     section: application
@@ -482,7 +504,7 @@ properties:
       auto_detect:
         type: boolean
         default: true
-        title: Detect language
+        title: Language detection
         description: Detect the language from the request
         order: 4
       force_language:

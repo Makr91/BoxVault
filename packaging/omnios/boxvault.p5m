@@ -26,7 +26,7 @@ user username=boxvault uid=303 group=boxvault gcos-field="BoxVault Service User"
 group groupname=boxvault gid=303
 
 # License
-license opt/boxvault/LICENSE.md license="MIT" must-accept=false
+license opt/boxvault/LICENSE.md license="GPL-3.0" must-accept=false
 
 # Drop system directories that already exist (avoid conflicts with system packages)
 <transform dir path=^opt$ -> drop>
@@ -75,22 +75,22 @@ license opt/boxvault/LICENSE.md license="MIT" must-accept=false
 
 <transform file path=etc/boxvault/app.config.yaml -> set owner boxvault>
 <transform file path=etc/boxvault/app.config.yaml -> set group boxvault>
-<transform file path=etc/boxvault/app.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/app.config.yaml -> set mode 0600>
 <transform file path=etc/boxvault/app.config.yaml -> set preserve true>
 
 <transform file path=etc/boxvault/auth.config.yaml -> set owner boxvault>
 <transform file path=etc/boxvault/auth.config.yaml -> set group boxvault>
-<transform file path=etc/boxvault/auth.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/auth.config.yaml -> set mode 0600>
 <transform file path=etc/boxvault/auth.config.yaml -> set preserve true>
 
 <transform file path=etc/boxvault/db.config.yaml -> set owner boxvault>
 <transform file path=etc/boxvault/db.config.yaml -> set group boxvault>
-<transform file path=etc/boxvault/db.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/db.config.yaml -> set mode 0600>
 <transform file path=etc/boxvault/db.config.yaml -> set preserve true>
 
 <transform file path=etc/boxvault/mail.config.yaml -> set owner boxvault>
 <transform file path=etc/boxvault/mail.config.yaml -> set group boxvault>
-<transform file path=etc/boxvault/mail.config.yaml -> set mode 0644>
+<transform file path=etc/boxvault/mail.config.yaml -> set mode 0600>
 <transform file path=etc/boxvault/mail.config.yaml -> set preserve true>
 
 # SSL and database directories (empty) - keeps persistent data in place on uninstall

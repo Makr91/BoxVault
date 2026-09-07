@@ -34,14 +34,29 @@
     "passwordRequiresNumber": "La contraseña debe contener al menos un número.",
     "passwordRequiresSymbol": "La contraseña debe contener al menos un símbolo especial.",
     "vagrantInvalidToken": "Token de cuenta de servicio inválido o caducado.",
-    "roleDoesNotExist": "El rol no existe: {{role}}."
+    "roleDoesNotExist": "El rol no existe: {{role}}.",
+    "noTokenProvided": "¡No se proporcionó ningún token!",
+    "serviceAccountCannotRefresh": "Las cuentas de servicio no pueden actualizar tokens",
+    "verificationError": "Error al verificar la autenticación",
+    "requireServiceAccount": "¡Se requiere el rol de cuenta de servicio!",
+    "serviceAccountsDenied": "Acceso denegado para cuentas de servicio. Este punto de acceso es solo para usuarios.",
+    "requireUserOrAdmin": "¡Se requiere el rol de usuario o administrador!",
+    "requireAdminOrSelf": "¡Se requiere el rol de administrador o ser el propietario de la cuenta!",
+    "requireAdmin": "¡Se requiere el rol de administrador!",
+    "permissionCheckError": "Error al verificar los permisos del usuario",
+    "invalidBasicAuthFormat": "Formato de autenticación básica inválido.",
+    "issuersLoadError": "Error al cargar los emisores de confianza",
+    "methodsLoadError": "Error al cargar los métodos de autenticación"
   },
   "problems": {
     "validation": "La solicitud no pasó la validación.",
     "conflict": "Un valor de la solicitud ya está en uso.",
     "badRequest": "La solicitud no se pudo leer.",
+    "authentication": "Se requiere autenticación.",
     "forbidden": "La solicitud no está permitida.",
     "notFound": "El recurso no se encontró.",
+    "payloadTooLarge": "La solicitud es demasiado grande.",
+    "throttled": "Demasiadas solicitudes.",
     "internal": "El servidor no pudo completar la solicitud.",
     "configValidation": "La configuración no pasó la validación."
   },
@@ -304,6 +319,8 @@
       "externalError": "El proveedor de identidad no pudo enviar la invitación. Es seguro intentarlo de nuevo: reenviar reemplaza la invitación pendiente para esa dirección."
     },
     "invalidOrExpired": "Token de invitación inválido o caducado.",
+    "tokenRequired": "Se requiere el token de invitación.",
+    "valid": "El token de invitación es válido.",
     "validate": {
       "error": "Ocurrió un error al validar el token de invitación."
     },
@@ -360,7 +377,9 @@
     "operationFailed": "Operación fallida."
   },
   "serviceAccounts": {
-    "membershipRequired": "¡Debes ser miembro de esta organización para crear cuentas de servicio!"
+    "membershipRequired": "¡Debes ser miembro de esta organización para crear cuentas de servicio!",
+    "deleted": "Cuenta de servicio eliminada exitosamente.",
+    "notFound": "Cuenta de servicio no encontrada."
   },
   "search": {
     "queryTooShort": "La búsqueda debe tener al menos 2 caracteres.",
@@ -414,10 +433,17 @@
     "fileTooLarge": "¡El tamaño del archivo no puede ser mayor a {{size}}GB!",
     "uploadTimeout": "Tiempo de espera de carga agotado - La solicitud tardó demasiado en completarse",
     "noStorageSpace": "No hay suficiente espacio de almacenamiento disponible",
+    "pathVerificationError": "Ocurrió un error al verificar la ruta del archivo.",
     "upload": {
       "permissionDenied": "Solo puedes subir archivos para Boxes que posees, o necesitas rol de administrador/propietario.",
-      "error": "No se pudo subir el archivo"
+      "error": "No se pudo subir el archivo",
+      "completed": "Carga de archivo completada",
+      "updated": "Archivo actualizado exitosamente",
+      "chunkCompleted": "Carga de fragmento completada"
     }
+  },
+  "health": {
+    "checkFailed": "Verificación de salud fallida"
   },
   "setup": {
     "checkError": "Error al verificar el estado de configuración",

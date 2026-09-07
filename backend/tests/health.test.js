@@ -61,77 +61,77 @@ const mockConfigLoader = {
     if (name === 'app') {
       return {
         boxvault: {
-          origin: { value: 'http://localhost:3000' },
-          api_url: { value: 'http://localhost:3000/api' },
-          box_storage_directory: { value: '/box-storage' },
-          iso_storage_directory: { value: '/iso-storage' },
-          box_max_file_size: { value: 20 },
-          api_listen_port_unencrypted: { value: 5001 },
-          api_listen_port_encrypted: { value: 5002 },
-          repository_packages_url: { value: 'https://public.debian.packages.startcloud.com/' },
+          origin: 'http://localhost:3000',
+          api_url: 'http://localhost:3000/api',
+          box_storage_directory: '/box-storage',
+          iso_storage_directory: '/iso-storage',
+          box_max_file_size: 20,
+          api_listen_port_unencrypted: 5001,
+          api_listen_port_encrypted: 5002,
+          repository_packages_url: 'https://public.debian.packages.startcloud.com/',
         },
         gravatar: {
-          base_url: { value: 'https://api.gravatar.com/v3/profiles/' },
-          api_key: { value: 'test-key' },
+          base_url: 'https://api.gravatar.com/v3/profiles/',
+          api_key: 'test-key',
         },
         ticket_system: {
-          enabled: { value: true },
-          base_url: { value: 'https://example.com/ticket' },
-          req_type: { value: 'sso' },
-          context: { value: 'https://github.com/Makr91/BoxVault' },
+          enabled: true,
+          base_url: 'https://example.com/ticket',
+          req_type: 'sso',
+          context: 'https://github.com/Makr91/BoxVault',
         },
         ssl: {
-          generate_ssl: { value: false },
-          cert_path: { value: '/etc/boxvault/ssl/cert.pem' },
-          key_path: { value: '/etc/boxvault/ssl/key.pem' },
+          generate_ssl: false,
+          cert_path: '/etc/boxvault/ssl/cert.pem',
+          key_path: '/etc/boxvault/ssl/key.pem',
         },
         // Provide a safe log directory for tests to prevent EACCES errors in Logger.js
         logging: {
-          level: { value: 'info' },
-          console_enabled: { value: true },
-          log_directory: { value: path.join(process.cwd(), '__test_logs__') },
-          performance_threshold_ms: { value: 1000 },
-          enable_compression: { value: true },
-          compression_age_days: { value: 7 },
-          max_files: { value: 30 },
+          level: 'info',
+          console_enabled: true,
+          log_directory: path.join(process.cwd(), '__test_logs__'),
+          performance_threshold_ms: 1000,
+          enable_compression: true,
+          compression_age_days: 7,
+          max_files: 30,
         },
         frontend_logging: {
-          enabled: { value: true },
-          level: { value: 'info' },
+          enabled: true,
+          level: 'info',
           categories: {
-            app: { value: 'info' },
-            auth: { value: 'info' },
-            api: { value: 'info' },
-            file: { value: 'info' },
-            component: { value: 'debug' },
+            app: 'info',
+            auth: 'info',
+            api: 'info',
+            file: 'info',
+            component: 'debug',
           },
         },
-        rate_limiting: { window_minutes: { value: 15 }, max_requests: { value: 100 } },
+        rate_limiting: { window_minutes: 15, max_requests: 100 },
         monitoring: {
-          disk_space_critical_threshold: { value: 95 },
-          disk_space_warning_threshold: { value: 90 },
-          alert_frequency_hours: { value: 24 },
+          disk_space_critical_threshold: 95,
+          disk_space_warning_threshold: 90,
+          alert_frequency_hours: 24,
         },
       };
     }
     if (name === 'db') {
       return {
-        database_type: { value: 'sqlite' },
+        database_type: 'sqlite',
         sql: {
-          dialect: { value: 'sqlite' },
-          storage: { value: ':memory:' },
-          logging: { value: false },
-          host: { value: 'localhost' },
-          port: { value: 3306 },
-          user: { value: 'root' },
-          password: { value: '' },
-          database: { value: 'boxvault' },
+          dialect: 'sqlite',
+          storage: ':memory:',
+          logging: false,
+          host: 'localhost',
+          port: 3306,
+          user: 'root',
+          password: '',
+          database: 'boxvault',
         },
         mysql_pool: {
-          max: { value: 5 },
-          min: { value: 0 },
-          acquire: { value: 30000 },
-          idle: { value: 10000 },
+          max: 5,
+          min: 0,
+          acquire: 30000,
+          idle: 10000,
         },
       };
     }
@@ -139,24 +139,24 @@ const mockConfigLoader = {
       return {
         auth: {
           jwt: {
-            jwt_secret: { value: 'test-secret' },
-            jwt_expiration: { value: '24h' },
-            jwt_issuer: { value: 'boxvault' },
-            jwt_audience: { value: 'boxvault-api' },
+            jwt_secret: 'test-secret',
+            jwt_expiration: '24h',
+            jwt_issuer: 'boxvault',
+            jwt_audience: 'boxvault-api',
           },
           oidc: {
-            token_refresh_threshold_minutes: { value: 5 },
-            token_default_expiry_minutes: { value: 30 },
+            token_refresh_threshold_minutes: 5,
+            token_default_expiry_minutes: 30,
             providers: {
               google: {
-                enabled: { value: true },
-                issuer: { value: 'https://accounts.google.com' },
+                enabled: true,
+                issuer: 'https://accounts.google.com',
               },
             },
           },
           external: {
-            domain_mapping_enabled: { value: true },
-            provisioning_enabled: { value: true },
+            domain_mapping_enabled: true,
+            provisioning_enabled: true,
           },
         },
       };
@@ -164,21 +164,21 @@ const mockConfigLoader = {
     if (name === 'mail') {
       return {
         smtp_connect: {
-          host: { value: 'smtp.example.com' },
-          port: { value: 25 },
-          secure: { value: false },
-          rejectUnauthorized: { value: false },
-          alert_emails: { value: ['admin@example.com'] },
-          alert_email: { value: ['admin@example.com'] }, // Handle both keys if code varies
+          host: 'smtp.example.com',
+          port: 25,
+          secure: false,
+          reject_unauthorized: false,
+          alert_emails: ['admin@example.com'],
+          alert_email: ['admin@example.com'], // Handle both keys if code varies
         },
         smtp_settings: {
-          from: { value: 'support@startcloud.com' },
-          replyTo: { value: 'support@startcloud.com' },
-          rateLimit: { value: 10 },
+          from: 'support@startcloud.com',
+          reply_to: 'support@startcloud.com',
+          rate_limit: 10,
         },
         smtp_auth: {
-          user: { value: 'user' },
-          password: { value: 'pass' },
+          user: 'user',
+          password: 'pass',
         },
       };
     }
@@ -188,7 +188,7 @@ const mockConfigLoader = {
       auth: { jwt: {}, oidc: { providers: {} } },
       db: { sql: {} },
       mail: { smtp_settings: {} },
-      logging: { level: { value: 'info' } },
+      logging: { level: 'info' },
       rate_limiting: {},
       internationalization: {},
       gravatar: {},
@@ -210,6 +210,19 @@ const mockConfigLoader = {
     fallback_language: 'en',
     auto_detect: true,
   }),
+  checkConfigs: jest.fn().mockReturnValue([]),
+  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
+  readConfigFile: jest.fn(name => mockConfigLoader.loadConfig(name)),
+  fillDefaults: jest.fn((schema, config) => {
+    void schema;
+    return config;
+  }),
+  validateConfig: jest.fn().mockReturnValue([]),
+  unknownKeys: jest.fn().mockReturnValue([]),
+  clearConfigCache: jest.fn(),
+  getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  isProduction: true,
+  CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
 
 const mockIsoHelpers = {
@@ -262,6 +275,9 @@ const { log } = await import('../app/utils/Logger.js');
 // Import nodemailer to ensure mock is used (though we use the mock object directly)
 await import('nodemailer');
 
+const OIDC_PROBE_TTL_MS = 60 * 1000;
+let clock = Date.now();
+
 describe('Health API Integration Tests', () => {
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
@@ -272,41 +288,44 @@ describe('Health API Integration Tests', () => {
     mockSendMail.mockClear();
     mockCreateTransport.mockClear();
 
+    clock += OIDC_PROBE_TTL_MS + 1000;
+    jest.spyOn(Date, 'now').mockImplementation(() => clock);
+
     // Default Config Mock Implementation
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
           boxvault: {
-            box_storage_directory: { value: '/box-storage' },
-            iso_storage_directory: { value: '/iso-storage' },
-            origin: { value: 'http://localhost:3000' },
-            api_url: { value: 'http://localhost:3000/api' },
-            box_max_file_size: { value: 20 },
-            api_listen_port_unencrypted: { value: 5001 },
-            api_listen_port_encrypted: { value: 5002 },
-            repository_packages_url: { value: 'https://public.debian.packages.startcloud.com/' },
+            box_storage_directory: '/box-storage',
+            iso_storage_directory: '/iso-storage',
+            origin: 'http://localhost:3000',
+            api_url: 'http://localhost:3000/api',
+            box_max_file_size: 20,
+            api_listen_port_unencrypted: 5001,
+            api_listen_port_encrypted: 5002,
+            repository_packages_url: 'https://public.debian.packages.startcloud.com/',
           },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 24 },
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 24,
           },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {
-              app: { value: 'info' },
-              auth: { value: 'info' },
-              api: { value: 'info' },
-              file: { value: 'info' },
-              component: { value: 'debug' },
+              app: 'info',
+              auth: 'info',
+              api: 'info',
+              file: 'info',
+              component: 'debug',
             },
           },
           logging: {
-            level: { value: 'info' },
-            log_directory: { value: path.join(process.cwd(), '__test_logs__') },
+            level: 'info',
+            log_directory: path.join(process.cwd(), '__test_logs__'),
           },
-          rate_limiting: { window_minutes: { value: 15 }, max_requests: { value: 100 } },
+          rate_limiting: { window_minutes: 15, max_requests: 100 },
         };
       }
       if (name === 'auth') {
@@ -315,8 +334,8 @@ describe('Health API Integration Tests', () => {
             oidc: {
               providers: {
                 google: {
-                  enabled: { value: true },
-                  issuer: { value: 'https://accounts.google.com' },
+                  enabled: true,
+                  issuer: 'https://accounts.google.com',
                 },
               },
             },
@@ -326,33 +345,33 @@ describe('Health API Integration Tests', () => {
       if (name === 'mail') {
         return {
           smtp_connect: {
-            host: { value: 'smtp.example.com' },
-            port: { value: 587 },
-            secure: { value: false },
-            rejectUnauthorized: { value: false },
+            host: 'smtp.example.com',
+            port: 587,
+            secure: false,
+            reject_unauthorized: false,
           },
           smtp_settings: {
-            alert_emails: { value: ['admin@example.com'] },
-            from: { value: 'support@startcloud.com' },
+            alert_emails: ['admin@example.com'],
+            from: 'support@startcloud.com',
           },
           smtp_auth: {
-            user: { value: 'user' },
-            password: { value: 'pass' },
+            user: 'user',
+            password: 'pass',
           },
         };
       }
       if (name === 'db') {
         return {
-          database_type: { value: 'sqlite' },
+          database_type: 'sqlite',
           sql: {
-            dialect: { value: 'sqlite' },
-            storage: { value: ':memory:' },
-            logging: { value: false },
-            host: { value: 'localhost' },
-            port: { value: 3306 },
-            user: { value: 'root' },
-            password: { value: '' },
-            database: { value: 'boxvault' },
+            dialect: 'sqlite',
+            storage: ':memory:',
+            logging: false,
+            host: 'localhost',
+            port: 3306,
+            user: 'root',
+            password: '',
+            database: 'boxvault',
           },
         };
       }
@@ -734,8 +753,8 @@ describe('Health API Integration Tests', () => {
             oidc: {
               providers: {
                 local: {
-                  enabled: { value: true },
-                  issuer: { value: 'http://localhost:8080' },
+                  enabled: true,
+                  issuer: 'http://localhost:8080',
                 },
               },
             },
@@ -843,21 +862,21 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 0 }, // Force alert
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 0, // Force alert
           },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {
-              app: { value: 'info' },
-              auth: { value: 'info' },
-              api: { value: 'info' },
-              file: { value: 'info' },
-              component: { value: 'debug' },
+              app: 'info',
+              auth: 'info',
+              api: 'info',
+              file: 'info',
+              component: 'debug',
             },
           },
         };
@@ -865,16 +884,16 @@ describe('Health API Integration Tests', () => {
       if (name === 'mail') {
         return {
           smtp_settings: {
-            alert_emails: { value: ['admin@example.com'] },
-            from: { value: 'noreply@example.com' },
+            alert_emails: ['admin@example.com'],
+            from: 'noreply@example.com',
           },
           smtp_connect: {
-            host: { value: 'localhost' },
-            port: { value: 25 },
-            secure: { value: false },
-            rejectUnauthorized: { value: false },
+            host: 'localhost',
+            port: 25,
+            secure: false,
+            reject_unauthorized: false,
           },
-          smtp_auth: { user: { value: 'user' }, password: { value: 'pass' } },
+          smtp_auth: { user: 'user', password: 'pass' },
         };
       }
       return {};
@@ -909,9 +928,9 @@ describe('Health API Integration Tests', () => {
           auth: {
             oidc: {
               providers: {
-                good: { enabled: { value: true }, issuer: { value: 'https://good.com' } },
-                bad: { enabled: { value: true }, issuer: { value: 'https://bad.com' } },
-                warn: { enabled: { value: true }, issuer: { value: 'https://warn.com' } },
+                good: { enabled: true, issuer: 'https://good.com' },
+                bad: { enabled: true, issuer: 'https://bad.com' },
+                warn: { enabled: true, issuer: 'https://warn.com' },
               },
             },
           },
@@ -965,27 +984,27 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'mail') {
         return {
-          smtp_connect: { alert_email: { value: [] } },
-          smtp_settings: { alert_emails: { value: [] } },
+          smtp_connect: { alert_email: [] },
+          smtp_settings: { alert_emails: [] },
         };
       }
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 0 },
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 0,
           },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {
-              app: { value: 'info' },
-              auth: { value: 'info' },
-              api: { value: 'info' },
-              file: { value: 'info' },
-              component: { value: 'debug' },
+              app: 'info',
+              auth: 'info',
+              api: 'info',
+              file: 'info',
+              component: 'debug',
             },
           },
         };
@@ -1024,21 +1043,21 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 0 }, // 0 to allow immediate re-alerting
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 0, // 0 to allow immediate re-alerting
           },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {
-              app: { value: 'info' },
-              auth: { value: 'info' },
-              api: { value: 'info' },
-              file: { value: 'info' },
-              component: { value: 'debug' },
+              app: 'info',
+              auth: 'info',
+              api: 'info',
+              file: 'info',
+              component: 'debug',
             },
           },
         };
@@ -1046,16 +1065,16 @@ describe('Health API Integration Tests', () => {
       if (name === 'mail') {
         return {
           smtp_connect: {
-            host: { value: 'smtp.example.com' },
-            port: { value: 587 },
-            secure: { value: false },
-            rejectUnauthorized: { value: false },
+            host: 'smtp.example.com',
+            port: 587,
+            secure: false,
+            reject_unauthorized: false,
           },
           smtp_settings: {
-            alert_emails: { value: ['admin@example.com'] },
-            from: { value: 'noreply@example.com' },
+            alert_emails: ['admin@example.com'],
+            from: 'noreply@example.com',
           },
-          smtp_auth: { user: { value: 'user' }, password: { value: 'pass' } },
+          smtp_auth: { user: 'user', password: 'pass' },
         };
       }
       return {};
@@ -1081,8 +1100,8 @@ describe('Health API Integration Tests', () => {
           auth: {
             oidc: {
               providers: {
-                disabled: { enabled: { value: false }, issuer: { value: 'https://disabled.com' } },
-                enabled: { enabled: { value: true }, issuer: { value: 'https://enabled.com' } },
+                disabled: { enabled: false, issuer: 'https://disabled.com' },
+                enabled: { enabled: true, issuer: 'https://enabled.com' },
               },
             },
           },
@@ -1106,7 +1125,7 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'auth') {
         return {
-          auth: { oidc: { providers: { broken: { enabled: { value: true } } } } },
+          auth: { oidc: { providers: { broken: { enabled: true } } } },
         };
       }
       return {};
@@ -1120,16 +1139,16 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {
-              app: { value: 'info' },
-              auth: { value: 'info' },
-              api: { value: 'info' },
-              file: { value: 'info' },
-              component: { value: 'debug' },
+              app: 'info',
+              auth: 'info',
+              api: 'info',
+              file: 'info',
+              component: 'debug',
             },
           },
         };
@@ -1158,21 +1177,21 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 0 }, // Force alert
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 0, // Force alert
           },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {
-              app: { value: 'info' },
-              auth: { value: 'info' },
-              api: { value: 'info' },
-              file: { value: 'info' },
-              component: { value: 'debug' },
+              app: 'info',
+              auth: 'info',
+              api: 'info',
+              file: 'info',
+              component: 'debug',
             },
           },
         };
@@ -1180,16 +1199,16 @@ describe('Health API Integration Tests', () => {
       if (name === 'mail') {
         return {
           smtp_connect: {
-            host: { value: 'localhost' },
-            port: { value: 25 },
-            secure: { value: false },
-            rejectUnauthorized: { value: false },
+            host: 'localhost',
+            port: 25,
+            secure: false,
+            reject_unauthorized: false,
           },
           smtp_settings: {
-            alert_emails: { value: ['admin@example.com'] },
-            from: { value: 'noreply@example.com' },
+            alert_emails: ['admin@example.com'],
+            from: 'noreply@example.com',
           },
-          smtp_auth: { user: { value: 'user' }, password: { value: 'pass' } },
+          smtp_auth: { user: 'user', password: 'pass' },
         };
       }
       return {};
@@ -1211,7 +1230,7 @@ describe('Health API Integration Tests', () => {
           auth: {
             oidc: {
               providers: {
-                rate_limited: { enabled: { value: true }, issuer: { value: 'https://warn.com' } },
+                rate_limited: { enabled: true, issuer: 'https://warn.com' },
               },
             },
           },
@@ -1262,7 +1281,7 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           // frontend_logging missing
         };
       }
@@ -1298,11 +1317,11 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 0 },
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 0,
           },
         };
       }
@@ -1338,7 +1357,7 @@ describe('Health API Integration Tests', () => {
               providers: {
                 malformed1: {},
                 malformed2: { enabled: {} }, // value missing
-                malformed3: { enabled: { value: true } }, // issuer missing
+                malformed3: { enabled: true }, // issuer missing
               },
             },
           },
@@ -1356,10 +1375,10 @@ describe('Health API Integration Tests', () => {
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           frontend_logging: {
-            enabled: { value: true },
-            level: { value: 'info' },
+            enabled: true,
+            level: 'info',
             categories: {}, // Empty categories to trigger fallbacks
           },
         };
@@ -1384,30 +1403,30 @@ describe('Health API Integration Tests', () => {
     });
 
     // Advance time to ensure alert triggers even if previous tests set lastAlertTime
-    const realNow = Date.now();
-    const futureNow = realNow + 25 * 60 * 60 * 1000; // 25 hours later
+    clock += 25 * 60 * 60 * 1000; // 25 hours later
+    const futureNow = clock;
     const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(futureNow);
 
     mockConfigLoader.loadConfig.mockImplementation(name => {
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
+          boxvault: { box_storage_directory: '/box-storage' },
           // monitoring config missing
         };
       }
       if (name === 'mail') {
         return {
           smtp_settings: {
-            alert_emails: { value: ['admin@example.com'] },
-            from: { value: 'noreply@example.com' },
+            alert_emails: ['admin@example.com'],
+            from: 'noreply@example.com',
           },
           smtp_connect: {
-            host: { value: 'localhost' },
-            port: { value: 25 },
-            secure: { value: false },
-            rejectUnauthorized: { value: false },
+            host: 'localhost',
+            port: 25,
+            secure: false,
+            reject_unauthorized: false,
           },
-          smtp_auth: { user: { value: 'user' }, password: { value: 'pass' } },
+          smtp_auth: { user: 'user', password: 'pass' },
         };
       }
       return {};
@@ -1431,8 +1450,8 @@ describe('Health API Integration Tests', () => {
             oidc: {
               providers: {
                 explicit_good: {
-                  enabled: { value: true },
-                  issuer: { value: 'https://good-explicit.com' },
+                  enabled: true,
+                  issuer: 'https://good-explicit.com',
                 },
               },
             },
@@ -1442,12 +1461,12 @@ describe('Health API Integration Tests', () => {
       // Return valid app config to avoid disk check errors
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
-          frontend_logging: { enabled: { value: true }, level: { value: 'info' }, categories: {} },
+          boxvault: { box_storage_directory: '/box-storage' },
+          frontend_logging: { enabled: true, level: 'info', categories: {} },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 24 },
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 24,
           },
         };
       }
@@ -1496,8 +1515,8 @@ describe('Health API Integration Tests', () => {
           auth: {
             oidc: {
               providers: {
-                p1: { enabled: { value: true }, issuer: { value: 'https://p1.com' } },
-                p2: { enabled: { value: true }, issuer: { value: 'https://p2.com' } },
+                p1: { enabled: true, issuer: 'https://p1.com' },
+                p2: { enabled: true, issuer: 'https://p2.com' },
               },
             },
           },
@@ -1506,12 +1525,12 @@ describe('Health API Integration Tests', () => {
       // Return valid app config
       if (name === 'app') {
         return {
-          boxvault: { box_storage_directory: { value: '/box-storage' } },
-          frontend_logging: { enabled: { value: true }, level: { value: 'info' }, categories: {} },
+          boxvault: { box_storage_directory: '/box-storage' },
+          frontend_logging: { enabled: true, level: 'info', categories: {} },
           monitoring: {
-            disk_space_critical_threshold: { value: 95 },
-            disk_space_warning_threshold: { value: 90 },
-            alert_frequency_hours: { value: 24 },
+            disk_space_critical_threshold: 95,
+            disk_space_warning_threshold: 90,
+            alert_frequency_hours: 24,
           },
         };
       }
@@ -1552,16 +1571,9 @@ describe('Health API Integration Tests', () => {
     expect(res.body.services.oidc_providers).toBe('Good');
   });
 
-  it('should default environment to development if NODE_ENV is missing', async () => {
-    const originalEnv = process.env.NODE_ENV;
-    delete process.env.NODE_ENV;
-
-    try {
-      const res = await request(app).get('/api/health');
-      expect(res.statusCode).toBe(200);
-      expect(res.body.environment).toBe('development');
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-    }
+  it('should report the production environment when the config directory exists', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.environment).toBe('production');
   });
 });

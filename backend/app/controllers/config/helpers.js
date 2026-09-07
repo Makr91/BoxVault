@@ -1,28 +1,21 @@
 // helpers.js
 import fs from 'fs';
 import { dump } from 'js-yaml';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { clearConfigCache, getConfigDir } from '../../utils/config-loader.js';
 import { isPathInside } from '../../utils/paths.js';
 import { atomicWriteFile } from '../../utils/fsHelper.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 /**
- * Validate that file path is within allowed config directories
+ * Validate that file path is within the config directory
  * @param {string} filePath - The file path to validate
  * @returns {boolean} True if path is safe
  */
-const isValidConfigPath = filePath => {
-  const allowedDirs = [process.env.CONFIG_DIR || '/etc/boxvault', join(__dirname, '../../config')];
-
-  return allowedDirs.some(dir => isPathInside(dir, filePath));
-};
+const isValidConfigPath = filePath => isPathInside(getConfigDir(), filePath);
 
 /**
  * Write one plain config file atomically, keeping the previous content
- * beside it as `<file>.bak`.
+ * beside it as `<file>.bak`, and clear the loader's cache so the next read
+ * sees the written file.
  * @param {string} filePath - The config file path
  * @param {Object} data - The plain file object
  * @returns {Promise<void>}
@@ -35,6 +28,7 @@ const writeConfig = async (filePath, data) => {
     fs.copyFileSync(filePath, `${filePath}.bak`);
   }
   await atomicWriteFile(filePath, dump(data), 'utf8');
+  clearConfigCache();
 };
 
 // Secret masking (#44): every writeOnly value of the schema is replaced by

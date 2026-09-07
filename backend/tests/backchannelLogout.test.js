@@ -1,14 +1,11 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
 import { createServer } from 'http';
-import { fileURLToPath } from 'url';
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const authConfigPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
+const authConfigPath = getConfigPath('auth');
 
 const ISSUER = 'https://logout-idp.example';
 const NO_CLIENT_ISSUER = 'https://noclient-idp.example';
@@ -61,7 +58,11 @@ const writeAuthConfig = mutate => {
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  return () => fs.writeFileSync(authConfigPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(authConfigPath, original);
+    clearConfigCache();
+  };
 };
 
 const mintLogoutToken = ({
@@ -241,14 +242,14 @@ describe('OIDC back-channel logout', () => {
 
     const after = await request(app).get('/api/user').set('x-access-token', session);
     expect(after.statusCode).toBe(401);
-    expect(after.body.error).toBe('TOKEN_INVALID');
+    expect(after.body.type).toBe('https://auth.startcloud.com/probs/authentication');
 
     const refresh = await request(app)
       .post('/api/auth/refresh-token')
       .set('x-access-token', session)
       .send({ stay_logged_in: true });
     expect(refresh.statusCode).toBe(401);
-    expect(refresh.body.error).toBe('TOKEN_INVALID');
+    expect(refresh.body.type).toBe('https://auth.startcloud.com/probs/authentication');
   });
 
   it('should resolve the user through the UUID claim before the subject', async () => {

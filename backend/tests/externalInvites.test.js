@@ -1,12 +1,9 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const authConfigPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
+const authConfigPath = getConfigPath('auth');
 
 const ISSUER = 'https://hub-idp.example';
 const UNDISCOVERED_ISSUER = 'https://undiscovered-hub.example';
@@ -52,7 +49,11 @@ const writeAuthConfig = mutate => {
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  return () => fs.writeFileSync(authConfigPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(authConfigPath, original);
+    clearConfigCache();
+  };
 };
 
 const mintingTokenEndpoint = () => {
@@ -129,9 +130,11 @@ describe('Identity-provider delegation', () => {
       subject: `owner-second-${uniqueId}`,
       external_email: owner.email,
     });
-    for (const org of [externalOrg, noUuidOrg, localOrg]) {
-      await db.UserOrg.create({ user_id: owner.id, organization_id: org.id, role: 'owner' });
-    }
+    await Promise.all(
+      [externalOrg, noUuidOrg, localOrg].map(org =>
+        db.UserOrg.create({ user_id: owner.id, organization_id: org.id, role: 'owner' })
+      )
+    );
     await db.UserOrg.create({
       user_id: localAdmin.id,
       organization_id: externalOrg.id,

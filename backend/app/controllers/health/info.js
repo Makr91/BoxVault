@@ -1,4 +1,4 @@
-import { loadConfig } from '../../utils/config-loader.js';
+import { isProduction, loadConfig } from '../../utils/config-loader.js';
 import db from '../../models/index.js';
 const { sequelize } = db;
 import { existsSync, promises, readFileSync } from 'fs';
@@ -17,6 +17,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let lastAlertTime = 0;
+
+const OIDC_PROBE_TTL_MS = 60 * 1000;
+let oidcProbe = { expiresAt: 0, result: Promise.resolve({}) };
 
 /**
  * @swagger
@@ -175,7 +178,7 @@ const mapStatus = status => {
   return 'Error';
 };
 
-const checkOidcProviders = async () => {
+const probeOidcProviders = async () => {
   const services = {};
   try {
     const authConfig = loadConfig('auth');
@@ -197,6 +200,19 @@ const checkOidcProviders = async () => {
     /* ignore */
   }
   return services;
+};
+
+/**
+ * The OIDC probe results, shared by every caller for 60 seconds so an
+ * unauthenticated health call cannot make this host hammer its issuers.
+ * @returns {Promise<Object>} One status string per enabled provider
+ */
+const checkOidcProviders = () => {
+  if (Date.now() < oidcProbe.expiresAt) {
+    return oidcProbe.result;
+  }
+  oidcProbe = { expiresAt: Date.now() + OIDC_PROBE_TTL_MS, result: probeOidcProviders() };
+  return oidcProbe.result;
 };
 
 const getVersionInfo = () => {
@@ -252,7 +268,7 @@ const sendDiskAlertEmail = async (boxDisk, isoDisk) => {
         pass: mailConfig.smtp_auth.password,
       },
       tls: {
-        rejectUnauthorized: mailConfig.smtp_connect.rejectUnauthorized,
+        rejectUnauthorized: mailConfig.smtp_connect.reject_unauthorized,
       },
     });
 
@@ -327,11 +343,10 @@ const calculateOverallStatus = services => {
 };
 
 const getHealth = async (req, res) => {
-  void req;
   try {
     const appConfig = loadConfig('app');
 
-    const environment = process.env.NODE_ENV || 'development';
+    const environment = isProduction ? 'production' : 'development';
 
     const version = getVersionInfo();
     const loggingConfig = getLoggingConfig(appConfig);
@@ -387,7 +402,7 @@ const getHealth = async (req, res) => {
     return res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
-      message: 'Health check failed',
+      message: req.__('health.checkFailed'),
     });
   }
 };

@@ -1,20 +1,15 @@
 // box.routes.js
 import { Router } from 'express';
 import { authJwt, sessionAuth, validateBody, verifyOrgAccess } from '../middleware/index.js';
-import {
-  discoverAll,
-  getOrganizationBoxDetails,
-  findOne,
-  create,
-  update,
-  delete as deleteBox,
-  deleteAll,
-  uploadArtwork,
-  getArtwork,
-  getBadge,
-  watchBox,
-  unwatchBox,
-} from '../controllers/box.controller.js';
+import { discoverAll } from '../controllers/box/discover.js';
+import { getOrganizationBoxDetails } from '../controllers/box/organization/details.js';
+import { findOne } from '../controllers/box/findone.js';
+import { create } from '../controllers/box/create.js';
+import { update } from '../controllers/box/update.js';
+import { delete as deleteBox } from '../controllers/box/delete.js';
+import { deleteAll } from '../controllers/box/deleteall.js';
+import { uploadArtwork, getArtwork } from '../controllers/box/artwork.js';
+import { watchBox, unwatchBox } from '../controllers/box/watch.js';
 
 const router = Router();
 
@@ -25,11 +20,6 @@ router.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
   next();
 });
-
-// Public status badge — registered first so nothing can shadow it. This router
-// is mounted at the root (alongside the Vagrant routes) as well as under /api,
-// which is what puts the badge at /badge/:organization/:name.svg.
-router.get('/badge/:organization/:name.svg', getBadge);
 
 router.get('/discover', discoverAll);
 router.get('/organization/:organization/box', sessionAuth, getOrganizationBoxDetails);

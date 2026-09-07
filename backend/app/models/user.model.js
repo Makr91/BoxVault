@@ -1,110 +1,128 @@
 export default (sequelize, Sequelize) => {
-  const User = sequelize.define('users', {
-    username: {
-      type: Sequelize.STRING,
-    },
-    email: {
-      type: Sequelize.STRING,
-    },
-    name: {
-      type: Sequelize.STRING,
-      allowNull: true,
-      comment:
-        'Human display name. Optional: SCIM displayName/name.formatted at provision/PUT, then the OIDC name claim at login (fresher, overwrites), else null and username is the render-time fallback',
-    },
-    password: {
-      type: Sequelize.STRING,
-    },
-    emailHash: {
-      type: Sequelize.STRING,
-    },
-    verified: {
-      type: Sequelize.BOOLEAN,
-      defaultValue: false,
-    },
-    verificationToken: {
-      type: Sequelize.STRING,
-    },
-    verificationTokenExpires: {
-      type: Sequelize.DATE,
-    },
-    suspended: {
-      type: Sequelize.BOOLEAN,
-      defaultValue: false,
-    },
-    preferredLanguage: {
-      type: Sequelize.STRING(35),
-      allowNull: true,
-      comment:
-        'RFC 7643 preferredLanguage: BCP 47 tag the user reads. Drives outbound mail and notification language. Null means unset and the org locale, then the configured default, apply',
-      field: 'preferred_language',
-    },
-    locale: {
-      type: Sequelize.STRING(35),
-      allowNull: true,
-      comment:
-        'RFC 7643 locale: BCP 47 tag for formatting (dates, numbers). Distinct from preferredLanguage and only a fallback for it',
-    },
-    preferredTheme: {
-      type: Sequelize.STRING(10),
-      allowNull: true,
-      comment:
-        'Colour-scheme preference: light, dark, or auto. Variant only — the brand pack is a property of the site, never of the user. Null means unset and the browser-local choice applies',
-      field: 'preferred_theme',
-    },
-    timezone: {
-      type: Sequelize.STRING(64),
-      allowNull: true,
-      comment: 'RFC 7643 timezone: Olson name, stored for consumers that need it',
-    },
-    sessionsInvalidAfter: {
-      type: Sequelize.DATE,
-      allowNull: true,
-      field: 'sessions_invalid_after',
-    },
-    authProvider: {
-      type: Sequelize.STRING(50),
-      allowNull: true,
-      defaultValue: 'local',
-      field: 'auth_provider',
-    },
-    externalId: {
-      type: Sequelize.STRING(255),
-      allowNull: true,
-      field: 'external_id',
-    },
-    linkedAt: {
-      type: Sequelize.DATE,
-      allowNull: true,
-      field: 'linked_at',
-    },
-    avatar_url: {
-      type: Sequelize.STRING,
-      allowNull: true,
-      comment:
-        'Provider avatar URL. Three-tier contract: SCIM photos at provision/PUT, then the OIDC picture claim at login (fresher, overwrites), else null and the email-hash gravatar is the render-time fallback',
-      field: 'avatar_url',
-    },
-    primary_organization_id: {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'organizations',
-        key: 'id',
+  const User = sequelize.define(
+    'users',
+    {
+      username: {
+        type: Sequelize.STRING,
       },
-      onUpdate: 'CASCADE',
-      onDelete: 'SET NULL',
-      comment: 'Primary organization for this user (denormalized for performance)',
-      field: 'primary_organization_id',
+      email: {
+        type: Sequelize.STRING,
+      },
+      name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment:
+          'Human display name. Optional: SCIM displayName/name.formatted at provision/PUT, then the OIDC name claim at login (fresher, overwrites), else null and username is the render-time fallback',
+      },
+      password: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      emailHash: {
+        type: Sequelize.STRING,
+      },
+      verified: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      verificationToken: {
+        type: Sequelize.STRING,
+      },
+      verificationTokenExpires: {
+        type: Sequelize.DATE,
+      },
+      suspended: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      preferredLanguage: {
+        type: Sequelize.STRING(35),
+        allowNull: true,
+        comment:
+          'RFC 7643 preferredLanguage: BCP 47 tag the user reads. Drives outbound mail and notification language. Null means unset and the org locale, then the configured default, apply',
+        field: 'preferred_language',
+      },
+      locale: {
+        type: Sequelize.STRING(35),
+        allowNull: true,
+        comment:
+          'RFC 7643 locale: BCP 47 tag for formatting (dates, numbers). Distinct from preferredLanguage and only a fallback for it',
+      },
+      preferredTheme: {
+        type: Sequelize.STRING(10),
+        allowNull: true,
+        comment:
+          'Colour-scheme preference: light, dark, or auto. Variant only — the brand pack is a property of the site, never of the user. Null means unset and the browser-local choice applies',
+        field: 'preferred_theme',
+      },
+      timezone: {
+        type: Sequelize.STRING(64),
+        allowNull: true,
+        comment: 'RFC 7643 timezone: Olson name, stored for consumers that need it',
+      },
+      sessionsInvalidAfter: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        field: 'sessions_invalid_after',
+      },
+      authProvider: {
+        type: Sequelize.STRING(50),
+        allowNull: true,
+        defaultValue: 'local',
+        field: 'auth_provider',
+      },
+      externalId: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        field: 'external_id',
+      },
+      linkedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        field: 'linked_at',
+      },
+      avatar_url: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment:
+          'Provider avatar URL. Three-tier contract: SCIM photos at provision/PUT, then the OIDC picture claim at login (fresher, overwrites), else null and the email-hash gravatar is the render-time fallback',
+        field: 'avatar_url',
+      },
+      primary_organization_id: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'organizations',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
+        comment: 'Primary organization for this user (denormalized for performance)',
+        field: 'primary_organization_id',
+      },
+      entitlements: {
+        type: Sequelize.JSON,
+        allowNull: true,
+        comment:
+          'RFC 7643 core entitlements pushed by SCIM: array of {value,type,display}. Full desired state — absent attribute on push clears to null',
+        field: 'entitlements',
+      },
     },
-    entitlements: {
-      type: Sequelize.JSON,
-      allowNull: true,
-      comment:
-        'RFC 7643 core entitlements pushed by SCIM: array of {value,type,display}. Full desired state — absent attribute on push clears to null',
-      field: 'entitlements',
-    },
-  });
+    {
+      indexes: [
+        {
+          unique: true,
+          fields: ['username'],
+          name: 'users_username',
+        },
+        {
+          unique: true,
+          fields: ['email'],
+          name: 'users_email',
+        },
+      ],
+    }
+  );
 
   User.associate = function (models) {
     // Primary organization relationship (denormalized)

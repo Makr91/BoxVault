@@ -24,7 +24,6 @@
             privileges='basic,net_privaddr,file_dac_read' />
         <method_environment>
           <envvar name='PATH' value='/opt/ooce/bin:/opt/ooce/node-22/bin:/usr/gnu/bin:/usr/bin:/usr/sbin:/sbin'/>
-          <envvar name='NODE_ENV' value='production'/>
           <envvar name='CONFIG_DIR' value='/etc/boxvault'/>
           <envvar name='HOME' value='/var/lib/boxvault'/>
         </method_environment>

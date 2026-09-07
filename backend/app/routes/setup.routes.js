@@ -1,13 +1,11 @@
 // setup.routes.js
 import { Router } from 'express';
-import {
-  verifySetupToken,
-  updateConfigs,
-  getConfigs,
-  getSchemas,
-  isSetupComplete,
-  uploadSSL,
-} from '../controllers/setup.controller.js';
+import { verifySetupToken } from '../controllers/setup/verify.js';
+import { updateConfigs } from '../controllers/setup/update.js';
+import { getConfigs } from '../controllers/setup/get.js';
+import { getSchemas } from '../controllers/setup/schema.js';
+import { isSetupComplete } from '../controllers/setup/check.js';
+import { uploadSSL } from '../controllers/setup/upload.js';
 
 const router = Router();
 

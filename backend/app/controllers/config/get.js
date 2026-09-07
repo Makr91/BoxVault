@@ -1,6 +1,7 @@
 // get.js
-import { loadConfig, loadSchema } from '../../utils/config-loader.js';
+import { CONFIG_NAMES, loadConfig, loadSchema } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { maskSecrets } from './helpers.js';
 
 /**
@@ -36,20 +37,29 @@ import { maskSecrets } from './helpers.js';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *       500:
- *         description: Internal server error
+ *       404:
+ *         description: The name is not one of the files status.config lists
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
+ *       500:
+ *         description: The file could not be read or parsed
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getConfig = (req, res) => {
   const { configName } = req.params;
+  if (!CONFIG_NAMES.includes(configName)) {
+    return problem(res, req, { status: 404, type: 'not-found' });
+  }
   try {
     const data = loadConfig(configName);
     return res.send(maskSecrets(loadSchema(configName), data));
   } catch (err) {
     log.error.error('Error getting config:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, { status: 500, type: 'internal' });
   }
 };

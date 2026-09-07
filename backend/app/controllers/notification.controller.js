@@ -41,7 +41,23 @@ const pushUnreadCount = async (req, headers) => {
   }
 };
 
-const proxyNotificationRequest = async (req, res, sendRequest, { pushCount = false } = {}) => {
+/**
+ * Forward one request to the identity provider with the session's OIDC access
+ * token and answer its status and body unmapped: 401 OIDC_ACCESS_TOKEN_REQUIRED
+ * without a token, the provider's own 401 or 403 as NOTIFICATIONS_NOT_AUTHORIZED,
+ * 502 AUTH_SERVER_UNAVAILABLE when the provider cannot be reached.
+ * @param {import('express').Request} req - The request, with the session resolved
+ * @param {import('express').Response} res - The response
+ * @param {function(Object): Promise<{status: number, data: *}>} sendRequest - Sends the upstream request with the bearer headers
+ * @param {{pushCount?: boolean}} [options] - Whether to push the unread count on the event stream afterwards
+ * @returns {Promise<void>}
+ */
+export const proxyNotificationRequest = async (
+  req,
+  res,
+  sendRequest,
+  { pushCount = false } = {}
+) => {
   const oidcAccessToken = extractOidcAccessToken(req);
 
   if (!oidcAccessToken) {
@@ -306,5 +322,32 @@ export const deleteNotification = (req, res) =>
       axios.delete(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}`), {
         headers,
       }),
+    { pushCount: true }
+  );
+
+/**
+ * @swagger
+ * /api/notifications:
+ *   delete:
+ *     summary: Clear the caller's inbox
+ *     description: Forwards to the notification hub's DELETE /api/notifications with the session's OIDC access token and answers the hub's status and body unmapped, then pushes the unread count on the event stream.
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       204:
+ *         description: The inbox is empty
+ *       401:
+ *         description: No OIDC access token on the session, or the hub refused the token
+ *       403:
+ *         description: The hub refused the request
+ *       502:
+ *         description: The hub is unreachable
+ */
+export const deleteAllNotifications = (req, res) =>
+  proxyNotificationRequest(
+    req,
+    res,
+    headers => axios.delete(buildNotificationsUrl(req), { headers }),
     { pushCount: true }
   );

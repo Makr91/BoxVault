@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh } from '../middleware/index.js';
-import {
-  getFavorites,
-  saveFavorites,
-  getUserInfoClaims,
-} from '../controllers/favorites.controller.js';
+import { getFavorites } from '../controllers/favorites/get.js';
+import { saveFavorites } from '../controllers/favorites/save.js';
+import { getUserInfoClaims } from '../controllers/favorites/claims.js';
+import { getUserFavorites, saveUserFavorites } from '../controllers/favorites/user.js';
 
 const router = Router();
 
@@ -24,6 +23,18 @@ router.post(
   '/favorites/save',
   [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
   saveFavorites
+);
+
+router.get(
+  '/user/favorites',
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  getUserFavorites
+);
+
+router.put(
+  '/user/favorites',
+  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  saveUserFavorites
 );
 
 // Get enriched user claims (includes favorite_apps with metadata)

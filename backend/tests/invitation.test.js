@@ -119,6 +119,9 @@ const mockableConfigLoader = {
   validateConfig: jest.fn().mockReturnValue([]),
   unknownKeys: jest.fn().mockReturnValue([]),
   loadConfigs: jest.fn(),
+  clearConfigCache: jest.fn(),
+  getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  isProduction: false,
   CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
 
@@ -135,6 +138,9 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   validateConfig: (...args) => mockableConfigLoader.validateConfig(...args),
   unknownKeys: (...args) => mockableConfigLoader.unknownKeys(...args),
   loadConfigs: (...args) => mockableConfigLoader.loadConfigs(...args),
+  clearConfigCache: (...args) => mockableConfigLoader.clearConfigCache(...args),
+  getConfigDir: (...args) => mockableConfigLoader.getConfigDir(...args),
+  isProduction: mockableConfigLoader.isProduction,
   CONFIG_NAMES: mockableConfigLoader.CONFIG_NAMES,
   default: mockableConfigLoader,
 }));

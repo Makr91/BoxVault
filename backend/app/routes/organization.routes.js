@@ -1,23 +1,49 @@
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
-import {
-  discoverOrganizations,
-  findAllWithUsers,
-  findOneWithUsers,
-  findAll,
-  findOne,
-  create,
-  update,
-  delete as deleteOrg,
-  suspendOrganization,
-  resumeOrganization,
-  updateAccessMode,
-  updateUserOrgRole,
-  removeUserFromOrg,
-  joinAsAdmin,
-} from '../controllers/organization.controller.js';
+import { discoverOrganizations } from '../controllers/organization/discover.js';
+import { findAllWithUsers } from '../controllers/organization/findallwithusers.js';
+import { findOneWithUsers } from '../controllers/organization/findonewithusers.js';
+import { findAll } from '../controllers/organization/findall.js';
+import { findOne } from '../controllers/organization/findone.js';
+import { create } from '../controllers/organization/create.js';
+import { update } from '../controllers/organization/update.js';
+import { delete as deleteOrg } from '../controllers/organization/delete.js';
+import { suspendOrganization } from '../controllers/organization/suspend.js';
+import { resumeOrganization } from '../controllers/organization/resume.js';
+import { updateAccessMode } from '../controllers/organization/accessmode.js';
+import { updateUserOrgRole } from '../controllers/organization/updateuserrole.js';
+import { removeUserFromOrg } from '../controllers/organization/removeuser.js';
+import { joinAsAdmin } from '../controllers/organization/joinasadmin.js';
+import { loadConfig } from '../utils/config-loader.js';
+import { problem } from '../utils/problem.js';
+import db from '../models/index.js';
+
+const { user: User } = db;
 
 const router = Router();
+
+/**
+ * Gate on POST /organization: refuse while auth.local.local_allow_new_organizations
+ * is false, unless the caller is a global admin.
+ */
+const allowNewOrganizations = async (req, res, next) => {
+  const authConfig = loadConfig('auth');
+  if (authConfig.auth?.local?.local_allow_new_organizations) {
+    return next();
+  }
+
+  const user = await User.findByPk(req.userId);
+  const roles = await user.getRoles();
+  if (roles.some(role => role.name === 'admin')) {
+    return next();
+  }
+
+  return problem(res, req, {
+    status: 403,
+    type: 'forbidden',
+    title: req.__('auth.newOrganizationsDisabled'),
+  });
+};
 
 // Apply rate limiting to this router
 
@@ -49,7 +75,7 @@ router.get('/organization/:organization', sessionAuth, findOne);
 
 router.post(
   '/organization',
-  [authJwt.verifyToken, authJwt.isUser, validateBody('organization')],
+  [authJwt.verifyToken, authJwt.isUser, allowNewOrganizations, validateBody('organization')],
   create
 );
 

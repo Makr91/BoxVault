@@ -57,9 +57,6 @@ export const acceptInvitation = async (req, res) => {
     }
 
     const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(401).send({ message: req.__('users.userNotFound') });
-    }
 
     // The invitation is addressed to a specific email; the accepting account must match.
     if (!user.email || user.email.toLowerCase() !== invitation.email.toLowerCase()) {

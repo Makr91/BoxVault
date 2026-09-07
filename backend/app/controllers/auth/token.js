@@ -1,9 +1,8 @@
 // token.js
-import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
-import { getJwtClaimOptions } from '../../utils/auth.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
+import { buildSigninToken } from './signin.js';
 
 const IDP_CLAIMS = ['id_token', 'oidc_access_token', 'oidc_refresh_token', 'oidc_expires_at'];
 
@@ -14,7 +13,7 @@ const IDP_CLAIMS = ['id_token', 'oidc_access_token', 'oidc_refresh_token', 'oidc
  * @param {Object} source - `req.oidcTokens` or the verified token claims
  * @returns {Object} The present fields only
  */
-const idpClaimsOf = source =>
+export const idpClaimsOf = source =>
   Object.fromEntries(
     IDP_CLAIMS.filter(key => source[key] !== undefined).map(key => [key, source[key]])
   );
@@ -98,23 +97,15 @@ export const refreshToken = async (req, res) => {
     const finalStayLoggedIn = stayLoggedIn || req.stayLoggedIn;
 
     // Generate new token with multi-org data
-    const token = jwt.sign(
-      {
-        id: user.id,
-        isServiceAccount: false,
-        stayLoggedIn: finalStayLoggedIn,
-        provider,
-        organizations: userOrganizations,
-        ...idpClaims,
-      },
-      authConfig.auth.jwt.jwt_secret,
-      {
-        algorithm: 'HS256',
-        allowInsecureKeySizes: true,
-        expiresIn: '24h',
-        ...getJwtClaimOptions(),
-      }
-    );
+    const token = buildSigninToken({
+      user,
+      isServiceAccount: false,
+      stayLoggedIn: finalStayLoggedIn,
+      provider,
+      userOrganizations,
+      authConfig,
+      idpClaims,
+    });
 
     const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
 

@@ -14,9 +14,6 @@ const buildVersionEvent = (organization, boxName, versionNumber) => {
 
 const findBoxWatcherUserIds = async (organizationId, boxName) => {
   const box = await db.box.findOne({ where: { name: boxName, organizationId } });
-  if (!box) {
-    return [];
-  }
   const watchers = await db.boxWatcher.findAll({ where: { box_id: box.id } });
   return watchers.map(watcher => watcher.user_id);
 };

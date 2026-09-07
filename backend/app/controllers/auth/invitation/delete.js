@@ -85,10 +85,6 @@ export const deleteInvitation = async (req, res) => {
 
     const invitation = await Invitation.findByPk(invitationId);
 
-    if (!invitation) {
-      return res.status(404).send({ message: req.__('invitations.notFound') });
-    }
-
     await invitation.destroy();
     return res.status(200).send({ message: req.__('invitations.deleted') });
   } catch (err) {

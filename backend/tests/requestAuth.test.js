@@ -120,10 +120,15 @@ const requestWith = (headers = {}, extra = {}) => ({
   method: 'GET',
   originalUrl: '/api/discover?page=1',
   path: '/api/discover',
+  __: key => key,
   ...extra,
 });
 
-const mockResponse = () => ({ status: jest.fn().mockReturnThis(), send: jest.fn() });
+const mockResponse = () => ({
+  status: jest.fn().mockReturnThis(),
+  type: jest.fn().mockReturnThis(),
+  send: jest.fn(),
+});
 
 describe('Request authentication', () => {
   beforeEach(() => {
@@ -369,7 +374,13 @@ describe('Request authentication', () => {
       const next = jest.fn();
       await authJwt.verifyToken(requestWith({ authorization: `Bearer ${token}` }), res, next);
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ error: 'TOKEN_INVALID' }));
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/authentication',
+          title: 'auth.unauthorized',
+        })
+      );
       expect(next).not.toHaveBeenCalled();
     });
 

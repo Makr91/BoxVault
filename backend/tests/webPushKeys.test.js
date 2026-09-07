@@ -1,12 +1,9 @@
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
+import { clearConfigCache, getConfigPath } from '../app/utils/config-loader.js';
 import { ensureVapidKeys, getVapidPublicKey } from '../app/utils/webPush.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+const appConfigPath = getConfigPath('app');
 
 describe('VAPID key provisioning', () => {
   let original;
@@ -17,6 +14,7 @@ describe('VAPID key provisioning', () => {
 
   afterAll(() => {
     fs.writeFileSync(appConfigPath, original);
+    clearConfigCache();
   });
 
   it('should generate and persist a keypair when the section is absent', async () => {
@@ -41,6 +39,7 @@ describe('VAPID key provisioning', () => {
     const config = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
     config.notifications = { enabled: false };
     fs.writeFileSync(appConfigPath, yaml.dump(config));
+    clearConfigCache();
 
     await expect(ensureVapidKeys()).resolves.toBe(true);
     const written = yaml.load(fs.readFileSync(appConfigPath, 'utf8')).notifications;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
-import { uploadSSL } from '../controllers/ssl.controller.js';
+import { uploadSSL } from '../controllers/ssl/upload.js';
 
 const router = Router();
 

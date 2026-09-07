@@ -9,6 +9,7 @@ import {
   getConfigPath,
   getSetupTokenPath,
   checkConfigs,
+  clearConfigCache,
 } from './app/utils/config-loader.js';
 import { log, morganMiddleware } from './app/utils/Logger.js';
 import { startNotificationSweeps } from './app/utils/notificationSweeps.js';
@@ -18,7 +19,7 @@ import { createServer } from 'http';
 import { createServer as _createServer } from 'https';
 import session from 'express-session';
 import connectSessionSequelize from 'connect-session-sequelize';
-import { passport, initializeStrategies } from './app/auth/passport.js';
+import { initializeStrategies } from './app/auth/passport.js';
 import lusca from 'lusca';
 import { rateLimit } from 'express-rate-limit';
 import { execSync } from 'child_process';
@@ -40,6 +41,7 @@ import configRoutes from './app/routes/config.routes.js';
 import userRoutes from './app/routes/user.routes.js';
 import requestRoutes from './app/routes/request.routes.js';
 import boxRouter from './app/routes/box.routes.js';
+import badgeRoutes from './app/routes/badge.routes.js';
 import fileRoutes from './app/routes/file.routes.js';
 import versionRoutes from './app/routes/version.routes.js';
 import organizationRoutes from './app/routes/organization.routes.js';
@@ -59,6 +61,7 @@ import searchRoutes from './app/routes/search.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const runsAsMain = process.argv[1] === __filename;
 
 global.__basedir = __dirname;
 
@@ -291,6 +294,10 @@ app.use(
         res.setHeader('Content-Type', 'image/x-icon');
         res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache favicons for 24 hours
       }
+      if (basename(filePath) === 'notification-sw.js') {
+        res.setHeader('Service-Worker-Allowed', '/push/');
+        res.setHeader('Cache-Control', 'no-cache');
+      }
     },
   })
 );
@@ -444,9 +451,7 @@ const initializeApp = async () => {
       })
     );
 
-    // Wait for database sync. The test harness owns schema creation, so the
-    // app-level sync must not race it.
-    if (process.env.NODE_ENV !== 'test') {
+    if (runsAsMain) {
       try {
         await db.sequelize.sync({ alter: true });
         log.app.info('Database synced');
@@ -463,20 +468,9 @@ const initializeApp = async () => {
     await sessionStore.sync();
     log.app.info('Session store synchronized');
 
-    // Initialize Passport middleware
-    app.use(passport.initialize());
-    const passportSession = passport.session();
-    app.use((req, res, next) => {
-      if (req.session) {
-        passportSession(req, res, next);
-      } else {
-        next();
-      }
-    });
-
     // Wait for OIDC strategies to register (CRITICAL - must happen before routes load)
     await initializeStrategies();
-    log.app.info('Passport.js initialized with OIDC providers');
+    log.app.info('OIDC providers discovered');
 
     // CSRF protection (#26).
     //
@@ -522,12 +516,8 @@ const initializeApp = async () => {
     app.use(oidcSessionCsrf);
     log.app.info('CSRF protection applied to session-cookie OIDC routes');
 
-    // Initialize roles, but not in test environment as setup.js handles it
-    if (process.env.NODE_ENV !== 'test') {
+    if (runsAsMain) {
       await initial();
-    } else {
-      // Log that we're skipping for clarity during testing
-      log.app.info('Skipping role initialization in test environment.');
     }
 
     // NOW load all routes - strategies are guaranteed to exist
@@ -542,7 +532,7 @@ const initializeApp = async () => {
     app.use('/api', userRoutes);
     app.use('/api', requestRoutes);
     app.use('/api', boxRouter);
-    app.use('/', boxRouter); // Also mount at root for Vagrant download route
+    app.use('/', badgeRoutes);
     app.use('/api', fileRoutes);
     app.use('/api', versionRoutes);
     app.use('/api', organizationRoutes);
@@ -569,7 +559,7 @@ const initializeApp = async () => {
       const swaggerModule = await import('./app/config/swagger.js');
       const { specs, swaggerUi } = swaggerModule.default;
 
-      app.use('/api-docs', swaggerUi.serve, (req, res, next) => {
+      app.use('/api/docs', swaggerUi.serve, (req, res, next) => {
         const { protocol } = req;
         const host = req.get('host');
         const dynamicSpecs = {
@@ -590,7 +580,7 @@ const initializeApp = async () => {
         })(req, res, next);
       });
 
-      log.app.info('Swagger UI available at /api-docs');
+      log.app.info('Swagger UI available at /api/docs');
     } catch (error) {
       log.app.warn('Swagger configuration not available:', error.message);
     }
@@ -613,7 +603,7 @@ const initializeApp = async () => {
     app.use(errorHandler);
     log.app.info('Error handler middleware applied');
 
-    if (process.env.NODE_ENV !== 'test') {
+    if (runsAsMain) {
       await ensureVapidKeys();
       startNotificationSweeps();
       log.app.info('Notification sweeps scheduled');
@@ -650,34 +640,33 @@ if (isConfigured) {
   app.use(errorHandler);
 
   // Watch for changes in the db.config.yaml file
-  if (process.env.NODE_ENV !== 'test') {
-    const watchTarget = existsSync(dbConfigPath) ? dbConfigPath : dirname(dbConfigPath);
-    const dbConfigFileName = basename(dbConfigPath);
+  const watchTarget = existsSync(dbConfigPath) ? dbConfigPath : dirname(dbConfigPath);
+  const dbConfigFileName = basename(dbConfigPath);
 
-    try {
-      watch(watchTarget, (eventType, filename) => {
-        // If watching directory, ensure we only react to the specific config file
-        if (watchTarget !== dbConfigPath && filename && filename !== dbConfigFileName) {
+  try {
+    watch(watchTarget, (eventType, filename) => {
+      // If watching directory, ensure we only react to the specific config file
+      if (watchTarget !== dbConfigPath && filename && filename !== dbConfigFileName) {
+        return;
+      }
+
+      if (eventType === 'change' || eventType === 'rename') {
+        // Ignore temporary files created during atomic writes
+        if (filename && filename.endsWith('.tmp')) {
           return;
         }
 
-        if (eventType === 'change' || eventType === 'rename') {
-          // Ignore temporary files created during atomic writes
-          if (filename && filename.endsWith('.tmp')) {
-            return;
-          }
-
-          const newConfiguredState = isDialectConfigured();
-          if (!isConfigured && newConfiguredState) {
-            isConfigured = true;
-            log.app.info('Configuration updated. Initializing application...');
-            initializeApp();
-          }
+        clearConfigCache();
+        const newConfiguredState = isDialectConfigured();
+        if (!isConfigured && newConfiguredState) {
+          isConfigured = true;
+          log.app.info('Configuration updated. Initializing application...');
+          initializeApp();
         }
-      });
-    } catch (error) {
-      log.app.warn('Failed to setup file watcher for config:', error.message);
-    }
+      }
+    });
+  } catch (error) {
+    log.app.warn('Failed to setup file watcher for config:', error.message);
   }
 }
 
@@ -797,6 +786,6 @@ const startServer = () => {
 export default app;
 
 // Only start the server if this file is run directly (not required as a module)
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (runsAsMain) {
   startServer();
 }

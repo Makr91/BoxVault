@@ -5,14 +5,12 @@ import {
   getDownloadLinkLimiter,
   downloadLimiter,
 } from '../middleware/rateLimiter.js';
-import {
-  update,
-  upload,
-  info,
-  download,
-  getDownloadLink,
-  remove,
-} from '../controllers/file.controller.js';
+import { update } from '../controllers/file/update.js';
+import { upload } from '../controllers/file/upload.js';
+import { info } from '../controllers/file/info.js';
+import { download } from '../controllers/file/download.js';
+import { getDownloadLink } from '../controllers/file/link.js';
+import { remove } from '../controllers/file/remove.js';
 
 const router = Router();
 

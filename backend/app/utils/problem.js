@@ -4,8 +4,11 @@ const TITLE_KEYS = {
   validation: 'problems.validation',
   conflict: 'problems.conflict',
   'bad-request': 'problems.badRequest',
+  authentication: 'problems.authentication',
   forbidden: 'problems.forbidden',
   'not-found': 'problems.notFound',
+  'payload-too-large': 'problems.payloadTooLarge',
+  throttled: 'problems.throttled',
   internal: 'problems.internal',
 };
 

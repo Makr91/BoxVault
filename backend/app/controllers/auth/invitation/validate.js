@@ -40,7 +40,7 @@ export const validateInvitationToken = async (req, res) => {
   const { token } = req.params;
 
   if (!token) {
-    return res.status(400).send({ message: 'Invitation token is required.' });
+    return res.status(400).send({ message: req.__('invitations.tokenRequired') });
   }
 
   try {
@@ -55,11 +55,11 @@ export const validateInvitationToken = async (req, res) => {
     });
 
     if (!invitation) {
-      return res.status(404).send({ message: 'Invitation not found or has expired.' });
+      return res.status(404).send({ message: req.__('invitations.invalidOrExpired') });
     }
 
     return res.status(200).send({
-      message: 'Invitation token is valid.',
+      message: req.__('invitations.valid'),
       email: invitation.email,
       organizationName: invitation.organization.name,
       invitedRole: invitation.invited_role,

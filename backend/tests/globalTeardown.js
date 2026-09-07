@@ -8,22 +8,16 @@ const __dirname = path.dirname(__filename);
 export default () => {
   console.log('\nRunning Jest Global Teardown...');
 
-  const configDir = path.join(__dirname, '../app/config');
+  const configDir = path.join(__dirname, '__test_config__');
   const testDbPath = path.join(__dirname, 'test.sqlite');
   const testStoragePath = path.join(__dirname, '__test_storage__');
 
-  const filesToDelete = [
-    path.join(configDir, 'db.test.config.yaml'),
-    path.join(configDir, 'app.test.config.yaml'),
-    path.join(configDir, 'auth.test.config.yaml'),
-    path.join(configDir, 'mail.test.config.yaml'),
-    testDbPath,
-  ];
+  if (fs.existsSync(configDir)) {
+    fs.rmSync(configDir, { recursive: true, force: true });
+  }
 
-  for (const file of filesToDelete) {
-    if (fs.existsSync(file)) {
-      fs.unlinkSync(file);
-    }
+  if (fs.existsSync(testDbPath)) {
+    fs.unlinkSync(testDbPath);
   }
 
   if (fs.existsSync(testStoragePath)) {

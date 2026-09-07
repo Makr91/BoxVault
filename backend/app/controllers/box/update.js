@@ -58,7 +58,7 @@ const { box: Box } = db;
  *                 type: string
  *                 format: uri
  *                 description: Link to the build pipeline
- *               shortDescription:
+ *               short_description:
  *                 type: string
  *                 maxLength: 255
  *                 nullable: true

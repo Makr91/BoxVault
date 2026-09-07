@@ -323,7 +323,8 @@ describe('File API', () => {
         .send(content);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Checksum verification failed');
+      expect(res.body.error).toBe('UPLOAD_ERROR');
+      expect(res.body.message).toBe('Could not upload the file');
     });
   });
 
@@ -600,7 +601,10 @@ describe('File API', () => {
         .send('dummy');
 
       expect(res.statusCode).toBe(413);
-      expect(res.body.error).toBe('FILE_TOO_LARGE');
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/payload-too-large');
+      expect(res.body.title).toBe('File size cannot be larger than 1GB!');
+      expect(res.body.status).toBe(413);
     });
 
     it('DELETE /file/delete - should handle database errors', async () => {
@@ -944,14 +948,30 @@ describe('File API', () => {
     });
 
     it('GET /file/download - should handle internal errors', async () => {
+      const baseDir = getSecureBoxPath(
+        testOrg.name,
+        testBox.name,
+        testVersion.versionNumber,
+        testProvider.name,
+        testArchitecture.name
+      );
+      const filePath = path.join(baseDir, 'vagrant.box');
+      if (!fs.existsSync(baseDir)) {
+        fs.mkdirSync(baseDir, { recursive: true });
+      }
+      if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, fileContent);
+      }
+      jest.spyOn(db.files, 'findOne').mockRejectedValue(new Error('Database connection failed'));
+
       const res = await request(app)
         .get(
           `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download`
         )
-        .set('x-access-token', userToken)
-        .set('x-test-error', 'true'); // Trigger test error
+        .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
+      expect(res.body.message).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream errors', async () => {
@@ -1086,8 +1106,8 @@ describe('File API', () => {
           .send(fileContent);
 
         expect(res.statusCode).toBe(500);
-        // The middleware returns the error message directly in message field
-        expect(res.body.message).toBe('Middleware Create Error');
+        expect(res.body.error).toBe('UPLOAD_ERROR');
+        expect(res.body.message).toBe('Could not upload the file');
       } finally {
         findOneSpy.mockRestore();
         createSpy.mockRestore();
@@ -1797,7 +1817,7 @@ describe('File API', () => {
     // 4. Main catch block (headers NOT sent) -> Line 318
     it('download controller - should handle generic error (headers NOT sent)', async () => {
       res.headersSent = false;
-      req.headers['x-test-error'] = 'true'; // Trigger error in main block
+      db.files.findOne.mockRejectedValue(new Error('Database connection failed'));
 
       await downloadController(req, res);
 
@@ -1813,7 +1833,7 @@ describe('File API', () => {
     it('download controller - should handle generic error (headers SENT)', async () => {
       res.headersSent = true;
       res.writableEnded = false;
-      req.headers['x-test-error'] = 'true'; // Trigger error in main block
+      db.files.findOne.mockRejectedValue(new Error('Database connection failed'));
 
       const logSpy = jest.spyOn(log.error, 'error').mockImplementation(() => {});
 
@@ -1828,7 +1848,7 @@ describe('File API', () => {
     it('download controller - should not end response if already ended (headers SENT)', async () => {
       res.headersSent = true;
       res.writableEnded = true;
-      req.headers['x-test-error'] = 'true';
+      db.files.findOne.mockRejectedValue(new Error('Database connection failed'));
 
       const logSpy = jest.spyOn(log.error, 'error').mockImplementation(() => {});
 

@@ -1,14 +1,12 @@
 // provider.routes.js
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
-import {
-  create,
-  findAllByVersion,
-  findOne,
-  update,
-  delete as deleteProvider,
-  deleteAllByVersion,
-} from '../controllers/provider.controller.js';
+import { create } from '../controllers/provider/create.js';
+import { findAllByVersion } from '../controllers/provider/findallbyversion.js';
+import { findOne } from '../controllers/provider/findone.js';
+import { update } from '../controllers/provider/update.js';
+import { delete as deleteProvider } from '../controllers/provider/delete.js';
+import { deleteAllByVersion } from '../controllers/provider/deleteallbyversion.js';
 
 const router = Router();
 

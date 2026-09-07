@@ -5,12 +5,13 @@ import { execSync } from 'child_process';
 import { X509Certificate } from 'crypto';
 import { fileURLToPath } from 'url';
 import db from '../app/models/index.js';
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
 import { runNotificationSweeps, startNotificationSweeps } from '../app/utils/notificationSweeps.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const appConfigPath = path.join(__dirname, '../app/config/app.test.config.yaml');
+const appConfigPath = getConfigPath('app');
 const certDir = path.join(__dirname, '__test_storage__', 'sweep-ssl');
 const certPath = path.join(certDir, 'sweep.crt');
 const garbagePath = path.join(certDir, 'garbage.crt');
@@ -22,7 +23,11 @@ const updateAppConfig = mutate => {
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(appConfigPath, yaml.dump(config));
-  return () => fs.writeFileSync(appConfigPath, original);
+  clearConfigCache();
+  return () => {
+    fs.writeFileSync(appConfigPath, original);
+    clearConfigCache();
+  };
 };
 
 const inDays = days => new Date(Date.now() + days * DAY_MS - 60 * 1000);

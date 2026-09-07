@@ -15,12 +15,13 @@ boxvault:
   allowed_origins: []
 gravatar:
   base_url: https://api.gravatar.com/v3/profiles/
-  api_key: dfasfdfsdfdsafsa
+  api_key: ''
 ticket_system:
-  enabled: true
-  base_url: https://xd.prominic.net/app/apprequest.nsf/router?openagent
+  enabled: false
+  base_url: ''
   req_type: sso
   context: https://github.com/Makr91/BoxVault
+  fallback_customer_id: ''
 ssl:
   generate_ssl: true
   cert_path: /etc/boxvault/ssl/public.crt
@@ -33,6 +34,7 @@ logging:
   enable_compression: true
   compression_age_days: 7
   max_files: 30
+  silent: false
   categories:
     app: info
     api: info

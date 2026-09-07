@@ -1,6 +1,7 @@
 // schema.js
-import { loadSchema } from '../../utils/config-loader.js';
+import { CONFIG_NAMES, loadSchema } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 
 /**
  * @swagger
@@ -34,6 +35,12 @@ import { log } from '../../utils/Logger.js';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: The name is not one of the files status.config lists
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
@@ -43,6 +50,9 @@ import { log } from '../../utils/Logger.js';
  */
 export const getConfigSchema = (req, res) => {
   const { configName } = req.params;
+  if (!CONFIG_NAMES.includes(configName)) {
+    return problem(res, req, { status: 404, type: 'not-found' });
+  }
   try {
     return res.json(loadSchema(configName));
   } catch (err) {

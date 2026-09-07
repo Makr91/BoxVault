@@ -10,7 +10,7 @@ permalink: /
 
 {: .fs-9 }
 
-Node.js and React-based web application for managing Vagrant box repositories. Provides user management, organization control, and comprehensive API for uploading, versioning, and distributing Vagrant boxes.
+Node.js web application for managing Vagrant box repositories. Its frontend is the STARTcloud UI, one build shared across the estate, fetched as a release artifact pinned by `startcloudUiVersion` in `backend/package.json` and served from `backend/ui`; there is no UI source in this tree. Provides user management, organization control, and comprehensive API for uploading, versioning, and distributing Vagrant boxes.
 {: .fs-6 .fw-300 }
 
 [Get started now](#getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }

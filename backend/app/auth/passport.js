@@ -1,4 +1,3 @@
-import passportLib from 'passport';
 import {
   calculatePKCECodeChallenge,
   buildAuthorizationUrl as _buildAuthorizationUrl,
@@ -23,20 +22,6 @@ const { user: User } = db;
 
 // Store OIDC configurations globally (ARMOR pattern)
 const oidcConfigurations = new Map();
-
-// Serialize/deserialize functions (required by passport but not used for JWT)
-passportLib.serializeUser((user, done) => {
-  done(null, user.id);
-});
-
-passportLib.deserializeUser(async (userId, done) => {
-  try {
-    const user = await User.findByPk(userId);
-    done(null, user);
-  } catch (error) {
-    done(error, null);
-  }
-});
 
 /**
  * Get OIDC configuration for a provider
@@ -236,7 +221,7 @@ const setupOidcProviders = async authConfig => {
   } catch {
     log.app.info('Database not ready yet, waiting for migrations to complete');
     await new Promise(resolve => {
-      setTimeout(resolve, 2000);
+      setTimeout(resolve, 2000).unref();
     });
   }
 
@@ -346,7 +331,6 @@ const initializeStrategies = async () => {
 };
 
 export {
-  passportLib as passport,
   initializeStrategies,
   getOidcConfiguration,
   buildAuthorizationUrl,

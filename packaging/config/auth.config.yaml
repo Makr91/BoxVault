@@ -36,10 +36,7 @@ auth:
     audience: boxvault
   external:
     domain_mapping_enabled: true
-    domain_mappings: |
-      {
-        "A55D94": ["m4kr.net", "philotic.cloud"]
-      }
+    domain_mappings: '{}'
     provisioning_enabled: true
     provisioning_policy: invite_only
     provisioning_default_role: user

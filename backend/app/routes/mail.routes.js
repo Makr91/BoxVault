@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
-import { testSmtp, resendVerificationMail } from '../controllers/mail.controller.js';
+import { testSmtp } from '../controllers/mail/test.js';
+import { resendVerificationMail } from '../controllers/mail/resend.js';
 
 const router = Router();
 

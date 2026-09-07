@@ -9,7 +9,8 @@ const __dirname = path.dirname(__filename);
 export default () => {
   console.log('\nRunning Jest Global Setup...');
 
-  const isSilent = process.env.SUPPRESS_LOGS === 'true';
+  const configDir = path.join(__dirname, '__test_config__');
+  process.env.CONFIG_DIR = configDir;
 
   const dbConfig = {
     schemaVersion: 1,
@@ -42,7 +43,7 @@ export default () => {
     },
     logging: {
       level: 'error',
-      console_enabled: !isSilent,
+      console_enabled: true,
     },
   };
 
@@ -59,20 +60,19 @@ export default () => {
   };
 
   const mailConfig = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     smtp_connect: { host: 'localhost', port: 1025 },
     smtp_settings: { from: 'noreply@example.com' },
   };
 
-  const configDir = path.join(__dirname, '../app/config');
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
   }
 
-  fs.writeFileSync(path.join(configDir, 'db.test.config.yaml'), yaml.dump(dbConfig));
-  fs.writeFileSync(path.join(configDir, 'app.test.config.yaml'), yaml.dump(appConfig));
-  fs.writeFileSync(path.join(configDir, 'auth.test.config.yaml'), yaml.dump(authConfig));
-  fs.writeFileSync(path.join(configDir, 'mail.test.config.yaml'), yaml.dump(mailConfig));
+  fs.writeFileSync(path.join(configDir, 'db.config.yaml'), yaml.dump(dbConfig));
+  fs.writeFileSync(path.join(configDir, 'app.config.yaml'), yaml.dump(appConfig));
+  fs.writeFileSync(path.join(configDir, 'auth.config.yaml'), yaml.dump(authConfig));
+  fs.writeFileSync(path.join(configDir, 'mail.config.yaml'), yaml.dump(mailConfig));
 
   console.log('Test configuration files created.');
 };

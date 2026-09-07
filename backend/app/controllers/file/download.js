@@ -178,11 +178,6 @@ const download = (req, res) => {
   });
 
   return (async () => {
-    // Test hook for coverage
-    if (req.headers['x-test-error']) {
-      throw new Error('Test Error');
-    }
-
     const baseDir = getSecureBoxPath(
       organization,
       boxId,

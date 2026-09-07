@@ -24,11 +24,11 @@ pfexec pkg install ooce/runtime/node-22 database/sqlite-3
 
 ## Package Information
 
-- **Package Name:** `system/virtualization/boxvault`
+- **Package Name:** `application/management/boxvault`
 - **Publisher:** `Makr91`
-- **Service FMRI:** `svc:/system/virtualization/boxvault:default`
+- **Service FMRI:** `svc:/application/management/boxvault:default`
 - **Install Path:** `/opt/boxvault/`
-- **Config Path:** `/etc/boxvault/config.yaml`
+- **Config Path:** `/etc/boxvault/app.config.yaml`, `auth.config.yaml`, `db.config.yaml`, `mail.config.yaml`
 - **User/Group:** `boxvault`
 
 ## Method 1: OmniOS Build Framework
@@ -48,7 +48,6 @@ cp -r /path/to/boxvault-source/* .
 
 # The build.sh script expects these files:
 # - build.sh (provided)
-# - local.mog (provided)
 # - boxvault-smf.xml (SMF manifest)
 # - startup.sh, shutdown.sh (method scripts)
 # - All source files (controllers, models, etc.)
@@ -73,7 +72,8 @@ cp -r /path/to/boxvault-source/* .
 - Version is automatically extracted from `package.json`
 - Dependencies are handled via `BUILD_DEPENDS_IPS` and `RUN_DEPENDS_IPS`
 - SMF manifest and method scripts are automatically installed
-- Package name: `system/virtualization/boxvault`
+- Package name: `application/management/boxvault`
+- Output: `boxvault-<version>.p5p` beside the source
 
 ## Method 2: Manual Build Commands
 
@@ -124,21 +124,21 @@ pkgsend publish -d . -s /tmp/local-repo boxvault.p5m.final
 pfexec pkg set-publisher -g file:///tmp/local-repo Makr91
 
 # Install the package
-pfexec pkg install system/virtualization/boxvault
+pfexec pkg install application/management/boxvault
 
 # Start the service
-pfexec svcadm disable system/virtualization/boxvault
+pfexec svcadm disable application/management/boxvault
 
-pfexec svcadm enable system/virtualization/boxvault
+pfexec svcadm enable application/management/boxvault
 
 # Check status
-svcs -l system/virtualization/boxvault
+svcs -l application/management/boxvault
 
 # Check logs
-tail -f /var/svc/log/system-virtualization-boxvault:default.log
+tail -f /var/svc/log/application-management-boxvault:default.log
 
 # Test web interface
-curl https://localhost:3000
+curl -k https://localhost
 ```
 
 ## Package Structure
@@ -156,6 +156,7 @@ The IPS package will create:
 │   ├── middleware/                 # Express middleware
 │   ├── config/                     # Configuration files
 │   └── utils/                      # Utility functions
+├── scripts/
 ├── ui/                             # STARTcloud UI artifact
 ├── node_modules/                   # Production dependencies
 ├── startup.sh                      # SMF start method
@@ -172,7 +173,7 @@ The IPS package will create:
 
 /var/log/boxvault/                  # Log directory
 
-/lib/svc/manifest/system/           # SMF manifest
+/lib/svc/manifest/application/      # SMF manifest
 └── boxvault.xml
 ```
 
@@ -188,7 +189,7 @@ The package depends on:
 
 The package automatically:
 
-- Creates `boxvault` user and group
+- Creates `boxvault` user and group (uid and gid 303)
 - Installs SMF service manifest
 - Sets up proper file permissions
 - Configures service dependencies
@@ -221,29 +222,30 @@ The package automatically:
 
 ```bash
 # Check service status
-svcs -xv system/virtualization/boxvault
+svcs -xv application/management/boxvault
 
 # View detailed logs
-tail -f /var/svc/log/system-virtualization-boxvault:default.log
+tail -f /var/svc/log/application-management-boxvault:default.log
+tail -f /var/log/boxvault/boxvault.log
 
 # Debug startup issues
 /opt/boxvault/startup.sh
 
 # Test Node.js directly
-su - boxvault -c "cd /opt/boxvault && NODE_ENV=production node server.js"
+su - boxvault -c "cd /opt/boxvault && CONFIG_DIR=/etc/boxvault node server.js"
 ```
 
 ### Network Issues
 
 ```bash
-# Check if port 3000 is available
-netstat -an | grep 3000
+# Check if ports 80 and 443 are available
+netstat -an | grep -E ':(80|443) '
 
-# Test with different port
-# Edit /etc/boxvault/app.config.yaml
+# Test with different ports
+# Edit api_listen_port_unencrypted and api_listen_port_encrypted in /etc/boxvault/app.config.yaml
 
 # Restart service
-svcadm restart system/virtualization/boxvault
+svcadm restart application/management/boxvault
 ```
 
 ### Permission Issues
@@ -263,29 +265,29 @@ chmod 755 /opt/boxvault/shutdown.sh
 
 ```bash
 # Start service
-svcadm enable system/virtualization/boxvault
+svcadm enable application/management/boxvault
 
 # Stop service
-svcadm disable system/virtualization/boxvault
+svcadm disable application/management/boxvault
 
 # Restart service
-svcadm restart system/virtualization/boxvault
+svcadm restart application/management/boxvault
 
 # View service status
-svcs -l system/virtualization/boxvault
+svcs -l application/management/boxvault
 
 # Clear maintenance state
-svcadm clear system/virtualization/boxvault
+svcadm clear application/management/boxvault
 ```
 
 ## Uninstall
 
 ```bash
 # Stop and disable service
-svcadm disable system/virtualization/boxvault
+svcadm disable application/management/boxvault
 
 # Remove package
-pkg uninstall system/virtualization/boxvault
+pkg uninstall application/management/boxvault
 
 # Clean up any remaining files (optional)
 rm -rf /var/lib/boxvault
@@ -300,7 +302,8 @@ The package version is automatically synchronized with the main `package.json` v
 
 After installation, BoxVault will be available at:
 
-- **HTTP:** `http://localhost:3000` (default)
+- **HTTP:** `http://localhost` (port 80, redirecting to HTTPS once a certificate exists)
+- **HTTPS:** `https://localhost` (port 443)
 - **Configuration:** `/etc/boxvault/app.config.yaml`
 
-The default configuration can be customized before starting the service.
+The first start of the service generates `/etc/boxvault/setup.token` and broadcasts it with `wall`; its first-run message names port 80, the schema default, when it cannot read `api_listen_port_unencrypted` from the configuration. The default configuration can be customized before starting the service.

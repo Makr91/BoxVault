@@ -3,15 +3,16 @@ import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { removeUnreferencedIsoFiles } from '../iso/helpers.js';
 
-const Organization = db.organization;
+const { organization: Organization, iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
 /**
  * @swagger
  * /api/organization/{organizationName}:
  *   delete:
  *     summary: Delete an organization
- *     description: Delete an organization and all its associated files and directories (org owner or global admin)
+ *     description: Delete an organization with its boxes, ISOs and their files. The rows go in one transaction; the box directory and the ISO files no other record references are removed after it commits (org owner or global admin).
  *     tags: [Organizations]
  *     security:
  *       - bearerAuth: []
@@ -46,26 +47,40 @@ const Organization = db.organization;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-// Delete a Organization with the specified id in the request
 const _delete = async (req, res) => {
   const { organization: organizationName } = req.params;
 
   try {
-    // Find the organization by name
     const organization = await Organization.findOne({
       where: { name: organizationName },
     });
 
-    if (!organization) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFound'),
-      });
+    const isos = await ISO.findAll({
+      where: { organizationId: organization.id },
+      include: [
+        {
+          model: IsoVersion,
+          as: 'versions',
+          include: [{ model: IsoFile, as: 'files' }],
+        },
+      ],
+    });
+    const isoFiles = isos
+      .flatMap(iso => iso.versions)
+      .flatMap(version => version.files.map(file => file.toJSON()));
+
+    const transaction = await db.sequelize.transaction();
+    try {
+      await ISO.destroy({ where: { organizationId: organization.id }, transaction });
+      await organization.destroy({ transaction });
+      await transaction.commit();
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
     }
 
-    // Delete the organization
-    await organization.destroy();
+    await removeUnreferencedIsoFiles(isoFiles);
 
-    // Delete the directory
     const dirPath = getSecureBoxPath(organizationName);
     if (fs.existsSync(dirPath)) {
       fs.rmSync(dirPath, { recursive: true, force: true });

@@ -38,59 +38,43 @@ Detailed release notes and changelogs are available in the [Changelog](../change
 
 ## Installation
 
-### Package Managers
+### Packages
 
-BoxVault is available through various package managers:
-
-#### npm
+Every release carries one Debian package, `boxvault_<version>_amd64.deb`, built by the production workflow and attached to the [GitHub release](https://github.com/Makr91/BoxVault/releases). There is no npm package, Docker image or tarball. Each push to `main` between releases also publishes a draft `v<version>-dev` release with `boxvault-dev_<version>_amd64.deb`, a development build that conflicts with the `boxvault` package.
 
 ```bash
-npm install -g boxvault
+sudo gdebi -n boxvault_VERSION_amd64.deb
+sudo systemctl enable --now boxvault
 ```
 
-#### Docker
-
-```bash
-docker pull boxvault/boxvault:latest
-```
-
-### Manual Installation
-
-Download the latest release for your platform:
-
-- **Linux (x64)**: `boxvault-linux-x64.tar.gz`
-- **Linux (ARM64)**: `boxvault-linux-arm64.tar.gz`
-- **macOS (x64)**: `boxvault-macos-x64.tar.gz`
-- **macOS (ARM64)**: `boxvault-macos-arm64.tar.gz`
-- **Windows (x64)**: `boxvault-windows-x64.zip`
+An OmniOS IPS package, `application/management/boxvault`, is built by hand with `packaging/omnios/build.sh`.
 
 ### Source Installation
 
-Build from source:
+Run from a checkout for development:
 
 ```bash
 git clone https://github.com/Makr91/BoxVault.git
-cd BoxVault
+cd BoxVault/backend
 npm install
-npm run build
+UI_VERSION=$(node -p "require('./package.json').startcloudUiVersion")
+mkdir -p ui
+curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C ui
 npm start
 ```
 
+The development configuration is read from `backend/app/config/<name>.dev.config.yaml`.
+
 ## Upgrade Guide
 
-### From v1.x to v2.x
-
-Major version upgrades may require configuration changes or database migrations. See the [Installation Guide](../guides/installation/) for detailed instructions.
-
-### Minor Updates
-
-Minor version updates typically require only:
+Install the new package over the old one; `postinst` migrates `/etc/boxvault/*.config.yaml` in place, keeps the previous copies as `.bak`, and preserves the database and the setup token:
 
 ```bash
-npm update boxvault
-# or
-docker pull boxvault/boxvault:latest
+sudo gdebi -n boxvault_VERSION_amd64.deb
+sudo systemctl restart boxvault
 ```
+
+A value that no longer passes the new release's schema stops the service at boot with its pointer in the journal; fix the file and restart.
 
 ## Support
 

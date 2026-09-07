@@ -6,19 +6,17 @@ import {
   verifyOrgAccess,
   validateBody,
 } from '../middleware/index.js';
-import {
-  signup,
-  signin,
-  verifyMail,
-  getActiveInvitations,
-  sendInvitation,
-  deleteInvitation,
-  acceptInvitation,
-  refreshToken,
-  backchannelLogout,
-} from '../controllers/auth.controller.js';
-
+import { signup } from '../controllers/auth/signup.js';
+import { signin } from '../controllers/auth/signin.js';
+import { verifyMail } from '../controllers/auth/verification.js';
+import { getActiveInvitations } from '../controllers/auth/invitation/get.js';
+import { sendInvitation } from '../controllers/auth/invitation/send.js';
+import { deleteInvitation } from '../controllers/auth/invitation/delete.js';
+import { acceptInvitation } from '../controllers/auth/invitation/accept.js';
+import { refreshToken } from '../controllers/auth/token.js';
+import { backchannelLogout } from '../controllers/auth/backchannelLogout.js';
 import { validateInvitationToken } from '../controllers/auth/invitation/validate.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
 import { buildAuthorizationUrl, handleOidcCallback, buildEndSessionUrl } from '../auth/passport.js';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
@@ -114,8 +112,12 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post('/auth/signup', [validateBody('register'), verifySignUp.checkRolesExisted], signup);
-router.post('/auth/signin', validateBody('login'), signin);
+router.post(
+  '/auth/signup',
+  [authLimiter, validateBody('register'), verifySignUp.checkRolesExisted],
+  signup
+);
+router.post('/auth/signin', [authLimiter, validateBody('login')], signin);
 router.get('/auth/verify-mail/:token', verifyMail);
 router.get('/auth/validate-invitation/:token', validateInvitationToken);
 router.post(
@@ -193,7 +195,6 @@ router.post('/auth/refresh-token', [authJwt.verifyToken, oidcTokenRefresh], refr
  *         description: Internal server error
  */
 router.get('/auth/oidc/issuers', (req, res) => {
-  void req;
   try {
     const authConfig = loadConfig('auth');
     const trustedIssuers = [];
@@ -222,7 +223,7 @@ router.get('/auth/oidc/issuers', (req, res) => {
     });
     return res.status(500).json({
       error: 'INTERNAL_SERVER_ERROR',
-      message: 'Failed to load trusted issuers',
+      message: req.__('auth.issuersLoadError'),
       issuers: [],
     });
   }
@@ -278,7 +279,6 @@ router.get('/auth/oidc/issuers', (req, res) => {
  *         description: Internal server error
  */
 router.get('/auth/methods', async (req, res) => {
-  void req;
   try {
     const authConfig = loadConfig('auth');
     const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
@@ -327,7 +327,7 @@ router.get('/auth/methods', async (req, res) => {
     });
     return res.status(500).json({
       error: 'INTERNAL_SERVER_ERROR',
-      message: 'Failed to load authentication methods',
+      message: req.__('auth.methodsLoadError'),
     });
   }
 });
@@ -491,7 +491,6 @@ router.get('/auth/oidc/callback', async (req, res) => {
       authConfig.auth.jwt.jwt_secret,
       {
         algorithm: 'HS256',
-        allowInsecureKeySizes: true, // This should be optional configurable ie moved into the config
         expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
         ...getJwtClaimOptions(),
       }

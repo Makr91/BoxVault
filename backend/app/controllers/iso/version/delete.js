@@ -8,7 +8,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}:
  *   delete:
  *     summary: Delete a specific version of an ISO
- *     description: Delete the version and its file records. A physical file is removed only when no other ISO file record shares its checksum (deduplication).
+ *     description: Delete the version and its file records. A physical file is removed only when no other ISO file record shares its storage path (deduplication within the organization).
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []

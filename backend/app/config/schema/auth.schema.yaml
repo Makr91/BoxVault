@@ -121,7 +121,7 @@ properties:
           local_require_email_verification:
             type: boolean
             default: true
-            title: Require email verification
+            title: Email verification requirement
             description: New local accounts must verify their email before signing in
             order: 1
           local_password_min_length:
@@ -135,25 +135,25 @@ properties:
           local_password_require_uppercase:
             type: boolean
             default: false
-            title: Require uppercase
+            title: Uppercase letter requirement
             description: Passwords must contain an uppercase letter; off by the NIST recommendation
             order: 3
           local_password_require_lowercase:
             type: boolean
             default: false
-            title: Require lowercase
+            title: Lowercase letter requirement
             description: Passwords must contain a lowercase letter; off by the NIST recommendation
             order: 4
           local_password_require_numbers:
             type: boolean
             default: false
-            title: Require numbers
+            title: Digit requirement
             description: Passwords must contain a digit; off by the NIST recommendation
             order: 5
           local_password_require_symbols:
             type: boolean
             default: false
-            title: Require symbols
+            title: Symbol requirement
             description: Passwords must contain a symbol; off by the NIST recommendation
             order: 6
           local_bcrypt_rounds:
@@ -175,7 +175,7 @@ properties:
           local_allow_new_organizations:
             type: boolean
             default: false
-            title: Allow self-registration
+            title: Self-registration
             description: Let users create a new organization when registering
             order: 9
       oidc:
@@ -252,7 +252,7 @@ properties:
                 enabled:
                   type: boolean
                   default: false
-                  title: Enabled
+                  title: Provider availability
                   description: Offer this provider on the login page
                   order: 1
                 display_name:
@@ -315,7 +315,7 @@ properties:
           enabled:
             type: boolean
             default: false
-            title: Accept provider tokens
+            title: Provider token acceptance
             description: Accept access tokens issued by a configured OIDC provider as Bearer credentials
             order: 1
           audience:
@@ -332,7 +332,7 @@ properties:
           enabled:
             type: boolean
             default: false
-            title: Accept SCIM pushes
+            title: SCIM push acceptance
             description: Accept SCIM 2.0 provisioning pushes from the configured OIDC auth server at /scim/v2
             order: 1
           audience:
@@ -415,7 +415,7 @@ properties:
           profile_update_on_login:
             type: boolean
             default: true
-            title: Update profile at login
+            title: Profile update at login
             description: Update the profile on every login
             dependsOn: profile_sync_enabled
             showWhen:

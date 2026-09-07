@@ -10,6 +10,7 @@
 //     drift reconciled on later syncs), else the next sequential local code.
 import { log } from './Logger.js';
 import { generateOrgCode, isHttpUrl } from './identity.js';
+import { isReservedSegment } from './reservedSegments.js';
 
 const ORG_CODE_PATTERN = /^[0-9A-F]{6}$/;
 
@@ -41,6 +42,7 @@ const slugifyOrgName = (name, externalOrgId) => {
  * Find a unique, URL-safe org name. BoxVault org names are globally unique
  * (they are the URL slug), but upstream names are neither unique nor stable,
  * so on a collision we disambiguate with a fragment of the immutable org UUID.
+ * A reserved path segment counts as a collision.
  * @param {Object} Organization - Sequelize model
  * @param {string} desired - Upstream org name
  * @param {string} externalOrgId - Immutable org UUID
@@ -60,6 +62,9 @@ const findFreeOrgName = (Organization, desired, externalOrgId, transaction) => {
   const probe = async index => {
     if (index >= candidates.length) {
       return `${base}-${externalOrgId}`;
+    }
+    if (isReservedSegment(candidates[index])) {
+      return probe(index + 1);
     }
     const clash = await Organization.findOne({ where: { name: candidates[index] }, ...opts });
     if (!clash) {
@@ -185,4 +190,4 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
   return org;
 };
 
-export { upsertExternalOrg };
+export { findFreeOrgName, upsertExternalOrg };

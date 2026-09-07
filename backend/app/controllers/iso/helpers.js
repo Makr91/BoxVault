@@ -53,25 +53,25 @@ const sumIsoDownloads = iso =>
 /**
  * Remove the physical files behind iso_files rows that have already been
  * deleted from the database, keeping any file still referenced by another row
- * with the same checksum (deduplication).
- * @param {Array<{checksum: string, storagePath: string}>} files - The deleted rows
+ * with the same storage path (deduplication within an organization).
+ * @param {Array<{storagePath: string}>} files - The deleted rows
  * @returns {Promise<void>}
  */
 const removeUnreferencedIsoFiles = async files => {
-  const checksums = [...new Set(files.map(file => file.checksum))];
-  if (checksums.length === 0) {
+  const storagePaths = [...new Set(files.map(file => file.storagePath))];
+  if (storagePaths.length === 0) {
     return;
   }
   const stillReferenced = await IsoFile.findAll({
-    where: { checksum: { [Op.in]: checksums } },
-    attributes: ['checksum'],
+    where: { storagePath: { [Op.in]: storagePaths } },
+    attributes: ['storagePath'],
   });
-  const keep = new Set(stillReferenced.map(file => file.checksum));
+  const keep = new Set(stillReferenced.map(file => file.storagePath));
   const root = getIsoStorageRoot();
-  files
-    .filter(file => !keep.has(file.checksum))
-    .forEach(file => {
-      const fullPath = join(root, file.storagePath);
+  storagePaths
+    .filter(storagePath => !keep.has(storagePath))
+    .forEach(storagePath => {
+      const fullPath = join(root, storagePath);
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
         log.file.info(`ISO Physical Delete: Removed ${fullPath} as no references remain.`);

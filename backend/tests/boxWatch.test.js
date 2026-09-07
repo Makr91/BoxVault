@@ -191,7 +191,7 @@ describe('Box watches, badges and artwork', () => {
     it('should render the latest version and the deprecated state', async () => {
       const version = await db.versions.create({ versionNumber: '2.0.0', boxId: publicBox.id });
       const res = await request(app)
-        .get(`/api/badge/${orgName}/${publicBoxName}.svg`)
+        .get(`/badge/${orgName}/${publicBoxName}.svg`)
         .buffer(true)
         .parse(binaryParser);
       expect(res.statusCode).toBe(200);

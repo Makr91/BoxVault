@@ -7,7 +7,6 @@ set -e
 
 # Environment is set by SMF, but ensure we have the basics
 export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:/usr/gnu/bin:/usr/bin:/usr/sbin:/sbin"
-export NODE_ENV="${NODE_ENV:-production}"
 export CONFIG_DIR="${CONFIG_DIR:-/etc/boxvault}"
 export CONFIG_PATH="${CONFIG_DIR}"
 export HOME="${HOME:-/var/lib/boxvault}"
@@ -40,11 +39,11 @@ if [ ! -f "$SETUP_TOKEN_FILE" ]; then
     chmod 600 "$SETUP_TOKEN_FILE"
     
     # Get the port from config
-    HTTP_PORT=$(grep -A 1 "api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | grep "value:" | sed 's/.*value: *//' | tr -d ' ')
+    HTTP_PORT=$(grep "^  api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | sed 's/.*: *\([0-9]*\).*/\1/' | head -1)
     if [ -z "$HTTP_PORT" ]; then
-        HTTP_PORT=5000
+        HTTP_PORT=80
     fi
-    
+
     # Broadcast setup token to all logged-in users
     TEMP_MSG=$(mktemp)
     cat > "$TEMP_MSG" << EOF
@@ -66,9 +65,10 @@ EOF
     echo "Setup token generated and broadcast to all users: $SETUP_TOKEN"
 fi
 
-# Check if JWT secret exists (SSL certificates will be handled by Node.js if needed)
-if [ ! -f "/etc/boxvault/.jwt-secret" ]; then
-    echo "Warning: JWT secret not found. Node.js may generate default secrets." >&2
+if grep -qF 'jwt_secret: ${JWT_SECRET}' /etc/boxvault/auth.config.yaml; then
+    JWT_SECRET=$(openssl rand -hex 32)
+    sed -i "s|jwt_secret: \${JWT_SECRET}|jwt_secret: ${JWT_SECRET}|" /etc/boxvault/auth.config.yaml
+    echo "Generated JWT secret in auth.config.yaml"
 fi
 
 # Check if Node.js is available
@@ -119,7 +119,6 @@ fi
 echo "Starting BoxVault Vagrant Box Repository Management System..."
 echo "Node.js version: $(node --version)"
 echo "Configuration: $CONFIG_PATH"
-echo "Environment: $NODE_ENV"
 
 # Start the Node.js application in the background
 # Output goes to log file so we can see SSL generation messages
@@ -138,9 +137,9 @@ if ! kill -0 $NODE_PID 2>/dev/null; then
 fi
 
 # Get the port from config for final message
-HTTP_PORT=$(grep -A 1 "api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | grep "value:" | sed 's/.*value: *//' | tr -d ' ')
+HTTP_PORT=$(grep "^  api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | sed 's/.*: *\([0-9]*\).*/\1/' | head -1)
 if [ -z "$HTTP_PORT" ]; then
-    HTTP_PORT=5000
+    HTTP_PORT=80
 fi
 
 echo "BoxVault started successfully with PID $NODE_PID"

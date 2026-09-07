@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import fs from 'fs';
-import { join } from 'path';
 import { load, dump } from 'js-yaml';
 import migrations from '../app/config/migrations.js';
-import { CONFIG_NAMES, loadSchema, fillDefaults } from '../app/utils/config-loader.js';
+import {
+  CONFIG_NAMES,
+  getConfigPath,
+  loadSchema,
+  fillDefaults,
+} from '../app/utils/config-loader.js';
 import { atomicWriteFileSync } from '../app/utils/atomic-file-writer.js';
-
-const configDir = process.env.CONFIG_DIR || '/etc/boxvault';
 
 const isPlainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -39,7 +41,7 @@ const isNodeTree = tree =>
 
 const migrate = name => {
   const schema = loadSchema(name);
-  const filePath = join(configDir, `${name}.config.yaml`);
+  const filePath = getConfigPath(name);
   const exists = fs.existsSync(filePath);
   let file = exists ? load(fs.readFileSync(filePath, 'utf8')) || {} : {};
 

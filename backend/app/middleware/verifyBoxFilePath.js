@@ -1,5 +1,6 @@
 import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
+import { problem } from '../utils/problem.js';
 
 const {
   organization: Organization,
@@ -8,6 +9,8 @@ const {
   providers: Provider,
   architectures: Architecture,
 } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
 
 const verifyBoxFilePath = async (req, res, next) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -19,10 +22,11 @@ const verifyBoxFilePath = async (req, res, next) => {
 
     if (!organizationData) {
       log.app.warn('Path verification failed: Organization not found', { organization });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const boxData = await Box.findOne({
@@ -31,10 +35,7 @@ const verifyBoxFilePath = async (req, res, next) => {
 
     if (!boxData) {
       log.app.warn('Path verification failed: Box not found', { boxId, organization });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
+      return notFound(req, res, req.__('boxes.boxNotFoundInOrg', { boxId, organization }));
     }
 
     const versionData = await Version.findOne({
@@ -43,10 +44,7 @@ const verifyBoxFilePath = async (req, res, next) => {
 
     if (!versionData) {
       log.app.warn('Path verification failed: Version not found', { versionNumber, boxId });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('versions.versionNotFound'),
-      });
+      return notFound(req, res, req.__('versions.versionNotFound'));
     }
 
     const providerData = await Provider.findOne({
@@ -55,10 +53,7 @@ const verifyBoxFilePath = async (req, res, next) => {
 
     if (!providerData) {
       log.app.warn('Path verification failed: Provider not found', { providerName, versionNumber });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('providers.providerNotFound'),
-      });
+      return notFound(req, res, req.__('providers.providerNotFound'));
     }
 
     const architectureData = await Architecture.findOne({
@@ -70,10 +65,7 @@ const verifyBoxFilePath = async (req, res, next) => {
         architectureName,
         providerName,
       });
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: req.__('architectures.notFound'),
-      });
+      return notFound(req, res, req.__('architectures.notFound'));
     }
 
     // Attach entities to the request object for subsequent middleware/controllers
@@ -94,7 +86,7 @@ const verifyBoxFilePath = async (req, res, next) => {
     });
     return res.status(500).json({
       error: 'INTERNAL_SERVER_ERROR',
-      message: 'An error occurred while verifying the file path.',
+      message: req.__('files.pathVerificationError'),
     });
   }
 };

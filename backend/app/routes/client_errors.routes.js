@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { reportClientErrors } from '../controllers/client_errors.controller.js';
+import { reportClientErrors } from '../controllers/client_errors/report.js';
 
 const router = Router();
 

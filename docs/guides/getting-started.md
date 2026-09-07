@@ -10,7 +10,7 @@ permalink: /guides/getting-started/
 
 {: .no_toc }
 
-Complete guide to setting up and using BoxVault for the first time.
+From a fresh package to the first box download.
 
 ## Table of contents
 
@@ -23,185 +23,140 @@ Complete guide to setting up and using BoxVault for the first time.
 
 ## What is BoxVault?
 
-BoxVault is a comprehensive Vagrant box repository management system that allows you to:
+BoxVault is a self-hosted Vagrant box repository:
 
-- **Host Vagrant boxes** - Store and distribute Vagrant boxes for your team
-- **Manage versions** - Track different versions of your boxes
-- **Control access** - Organization-based access control and user management
-- **API integration** - RESTful API for automation and CI/CD integration
+- **Host Vagrant boxes** - Store and distribute boxes and ISOs for your team
+- **Manage versions** - Track versions, providers and architectures of every box
+- **Control access** - Organizations with owner, admin and member roles, service accounts for automation
+- **API integration** - A REST API for CI/CD, and the Vagrant box protocol at the root
 
 ## Prerequisites
 
-Before installing BoxVault, ensure you have:
+- A Debian host (bookworm or trixie) with `nodejs (>= 22.0.0)`, `sqlite3` and `openssl`, or an OmniOS host with `ooce/runtime/node-22`
+- Disk space under `/var/lib/boxvault/storage` for box files
+- An SMTP server, since local accounts must verify their email before signing in by default
 
-- **Node.js** 16.x or higher
-- **npm** or **yarn** package manager
-- **Database** (SQLite, PostgreSQL, MySQL, or MariaDB)
-- **Storage space** for Vagrant box files
+## Installation
 
-## Quick Installation
-
-### Using npm
+Download `boxvault_<version>_amd64.deb` from the [releases page](https://github.com/Makr91/BoxVault/releases) and install it:
 
 ```bash
-# Install BoxVault globally
-npm install -g boxvault
-
-# Start BoxVault
-boxvault start
+sudo apt install gdebi-core
+sudo gdebi -n boxvault_VERSION_amd64.deb
+sudo systemctl enable --now boxvault
 ```
 
-### Using Docker
-
-```bash
-# Run BoxVault with Docker
-docker run -d \
-  --name boxvault \
-  -p 3000:3000 \
-  -v boxvault-data:/app/data \
-  boxvault/boxvault:latest
-```
+The install prints a **setup token** and stores it in `/etc/boxvault/setup.token`. The OmniOS package and every detail are in the [Installation Guide](../installation/).
 
 ## Initial Setup
 
-### 1. First Run
+### 1. Open the setup page
 
-When you first start BoxVault, you'll be prompted to create an initial configuration:
+Browse to `https://localhost` (the package listens on 443, with 80 redirecting). Until the database is configured BoxVault serves only the setup page, `GET /api/status` and `/api/setup/*`.
+
+### 2. Enter the setup token
+
+The page verifies it at `POST /api/setup/verify-token` and then loads every configuration file and its schema.
+
+### 3. Fill the four files
+
+| File   | What to set                                                                                          |
+| ------ | ---------------------------------------------------------------------------------------------------- |
+| `app`  | `boxvault.origin` and `boxvault.api_url` (the public URL), the listen ports, `box_storage_directory` |
+| `auth` | `auth.jwt.jwt_secret`, a random string of at least 32 characters                                     |
+| `db`   | `database_type` `sqlite` with `sql.storage`, or `mysql` with the connection                          |
+| `mail` | `smtp_connect`, `smtp_settings.from`, `smtp_auth`                                                    |
+
+Submit writes every file at once; a value that breaks its schema is painted on its field and nothing is written until all pass. The setup token is deleted on success. Restart the service so port and certificate changes apply:
 
 ```bash
-boxvault setup
+sudo systemctl restart boxvault
 ```
 
-This will guide you through:
+### 4. Register the first account
 
-- Database configuration
-- Admin user creation
-- Basic settings
+Open `/register`. The first account gets the global `admin` role and a personal organization named after its username. Verify the email from the message BoxVault sends, then sign in.
 
-### 2. Access the Web Interface
+### 5. Create Your First Organization
 
-Open your browser and navigate to: [http://localhost:3000](http://localhost:3000)
+1. Open the user menu and choose the organization console
+2. Create an organization: name, description, access mode (`private`, `invite_only` or `request_to_join`)
+3. Invite members by email; an invitation carries the role `member` or `admin`
 
-### 3. Create Your First Organization
+Users can belong to several organizations, create boxes in any organization they are a member of, and switch the active organization from the user menu. A service account is scoped to one organization at creation.
 
-1. Log in with your admin credentials
-2. Click "Create Organization"
-3. Enter organization details:
-   - **Name**: Your organization name
-   - **Description**: Brief description
-   - **Visibility**: Public or Private
+### 6. Upload Your First Box
 
-**Multi-Organization Support:**
-
-- Users can belong to multiple organizations
-- Create boxes in ANY organization you're a member of
-- Use the organization switcher to select which org you're working with
-- Service accounts are scoped to specific organizations
-
-### 4. Upload Your First Box
-
-1. Navigate to your organization
-2. Click "Create Box"
-3. Fill in box details:
-   - **Name**: Box name (e.g., "ubuntu-20.04")
-   - **Description**: Box description
-   - **Visibility**: Public or Private
-4. Create a version (e.g., "1.0.0")
-5. Add a provider (e.g., "virtualbox")
-6. Add an architecture (e.g., "amd64")
-7. Upload your `.box` file
+1. Open the organization and choose "Create Box"
+2. Fill in the box: name (letters, digits, dashes and periods), description, public or private
+3. Create a version (for example `1.0.0`)
+4. Add a provider (for example `virtualbox`)
+5. Add an architecture (for example `amd64`)
+6. Upload the `.box` file
 
 ## Using BoxVault
 
 ### Web Interface
 
-The web interface provides:
-
-- **Dashboard** - Overview of your boxes and organizations
-- **Box Management** - Create, edit, and delete boxes
-- **User Management** - Manage organization members
-- **Settings** - Configure your account and organizations
+- **Home** - the boxes and ISOs of every organization you can see, with search and filters
+- **Organization console** - the organization record, members, invitations and join requests
+- **Admin** - every organization, user and the four configuration files
+- **Profile** - password, email, display name, preferences and service accounts
 
 ### API Access
 
-BoxVault provides a comprehensive REST API:
-
 ```bash
-# Get authentication token
-curl -X POST http://localhost:3000/api/auth/signin \
+curl -X POST https://boxvault.example.com/api/auth/signin \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your-password"}'
+  -d '{ "username": "admin", "password": "your-password", "stay_logged_in": true }'
 
-# List boxes in an organization
 curl -H "x-access-token: YOUR_TOKEN" \
-  http://localhost:3000/api/organization/myorg/box
+  https://boxvault.example.com/api/organization/myorg/box
 ```
+
+The sign-in answers `accessToken`; every request carries it as `x-access-token`. Request bodies are `snake_case`, and the rules every form and route enforce are served at `GET /api/rules`. See the [API Examples](../api-examples/).
 
 ### Vagrant Integration
 
-Use your BoxVault boxes in Vagrant:
+```ruby
+Vagrant.configure("2") do |config|
+  config.vm.box = "myorg/debian12"
+  config.vm.box_url = "https://boxvault.example.com/myorg/debian12"
+end
+```
+
+BoxVault answers the Vagrant client at `/<organization>/<box>` with the box metadata and serves the file from `/<organization>/boxes/<box>/versions/<version>/providers/<provider>/<architecture>/vagrant.box`. A private box needs a service-account token:
 
 ```ruby
-# Vagrantfile
-Vagrant.configure("2") do |config|
-  config.vm.box = "myorg/ubuntu-20.04"
-  config.vm.box_url = "http://localhost:3000/api/organization/myorg/box/ubuntu-20.04"
-end
+  config.vm.box_download_options = { "header" => "Authorization: Bearer RAW_SERVICE_ACCOUNT_TOKEN" }
 ```
 
 ## Configuration
 
-### Basic Configuration
-
-BoxVault uses YAML configuration files. Create `config/default.yaml`:
-
-```yaml
-database:
-  dialect: "sqlite"
-  storage: "./data/boxvault.db"
-
-server:
-  port: 3000
-  host: "0.0.0.0"
-
-storage:
-  boxStorageDirectory: "./storage/boxes"
-
-auth:
-  jwt:
-    secret: "your-secret-key"
-    expiresIn: "24h"
-```
-
-### Environment Variables
-
-Override configuration with environment variables:
-
-```bash
-export BOXVAULT_SERVER_PORT=8080
-export BOXVAULT_DATABASE_DIALECT=postgresql
-export BOXVAULT_DATABASE_HOST=localhost
-```
+BoxVault reads four plain YAML files from `CONFIG_DIR` (`/etc/boxvault`): `app.config.yaml`, `auth.config.yaml`, `db.config.yaml` and `mail.config.yaml`. `CONFIG_DIR` is the only environment variable it reads; every other setting is a value in a file, edited on the admin page or by hand. The keys are in the [Configuration](../../configuration/) reference.
 
 ## User Management
 
+### Roles
+
+| Scope           | Roles                                                     |
+| --------------- | --------------------------------------------------------- |
+| global          | `user`, `admin` (the admin page, every organization)      |
+| organization    | `owner`, `admin`, `member`                                |
+| service account | `ROLE_SERVICE_ACCOUNT`, scoped to one organization        |
+
 ### Creating Users
 
-As an admin, you can create users:
-
-1. Go to "Admin" → "Users"
-2. Click "Create User"
-3. Fill in user details
-4. Assign to organizations
+A global admin creates a user inside an organization from the admin page; anyone else joins by invitation, by a join request to a `request_to_join` organization, or by self-registration while `auth.local.local_allow_new_organizations` is on.
 
 ### Organization Management
 
-Manage organization membership:
+An owner or admin manages membership from the organization console:
 
-1. Go to your organization settings
-2. Click "Members"
-3. Add or remove users
-4. Assign roles (Admin, Member)
+1. Invite by email with the role `member` or `admin`
+2. Approve or deny join requests
+3. Change a member's role (owner only) or remove a member
+4. Create service accounts for CI
 
 ## Best Practices
 
@@ -221,10 +176,10 @@ Use consistent naming conventions:
 
 ### Security
 
-- Use strong passwords
-- Regularly rotate JWT secrets
+- Use passphrases: the minimum is 15 characters and no composition rule applies
+- Give service accounts the shortest `expiration_days` the job allows
 - Keep BoxVault updated
-- Use HTTPS in production
+- Serve HTTPS; the package does so out of the box
 
 ## Next Steps
 

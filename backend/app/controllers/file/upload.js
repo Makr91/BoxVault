@@ -1,12 +1,11 @@
 // upload.file.controller.js
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 const { UserOrg } = db;
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
-import { ensureDirSync, safeExistsSync } from '../../utils/fsHelper.js';
 
 /**
  * @swagger
@@ -115,28 +114,6 @@ import { ensureDirSync, safeExistsSync } from '../../utils/fsHelper.js';
  *                 message:
  *                   type: string
  *                   example: "Architecture not found for provider virtualbox in version 1.0.0 of box mybox."
- *       408:
- *         description: Upload timeout
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Upload timed out - Request took too long to complete"
- *                 error:
- *                   type: string
- *                   example: "UPLOAD_TIMEOUT"
- *                 details:
- *                   type: object
- *                   properties:
- *                     duration:
- *                       type: string
- *                       example: "3600 seconds"
- *                     maxFileSize:
- *                       type: string
- *                       example: "10GB"
  *       413:
  *         description: File too large
  *         content:
@@ -150,19 +127,6 @@ import { ensureDirSync, safeExistsSync } from '../../utils/fsHelper.js';
  *                 error:
  *                   type: string
  *                   example: "FILE_TOO_LARGE"
- *       507:
- *         description: Insufficient storage space
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Not enough storage space available"
- *                 error:
- *                   type: string
- *                   example: "NO_STORAGE_SPACE"
  *       500:
  *         description: Internal server error
  *         content:
@@ -229,16 +193,6 @@ const upload = (req, res) => {
   return (async () => {
     // The verifyBoxFilePath middleware has already validated the path and attached entities.
     const { box: boxData, architecture: architectureData } = req.entities;
-
-    // Create directory if it doesn't exist
-    const dir = dirname(filePath);
-    log.app.info('Ensuring upload directory exists:', { dir });
-    if (!safeExistsSync(dir)) {
-      ensureDirSync(dir);
-      log.app.info('Created upload directory:', { dir });
-    } else {
-      log.app.info('Upload directory already exists:', { dir });
-    }
 
     // Check if user owns the box OR has admin/owner role
     const membership = await UserOrg.findUserOrgRole(req.userId, boxData.organizationId);

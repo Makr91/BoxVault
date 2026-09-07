@@ -3,7 +3,7 @@ import { compareSync } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
 import { getJwtClaimOptions } from '../../utils/auth.js';
-import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
+import { hashServiceAccountToken, touchServiceAccount } from '../../utils/serviceAccountAuth.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
@@ -71,7 +71,7 @@ const getLocalSigninRejection = (user, password, authConfig, req) => {
     return { status: 403, body: { message: req.__('auth.localAuthDisabled') } };
   }
 
-  const passwordIsValid = compareSync(password, user.password);
+  const passwordIsValid = Boolean(user.password) && compareSync(password, user.password);
   if (!passwordIsValid) {
     return {
       status: 401,
@@ -127,16 +127,18 @@ const resolveSigninProvider = (user, isServiceAccount) => {
 /**
  * Sign the BoxVault session JWT for a successful signin.
  * @param {Object} params - { user, isServiceAccount, stayLoggedIn, provider,
- *   userOrganizations, authConfig }
+ *   userOrganizations, authConfig, idpClaims }; idpClaims carries the
+ *   identity-provider fields of an OIDC session forward, none for a local one
  * @returns {string} Signed JWT
  */
-const buildSigninToken = ({
+export const buildSigninToken = ({
   user,
   isServiceAccount,
   stayLoggedIn,
   provider,
   userOrganizations,
   authConfig,
+  idpClaims = {},
 }) => {
   // Use the configured session timeout for stayLoggedIn sessions (#18:
   // auth.local.local_session_timeout, hours), default expiry otherwise.
@@ -153,11 +155,11 @@ const buildSigninToken = ({
       stayLoggedIn,
       provider,
       organizations: userOrganizations, // Multi-org data for frontend
+      ...idpClaims,
     },
     authConfig.auth.jwt.jwt_secret,
     {
       algorithm: 'HS256',
-      allowInsecureKeySizes: true,
       expiresIn: tokenExpiry,
       ...getJwtClaimOptions(),
     }
@@ -295,6 +297,7 @@ export const signin = async (req, res) => {
         if (serviceAccount.user?.suspended) {
           return res.status(403).send({ message: req.__('auth.accountSuspended') });
         }
+        await touchServiceAccount(serviceAccount.id);
         user = serviceAccount;
         isServiceAccount = true;
       } else {

@@ -1,6 +1,6 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Mail Config
-schemaVersion: 1
+schemaVersion: 2
 sections:
   mail:
     title: Mail
@@ -9,7 +9,7 @@ properties:
   schemaVersion:
     type: integer
     readOnly: true
-    default: 1
+    default: 2
     title: Schema version
   smtp_connect:
     type: object
@@ -37,13 +37,13 @@ properties:
       secure:
         type: boolean
         default: true
-        title: TLS
+        title: TLS connection
         description: Use TLS for the connection
         order: 3
-      rejectUnauthorized:
+      reject_unauthorized:
         type: boolean
         default: true
-        title: Reject unauthorized TLS
+        title: Unverified certificate rejection
         description: Reject TLS connections whose certificate cannot be verified
         order: 4
   smtp_settings:
@@ -60,13 +60,13 @@ properties:
         title: From address
         description: Default sender email address
         order: 1
-      replyTo:
+      reply_to:
         type: string
         default: ''
         title: Reply-to address
         description: Default reply-to email address
         order: 2
-      rateLimit:
+      rate_limit:
         type: integer
         minimum: 1
         default: 10

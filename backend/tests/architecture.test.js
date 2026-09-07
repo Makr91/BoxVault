@@ -736,7 +736,8 @@ describe('Architecture API', () => {
         .send({ name: 'test-arch' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
     });
 
     it('should return 404 if provider not found (create.js line 134)', async () => {
@@ -748,7 +749,8 @@ describe('Architecture API', () => {
         .send({ name: 'test-arch' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
   });
 
@@ -925,7 +927,8 @@ describe('Architecture API', () => {
         .send({ description: 'Updated' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
 
       jest.restoreAllMocks();
     });
@@ -939,7 +942,8 @@ describe('Architecture API', () => {
         .send({ description: 'Updated' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
     });
 
     it('should return 404 if provider not found (update.js line 171)', async () => {
@@ -951,7 +955,8 @@ describe('Architecture API', () => {
         .send({ description: 'Updated' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
 
     it('should update only description without name (update.js line 195)', async () => {
@@ -1564,7 +1569,8 @@ describe('Architecture API', () => {
         .send({ name: 'test-arch' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Organization');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Organization');
     });
 
     it('should handle CREATE box not found (create.js lines 112-116)', async () => {
@@ -1576,7 +1582,8 @@ describe('Architecture API', () => {
         .send({ name: 'test-arch' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
     });
 
     it('should handle FINDONE organization not found (findone.js lines 105-109)', async () => {

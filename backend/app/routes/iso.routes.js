@@ -12,27 +12,24 @@ import {
   getDownloadLinkLimiter,
   downloadLimiter,
 } from '../middleware/rateLimiter.js';
-import {
-  create,
-  findAll,
-  findOne,
-  update,
-  delete as deleteIso,
-  deleteAll,
-  discoverAll,
-  watchIso,
-  unwatchIso,
-  createVersion,
-  findAllVersions,
-  findOneVersion,
-  updateVersion,
-  deleteVersion,
-  uploadFile,
-  fileInfo,
-  downloadFile,
-  getDownloadLink,
-  removeFile,
-} from '../controllers/iso.controller.js';
+import { create } from '../controllers/iso/create.js';
+import { findAll } from '../controllers/iso/findall.js';
+import { findOne } from '../controllers/iso/findone.js';
+import { update } from '../controllers/iso/update.js';
+import { delete as deleteIso } from '../controllers/iso/delete.js';
+import { deleteAll } from '../controllers/iso/deleteall.js';
+import { discoverAll } from '../controllers/iso/discover.js';
+import { watchIso, unwatchIso } from '../controllers/iso/watch.js';
+import { create as createVersion } from '../controllers/iso/version/create.js';
+import { findAll as findAllVersions } from '../controllers/iso/version/findall.js';
+import { findOne as findOneVersion } from '../controllers/iso/version/findone.js';
+import { update as updateVersion } from '../controllers/iso/version/update.js';
+import { delete as deleteVersion } from '../controllers/iso/version/delete.js';
+import { upload as uploadFile } from '../controllers/iso/file/upload.js';
+import { info as fileInfo } from '../controllers/iso/file/info.js';
+import { download as downloadFile } from '../controllers/iso/file/download.js';
+import { getDownloadLink } from '../controllers/iso/file/link.js';
+import { remove as removeFile } from '../controllers/iso/file/remove.js';
 
 const router = Router();
 

@@ -99,6 +99,7 @@ describe('Download authentication', () => {
   it('should refuse a session token presented as a download token', async () => {
     const res = await download(`dl-public-${uniqueId}`).query({ token: signFor(owner) });
     expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body.toString()).message).toBe('Invalid download token.');
   });
 
   it('should refuse a download token of a suspended user', async () => {
@@ -146,7 +147,7 @@ describe('Download authentication', () => {
       basic(serviceAccount.username, 'not-the-token')
     );
     expect(wrong.statusCode).toBe(401);
-    expect(JSON.parse(wrong.body.toString()).message).toBe('Invalid credentials.');
+    expect(JSON.parse(wrong.body.toString()).message).toBe('Invalid username or password.');
   });
 
   it('should serve a private box to valid basic credentials', async () => {

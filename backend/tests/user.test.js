@@ -6,12 +6,8 @@ import bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
@@ -643,7 +639,9 @@ describe('User API', () => {
         .set('x-access-token', userToken)
         .send({ new_email: 'fail@test.com' });
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Require Admin role or account ownership!');
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('Require Admin role or account ownership!');
     });
   });
 
@@ -686,7 +684,8 @@ describe('User API', () => {
         .delete(`/api/organization/NonExistentOrg/users/${testUser.username}`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Organization not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Organization not found');
     });
 
     it('GET /api/organization/:organization/users - should return 404 if organization not found', async () => {
@@ -882,13 +881,14 @@ describe('User API', () => {
 
     it('GET /api/user - should use default token expiration if config value is missing', async () => {
       // 1. Read current auth config
-      const configPath = path.join(__dirname, '../app/config/auth.test.config.yaml');
+      const configPath = getConfigPath('auth');
       const originalConfig = fs.readFileSync(configPath, 'utf8');
       const parsedConfig = yaml.load(originalConfig);
 
       // 2. Modify config to remove expiration
       delete parsedConfig.auth.jwt.jwt_expiration;
       fs.writeFileSync(configPath, yaml.dump(parsedConfig));
+      clearConfigCache();
 
       try {
         // 3. Make request - controller will reload config from disk
@@ -902,6 +902,7 @@ describe('User API', () => {
       } finally {
         // 4. Restore original config
         fs.writeFileSync(configPath, originalConfig);
+        clearConfigCache();
       }
     });
 

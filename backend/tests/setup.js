@@ -7,7 +7,6 @@
 // the permission, corrupt the checksum), never by stubbing the layer that
 // fails. The mocks still present are legacy from before this rule; builds do
 // not gate on tests, so they are replaced as the affected areas are touched.
-import { jest } from '@jest/globals';
 import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
@@ -15,6 +14,9 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const configDir = path.join(__dirname, '__test_config__');
+process.env.CONFIG_DIR = configDir;
 
 // Load test configuration
 const dbConfig = {
@@ -43,6 +45,10 @@ const appConfig = {
     enabled: true,
     base_url: 'https://example.com/ticket',
   },
+  logging: {
+    level: 'error',
+    console_enabled: true,
+  },
   rate_limiting: {
     window_minutes: 15,
     max_requests: 1000000,
@@ -50,6 +56,7 @@ const appConfig = {
     download_max_requests: 1000000,
     download_link_max_requests: 1000000,
     architecture_operations_max_requests: 1000000,
+    auth_max_requests: 1000000,
   },
 };
 
@@ -84,17 +91,16 @@ const authConfig = {
 };
 
 const mailConfig = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   smtp_connect: { host: 'localhost', port: 1025 },
   smtp_settings: { from: 'noreply@example.com' },
 };
 
 // Write test configs to separate files
-const configDir = path.join(__dirname, '../app/config');
-const dbConfigPath = path.join(configDir, 'db.test.config.yaml');
-const appConfigPath = path.join(configDir, 'app.test.config.yaml');
-const authConfigPath = path.join(configDir, 'auth.test.config.yaml');
-const mailConfigPath = path.join(configDir, 'mail.test.config.yaml');
+const dbConfigPath = path.join(configDir, 'db.config.yaml');
+const appConfigPath = path.join(configDir, 'app.config.yaml');
+const authConfigPath = path.join(configDir, 'auth.config.yaml');
+const mailConfigPath = path.join(configDir, 'mail.config.yaml');
 
 fs.writeFileSync(dbConfigPath, yaml.dump(dbConfig));
 fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
@@ -106,39 +112,6 @@ const { default: db } = await import('../app/models/index.js');
 
 // Global setup - runs once before all tests
 beforeAll(async () => {
-  // Suppress console logs if configured
-  if (process.env.SUPPRESS_LOGS === 'true') {
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    // Dynamically import logger to avoid early initialization logging
-    const { log } = await import('../app/utils/Logger.js');
-
-    // Save original log methods to global for restoration in logger tests
-    global.originalLogMethods = {};
-
-    // Silence Winston Logger wrappers
-    Object.keys(log).forEach(category => {
-      if (log[category] && typeof log[category] === 'object') {
-        Object.keys(log[category]).forEach(level => {
-          if (
-            typeof log[category][level] === 'function' &&
-            !jest.isMockFunction(log[category][level])
-          ) {
-            // Save original before replacing
-            if (!global.originalLogMethods[category]) {
-              global.originalLogMethods[category] = {};
-            }
-            global.originalLogMethods[category][level] = log[category][level];
-
-            log[category][level] = () => {};
-          }
-        });
-      }
-    });
-  }
-
   // Create test storage directory
   const testStorageDir = path.join(__dirname, '__test_storage__');
   if (!fs.existsSync(testStorageDir)) {
@@ -221,11 +194,6 @@ afterAll(async () => {
       }
     });
   });
-
-  // Restore console mocks
-  if (process.env.SUPPRESS_LOGS === 'true') {
-    jest.restoreAllMocks();
-  }
 });
 
 // Helper functions for tests

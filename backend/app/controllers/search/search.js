@@ -1,4 +1,5 @@
 import { log } from '../../utils/Logger.js';
+import { problem, refuse } from '../../utils/problem.js';
 import { MIN_QUERY_LENGTH, parseLimit, parseKinds, buildContext } from './scope.js';
 import { FINDERS } from './finders.js';
 
@@ -91,23 +92,25 @@ import { FINDERS } from './finders.js';
  *                   description: Per kind, how many hits beyond limit were dropped; kinds within limit are absent
  *                   additionalProperties:
  *                     type: integer
- *       400:
- *         description: The query is shorter than 2 characters
+ *       422:
+ *         description: The query is shorter than 2 characters, errors carrying pointer /q and rule minLength
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const search = async (req, res) => {
   const term = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   if (term.length < MIN_QUERY_LENGTH) {
-    return res.status(400).send({ message: req.__('search.queryTooShort') });
+    return refuse(res, req, [
+      { pointer: '/q', rule: 'minLength', params: { minLength: MIN_QUERY_LENGTH } },
+    ]);
   }
   const limit = parseLimit(req.query.limit);
   const kinds = parseKinds(req.query.kinds);
@@ -129,7 +132,7 @@ const search = async (req, res) => {
     return res.send({ query: term, results, truncated });
   } catch (err) {
     log.error.error('Error searching:', err);
-    return res.status(500).send({ message: req.__('search.error') });
+    return problem(res, req, { status: 500, type: 'internal' });
   }
 };
 

@@ -1,5 +1,6 @@
 import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
+import { problem } from '../utils/problem.js';
 const {
   user: User,
   organization: Organization,
@@ -10,6 +11,25 @@ const {
   providers: Provider,
 } = db;
 
+const parameterRequired = (req, res) =>
+  problem(res, req, {
+    status: 400,
+    type: 'bad-request',
+    title: req.__('organizations.parameterRequired'),
+  });
+
+const userNotFound = (req, res) =>
+  problem(res, req, {
+    status: 401,
+    type: 'authentication',
+    title: req.__('users.userNotFound'),
+  });
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
+
 /**
  * Middleware to verify user has membership in the organization specified in route
  */
@@ -18,26 +38,24 @@ const isOrgMember = async (req, res, next) => {
     const { organization: orgName } = req.params;
 
     if (!orgName) {
-      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
+      return parameterRequired(req, res);
     }
 
     // Membership check — service accounts impersonate their owning user
     // (req.userId is the owning user's id), so they take the same path.
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: req.__('users.userNotFound') });
+      return userNotFound(req, res);
     }
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
     const membership = await UserOrg.findUserOrgRole(user.id, organization.id);
     if (!membership) {
-      return res.status(403).send({
-        message: req.__('organizations.userNotMember'),
-      });
+      return forbidden(req, res, 'organizations.userNotMember');
     }
 
     // Attach org context to request for use in controllers
@@ -64,12 +82,12 @@ const isOrgAdmin = async (req, res, next) => {
     const { organization: orgName } = req.params;
 
     if (!orgName) {
-      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
+      return parameterRequired(req, res);
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: req.__('users.userNotFound') });
+      return userNotFound(req, res);
     }
 
     // Check if user is global admin first (bypasses org-specific checks)
@@ -78,7 +96,7 @@ const isOrgAdmin = async (req, res, next) => {
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
     if (isGlobalAdmin) {
@@ -90,9 +108,7 @@ const isOrgAdmin = async (req, res, next) => {
 
     const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
     if (!hasRole) {
-      return res.status(403).send({
-        message: req.__('organizations.requireAdminOrOwner'),
-      });
+      return forbidden(req, res, 'organizations.requireAdminOrOwner');
     }
 
     // Attach org context to request
@@ -118,12 +134,12 @@ const isOrgOwner = async (req, res, next) => {
     const { organization: orgName } = req.params;
 
     if (!orgName) {
-      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
+      return parameterRequired(req, res);
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: req.__('users.userNotFound') });
+      return userNotFound(req, res);
     }
 
     // Check if user is global admin first (bypasses org-specific checks)
@@ -132,7 +148,7 @@ const isOrgOwner = async (req, res, next) => {
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
     if (isGlobalAdmin) {
@@ -144,9 +160,7 @@ const isOrgOwner = async (req, res, next) => {
 
     const hasRole = await UserOrg.hasRole(user.id, organization.id, 'owner');
     if (!hasRole) {
-      return res.status(403).send({
-        message: req.__('organizations.requireOwner'),
-      });
+      return forbidden(req, res, 'organizations.requireOwner');
     }
 
     // Attach org context to request
@@ -175,12 +189,12 @@ const isOrgAdminOrOwner = async (req, res, next) => {
     const orgName = req.params.organization || req.body?.organization_name;
 
     if (!orgName) {
-      return res.status(400).send({ message: req.__('organizations.parameterRequired') });
+      return parameterRequired(req, res);
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(401).send({ message: req.__('users.userNotFound') });
+      return userNotFound(req, res);
     }
 
     // Check if user is global admin first (bypasses org-specific checks)
@@ -189,7 +203,7 @@ const isOrgAdminOrOwner = async (req, res, next) => {
 
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return notFound(req, res, req.__('organizations.organizationNotFound'));
     }
 
     if (isGlobalAdmin) {
@@ -202,9 +216,7 @@ const isOrgAdminOrOwner = async (req, res, next) => {
     // Check org-specific role
     const hasRole = await UserOrg.hasRole(user.id, organization.id, ['admin', 'owner']);
     if (!hasRole) {
-      return res.status(403).send({
-        message: req.__('organizations.requireAdminOrOwner'),
-      });
+      return forbidden(req, res, 'organizations.requireAdminOrOwner');
     }
 
     // Attach org context to request
@@ -237,19 +249,13 @@ const rejectExternallyManagedOrg = async (req, res, next) => {
   try {
     const orgName = req.params.organization || req.body?.organization_name;
 
-    if (!orgName) {
-      return next();
-    }
-
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
       return next();
     }
 
     if (organization.external_issuer) {
-      return res.status(403).send({
-        message: req.__('organizations.externallyManaged'),
-      });
+      return forbidden(req, res, 'organizations.externallyManaged');
     }
 
     return next();
@@ -276,9 +282,11 @@ const attachBox = async (req, res, next) => {
     });
 
     if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const box = await Box.findOne({
@@ -286,9 +294,7 @@ const attachBox = async (req, res, next) => {
     });
 
     if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
+      return notFound(req, res, req.__('boxes.boxNotFoundInOrg', { boxId, organization }));
     }
 
     req.organizationData = organizationData;
@@ -315,9 +321,11 @@ const attachProvider = async (req, res, next) => {
     });
 
     if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization })
+      );
     }
 
     req.versionData = version;
@@ -331,13 +339,11 @@ const attachProvider = async (req, res, next) => {
     });
 
     if (!provider) {
-      return res.status(404).send({
-        message: req.__('providers.providerNotFoundInVersion', {
-          providerName,
-          versionNumber,
-          boxId,
-        }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('providers.providerNotFoundInVersion', { providerName, versionNumber, boxId })
+      );
     }
 
     req.providerData = provider;
@@ -362,9 +368,11 @@ const attachIso = async (req, res, next) => {
     });
 
     if (!organizationData) {
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const iso = await ISO.findOne({
@@ -372,9 +380,7 @@ const attachIso = async (req, res, next) => {
     });
 
     if (!iso) {
-      return res
-        .status(404)
-        .send({ message: req.__('isos.notFoundWithName', { name, organization }) });
+      return notFound(req, res, req.__('isos.notFoundWithName', { name, organization }));
     }
 
     req.organizationData = organizationData;

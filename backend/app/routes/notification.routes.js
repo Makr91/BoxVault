@@ -9,6 +9,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  deleteAllNotifications,
   sendTestToast,
   sendTestChannel,
 } from '../controllers/notification.controller.js';
@@ -42,6 +43,8 @@ router.get('/notifications', notificationAuth, listNotifications);
 router.get('/notifications/unread-count', notificationAuth, getUnreadCount);
 
 router.post('/notifications/read-all', notificationAuth, markAllNotificationsRead);
+
+router.delete('/notifications', notificationAuth, deleteAllNotifications);
 
 router.post('/notifications/:id/read', notificationAuth, markNotificationRead);
 

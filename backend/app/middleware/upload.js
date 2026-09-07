@@ -6,9 +6,67 @@ import { join, dirname } from 'path';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { getSecureBoxPath } from '../utils/paths.js';
+import { problem } from '../utils/problem.js';
 import { safeUnlink, safeRmdirSync, ensureDirSync, safeExistsSync } from '../utils/fsHelper.js';
 import db from '../models/index.js';
 const { versions, box, providers, architectures, files } = db;
+
+const CHECKSUM_ALGORITHMS = {
+  md5: 'md5',
+  sha1: 'sha1',
+  sha256: 'sha256',
+  sha384: 'sha384',
+  sha512: 'sha512',
+};
+const NO_CHECKSUM_TYPE = 'null';
+const COUNT_PATTERN = /^\d+$/;
+
+const checksumAlgorithm = checksumType =>
+  CHECKSUM_ALGORITHMS[String(checksumType).toLowerCase().replace('-', '')] || null;
+
+/**
+ * The failing rules of the upload headers: an x-checksum-type outside the
+ * supported algorithms (NULL declares none), and for a chunked upload an
+ * x-total-chunks below 1 or an x-chunk-index that is not an integer within
+ * 0 and x-total-chunks - 1.
+ * @param {Object} headers - The request headers
+ * @returns {Array<{pointer: string, rule: string, params: Object}>} Failing rules, or none
+ */
+const headerErrors = headers => {
+  const errors = [];
+  const checksumType = headers['x-checksum-type'];
+  if (
+    checksumType !== undefined &&
+    checksumType.toLowerCase() !== NO_CHECKSUM_TYPE &&
+    !checksumAlgorithm(checksumType)
+  ) {
+    errors.push({
+      pointer: '/x-checksum-type',
+      rule: 'enum',
+      params: { enum: Object.keys(CHECKSUM_ALGORITHMS).join(', ') },
+    });
+  }
+  const rawIndex = headers['x-chunk-index'];
+  const rawTotal = headers['x-total-chunks'];
+  if (rawIndex === undefined && rawTotal === undefined) {
+    return errors;
+  }
+  const total = COUNT_PATTERN.test(rawTotal) ? Number(rawTotal) : null;
+  const index = COUNT_PATTERN.test(rawIndex) ? Number(rawIndex) : null;
+  if (total === null || total < 1) {
+    errors.push({ pointer: '/x-total-chunks', rule: 'minimum', params: { minimum: 1 } });
+  }
+  if (index === null) {
+    errors.push({ pointer: '/x-chunk-index', rule: 'type', params: { type: 'integer' } });
+  } else if (total !== null && total >= 1 && index >= total) {
+    errors.push({
+      pointer: '/x-chunk-index',
+      rule: 'range',
+      params: { minimum: 0, maximum: total - 1 },
+    });
+  }
+  return errors;
+};
 
 // Load app config for max file size
 const getMaxFileSize = () => {
@@ -21,40 +79,41 @@ const getMaxFileSize = () => {
   }
 };
 
-// Helper: Validate request headers
-const validateRequest = (isChunked, contentLength, maxFileSize) => {
-  if (!isChunked) {
-    if (isNaN(contentLength)) {
-      const error = new Error('Content-Length header required when not using chunked encoding');
-      error.status = 400;
-      error.code = 'INVALID_REQUEST';
-      return { valid: false, error };
-    }
-
-    if (contentLength > maxFileSize) {
-      log.app.error('File too large:', {
-        contentLength,
-        maxFileSize,
-        contentLengthGB: Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100,
-        maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024),
-      });
-
-      const error = new Error(
-        `File size ${Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100}GB exceeds maximum allowed size of ${maxFileSize / (1024 * 1024 * 1024)}GB`
-      );
-      error.status = 413;
-      error.code = 'FILE_TOO_LARGE';
-      error.details = {
-        fileSize: contentLength,
-        maxFileSize,
-        fileSizeGB: Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100,
-        maxFileSizeGB: maxFileSize / (1024 * 1024 * 1024),
-      };
-      return { valid: false, error };
-    }
+/**
+ * The problem refusing a non-chunked upload: bad-request without a
+ * Content-Length, payload-too-large above the configured maximum.
+ * @param {import('express').Request} req - The request (i18n)
+ * @param {boolean} isChunked - Whether the body uses chunked transfer encoding
+ * @param {number} contentLength - The parsed Content-Length header
+ * @param {number} maxFileSize - The maximum upload size in bytes
+ * @returns {{status: number, type: string, title?: string}|null} The problem, or null when the request may proceed
+ */
+const validateRequest = (req, isChunked, contentLength, maxFileSize) => {
+  if (isChunked) {
+    return null;
   }
 
-  return { valid: true };
+  if (isNaN(contentLength)) {
+    return { status: 400, type: 'bad-request' };
+  }
+
+  if (contentLength > maxFileSize) {
+    const maxFileSizeGB = maxFileSize / (1024 * 1024 * 1024);
+    log.app.error('File too large:', {
+      contentLength,
+      maxFileSize,
+      contentLengthGB: Math.round((contentLength / (1024 * 1024 * 1024)) * 100) / 100,
+      maxFileSizeGB,
+    });
+
+    return {
+      status: 413,
+      type: 'payload-too-large',
+      title: req.__('files.fileTooLarge', { size: maxFileSizeGB }),
+    };
+  }
+
+  return null;
 };
 
 // Helper: Merge chunks into final file
@@ -93,7 +152,7 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
   const writeStream = createWriteStream(finalPath, {
     flags: 'w',
     encoding: 'binary',
-    mode: 0o666,
+    mode: 0o600,
     autoClose: true,
   });
 
@@ -137,7 +196,7 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
 
     await appendChunk(chunk.path);
 
-    safeUnlink(chunk.path); // Delete chunk after merging
+    await safeUnlink(chunk.path); // Delete chunk after merging
 
     return mergeChunkRecursive(index + 1, currentSize + chunkSize);
   };
@@ -163,22 +222,8 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
 
 // Helper: Verify file checksum
 const verifyChecksum = (filePath, expectedChecksum, checksumType) => {
-  if (!expectedChecksum || !checksumType) {
-    return true;
-  }
-
-  const algorithm = checksumType.toLowerCase().replace('-', '');
-  // Map common types to node crypto algorithms
-  const algoMap = {
-    sha1: 'sha1',
-    sha256: 'sha256',
-    sha512: 'sha512',
-    md5: 'md5',
-  };
-
-  const nodeAlgo = algoMap[algorithm];
+  const nodeAlgo = expectedChecksum && checksumType ? checksumAlgorithm(checksumType) : null;
   if (!nodeAlgo) {
-    log.app.warn(`Unsupported checksum type: ${checksumType}, skipping verification`);
     return true;
   }
 
@@ -241,7 +286,7 @@ const updateDatabase = async (params, finalSize, headers) => {
   const fileData = {
     fileName: 'vagrant.box',
     checksum: headers['x-checksum'] || null,
-    checksumType: (headers['x-checksum-type'] || 'NULL').toUpperCase(),
+    checksumType: (headers['x-checksum-type'] || 'NULL').toUpperCase().replace('-', ''),
     architectureId: architecture.id,
     fileSize: finalSize,
   };
@@ -279,7 +324,7 @@ const handleChunkedUpload = async (
     const writeStream = createWriteStream(chunkPath, {
       flags: 'w',
       encoding: 'binary',
-      mode: 0o666,
+      mode: 0o600,
       autoClose: true,
     });
 
@@ -311,7 +356,7 @@ const handleChunkedUpload = async (
 
       // Verify against max file size
       if (finalSize > maxFileSize) {
-        safeUnlink(finalPath);
+        await safeUnlink(finalPath);
         throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
       }
 
@@ -323,11 +368,11 @@ const handleChunkedUpload = async (
         try {
           isValid = await verifyChecksum(finalPath, checksum, checksumType);
         } catch (error) {
-          safeUnlink(finalPath);
+          await safeUnlink(finalPath);
           throw error;
         }
         if (!isValid) {
-          safeUnlink(finalPath);
+          await safeUnlink(finalPath);
           throw new Error('Checksum verification failed');
         }
       }
@@ -345,7 +390,8 @@ const handleChunkedUpload = async (
         speed: `${speed} MB/s`,
       });
 
-      const message = req.method === 'PUT' ? 'File updated successfully' : 'File upload completed';
+      const message =
+        req.method === 'PUT' ? req.__('files.upload.updated') : req.__('files.upload.completed');
 
       return {
         isComplete: true,
@@ -364,7 +410,7 @@ const handleChunkedUpload = async (
     return {
       isComplete: false,
       response: {
-        message: 'Chunk upload completed',
+        message: req.__('files.upload.chunkCompleted'),
         details: {
           isComplete: false,
           status: 'uploading',
@@ -453,19 +499,12 @@ const handleSingleUpload = async (
   maxFileSize
 ) => {
   // Resolve the checksum algorithm up front so we can hash the bytes as they
-  // stream in (single pass) instead of re-reading the finished file. Mapping
-  // matches verifyChecksum(): unknown/missing type means verification is skipped.
+  // stream in (single pass) instead of re-reading the finished file.
   const expectedChecksum = req.headers['x-checksum'];
   const checksumType = req.headers['x-checksum-type'];
-  let nodeAlgo = null;
-  if (expectedChecksum && checksumType) {
-    const algoMap = { sha1: 'sha1', sha256: 'sha256', sha512: 'sha512', md5: 'md5' };
-    nodeAlgo = algoMap[checksumType.toLowerCase().replace('-', '')] || null;
-    if (!nodeAlgo) {
-      log.app.warn(`Unsupported checksum type: ${checksumType}, skipping verification`);
-    } else {
-      log.app.info(`Verifying checksum (${nodeAlgo}) inline for file: ${finalPath}`);
-    }
+  const nodeAlgo = expectedChecksum && checksumType ? checksumAlgorithm(checksumType) : null;
+  if (nodeAlgo) {
+    log.app.info(`Verifying checksum (${nodeAlgo}) inline for file: ${finalPath}`);
   }
   const hash = nodeAlgo ? createHash(nodeAlgo) : null;
 
@@ -473,7 +512,7 @@ const handleSingleUpload = async (
   const writeStream = createWriteStream(finalPath, {
     flags: 'w',
     encoding: 'binary',
-    mode: 0o666,
+    mode: 0o600,
     autoClose: true,
   });
 
@@ -492,7 +531,7 @@ const handleSingleUpload = async (
   try {
     await pipeline(req, hasher, writeStream);
   } catch (error) {
-    safeUnlink(finalPath);
+    await safeUnlink(finalPath);
     throw error;
   }
 
@@ -503,7 +542,7 @@ const handleSingleUpload = async (
   if (!isChunked && !isNaN(contentLength)) {
     const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
     if (Math.abs(finalSize - contentLength) > maxDiff) {
-      safeUnlink(finalPath);
+      await safeUnlink(finalPath);
       throw new Error(
         `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
       );
@@ -512,7 +551,7 @@ const handleSingleUpload = async (
 
   // Verify against max file size
   if (finalSize > maxFileSize) {
-    safeUnlink(finalPath);
+    await safeUnlink(finalPath);
     throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
   }
 
@@ -520,7 +559,7 @@ const handleSingleUpload = async (
   if (hash) {
     const calculated = hash.digest('hex');
     if (calculated !== expectedChecksum.toLowerCase()) {
-      safeUnlink(finalPath);
+      await safeUnlink(finalPath);
       throw new Error('Checksum verification failed');
     }
   }
@@ -538,7 +577,8 @@ const handleSingleUpload = async (
     speed: `${speed} MB/s`,
   });
 
-  const message = req.method === 'PUT' ? 'File updated successfully' : 'File upload completed';
+  const message =
+    req.method === 'PUT' ? req.__('files.upload.updated') : req.__('files.upload.completed');
 
   return {
     isComplete: true,
@@ -601,15 +641,15 @@ const uploadMiddleware = async (req, res) => {
     });
 
     // Validate request
-    const validation = validateRequest(isChunked, contentLength, maxFileSize);
-    if (!validation.valid) {
+    const refusal = validateRequest(req, isChunked, contentLength, maxFileSize);
+    if (refusal) {
       res.setHeader('Connection', 'close');
-      res.setHeader('Content-Type', 'application/json');
-      return res.status(validation.error.status).json({
-        error: validation.error.code,
-        message: validation.error.message,
-        details: validation.error.details,
-      });
+      return problem(res, req, refusal);
+    }
+
+    const refused = headerErrors(req.headers);
+    if (refused.length > 0) {
+      return problem(res, req, { status: 400, type: 'bad-request', errors: refused });
     }
 
     // Load config and prepare upload directory using secure path
@@ -627,9 +667,10 @@ const uploadMiddleware = async (req, res) => {
     finalPath = join(uploadDir, 'vagrant.box');
 
     // Get chunk information from headers
-    const chunkIndex = parseInt(req.headers['x-chunk-index']);
-    const totalChunks = parseInt(req.headers['x-total-chunks']);
-    const isMultipart = !isNaN(chunkIndex) && !isNaN(totalChunks);
+    const isMultipart =
+      req.headers['x-chunk-index'] !== undefined || req.headers['x-total-chunks'] !== undefined;
+    const chunkIndex = isMultipart ? Number(req.headers['x-chunk-index']) : NaN;
+    const totalChunks = isMultipart ? Number(req.headers['x-total-chunks']) : NaN;
 
     log.app.info('Chunk analysis:', {
       chunkIndex,
@@ -691,7 +732,7 @@ const uploadMiddleware = async (req, res) => {
     if (finalPath && safeExistsSync(finalPath)) {
       if (error.message.includes('size mismatch') || error.message.includes('closed prematurely')) {
         try {
-          safeUnlink(finalPath);
+          await safeUnlink(finalPath);
           log.app.info('Cleaned up incomplete file:', finalPath);
         } catch (cleanupError) {
           log.error.error('Error cleaning up file:', cleanupError);
@@ -703,7 +744,7 @@ const uploadMiddleware = async (req, res) => {
     if (!res.headersSent) {
       return res.status(500).json({
         error: 'UPLOAD_ERROR',
-        message: error.message,
+        message: req.__('files.upload.error'),
       });
     }
   }

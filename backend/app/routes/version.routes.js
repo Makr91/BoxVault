@@ -1,14 +1,12 @@
 // version.routes.js
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess } from '../middleware/index.js';
-import {
-  create,
-  update,
-  findAllByBox,
-  findOne,
-  delete as deleteVersion,
-  deleteAllByBox,
-} from '../controllers/version.controller.js';
+import { create } from '../controllers/version/create.js';
+import { update } from '../controllers/version/update.js';
+import { findAllByBox } from '../controllers/version/box/findall.js';
+import { findOne } from '../controllers/version/findone.js';
+import { delete as deleteVersion } from '../controllers/version/delete.js';
+import { deleteAllByBox } from '../controllers/version/box/deleteall.js';
 
 const router = Router();
 

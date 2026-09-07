@@ -5,7 +5,8 @@ import { log } from '../../utils/Logger.js';
 import { conflict } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
-const { organization: Organization } = db;
+import { isReservedSegment } from '../../utils/reservedSegments.js';
+const { organization: Organization, sequelize } = db;
 
 /**
  * @swagger
@@ -64,7 +65,7 @@ const { organization: Organization } = db;
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       409:
- *         description: The new name or organization code is already taken
+ *         description: The new name or organization code is already taken, or the new name is a reserved path segment
  *         content:
  *           application/problem+json:
  *             schema:
@@ -113,7 +114,8 @@ const getExternalEditRejection = (org, fields, req) => {
 };
 
 /**
- * The taken value of a rename or a code change, as a `unique` failure.
+ * The taken value of a rename or a code change, as a `unique` failure; a
+ * reserved path segment counts as a taken name.
  * @param {Object} org - Organization instance
  * @param {string|undefined} organization - Trimmed new name from the request body
  * @param {string|undefined} orgCode - Trimmed org_code from the request body
@@ -121,6 +123,9 @@ const getExternalEditRejection = (org, fields, req) => {
  */
 const getTakenValue = async (org, organization, orgCode) => {
   if (organization && organization !== org.name) {
+    if (isReservedSegment(organization)) {
+      return { pointer: '/organization' };
+    }
     const existingOrg = await Organization.findOne({ where: { name: organization } });
     if (existingOrg) {
       return { pointer: '/organization' };
@@ -137,26 +142,22 @@ const getTakenValue = async (org, organization, orgCode) => {
 
 /**
  * Move an org's storage directory on rename. Only acts when the old directory
- * exists and the paths differ; failures are logged and never block the
- * database update.
+ * exists and the paths differ; a failure throws so the caller rolls the
+ * database update back.
  * @param {string} oldFilePath - Current storage path
  * @param {string} newFilePath - Target storage path
  * @returns {void}
+ * @throws {Error} When the directory cannot be moved
  */
 const moveOrgDirectory = (oldFilePath, newFilePath) => {
-  try {
-    if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {
-      if (!fs.existsSync(newFilePath)) {
-        fs.mkdirSync(newFilePath, { recursive: true });
-      }
-      fs.renameSync(oldFilePath, newFilePath);
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmSync(oldFilePath, { recursive: true, force: true });
-      }
+  if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {
+    if (!fs.existsSync(newFilePath)) {
+      fs.mkdirSync(newFilePath, { recursive: true });
     }
-    // If no directories exist, that's fine - they'll be created when boxes are uploaded
-  } catch (fileErr) {
-    log.error.error('Directory operation failed:', fileErr);
+    fs.renameSync(oldFilePath, newFilePath);
+    if (fs.existsSync(oldFilePath)) {
+      fs.rmSync(oldFilePath, { recursive: true, force: true });
+    }
   }
 };
 
@@ -193,15 +194,24 @@ export const update = async (req, res) => {
       return conflict(res, req, taken.pointer, 'global');
     }
 
-    moveOrgDirectory(oldFilePath, newFilePath);
-
-    await org.update({
-      name: organization !== undefined ? organization : org.name,
-      description: description !== undefined ? description : org.description,
-      email: email !== undefined ? email : org.email,
-      emailHash: email ? generateEmailHash(email) : org.emailHash,
-      org_code: org_code ? org_code : org.org_code,
-    });
+    const transaction = await sequelize.transaction();
+    try {
+      await org.update(
+        {
+          name: organization !== undefined ? organization : org.name,
+          description: description !== undefined ? description : org.description,
+          email: email !== undefined ? email : org.email,
+          emailHash: email ? generateEmailHash(email) : org.emailHash,
+          org_code: org_code ? org_code : org.org_code,
+        },
+        { transaction }
+      );
+      moveOrgDirectory(oldFilePath, newFilePath);
+      await transaction.commit();
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
 
     // Reload to ensure persistence and get fresh data
     await org.reload();
