@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.80.0](https://github.com/Makr91/BoxVault/compare/v0.79.0...v0.80.0) (2026-09-07)
+
+
+### Features
+
+* config from CONFIG_DIR alone, hardened auth and uploads, docs rewritten from the code ([20b0d21](https://github.com/Makr91/BoxVault/commit/20b0d21d13be732beebea855cb8a805db8d3db22))
+* service accounts scoped to their organization with a stored role, a superadmin key for global admins, and no schema sync at boot ([573bceb](https://github.com/Makr91/BoxVault/commit/573bcebca064d462b7ca9bc3073d611d41b5e8a4))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.7.0 ([0e6f91e](https://github.com/Makr91/BoxVault/commit/0e6f91ee73a39e6e4618dc558cc99b251241056f))
+* bump startcloud-ui to v0.7.0 ([adc93bf](https://github.com/Makr91/BoxVault/commit/adc93bfbd31380277338f8d088701e44dd70b50e))
+* bump startcloud-ui to v0.8.1 ([382b612](https://github.com/Makr91/BoxVault/commit/382b612f542671ce9d6dc527d91898086d4d0d1d))
+* bump startcloud-ui to v0.8.1 ([8049eff](https://github.com/Makr91/BoxVault/commit/8049effd797589fc99d93a404c191e8eb73c9311))
+* ship the config migration script and quote the setup route's Swagger description ([f98a476](https://github.com/Makr91/BoxVault/commit/f98a47683d1feafe2b203b63a3704a577803e883))
+* ship the config migration script, quote the setup route's Swagger description and describe the plain ticket section ([637f1fe](https://github.com/Makr91/BoxVault/commit/637f1fe16a0cae98b49aa35067424cf85ef02666))
+
 ## [0.79.0](https://github.com/Makr91/BoxVault/compare/v0.78.0...v0.79.0) (2026-09-06)
 
 
