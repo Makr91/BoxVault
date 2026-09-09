@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.81.0](https://github.com/Makr91/BoxVault/compare/v0.80.0...v0.81.0) (2026-09-09)
+
+
+### Features
+
+* carry the contract's named patterns and blank-string rule, answer every failure as a problem body, and follow the version form's if/then ([5fb636c](https://github.com/Makr91/BoxVault/commit/5fb636ca291df97db1d896a83f5602856419e7c7))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.11.0 ([9266e9c](https://github.com/Makr91/BoxVault/commit/9266e9c4c6eecfbfdb3222a10240520a28a96d6f))
+* bump startcloud-ui to v0.11.0 ([b2518ec](https://github.com/Makr91/BoxVault/commit/b2518ec087810a9e03d7860db13bd7d8312156c9))
+* update js-yaml, morgan, multer and nodemailer for their September advisories ([17d3fb8](https://github.com/Makr91/BoxVault/commit/17d3fb88307a9862d1183a683a17fd114d9c15ac))
+
 ## [0.80.0](https://github.com/Makr91/BoxVault/compare/v0.79.0...v0.80.0) (2026-09-07)
 
 
