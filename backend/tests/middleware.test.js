@@ -349,8 +349,9 @@ describe('Middleware Tests', () => {
       res = {
         set: jest.fn(),
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         end: jest.fn(),
-        json: jest.fn(),
+        send: jest.fn(),
         getHeaders: jest.fn().mockReturnValue({}),
       };
       next = jest.fn();
@@ -418,8 +419,12 @@ describe('Middleware Tests', () => {
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'auth.vagrantInvalidToken' })
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/authentication',
+          title: 'auth.vagrantInvalidToken',
+        })
       );
       expect(next).not.toHaveBeenCalled();
     });
@@ -687,8 +692,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -713,8 +721,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -739,8 +750,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -804,8 +818,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -1001,8 +1018,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -1049,8 +1069,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -1156,8 +1179,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -1207,10 +1233,10 @@ describe('Middleware Tests', () => {
       await uploadPromise;
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
+      expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: 'UPLOAD_ERROR',
-          message: 'files.upload.error',
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
         })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith('Upload error:', error);
@@ -1241,9 +1267,10 @@ describe('Middleware Tests', () => {
       await uploadPromise;
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
+      expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: 'UPLOAD_ERROR',
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
         })
       );
     });
@@ -1257,7 +1284,12 @@ describe('Middleware Tests', () => {
       await uploadSSLFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'UPLOAD_ERROR' }));
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
+      );
     });
 
     it('uploadSSLFile should not send error if headers sent', async () => {
@@ -1325,6 +1357,7 @@ describe('Middleware Tests', () => {
       req = { body: {}, __: key => key };
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
       next = jest.fn();
@@ -1387,7 +1420,10 @@ describe('Middleware Tests', () => {
 
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.send).toHaveBeenCalledWith(
-          expect.objectContaining({ message: expect.stringContaining('auth.roleDoesNotExist') })
+          expect.objectContaining({
+            type: 'https://auth.startcloud.com/probs/bad-request',
+            title: expect.stringContaining('auth.roleDoesNotExist'),
+          })
         );
         expect(next).not.toHaveBeenCalled();
       });
@@ -1405,7 +1441,10 @@ describe('Middleware Tests', () => {
         await verifySignUp.checkRolesExisted(req, res, next);
         expect(res.status).toHaveBeenCalledWith(500);
         expect(res.send).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'errors.operationFailed' })
+          expect.objectContaining({
+            type: 'https://auth.startcloud.com/probs/internal',
+            title: 'errors.operationFailed',
+          })
         );
       });
     });
@@ -1736,7 +1775,13 @@ describe('Middleware Tests', () => {
 
       await authJwt.verifyToken(req, res, next);
 
-      expect(res.status).toHaveBeenCalledWith(503);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'auth.verificationError',
+        })
+      );
     });
   });
 
@@ -2137,10 +2182,14 @@ describe('Middleware Tests', () => {
       mockDb.organization.findOne.mockRejectedValue(new Error('DB Error'));
       await verifyBoxFilePath(req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'INTERNAL_SERVER_ERROR',
-        message: 'files.pathVerificationError',
-      });
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.pathVerificationError',
+          status: 500,
+        })
+      );
     });
   });
 
@@ -2689,8 +2738,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -2747,8 +2799,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',
@@ -2775,8 +2830,11 @@ describe('Middleware Tests', () => {
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'UPLOAD_ERROR', message: 'files.upload.error' })
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
       );
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Upload error:',

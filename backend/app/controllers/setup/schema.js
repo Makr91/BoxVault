@@ -1,6 +1,7 @@
 // schema.js
 import { CONFIG_NAMES, loadSchema } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { verifyAuthorizedToken } from './middleware.js';
 
 /**
@@ -26,8 +27,16 @@ import { verifyAuthorizedToken } from './middleware.js';
  *                     type: object
  *       403:
  *         description: Invalid setup token
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Failed to read schemas
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getSchemas = [
   verifyAuthorizedToken,
@@ -37,7 +46,11 @@ export const getSchemas = [
       return res.send({ schemas });
     } catch (error) {
       log.error.error('Error reading schemas:', error);
-      return res.status(500).send(req.__('setup.readError'));
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('setup.readError'),
+      });
     }
   },
 ];

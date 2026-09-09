@@ -106,7 +106,9 @@ describe('Notifications API', () => {
     it('should answer 503 for the public key', async () => {
       const res = await request(app).get('/api/notifications/vapid-key');
       expect(res.statusCode).toBe(503);
-      expect(res.body).toEqual({ error: 'PUSH_NOT_CONFIGURED' });
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toBe('Push notifications are not configured.');
     });
 
     it('should answer 503 for a test toast', async () => {
@@ -114,6 +116,7 @@ describe('Notifications API', () => {
         .post('/api/notifications/test/toast')
         .set('x-access-token', localToken);
       expect(res.statusCode).toBe(503);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
     });
   });
 
@@ -158,7 +161,7 @@ describe('Notifications API', () => {
       );
       responses.forEach(res => {
         expect(res.statusCode).toBe(400);
-        expect(res.body).toEqual({ error: 'INVALID_SUBSCRIPTION' });
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
       });
     });
 
@@ -224,7 +227,10 @@ describe('Notifications API', () => {
         .set('x-access-token', localToken)
         .send({});
       expect(res.statusCode).toBe(400);
-      expect(res.body).toEqual({ error: 'ENDPOINT_REQUIRED' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/endpoint', rule: 'required' }),
+      ]);
     });
 
     it('should remove a subscription of the caller', async () => {
@@ -251,14 +257,14 @@ describe('Notifications API', () => {
         .set('x-access-token', localToken)
         .send({ endpoint: `${endpoint}/third`, keys: { p256dh: 'p', auth: 'a' } });
       expect(store.statusCode).toBe(500);
-      expect(store.body).toEqual({ error: 'SUBSCRIPTION_STORE_FAILED' });
+      expect(store.body.type).toBe('https://auth.startcloud.com/probs/internal');
       jest.spyOn(db.pushSubscription, 'destroy').mockRejectedValueOnce(new Error('down'));
       const remove = await request(app)
         .delete('/api/notifications/subscriptions')
         .set('x-access-token', localToken)
         .send({ endpoint: `${endpoint}/third` });
       expect(remove.statusCode).toBe(500);
-      expect(remove.body).toEqual({ error: 'SUBSCRIPTION_DELETE_FAILED' });
+      expect(remove.body.type).toBe('https://auth.startcloud.com/probs/internal');
       jest.restoreAllMocks();
     });
   });
@@ -269,15 +275,16 @@ describe('Notifications API', () => {
         .post('/api/notifications/test/channel')
         .set('x-access-token', localToken);
       expect(res.statusCode).toBe(404);
-      expect(res.body).toEqual({ error: 'NO_HUB_IDENTITY' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
     });
 
-    it('should answer 502 while the hub refuses the write', async () => {
+    it('should answer 503 with Retry-After while the hub refuses the write', async () => {
       const res = await request(app)
         .post('/api/notifications/test/channel')
         .set('x-access-token', oidcToken);
-      expect(res.statusCode).toBe(502);
-      expect(res.body).toEqual({ error: 'HUB_UNAVAILABLE' });
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
     });
   });
 
@@ -285,7 +292,7 @@ describe('Notifications API', () => {
     it('should require an identity-provider session', async () => {
       const res = await request(app).get('/api/notifications').set('x-access-token', localToken);
       expect(res.statusCode).toBe(401);
-      expect(res.body).toEqual({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
     });
 
     it('should relay the feed with the paging query', async () => {
@@ -329,14 +336,14 @@ describe('Notifications API', () => {
       axiosGet.mockRejectedValue({ message: 'Forbidden', response: { status: 403, data: {} } });
       const res = await request(app).get('/api/notifications').set('x-access-token', oidcToken);
       expect(res.statusCode).toBe(403);
-      expect(res.body).toEqual({ error: 'NOTIFICATIONS_NOT_AUTHORIZED' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
     });
 
     it('should answer 502 when the hub fails or is unreachable', async () => {
       axiosGet.mockRejectedValue({ message: 'Boom', response: { status: 500 } });
       const failed = await request(app).get('/api/notifications').set('x-access-token', oidcToken);
       expect(failed.statusCode).toBe(502);
-      expect(failed.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
+      expect(failed.body.type).toBe('https://auth.startcloud.com/probs/internal');
 
       axiosGet.mockRejectedValue(new Error('ECONNREFUSED'));
       const unreachable = await request(app)
@@ -409,7 +416,7 @@ describe('Notifications API', () => {
     it('should require an identity-provider session to clear the inbox', async () => {
       const res = await request(app).delete('/api/notifications').set('x-access-token', localToken);
       expect(res.statusCode).toBe(401);
-      expect(res.body).toEqual({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
       expect(axiosDelete).not.toHaveBeenCalled();
     });
   });

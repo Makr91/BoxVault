@@ -619,7 +619,8 @@ describe('Architecture API', () => {
         .send({ name: 'error-fallback-arch' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should handle database errors during update', async () => {
@@ -763,7 +764,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
     });
 
     it('should return 404 if provider not found (delete.js line 116)', async () => {
@@ -774,7 +776,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
   });
 
@@ -836,7 +839,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
     });
 
     it('should return 404 if provider not found in version.providers array (findone.js line 132)', async () => {
@@ -861,7 +865,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
 
     it('should return 404 if architecture not found for public box (findone.js line 139)', async () => {
@@ -875,7 +880,8 @@ describe('Architecture API', () => {
 
       expect(res.statusCode).toBe(404);
       // Architecture lookup happens after provider check, so this path is reached
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should return 404 if architecture not found for member (findone.js line 146)', async () => {
@@ -889,7 +895,8 @@ describe('Architecture API', () => {
 
       expect(res.statusCode).toBe(404);
       // Architecture lookup happens after provider check
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toBeDefined();
     });
   });
 
@@ -984,7 +991,8 @@ describe('Architecture API', () => {
         .send({ description: 'Should fail' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('Architecture');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toContain('Architecture');
     });
   });
 
@@ -1000,7 +1008,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
 
       jest.restoreAllMocks();
     });
@@ -1013,7 +1022,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
     });
 
     it('should return 404 if no architectures to delete (deleteall.js lines 143-147)', async () => {
@@ -1032,7 +1042,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('No architectures found to delete');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('No architectures found to delete');
     });
 
     it('should return 403 if permission denied (deleteall.js line 95)', async () => {
@@ -1077,7 +1088,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
     });
 
     it('should return 404 if version not found in box.versions array (findall.js line 125)', async () => {
@@ -1097,7 +1109,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
 
       jest.restoreAllMocks();
     });
@@ -1124,7 +1137,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
 
       jest.restoreAllMocks();
     });
@@ -1155,7 +1169,8 @@ describe('Architecture API', () => {
         .set('x-access-token', nonMemberToken);
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Unauthorized');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('Unauthorized');
 
       await nonMember.destroy();
       await db.box.update({ isPublic: true }, { where: { name: testBox.name } });
@@ -1448,7 +1463,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should handle FINDALL organization not found (findall.js lines 91-95)', async () => {
@@ -1461,7 +1477,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Organization');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Organization');
     });
 
     it('should handle FINDALL with box not found via mocking (findall.js line 92)', async () => {
@@ -1474,7 +1491,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
     });
 
     it('should handle FINDALL error fallback (findall.js lines 158-162)', async () => {
@@ -1487,7 +1505,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should handle DELETE with box not found via organization mock (delete.js line 85)', async () => {
@@ -1598,7 +1617,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Organization');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Organization');
     });
 
     it('should handle FINDONE box not found (findone.js lines 131-135)', async () => {
@@ -1609,7 +1629,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box');
     });
 
     it('should handle FINDONE architecture not found final check (findone.js lines 176-179)', async () => {
@@ -1623,7 +1644,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Architecture');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Architecture');
 
       await db.box.update({ isPublic: true }, { where: { name: testBox.name } });
     });
@@ -1670,7 +1692,8 @@ describe('Architecture API', () => {
       // No token provided
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Access denied');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('Access denied');
 
       // Restore to public
       await db.box.update({ isPublic: true }, { where: { name: testBox.name } });
@@ -1686,7 +1709,8 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version');
     });
 
     it('should clean up old directory after rename if it still exists (update.js line 183)', async () => {

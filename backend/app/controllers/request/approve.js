@@ -1,8 +1,15 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { createExternalInvite } from '../../utils/externalInvites.js';
 import { extractOidcAccessToken } from '../favorites/helpers.js';
 const { Request, organization: Organization, user: User } = db;
+
+const RETRY_AFTER_SECONDS = '60';
+const UPSTREAM_TYPES = { 400: 'bad-request', 403: 'forbidden' };
+
+const badRequest = (req, res, key) =>
+  problem(res, req, { status: 400, type: 'bad-request', title: req.__(key) });
 
 /**
  * Approve a join request on an SSO-managed org: membership is IdP-truth, so
@@ -25,7 +32,7 @@ const approveViaIdpInvite = async (
 
   const oidcAccessToken = extractOidcAccessToken(req);
   if (!oidcAccessToken) {
-    return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+    return badRequest(req, res, 'invitations.requiresIdpAccount');
   }
 
   try {
@@ -38,11 +45,20 @@ const approveViaIdpInvite = async (
       delegationErr.response?.data?.message ||
       delegationErr.response?.data?.detail ||
       delegationErr.response?.data?.error;
-    if ((upstreamStatus === 400 || upstreamStatus === 403) && upstreamMessage) {
-      return res.status(upstreamStatus).send({ message: upstreamMessage });
+    if (UPSTREAM_TYPES[upstreamStatus] && upstreamMessage) {
+      return problem(res, req, {
+        status: upstreamStatus,
+        type: UPSTREAM_TYPES[upstreamStatus],
+        title: upstreamMessage,
+      });
     }
     log.error.error('Failed to delegate join-request approval to auth server:', delegationErr);
-    return res.status(502).send({ message: req.__('requests.approve.externalError') });
+    res.set('Retry-After', RETRY_AFTER_SECONDS);
+    return problem(res, req, {
+      status: 503,
+      type: 'send-failed',
+      title: req.__('requests.approve.externalError'),
+    });
   }
 
   await request.update({
@@ -117,33 +133,44 @@ const approveViaIdpInvite = async (
  *       400:
  *         description: Invalid role or request already processed
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Requires admin or owner role in organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Join request not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
+ *       503:
+ *         description: The identity provider could not take the invite the approval delegates; Retry-After names when to try again
+ *         headers:
+ *           Retry-After:
+ *             schema:
+ *               type: integer
+ *             description: Seconds to wait before retrying
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const approveJoinRequest = async (req, res) => {
   try {
@@ -157,19 +184,21 @@ export const approveJoinRequest = async (req, res) => {
     // Validate assigned role
     const validRoles = ['member', 'admin'];
     if (!validRoles.includes(assignedRole)) {
-      return res.status(400).send({
-        message: req.__('requests.invalidRole'),
-      });
+      return badRequest(req, res, 'requests.invalidRole');
     }
 
     // Verify request belongs to this organization
     const request = await Request.findByPk(requestId);
     if (!request || request.organization_id !== organizationId) {
-      return res.status(404).send({ message: req.__('requests.notFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('requests.notFound'),
+      });
     }
 
     if (request.status !== 'pending') {
-      return res.status(400).send({ message: req.__('requests.alreadyProcessed') });
+      return badRequest(req, res, 'requests.alreadyProcessed');
     }
 
     // SSO-managed orgs never get local membership rows — delegate to the IdP.
@@ -203,6 +232,10 @@ export const approveJoinRequest = async (req, res) => {
       requestId: req.params.requestId,
       reviewerId: req.userId,
     });
-    return res.status(500).send({ message: req.__('requests.approve.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('requests.approve.error'),
+    });
   }
 };

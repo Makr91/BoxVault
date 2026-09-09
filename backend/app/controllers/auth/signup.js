@@ -2,7 +2,7 @@
 import { hashSync } from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { log } from '../../utils/Logger.js';
-import { refuse } from '../../utils/problem.js';
+import { problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { user: User, role: Role, organization: Organization, invitation: Invitation, UserOrg } = db;
 import { sendVerificationMail } from '../mail/verification.js';
@@ -23,27 +23,27 @@ import { toSupportedLanguage } from '../../utils/userLanguage.js';
  * @returns {Promise<Object|null>} The sent rejection response, or null
  */
 const rejectInvalidInvitation = async (invitation, email, req, res) => {
+  const badRequest = title => problem(res, req, { status: 400, type: 'bad-request', title });
+
   if (!invitation) {
-    return res.status(400).send({ message: req.__('auth.invalidInvitationToken') });
+    return badRequest(req.__('auth.invalidInvitationToken'));
   }
 
   // Single-use: a consumed invitation can never register a second account.
   if (invitation.accepted) {
-    return res.status(400).send({ message: req.__('auth.invitationAlreadyUsed') });
+    return badRequest(req.__('auth.invitationAlreadyUsed'));
   }
 
   if (invitation.expired || invitation.expires < Date.now()) {
     // Set the expired flag to true
     await invitation.update({ expired: true });
-    return res.status(400).send({ message: req.__('auth.invitationTokenExpired') });
+    return badRequest(req.__('auth.invitationTokenExpired'));
   }
 
   // Email-bound: the invitation is addressed to a specific mailbox
   // (mirrors the accept-invitation controller).
   if (!email || email.toLowerCase() !== invitation.email.toLowerCase()) {
-    return res.status(400).send({
-      message: req.__('auth.invitationEmailMismatch', { email: invitation.email }),
-    });
+    return badRequest(req.__('auth.invitationEmailMismatch', { email: invitation.email }));
   }
 
   return null;
@@ -114,11 +114,17 @@ const getTakenValues = async (username, email) => {
  *                   type: string
  *                   example: "User registered successfully! If configured, a verification email will be sent to your email address."
  *       400:
- *         description: The invitation token is invalid, used, expired or addressed to another email
+ *         description: The invitation token is invalid, used, expired or addressed to another email, or its organization is gone
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: Local registration or new organizations are switched off
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: The username or email is already taken
  *         content:
@@ -134,9 +140,9 @@ const getTakenValues = async (username, email) => {
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const signup = async (req, res) => {
   const { username, email, password, invitation_token: invitationToken, name } = req.body || {};
@@ -151,7 +157,11 @@ export const signup = async (req, res) => {
     // always allowed.
     const existingUsers = await User.count();
     if (existingUsers > 0 && authConfig.auth?.jwt?.local_enabled === false) {
-      return res.status(403).send({ message: req.__('auth.localAuthDisabled') });
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('auth.localAuthDisabled'),
+      });
     }
 
     const passwordErrors = getPasswordPolicyErrors(password, '/password');
@@ -179,7 +189,11 @@ export const signup = async (req, res) => {
       // organization, which the local_allow_new_organizations knob gates (#18).
       // The very first account (fresh install bootstrap) is always allowed.
       if (existingUsers > 0 && !authConfig.auth?.local?.local_allow_new_organizations) {
-        return res.status(403).send({ message: req.__('auth.newOrganizationsDisabled') });
+        return problem(res, req, {
+          status: 403,
+          type: 'forbidden',
+          title: req.__('auth.newOrganizationsDisabled'),
+        });
       }
 
       organization = await Organization.create({
@@ -189,7 +203,11 @@ export const signup = async (req, res) => {
     }
 
     if (!organization) {
-      return res.status(400).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     const emailHash = generateEmailHash(email);
@@ -258,8 +276,10 @@ export const signup = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error during signup:', err);
-    return res.status(500).send({
-      message: req.__('auth.signupError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('auth.signupError'),
     });
   }
 };

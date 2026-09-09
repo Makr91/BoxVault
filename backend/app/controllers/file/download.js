@@ -4,8 +4,21 @@ import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { files: File } = db;
+
+const STATUS_TYPES = {
+  400: 'bad-request',
+  401: 'authentication',
+  403: 'forbidden',
+  404: 'not-found',
+  413: 'payload-too-large',
+  429: 'throttled',
+};
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
 
 // Helper to handle errors during download
 const handleError = (req, res, err) => {
@@ -19,15 +32,18 @@ const handleError = (req, res, err) => {
 
   log.error.error('Error in download controller:', err);
 
-  // Ensure JSON content type for error and remove file headers
-  res.setHeader('Content-Type', 'application/json');
+  // Remove the file headers before answering the problem body
   res.removeHeader('Content-Disposition');
   res.removeHeader('Content-Length');
   res.removeHeader('Content-Range');
   res.removeHeader('Accept-Ranges');
 
   const status = Number.isInteger(err?.status) && err.status >= 400 ? err.status : 500;
-  return res.status(status).send({ message: req.__('files.download.genericError') });
+  return problem(res, req, {
+    status,
+    type: STATUS_TYPES[status] || 'internal',
+    title: req.__('files.download.genericError'),
+  });
 };
 
 /**
@@ -117,28 +133,27 @@ const handleError = (req, res, err) => {
  *       403:
  *         description: Unauthorized access
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: File or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       416:
  *         description: Range not satisfiable
- *         headers:
- *           Content-Range:
+ *         content:
+ *           application/problem+json:
  *             schema:
- *               type: string
- *               example: "bytes *2048"
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const download = (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -158,7 +173,7 @@ const download = (req, res) => {
       decoded.providerName !== providerName ||
       decoded.architectureName !== architectureName
     ) {
-      return res.status(403).send({ message: req.__('files.invalidDownloadToken') });
+      return forbidden(req, res, 'files.invalidDownloadToken');
     }
   } else if (req.isVagrantRequest) {
     // For Vagrant requests, use the auth info set by vagrantHandler
@@ -169,7 +184,7 @@ const download = (req, res) => {
   } else if (!req.entities?.box?.isPublic) {
     // No token provided at all.
     // If the box is NOT public, this is an error.
-    return res.status(403).send({ message: req.__('files.noDownloadToken') });
+    return forbidden(req, res, 'files.noDownloadToken');
   }
 
   log.app.info('Auth context in download:', {
@@ -194,7 +209,11 @@ const download = (req, res) => {
     // Function to handle file download and increment counter
     const sendFile = async () => {
       if (!fs.existsSync(filePath)) {
-        return res.status(404).send({ message: req.__('files.notFound') });
+        return problem(res, req, {
+          status: 404,
+          type: 'not-found',
+          title: req.__('files.notFound'),
+        });
       }
 
       // Find and increment download count
@@ -239,12 +258,12 @@ const download = (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: req.__('files.download.unauthorized') });
+      return forbidden(req, res, 'files.download.unauthorized');
     }
 
     const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: req.__('files.download.unauthorized') });
+      return forbidden(req, res, 'files.download.unauthorized');
     }
 
     // User is member, allow download

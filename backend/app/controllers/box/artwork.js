@@ -7,8 +7,21 @@ import { getSecureBoxPath } from '../../utils/paths.js';
 import { ensureDirSync, safeExistsSync, safeUnlink } from '../../utils/fsHelper.js';
 import { log } from '../../utils/Logger.js';
 import { ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization, box: Box } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
+
+const tooLarge = (req, res, maxSizeMb) =>
+  problem(res, req, {
+    status: 413,
+    type: 'payload-too-large',
+    title: req.__('boxes.artwork.tooLarge', { size: maxSizeMb }),
+  });
 
 // Accepted upload Content-Type → stored filename; anything else is a 415.
 const ARTWORK_FILENAMES_BY_TYPE = {
@@ -154,33 +167,33 @@ const resolveRequestCaller = req => {
  *       403:
  *         description: Permission denied
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Box not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       413:
  *         description: Artwork larger than the configured size cap
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       415:
  *         description: Unsupported artwork content type
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const uploadArtwork = async (req, res) => {
   const { organization, name } = req.params;
@@ -188,13 +201,17 @@ export const uploadArtwork = async (req, res) => {
   const [rawContentType] = (req.headers['content-type'] || '').split(';');
   const fileName = ARTWORK_FILENAMES_BY_TYPE[rawContentType.trim().toLowerCase()];
   if (!fileName) {
-    return res.status(415).send({ message: req.__('boxes.artwork.unsupportedType') });
+    return problem(res, req, {
+      status: 415,
+      type: 'bad-request',
+      title: req.__('boxes.artwork.unsupportedType'),
+    });
   }
 
   const { maxSizeMb, maxBytes } = getArtworkSizeCap();
   const contentLength = Number(req.headers['content-length']);
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-    return res.status(413).send({ message: req.__('boxes.artwork.tooLarge', { size: maxSizeMb }) });
+    return tooLarge(req, res, maxSizeMb);
   }
 
   try {
@@ -202,21 +219,19 @@ export const uploadArtwork = async (req, res) => {
       where: { name, organizationId: req.organizationId },
     });
     if (!box) {
-      return res.status(404).send({ message: req.__('boxes.boxNotFound') });
+      return notFound(req, res, req.__('boxes.boxNotFound'));
     }
 
     // Same write rule as box update: owner, or org admin/owner role
     const isOwner = box.userId === req.userId;
     const canUpdate = isOwner || ['admin', 'owner'].includes(req.userOrgRole);
     if (!canUpdate) {
-      return res.status(403).send({ message: req.__('boxes.update.permissionDenied') });
+      return forbidden(req, res, 'boxes.update.permissionDenied');
     }
 
     const body = await readRawBody(req, maxBytes);
     if (body === null) {
-      return res
-        .status(413)
-        .send({ message: req.__('boxes.artwork.tooLarge', { size: maxSizeMb }) });
+      return tooLarge(req, res, maxSizeMb);
     }
 
     const boxDir = getSecureBoxPath(organization, name);
@@ -234,7 +249,11 @@ export const uploadArtwork = async (req, res) => {
     return res.send(updatedBox);
   } catch (err) {
     log.error.error('Error uploading box artwork:', err);
-    return res.status(500).send({ message: req.__('boxes.update.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.update.error'),
+    });
   }
 };
 
@@ -282,21 +301,21 @@ export const uploadArtwork = async (req, res) => {
  *       403:
  *         description: Unauthorized access to private box
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Box, organization, or artwork not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getArtwork = async (req, res) => {
   const { organization, name } = req.params;
@@ -306,36 +325,45 @@ export const getArtwork = async (req, res) => {
       where: { name: organization },
     });
     if (!organizationData) {
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const box = await Box.findOne({
       where: { name, organizationId: organizationData.id },
     });
     if (!box) {
-      return res.status(404).send({ message: req.__('boxes.boxNotFoundWithName', { name }) });
+      return notFound(req, res, req.__('boxes.boxNotFoundWithName', { name }));
     }
 
     // Private boxes: same access rules as box findone (org member or box owner)
     if (!box.isPublic) {
       const caller = resolveRequestCaller(req);
       if (!caller) {
-        return res.status(403).send({ message: req.__('boxes.unauthorized') });
+        return forbidden(req, res, 'boxes.unauthorized');
       }
       const membership = await resolveOrgMembership(caller, organizationData.id);
       const hasAccess = !!membership || ownsBox(caller, box, membership);
       if (!hasAccess) {
-        return res.status(403).send({ message: req.__('boxes.unauthorized') });
+        return forbidden(req, res, 'boxes.unauthorized');
       }
     }
 
     const contentType = box.artwork ? ARTWORK_TYPES_BY_FILENAME[box.artwork] : null;
     const artworkPath = contentType ? getSecureBoxPath(organization, name, box.artwork) : null;
     if (!artworkPath || !safeExistsSync(artworkPath)) {
-      return res.status(404).send({ message: req.__('boxes.artwork.notFound') });
+      return notFound(req, res, req.__('boxes.artwork.notFound'));
     }
+
+    const streamFailed = () =>
+      problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('boxes.findOne.error', { name }),
+      });
 
     res.set('Content-Type', contentType);
     const stream = fs.createReadStream(artworkPath);
@@ -344,12 +372,16 @@ export const getArtwork = async (req, res) => {
       if (res.headersSent) {
         res.end();
       } else {
-        res.status(500).send({ message: req.__('boxes.findOne.error', { name }) });
+        streamFailed();
       }
     });
     return stream.pipe(res);
   } catch (err) {
     log.error.error('Error retrieving box artwork:', err);
-    return res.status(500).send({ message: req.__('boxes.findOne.error', { name }) });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.findOne.error', { name }),
+    });
   }
 };

@@ -2,6 +2,7 @@
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { files: File } = db;
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
@@ -101,90 +102,36 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  *                 path:
  *                   type: string
  *                   description: File path on server
+ *       400:
+ *         description: An upload header breaks its rule
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: The caller neither owns the box nor administers the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Architecture or file not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *       408:
- *         description: Upload timeout
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "UPLOAD_TIMEOUT"
- *                 message:
- *                   type: string
- *                   example: "Upload timed out - Request took too long to complete"
- *                 details:
- *                   type: object
- *                   properties:
- *                     duration:
- *                       type: number
- *                     maxFileSize:
- *                       type: number
+ *               $ref: '#/components/schemas/Problem'
  *       413:
  *         description: File too large
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "FILE_TOO_LARGE"
- *                 message:
- *                   type: string
- *                   example: "File size cannot be larger than 10GB!"
- *                 details:
- *                   type: object
- *                   properties:
- *                     maxSize:
- *                       type: number
- *                     duration:
- *                       type: number
- *       507:
- *         description: Insufficient storage space
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "NO_STORAGE_SPACE"
- *                 message:
- *                   type: string
- *                   example: "Not enough storage space available"
- *                 details:
- *                   type: object
- *                   properties:
- *                     path:
- *                       type: string
- *                     duration:
- *                       type: number
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 error:
- *                   type: string
- *                 code:
- *                   type: string
- *                 details:
- *                   type: object
- *                   properties:
- *                     duration:
- *                       type: number
+ *               $ref: '#/components/schemas/Problem'
  */
 const update = (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -212,8 +159,10 @@ const update = (req, res) => {
     const canUpdate = canWriteBox(req, box, membership);
 
     if (!canUpdate) {
-      return res.status(403).send({
-        message: req.__('files.update.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('files.update.permissionDenied'),
       });
     }
 
@@ -225,8 +174,10 @@ const update = (req, res) => {
     });
 
     if (!fileRecord) {
-      return res.status(404).send({
-        message: req.__('files.notFoundUploadFirst'),
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('files.notFoundUploadFirst'),
       });
     }
 
@@ -235,12 +186,12 @@ const update = (req, res) => {
     return undefined;
   })().catch(err => {
     log.error.error('File update error:', err);
+    log.app.info('Update failed after', { seconds: (Date.now() - uploadStartTime) / 1000 });
 
-    return res.status(500).send({
-      message: req.__('files.update.error', { file: '' }),
-      details: {
-        duration: (Date.now() - uploadStartTime) / 1000,
-      },
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.update.error', { file: '' }),
     });
   });
 };

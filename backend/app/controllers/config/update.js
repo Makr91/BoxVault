@@ -56,15 +56,15 @@ import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpe
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Admin privileges required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: The name is not one of the files status.config lists
  *         content:
@@ -80,9 +80,9 @@ import { writeConfig, restoreSecrets, requiresRestart, mergeDeep } from './helpe
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const updateConfig = async (req, res) => {
   const { configName } = req.params;
@@ -109,6 +109,10 @@ export const updateConfig = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error updating config:', err);
-    return res.status(500).send({ message: req.__('config.updateError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('config.updateError'),
+    });
   }
 };

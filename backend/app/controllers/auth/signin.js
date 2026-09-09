@@ -6,8 +6,15 @@ import { getJwtClaimOptions } from '../../utils/auth.js';
 import { hashServiceAccountToken, touchServiceAccount } from '../../utils/serviceAccountAuth.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { user: User, role: Role, organization: Organization, service_account: ServiceAccount } = db;
+
+const unauthenticated = (req, res, key) =>
+  problem(res, req, { status: 401, type: 'authentication', title: req.__(key) });
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
 
 /**
  * Look up a regular user for signin, with roles and primary organization.
@@ -63,33 +70,30 @@ const findSigninServiceAccount = (username, password) =>
  * @param {string} password - Presented password
  * @param {Object} authConfig - Loaded auth config
  * @param {Object} req - Express request (for i18n)
- * @returns {{status: number, body: Object}|null}
+ * @returns {{status: number, type: string, title: string}|null}
  */
 const getLocalSigninRejection = (user, password, authConfig, req) => {
   // Username/password authentication can be switched off entirely (#18)
   if (authConfig.auth?.jwt?.local_enabled === false) {
-    return { status: 403, body: { message: req.__('auth.localAuthDisabled') } };
+    return { status: 403, type: 'forbidden', title: req.__('auth.localAuthDisabled') };
   }
 
   const passwordIsValid = Boolean(user.password) && compareSync(password, user.password);
   if (!passwordIsValid) {
-    return {
-      status: 401,
-      body: { accessToken: null, message: req.__('auth.invalidCredentials') },
-    };
+    return { status: 401, type: 'authentication', title: req.__('auth.invalidCredentials') };
   }
 
   // Checked after password verification so suspension status is only
   // revealed to the account holder.
   if (user.suspended) {
-    return { status: 403, body: { message: req.__('auth.accountSuspended') } };
+    return { status: 403, type: 'forbidden', title: req.__('auth.accountSuspended') };
   }
 
   // Email-verification enforcement for local accounts (#18): when the knob
   // is on, unverified accounts may not sign in. Checked after password
   // verification so the status is only revealed to the account holder.
   if (authConfig.auth?.local?.local_require_email_verification && !user.verified) {
-    return { status: 403, body: { message: req.__('auth.emailNotVerified') } };
+    return { status: 403, type: 'forbidden', title: req.__('auth.emailNotVerified') };
   }
 
   return null;
@@ -251,16 +255,15 @@ export const buildSigninToken = ({
  *       401:
  *         description: Invalid credentials or expired service account
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                   nullable: true
- *                 message:
- *                   type: string
- *                   example: "Invalid username or password."
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: Local authentication is off, or the account is suspended or unverified
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: The username or password is missing
  *         content:
@@ -270,9 +273,9 @@ export const buildSigninToken = ({
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const signin = async (req, res) => {
   try {
@@ -290,28 +293,26 @@ export const signin = async (req, res) => {
       if (serviceAccount) {
         // expiresAt: null = never expires
         if (serviceAccount.expiresAt && new Date() > serviceAccount.expiresAt) {
-          return res.status(401).send({ message: req.__('auth.serviceAccountExpired') });
+          return unauthenticated(req, res, 'auth.serviceAccountExpired');
         }
         // Service accounts impersonate their owning user — a suspended owner
         // may not sign in through their API keys either.
         if (serviceAccount.user?.suspended) {
-          return res.status(403).send({ message: req.__('auth.accountSuspended') });
+          return forbidden(req, res, 'auth.accountSuspended');
         }
         await touchServiceAccount(serviceAccount.id);
         user = serviceAccount;
         isServiceAccount = true;
       } else {
         // Uniform response for unknown username and wrong password (no enumeration)
-        return res
-          .status(401)
-          .send({ accessToken: null, message: req.__('auth.invalidCredentials') });
+        return unauthenticated(req, res, 'auth.invalidCredentials');
       }
     }
 
     if (!isServiceAccount) {
       const rejection = getLocalSigninRejection(user, password, authConfig, req);
       if (rejection) {
-        return res.status(rejection.status).send(rejection.body);
+        return problem(res, req, rejection);
       }
     }
 
@@ -355,6 +356,10 @@ export const signin = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error in signin:', err);
-    return res.status(500).send({ message: req.__('auth.signinError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('auth.signinError'),
+    });
   }
 };

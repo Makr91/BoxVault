@@ -1,7 +1,11 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { notifyJoinRequestCreated } from './notifications.js';
 const { Request, UserOrg, organization: Organization, user: User } = db;
+
+const badRequest = (req, res, key) =>
+  problem(res, req, { status: 400, type: 'bad-request', title: req.__(key) });
 
 /**
  * @swagger
@@ -58,27 +62,27 @@ const { Request, UserOrg, organization: Organization, user: User } = db;
  *       400:
  *         description: Invalid request - already a member or already has pending request
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Organization does not allow join requests
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const createJoinRequest = async (req, res) => {
   try {
@@ -89,30 +93,32 @@ export const createJoinRequest = async (req, res) => {
     // Find the organization
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('requests.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('requests.organizationNotFound'),
+      });
     }
 
     // Check if organization allows join requests
     if (organization.access_mode !== 'request_to_join') {
-      return res.status(403).send({
-        message: req.__('requests.joinRequestsNotAllowed'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('requests.joinRequestsNotAllowed'),
       });
     }
 
     // Check if user is already a member
     const existingMembership = await UserOrg.findUserOrgRole(userId, organization.id);
     if (existingMembership) {
-      return res.status(400).send({
-        message: req.__('requests.alreadyMember'),
-      });
+      return badRequest(req, res, 'requests.alreadyMember');
     }
 
     // Check if user already has a pending request
     const hasPending = await Request.hasPendingRequest(userId, organization.id);
     if (hasPending) {
-      return res.status(400).send({
-        message: req.__('requests.alreadyPending'),
-      });
+      return badRequest(req, res, 'requests.alreadyPending');
     }
 
     // Create the join request
@@ -144,6 +150,10 @@ export const createJoinRequest = async (req, res) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: req.__('requests.create.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('requests.create.error'),
+    });
   }
 };

@@ -2,7 +2,12 @@
   "type": "object",
   "required": ["access_mode"],
   "properties": {
-    "access_mode": { "type": "string", "enum": ["private", "invite_only", "request_to_join"] },
+    "access_mode": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "enum": ["private", "invite_only", "request_to_join"]
+    },
     "default_role": { "type": "string", "enum": ["member", "admin"] }
   }
 }

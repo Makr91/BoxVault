@@ -1,6 +1,9 @@
 // test.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { createTransporter, getSmtpConfig } from './helpers.js';
+
+const RETRY_AFTER_SECONDS = '60';
 
 /**
  * @swagger
@@ -27,31 +30,26 @@ import { createTransporter, getSmtpConfig } from './helpers.js';
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: The caller is not a global admin, or is a service account other than a live superadmin one
  *         content:
  *           application/problem+json:
  *             schema:
  *               $ref: '#/components/schemas/Problem'
- *       500:
- *         description: SMTP configuration error or email sending failed
- *         content:
- *           application/json:
+ *       503:
+ *         description: The SMTP configuration is unusable or the test mail could not be sent; Retry-After names when to try again
+ *         headers:
+ *           Retry-After:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Error sending test email"
- *                 error:
- *                   type: string
- *                   example: "SMTP connection failed"
- *                 stack:
- *                   type: string
- *                   description: "Error stack trace (for debugging)"
+ *               type: integer
+ *             description: Seconds to wait before retrying
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const testSmtp = async (req, res) => {
   log.app.info('Testing SMTP connection...');
@@ -86,8 +84,11 @@ export const testSmtp = async (req, res) => {
     if (error.response) {
       log.error.error('SMTP Response:', error.response);
     }
-    return res.status(500).send({
-      message: req.__('mail.errorSendingEmail'),
+    res.set('Retry-After', RETRY_AFTER_SECONDS);
+    return problem(res, req, {
+      status: 503,
+      type: 'send-failed',
+      title: req.__('mail.errorSendingEmail'),
     });
   }
 };

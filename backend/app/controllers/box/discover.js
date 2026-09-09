@@ -1,5 +1,6 @@
 // discover.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
 import { sumBoxDownloads } from './helpers.js';
@@ -33,9 +34,9 @@ const { Op } = Sequelize;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const discoverAll = async (req, res) => {
   try {
@@ -95,8 +96,10 @@ export const discoverAll = async (req, res) => {
     return res.send(boxes.map(box => ({ ...box.toJSON(), downloadCount: sumBoxDownloads(box) })));
   } catch (err) {
     log.error.error('Error discovering boxes:', err);
-    return res.status(500).send({
-      message: req.__('boxes.discover.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.discover.error'),
     });
   }
 };

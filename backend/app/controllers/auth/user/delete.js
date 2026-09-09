@@ -1,6 +1,7 @@
 // delete.js
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
+import { problem } from '../../../utils/problem.js';
 const { user: User, UserOrg } = db;
 
 /**
@@ -37,24 +38,21 @@ const { user: User, UserOrg } = db;
  *       400:
  *         description: User is the sole owner of an organization with other members
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: User not found
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Could not delete User with id=1"
+ *               $ref: '#/components/schemas/Problem'
  */
 export const deleteUser = async (req, res) => {
   const { userId } = req.params;
@@ -62,7 +60,11 @@ export const deleteUser = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('users.userNotFound'),
+      });
     }
 
     // Account destruction is refused while the user is the only owner of any
@@ -83,8 +85,10 @@ export const deleteUser = async (req, res) => {
         // eslint-disable-next-line no-await-in-loop
         const memberCount = await UserOrg.count({ where: { organization_id: orgId } });
         if (memberCount > 1) {
-          return res.status(400).send({
-            message: req.__('users.cannotDeleteSoleOwner', {
+          return problem(res, req, {
+            status: 400,
+            type: 'bad-request',
+            title: req.__('users.cannotDeleteSoleOwner', {
               organization: ownerMembership.organization?.name || String(orgId),
             }),
           });
@@ -96,8 +100,10 @@ export const deleteUser = async (req, res) => {
     return res.status(200).send({ message: req.__('users.deleted') });
   } catch (err) {
     log.error.error('Error deleting user account:', { error: err.message, userId });
-    return res.status(500).send({
-      message: req.__('users.delete.error', { userId }),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('users.delete.error', { userId }),
     });
   }
 };

@@ -1,5 +1,6 @@
 // findonewithusers.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization, user: User, role: Role, box: Box, UserOrg } = db;
 
@@ -67,15 +68,15 @@ const { organization: Organization, user: User, role: Role, box: Box, UserOrg } 
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findOneWithUsers = async (req, res) => {
   const { organization: organizationName } = req.params;
@@ -128,8 +129,10 @@ export const findOneWithUsers = async (req, res) => {
     return res.status(200).send(users);
   } catch (err) {
     log.error.error('Error in findOneWithUsers:', err);
-    return res.status(500).send({
-      message: req.__('organizations.findUsersError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.findUsersError'),
     });
   }
 };

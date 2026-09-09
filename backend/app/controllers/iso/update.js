@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, refuse } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from '../box/helpers.js';
 import { notifyIsoPublished } from './notifications.js';
 const { iso: ISO, organization: Organization } = db;
@@ -82,7 +82,7 @@ const update = async (req, res) => {
       where: { name, organizationId: req.organizationId },
     });
     if (!iso) {
-      return res.status(404).send({ message: req.__('isos.notFound') });
+      return problem(res, req, { status: 404, type: 'not-found', title: req.__('isos.notFound') });
     }
 
     if (updatedName && updatedName !== name) {
@@ -112,7 +112,11 @@ const update = async (req, res) => {
     return res.send(updatedIso);
   } catch (err) {
     log.error.error('Error updating ISO', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

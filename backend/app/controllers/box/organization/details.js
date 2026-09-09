@@ -7,6 +7,7 @@ import {
   findServiceAccountByRawToken,
 } from '../../../utils/serviceAccountAuth.js';
 import { resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { problem } from '../../../utils/problem.js';
 import { sumBoxDownloads } from '../helpers.js';
 import db from '../../../models/index.js';
 const {
@@ -51,15 +52,15 @@ const { verify } = jwt;
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
@@ -73,7 +74,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
     authConfig = configLoader.loadConfig('auth');
   } catch (e) {
     log.error.error(`Failed to load auth configuration: ${e.message}`);
-    return res.status(500).send({ message: 'Configuration error' });
+    return problem(res, req, { status: 500, type: 'internal', title: 'Configuration error' });
   }
 
   try {
@@ -141,7 +142,11 @@ export const getOrganizationBoxDetails = async (req, res) => {
     });
 
     if (!organizationData) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     // Get all boxes for this organization using organizationId
@@ -272,8 +277,10 @@ export const getOrganizationBoxDetails = async (req, res) => {
     return res.status(200).send(formattedBoxes);
   } catch (err) {
     log.error.error('Error retrieving organization box details:', err);
-    return res.status(500).send({
-      message: req.__('boxes.organizationDetails.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.organizationDetails.error'),
     });
   }
 };

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { Request } = db;
 
 /**
@@ -33,21 +34,21 @@ const { Request } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Join request not found or not owned by user
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const cancelJoinRequest = async (req, res) => {
   try {
@@ -64,8 +65,10 @@ export const cancelJoinRequest = async (req, res) => {
     });
 
     if (!request) {
-      return res.status(404).send({
-        message: req.__('requests.notFoundOrNotCancellable'),
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('requests.notFoundOrNotCancellable'),
       });
     }
 
@@ -85,6 +88,10 @@ export const cancelJoinRequest = async (req, res) => {
       requestId: req.params.requestId,
       userId: req.userId,
     });
-    return res.status(500).send({ message: req.__('requests.cancel.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('requests.cancel.error'),
+    });
   }
 };

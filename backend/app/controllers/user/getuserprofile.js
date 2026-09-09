@@ -2,6 +2,7 @@
 import { loadConfig } from '../../utils/config-loader.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { buildSigninToken } from '../auth/signin.js';
 import { idpClaimsOf } from '../auth/token.js';
@@ -70,15 +71,15 @@ const { user: User, role: Role, organization: Organization } = db;
  *       404:
  *         description: User not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getUserProfile = async (req, res) => {
   try {
@@ -101,7 +102,11 @@ export const getUserProfile = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('users.userNotFound'),
+      });
     }
 
     const { userOrganizations: organizations } = await resolveUserOrganizations(user);
@@ -136,6 +141,10 @@ export const getUserProfile = async (req, res) => {
     });
   } catch (error) {
     log.error.error('Error retrieving user profile:', error);
-    return res.status(500).send({ message: req.__('users.profile.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('users.profile.error'),
+    });
   }
 };

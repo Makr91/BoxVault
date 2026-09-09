@@ -3,7 +3,11 @@ import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 import { deleteExternalInvite } from '../../../utils/externalInvites.js';
 import { extractOidcAccessToken } from '../../favorites/helpers.js';
+import { problem } from '../../../utils/problem.js';
 const { invitation: Invitation, organization: Organization } = db;
+
+const notFound = (req, res) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__('invitations.notFound') });
 
 /**
  * @swagger
@@ -32,18 +36,30 @@ const { invitation: Invitation, organization: Organization } = db;
  *                 message:
  *                   type: string
  *                   example: "Invitation deleted successfully."
+ *       400:
+ *         description: The organization is managed by the identity provider and the caller has no identity-provider session
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Invitation not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       502:
+ *         description: The identity provider did not answer the deletion
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const deleteInvitation = async (req, res) => {
   const { invitationId } = req.params;
@@ -64,22 +80,30 @@ export const deleteInvitation = async (req, res) => {
         !organization.external_org_id ||
         !inviteId
       ) {
-        return res.status(404).send({ message: req.__('invitations.notFound') });
+        return notFound(req, res);
       }
 
       const oidcAccessToken = extractOidcAccessToken(req);
       if (!oidcAccessToken) {
-        return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+        return problem(res, req, {
+          status: 400,
+          type: 'bad-request',
+          title: req.__('invitations.requiresIdpAccount'),
+        });
       }
       try {
         await deleteExternalInvite(organization, inviteId, oidcAccessToken);
         return res.status(200).send({ message: req.__('invitations.deleted') });
       } catch (delegationErr) {
         if (delegationErr.response?.status === 404) {
-          return res.status(404).send({ message: req.__('invitations.notFound') });
+          return notFound(req, res);
         }
         log.error.error('Failed to delete invitation on auth server:', delegationErr);
-        return res.status(502).send({ message: req.__('invitations.delete.error') });
+        return problem(res, req, {
+          status: 502,
+          type: 'internal',
+          title: req.__('invitations.delete.error'),
+        });
       }
     }
 
@@ -89,8 +113,10 @@ export const deleteInvitation = async (req, res) => {
     return res.status(200).send({ message: req.__('invitations.deleted') });
   } catch (err) {
     log.error.error('Error in deleteInvitation:', err);
-    return res.status(500).send({
-      message: req.__('invitations.delete.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('invitations.delete.error'),
     });
   }
 };

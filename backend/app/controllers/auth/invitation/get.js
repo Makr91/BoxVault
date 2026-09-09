@@ -3,6 +3,7 @@ import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 import { listExternalInvites } from '../../../utils/externalInvites.js';
 import { extractOidcAccessToken } from '../../favorites/helpers.js';
+import { problem } from '../../../utils/problem.js';
 const { organization: Organization, invitation: Invitation } = db;
 
 /**
@@ -60,18 +61,30 @@ const { organization: Organization, invitation: Invitation } = db;
  *                     type: string
  *                     format: date-time
  *                     description: Creation date
+ *       400:
+ *         description: The organization is managed by the identity provider and the caller has no identity-provider session
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       502:
+ *         description: The identity provider did not answer the listing
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getActiveInvitations = async (req, res) => {
   const { organization: organizationName } = req.params;
@@ -92,7 +105,11 @@ export const getActiveInvitations = async (req, res) => {
     if (organization.external_issuer) {
       const oidcAccessToken = extractOidcAccessToken(req);
       if (!oidcAccessToken) {
-        return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+        return problem(res, req, {
+          status: 400,
+          type: 'bad-request',
+          title: req.__('invitations.requiresIdpAccount'),
+        });
       }
       try {
         const externalInvites = await listExternalInvites(organization, oidcAccessToken);
@@ -112,7 +129,11 @@ export const getActiveInvitations = async (req, res) => {
         return res.status(200).send(mapped);
       } catch (delegationErr) {
         log.error.error('Failed to list invitations from auth server:', delegationErr);
-        return res.status(502).send({ message: req.__('invitations.get.error') });
+        return problem(res, req, {
+          status: 502,
+          type: 'internal',
+          title: req.__('invitations.get.error'),
+        });
       }
     }
 
@@ -136,8 +157,10 @@ export const getActiveInvitations = async (req, res) => {
     return res.status(200).send(activeInvitations);
   } catch (err) {
     log.error.error('Error in getActiveInvitations:', err);
-    return res.status(500).send({
-      message: req.__('invitations.get.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('invitations.get.error'),
     });
   }
 };

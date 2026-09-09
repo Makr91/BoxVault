@@ -6,8 +6,15 @@ import {
 } from '../utils/serviceAccountAuth.js';
 import { verifyDownloadToken } from '../utils/auth.js';
 import db from '../models/index.js';
+import { problem } from '../utils/problem.js';
 
 const { service_account: ServiceAccount, user: User, Sequelize } = db;
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
+
+const unauthenticated = (req, res, key) =>
+  problem(res, req, { status: 401, type: 'authentication', title: req.__(key) });
 
 const validateBasicAuth = async (username, password) => {
   try {
@@ -66,7 +73,7 @@ const downloadAuth = async (req, res, next) => {
       if (decoded.userId) {
         const tokenUser = await User.findByPk(decoded.userId);
         if (tokenUser?.suspended) {
-          return res.status(403).send({ message: req.__('auth.accountSuspended') });
+          return forbidden(req, res, 'auth.accountSuspended');
         }
       }
 
@@ -77,7 +84,7 @@ const downloadAuth = async (req, res, next) => {
       return next();
     } catch {
       // Already logged by verifyDownloadToken
-      return res.status(403).send({ message: req.__('files.invalidDownloadToken') });
+      return forbidden(req, res, 'files.invalidDownloadToken');
     }
   }
 
@@ -89,7 +96,7 @@ const downloadAuth = async (req, res, next) => {
     const separatorIndex = decoded.indexOf(':');
 
     if (separatorIndex === -1) {
-      return res.status(401).send({ message: req.__('auth.invalidBasicAuthFormat') });
+      return unauthenticated(req, res, 'auth.invalidBasicAuthFormat');
     }
 
     const username = decoded.substring(0, separatorIndex);
@@ -97,11 +104,11 @@ const downloadAuth = async (req, res, next) => {
 
     const authInfo = await validateBasicAuth(username, password);
     if (!authInfo) {
-      return res.status(401).send({ message: req.__('auth.invalidCredentials') });
+      return unauthenticated(req, res, 'auth.invalidCredentials');
     }
 
     if (authInfo.suspended) {
-      return res.status(403).send({ message: req.__('auth.accountSuspended') });
+      return forbidden(req, res, 'auth.accountSuspended');
     }
 
     req.userId = authInfo.userId;

@@ -28,11 +28,32 @@ const buildResponse = () => {
 };
 
 describe('validateValue', () => {
-  it('should report a required blank once and let an optional blank pass', () => {
-    expect(validateValue({ type: 'string', required: true }, '   ')).toEqual([
+  it('should report a missing required value once and let an optional absence pass', () => {
+    expect(validateValue({ type: 'string', required: true }, undefined)).toEqual([
+      { pointer: '', rule: 'required', params: {} },
+    ]);
+    expect(validateValue({ type: 'string', required: true }, null)).toEqual([
       { pointer: '', rule: 'required', params: {} },
     ]);
     expect(validateValue({ type: 'string' }, undefined)).toEqual([]);
+  });
+
+  it('should judge a blank string by minLength and the nonBlank pattern, never by required', () => {
+    const rule = { type: 'string', required: true, minLength: 1, pattern: '\\S' };
+    expect(validateValue({ type: 'string', required: true }, '   ')).toEqual([]);
+    expect(validateValue(rule, '')).toEqual([
+      { pointer: '', rule: 'pattern', params: { pattern: 'nonBlank' } },
+    ]);
+    expect(validateValue(rule, '   ')).toEqual([
+      { pointer: '', rule: 'pattern', params: { pattern: 'nonBlank' } },
+    ]);
+    expect(validateValue(rule, ' x ')).toEqual([]);
+    expect(
+      validateValue({ $ref: '#/$defs/slug', minLength: 1, pattern: '\\S' }, '  ', DOCUMENT)
+    ).toEqual([{ pointer: '', rule: 'pattern', params: { pattern: 'nonBlank' } }]);
+    expect(
+      validateValue({ $ref: '#/$defs/slug', minLength: 1, pattern: '\\S' }, 'bad_name', DOCUMENT)
+    ).toEqual([{ pointer: '', rule: 'pattern', params: { pattern: 'slug' } }]);
   });
 
   it('should evaluate the type before anything else', () => {
@@ -146,7 +167,6 @@ describe('validateObject', () => {
       { pointer: '/name', rule: 'pattern', params: { pattern: 'slug' } },
       { pointer: '/deprecation_reason', rule: 'required', params: {} },
       { pointer: '/sql/port', rule: 'range', params: { minimum: 1, maximum: 65535 } },
-      { pointer: '/sql/host', rule: 'required', params: {} },
       { pointer: '/providers/idp/issuer', rule: 'format', params: { format: 'uri' } },
       { pointer: '/providers/other/issuer', rule: 'required', params: {} },
       { pointer: '/levels/app', rule: 'enum', params: { enum: 'info' } },
@@ -158,6 +178,10 @@ describe('validateObject', () => {
       { pointer: '/name', rule: 'required', params: {} },
     ]);
     expect(validateObject(schema, { name: 'fine', deprecated: false }, DOCUMENT)).toEqual([]);
+    const blank = { name: '', sql: { dialect: 'mysql', host: '' } };
+    expect(validateObject(schema, blank, DOCUMENT)).toEqual([
+      { pointer: '/name', rule: 'minLength', params: { minLength: 1 } },
+    ]);
   });
 });
 
@@ -190,6 +214,45 @@ describe('validateBody', () => {
       ['/deprecation_reason', 'required'],
     ]);
     expect(body.errors[1].detail).toBe('validation.type:{"field":"release_notes","type":"string"}');
+  });
+
+  it('should refuse a blank required member as nonBlank', () => {
+    const res = buildResponse();
+    const next = jest.fn();
+    validateBody('login')(buildRequest({ username: '   ', password: '' }), res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(422);
+    const [[body]] = res.send.mock.calls;
+    expect(body.errors).toEqual([
+      expect.objectContaining({
+        pointer: '/username',
+        rule: 'pattern',
+        params: { pattern: 'nonBlank' },
+      }),
+      expect.objectContaining({
+        pointer: '/password',
+        rule: 'pattern',
+        params: { pattern: 'nonBlank' },
+      }),
+    ]);
+  });
+
+  it('should demand a deprecation reason only while deprecated is true', () => {
+    const next = jest.fn();
+    validateBody('version', { partial: true })(
+      buildRequest({ deprecated: false }),
+      buildResponse(),
+      next
+    );
+    expect(next).toHaveBeenCalledTimes(1);
+    const res = buildResponse();
+    validateBody('version', { partial: true })(buildRequest({ deprecated: true }), res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(422);
+    const [[body]] = res.send.mock.calls;
+    expect(body.errors).toEqual([
+      expect.objectContaining({ pointer: '/deprecation_reason', rule: 'required' }),
+    ]);
   });
 
   it('should let a valid body through and drop required on a partial form', () => {

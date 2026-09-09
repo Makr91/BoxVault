@@ -2,7 +2,10 @@
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 const { architectures: Architecture, providers: Provider } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
 
 /**
  * @swagger
@@ -59,21 +62,21 @@ const { architectures: Architecture, providers: Provider } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, box, version, provider, or architecture not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const _delete = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -84,9 +87,11 @@ const _delete = async (req, res) => {
     });
 
     if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const box = await db.box.findOne({
@@ -94,9 +99,7 @@ const _delete = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
+      return notFound(req, res, req.__('boxes.boxNotFoundInOrg', { boxId, organization }));
     }
 
     // Check if user owns the box OR has admin/owner role
@@ -104,8 +107,10 @@ const _delete = async (req, res) => {
     const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
-      return res.status(403).send({
-        message: req.__('architectures.delete.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('architectures.delete.permissionDenied'),
       });
     }
 
@@ -114,9 +119,11 @@ const _delete = async (req, res) => {
     });
 
     if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization })
+      );
     }
 
     const provider = await Provider.findOne({
@@ -124,13 +131,11 @@ const _delete = async (req, res) => {
     });
 
     if (!provider) {
-      return res.status(404).send({
-        message: req.__('providers.providerNotFoundInVersion', {
-          providerName,
-          versionNumber,
-          boxId,
-        }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('providers.providerNotFoundInVersion', { providerName, versionNumber, boxId })
+      );
     }
 
     const deleted = await Architecture.destroy({
@@ -141,13 +146,13 @@ const _delete = async (req, res) => {
       return res.send({ message: req.__('architectures.deleted') });
     }
 
-    return res.status(404).send({
-      message: req.__('architectures.notFound'),
-    });
+    return notFound(req, res, req.__('architectures.notFound'));
   } catch (err) {
     log.error.error('Error deleting architecture:', err);
-    return res.status(500).send({
-      message: req.__('architectures.delete.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('architectures.delete.error'),
     });
   }
 };

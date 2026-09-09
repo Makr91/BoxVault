@@ -8,6 +8,11 @@ import { loadConfig } from '../../../utils/config-loader.js';
 import { createExternalInvite } from '../../../utils/externalInvites.js';
 import { resolveEmailLanguage } from '../../../utils/userLanguage.js';
 import { extractOidcAccessToken } from '../../favorites/helpers.js';
+import { problem, conflict } from '../../../utils/problem.js';
+
+const RETRY_AFTER_SECONDS = '60';
+
+const UPSTREAM_TYPES = { 400: 'bad-request', 403: 'forbidden' };
 
 // Parity with the auth-server rule: only org owners may invite admins — org
 // admins invite members only. Global admins arrive stamped as org 'owner' by
@@ -28,12 +33,21 @@ const surfaceDelegationError = (req, res, delegationErr) => {
     delegationErr.response?.data?.message ||
     delegationErr.response?.data?.detail ||
     delegationErr.response?.data?.error;
-  if ((upstreamStatus === 400 || upstreamStatus === 403) && upstreamMessage) {
-    return res.status(upstreamStatus).send({ message: upstreamMessage });
+  if (UPSTREAM_TYPES[upstreamStatus] && upstreamMessage) {
+    return problem(res, req, {
+      status: upstreamStatus,
+      type: UPSTREAM_TYPES[upstreamStatus],
+      title: upstreamMessage,
+    });
   }
   log.error.error('Failed to delegate invitation to auth server:', delegationErr);
   // Their pending-invite replacement makes a re-POST safe after any failure.
-  return res.status(502).send({ message: req.__('invitations.send.externalError') });
+  res.set('Retry-After', RETRY_AFTER_SECONDS);
+  return problem(res, req, {
+    status: 503,
+    type: 'send-failed',
+    title: req.__('invitations.send.externalError'),
+  });
 };
 
 // Contract v2 Mode B: invites are human actions, so the call rides the acting
@@ -44,12 +58,20 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
     log.error.error('External org has no external_org_id; cannot delegate invitation', {
       organizationId: organization.id,
     });
-    return res.status(500).send({ message: req.__('invitations.send.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('invitations.send.error'),
+    });
   }
 
   const oidcAccessToken = extractOidcAccessToken(req);
   if (!oidcAccessToken) {
-    return res.status(400).send({ message: req.__('invitations.requiresIdpAccount') });
+    return problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      title: req.__('invitations.requiresIdpAccount'),
+    });
   }
 
   try {
@@ -119,12 +141,30 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *                 invitationLink:
  *                   type: string
  *                   description: Direct link to accept invitation
+ *       400:
+ *         description: The organization is managed by the identity provider and the caller has no identity-provider session, or the identity provider refused the invitation
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: Only owners invite admins, or the identity provider refused the caller
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       409:
+ *         description: The address already belongs to a member of the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: A value breaks a rule of the invitation form
  *         content:
@@ -134,9 +174,20 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
+ *       503:
+ *         description: The identity provider could not send the invitation; Retry-After names when to try again
+ *         headers:
+ *           Retry-After:
+ *             schema:
+ *               type: integer
+ *             description: Seconds to wait before resending
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const sendInvitation = async (req, res) => {
   const { email, organization_name: organizationName, invite_role: inviteRole } = req.body || {};
@@ -147,7 +198,11 @@ export const sendInvitation = async (req, res) => {
     const organization = await Organization.findOne({ where: { name: organizationName } });
 
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     const role = inviteRole || 'member';
@@ -155,8 +210,10 @@ export const sendInvitation = async (req, res) => {
     if (role === 'admin') {
       const inviterRole = await resolveInviterOrgRole(req, organization);
       if (inviterRole !== 'owner') {
-        return res.status(403).send({
-          message: req.__('invitations.adminInviteRequiresOwner'),
+        return problem(res, req, {
+          status: 403,
+          type: 'forbidden',
+          title: req.__('invitations.adminInviteRequiresOwner'),
         });
       }
     }
@@ -166,7 +223,7 @@ export const sendInvitation = async (req, res) => {
     if (existingUser) {
       const membership = await UserOrg.findUserOrgRole(existingUser.id, organization.id);
       if (membership) {
-        return res.status(409).send({ message: req.__('organizations.alreadyMember') });
+        return conflict(res, req, '/email', organization.name);
       }
     }
 
@@ -234,6 +291,10 @@ export const sendInvitation = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Failed to send invitation:', err);
-    return res.status(500).send({ message: req.__('invitations.send.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('invitations.send.error'),
+    });
   }
 };

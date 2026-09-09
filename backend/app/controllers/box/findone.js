@@ -4,6 +4,7 @@ import { log } from '../../utils/Logger.js';
 import jwt from 'jsonwebtoken';
 import db from '../../models/index.js';
 import { ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import { sumBoxDownloads } from './helpers.js';
 const {
   organization: Organization,
@@ -143,21 +144,21 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  *       403:
  *         description: Unauthorized access to private box
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Box or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findOne = async (req, res) => {
   const { organization, name } = req.params;
@@ -169,7 +170,7 @@ export const findOne = async (req, res) => {
     appConfig = configLoader.loadConfig('app');
   } catch (e) {
     log.error.error(`Failed to load configuration: ${e.message}`);
-    return res.status(500).send({ message: 'Configuration error' });
+    return problem(res, req, { status: 500, type: 'internal', title: 'Configuration error' });
   }
 
   let { userId } = req; // Set by vagrantHandler for Vagrant requests
@@ -206,9 +207,11 @@ export const findOne = async (req, res) => {
     });
 
     if (!organizationData) {
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFoundWithName', { organization }),
+      });
     }
 
     // Find box by organizationId and name
@@ -246,7 +249,11 @@ export const findOne = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({ message: req.__('boxes.boxNotFoundWithName', { name }) });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('boxes.boxNotFoundWithName', { name }),
+      });
     }
 
     let response;
@@ -291,9 +298,12 @@ export const findOne = async (req, res) => {
       return res.json(response);
     }
 
+    const unauthorized = () =>
+      problem(res, req, { status: 403, type: 'forbidden', title: req.__('boxes.unauthorized') });
+
     // For private boxes, require authentication
     if (!userId) {
-      return res.status(403).json({ message: req.__('boxes.unauthorized') });
+      return unauthorized();
     }
 
     const caller = { userId, isServiceAccount, serviceAccountId };
@@ -306,9 +316,13 @@ export const findOne = async (req, res) => {
       return res.json(response);
     }
 
-    return res.status(403).json({ message: req.__('boxes.unauthorized') });
+    return unauthorized();
   } catch (err) {
     log.error.error('Error retrieving box:', err);
-    return res.status(500).send({ message: req.__('boxes.findOne.error', { name }) });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.findOne.error', { name }),
+    });
   }
 };

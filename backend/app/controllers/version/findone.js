@@ -4,8 +4,12 @@ const { verify } = jwt;
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { versions: Version } = db;
+
+const unauthorized = (req, res) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__('versions.unauthorized') });
 
 /**
  * @swagger
@@ -48,43 +52,27 @@ const { versions: Version } = db;
  *       401:
  *         description: Unauthorized - invalid token
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized!"
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Forbidden - unauthorized access to private box
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized access to version."
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, box, or version not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Version not found for box example-box in organization example-org."
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Some error occurred while retrieving the Version."
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findOne = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
@@ -104,7 +92,11 @@ export const findOne = async (req, res) => {
         serviceAccountId: decoded.serviceAccountId,
       };
     } catch {
-      return res.status(401).send({ message: 'Unauthorized!' });
+      return problem(res, req, {
+        status: 401,
+        type: 'authentication',
+        title: req.__('auth.unauthorized'),
+      });
     }
   }
 
@@ -116,8 +108,10 @@ export const findOne = async (req, res) => {
       where: { versionNumber, boxId: box.id },
     });
     if (!version) {
-      return res.status(404).send({
-        message: `Version not found for box ${boxId} in organization ${organization}.`,
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: `Version not found for box ${boxId} in organization ${organization}.`,
       });
     }
 
@@ -128,20 +122,22 @@ export const findOne = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: 'Unauthorized access to version.' });
+      return unauthorized(req, res);
     }
 
     const membership = await resolveOrgMembership(caller, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: 'Unauthorized access to version.' });
+      return unauthorized(req, res);
     }
 
     // User is member, allow access
     return res.send(version);
   } catch (err) {
     log.error.error('Error retrieving version:', err);
-    return res.status(500).send({
-      message: req.__('errors.operationFailed'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
     });
   }
 };

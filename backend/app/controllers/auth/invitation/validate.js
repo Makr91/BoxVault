@@ -1,5 +1,6 @@
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
+import { problem } from '../../../utils/problem.js';
 const { invitation: Invitation, organization: Organization } = db;
 
 /**
@@ -33,14 +34,34 @@ const { invitation: Invitation, organization: Organization } = db;
  *                 organizationName:
  *                   type: string
  *                   example: "MyOrg"
+ *       400:
+ *         description: No token was given
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Invitation not found or expired
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const validateInvitationToken = async (req, res) => {
   const { token } = req.params;
 
   if (!token) {
-    return res.status(400).send({ message: req.__('invitations.tokenRequired') });
+    return problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      title: req.__('invitations.tokenRequired'),
+    });
   }
 
   try {
@@ -55,7 +76,11 @@ export const validateInvitationToken = async (req, res) => {
     });
 
     if (!invitation) {
-      return res.status(404).send({ message: req.__('invitations.invalidOrExpired') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('invitations.invalidOrExpired'),
+      });
     }
 
     return res.status(200).send({
@@ -66,6 +91,10 @@ export const validateInvitationToken = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error in validateInvitationToken:', err);
-    return res.status(500).send({ message: req.__('invitations.validate.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('invitations.validate.error'),
+    });
   }
 };

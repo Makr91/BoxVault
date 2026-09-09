@@ -32,9 +32,9 @@ import { problem } from '../../utils/problem.js';
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: The name is not one of the files status.config lists
  *         content:
@@ -44,9 +44,9 @@ import { problem } from '../../utils/problem.js';
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getConfigSchema = (req, res) => {
   const { configName } = req.params;
@@ -57,6 +57,10 @@ export const getConfigSchema = (req, res) => {
     return res.json(loadSchema(configName));
   } catch (err) {
     log.error.error('Error getting config schema:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

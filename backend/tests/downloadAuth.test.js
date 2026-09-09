@@ -99,7 +99,9 @@ describe('Download authentication', () => {
   it('should refuse a session token presented as a download token', async () => {
     const res = await download(`dl-public-${uniqueId}`).query({ token: signFor(owner) });
     expect(res.statusCode).toBe(403);
-    expect(JSON.parse(res.body.toString()).message).toBe('Invalid download token.');
+    const refused = JSON.parse(res.body.toString());
+    expect(refused.type).toBe('https://auth.startcloud.com/probs/forbidden');
+    expect(refused.title).toBe('Invalid download token.');
   });
 
   it('should refuse a download token of a suspended user', async () => {
@@ -140,14 +142,18 @@ describe('Download authentication', () => {
       `Basic ${Buffer.from('nocolon').toString('base64')}`
     );
     expect(malformed.statusCode).toBe(401);
-    expect(JSON.parse(malformed.body.toString()).message).toBe('Invalid basic auth format.');
+    const malformedBody = JSON.parse(malformed.body.toString());
+    expect(malformedBody.type).toBe('https://auth.startcloud.com/probs/authentication');
+    expect(malformedBody.title).toBe('Invalid basic auth format.');
 
     const wrong = await download(`dl-public-${uniqueId}`).set(
       'Authorization',
       basic(serviceAccount.username, 'not-the-token')
     );
     expect(wrong.statusCode).toBe(401);
-    expect(JSON.parse(wrong.body.toString()).message).toBe('Invalid username or password.');
+    const wrongBody = JSON.parse(wrong.body.toString());
+    expect(wrongBody.type).toBe('https://auth.startcloud.com/probs/authentication');
+    expect(wrongBody.title).toBe('Invalid username or password.');
   });
 
   it('should serve a private box to valid basic credentials', async () => {

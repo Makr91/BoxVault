@@ -1,6 +1,7 @@
 // ticket.js
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 
 /**
  * @swagger
@@ -32,19 +33,34 @@ import { log } from '../../utils/Logger.js';
  *                       type: string
  *       404:
  *         description: Ticket system not configured
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getTicketConfig = (req, res) => {
-  void req;
   try {
     const data = loadConfig('app');
     if (data && data.ticket_system) {
       return res.send({ ticket_system: data.ticket_system });
     }
-    return res.status(404).send({ message: req.__('config.ticketSystemNotConfigured') });
+    return problem(res, req, {
+      status: 404,
+      type: 'not-found',
+      title: req.__('config.ticketSystemNotConfigured'),
+    });
   } catch (err) {
     log.error.error('Error getting ticket config:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

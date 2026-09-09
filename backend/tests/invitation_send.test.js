@@ -69,6 +69,7 @@ const buildRequest = (body, overrides = {}) => ({
 const buildResponse = () => {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
+  res.type = jest.fn().mockReturnValue(res);
   res.send = jest.fn().mockReturnValue(res);
   return res;
 };

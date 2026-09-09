@@ -1,6 +1,7 @@
 import { loadConfig } from '../../../utils/config-loader.js';
 import { generateDownloadToken } from '../../../utils/auth.js';
 import { log } from '../../../utils/Logger.js';
+import { problem } from '../../../utils/problem.js';
 import { canSeeIso, resolveIsoViewer } from '../visibility.js';
 
 /**
@@ -66,7 +67,11 @@ const getDownloadLink = async (req, res) => {
 
     const viewer = await resolveIsoViewer(req);
     if (!canSeeIso(viewer, iso)) {
-      return res.status(403).send({ message: req.__('files.unauthorized') });
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('files.unauthorized'),
+      });
     }
 
     const downloadToken = generateDownloadToken(
@@ -87,7 +92,11 @@ const getDownloadLink = async (req, res) => {
     return res.status(200).json({ downloadUrl });
   } catch (err) {
     log.error.error('Error generating ISO download link', err);
-    return res.status(500).send({ message: req.__('files.link.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.link.error'),
+    });
   }
 };
 

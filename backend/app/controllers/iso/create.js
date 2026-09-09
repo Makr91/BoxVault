@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, refuse } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from '../box/helpers.js';
 const { iso: ISO } = db;
 
@@ -92,7 +92,11 @@ const create = async (req, res) => {
     return res.status(201).send(iso);
   } catch (err) {
     log.error.error('Error creating ISO', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

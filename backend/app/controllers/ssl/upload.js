@@ -3,19 +3,27 @@ import { resolve as pathResolve, join, dirname } from 'path';
 import { log } from '../../utils/Logger.js';
 import { isPathInside } from '../../utils/paths.js';
 import { getConfigDir } from '../../utils/config-loader.js';
+import { problem } from '../../utils/problem.js';
+
+const internal = (req, res, title) => problem(res, req, { status: 500, type: 'internal', title });
 
 export const uploadSSL = async (req, res) => {
   const { targetPath } = req.query;
 
   if (!targetPath) {
-    res.status(400).send({ message: 'Target path is required.' });
+    problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      title: 'Target path is required.',
+      errors: [{ pointer: '/targetPath', rule: 'required', params: {} }],
+    });
     return;
   }
 
   // Validate target path to prevent traversal characters
   if (typeof targetPath !== 'string' || targetPath.includes('..') || targetPath.includes('\0')) {
     log.app.warn('Rejected SSL upload due to invalid path characters', { targetPath });
-    res.status(400).send({ message: 'Invalid target path.' });
+    problem(res, req, { status: 400, type: 'bad-request', title: 'Invalid target path.' });
     return;
   }
 
@@ -27,7 +35,7 @@ export const uploadSSL = async (req, res) => {
     configRoot = realpathSync(pathResolve(configDir));
   } catch (err) {
     log.app.error('Failed to resolve allowed SSL root', { error: err.message });
-    res.status(500).send({ message: 'Server configuration error.' });
+    internal(req, res, 'Server configuration error.');
     return;
   }
 
@@ -42,7 +50,7 @@ export const uploadSSL = async (req, res) => {
 
   if (!isDirAllowed) {
     log.app.warn('Blocked SSL directory creation at unauthorized path', { targetPath, dir });
-    res.status(403).send({ message: 'Invalid target path.' });
+    problem(res, req, { status: 403, type: 'forbidden', title: 'Invalid target path.' });
     return;
   }
 
@@ -51,7 +59,7 @@ export const uploadSSL = async (req, res) => {
       mkdirSync(dir, { recursive: true, mode: 0o700 });
     } catch (err) {
       log.app.error('Failed to create SSL directory', { error: err.message, dir });
-      res.status(500).send({ message: 'Failed to create directory for SSL file.' });
+      internal(req, res, 'Failed to create directory for SSL file.');
       return;
     }
   }
@@ -79,10 +87,10 @@ export const uploadSSL = async (req, res) => {
 
     if (errObj.source === 'write') {
       log.app.error('Error writing SSL file', { error: errObj.err.message, path: resolvedPath });
-      res.status(500).send({ message: 'Failed to write file.' });
+      internal(req, res, 'Failed to write file.');
     } else {
       log.app.error('Error reading request stream', { error: errObj.err.message });
-      res.status(500).send({ message: 'Upload stream error.' });
+      internal(req, res, 'Upload stream error.');
     }
   }
 };

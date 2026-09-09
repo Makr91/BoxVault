@@ -207,7 +207,8 @@ describe('System API', () => {
       const res = await request(app).get('/api/system/storage').set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Failed to retrieve storage information');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Failed to retrieve storage information');
     });
   });
 

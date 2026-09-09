@@ -38,9 +38,6 @@ const appConfig = {
     api_listen_port_unencrypted: Number(process.env.TEST_PORT) || 5001,
     api_listen_port_encrypted: 5002,
   },
-  gravatar: {
-    base_url: '',
-  },
   ticket_system: {
     enabled: true,
     base_url: 'https://example.com/ticket',

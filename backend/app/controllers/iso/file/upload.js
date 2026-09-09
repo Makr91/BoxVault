@@ -62,6 +62,10 @@ const FILENAME_MAX_LENGTH = 255;
  *         description: The ISO file record
  *       400:
  *         description: Invalid filename or architecture
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, ISO or version not found
  *       413:
@@ -89,7 +93,11 @@ const upload = async (req, res) => {
       fileName.includes('..') ||
       fileName.length > FILENAME_MAX_LENGTH
     ) {
-      return res.status(400).send({ message: req.__('files.invalidFileName') });
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('files.invalidFileName'),
+      });
     }
 
     const organizationDir = getSecureIsoPath(String(organization.id));
@@ -181,7 +189,11 @@ const upload = async (req, res) => {
     }
 
     log.error.error('ISO file upload error', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

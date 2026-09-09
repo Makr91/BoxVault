@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { canSeeIso, resolveIsoViewer } from './visibility.js';
 import { sumIsoDownloads } from './helpers.js';
 const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
@@ -45,7 +46,11 @@ const findOne = async (req, res) => {
   try {
     const organization = await Organization.findOne({ where: { name: organizationName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
     const iso = await ISO.findOne({
       where: { name, organizationId: organization.id },
@@ -59,16 +64,20 @@ const findOne = async (req, res) => {
       ],
     });
     if (!iso) {
-      return res.status(404).send({ message: req.__('isos.notFound') });
+      return problem(res, req, { status: 404, type: 'not-found', title: req.__('isos.notFound') });
     }
     const viewer = await resolveIsoViewer(req);
     if (!canSeeIso(viewer, iso)) {
-      return res.status(403).send({ message: req.__('auth.forbidden') });
+      return problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
     }
     return res.send({ ...iso.toJSON(), downloadCount: sumIsoDownloads(iso) });
   } catch (err) {
     log.error.error('Error finding ISO', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

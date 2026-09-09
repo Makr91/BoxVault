@@ -4,6 +4,7 @@ import fs from 'fs';
 import multer from 'multer';
 import { log } from '../../utils/Logger.js';
 import { getConfigDir } from '../../utils/config-loader.js';
+import { problem } from '../../utils/problem.js';
 import { verifyAuthorizedToken } from './middleware.js';
 
 // This is a self-contained multer setup for handling SSL uploads during setup.
@@ -47,7 +48,11 @@ export const uploadSSL = [
     if (req.file) {
       res.status(200).send({ path: join(getSSLUploadPath(), req.file.filename) });
     } else {
-      res.status(400).send({ message: 'No file uploaded.' });
+      problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        errors: [{ pointer: '/file', rule: 'required', params: {} }],
+      });
     }
   },
 ];

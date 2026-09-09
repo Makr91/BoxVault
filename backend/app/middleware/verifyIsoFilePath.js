@@ -1,9 +1,12 @@
 import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
+import { problem } from '../utils/problem.js';
 
 const { organization: Organization, iso: ISO, isoVersions: IsoVersion } = db;
 
 const ARCHITECTURE_PATTERN = /^[0-9a-zA-Z-._]+$/;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
 
 const verifyIsoFilePath = async (req, res, next) => {
   const { organization, name, versionNumber, architecture } = req.params;
@@ -14,7 +17,11 @@ const verifyIsoFilePath = async (req, res, next) => {
     architecture.startsWith('.') ||
     architecture.includes('..')
   ) {
-    return res.status(400).send({ message: req.__('isos.invalidArchitecture') });
+    return problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      title: req.__('isos.invalidArchitecture'),
+    });
   }
 
   try {
@@ -24,9 +31,11 @@ const verifyIsoFilePath = async (req, res, next) => {
 
     if (!organizationData) {
       log.app.warn('ISO path verification failed: Organization not found', { organization });
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const iso = await ISO.findOne({
@@ -35,9 +44,7 @@ const verifyIsoFilePath = async (req, res, next) => {
 
     if (!iso) {
       log.app.warn('ISO path verification failed: ISO not found', { name, organization });
-      return res
-        .status(404)
-        .send({ message: req.__('isos.notFoundWithName', { name, organization }) });
+      return notFound(req, res, req.__('isos.notFoundWithName', { name, organization }));
     }
 
     const version = await IsoVersion.findOne({
@@ -46,7 +53,7 @@ const verifyIsoFilePath = async (req, res, next) => {
 
     if (!version) {
       log.app.warn('ISO path verification failed: Version not found', { versionNumber, name });
-      return res.status(404).send({ message: req.__('isos.versions.notFound') });
+      return notFound(req, res, req.__('isos.versions.notFound'));
     }
 
     req.entities = {
@@ -58,7 +65,11 @@ const verifyIsoFilePath = async (req, res, next) => {
     return next();
   } catch (err) {
     log.error.error('Error during ISO file path verification:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

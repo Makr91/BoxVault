@@ -1,6 +1,7 @@
 import { log } from '../utils/Logger.js';
 import { extractBearerToken, findServiceAccountByRawToken } from '../utils/serviceAccountAuth.js';
 import { t, getDefaultLocale } from '../config/i18n.js';
+import { problem } from '../utils/problem.js';
 
 const isVagrantRequest = req => {
   const userAgent = req.headers['user-agent'] || '';
@@ -131,7 +132,11 @@ const vagrantHandler = async (req, res, next) => {
       log.app.warn('Vagrant request presented an invalid or expired service account token', {
         url: req.url,
       });
-      return res.status(401).json({ message: t('auth.vagrantInvalidToken', getDefaultLocale()) });
+      return problem(res, req, {
+        status: 401,
+        type: 'authentication',
+        title: t('auth.vagrantInvalidToken', getDefaultLocale()),
+      });
     }
     req.userId = authInfo.userId;
     req.isServiceAccount = authInfo.isServiceAccount;

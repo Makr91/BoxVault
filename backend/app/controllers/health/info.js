@@ -10,6 +10,7 @@ import nodemailer from 'nodemailer';
 import { getSupportedLocales, getDefaultLocale } from '../../config/i18n.js';
 import { getIsoStorageRoot } from '../iso/helpers.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { notifyHealth } from '../../utils/events.js';
 import { sendHubNotification } from '../../utils/notifyHub.js';
 import { resolveGlobalAdminRecipients } from '../../utils/notifyRecipients.js';
@@ -104,21 +105,9 @@ let oidcProbe = { expiresAt: 0, result: Promise.resolve({}) };
  *       500:
  *         description: Health check failed
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "error"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                 message:
- *                   type: string
- *                   example: "Health check failed"
- *                 error:
- *                   type: string
+ *               $ref: '#/components/schemas/Problem'
  */
 const checkUrl = url =>
   new Promise(resolve => {
@@ -410,10 +399,10 @@ const getHealth = async (req, res) => {
     return res.status(200).json(await getHealthReport());
   } catch (error) {
     log.error.error('Health check failed:', error);
-    return res.status(500).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      message: req.__('health.checkFailed'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('health.checkFailed'),
     });
   }
 };

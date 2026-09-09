@@ -1,5 +1,6 @@
 // suspend.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization } = db;
 
@@ -33,15 +34,15 @@ const { organization: Organization } = db;
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const suspendOrganization = async (req, res) => {
   const { organization: organizationName } = req.params;
@@ -52,7 +53,11 @@ export const suspendOrganization = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     organization.suspended = true;
@@ -61,6 +66,10 @@ export const suspendOrganization = async (req, res) => {
     return res.status(200).send({ message: req.__('organizations.suspended') });
   } catch (err) {
     log.error.error('Error suspending organization:', err);
-    return res.status(500).send({ message: req.__('organizations.suspendError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.suspendError'),
+    });
   }
 };

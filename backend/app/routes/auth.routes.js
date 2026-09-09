@@ -24,9 +24,16 @@ import { randomState, randomPKCECodeVerifier } from 'openid-client';
 import { loadConfig } from '../utils/config-loader.js';
 import { getJwtClaimOptions } from '../utils/auth.js';
 import { log } from '../utils/Logger.js';
+import { problem } from '../utils/problem.js';
 import db from '../models/index.js';
 
 const { invitation: Invitation, organization: Organization, user: User } = db;
+
+const invitationNotFound = (req, res) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__('invitations.notFound') });
+
+const internal = (req, res, key) =>
+  problem(res, req, { status: 500, type: 'internal', title: req.__(key) });
 
 const router = Router();
 
@@ -79,7 +86,7 @@ const resolveInvitationOrg = async (req, res, next) => {
     if (req.params.invitationId.startsWith('ext:')) {
       const [, orgName] = req.params.invitationId.split(':');
       if (!orgName) {
-        return res.status(404).send({ message: req.__('invitations.notFound') });
+        return invitationNotFound(req, res);
       }
       req.params.organization = orgName;
       return next();
@@ -90,7 +97,7 @@ const resolveInvitationOrg = async (req, res, next) => {
     });
 
     if (!invitation || !invitation.organization) {
-      return res.status(404).send({ message: req.__('invitations.notFound') });
+      return invitationNotFound(req, res);
     }
 
     req.params.organization = invitation.organization.name;
@@ -100,7 +107,7 @@ const resolveInvitationOrg = async (req, res, next) => {
       error: err.message,
       invitationId: req.params.invitationId,
     });
-    return res.status(500).send({ message: req.__('invitations.delete.error') });
+    return internal(req, res, 'invitations.delete.error');
   }
 };
 
@@ -193,6 +200,10 @@ router.post('/auth/refresh-token', [authJwt.verifyToken, oidcTokenRefresh], refr
  *                         example: "https://accounts.google.com"
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 router.get('/auth/oidc/issuers', (req, res) => {
   try {
@@ -221,11 +232,7 @@ router.get('/auth/oidc/issuers', (req, res) => {
       error: error.message,
       stack: error.stack,
     });
-    return res.status(500).json({
-      error: 'INTERNAL_SERVER_ERROR',
-      message: req.__('auth.issuersLoadError'),
-      issuers: [],
-    });
+    return internal(req, res, 'auth.issuersLoadError');
   }
 });
 
@@ -277,6 +284,10 @@ router.get('/auth/oidc/issuers', (req, res) => {
  *                   description: Whether a local account can be self-registered without an invitation
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 router.get('/auth/methods', async (req, res) => {
   try {
@@ -325,10 +336,7 @@ router.get('/auth/methods', async (req, res) => {
       error: error.message,
       stack: error.stack,
     });
-    return res.status(500).json({
-      error: 'INTERNAL_SERVER_ERROR',
-      message: req.__('auth.methodsLoadError'),
-    });
+    return internal(req, res, 'auth.methodsLoadError');
   }
 });
 
@@ -579,6 +587,10 @@ router.get('/auth/oidc/callback', async (req, res) => {
  *                   description: BoxVault JWT access token
  *       400:
  *         description: Invalid, expired, or already-used login code
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 router.post('/auth/oidc/exchange', (req, res) => {
   const { code } = req.body || {};
@@ -586,7 +598,11 @@ router.post('/auth/oidc/exchange', (req, res) => {
 
   if (!token) {
     log.auth.info('Login handoff exchange rejected', { hasCode: !!code });
-    return res.status(400).json({ message: req.__('auth.invalidLoginCode') });
+    return problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      title: req.__('auth.invalidLoginCode'),
+    });
   }
 
   return res.json({ token });

@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { refuse } from '../../utils/problem.js';
+import { problem, refuse } from '../../utils/problem.js';
 import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
 import { ORG_ROLES, ROLE_RANK, holdsGlobalAdmin } from '../../utils/orgMembership.js';
 
@@ -52,15 +52,15 @@ const assignableRoles = (membership, globalAdmin) => [
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: The caller is not a member of the organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: A value breaks a rule of the service account form, the expiry ceiling among them, or the role is above the creator's own (pointer /role, rule enum, params.enum the assignable roles)
  *         content:
@@ -70,9 +70,9 @@ const assignableRoles = (membership, globalAdmin) => [
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const create = async (req, res) => {
   try {
@@ -88,8 +88,10 @@ export const create = async (req, res) => {
     const globalAdmin = await holdsGlobalAdmin(user);
     const membership = await UserOrg.findUserOrgRole(userId, organizationId);
     if (role !== 'superadmin' && !membership) {
-      return res.status(403).send({
-        message: req.__('serviceAccounts.membershipRequired'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('serviceAccounts.membershipRequired'),
       });
     }
 
@@ -126,6 +128,10 @@ export const create = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error creating service account:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

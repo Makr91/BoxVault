@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { serviceAccountMembership } from '../../utils/orgMembership.js';
 const {
   UserOrg,
@@ -77,15 +78,15 @@ const findPersonalOrgUuids = async orgUuids => {
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const getUserOrganizations = async (req, res) => {
   try {
@@ -174,7 +175,11 @@ const getUserOrganizations = async (req, res) => {
       error: err.message,
       userId: req.userId,
     });
-    return res.status(500).send({ message: req.__('users.fetchOrgsError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('users.fetchOrgsError'),
+    });
   }
 };
 

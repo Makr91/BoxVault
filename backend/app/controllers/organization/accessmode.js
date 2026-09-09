@@ -1,4 +1,5 @@
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization } = db;
 
@@ -58,21 +59,21 @@ const { organization: Organization } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Requires admin or owner role in organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: The access mode or default role is not one of the allowed values
  *         content:
@@ -82,9 +83,9 @@ const { organization: Organization } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const updateAccessMode = async (req, res) => {
   try {
@@ -119,7 +120,11 @@ const updateAccessMode = async (req, res) => {
       error: err.message,
       organizationName: req.params.organizationName,
     });
-    return res.status(500).send({ message: req.__('organizations.updateAccessModeError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.updateAccessModeError'),
+    });
   }
 };
 

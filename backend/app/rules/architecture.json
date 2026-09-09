@@ -2,7 +2,12 @@
   "type": "object",
   "required": ["name"],
   "properties": {
-    "name": { "$ref": "#/$defs/identifier", "unique": "provider" },
+    "name": {
+      "$ref": "#/$defs/identifier",
+      "minLength": 1,
+      "pattern": "\\S",
+      "unique": "provider"
+    },
     "description": { "type": "string" },
     "default_box": { "type": "boolean" },
     "checksum_type": {

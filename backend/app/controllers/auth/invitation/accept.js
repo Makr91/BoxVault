@@ -1,9 +1,13 @@
 // accept.js
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { problem } from '../../../utils/problem.js';
 import { notifyInvitationAccepted } from './notifications.js';
 
 const { invitation: Invitation, organization: Organization, user: User, UserOrg } = db;
+
+const notFound = (req, res, key) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__(key) });
 
 /**
  * @swagger
@@ -30,12 +34,28 @@ const { invitation: Invitation, organization: Organization, user: User, UserOrg 
  *         description: Invitation accepted; user added to the organization
  *       403:
  *         description: Signed-in email does not match the invited email
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Invitation invalid/expired, or organization not found
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: User is already a member of this organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const acceptInvitation = async (req, res) => {
   const { token } = req.params;
@@ -53,28 +73,34 @@ export const acceptInvitation = async (req, res) => {
     });
 
     if (!invitation) {
-      return res.status(404).send({ message: req.__('invitations.invalidOrExpired') });
+      return notFound(req, res, 'invitations.invalidOrExpired');
     }
 
     const user = await User.findByPk(userId);
 
     // The invitation is addressed to a specific email; the accepting account must match.
     if (!user.email || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-      return res.status(403).send({
-        message: req.__('invitations.emailMismatch', { email: invitation.email }),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('invitations.emailMismatch', { email: invitation.email }),
       });
     }
 
     const { organization } = invitation;
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return notFound(req, res, 'organizations.organizationNotFound');
     }
 
     // Already a member: consume the now-redundant invitation and report it.
     const existing = await UserOrg.findUserOrgRole(userId, organization.id);
     if (existing) {
       await invitation.update({ accepted: true, accepted_at: new Date() });
-      return res.status(409).send({ message: req.__('organizations.alreadyMember') });
+      return problem(res, req, {
+        status: 409,
+        type: 'conflict',
+        title: req.__('organizations.alreadyMember'),
+      });
     }
 
     // Joining an additional organization never changes the user's primary org.
@@ -105,6 +131,10 @@ export const acceptInvitation = async (req, res) => {
       error: err.message,
       userId: req.userId,
     });
-    return res.status(500).send({ message: req.__('invitations.accept.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('invitations.accept.error'),
+    });
   }
 };

@@ -1,5 +1,6 @@
 // findallwithusers.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization, user: User, role: Role, box: Box } = db;
 
@@ -60,15 +61,15 @@ const MEMBER_ATTRIBUTES = [
  *       401:
  *         description: Unauthorized - invalid token
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findAllWithUsers = async (req, res) => {
   const { userId } = req;
@@ -123,8 +124,10 @@ export const findAllWithUsers = async (req, res) => {
     return res.status(200).send(result);
   } catch (err) {
     log.error.error('Error retrieving organizations with users:', err);
-    return res.status(500).send({
-      message: req.__('organizations.findAllError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.findAllError'),
     });
   }
 };

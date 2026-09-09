@@ -1,7 +1,10 @@
 // findone.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { user: User, organization: Organization, UserOrg } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
 
 const USER_ATTRIBUTES = [
   'id',
@@ -55,15 +58,15 @@ const USER_ATTRIBUTES = [
  *       404:
  *         description: User or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findOne = async (req, res) => {
   const { organization: organizationName, userName } = req.params;
@@ -74,11 +77,11 @@ export const findOne = async (req, res) => {
     });
 
     if (!organization) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', {
-          organization: organizationName,
-        }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization: organizationName })
+      );
     }
 
     // Find user by username first
@@ -88,25 +91,23 @@ export const findOne = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).send({
-        message: req.__('users.userNotFoundWithName', { username: userName }),
-      });
+      return notFound(req, res, req.__('users.userNotFoundWithName', { username: userName }));
     }
 
     // Check if user is a member of the organization
     const membership = await UserOrg.findUserOrgRole(user.id, organization.id);
 
     if (!membership) {
-      return res.status(404).send({
-        message: req.__('users.userNotFoundWithName', { username: userName }),
-      });
+      return notFound(req, res, req.__('users.userNotFoundWithName', { username: userName }));
     }
 
     return res.status(200).send(user);
   } catch (err) {
     log.error.error('Error retrieving user:', err);
-    return res.status(500).send({
-      message: req.__('users.findOne.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('users.findOne.error'),
     });
   }
 };

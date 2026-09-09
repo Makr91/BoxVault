@@ -603,16 +603,26 @@ describe('Organization API', () => {
       ]);
     });
 
-    it('should fail to create an organization with empty name', async () => {
-      const res = await request(app)
-        .post('/api/organization')
-        .set('x-access-token', authToken)
-        .send({ organization: '' });
+    it('should refuse an empty or whitespace organization name as nonBlank', async () => {
+      const responses = await Promise.all(
+        ['', '   '].map(name =>
+          request(app)
+            .post('/api/organization')
+            .set('x-access-token', authToken)
+            .send({ organization: name })
+        )
+      );
 
-      expect(res.statusCode).toBe(422);
-      expect(res.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/organization', rule: 'required' }),
-      ]);
+      responses.forEach(res => {
+        expect(res.statusCode).toBe(422);
+        expect(res.body.errors).toEqual([
+          expect.objectContaining({
+            pointer: '/organization',
+            rule: 'pattern',
+            params: { pattern: 'nonBlank' },
+          }),
+        ]);
+      });
     });
 
     it('should fail to update with duplicate organization name', async () => {
@@ -1028,7 +1038,8 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('User is not a member');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('User is not a member');
     });
 
     it('DELETE /api/organization/:organization/members/:userId - should fail if organization not found', async () => {
@@ -1066,7 +1077,8 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('Cannot remove user from their only organization');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toContain('Cannot remove user from their only organization');
 
       await soloUser.destroy();
     });
@@ -1120,8 +1132,9 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken);
 
       jest.restoreAllMocks();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Error verifying authentication');
     });
 
     it('DELETE /api/organization/:organization/members/:userId - should return 404 if user not found (removeuser.js)', async () => {
@@ -1130,7 +1143,8 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should skip duplicate check if org_code is unchanged', async () => {
@@ -1308,7 +1322,8 @@ describe('Organization API', () => {
         .send({ description: 'Error' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
       jest.restoreAllMocks();
     });
 
@@ -1414,8 +1429,9 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken);
 
       jest.restoreAllMocks();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Error verifying authentication');
     });
 
     it('GET /api/organization/:organization/users - should handle database errors (findOneWithUsers)', async () => {
@@ -1498,8 +1514,9 @@ describe('Organization API', () => {
         .send({ role: 'admin' });
 
       jest.restoreAllMocks();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Error verifying authentication');
     });
 
     it('PUT /api/organization/:organization/users/:userId/role - should handle database errors during update', async () => {
@@ -1592,8 +1609,9 @@ describe('Organization API', () => {
         .send({ role: 'admin' });
 
       jest.restoreAllMocks();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('Error verifying authentication');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Error verifying authentication');
     });
 
     it('should calculate totalBoxes correctly including private boxes for self', async () => {
@@ -1672,7 +1690,8 @@ describe('Organization API', () => {
         .put(`/api/organization/${orgName}/resume`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('PUT /api/organization/:organization/suspend - should handle error with fallback message', async () => {
@@ -1681,7 +1700,8 @@ describe('Organization API', () => {
         .put(`/api/organization/${orgName}/suspend`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('POST /api/organization - should handle error with fallback message', async () => {
@@ -1691,7 +1711,8 @@ describe('Organization API', () => {
         .set('x-access-token', authToken)
         .send({ organization: 'FallbackOrg' });
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('DELETE /api/organization/:organization - should handle error with fallback message', async () => {
@@ -1700,14 +1721,16 @@ describe('Organization API', () => {
         .delete(`/api/organization/${orgName}`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('GET /api/organization - should handle error with fallback message', async () => {
       jest.spyOn(db.organization, 'findAll').mockRejectedValue(new Error(''));
       const res = await request(app).get('/api/organization').set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('GET /api/organizations-with-users - should handle error with fallback message', async () => {
@@ -1716,7 +1739,8 @@ describe('Organization API', () => {
         .get('/api/organizations-with-users')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('GET /api/organization/:organization/users - should handle error with fallback message', async () => {
@@ -1729,7 +1753,8 @@ describe('Organization API', () => {
         .get(`/api/organization/${orgName}/users`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
   });
 

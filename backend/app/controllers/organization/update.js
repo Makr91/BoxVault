@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict } from '../../utils/problem.js';
+import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
 import { isReservedSegment } from '../../utils/reservedSegments.js';
@@ -58,12 +58,18 @@ const { organization: Organization, sequelize } = db;
  *                   example: "Organization updated successfully."
  *                 organization:
  *                   $ref: '#/components/schemas/Organization'
+ *       403:
+ *         description: The organization is managed by the identity provider and may not be renamed or have its profile changed here
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: The new name or organization code is already taken, or the new name is a reserved path segment
  *         content:
@@ -79,9 +85,9 @@ const { organization: Organization, sequelize } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const trimIfSet = value => (value ? value.trim() : value);
 
@@ -94,21 +100,29 @@ const trimIfSet = value => (value ? value.trim() : value);
  * @param {Object|null} org - Organization instance
  * @param {Object} fields - { organization, email, description, org_code }
  * @param {Object} req - Express request (for i18n)
- * @returns {{status: number, message: string}|null}
+ * @returns {{status: number, type: string, title: string}|null}
  */
 const getExternalEditRejection = (org, fields, req) => {
   if (!org?.external_issuer) {
     return null;
   }
   if (fields.organization && fields.organization !== org.name) {
-    return { status: 403, message: req.__('organizations.externallyManagedRename') };
+    return {
+      status: 403,
+      type: 'forbidden',
+      title: req.__('organizations.externallyManagedRename'),
+    };
   }
   const profileChanged =
     (fields.email !== undefined && fields.email !== org.email) ||
     (fields.description !== undefined && fields.description !== org.description) ||
     (fields.org_code !== undefined && fields.org_code !== org.org_code);
   if (profileChanged) {
-    return { status: 403, message: req.__('organizations.externallyManagedProfile') };
+    return {
+      status: 403,
+      type: 'forbidden',
+      title: req.__('organizations.externallyManagedProfile'),
+    };
   }
   return null;
 };
@@ -177,7 +191,11 @@ export const update = async (req, res) => {
     });
 
     if (!org) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     const externalRejection = getExternalEditRejection(
@@ -186,7 +204,7 @@ export const update = async (req, res) => {
       req
     );
     if (externalRejection) {
-      return res.status(externalRejection.status).send({ message: externalRejection.message });
+      return problem(res, req, externalRejection);
     }
 
     const taken = await getTakenValue(org, organization, org_code);
@@ -222,8 +240,10 @@ export const update = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error updating organization:', err);
-    return res.status(500).send({
-      message: req.__('organizations.updateError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.updateError'),
     });
   }
 };

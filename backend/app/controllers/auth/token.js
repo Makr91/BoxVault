@@ -2,6 +2,7 @@
 import { loadConfig } from '../../utils/config-loader.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { buildSigninToken } from './signin.js';
 
 const IDP_CLAIMS = ['id_token', 'oidc_access_token', 'oidc_refresh_token', 'oidc_expires_at'];
@@ -66,15 +67,15 @@ export const idpClaimsOf = source =>
  *       403:
  *         description: Token refresh not allowed
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const refreshToken = async (req, res) => {
   try {
@@ -130,6 +131,10 @@ export const refreshToken = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error in refreshToken:', err);
-    return res.status(500).send({ message: req.__('auth.tokenRefreshError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('auth.tokenRefreshError'),
+    });
   }
 };

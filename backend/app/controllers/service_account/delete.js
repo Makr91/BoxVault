@@ -1,4 +1,5 @@
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { service_account: ServiceAccount, user: User, UserOrg } = db;
 
@@ -48,21 +49,21 @@ const canRevoke = async (serviceAccount, userId) => {
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Service account not found, or the caller may not revoke it
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const _delete = async (req, res) => {
   try {
@@ -71,14 +72,22 @@ const _delete = async (req, res) => {
 
     const serviceAccount = await ServiceAccount.findByPk(id);
     if (!serviceAccount || !(await canRevoke(serviceAccount, userId))) {
-      return res.status(404).send({ message: req.__('serviceAccounts.notFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('serviceAccounts.notFound'),
+      });
     }
 
     await ServiceAccount.destroy({ where: { id: serviceAccount.id } });
     return res.send({ message: req.__('serviceAccounts.deleted') });
   } catch (err) {
     log.error.error('Error deleting service account:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 export { _delete as delete };

@@ -398,13 +398,16 @@ describe('Identity-provider delegation', () => {
         axiosPost.mockRejectedValue({ response: { status: 403, data: { message: 'not yours' } } });
         const res = await approve(ownerToken);
         expect(res.statusCode).toBe(403);
-        expect(res.body.message).toBe('not yours');
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+        expect(res.body.title).toBe('not yours');
       });
 
-      it('should answer 502 when the hub fails', async () => {
+      it('should answer 503 with Retry-After when the hub fails', async () => {
         axiosPost.mockRejectedValue({ response: { status: 500 } });
         const res = await approve(ownerToken);
-        expect(res.statusCode).toBe(502);
+        expect(res.statusCode).toBe(503);
+        expect(res.headers['retry-after']).toBe('60');
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
         const row = await db.Request.findByPk(externalRequestId);
         expect(row.status).toBe('pending');
       });
@@ -514,6 +517,7 @@ describe('Identity-provider delegation', () => {
       axiosGet.mockRejectedValue(new Error('ECONNREFUSED'));
       const res = await list(ownerToken);
       expect(res.statusCode).toBe(502);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
   });
 
@@ -564,18 +568,22 @@ describe('Identity-provider delegation', () => {
       });
       const validation = await invite(ownerToken);
       expect(validation.statusCode).toBe(400);
-      expect(validation.body.message).toBe('bad address');
+      expect(validation.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(validation.body.title).toBe('bad address');
 
       axiosPost.mockRejectedValueOnce({ response: { status: 403, data: { error: 'forbidden' } } });
       const authorization = await invite(ownerToken);
       expect(authorization.statusCode).toBe(403);
-      expect(authorization.body.message).toBe('forbidden');
+      expect(authorization.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(authorization.body.title).toBe('forbidden');
     });
 
-    it('should answer 502 for any other hub failure', async () => {
+    it('should answer 503 with Retry-After for any other hub failure', async () => {
       axiosPost.mockRejectedValue({ response: { status: 503 } });
       const res = await invite(ownerToken);
-      expect(res.statusCode).toBe(502);
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
     });
   });
 
@@ -628,6 +636,7 @@ describe('Identity-provider delegation', () => {
       axiosDelete.mockRejectedValue(new Error('boom'));
       const res = await remove(ownerToken, `ext:${externalOrgName}:i1`);
       expect(res.statusCode).toBe(502);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
   });
 
@@ -665,10 +674,12 @@ describe('Identity-provider delegation', () => {
       axiosPatch.mockRejectedValueOnce({ response: { status: 400, data: { error: 'bad tag' } } });
       const refused = await patch({ language: 'xx' });
       expect(refused.statusCode).toBe(400);
-      expect(refused.body.message).toBe('bad tag');
+      expect(refused.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(refused.body.title).toBe('bad tag');
       axiosPatch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
       const failed = await patch({ language: 'en' });
       expect(failed.statusCode).toBe(502);
+      expect(failed.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
 
     it('should answer 500 when the local mirror cannot be written', async () => {

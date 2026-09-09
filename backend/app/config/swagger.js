@@ -192,14 +192,14 @@ const options = {
         Problem: {
           type: 'object',
           description:
-            'RFC 9457 problem details, the body of every refused write, sent as application/problem+json',
+            'RFC 9457 problem details, the body of every refused write and every failed read, sent as application/problem+json',
           required: ['type', 'title', 'status', 'errors'],
           properties: {
             type: {
               type: 'string',
               format: 'uri',
               description:
-                'A URI under https://auth.startcloud.com/probs/: validation, conflict, bad-request, authentication, forbidden, not-found, payload-too-large, throttled or internal',
+                'A URI under https://auth.startcloud.com/probs/: validation, conflict, bad-request, authentication, forbidden, not-found, payload-too-large, throttled, internal or send-failed (a 503 carrying Retry-After)',
               example: 'https://auth.startcloud.com/probs/validation',
             },
             title: {

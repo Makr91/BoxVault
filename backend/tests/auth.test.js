@@ -243,7 +243,8 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body).toHaveProperty('message', 'Invalid username or password.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(res.body.title).toBe('Invalid username or password.');
     });
 
     it('should fail for non-existent user', async () => {
@@ -253,7 +254,8 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body).toHaveProperty('message', 'Invalid username or password.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(res.body.title).toBe('Invalid username or password.');
     });
 
     it('should handle user with no primary organization (fallback logic)', async () => {
@@ -462,7 +464,8 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body).toHaveProperty('message', 'Invalid username or password.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(res.body.title).toBe('Invalid username or password.');
     });
 
     it('should fail with expired service account token', async () => {
@@ -482,7 +485,8 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(401);
-      expect(res.body.message).toBe('Service account has expired.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(res.body.title).toBe('Service account has expired.');
     });
   });
 
@@ -1003,7 +1007,8 @@ describe('Authentication API', () => {
 
       const res = await request(app).get('/api/auth/verify-mail/expired-token');
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Verification token has expired.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toBe('Verification token has expired.');
     });
   });
 
@@ -1176,7 +1181,8 @@ describe('Authentication API', () => {
         });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Invalid invitation token.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toBe('Invalid invitation token.');
     });
 
     it('should fail if organization not found for invitation', async () => {
@@ -1206,7 +1212,8 @@ describe('Authentication API', () => {
         });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('Organization not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toContain('Organization not found');
 
       // Cleanup
       findByPkSpy.mockRestore();
@@ -1333,7 +1340,8 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while signing up the user.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while signing up the user.');
 
       findSpy.mockRestore();
       orgSpy.mockRestore();
@@ -1388,7 +1396,8 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('POST /signup - should handle role lookup error', async () => {
@@ -1424,7 +1433,8 @@ describe('Authentication API', () => {
       jest.spyOn(db.user, 'findOne').mockResolvedValue(null);
       const res = await request(app).get('/api/auth/verify-mail/valid-format-token');
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Invalid verification token.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toBe('Invalid verification token.');
     });
   });
 
@@ -4335,6 +4345,7 @@ describe('Authentication API', () => {
         await withUnreadableAuthConfig(async () => {
           const res = await request(app).get('/api/auth/oidc/issuers');
           expect(res.statusCode).toBe(500);
+          expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
         });
       });
 
@@ -4342,6 +4353,7 @@ describe('Authentication API', () => {
         await withUnreadableAuthConfig(async () => {
           const res = await request(app).get('/api/auth/methods');
           expect(res.statusCode).toBe(500);
+          expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
         });
       });
 

@@ -1,6 +1,6 @@
 // create.js
 import { log } from '../../utils/Logger.js';
-import { conflict } from '../../utils/problem.js';
+import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateOrgCode } from '../../utils/identity.js';
 import { isReservedSegment } from '../../utils/reservedSegments.js';
@@ -58,9 +58,9 @@ const { organization: Organization, UserOrg } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 // Create and Save a new Organization
 export const create = async (req, res) => {
@@ -98,8 +98,10 @@ export const create = async (req, res) => {
     return res.status(201).send(data);
   } catch (err) {
     log.error.error('Error creating organization:', err);
-    return res.status(500).send({
-      message: req.__('organizations.createError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.createError'),
     });
   }
 };

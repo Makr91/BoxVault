@@ -1,6 +1,7 @@
 // check.js
 import { log } from '../../utils/Logger.js';
 import { readConfigFile } from '../../utils/config-loader.js';
+import { problem } from '../../utils/problem.js';
 
 /**
  * @swagger
@@ -24,10 +25,9 @@ import { readConfigFile } from '../../utils/config-loader.js';
  *       500:
  *         description: Failed to check setup status
  *         content:
- *           text/plain:
+ *           application/problem+json:
  *             schema:
- *               type: string
- *               example: "Failed to check setup status"
+ *               $ref: '#/components/schemas/Problem'
  */
 export const isSetupComplete = (req, res) => {
   log.app.debug('Check setup complete', { method: req.method });
@@ -39,6 +39,10 @@ export const isSetupComplete = (req, res) => {
     return res.send({ setupComplete: isConfigured });
   } catch (error) {
     log.error.error('Error checking setup status:', error);
-    return res.status(500).send(req.__('setup.checkError'));
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('setup.checkError'),
+    });
   }
 };

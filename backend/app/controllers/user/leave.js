@@ -1,6 +1,10 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { organization: Organization, Sequelize, UserOrg } = db;
+
+const badRequest = (req, res, key) =>
+  problem(res, req, { status: 400, type: 'bad-request', title: req.__(key) });
 
 /**
  * @swagger
@@ -33,27 +37,27 @@ const { organization: Organization, Sequelize, UserOrg } = db;
  *       400:
  *         description: Cannot leave - not a member or only organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const leaveOrganization = async (req, res) => {
   try {
@@ -63,15 +67,17 @@ const leaveOrganization = async (req, res) => {
     // Find the organization
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     // Find user's membership
     const membership = await UserOrg.findUserOrgRole(userId, organization.id);
     if (!membership) {
-      return res.status(400).send({
-        message: req.__('organizations.userNotMember'),
-      });
+      return badRequest(req, res, 'organizations.userNotMember');
     }
 
     // An organization must always keep at least one owner
@@ -81,9 +87,7 @@ const leaveOrganization = async (req, res) => {
       });
 
       if (ownerCount === 1) {
-        return res.status(400).send({
-          message: req.__('organizations.cannotLeaveLastOwner'),
-        });
+        return badRequest(req, res, 'organizations.cannotLeaveLastOwner');
       }
     }
 
@@ -98,9 +102,7 @@ const leaveOrganization = async (req, res) => {
       });
 
       if (otherOrgs.length === 0) {
-        return res.status(400).send({
-          message: req.__('organizations.cannotLeaveOnlyOrg'),
-        });
+        return badRequest(req, res, 'organizations.cannotLeaveOnlyOrg');
       }
 
       // Set another organization as primary before leaving
@@ -125,7 +127,11 @@ const leaveOrganization = async (req, res) => {
       userId: req.userId,
       organization: req.params.orgName,
     });
-    return res.status(500).send({ message: req.__('organizations.leaveError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.leaveError'),
+    });
   }
 };
 

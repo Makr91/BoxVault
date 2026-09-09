@@ -1,6 +1,13 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { user: User, UserOrg } = db;
+
+const badRequest = (req, res, key) =>
+  problem(res, req, { status: 400, type: 'bad-request', title: req.__(key) });
+
+const notFound = (req, res, key) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__(key) });
 
 /**
  * @swagger
@@ -60,33 +67,33 @@ const { user: User, UserOrg } = db;
  *       400:
  *         description: Invalid role
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Requires owner role in organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: User or organization not found, or user not a member
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const updateUserOrgRole = async (req, res) => {
   try {
@@ -97,23 +104,19 @@ const updateUserOrgRole = async (req, res) => {
     // Validate role
     const validRoles = ['member', 'admin', 'owner'];
     if (!validRoles.includes(role)) {
-      return res.status(400).send({
-        message: req.__('organizations.invalidRole'),
-      });
+      return badRequest(req, res, 'organizations.invalidRole');
     }
 
     // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
+      return notFound(req, res, 'users.userNotFound');
     }
 
     // Find user's membership in this organization
     const membership = await UserOrg.findUserOrgRole(userId, organizationId);
     if (!membership) {
-      return res.status(404).send({
-        message: req.__('organizations.userNotMember'),
-      });
+      return notFound(req, res, 'organizations.userNotMember');
     }
 
     // An organization must always keep at least one owner
@@ -123,9 +126,7 @@ const updateUserOrgRole = async (req, res) => {
       });
 
       if (ownerCount === 1) {
-        return res.status(400).send({
-          message: req.__('organizations.cannotDemoteLastOwner'),
-        });
+        return badRequest(req, res, 'organizations.cannotDemoteLastOwner');
       }
     }
 
@@ -154,7 +155,11 @@ const updateUserOrgRole = async (req, res) => {
       organizationId: req.organizationId,
       requestedRole: req.body.role,
     });
-    return res.status(500).send({ message: req.__('organizations.updateUserRoleError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.updateUserRoleError'),
+    });
   }
 };
 

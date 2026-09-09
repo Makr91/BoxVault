@@ -3,6 +3,7 @@ import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { files: File } = db;
 import { safeUnlink, safeRm } from '../../utils/fsHelper.js';
@@ -58,18 +59,24 @@ import { safeUnlink, safeRm } from '../../utils/fsHelper.js';
  *                 message:
  *                   type: string
  *                   example: "File and database record are deleted, or file was not found but cleanup attempted."
+ *       403:
+ *         description: The caller neither owns the box nor administers the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Architecture not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const remove = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -92,9 +99,10 @@ const remove = async (req, res) => {
     const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
-      return res.status(403).json({
-        error: 'PERMISSION_DENIED',
-        message: req.__('files.delete.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('files.delete.permissionDenied'),
       });
     }
 
@@ -131,8 +139,10 @@ const remove = async (req, res) => {
     }
   } catch (err) {
     log.error.error('Error deleting file:', err);
-    return res.status(500).send({
-      message: req.__('files.delete.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.delete.error'),
     });
   }
 };

@@ -22,6 +22,9 @@ const unauthenticated = (req, res) =>
 const forbidden = (req, res, key) =>
   problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
 
+const internal = (req, res, key) =>
+  problem(res, req, { status: 500, type: 'internal', title: req.__(key) });
+
 const verifyToken = async (req, res, next) => {
   try {
     if (!req.headers['x-access-token'] && !authorizationCredential(req)) {
@@ -108,9 +111,7 @@ const verifyToken = async (req, res, next) => {
       error: err.message,
       stack: err.stack,
     });
-    return res.status(503).send({
-      message: req.__('auth.verificationError'),
-    });
+    return internal(req, res, 'auth.verificationError');
   }
 };
 
@@ -170,9 +171,7 @@ const isUser = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    return res.status(500).send({
-      message: req.__('auth.permissionCheckError'),
-    });
+    return internal(req, res, 'auth.permissionCheckError');
   }
 };
 
@@ -202,9 +201,7 @@ const isSelfOrAdmin = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    return res.status(500).send({
-      message: req.__('auth.permissionCheckError'),
-    });
+    return internal(req, res, 'auth.permissionCheckError');
   }
 };
 
@@ -238,9 +235,7 @@ const isUserOrServiceAccount = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    return res.status(500).send({
-      message: req.__('auth.permissionCheckError'),
-    });
+    return internal(req, res, 'auth.permissionCheckError');
   }
 };
 
@@ -269,9 +264,7 @@ const isAdmin = async (req, res, next) => {
       stack: err.stack,
       userId: req.userId,
     });
-    return res.status(500).send({
-      message: req.__('auth.permissionCheckError'),
-    });
+    return internal(req, res, 'auth.permissionCheckError');
   }
 };
 

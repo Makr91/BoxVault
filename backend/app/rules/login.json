@@ -2,8 +2,8 @@
   "type": "object",
   "required": ["username", "password"],
   "properties": {
-    "username": { "type": "string" },
-    "password": { "type": "string" },
+    "username": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "password": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "stay_logged_in": { "type": "boolean" }
   }
 }

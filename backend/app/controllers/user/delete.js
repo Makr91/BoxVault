@@ -1,5 +1,6 @@
 // delete.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { removeMembershipFromOrg } from '../organization/removeuser.js';
 const { user: User } = db;
@@ -36,21 +37,21 @@ const { user: User } = db;
  *       403:
  *         description: Caller's organization role does not outrank the target's
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: User not found or not a member of this organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const _delete = async (req, res) => {
   const { username } = req.params;
@@ -59,8 +60,10 @@ const _delete = async (req, res) => {
   try {
     const user = await User.findOne({ where: { username } });
     if (!user) {
-      return res.status(404).send({
-        message: req.__('users.userNotFound'),
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('users.userNotFound'),
       });
     }
 
@@ -72,8 +75,10 @@ const _delete = async (req, res) => {
       organizationId,
       removedBy: req.userId,
     });
-    return res.status(500).send({
-      message: req.__('organizations.removeUserError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.removeUserError'),
     });
   }
 };

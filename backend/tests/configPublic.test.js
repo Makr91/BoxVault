@@ -51,9 +51,16 @@ describe('Public configuration endpoints', () => {
     });
 
     it('should answer 404 while no base URL is configured', async () => {
-      const res = await request(app).get(`/api/gravatar/profile/${HASH}`);
-      expect(res.statusCode).toBe(404);
-      expect(axiosGet).not.toHaveBeenCalled();
+      const restore = updateAppConfig(config => {
+        config.gravatar = { base_url: '' };
+      });
+      try {
+        const res = await request(app).get(`/api/gravatar/profile/${HASH}`);
+        expect(res.statusCode).toBe(404);
+        expect(axiosGet).not.toHaveBeenCalled();
+      } finally {
+        restore();
+      }
     });
 
     describe('with the proxy configured', () => {
@@ -61,8 +68,10 @@ describe('Public configuration endpoints', () => {
 
       beforeAll(() => {
         restore = updateAppConfig(config => {
-          config.gravatar.base_url = 'https://api.gravatar.example/v3/profiles/';
-          config.gravatar.api_key = 'secret-key';
+          config.gravatar = {
+            base_url: 'https://api.gravatar.example/v3/profiles/',
+            api_key: 'secret-key',
+          };
         });
       });
 
@@ -95,7 +104,7 @@ describe('Public configuration endpoints', () => {
 
     it('should call Gravatar without a key when none is configured', async () => {
       const restore = updateAppConfig(config => {
-        config.gravatar.base_url = 'https://api.gravatar.example/v3/profiles/';
+        config.gravatar = { base_url: 'https://api.gravatar.example/v3/profiles/' };
       });
       try {
         axiosGet.mockResolvedValue({ data: {} });

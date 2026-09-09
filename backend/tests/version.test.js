@@ -794,7 +794,8 @@ describe('Version API', () => {
 
       expect(res.statusCode).toBe(500);
       // The error message depends on what the controller throws or catches
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('delete should log error if fs.rm fails', async () => {

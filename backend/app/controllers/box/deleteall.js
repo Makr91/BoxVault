@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
 
@@ -35,15 +36,15 @@ const { box: Box } = db;
  *       404:
  *         description: Organization not found or no boxes to delete
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 // Delete all Boxes under an organization
 export const deleteAll = async (req, res) => {
@@ -55,8 +56,10 @@ export const deleteAll = async (req, res) => {
     });
 
     if (boxes.length === 0) {
-      return res.status(404).send({
-        message: req.__('boxes.noBoxesFoundInOrg', { organization }),
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('boxes.noBoxesFoundInOrg', { organization }),
       });
     }
 
@@ -87,8 +90,10 @@ export const deleteAll = async (req, res) => {
     throw new Error(req.__('boxes.notFoundToDelete'));
   } catch (err) {
     log.error.error('Error deleting all boxes:', err);
-    return res.status(500).send({
-      message: req.__('boxes.deleteAll.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.deleteAll.error'),
     });
   }
 };

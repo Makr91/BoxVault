@@ -32,7 +32,19 @@ describe('GET /api/rules', () => {
   it('should answer one JSON Schema 2020-12 document without a token', () => {
     expect(document.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
     expect(Object.keys(document.$defs).sort()).toEqual(
-      ['email', 'hex', 'identifier', 'orgCode', 'providerName', 'slug'].sort()
+      [
+        'slug',
+        'identifier',
+        'email',
+        'orgCode',
+        'providerName',
+        'hex',
+        'watchId',
+        'personName',
+        'iconName',
+        'languageTag',
+        'timezone',
+      ].sort()
     );
     expect(Object.keys(document.forms).sort()).toEqual([...FORMS].sort());
   });
@@ -48,13 +60,48 @@ describe('GET /api/rules', () => {
     ]);
     expect(Object.hasOwn(document.$defs.slug, 'pattern')).toBe(false);
     expect(document.$defs.orgCode.pattern).toBe('^[0-9A-F]{6}$');
+    expect(document.$defs.email.pattern).toBe(
+      "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+    );
+    expect(document.$defs.email.maxLength).toBe(255);
+    expect(Object.hasOwn(document.$defs.email, 'format')).toBe(false);
+    expect(document.$defs.watchId.pattern).toBe('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$');
+    expect(document.$defs.iconName.pattern).toBe('^[a-z0-9 -]{1,64}$');
+    expect(document.$defs.languageTag).toEqual({
+      type: 'string',
+      pattern: '^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$',
+      maxLength: 10,
+    });
+    expect(document.$defs.timezone.pattern).toBe('^(?:UTC|[A-Za-z_]+(?:/[A-Za-z0-9_+-]+)+)$');
     Object.values(document.forms).forEach(form => {
       Object.values(form.properties).forEach(property => {
-        expect(Object.hasOwn(property, 'pattern')).toBe(false);
+        expect(Object.hasOwn(property, 'format') && property.format === 'email').toBe(false);
+        if (Object.hasOwn(property, 'pattern')) {
+          expect(property.pattern).toBe('\\S');
+        }
         if (property.$ref) {
           expect(property.$ref.startsWith('#/$defs/')).toBe(true);
           expect(document.$defs[property.$ref.slice('#/$defs/'.length)]).toBeDefined();
         }
+      });
+    });
+  });
+
+  it('should refuse a blank string on every required string member by rule', () => {
+    Object.values(document.forms).forEach(form => {
+      (form.required || []).forEach(name => {
+        const property = form.properties[name];
+        const target = property.$ref ? document.$defs[property.$ref.slice('#/$defs/'.length)] : {};
+        const type = property.type || target.type;
+        if (type !== 'string') {
+          return;
+        }
+        expect(property.minLength).toBeGreaterThanOrEqual(1);
+        if (property.$ref === '#/$defs/email') {
+          expect(Object.hasOwn(property, 'pattern')).toBe(false);
+          return;
+        }
+        expect(property.pattern).toBe('\\S');
       });
     });
   });
@@ -79,8 +126,11 @@ describe('GET /api/rules', () => {
     expect(document.forms.version.properties.version_number.unique).toBe('box');
     expect(document.forms.provider.properties.name.unique).toBe('version');
     expect(document.forms.architecture.properties.name.unique).toBe('provider');
-    expect(document.forms.version.dependentRequired).toEqual({
-      deprecated: ['deprecation_reason'],
+    expect(Object.hasOwn(document.forms.version, 'dependentRequired')).toBe(false);
+    expect(document.forms.version.if).toEqual({
+      properties: { deprecated: { const: true } },
+      required: ['deprecated'],
     });
+    expect(document.forms.version.then).toEqual({ required: ['deprecation_reason'] });
   });
 });

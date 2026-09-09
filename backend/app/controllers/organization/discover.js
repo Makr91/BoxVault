@@ -1,4 +1,5 @@
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization, user: User, role: Role } = db;
 
@@ -53,9 +54,9 @@ const { organization: Organization, user: User, role: Role } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const discoverOrganizations = async (req, res) => {
   try {
@@ -92,7 +93,11 @@ const discoverOrganizations = async (req, res) => {
       error: err.message,
       stack: err.stack,
     });
-    return res.status(500).send({ message: req.__('organizations.discoverError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.discoverError'),
+    });
   }
 };
 

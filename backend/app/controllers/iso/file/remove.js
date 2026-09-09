@@ -1,5 +1,6 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { problem } from '../../../utils/problem.js';
 import { removeUnreferencedIsoFiles } from '../helpers.js';
 const { isoFiles: IsoFile, sequelize } = db;
 
@@ -55,7 +56,11 @@ const remove = async (req, res) => {
       where: { isoVersionId: version.id, architecture },
     });
     if (!fileRecord) {
-      return res.status(404).send({ message: req.__('files.notFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('files.notFound'),
+      });
     }
 
     const removed = fileRecord.toJSON();
@@ -74,7 +79,11 @@ const remove = async (req, res) => {
     return res.send({ message: req.__('files.deleted') });
   } catch (err) {
     log.error.error('Error deleting ISO file', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

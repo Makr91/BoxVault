@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { removeUnreferencedIsoFiles } from './helpers.js';
 const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
@@ -40,7 +41,11 @@ const deleteAll = async (req, res) => {
       ],
     });
     if (isos.length === 0) {
-      return res.status(404).send({ message: req.__('isos.noIsosFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('isos.noIsosFound'),
+      });
     }
 
     const files = isos
@@ -53,7 +58,11 @@ const deleteAll = async (req, res) => {
     return res.send({ message: req.__('isos.deletedAll', { count: deleted }) });
   } catch (err) {
     log.error.error('Error deleting all ISOs', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

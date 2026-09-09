@@ -84,9 +84,10 @@ const verifyBoxFilePath = async (req, res, next) => {
       stack: err.stack,
       params: req.params,
     });
-    return res.status(500).json({
-      error: 'INTERNAL_SERVER_ERROR',
-      message: req.__('files.pathVerificationError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.pathVerificationError'),
     });
   }
 };

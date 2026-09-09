@@ -5,8 +5,11 @@ import { notifyUnreadCount } from '../utils/events.js';
 import { sendHubNotification } from '../utils/notifyHub.js';
 import { resolveUserRecipients } from '../utils/notifyRecipients.js';
 import { getVapidPublicKey, sendPushToUsers } from '../utils/webPush.js';
+import { problem } from '../utils/problem.js';
 import db from '../models/index.js';
 import { getAuthServerUrl, extractOidcAccessToken } from './favorites/helpers.js';
+
+const RETRY_AFTER_SECONDS = '60';
 
 const buildNotificationsUrl = (req, path = '') =>
   `${getAuthServerUrl(req)}/api/notifications${path}`;
@@ -16,7 +19,14 @@ const buildAuthHeaders = oidcAccessToken => ({
   'Content-Type': 'application/json',
 });
 
-const respondAuthServerError = (res, error) => {
+const pushNotConfigured = (req, res) =>
+  problem(res, req, {
+    status: 503,
+    type: 'send-failed',
+    title: req.__('notifications.pushNotConfigured'),
+  });
+
+const respondAuthServerError = (req, res, error) => {
   const status = error.response?.status;
 
   log.error.error('Notification request to auth server failed', {
@@ -25,11 +35,22 @@ const respondAuthServerError = (res, error) => {
     data: error.response?.data,
   });
 
-  if (status === 401 || status === 403) {
-    return res.status(status).json({ error: 'NOTIFICATIONS_NOT_AUTHORIZED' });
+  if (status === 401) {
+    return problem(res, req, {
+      status: 401,
+      type: 'authentication',
+      title: req.__('auth.unauthorized'),
+    });
+  }
+  if (status === 403) {
+    return problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
   }
 
-  return res.status(502).json({ error: 'AUTH_SERVER_UNAVAILABLE' });
+  return problem(res, req, {
+    status: 502,
+    type: 'internal',
+    title: req.__('users.preferencesDelegationFailed'),
+  });
 };
 
 const pushUnreadCount = async (req, headers) => {
@@ -43,9 +64,9 @@ const pushUnreadCount = async (req, headers) => {
 
 /**
  * Forward one request to the identity provider with the session's OIDC access
- * token and answer its status and body unmapped: 401 OIDC_ACCESS_TOKEN_REQUIRED
- * without a token, the provider's own 401 or 403 as NOTIFICATIONS_NOT_AUTHORIZED,
- * 502 AUTH_SERVER_UNAVAILABLE when the provider cannot be reached.
+ * token and answer its status and body unmapped: a 401 authentication problem
+ * without a token, the provider's own 401 or 403 as an authentication or
+ * forbidden problem, a 502 internal problem when the provider cannot be reached.
  * @param {import('express').Request} req - The request, with the session resolved
  * @param {import('express').Response} res - The response
  * @param {function(Object): Promise<{status: number, data: *}>} sendRequest - Sends the upstream request with the bearer headers
@@ -61,7 +82,11 @@ export const proxyNotificationRequest = async (
   const oidcAccessToken = extractOidcAccessToken(req);
 
   if (!oidcAccessToken) {
-    return res.status(401).json({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
+    return problem(res, req, {
+      status: 401,
+      type: 'authentication',
+      title: req.__('auth.unauthorized'),
+    });
   }
 
   const headers = buildAuthHeaders(oidcAccessToken);
@@ -69,7 +94,7 @@ export const proxyNotificationRequest = async (
     const response = await sendRequest(headers);
     res.status(response.status).json(response.data || {});
   } catch (error) {
-    return respondAuthServerError(res, error);
+    return respondAuthServerError(req, res, error);
   }
   if (pushCount) {
     await pushUnreadCount(req, headers);
@@ -107,13 +132,16 @@ const buildListQuery = query => {
  *                   type: string
  *       503:
  *         description: Push notifications are disabled or unconfigured
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getVapidKey = (req, res) => {
-  void req;
   const publicKey = getVapidPublicKey();
 
   if (!publicKey) {
-    return res.status(503).json({ error: 'PUSH_NOT_CONFIGURED' });
+    return pushNotConfigured(req, res);
   }
 
   return res.json({ publicKey });
@@ -140,12 +168,20 @@ const isValidSubscription = body =>
  *         description: Subscription stored
  *       400:
  *         description: Malformed subscription
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const createSubscription = async (req, res) => {
   if (!isValidSubscription(req.body)) {
-    return res.status(400).json({ error: 'INVALID_SUBSCRIPTION' });
+    return problem(res, req, { status: 400, type: 'bad-request' });
   }
 
   const { endpoint, keys } = req.body;
@@ -169,7 +205,7 @@ export const createSubscription = async (req, res) => {
     return res.status(204).send();
   } catch (err) {
     log.error.error('Failed to store push subscription', { error: err.message });
-    return res.status(500).json({ error: 'SUBSCRIPTION_STORE_FAILED' });
+    return problem(res, req, { status: 500, type: 'internal' });
   }
 };
 
@@ -186,14 +222,26 @@ export const createSubscription = async (req, res) => {
  *         description: Subscription removed (or was already absent)
  *       400:
  *         description: Missing endpoint
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const deleteSubscription = async (req, res) => {
   const endpoint = req.body?.endpoint;
 
   if (typeof endpoint !== 'string' || endpoint === '') {
-    return res.status(400).json({ error: 'ENDPOINT_REQUIRED' });
+    return problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      errors: [{ pointer: '/endpoint', rule: 'required', params: {} }],
+    });
   }
 
   try {
@@ -201,7 +249,7 @@ export const deleteSubscription = async (req, res) => {
     return res.status(204).send();
   } catch (err) {
     log.error.error('Failed to remove push subscription', { error: err.message });
-    return res.status(500).json({ error: 'SUBSCRIPTION_DELETE_FAILED' });
+    return problem(res, req, { status: 500, type: 'internal' });
   }
 };
 
@@ -233,10 +281,14 @@ const testNotification = req => ({
  *                   type: integer
  *       503:
  *         description: Push notifications are disabled or unconfigured
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const sendTestToast = async (req, res) => {
   if (!getVapidPublicKey()) {
-    return res.status(503).json({ error: 'PUSH_NOT_CONFIGURED' });
+    return pushNotConfigured(req, res);
   }
   const delivered = await sendPushToUsers([req.userId], testNotification(req));
   return res.json({ delivered });
@@ -263,13 +315,26 @@ export const sendTestToast = async (req, res) => {
  *                   type: integer
  *       404:
  *         description: The caller has no identity-provider credential to address
- *       502:
- *         description: The hub is disabled, unreachable or refused the write
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       503:
+ *         description: The hub is disabled, unreachable or refused the write; Retry-After names when to try again
+ *         headers:
+ *           Retry-After:
+ *             schema:
+ *               type: integer
+ *             description: Seconds to wait before retrying
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const sendTestChannel = async (req, res) => {
   const [recipient] = await resolveUserRecipients([req.userId]);
   if (!recipient) {
-    return res.status(404).json({ error: 'NO_HUB_IDENTITY' });
+    return problem(res, req, { status: 404, type: 'not-found' });
   }
   const accepted = await sendHubNotification({
     issuer: recipient.issuer,
@@ -280,7 +345,8 @@ export const sendTestChannel = async (req, res) => {
     idempotencyKey: `boxvault:test:${recipient.uuid}:${Date.now()}`,
   });
   if (!accepted) {
-    return res.status(502).json({ error: 'HUB_UNAVAILABLE' });
+    res.set('Retry-After', RETRY_AFTER_SECONDS);
+    return problem(res, req, { status: 503, type: 'send-failed' });
   }
   return res.json({ delivered: 1 });
 };
@@ -339,10 +405,22 @@ export const deleteNotification = (req, res) =>
  *         description: The inbox is empty
  *       401:
  *         description: No OIDC access token on the session, or the hub refused the token
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: The hub refused the request
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       502:
  *         description: The hub is unreachable
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const deleteAllNotifications = (req, res) =>
   proxyNotificationRequest(

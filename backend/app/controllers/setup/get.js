@@ -1,6 +1,7 @@
 // get.js
 import { CONFIG_NAMES, loadConfig, loadSchema } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { verifyAuthorizedToken } from './middleware.js';
 import { maskSecrets } from '../config/helpers.js';
 
@@ -27,8 +28,16 @@ import { maskSecrets } from '../config/helpers.js';
  *                     type: object
  *       403:
  *         description: Invalid setup token
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Failed to read configurations
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getConfigs = [
   verifyAuthorizedToken,
@@ -42,7 +51,11 @@ export const getConfigs = [
       return res.send({ configs });
     } catch (error) {
       log.error.error('Error reading configurations:', error);
-      return res.status(500).send(req.__('setup.readError'));
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('setup.readError'),
+      });
     }
   },
 ];

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { organization: Organization, user: User, UserOrg } = db;
 
 /**
@@ -43,27 +44,27 @@ const { organization: Organization, user: User, UserOrg } = db;
  *       400:
  *         description: User is not a member of this organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const setPrimaryOrganization = async (req, res) => {
   try {
@@ -73,14 +74,20 @@ const setPrimaryOrganization = async (req, res) => {
     // Find the organization
     const organization = await Organization.findOne({ where: { name: orgName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     // Verify user is a member of this organization
     const membership = await UserOrg.findUserOrgRole(userId, organization.id);
     if (!membership) {
-      return res.status(400).send({
-        message: req.__('organizations.userNotMember'),
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('organizations.userNotMember'),
       });
     }
 
@@ -110,7 +117,11 @@ const setPrimaryOrganization = async (req, res) => {
       userId: req.userId,
       organization: req.params.orgName,
     });
-    return res.status(500).send({ message: req.__('users.setPrimaryOrgError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('users.setPrimaryOrgError'),
+    });
   }
 };
 

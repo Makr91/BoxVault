@@ -34,9 +34,9 @@ import { maskSecrets } from './helpers.js';
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: The name is not one of the files status.config lists
  *         content:

@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict } from '../../utils/problem.js';
+import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 const { providers: Provider } = db;
@@ -61,23 +61,21 @@ const { providers: Provider } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized!"
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: The caller may not write the box
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, box, version, or provider not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Provider virtualbox not found for version 1.0.0 in box ubuntu-server in organization myorg."
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: A provider with the new name already exists for the version
  *         content:
@@ -93,13 +91,9 @@ const { providers: Provider } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Some error occurred while updating the Provider."
+ *               $ref: '#/components/schemas/Problem'
  */
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
@@ -115,8 +109,10 @@ export const update = async (req, res) => {
     const canUpdate = canWriteBox(req, box, membership);
 
     if (!canUpdate) {
-      return res.status(403).send({
-        message: req.__('providers.update.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('providers.update.permissionDenied'),
       });
     }
 
@@ -163,13 +159,17 @@ export const update = async (req, res) => {
       return res.send(updatedProvider);
     }
 
-    return res.status(404).send({
-      message: req.__('providers.notFound'),
+    return problem(res, req, {
+      status: 404,
+      type: 'not-found',
+      title: req.__('providers.notFound'),
     });
   } catch (err) {
     log.error.error('Error updating provider:', err);
-    return res.status(500).send({
-      message: req.__('providers.update.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('providers.update.error'),
     });
   }
 };

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { isoWhereFor, resolveIsoViewer } from './visibility.js';
 import { sumIsoDownloads } from './helpers.js';
 const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
@@ -47,6 +48,10 @@ export const discoverAll = async (req, res) => {
     log.error.error('Error discovering ISOs:', {
       error: err.message,
     });
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

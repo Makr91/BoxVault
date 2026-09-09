@@ -5,9 +5,17 @@
 import axios from 'axios';
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 
 // Gravatar hashes are hex digests (md5 = 32, sha256 = 64)
 const EMAIL_HASH_PATTERN = /^[a-f0-9]{32,64}$/i;
+
+const gravatarNotFound = (req, res) =>
+  problem(res, req, {
+    status: 404,
+    type: 'not-found',
+    title: req.__('config.gravatarNotFound'),
+  });
 
 /**
  * @swagger
@@ -30,16 +38,32 @@ const EMAIL_HASH_PATTERN = /^[a-f0-9]{32,64}$/i;
  *         description: Gravatar profile JSON
  *       400:
  *         description: Invalid email hash
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Profile not found or Gravatar not configured
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getGravatarProfile = async (req, res) => {
   const { emailHash } = req.params;
 
   if (!EMAIL_HASH_PATTERN.test(emailHash)) {
-    return res.status(400).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 400,
+      type: 'bad-request',
+      title: req.__('errors.operationFailed'),
+    });
   }
 
   try {
@@ -48,7 +72,7 @@ export const getGravatarProfile = async (req, res) => {
     const apiKey = appConfig.gravatar?.api_key;
 
     if (!baseUrl) {
-      return res.status(404).send({ message: req.__('config.gravatarNotFound') });
+      return gravatarNotFound(req, res);
     }
 
     const headers = {};
@@ -60,9 +84,13 @@ export const getGravatarProfile = async (req, res) => {
     return res.send(response.data);
   } catch (err) {
     if (err.response?.status === 404) {
-      return res.status(404).send({ message: req.__('config.gravatarNotFound') });
+      return gravatarNotFound(req, res);
     }
     log.error.error('Error proxying gravatar profile:', err.message);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

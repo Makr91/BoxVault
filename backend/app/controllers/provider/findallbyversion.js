@@ -1,8 +1,14 @@
 // findallbyversion.js
 import { log } from '../../utils/Logger.js';
 import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
+
+const unauthorized = (req, res) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__('providers.unauthorized') });
 
 /**
  * @swagger
@@ -47,43 +53,27 @@ const { providers: Provider, organization: _organization, box: _box, versions } 
  *       401:
  *         description: Unauthorized - invalid token
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized!"
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Forbidden - unauthorized access to private box
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized access to providers."
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, box, or version not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Organization not found with name: example-org."
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Some error occurred while retrieving providers."
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findAllByVersion = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
@@ -95,9 +85,11 @@ export const findAllByVersion = async (req, res) => {
     });
 
     if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const box = await _box.findOne({
@@ -106,9 +98,7 @@ export const findAllByVersion = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFoundInOrg', { boxId, organization }),
-      });
+      return notFound(req, res, req.__('boxes.boxNotFoundInOrg', { boxId, organization }));
     }
 
     const version = await versions.findOne({
@@ -116,9 +106,11 @@ export const findAllByVersion = async (req, res) => {
     });
 
     if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization })
+      );
     }
 
     // If the box is public, allow access
@@ -129,12 +121,12 @@ export const findAllByVersion = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: req.__('providers.unauthorized') });
+      return unauthorized(req, res);
     }
 
     const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: req.__('providers.unauthorized') });
+      return unauthorized(req, res);
     }
 
     // User is member, allow access
@@ -142,6 +134,10 @@ export const findAllByVersion = async (req, res) => {
     return res.send(providers);
   } catch (err) {
     log.error.error('Error retrieving providers:', err);
-    return res.status(500).send({ message: req.__('providers.findAll.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('providers.findAll.error'),
+    });
   }
 };

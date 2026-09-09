@@ -1,5 +1,6 @@
 // findall.js
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js'; // Keep this for Sequelize
 const { organization: Organization, user: User, box: Box, Sequelize } = db;
 const { Op } = Sequelize;
@@ -37,15 +38,15 @@ const { Op } = Sequelize;
  *       401:
  *         description: Unauthorized - invalid token
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 // Retrieve all Organizations from the database.
 export const findAll = async (req, res) => {
@@ -85,8 +86,10 @@ export const findAll = async (req, res) => {
     return res.status(200).send(result);
   } catch (err) {
     log.error.error('Error retrieving organizations:', err);
-    return res.status(500).send({
-      message: req.__('organizations.findAllError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.findAllError'),
     });
   }
 };

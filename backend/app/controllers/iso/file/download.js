@@ -3,8 +3,15 @@ import { join } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { problem } from '../../../utils/problem.js';
 import { getIsoStorageRoot } from '../helpers.js';
 const { isoFiles: IsoFile } = db;
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
+
+const fileNotFound = (req, res) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__('files.notFound') });
 
 /**
  * @swagger
@@ -76,23 +83,23 @@ const download = async (req, res) => {
       decoded.versionNumber !== versionNumber ||
       decoded.architecture !== architecture
     ) {
-      return res.status(403).send({ message: req.__('files.invalidDownloadToken') });
+      return forbidden(req, res, 'files.invalidDownloadToken');
     }
   } else if (req.userId) {
     ({ userId } = req);
   } else if (!isPublic) {
-    return res.status(403).send({ message: req.__('files.noDownloadToken') });
+    return forbidden(req, res, 'files.noDownloadToken');
   }
 
   try {
     if (!isPublic) {
       if (!userId) {
-        return res.status(403).send({ message: req.__('files.download.unauthorized') });
+        return forbidden(req, res, 'files.download.unauthorized');
       }
 
       const membership = await resolveOrgMembership(req, iso.organizationId);
       if (!membership) {
-        return res.status(403).send({ message: req.__('files.download.unauthorized') });
+        return forbidden(req, res, 'files.download.unauthorized');
       }
     }
 
@@ -100,7 +107,7 @@ const download = async (req, res) => {
       where: { isoVersionId: version.id, architecture },
     });
     if (!fileRecord) {
-      return res.status(404).send({ message: req.__('files.notFound') });
+      return fileNotFound(req, res);
     }
 
     const fullPath = join(getIsoStorageRoot(), fileRecord.storagePath);
@@ -109,7 +116,7 @@ const download = async (req, res) => {
       await fs.promises.access(fullPath, fs.constants.R_OK);
     } catch (e) {
       log.error.error(`ISO file not found or not readable: ${fullPath}`, e);
-      return res.status(404).send({ message: req.__('files.notFound') });
+      return fileNotFound(req, res);
     }
 
     await fileRecord.increment('downloadCount');
@@ -146,7 +153,11 @@ const download = async (req, res) => {
   } catch (err) {
     log.error.error('Error downloading ISO file', err);
     if (!res.headersSent) {
-      return res.status(500).send({ message: req.__('errors.operationFailed') });
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('errors.operationFailed'),
+      });
     }
     res.end();
     return undefined;

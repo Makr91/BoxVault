@@ -2,7 +2,7 @@
   "type": "object",
   "required": ["name"],
   "properties": {
-    "name": { "$ref": "#/$defs/slug", "unique": "organization" },
+    "name": { "$ref": "#/$defs/slug", "minLength": 1, "pattern": "\\S", "unique": "organization" },
     "description": { "type": "string" },
     "is_public": { "type": "boolean" },
     "published": { "type": "boolean" },

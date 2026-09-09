@@ -1,11 +1,14 @@
 // resend.js
 import { randomBytes } from 'crypto';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { user: User } = db;
 import { sendVerificationMail } from './verification.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import { resolveUserLanguage } from '../../utils/userLanguage.js';
+
+const RETRY_AFTER_SECONDS = '60';
 
 /**
  * @swagger
@@ -26,49 +29,39 @@ import { resolveUserLanguage } from '../../utils/userLanguage.js';
  *       400:
  *         description: User is already verified
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "User is already verified."
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: User or organization not found
+ *               $ref: '#/components/schemas/Problem'
+ *       503:
+ *         description: The verification mail could not be sent; Retry-After names when to try again
+ *         headers:
+ *           Retry-After:
+ *             schema:
+ *               type: integer
+ *             description: Seconds to wait before resending
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "User not found."
- *       500:
- *         description: Email sending failed or server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "SMTP connection failed"
+ *               $ref: '#/components/schemas/Problem'
  */
 export const resendVerificationMail = async (req, res) => {
   try {
     const user = await User.findByPk(req.userId);
 
     if (user.verified) {
-      return res.status(400).send({ message: req.__('auth.userAlreadyVerified') });
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('auth.userAlreadyVerified'),
+      });
     }
 
-    // Auth config is pre-loaded and validated by middleware, so no need for try-catch here.
     const authConfig = loadConfig('auth');
     user.verificationToken = randomBytes(20).toString('hex');
     const verificationExpiryHours = authConfig?.auth?.jwt?.verification_token_expiry_hours || 24;
@@ -84,6 +77,11 @@ export const resendVerificationMail = async (req, res) => {
     return res.send({ message: req.__('auth.verificationEmailResent') });
   } catch (err) {
     log.error.error('Error in resendVerificationMail:', err);
-    return res.status(500).send({ message: req.__('mail.errorSendingEmail') });
+    res.set('Retry-After', RETRY_AFTER_SECONDS);
+    return problem(res, req, {
+      status: 503,
+      type: 'send-failed',
+      title: req.__('mail.errorSendingEmail'),
+    });
   }
 };

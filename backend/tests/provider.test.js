@@ -553,7 +553,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Version 9.9.9 not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Version 9.9.9 not found');
     });
   });
 
@@ -707,7 +708,8 @@ describe('Provider API', () => {
         .send({ name: 'error-provider-2' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should return 404 if organization not found during creation', async () => {
@@ -766,7 +768,8 @@ describe('Provider API', () => {
         .send({ description: 'Updated' });
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
 
     it('should handle database errors during update with fallback message', async () => {
@@ -781,7 +784,8 @@ describe('Provider API', () => {
         .send({ description: 'Updated' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should return 404 if provider not found during deletion', async () => {
@@ -794,7 +798,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
 
     it('should handle database errors during deletion with fallback message', async () => {
@@ -810,7 +815,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should log error if fs.rm fails during deletion', async () => {
@@ -848,7 +854,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Provider');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Provider');
     });
 
     it('should handle database errors during findOne with fallback message', async () => {
@@ -861,7 +868,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should handle database errors during findAllByVersion', async () => {
@@ -886,7 +894,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should handle database errors during deleteAllByVersion', async () => {
@@ -911,7 +920,8 @@ describe('Provider API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should return 404 if no providers found to delete in deleteAllByVersion', async () => {
@@ -956,6 +966,7 @@ describe('Provider API', () => {
       };
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
     });
@@ -1027,7 +1038,6 @@ describe('Provider API', () => {
     it('update should answer 409 when the new name is taken (update.js)', async () => {
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
       jest.spyOn(db.providers, 'findOne').mockResolvedValue({ id: 2, name: 'new-name' });
-      res.type = jest.fn().mockReturnThis();
 
       req.body.name = 'new-name';
 
@@ -1187,7 +1197,8 @@ describe('Provider API', () => {
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: expect.stringContaining('versions.versionNotFoundInBox'),
+          type: 'https://auth.startcloud.com/probs/not-found',
+          title: expect.stringContaining('versions.versionNotFoundInBox'),
         })
       );
     });

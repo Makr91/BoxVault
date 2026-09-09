@@ -3,9 +3,13 @@ import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../../utils/config-loader.js';
 import { log } from '../../../utils/Logger.js';
 import { resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { problem } from '../../../utils/problem.js';
 import db from '../../../models/index.js';
 
 const { versions: Version } = db;
+
+const unauthorized = (req, res) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__('versions.unauthorized') });
 
 /**
  * @swagger
@@ -44,43 +48,27 @@ const { versions: Version } = db;
  *       401:
  *         description: Unauthorized - invalid token
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized!"
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Forbidden - unauthorized access to private box
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Unauthorized access to versions."
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization or box not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Organization not found with name: example-org."
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Some error occurred while retrieving versions."
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findAllByBox = async (req, res) => {
   const { organization, boxId } = req.params;
@@ -102,7 +90,11 @@ export const findAllByBox = async (req, res) => {
         serviceAccountId: decoded.serviceAccountId,
       };
     } catch {
-      return res.status(401).send({ message: req.__('auth.unauthorized') });
+      return problem(res, req, {
+        status: 401,
+        type: 'authentication',
+        title: req.__('auth.unauthorized'),
+      });
     }
   }
 
@@ -118,12 +110,12 @@ export const findAllByBox = async (req, res) => {
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: req.__('versions.unauthorized') });
+      return unauthorized(req, res);
     }
 
     const membership = await resolveOrgMembership(caller, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: req.__('versions.unauthorized') });
+      return unauthorized(req, res);
     }
 
     // User is member of organization, allow access
@@ -131,8 +123,10 @@ export const findAllByBox = async (req, res) => {
     return res.send(versions);
   } catch (err) {
     log.error.error('Error retrieving versions:', err);
-    return res.status(500).send({
-      message: req.__('versions.findAll.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('versions.findAll.error'),
     });
   }
 };

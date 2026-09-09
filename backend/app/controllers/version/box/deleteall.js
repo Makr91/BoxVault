@@ -4,6 +4,7 @@ import { getSecureBoxPath } from '../../../utils/paths.js';
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 import { canWriteBox, resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { problem } from '../../../utils/problem.js';
 
 const { versions: Version } = db;
 
@@ -40,26 +41,24 @@ const { versions: Version } = db;
  *                 message:
  *                   type: string
  *                   example: "All versions deleted successfully!"
+ *       403:
+ *         description: The caller may not write the box
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization or box not found, or no versions to delete
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Box not found in organization example-org."
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Some error occurred while deleting the versions."
+ *               $ref: '#/components/schemas/Problem'
  */
 export const deleteAllByBox = async (req, res) => {
   const { organization, boxId } = req.params;
@@ -73,8 +72,10 @@ export const deleteAllByBox = async (req, res) => {
     const canDelete = canWriteBox(req, box, membership);
 
     if (!canDelete) {
-      return res.status(403).send({
-        message: req.__('versions.delete.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('versions.delete.permissionDenied'),
       });
     }
 
@@ -93,13 +94,17 @@ export const deleteAllByBox = async (req, res) => {
       return res.send({ message: req.__('versions.deletedAll') });
     }
 
-    return res.status(404).send({
-      message: req.__('versions.notFoundToDelete'),
+    return problem(res, req, {
+      status: 404,
+      type: 'not-found',
+      title: req.__('versions.notFoundToDelete'),
     });
   } catch (err) {
     log.error.error('Error deleting versions:', err);
-    return res.status(500).send({
-      message: req.__('versions.deleteAll.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('versions.deleteAll.error'),
     });
   }
 };

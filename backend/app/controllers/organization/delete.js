@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { removeUnreferencedIsoFiles } from '../iso/helpers.js';
 
@@ -37,15 +38,15 @@ const { organization: Organization, iso: ISO, isoVersions: IsoVersion, isoFiles:
  *       404:
  *         description: Organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const _delete = async (req, res) => {
   const { organization: organizationName } = req.params;
@@ -91,8 +92,10 @@ const _delete = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error deleting organization:', err);
-    return res.status(500).send({
-      message: req.__('organizations.deleteError'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.deleteError'),
     });
   }
 };

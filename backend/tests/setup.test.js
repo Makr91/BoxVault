@@ -55,6 +55,8 @@ describe('Setup API', () => {
       const res = await request(app).post('/api/setup/verify-token').send({ token: 'wrong-token' });
 
       expect(res.statusCode).toBe(403);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
     });
 
     it('should succeed with valid token', async () => {
@@ -80,6 +82,7 @@ describe('Setup API', () => {
     it('should fail without authorization', async () => {
       const res = await request(app).get('/api/setup');
       expect(res.statusCode).toBe(403);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
     });
 
     it('should return every config with its secrets masked', async () => {
@@ -159,7 +162,11 @@ describe('Setup API', () => {
         .set('Authorization', `Bearer ${authorizedToken}`);
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('No file uploaded.');
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/file', rule: 'required' }),
+      ]);
     });
 
     it('should handle directory creation error', async () => {
@@ -322,6 +329,7 @@ describe('Setup API', () => {
 
       const res = await request(app).get('/api/setup/status');
       expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
 
       readFileSpy.mockRestore();
     });

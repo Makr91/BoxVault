@@ -1,5 +1,6 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { problem } from '../../../utils/problem.js';
 import { canSeeIso, resolveIsoViewer } from '../visibility.js';
 const { isoFiles: IsoFile } = db;
 
@@ -79,14 +80,22 @@ const info = async (req, res) => {
 
     const viewer = await resolveIsoViewer(req);
     if (!canSeeIso(viewer, iso)) {
-      return res.status(403).send({ message: req.__('files.info.unauthorized') });
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('files.info.unauthorized'),
+      });
     }
 
     const fileRecord = await IsoFile.findOne({
       where: { isoVersionId: version.id, architecture },
     });
     if (!fileRecord) {
-      return res.status(404).send({ message: req.__('files.notFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('files.notFound'),
+      });
     }
 
     return res.send({
@@ -100,7 +109,11 @@ const info = async (req, res) => {
     });
   } catch (err) {
     log.error.error('Error retrieving ISO file info', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

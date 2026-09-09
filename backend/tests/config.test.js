@@ -377,7 +377,8 @@ describe('Config API', () => {
 
       const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Operation failed.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Operation failed.');
     });
 
     it('GET /api/config/gravatar - should answer 404 while the section is absent', async () => {
@@ -428,7 +429,8 @@ describe('Config API', () => {
         .send({ internationalization: { default_language: 'en' } });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Failed to update configuration');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Failed to update configuration');
     });
   });
 

@@ -277,9 +277,10 @@ describe('Mail API', () => {
         .set('x-access-token', adminToken)
         .send({ test_email: 'test@example.com' });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('mail.errorSendingEmail');
-      expect(res.body.error).toBeUndefined();
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toBe('mail.errorSendingEmail');
     });
 
     it('should handle SMTP errors with response object', async () => {
@@ -292,9 +293,10 @@ describe('Mail API', () => {
         .set('x-access-token', adminToken)
         .send({ test_email: 'test@example.com' });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('mail.errorSendingEmail');
-      expect(res.body.error).toBeUndefined();
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toBe('mail.errorSendingEmail');
     });
 
     it('should handle SMTP errors with response object', async () => {
@@ -307,9 +309,10 @@ describe('Mail API', () => {
         .set('x-access-token', adminToken)
         .send({ test_email: 'test@example.com' });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('mail.errorSendingEmail');
-      expect(res.body.error).toBeUndefined();
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toBe('mail.errorSendingEmail');
     });
 
     it('should handle invalid SMTP config', async () => {
@@ -329,9 +332,10 @@ describe('Mail API', () => {
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('mail.errorSendingEmail');
-      expect(res.body.error).toBeUndefined();
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toBe('mail.errorSendingEmail');
     });
 
     it('should handle partially invalid SMTP config (missing connect/auth)', async () => {
@@ -352,9 +356,10 @@ describe('Mail API', () => {
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('mail.errorSendingEmail');
-      expect(res.body.error).toBeUndefined();
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toBe('mail.errorSendingEmail');
     });
   });
 
@@ -379,7 +384,8 @@ describe('Mail API', () => {
         .set('x-access-token', adminToken); // Admin is verified
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('already verified');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toContain('already verified');
     });
 
     it('should handle email sending errors', async () => {
@@ -389,7 +395,22 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+    });
+
+    it('should handle database errors', async () => {
+      const findSpy = jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
+
+      const res = await request(app)
+        .post('/api/auth/resend-verification')
+        .set('x-access-token', userToken);
+
+      findSpy.mockRestore();
       expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('auth.verificationError');
     });
 
     it('should handle database errors', async () => {
@@ -400,20 +421,9 @@ describe('Mail API', () => {
         .set('x-access-token', userToken);
 
       findSpy.mockRestore();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('auth.verificationError');
-    });
-
-    it('should handle database errors', async () => {
-      const findSpy = jest.spyOn(db.user, 'findByPk').mockRejectedValue(new Error('DB Error'));
-
-      const res = await request(app)
-        .post('/api/auth/resend-verification')
-        .set('x-access-token', userToken);
-
-      findSpy.mockRestore();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('auth.verificationError');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('auth.verificationError');
     });
 
     it('should return 401 if user does not exist in DB', async () => {
@@ -463,8 +473,9 @@ describe('Mail API', () => {
         .set('x-access-token', userToken);
 
       findSpy.mockRestore();
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toBe('auth.verificationError');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('auth.verificationError');
     });
 
     it('should handle mail config loading failure', async () => {
@@ -480,8 +491,10 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('mail.errorSendingEmail');
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toContain('mail.errorSendingEmail');
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
 
@@ -498,8 +511,9 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(503);
-      expect(res.body.message).toContain('auth.verificationError');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toContain('auth.verificationError');
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
 
@@ -516,8 +530,10 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('mail.errorSendingEmail');
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toContain('mail.errorSendingEmail');
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
 
@@ -534,8 +550,10 @@ describe('Mail API', () => {
         .post('/api/auth/resend-verification')
         .set('x-access-token', userToken);
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('mail.errorSendingEmail');
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['retry-after']).toBe('60');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
+      expect(res.body.title).toContain('mail.errorSendingEmail');
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
   });

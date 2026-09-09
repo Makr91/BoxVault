@@ -1,4 +1,5 @@
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { service_account: ServiceAccount } = db;
 
@@ -23,15 +24,15 @@ const { service_account: ServiceAccount } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findAll = async (req, res) => {
   try {
@@ -40,6 +41,10 @@ export const findAll = async (req, res) => {
     return res.send(serviceAccounts);
   } catch (err) {
     log.error.error('Error retrieving service accounts:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

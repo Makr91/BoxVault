@@ -34,17 +34,15 @@ const { decode } = jwt;
  *                   items:
  *                     type: object
  *                     properties:
- *                       clientId:
+ *                       client_id:
  *                         type: string
- *                       clientName:
+ *                       client_name:
  *                         type: string
- *                       customLabel:
+ *                       custom_label:
  *                         type: string
- *                       icon:
+ *                       icon_url:
  *                         type: string
- *                       iconUrl:
- *                         type: string
- *                       homeUrl:
+ *                       home_url:
  *                         type: string
  *                       order:
  *                         type: integer

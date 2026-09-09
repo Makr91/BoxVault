@@ -2,7 +2,11 @@
 import fs from 'fs';
 import { timingSafeEqual } from 'crypto';
 import { getSetupTokenPath } from '../../utils/config-loader.js';
+import { problem } from '../../utils/problem.js';
 import { setAuthorizedSetupToken } from './helpers.js';
+
+const forbidden = (req, res, key) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
 
 /**
  * @swagger
@@ -27,30 +31,29 @@ import { setAuthorizedSetupToken } from './helpers.js';
  *       403:
  *         description: Setup not allowed or invalid token
  *         content:
- *           text/plain:
+ *           application/problem+json:
  *             schema:
- *               type: string
- *               example: "Invalid setup token"
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const verifySetupToken = (req, res) => {
   const { token } = req.body;
   const setupTokenPath = getSetupTokenPath();
 
   if (!fs.existsSync(setupTokenPath)) {
-    return res.status(403).send(req.__('setup.notAllowed'));
+    return forbidden(req, res, 'setup.notAllowed');
   }
 
   const storedToken = fs.readFileSync(setupTokenPath, 'utf8').trim();
   const tokenBuffer = Buffer.from(token || '', 'utf8');
   const storedBuffer = Buffer.from(storedToken, 'utf8');
   if (tokenBuffer.length !== storedBuffer.length || !timingSafeEqual(tokenBuffer, storedBuffer)) {
-    return res.status(403).send(req.__('setup.invalidToken'));
+    return forbidden(req, res, 'setup.invalidToken');
   }
 
   // Generate an authorized token (for simplicity, we'll use the same token)

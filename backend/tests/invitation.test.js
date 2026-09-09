@@ -312,7 +312,8 @@ describe('Invitation API', () => {
         .send({ email: inviteeEmail, organization_name: orgName });
       jest.restoreAllMocks();
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('organizations.permissionCheckError');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('organizations.permissionCheckError');
     });
 
     it('should handle app config loading failure', async () => {
@@ -330,7 +331,8 @@ describe('Invitation API', () => {
         .send({ email: 'app-config-fail@example.com', organization_name: orgName });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('invitations.send.error');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toContain('invitations.send.error');
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
@@ -350,7 +352,8 @@ describe('Invitation API', () => {
         .send({ email: 'smtp-fail@example.com', organization_name: orgName });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toContain('invitations.send.error');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toContain('invitations.send.error');
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
     });
@@ -366,7 +369,8 @@ describe('Invitation API', () => {
         .send({ email: 'transport-fail@example.com', organization_name: orgName });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('invitations.send.error');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('invitations.send.error');
 
       // Restore mock
       mockCreateTransport.mockReturnValue({ sendMail: mockSendMail, verify: mockVerify });
@@ -461,6 +465,7 @@ describe('Invitation API', () => {
       req = { body: {}, params: {}, __: key => key, getLocale: () => 'en' };
       res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
     });
@@ -500,7 +505,10 @@ describe('Invitation API', () => {
       await deleteInvitation(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'invitations.delete.error' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'invitations.delete.error',
+        })
       );
     });
 
@@ -510,7 +518,10 @@ describe('Invitation API', () => {
       await getActiveInvitations(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'invitations.get.error' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'invitations.get.error',
+        })
       );
     });
 
@@ -520,7 +531,10 @@ describe('Invitation API', () => {
       await sendInvitation(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'invitations.send.error' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'invitations.send.error',
+        })
       );
     });
 
@@ -537,7 +551,10 @@ describe('Invitation API', () => {
       await validateInvitationToken(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'invitations.validate.error' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'invitations.validate.error',
+        })
       );
     });
   });

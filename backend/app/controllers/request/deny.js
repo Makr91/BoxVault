@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { Request } = db;
 
 /**
@@ -40,33 +41,33 @@ const { Request } = db;
  *       400:
  *         description: Request already processed
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Requires admin or owner role in organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Join request not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const denyJoinRequest = async (req, res) => {
   try {
@@ -76,11 +77,19 @@ export const denyJoinRequest = async (req, res) => {
     // Verify request belongs to this organization
     const request = await Request.findByPk(requestId);
     if (!request || request.organization_id !== organizationId) {
-      return res.status(404).send({ message: req.__('requests.notFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('requests.notFound'),
+      });
     }
 
     if (request.status !== 'pending') {
-      return res.status(400).send({ message: req.__('requests.alreadyProcessed') });
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('requests.alreadyProcessed'),
+      });
     }
 
     // Deny the request
@@ -99,6 +108,10 @@ export const denyJoinRequest = async (req, res) => {
       requestId: req.params.requestId,
       reviewerId: req.userId,
     });
-    return res.status(500).send({ message: req.__('requests.deny.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('requests.deny.error'),
+    });
   }
 };

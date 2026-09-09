@@ -1,5 +1,6 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { problem } from '../../../utils/problem.js';
 const { isoVersions: IsoVersion } = db;
 
 /**
@@ -80,7 +81,11 @@ const update = async (req, res) => {
       where: { versionNumber, isoId: iso.id },
     });
     if (!version) {
-      return res.status(404).send({ message: req.__('isos.versions.notFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('isos.versions.notFound'),
+      });
     }
 
     const updatePayload = {};
@@ -102,7 +107,11 @@ const update = async (req, res) => {
     return res.send(updatedVersion);
   } catch (err) {
     log.error.error('Error updating ISO version', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };
 

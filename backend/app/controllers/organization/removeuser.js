@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { user: User, Sequelize, UserOrg, invitation: Invitation } = db;
 
 const ROLE_RANK = { owner: 3, admin: 2, member: 1 };
@@ -25,8 +26,10 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
   // Find target's membership in this organization
   const membership = await UserOrg.findUserOrgRole(user.id, organizationId);
   if (!membership) {
-    return res.status(404).send({
-      message: req.__('organizations.userNotMember'),
+    return problem(res, req, {
+      status: 404,
+      type: 'not-found',
+      title: req.__('organizations.userNotMember'),
     });
   }
 
@@ -39,8 +42,10 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
   }
 
   if (!actorRole || (ROLE_RANK[actorRole] || 0) <= (ROLE_RANK[membership.role] || 0)) {
-    return res.status(403).send({
-      message: req.__('organizations.removeRequiresHigherRole'),
+    return problem(res, req, {
+      status: 403,
+      type: 'forbidden',
+      title: req.__('organizations.removeRequiresHigherRole'),
     });
   }
 
@@ -55,8 +60,10 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
     });
 
     if (otherOrgs.length === 0) {
-      return res.status(400).send({
-        message: req.__('organizations.cannotRemoveOnlyOrg'),
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('organizations.cannotRemoveOnlyOrg'),
       });
     }
 
@@ -137,33 +144,33 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
  *       400:
  *         description: Cannot remove user from their only organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Caller's organization role does not outrank the target's
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: User or organization not found, or user not a member
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 const removeUserFromOrg = async (req, res) => {
   try {
@@ -173,7 +180,11 @@ const removeUserFromOrg = async (req, res) => {
     // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('users.userNotFound'),
+      });
     }
 
     return await removeMembershipFromOrg(req, res, user, organizationId);
@@ -184,7 +195,11 @@ const removeUserFromOrg = async (req, res) => {
       organizationId: req.organizationId,
       removedBy: req.userId,
     });
-    return res.status(500).send({ message: req.__('organizations.removeUserError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.removeUserError'),
+    });
   }
 };
 

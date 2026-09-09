@@ -90,7 +90,11 @@ describe('SSL API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Target path is required.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toBe('Target path is required.');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/targetPath', rule: 'required' }),
+      ]);
     });
 
     it('should fail if targetPath contains traversal characters', async () => {
@@ -100,7 +104,8 @@ describe('SSL API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toBe('Invalid target path.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toBe('Invalid target path.');
     });
 
     it('should handle write errors (EISDIR)', async () => {
@@ -113,7 +118,8 @@ describe('SSL API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Failed to write file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Failed to write file.');
     });
 
     it('should handle server configuration error (unresolvable config dir)', async () => {
@@ -127,7 +133,8 @@ describe('SSL API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Server configuration error.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Server configuration error.');
     });
 
     it('should handle directory creation error (file conflict)', async () => {
@@ -139,7 +146,8 @@ describe('SSL API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Failed to create directory for SSL file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Failed to create directory for SSL file.');
     });
 
     it('should fail if targetPath is root directory (invalid target)', async () => {
@@ -149,7 +157,8 @@ describe('SSL API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toBe('Invalid target path.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toBe('Invalid target path.');
     });
 
     it('should handle config root ending with separator', async () => {
@@ -188,7 +197,8 @@ describe('SSL API', () => {
         .send(Buffer.alloc(1024 * 1024));
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Upload stream error.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Upload stream error.');
     });
   });
 });

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { Request } = db;
 
 /**
@@ -55,21 +56,21 @@ const { Request } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: Requires admin or owner role in organization
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getOrgJoinRequests = async (req, res) => {
   try {
@@ -83,6 +84,10 @@ export const getOrgJoinRequests = async (req, res) => {
       error: err.message,
       organizationId: req.organizationId,
     });
-    return res.status(500).send({ message: req.__('requests.fetchOrg.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('requests.fetchOrg.error'),
+    });
   }
 };

@@ -254,14 +254,15 @@ describe('Favorites API', () => {
         .get('/api/user/favorites')
         .set('x-access-token', oidcUserToken);
       expect(refused.statusCode).toBe(403);
-      expect(refused.body).toEqual({ error: 'NOTIFICATIONS_NOT_AUTHORIZED' });
+      expect(refused.headers['content-type']).toContain('application/problem+json');
+      expect(refused.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
 
       axiosGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
       const down = await request(app)
         .get('/api/user/favorites')
         .set('x-access-token', oidcUserToken);
       expect(down.statusCode).toBe(502);
-      expect(down.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
+      expect(down.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
   });
 
@@ -291,7 +292,7 @@ describe('Favorites API', () => {
         .set('x-access-token', localUserToken)
         .send([]);
       expect(res.statusCode).toBe(401);
-      expect(res.body).toEqual({ error: 'OIDC_ACCESS_TOKEN_REQUIRED' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
       expect(axiosPut).not.toHaveBeenCalled();
     });
   });
@@ -351,7 +352,7 @@ describe('Favorites API', () => {
         .get('/api/user/favorites')
         .set('x-access-token', unknownProviderToken);
       expect(res.statusCode).toBe(502);
-      expect(res.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Failed to get auth server URL:',
         expect.stringContaining('Provider unknown not found')
@@ -372,7 +373,7 @@ describe('Favorites API', () => {
         .get('/api/user/favorites')
         .set('x-access-token', noProviderToken);
       expect(res.statusCode).toBe(502);
-      expect(res.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
 
     it('should refuse a malformed JWT before the helper runs', async () => {
@@ -420,7 +421,7 @@ describe('Favorites API', () => {
         .set('x-access-token', oidcUserToken);
 
       expect(res.statusCode).toBe(502);
-      expect(res.body).toEqual({ error: 'AUTH_SERVER_UNAVAILABLE' });
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
       expect(mockLog.error.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to load configuration')
       );

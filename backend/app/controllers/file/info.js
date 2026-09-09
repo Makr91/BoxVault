@@ -3,8 +3,19 @@ import { loadConfig } from '../../utils/config-loader.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
 import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { files: File } = db;
+
+const fileNotFound = (req, res) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__('files.notFound') });
+
+const unauthorized = (req, res) =>
+  problem(res, req, {
+    status: 403,
+    type: 'forbidden',
+    title: req.__('files.info.unauthorized'),
+  });
 
 /**
  * @swagger
@@ -92,21 +103,21 @@ const { files: File } = db;
  *       403:
  *         description: Unauthorized access to file information
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: File, box, or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const info = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -165,17 +176,17 @@ const info = async (req, res) => {
           updatedAt: fileRecord.updatedAt,
         });
       }
-      return res.status(404).send({ message: req.__('files.notFound') });
+      return fileNotFound(req, res);
     }
 
     // If the box is private, check if the user is member of the organization
     if (!userId) {
-      return res.status(403).send({ message: req.__('files.info.unauthorized') });
+      return unauthorized(req, res);
     }
 
     const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: req.__('files.info.unauthorized') });
+      return unauthorized(req, res);
     }
 
     // User is member, allow access
@@ -215,11 +226,13 @@ const info = async (req, res) => {
         updatedAt: fileRecord.updatedAt,
       });
     }
-    return res.status(404).send({ message: req.__('files.notFound') });
+    return fileNotFound(req, res);
   } catch (err) {
     log.error.error('Error retrieving file info:', err);
-    return res.status(500).send({
-      message: req.__('files.info.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.info.error'),
     });
   }
 };

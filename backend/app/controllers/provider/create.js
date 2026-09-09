@@ -69,7 +69,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict } from '../../utils/problem.js';
+import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 const { providers: Provider } = db;
@@ -114,16 +114,18 @@ const { providers: Provider } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Provider'
+ *       403:
+ *         description: The caller may not write the box
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, box, or version not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Organization not found with name: example-org."
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: A provider with that name already exists for the version
  *         content:
@@ -139,13 +141,9 @@ const { providers: Provider } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Some error occurred while creating the Provider."
+ *               $ref: '#/components/schemas/Problem'
  */
 export const create = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
@@ -160,8 +158,10 @@ export const create = async (req, res) => {
     const canCreate = canWriteBox(req, box, membership);
 
     if (!canCreate) {
-      return res.status(403).send({
-        message: req.__('providers.create.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('providers.create.permissionDenied'),
       });
     }
 
@@ -187,8 +187,10 @@ export const create = async (req, res) => {
     return res.status(201).send(provider);
   } catch (err) {
     log.error.error('Error creating provider:', err);
-    return res.status(500).send({
-      message: req.__('providers.create.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('providers.create.error'),
     });
   }
 };

@@ -10,6 +10,7 @@ const TITLE_KEYS = {
   'payload-too-large': 'problems.payloadTooLarge',
   throttled: 'problems.throttled',
   internal: 'problems.internal',
+  'send-failed': 'problems.sendFailed',
 };
 
 const fieldOf = pointer => pointer.split('/').filter(Boolean).pop() || '';

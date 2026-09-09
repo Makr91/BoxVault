@@ -255,7 +255,8 @@ describe('ISO API', () => {
       jest.spyOn(db.iso, 'findAll').mockRejectedValue(new Error('DB Error'));
       const res = await request(app).get('/api/isos/discover');
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
   });
 

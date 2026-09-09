@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict } from '../../utils/problem.js';
+import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 const { architectures: Architecture } = db;
@@ -80,15 +80,15 @@ const { architectures: Architecture } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization, box, version, provider, or architecture not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: An architecture with the new name already exists for the provider
  *         content:
@@ -104,9 +104,9 @@ const { architectures: Architecture } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -135,8 +135,10 @@ export const update = async (req, res) => {
     const canUpdate = canWriteBox(req, box, membership);
 
     if (!canUpdate) {
-      return res.status(403).send({
-        message: req.__('architectures.update.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('architectures.update.permissionDenied'),
       });
     }
 
@@ -193,8 +195,10 @@ export const update = async (req, res) => {
     throw new Error(req.__('architectures.notFound'));
   } catch (err) {
     log.error.error('Error updating architecture:', err);
-    return res.status(500).send({
-      message: req.__('architectures.update.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('architectures.update.error'),
     });
   }
 };

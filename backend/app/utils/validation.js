@@ -5,6 +5,8 @@ const HOSTNAME_RE =
 const IPV4_RE = /^(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?:\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)){3}$/;
 const INTEGER_RE = /^-?\d+$/;
 const NUMBER_RE = /^-?\d+(?:\.\d+)?$/;
+const NON_BLANK_PATTERN = '\\S';
+const PATTERN_NAMES = { [NON_BLANK_PATTERN]: 'nonBlank' };
 
 const isUri = value => {
   try {
@@ -33,8 +35,7 @@ const TYPE_CHECKS = {
   object: value => value !== null && typeof value === 'object' && !Array.isArray(value),
 };
 
-const isBlank = value =>
-  value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+const isBlank = value => value === undefined || value === null;
 
 const isPresent = value => !isBlank(value) && value !== false;
 
@@ -64,6 +65,13 @@ const typeCheck = (rule, value) => {
   return check && !check(value) ? { rule: 'type', params: { type: rule.type } } : null;
 };
 
+const nonBlankCheck = (rule, value) => {
+  if (rule.pattern !== NON_BLANK_PATTERN || typeof value !== 'string' || /\S/.test(value)) {
+    return null;
+  }
+  return { rule: 'pattern', params: { pattern: PATTERN_NAMES[NON_BLANK_PATTERN] } };
+};
+
 const lengthCheck = (rule, value) => {
   if (typeof value !== 'string') {
     return null;
@@ -81,7 +89,10 @@ const patternCheck = (rule, value, patternName) => {
   if (typeof value !== 'string' || !rule.pattern || new RegExp(rule.pattern).test(value)) {
     return null;
   }
-  return { rule: 'pattern', params: { pattern: patternName || rule.pattern } };
+  return {
+    rule: 'pattern',
+    params: { pattern: patternName || PATTERN_NAMES[rule.pattern] || rule.pattern },
+  };
 };
 
 const boundsCheck = (rule, value) => {
@@ -131,6 +142,7 @@ const itemsCheck = (rule, value) => {
 
 const CHECKS = [
   typeCheck,
+  nonBlankCheck,
   lengthCheck,
   patternCheck,
   boundsCheck,
@@ -179,13 +191,16 @@ const firstFailure = (rule, value, patternName, document) => {
 };
 
 /**
- * Evaluate one value against one schema: `type`, `required` (a blank
- * string counts as missing when the schema says `required: true`),
+ * Evaluate one value against one schema: `type`, `required` (presence
+ * alone: undefined and null count as missing when the schema says
+ * `required: true`, a blank string is judged by `minLength` and `pattern`),
  * `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`,
  * `format`, `minItems`, `maxItems`, `allOf` (every branch must pass) and
  * `not` (the branch must fail), with `$ref` resolved within `document`. A
  * failure anywhere inside a `$defs` pattern, its `allOf` and `not` branches
- * included, is reported as `pattern` named by the `$defs` entry.
+ * included, is reported as `pattern` named by the `$defs` entry; the inline
+ * `\S` pattern of a required string is reported as `pattern` named
+ * `nonBlank`.
  *
  * @param {Object} schema - The value's schema
  * @param {*} value - The value
@@ -242,6 +257,13 @@ const scopesFor = (values, pointer) => {
   return scopes;
 };
 
+const passesIf = (condition, values) =>
+  Boolean(condition) &&
+  (condition.required || []).every(name => !isBlank(values[name])) &&
+  Object.entries(condition.properties || {}).every(
+    ([name, rule]) => !Object.hasOwn(rule, 'const') || values[name] === rule.const
+  );
+
 const requiredOf = (schema, values) => {
   const required = new Set(schema.required || []);
   Object.entries(schema.dependentRequired || {}).forEach(([key, needs]) => {
@@ -249,6 +271,9 @@ const requiredOf = (schema, values) => {
       needs.forEach(name => required.add(name));
     }
   });
+  if (passesIf(schema.if, values)) {
+    (schema.then?.required || []).forEach(name => required.add(name));
+  }
   return required;
 };
 
@@ -301,7 +326,8 @@ const walkObject = ({ schema, values, scopes, base, document, errors }) => {
 
 /**
  * Evaluate an object against an object schema: `required`,
- * `dependentRequired`, every property through `validateValue` (nested
+ * `dependentRequired`, `then.required` while the `if` subschema's `const`
+ * and `required` entries hold, every property through `validateValue` (nested
  * objects and `additionalProperties` maps walked, pointers `/name`,
  * `/sql/port`), a property hidden by `dependsOn`/`showWhen` skipped.
  *

@@ -2,6 +2,6 @@
   "type": "object",
   "required": ["new_email"],
   "properties": {
-    "new_email": { "$ref": "#/$defs/email", "unique": "global" }
+    "new_email": { "$ref": "#/$defs/email", "minLength": 1, "unique": "global" }
   }
 }

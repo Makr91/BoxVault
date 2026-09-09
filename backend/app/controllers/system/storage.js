@@ -1,6 +1,7 @@
 import { promises, existsSync } from 'fs';
 import { log } from '../../utils/Logger.js';
 import { getStorageRoot } from '../../utils/paths.js';
+import { problem } from '../../utils/problem.js';
 import { getIsoStorageRoot } from '../iso/helpers.js';
 
 /**
@@ -32,12 +33,14 @@ import { getIsoStorageRoot } from '../iso/helpers.js';
  *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error.
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       501:
  *         description: Not supported on this Node.js version.
  */
 export const getStorageInfo = async (req, res) => {
-  void req;
-
   try {
     const boxPath = getStorageRoot();
     const isoPath = getIsoStorageRoot();
@@ -60,6 +63,10 @@ export const getStorageInfo = async (req, res) => {
     return res.json({ boxes: boxUsage, isos: isoUsage });
   } catch (error) {
     log.error.error('Error getting storage info', { error: error.message });
-    return res.status(500).send({ message: 'Failed to retrieve storage information' });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: 'Failed to retrieve storage information',
+    });
   }
 };

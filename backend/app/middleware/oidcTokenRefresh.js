@@ -4,6 +4,7 @@ import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { getOidcConfiguration } from '../auth/passport.js';
 import { getJwtClaimOptions } from '../utils/auth.js';
+import { problem } from '../utils/problem.js';
 
 /**
  * Middleware to automatically refresh OIDC access tokens before they expire
@@ -69,10 +70,10 @@ const oidcTokenRefresh = async (req, res, next) => {
       log.auth.error('OIDC configuration not found for token refresh', {
         provider: providerName,
       });
-      return res.status(401).json({
-        error: 'TOKEN_REFRESH_FAILED',
-        message: 'Provider configuration not available',
-        requiresReauth: true,
+      return problem(res, req, {
+        status: 401,
+        type: 'authentication',
+        title: 'Provider configuration not available',
       });
     }
 
@@ -185,10 +186,10 @@ const oidcTokenRefresh = async (req, res, next) => {
       });
 
       // Return 401 to force re-authentication
-      return res.status(401).json({
-        error: 'TOKEN_EXPIRED',
-        message: 'Session expired. Please log in again.',
-        requiresReauth: true,
+      return problem(res, req, {
+        status: 401,
+        type: 'authentication',
+        title: 'Session expired. Please log in again.',
       });
     }
   } catch (jwtError) {

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { organization: Organization, UserOrg } = db;
 
 /**
@@ -23,10 +24,22 @@ const { organization: Organization, UserOrg } = db;
  *         description: Joined the organization as admin
  *       400:
  *         description: Already a member of this organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const joinAsAdmin = async (req, res) => {
   try {
@@ -35,12 +48,20 @@ export const joinAsAdmin = async (req, res) => {
 
     const organization = await Organization.findOne({ where: { name: organizationName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('organizations.organizationNotFound'),
+      });
     }
 
     const existing = await UserOrg.findUserOrgRole(userId, organization.id);
     if (existing) {
-      return res.status(400).send({ message: req.__('organizations.alreadyMember') });
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('organizations.alreadyMember'),
+      });
     }
 
     await UserOrg.create({
@@ -64,6 +85,10 @@ export const joinAsAdmin = async (req, res) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: req.__('organizations.joinError') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('organizations.joinError'),
+    });
   }
 };

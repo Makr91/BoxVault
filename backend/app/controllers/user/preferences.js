@@ -8,10 +8,14 @@
 // Local accounts have no provider, so the BoxVault columns are the whole story.
 import axios from 'axios';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { getAuthServerUrl, extractOidcAccessToken } from '../favorites/helpers.js';
 
 const { user: User } = db;
+
+const badRequest = (req, res, title) =>
+  problem(res, req, { status: 400, type: 'bad-request', title });
 
 const THEMES = ['light', 'dark', 'auto'];
 // RFC 5646 shape check only — the provider validates the tag itself.
@@ -138,26 +142,46 @@ const delegateToProvider = async (req, body) => {
  *       200:
  *         description: Updated preferences
  *       400:
- *         description: A supplied value failed validation
+ *         description: A supplied value failed validation, or the identity provider refused it
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: User not found
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       502:
- *         description: The identity provider rejected or could not be reached
+ *         description: The identity provider could not be reached
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const updatePreferences = async (req, res) => {
   const body = req.body || {};
   const invalidField = findInvalidField(body);
 
   if (invalidField) {
-    return res.status(400).send({ message: req.__('users.preferenceInvalid', { invalidField }) });
+    return badRequest(req, res, req.__('users.preferenceInvalid', { invalidField }));
   }
 
   try {
     const user = await User.findByPk(req.userId);
     if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('users.userNotFound'),
+      });
     }
 
     const patch = buildPatch(body);
@@ -172,16 +196,20 @@ export const updatePreferences = async (req, res) => {
       try {
         const delegated = await delegateToProvider(req, body);
         if (!delegated) {
-          return res.status(400).send({ message: req.__('users.preferencesRequireIdpSession') });
+          return badRequest(req, res, req.__('users.preferencesRequireIdpSession'));
         }
       } catch (delegationErr) {
         const upstreamStatus = delegationErr.response?.status;
         const upstreamMessage = delegationErr.response?.data?.error;
         if (upstreamStatus === 400 && upstreamMessage) {
-          return res.status(400).send({ message: upstreamMessage });
+          return badRequest(req, res, upstreamMessage);
         }
         log.error.error('Failed to delegate preferences to auth server:', delegationErr);
-        return res.status(502).send({ message: req.__('users.preferencesDelegationFailed') });
+        return problem(res, req, {
+          status: 502,
+          type: 'internal',
+          title: req.__('users.preferencesDelegationFailed'),
+        });
       }
     }
 
@@ -189,6 +217,10 @@ export const updatePreferences = async (req, res) => {
     return res.status(200).send(toWireShape(user));
   } catch (err) {
     log.error.error('Error updating preferences:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
+    });
   }
 };

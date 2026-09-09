@@ -4,6 +4,7 @@ import { getSecureBoxPath } from '../../utils/paths.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
 
 /**
@@ -100,54 +101,36 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  *                   description: Checksum algorithm used
  *                 fileRecord:
  *                   $ref: '#/components/schemas/File'
+ *       400:
+ *         description: An upload header breaks its rule
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: The caller neither owns the box nor administers the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Architecture not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "NOT_FOUND"
- *                 message:
- *                   type: string
- *                   example: "Architecture not found for provider virtualbox in version 1.0.0 of box mybox."
+ *               $ref: '#/components/schemas/Problem'
  *       413:
  *         description: File too large
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "File size cannot be larger than 10GB!"
- *                 error:
- *                   type: string
- *                   example: "FILE_TOO_LARGE"
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "UPLOAD_ERROR"
- *                 message:
- *                   type: string
- *                   example: "Could not upload the file"
- *                 details:
- *                   type: object
- *                   properties:
- *                     error:
- *                       type: string
- *                     code:
- *                       type: string
- *                     duration:
- *                       type: number
+ *               $ref: '#/components/schemas/Problem'
  */
 const upload = (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -202,9 +185,10 @@ const upload = (req, res) => {
         userId: req.userId,
         boxOwnerId: boxData.userId,
       });
-      return res.status(403).json({
-        error: 'PERMISSION_DENIED',
-        message: req.__('files.upload.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('files.upload.permissionDenied'),
       });
     }
 
@@ -231,13 +215,12 @@ const upload = (req, res) => {
       },
     });
 
-    // Generic error response
-    return res.status(500).json({
-      error: 'UPLOAD_ERROR',
-      message: req.__('files.upload.error'),
-      details: {
-        duration: (Date.now() - uploadStartTime) / 1000,
-      },
+    log.app.info('Upload failed after', { seconds: (Date.now() - uploadStartTime) / 1000 });
+
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.upload.error'),
     });
   });
 };

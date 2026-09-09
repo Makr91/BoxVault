@@ -179,7 +179,8 @@ describe('File API', () => {
         .set('Range', `bytes=1000-2000`);
 
       expect(res.statusCode).toBe(416);
-      expect(res.body).toHaveProperty('message', 'Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('should return 416 with generic error for invalid range (start > end)', async () => {
@@ -191,7 +192,8 @@ describe('File API', () => {
         .set('Range', `bytes=5-4`);
 
       expect(res.statusCode).toBe(416);
-      expect(res.body).toHaveProperty('message', 'Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
   });
 
@@ -323,8 +325,8 @@ describe('File API', () => {
         .send(content);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('UPLOAD_ERROR');
-      expect(res.body.message).toBe('Could not upload the file');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Could not upload the file');
     });
   });
 
@@ -470,7 +472,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while retrieving the file information.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while retrieving the file information.');
     });
 
     it('POST /file/get-download-link - should handle database errors', async () => {
@@ -488,7 +491,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while generating the download link.');
 
       spy.mockRestore();
     });
@@ -507,7 +511,8 @@ describe('File API', () => {
         .send(fileContent);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Could not upload the file');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Could not upload the file');
     });
 
     it('PUT /file/update - should handle permission check database errors', async () => {
@@ -524,7 +529,8 @@ describe('File API', () => {
         .send(fileContent);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toMatch(/Could not update the file/);
     });
 
     it('GET /file/download - should handle missing file on disk', async () => {
@@ -554,7 +560,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('not found');
 
       // Restore file for other tests/cleanup
       if (!fs.existsSync(baseDir)) {
@@ -632,7 +639,8 @@ describe('File API', () => {
         .send(fileContent);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toMatch(/not found/i);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toMatch(/not found/i);
     });
   });
 
@@ -918,7 +926,7 @@ describe('File API', () => {
         .send('dummy content');
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.error).toBe('PERMISSION_DENIED');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
     });
 
     it('DELETE /file/delete - should deny delete for regular member', async () => {
@@ -929,7 +937,7 @@ describe('File API', () => {
         .set('x-access-token', regularMemberToken);
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.error).toBe('PERMISSION_DENIED');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
     });
 
     it('GET /file/info - should deny info for non-member on private box', async () => {
@@ -973,7 +981,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('not found');
     });
 
     it('DELETE /file/delete - should handle partial error (DB fail after file delete)', async () => {
@@ -1017,7 +1026,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream errors', async () => {
@@ -1053,7 +1063,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream errors (Range)', async () => {
@@ -1090,7 +1101,8 @@ describe('File API', () => {
         .set('Range', 'bytes=0-10');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream creation errors (Range)', async () => {
@@ -1127,7 +1139,8 @@ describe('File API', () => {
         .set('Range', 'bytes=0-10');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('POST /file/upload - should handle upload middleware error', async () => {
@@ -1152,8 +1165,8 @@ describe('File API', () => {
           .send(fileContent);
 
         expect(res.statusCode).toBe(500);
-        expect(res.body.error).toBe('UPLOAD_ERROR');
-        expect(res.body.message).toBe('Could not upload the file');
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+        expect(res.body.title).toBe('Could not upload the file');
       } finally {
         findOneSpy.mockRestore();
         createSpy.mockRestore();
@@ -1302,7 +1315,8 @@ describe('File API', () => {
         .set('Range', 'bytes=0-10');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('GET /file/download - should handle stream creation error (Standard)', async () => {
@@ -1322,7 +1336,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while downloading the file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while downloading the file.');
     });
 
     it('DELETE /file/delete - should handle permission check error', async () => {
@@ -1346,7 +1361,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while generating the download link.');
       expect(res.body).not.toHaveProperty('error');
     });
 
@@ -1360,7 +1376,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while generating the download link.');
       expect(res.body).not.toHaveProperty('error');
     });
 
@@ -1375,7 +1392,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('not found');
     });
 
     it('PUT /file/upload - should handle DB error with default error code', async () => {
@@ -1392,7 +1410,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toMatch(/Could not update the file/);
       expect(res.body).not.toHaveProperty('code');
     });
 
@@ -1421,7 +1440,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('POST /file/get-download-link - should handle error with fallback message', async () => {
@@ -1435,7 +1455,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while generating the download link.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while generating the download link.');
       expect(res.body).not.toHaveProperty('error');
     });
 
@@ -1454,7 +1475,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toMatch(/Could not update the file/);
       expect(res.body).not.toHaveProperty('code');
     });
 
@@ -1472,7 +1494,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toMatch(/Could not update the file/);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toMatch(/Could not update the file/);
       expect(res.body).not.toHaveProperty('code');
     });
 
@@ -1491,9 +1514,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('UPLOAD_ERROR');
-      expect(res.body.message).toBe('Could not upload the file');
-      expect(res.body.details).not.toHaveProperty('code');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Could not upload the file');
     });
 
     it('POST /file/upload - should handle error with specific code', async () => {
@@ -1510,9 +1532,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('UPLOAD_ERROR');
-      expect(res.body.message).toBe('Could not upload the file');
-      expect(res.body.details).not.toHaveProperty('code');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Could not upload the file');
     });
 
     it('POST /file/get-download-link - should return 403 for private box without token', async () => {
@@ -1525,7 +1546,8 @@ describe('File API', () => {
       // No x-access-token header
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toBe('Unauthorized access to file.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toBe('Unauthorized access to file.');
     });
   });
 
@@ -1613,7 +1635,7 @@ describe('File API', () => {
         .set('x-access-token', token);
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.error).toBe('PERMISSION_DENIED');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
 
       await nonMember.destroy();
     });
@@ -1644,7 +1666,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('You can only update files for boxes you own');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('You can only update files for boxes you own');
 
       await regUser.destroy();
     });
@@ -1670,7 +1693,8 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('You can only update files for boxes you own');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('You can only update files for boxes you own');
 
       await nonMember.destroy();
     });
@@ -1696,7 +1720,7 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.error).toBe('PERMISSION_DENIED');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
 
       await nonMember.destroy();
     });
@@ -1729,7 +1753,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeTruthy();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeTruthy();
     });
 
     it('upload controller - should log missing token header', async () => {
@@ -1776,7 +1801,7 @@ describe('File API', () => {
         .send('content');
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.error).toBe('UPLOAD_ERROR');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
   });
 
@@ -1804,6 +1829,7 @@ describe('File API', () => {
       res = {
         setHeader: jest.fn(),
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         json: jest.fn(),
         send: jest.fn(),
         end: jest.fn(),
@@ -1832,7 +1858,10 @@ describe('File API', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'files.download.genericError' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.download.genericError',
+        })
       );
     });
 
@@ -1874,11 +1903,14 @@ describe('File API', () => {
 
       await downloadController(req, res);
 
-      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json');
+      expect(res.type).toHaveBeenCalledWith('application/problem+json');
       expect(res.removeHeader).toHaveBeenCalledWith('Content-Disposition');
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'files.download.genericError' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.download.genericError',
+        })
       );
     });
 
@@ -1922,12 +1954,18 @@ describe('File API', () => {
       res = {
         setTimeout: jest.fn(),
         status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
+        type: jest.fn().mockReturnThis(),
+        send: jest.fn(),
       };
 
       await uploadController(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'UPLOAD_ERROR' }));
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.upload.error',
+        })
+      );
     });
 
     // 8. Download controller string error -> Line 25 branch coverage
@@ -1940,7 +1978,10 @@ describe('File API', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'files.download.genericError' })
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'files.download.genericError',
+        })
       );
     });
   });

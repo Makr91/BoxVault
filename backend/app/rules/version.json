@@ -2,11 +2,17 @@
   "type": "object",
   "required": ["version_number"],
   "properties": {
-    "version_number": { "$ref": "#/$defs/identifier", "unique": "box" },
+    "version_number": {
+      "$ref": "#/$defs/identifier",
+      "minLength": 1,
+      "pattern": "\\S",
+      "unique": "box"
+    },
     "description": { "type": "string" },
     "release_notes": { "type": "string" },
     "deprecated": { "type": "boolean" },
     "deprecation_reason": { "type": "string", "maxLength": 512 }
   },
-  "dependentRequired": { "deprecated": ["deprecation_reason"] }
+  "if": { "properties": { "deprecated": { "const": true } }, "required": ["deprecated"] },
+  "then": { "required": ["deprecation_reason"] }
 }

@@ -181,7 +181,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe('Box not found.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toBe('Box not found.');
     });
 
     it('DELETE /api/organization/:organization/box/:name - should return 404 if destroy returns 0', () => {
@@ -504,7 +505,8 @@ describe('Box API', () => {
         .set('User-Agent', 'Vagrant/2.3.4');
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('Unauthorized');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('Unauthorized');
     });
 
     it('should download a private box with a valid service account token', async () => {
@@ -621,7 +623,8 @@ describe('Box API', () => {
         .get(`/api/organization/NonExistentOrg/box/${privateBoxName}`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Organization not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Organization not found');
     });
 
     it('should return 404 if box not found', async () => {
@@ -629,7 +632,8 @@ describe('Box API', () => {
         .get(`/api/organization/${orgName}/box/NonExistentBox`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toContain('Box not found');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toContain('Box not found');
     });
 
     it('should return 403 for private box without token', async () => {
@@ -827,7 +831,8 @@ describe('Box API', () => {
         .send({ description: 'Updated' });
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while updating the Box.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while updating the Box.');
     });
 
     it('should handle database errors during deletion', async () => {
@@ -881,7 +886,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Configuration error');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Configuration error');
 
       loadConfigSpy.mockRestore();
     });
@@ -901,7 +907,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Configuration error');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Configuration error');
 
       loadConfigSpy.mockRestore();
     });
@@ -1006,7 +1013,8 @@ describe('Box API', () => {
       jest.spyOn(db.box, 'findAll').mockRejectedValue(new Error(''));
       const res = await request(app).get('/api/discover');
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while retrieving boxes.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while retrieving boxes.');
     });
 
     it('should return vagrant metadata for Vagrant User-Agent', async () => {
@@ -1055,6 +1063,7 @@ describe('Box API', () => {
       };
       const res = {
         status: jest.fn().mockReturnThis(),
+        type: jest.fn().mockReturnThis(),
         send: jest.fn(),
       };
 
@@ -1063,7 +1072,8 @@ describe('Box API', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'organizations.contextMissing',
+          type: 'https://auth.startcloud.com/probs/internal',
+          title: 'organizations.contextMissing',
         })
       );
     });
@@ -1112,7 +1122,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('should handle invalid token in findOne gracefully', async () => {
@@ -1193,9 +1204,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe(
-        'Some error occurred while retrieving the organization details.'
-      );
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while retrieving the organization details.');
 
       findSpy.mockRestore();
     });
@@ -1346,8 +1356,8 @@ describe('Box API', () => {
         .delete(`/api/organization/${orgName}/box/${adminBox.name}`)
         .set('x-access-token', memberToken);
       expect(delRes.statusCode).toBe(403);
-      expect(delRes.body.message).toBeDefined();
-      expect(delRes.body.message).toContain('You can only delete boxes you own');
+      expect(delRes.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(delRes.body.title).toContain('You can only delete boxes you own');
 
       // Try Update
       const updateRes = await request(app)
@@ -1371,7 +1381,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
 
       findAllSpy.mockRestore();
       destroySpy.mockRestore();
@@ -1545,7 +1556,8 @@ describe('Box API', () => {
         .send({ description: 'Try update' });
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain(
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain(
         'You can only update boxes you own, or you need admin/owner role.'
       );
 
@@ -2169,9 +2181,8 @@ describe('Box API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe(
-        'Some error occurred while retrieving the organization details.'
-      );
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while retrieving the organization details.');
 
       findSpy.mockRestore();
     });

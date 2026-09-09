@@ -1,26 +1,33 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { canSeeIso, resolveIsoViewer } from './visibility.js';
 const { iso: ISO, organization: Organization, isoWatcher: IsoWatcher } = db;
+
+const notFound = (req, res, key) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__(key) });
+
+const internal = (req, res, key) =>
+  problem(res, req, { status: 500, type: 'internal', title: req.__(key) });
 
 const findVisibleIso = async (req, res) => {
   const { organization: organizationName, name } = req.params;
 
   const organization = await Organization.findOne({ where: { name: organizationName } });
   if (!organization) {
-    res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+    notFound(req, res, 'organizations.organizationNotFound');
     return null;
   }
 
   const iso = await ISO.findOne({ where: { name, organizationId: organization.id } });
   if (!iso) {
-    res.status(404).send({ message: req.__('isos.notFound') });
+    notFound(req, res, 'isos.notFound');
     return null;
   }
 
   const viewer = await resolveIsoViewer(req);
   if (!canSeeIso(viewer, iso)) {
-    res.status(403).send({ message: req.__('auth.forbidden') });
+    problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
     return null;
   }
 
@@ -92,7 +99,7 @@ export const watchIso = async (req, res) => {
     return res.status(created ? 201 : 200).send({ watched: true });
   } catch (err) {
     log.error.error('Error watching ISO:', err);
-    return res.status(500).send({ message: req.__('isos.watch.error') });
+    return internal(req, res, 'isos.watch.error');
   }
 };
 
@@ -101,19 +108,19 @@ export const unwatchIso = async (req, res) => {
   try {
     const organization = await Organization.findOne({ where: { name: organizationName } });
     if (!organization) {
-      return res.status(404).send({ message: req.__('organizations.organizationNotFound') });
+      return notFound(req, res, 'organizations.organizationNotFound');
     }
 
     const iso = await ISO.findOne({ where: { name, organizationId: organization.id } });
     if (!iso) {
-      return res.status(404).send({ message: req.__('isos.notFound') });
+      return notFound(req, res, 'isos.notFound');
     }
 
     await IsoWatcher.destroy({ where: { user_id: req.userId, iso_id: iso.id } });
     return res.send({ watched: false });
   } catch (err) {
     log.error.error('Error unwatching ISO:', err);
-    return res.status(500).send({ message: req.__('isos.watch.error') });
+    return internal(req, res, 'isos.watch.error');
   }
 };
 
@@ -182,6 +189,6 @@ export const listUserIsoWatches = async (req, res) => {
     return res.send(watchedIsos);
   } catch (err) {
     log.error.error('Error listing watched ISOs:', err);
-    return res.status(500).send({ message: req.__('isos.watch.listError') });
+    return internal(req, res, 'isos.watch.listError');
   }
 };

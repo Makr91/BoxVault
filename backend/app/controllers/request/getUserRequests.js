@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 const { Request } = db;
 
 /**
@@ -47,15 +48,15 @@ const { Request } = db;
  *       401:
  *         description: Authentication required
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getUserJoinRequests = async (req, res) => {
   try {
@@ -69,6 +70,10 @@ export const getUserJoinRequests = async (req, res) => {
       error: err.message,
       userId: req.userId,
     });
-    return res.status(500).send({ message: req.__('requests.fetchUser.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('requests.fetchUser.error'),
+    });
   }
 };

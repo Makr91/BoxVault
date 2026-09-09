@@ -2,9 +2,13 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 
 const Box = db.box;
+
+const boxNotFound = (req, res) =>
+  problem(res, req, { status: 404, type: 'not-found', title: req.__('boxes.boxNotFound') });
 
 /**
  * @swagger
@@ -39,18 +43,24 @@ const Box = db.box;
  *                 message:
  *                   type: string
  *                   example: "Box deleted successfully!"
+ *       403:
+ *         description: The caller neither owns the box nor administers the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Box or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 const deleteBox = async (req, res) => {
   const { organization, name } = req.params;
@@ -62,7 +72,7 @@ const deleteBox = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({ message: req.__('boxes.boxNotFound') });
+      return boxNotFound(req, res);
     }
 
     // Check if user is owner OR has admin/owner role
@@ -70,8 +80,10 @@ const deleteBox = async (req, res) => {
     const canDelete = isOwner || ['admin', 'owner'].includes(req.userOrgRole);
 
     if (!canDelete) {
-      return res.status(403).send({
-        message: req.__('boxes.delete.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('boxes.delete.permissionDenied'),
       });
     }
 
@@ -91,11 +103,13 @@ const deleteBox = async (req, res) => {
       return res.send({ message: req.__('boxes.boxDeleted') });
     }
 
-    return res.status(404).send({ message: req.__('boxes.boxNotFound') });
+    return boxNotFound(req, res);
   } catch (err) {
     log.error.error('Error deleting box:', err);
-    return res.status(500).send({
-      message: req.__('errors.operationFailed'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('errors.operationFailed'),
     });
   }
 };

@@ -2,7 +2,12 @@
   "type": "object",
   "required": ["organization"],
   "properties": {
-    "organization": { "$ref": "#/$defs/slug", "unique": "global" },
+    "organization": {
+      "$ref": "#/$defs/slug",
+      "minLength": 1,
+      "pattern": "\\S",
+      "unique": "global"
+    },
     "org_code": { "$ref": "#/$defs/orgCode", "unique": "global" },
     "email": { "$ref": "#/$defs/email" },
     "description": { "type": "string" }

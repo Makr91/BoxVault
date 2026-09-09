@@ -228,6 +228,8 @@ describe('OIDC login routes', () => {
 
     const again = await exchange(code);
     expect(again.statusCode).toBe(400);
+    expect(again.headers['content-type']).toContain('application/problem+json');
+    expect(again.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
     expect((await exchange(undefined)).statusCode).toBe(400);
     expect((await exchange('unknown-code')).statusCode).toBe(400);
   });

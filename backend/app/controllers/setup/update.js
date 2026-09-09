@@ -8,7 +8,7 @@ import {
   validateConfig,
 } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { refuse } from '../../utils/problem.js';
+import { problem, refuse } from '../../utils/problem.js';
 import { verifyAuthorizedToken } from './middleware.js';
 import { configPaths, setAuthorizedSetupToken } from './helpers.js';
 import { writeConfig, restoreSecrets, mergeDeep } from '../config/helpers.js';
@@ -58,6 +58,10 @@ const prepareUpdate = (configName, configData) => {
  *         description: Configuration written
  *       403:
  *         description: Invalid setup token
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: A value of one of the files breaks its schema
  *         content:
@@ -66,6 +70,10 @@ const prepareUpdate = (configName, configData) => {
  *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Failed to write configurations
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const updateConfigs = [
   verifyAuthorizedToken,
@@ -101,7 +109,11 @@ export const updateConfigs = [
       return res.send(req.__('config.updated'));
     } catch (error) {
       log.error.error('Error updating configuration:', error);
-      return res.status(500).send(req.__('config.updateError'));
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('config.updateError'),
+      });
     }
   },
 ];

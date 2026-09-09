@@ -335,7 +335,8 @@ describe('User API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toMatch(/Cannot leave your only organization/);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(res.body.title).toMatch(/Cannot leave your only organization/);
     });
   });
 
@@ -675,7 +676,8 @@ describe('User API', () => {
         .delete(`/api/organization/${orgOne.name}/users/NonExistentUser`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe('User not found.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toBe('User not found.');
     });
 
     it('DELETE /api/organization/:organization/users/:username - should return 404 if organization not found', async () => {
@@ -1098,7 +1100,8 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/suspend`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('PUT /api/users/:userId/resume - should handle error with fallback message', async () => {
@@ -1111,7 +1114,8 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/resume`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBeDefined();
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBeDefined();
     });
 
     it('DELETE /api/users/:userId - should handle database errors', async () => {
@@ -1141,7 +1145,8 @@ describe('User API', () => {
     it('DELETE /api/users/:userId - should return 404 if user not found', async () => {
       const res = await request(app).delete('/api/users/999999').set('x-access-token', adminToken);
       expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe('User not found.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+      expect(res.body.title).toBe('User not found.');
     });
 
     it('PUT /api/users/:userId/suspend - should handle error with no message (suspend.js line 56)', async () => {
@@ -1156,7 +1161,8 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/suspend`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while suspending the user.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while suspending the user.');
     });
 
     it('PUT /api/users/:userId/resume - should handle error with no message (resume.js line 59)', async () => {
@@ -1177,7 +1183,8 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/resume`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while resuming the user.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while resuming the user.');
     });
 
     it('PUT /api/users/:userId/suspend - should handle error with no message (suspend.js line 56)', async () => {
@@ -1192,7 +1199,8 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/suspend`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while suspending the user.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while suspending the user.');
     });
 
     it('PUT /api/users/:userId/resume - should handle error with no message (resume.js line 59)', async () => {
@@ -1213,7 +1221,8 @@ describe('User API', () => {
         .put(`/api/users/${testUser.id}/resume`)
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(500);
-      expect(res.body.message).toBe('Some error occurred while resuming the user.');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.title).toBe('Some error occurred while resuming the user.');
     });
   });
 });

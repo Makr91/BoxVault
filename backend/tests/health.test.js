@@ -858,7 +858,9 @@ describe('Health API Integration Tests', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.statusCode).toBe(500);
-    expect(res.body.status).toBe('error');
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+    expect(res.body.status).toBe(500);
   });
 
   it('should trigger disk alerting', async () => {

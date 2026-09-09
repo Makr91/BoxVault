@@ -284,7 +284,8 @@ describe('Service Account API', () => {
         });
 
       expect(res.statusCode).toBe(403);
-      expect(res.body.message).toContain('must be a member of this organization');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.body.title).toContain('must be a member of this organization');
     });
 
     it('should return 500 on DB error', async () => {

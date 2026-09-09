@@ -742,9 +742,10 @@ const uploadMiddleware = async (req, res) => {
 
     // Send error response if headers haven't been sent
     if (!res.headersSent) {
-      return res.status(500).json({
-        error: 'UPLOAD_ERROR',
-        message: req.__('files.upload.error'),
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('files.upload.error'),
       });
     }
   }
@@ -759,9 +760,10 @@ const uploadSSLMiddleware = async (req, res) => {
   } catch (error) {
     log.error.error('SSL upload error:', error);
     if (!res.headersSent) {
-      return res.status(500).json({
-        error: 'UPLOAD_ERROR',
-        message: error.message,
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('files.upload.error'),
       });
     }
 

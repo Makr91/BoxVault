@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, refuse } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
@@ -91,9 +91,9 @@ const { box: Box } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const create = async (req, res) => {
   const { organization } = req.params;
@@ -141,8 +141,10 @@ export const create = async (req, res) => {
     return res.status(201).send(data);
   } catch (err) {
     log.error.error('Error creating box:', err);
-    return res.status(500).send({
-      message: req.__('boxes.create.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.create.error'),
     });
   }
 };

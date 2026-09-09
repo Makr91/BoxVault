@@ -1,28 +1,32 @@
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization, box: Box, boxWatcher: BoxWatcher, UserOrg } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
+
+const internal = (req, res, key) =>
+  problem(res, req, { status: 500, type: 'internal', title: req.__(key) });
 
 const findVisibleBox = async (req, res) => {
   const { organization, name } = req.params;
 
   const organizationData = await Organization.findOne({ where: { name: organization } });
   if (!organizationData) {
-    res
-      .status(404)
-      .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+    notFound(req, res, req.__('organizations.organizationNotFoundWithName', { organization }));
     return null;
   }
 
   const box = await Box.findOne({ where: { name, organizationId: organizationData.id } });
   if (!box) {
-    res.status(404).send({ message: req.__('boxes.boxNotFoundWithName', { name }) });
+    notFound(req, res, req.__('boxes.boxNotFoundWithName', { name }));
     return null;
   }
 
   if (!box.isPublic) {
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
     if (!membership && box.userId !== req.userId) {
-      res.status(403).send({ message: req.__('boxes.unauthorized') });
+      problem(res, req, { status: 403, type: 'forbidden', title: req.__('boxes.unauthorized') });
       return null;
     }
   }
@@ -44,7 +48,7 @@ export const watchBox = async (req, res) => {
     return res.status(created ? 201 : 200).send({ watched: true });
   } catch (err) {
     log.error.error('Error watching box:', err);
-    return res.status(500).send({ message: req.__('boxes.watch.error') });
+    return internal(req, res, 'boxes.watch.error');
   }
 };
 
@@ -53,21 +57,23 @@ export const unwatchBox = async (req, res) => {
   try {
     const organizationData = await Organization.findOne({ where: { name: organization } });
     if (!organizationData) {
-      return res
-        .status(404)
-        .send({ message: req.__('organizations.organizationNotFoundWithName', { organization }) });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     const box = await Box.findOne({ where: { name, organizationId: organizationData.id } });
     if (!box) {
-      return res.status(404).send({ message: req.__('boxes.boxNotFoundWithName', { name }) });
+      return notFound(req, res, req.__('boxes.boxNotFoundWithName', { name }));
     }
 
     await BoxWatcher.destroy({ where: { user_id: req.userId, box_id: box.id } });
     return res.send({ watched: false });
   } catch (err) {
     log.error.error('Error unwatching box:', err);
-    return res.status(500).send({ message: req.__('boxes.watch.error') });
+    return internal(req, res, 'boxes.watch.error');
   }
 };
 
@@ -104,6 +110,6 @@ export const listUserWatches = async (req, res) => {
     return res.send(watchedBoxes);
   } catch (err) {
     log.error.error('Error listing watched boxes:', err);
-    return res.status(500).send({ message: req.__('boxes.watch.listError') });
+    return internal(req, res, 'boxes.watch.listError');
   }
 };

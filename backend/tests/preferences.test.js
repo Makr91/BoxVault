@@ -34,6 +34,7 @@ const buildRequest = body => ({
 const buildResponse = () => {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
+  res.type = jest.fn().mockReturnValue(res);
   res.send = jest.fn().mockReturnValue(res);
   return res;
 };
@@ -127,7 +128,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ theme: 'nomadservices-dark' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:theme' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:theme',
+        })
+      );
       expect(user.update).not.toHaveBeenCalled();
     });
 
@@ -137,7 +143,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ theme: 7 }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:theme' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:theme',
+        })
+      );
     });
 
     it('should reject a timezone that names no real zone', async () => {
@@ -146,7 +157,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ timezone: 'Nowhere/Imaginary' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:timezone' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:timezone',
+        })
+      );
       expect(user.update).not.toHaveBeenCalled();
     });
 
@@ -156,7 +172,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ timezone: 3600 }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:timezone' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:timezone',
+        })
+      );
     });
 
     it('should reject a language that is not a string', async () => {
@@ -165,7 +186,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ language: 42 }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:language' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:language',
+        })
+      );
       expect(user.update).not.toHaveBeenCalled();
     });
 
@@ -175,7 +201,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ language: 'en_US' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:language' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:language',
+        })
+      );
     });
 
     it('should reject a language subtag longer than BCP 47 allows', async () => {
@@ -184,7 +215,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ language: 'englishlanguage' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferenceInvalid:language' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferenceInvalid:language',
+        })
+      );
     });
 
     it('should reject before looking the user up', async () => {
@@ -321,7 +357,12 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ theme: 'dark' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith({ message: 'users.preferencesRequireIdpSession' });
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/bad-request',
+          title: 'users.preferencesRequireIdpSession',
+        })
+      );
       expect(user.update).not.toHaveBeenCalled();
     });
 
@@ -354,6 +395,9 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({ theme: 'dark' }), res);
 
       expect(res.status).toHaveBeenCalledWith(502);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'https://auth.startcloud.com/probs/internal' })
+      );
       expect(user.update).not.toHaveBeenCalled();
     });
   });

@@ -58,6 +58,7 @@
     "payloadTooLarge": "The request is too large.",
     "throttled": "Too many requests.",
     "internal": "The server could not complete the request.",
+    "sendFailed": "The message could not be sent.",
     "configValidation": "The configuration did not pass validation."
   },
   "validation": {
@@ -355,7 +356,8 @@
     "test": {
       "title": "BoxVault test",
       "body": "A test notification from BoxVault."
-    }
+    },
+    "pushNotConfigured": "Push notifications are not configured."
   },
   "mail": {
     "testEmailSent": "Test email sent successfully",

@@ -3,6 +3,10 @@ import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { resolveOrgMembership } from '../../utils/orgMembership.js';
 import { generateDownloadToken } from '../../utils/auth.js';
+import { problem } from '../../utils/problem.js';
+
+const unauthorized = (req, res) =>
+  problem(res, req, { status: 403, type: 'forbidden', title: req.__('files.unauthorized') });
 
 /**
  * @swagger
@@ -59,26 +63,21 @@ import { generateDownloadToken } from '../../utils/auth.js';
  *       403:
  *         description: Unauthorized access to file
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: File, box, or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 error:
- *                   type: object
+ *               $ref: '#/components/schemas/Problem'
  */
 const getDownloadLink = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -95,12 +94,12 @@ const getDownloadLink = async (req, res) => {
     // Check authorization
     if (!box.isPublic) {
       if (!userId) {
-        return res.status(403).send({ message: req.__('files.unauthorized') });
+        return unauthorized(req, res);
       }
 
       const membership = await resolveOrgMembership(req, organizationData.id);
       if (!membership) {
-        return res.status(403).send({ message: req.__('files.unauthorized') });
+        return unauthorized(req, res);
       }
     }
 
@@ -126,8 +125,10 @@ const getDownloadLink = async (req, res) => {
     return res.status(200).json({ downloadUrl });
   } catch (err) {
     log.error.error('Error generating download link:', err);
-    return res.status(500).send({
-      message: req.__('files.link.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('files.link.error'),
     });
   }
 };

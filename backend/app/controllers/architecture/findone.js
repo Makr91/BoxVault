@@ -1,6 +1,7 @@
 // findone.js
 import { log } from '../../utils/Logger.js';
 import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const {
   architectures: Architecture,
@@ -9,6 +10,15 @@ const {
   versions,
   providers,
 } = db;
+
+const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
+
+const unauthorized = (req, res) =>
+  problem(res, req, {
+    status: 403,
+    type: 'forbidden',
+    title: req.__('architectures.unauthorized'),
+  });
 
 /**
  * @swagger
@@ -71,27 +81,27 @@ const {
  *       401:
  *         description: Invalid or expired token
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       403:
  *         description: No token provided or unauthorized access
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Box, version, provider, or architecture not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const findOne = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
@@ -104,9 +114,11 @@ export const findOne = async (req, res) => {
     });
 
     if (!organizationData) {
-      return res.status(404).send({
-        message: req.__('organizations.organizationNotFoundWithName', { organization }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
     }
 
     // Find the box by organizationId
@@ -130,27 +142,21 @@ export const findOne = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFound', { boxId }),
-      });
+      return notFound(req, res, req.__('boxes.boxNotFound', { boxId }));
     }
 
     const version = box.versions.find(v => v.versionNumber === versionNumber);
     if (!version) {
-      return res.status(404).send({
-        message: req.__('versions.versionNotFoundForBox', { versionNumber, boxId }),
-      });
+      return notFound(req, res, req.__('versions.versionNotFoundForBox', { versionNumber, boxId }));
     }
 
     const provider = version.providers.find(p => p.name === providerName);
     if (!provider) {
-      return res.status(404).send({
-        message: req.__('providers.providerNotFoundInVersion', {
-          providerName,
-          versionNumber,
-          boxId,
-        }),
-      });
+      return notFound(
+        req,
+        res,
+        req.__('providers.providerNotFoundInVersion', { providerName, versionNumber, boxId })
+      );
     }
 
     // If the box is public, allow access
@@ -159,18 +165,18 @@ export const findOne = async (req, res) => {
         where: { name: architectureName, providerId: provider.id },
       });
       if (!architecture) {
-        return res.status(404).send({ message: req.__('architectures.notFound') });
+        return notFound(req, res, req.__('architectures.notFound'));
       }
       return res.send(architecture);
     }
 
     // If the box is private, check if the user is member of the organization
     if (!req.userId) {
-      return res.status(403).send({ message: req.__('architectures.unauthorized') });
+      return unauthorized(req, res);
     }
     const membership = await resolveOrgMembership(req, organizationData.id);
     if (!membership) {
-      return res.status(403).send({ message: req.__('architectures.unauthorized') });
+      return unauthorized(req, res);
     }
 
     // If the user belongs to the organization, allow access
@@ -178,11 +184,15 @@ export const findOne = async (req, res) => {
       where: { name: architectureName, providerId: provider.id },
     });
     if (!architecture) {
-      return res.status(404).send({ message: req.__('architectures.notFound') });
+      return notFound(req, res, req.__('architectures.notFound'));
     }
     return res.send(architecture);
   } catch (err) {
     log.error.error('Error retrieving architecture:', err);
-    return res.status(500).send({ message: req.__('architectures.findOne.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('architectures.findOne.error'),
+    });
   }
 };

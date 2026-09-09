@@ -1,6 +1,7 @@
 // resume.js
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
+import { problem } from '../../../utils/problem.js';
 const { user: User } = db;
 
 /**
@@ -33,15 +34,15 @@ const { user: User } = db;
  *       404:
  *         description: User not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const resumeUser = async (req, res) => {
   const { userId } = req.params;
@@ -49,7 +50,11 @@ export const resumeUser = async (req, res) => {
   try {
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).send({ message: req.__('users.userNotFound') });
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('users.userNotFound'),
+      });
     }
 
     user.suspended = false;
@@ -58,6 +63,10 @@ export const resumeUser = async (req, res) => {
     return res.status(200).send({ message: req.__('users.resumed') });
   } catch (err) {
     log.error.error('Error in resumeUser:', err);
-    return res.status(500).send({ message: req.__('users.resume.error') });
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('users.resume.error'),
+    });
   }
 };

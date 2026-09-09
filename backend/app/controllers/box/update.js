@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, refuse } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
@@ -78,12 +78,18 @@ const { box: Box } = db;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Box'
+ *       403:
+ *         description: The caller neither owns the box nor administers the organization
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Box or organization not found
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  *       409:
  *         description: A box with the new name already exists in the organization
  *         content:
@@ -99,9 +105,9 @@ const { box: Box } = db;
  *       500:
  *         description: Internal server error
  *         content:
- *           application/json:
+ *           application/problem+json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/Problem'
  */
 export const update = async (req, res) => {
   const { organization, name } = req.params;
@@ -124,8 +130,10 @@ export const update = async (req, res) => {
 
   try {
     if (!req.organizationId) {
-      return res.status(500).send({
-        message: req.__('organizations.contextMissing'),
+      return problem(res, req, {
+        status: 500,
+        type: 'internal',
+        title: req.__('organizations.contextMissing'),
       });
     }
 
@@ -134,8 +142,10 @@ export const update = async (req, res) => {
     });
 
     if (!box) {
-      return res.status(404).send({
-        message: req.__('boxes.boxNotFound'),
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('boxes.boxNotFound'),
       });
     }
 
@@ -144,8 +154,10 @@ export const update = async (req, res) => {
     const canUpdate = isOwner || ['admin', 'owner'].includes(req.userOrgRole);
 
     if (!canUpdate) {
-      return res.status(403).send({
-        message: req.__('boxes.update.permissionDenied'),
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('boxes.update.permissionDenied'),
       });
     }
 
@@ -186,8 +198,10 @@ export const update = async (req, res) => {
     return res.send(updatedBox);
   } catch (err) {
     log.error.error('Error updating box:', err);
-    return res.status(500).send({
-      message: req.__('boxes.update.error'),
+    return problem(res, req, {
+      status: 500,
+      type: 'internal',
+      title: req.__('boxes.update.error'),
     });
   }
 };

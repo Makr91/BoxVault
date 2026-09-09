@@ -37,6 +37,9 @@ const forbidden = (req, res, key) =>
 
 const notFound = (req, res, title) => problem(res, req, { status: 404, type: 'not-found', title });
 
+const internal = (req, res, key) =>
+  problem(res, req, { status: 500, type: 'internal', title: req.__(key) });
+
 /**
  * Whether the caller acts as a global admin: a user holding ROLE_ADMIN, or a
  * live superadmin service account; any other service account never does,
@@ -86,7 +89,7 @@ const isOrgMember = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: req.__('organizations.membershipCheckError') });
+    return internal(req, res, 'organizations.membershipCheckError');
   }
 };
 
@@ -133,7 +136,7 @@ const isOrgAdmin = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: req.__('organizations.permissionCheckError') });
+    return internal(req, res, 'organizations.permissionCheckError');
   }
 };
 
@@ -180,7 +183,7 @@ const isOrgOwner = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: req.__('organizations.permissionCheckError') });
+    return internal(req, res, 'organizations.permissionCheckError');
   }
 };
 
@@ -230,7 +233,7 @@ const isOrgAdminOrOwner = async (req, res, next) => {
       userId: req.userId,
       organization: req.params.organization,
     });
-    return res.status(500).send({ message: req.__('organizations.permissionCheckError') });
+    return internal(req, res, 'organizations.permissionCheckError');
   }
 };
 
@@ -265,7 +268,7 @@ const rejectExternallyManagedOrg = async (req, res, next) => {
       stack: err.stack,
       organization: req.params.organization || req.body?.organization_name,
     });
-    return res.status(500).send({ message: req.__('organizations.managementCheckError') });
+    return internal(req, res, 'organizations.managementCheckError');
   }
 };
 
@@ -303,7 +306,7 @@ const attachBox = async (req, res, next) => {
     return next();
   } catch (err) {
     log.error.error('Error attaching box entities:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return internal(req, res, 'errors.operationFailed');
   }
 };
 
@@ -351,7 +354,7 @@ const attachProvider = async (req, res, next) => {
     return next();
   } catch (err) {
     log.error.error('Error attaching provider entities:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return internal(req, res, 'errors.operationFailed');
   }
 };
 
@@ -389,7 +392,7 @@ const attachIso = async (req, res, next) => {
     return next();
   } catch (err) {
     log.error.error('Error attaching ISO entities:', err);
-    return res.status(500).send({ message: req.__('errors.operationFailed') });
+    return internal(req, res, 'errors.operationFailed');
   }
 };
 

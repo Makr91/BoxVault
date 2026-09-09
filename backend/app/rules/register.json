@@ -2,9 +2,15 @@
   "type": "object",
   "required": ["username", "email", "password"],
   "properties": {
-    "username": { "$ref": "#/$defs/slug", "minLength": 3, "maxLength": 64, "unique": "global" },
-    "email": { "$ref": "#/$defs/email", "unique": "global" },
-    "password": { "type": "string", "minLength": 15, "maxLength": 128 },
+    "username": {
+      "$ref": "#/$defs/slug",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "\\S",
+      "unique": "global"
+    },
+    "email": { "$ref": "#/$defs/email", "minLength": 1, "unique": "global" },
+    "password": { "type": "string", "minLength": 15, "maxLength": 128, "pattern": "\\S" },
     "name": { "type": "string", "maxLength": 255 },
     "invitation_token": { "type": "string" }
   }
