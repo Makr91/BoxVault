@@ -46,17 +46,16 @@ properties:
         type: object
         subsection: jwtSettings
         title: JWT Settings
-        required:
-          - jwt_secret
         properties:
           jwt_secret:
             type: string
             writeOnly: true
-            minLength: 1
+            default: ''
             title: JWT secret
-            description: Secret signing every BoxVault session token; use a strong random string
+            description: Secret signing every BoxVault session token; generated on first start when empty
             order: 1
             requiresRestart: true
+            restartReason: the session store is keyed by the secret at boot
           jwt_expiration:
             type: string
             default: 24h
@@ -70,6 +69,7 @@ properties:
             description: Issuer claim stamped on every session token
             order: 3
             requiresRestart: true
+            restartReason: every session token minted before the change stops verifying
           jwt_audience:
             type: string
             default: boxvault-api
@@ -77,6 +77,7 @@ properties:
             description: Audience claim stamped on every session token
             order: 4
             requiresRestart: true
+            restartReason: every session token minted before the change stops verifying
           download_link_expiry:
             type: string
             default: 1h
@@ -243,11 +244,12 @@ properties:
             subsection: oidcProviders
             title: OIDC Providers
             default: {}
+            propertyNames:
+              pattern: '^[a-z0-9_]+$'
             additionalProperties:
               type: object
               required:
                 - issuer
-                - client_id
               properties:
                 enabled:
                   type: boolean
@@ -255,6 +257,8 @@ properties:
                   title: Provider availability
                   description: Offer this provider on the login page
                   order: 1
+                  requiresRestart: true
+                  restartReason: the provider strategies are registered at boot
                 display_name:
                   type: string
                   default: ''
@@ -267,11 +271,15 @@ properties:
                   title: Issuer
                   description: OpenID Connect issuer URL
                   order: 3
+                  requiresRestart: true
+                  restartReason: the provider strategies are registered at boot
                 client_id:
                   type: string
                   title: Client id
                   description: OAuth client id registered at the provider
                   order: 4
+                  requiresRestart: true
+                  restartReason: the provider strategies are registered at boot
                 client_secret:
                   type: string
                   writeOnly: true
@@ -279,6 +287,8 @@ properties:
                   title: Client secret
                   description: OAuth client secret registered at the provider
                   order: 5
+                  requiresRestart: true
+                  restartReason: the provider strategies are registered at boot
                 scope:
                   type: string
                   default: openid profile email

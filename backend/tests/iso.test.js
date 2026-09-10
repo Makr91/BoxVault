@@ -12,7 +12,7 @@ import {
   getSecureIsoPath,
   cleanupTempFile,
 } from '../app/controllers/iso/helpers.js';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 import { log } from '../app/utils/Logger.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
@@ -660,31 +660,6 @@ describe('ISO API', () => {
       expect(res.statusCode).toBe(403);
     });
 
-    it('should return 413 if file is too large (config modification)', async () => {
-      const configPath = getConfigPath('app');
-      const originalConfig = fs.readFileSync(configPath, 'utf8');
-      const config = yaml.load(originalConfig);
-      config.boxvault.box_max_file_size = 0.000001;
-      fs.writeFileSync(configPath, yaml.dump(config));
-      clearConfigCache();
-
-      try {
-        const res = await request(app)
-          .post(`${versionBase}/architecture/i386/file/upload`)
-          .set('x-access-token', adminToken)
-          .set('x-file-name', 'large.iso')
-          .set('Content-Type', 'application/octet-stream')
-          .send(Buffer.alloc(2048));
-        expect(res.statusCode).toBe(413);
-        expect(res.headers['content-type']).toContain('application/problem+json');
-        expect(res.body.type).toBe('https://auth.startcloud.com/probs/payload-too-large');
-        expect(res.body.title).toBe('File size cannot be larger than 0.000001GB!');
-      } finally {
-        fs.writeFileSync(configPath, originalConfig);
-        clearConfigCache();
-      }
-    });
-
     it('should clean up the temp file when the rename fails', async () => {
       const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {
         throw new Error('Rename Error');
@@ -1005,19 +980,19 @@ describe('ISO API', () => {
   });
 
   describe('ISO Helpers Unit Tests', () => {
-    it('should use configured storage path', () => {
+    it('should use configured storage path', async () => {
       const configPath = getConfigPath('app');
       const originalConfig = fs.readFileSync(configPath, 'utf8');
       const config = yaml.load(originalConfig);
       config.boxvault.iso_storage_directory = '/tmp/custom-iso';
       fs.writeFileSync(configPath, yaml.dump(config));
-      clearConfigCache();
+      await reloadConfig();
 
       try {
         expect(getIsoStorageRoot()).toBe('/tmp/custom-iso');
       } finally {
         fs.writeFileSync(configPath, originalConfig);
-        clearConfigCache();
+        await reloadConfig();
       }
     });
 

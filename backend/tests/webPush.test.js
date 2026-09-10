@@ -12,15 +12,7 @@ const mockLog = {
 
 const mockConfigLoader = {
   loadConfig: jest.fn(),
-  readConfigFile: jest.fn(),
-  getConfigPath: jest.fn().mockReturnValue('/etc/boxvault/app.config.yaml'),
-};
-
-const mockConfigHelpers = {
-  writeConfig: jest.fn(),
-  maskSecrets: jest.fn(),
-  restoreSecrets: jest.fn(),
-  SECRET_SENTINEL: '__SECRET__',
+  saveConfig: jest.fn(),
 };
 
 const mockDb = {
@@ -31,7 +23,6 @@ const mockDb = {
 jest.unstable_mockModule('web-push', () => ({ default: mockWebpush }));
 jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
 jest.unstable_mockModule('../app/utils/config-loader.js', () => mockConfigLoader);
-jest.unstable_mockModule('../app/controllers/config/helpers.js', () => mockConfigHelpers);
 jest.unstable_mockModule('../app/models/index.js', () => ({ default: mockDb }));
 
 const { getVapidPublicKey, sendPushToUsers } = await import('../app/utils/webPush.js');

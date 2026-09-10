@@ -1,67 +1,36 @@
 import { dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { loadConfig } from '../utils/config-loader.js';
-import { log } from '../utils/Logger.js';
-
-let dbConfig;
-try {
-  dbConfig = loadConfig('db');
-} catch (e) {
-  log.database.error('Failed to load database configuration', { error: e.message });
-  // Fallback defaults to prevent crash
-  dbConfig = {
-    sql: {
-      logging: false,
-      dialect: 'sqlite',
-      storage: './database.sqlite',
-      host: 'localhost',
-      port: 3306,
-      database: 'boxvault',
-      user: 'root',
-      password: '',
-    },
-    mysql_pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-    },
-  };
-}
-
 import Sequelize from 'sequelize';
+import { loadConfig, getSetupTokenPath } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
 
 const db = {};
 
 db.Sequelize = Sequelize;
+db.sequelize = null;
+db.ROLES = ['user', 'admin'];
 
-// Check if setup is required (setup token exists) or if dialect is missing
-const shouldSkipInitialization = !dbConfig?.sql?.dialect;
+/**
+ * Open the database named by db.config.yaml and define every model on it;
+ * a second call while the connection is open does nothing.
+ * @returns {Promise<void>}
+ */
+const initializeDatabase = async () => {
+  if (db.sequelize) {
+    return;
+  }
+  const dbConfig = loadConfig('db');
+  const dialect = dbConfig.database_type;
+  const sequelizeConfig = { logging: dbConfig.sql.logging, dialect };
 
-if (shouldSkipInitialization) {
-  log.database.info(
-    'Setup mode detected or missing database configuration. Skipping Sequelize initialization.'
-  );
-  db.sequelize = null;
-} else {
-  // Configure Sequelize based on database type
-  const sequelizeConfig = {
-    logging: dbConfig.sql.logging,
-    dialect: dbConfig.sql.dialect,
-  };
-
-  if (dbConfig.sql.dialect === 'sqlite') {
-    // SQLite configuration
+  if (dialect === 'sqlite') {
     sequelizeConfig.storage = dbConfig.sql.storage;
-
-    // Ensure the directory exists for SQLite database file
     const storageDir = dirname(dbConfig.sql.storage);
     if (!existsSync(storageDir)) {
       mkdirSync(storageDir, { recursive: true, mode: 0o755 });
       log.database.info('Created SQLite database directory', { storageDir });
     }
   } else {
-    // MySQL/other database configuration
     sequelizeConfig.host = dbConfig.sql.host;
     sequelizeConfig.port = dbConfig.sql.port;
     sequelizeConfig.pool = {
@@ -73,9 +42,9 @@ if (shouldSkipInitialization) {
   }
 
   const sequelize = new Sequelize(
-    dbConfig.sql.dialect === 'sqlite' ? null : dbConfig.sql.database,
-    dbConfig.sql.dialect === 'sqlite' ? null : dbConfig.sql.user,
-    dbConfig.sql.dialect === 'sqlite' ? null : dbConfig.sql.password,
+    dialect === 'sqlite' ? null : dbConfig.sql.database,
+    dialect === 'sqlite' ? null : dbConfig.sql.user,
+    dialect === 'sqlite' ? null : dbConfig.sql.password,
     sequelizeConfig
   );
 
@@ -105,7 +74,6 @@ if (shouldSkipInitialization) {
     Sequelize
   );
 
-  // Define associations for new models
   db.UserOrg.associate = function (models) {
     db.UserOrg.belongsTo(models.user, {
       foreignKey: 'user_id',
@@ -138,8 +106,6 @@ if (shouldSkipInitialization) {
     as: 'organization',
   });
 
-  // DEPRECATED: Keep global roles for backward compatibility during migration
-  // These will be removed in a future version
   db.role.belongsToMany(db.user, {
     through: 'user_roles',
   });
@@ -147,14 +113,19 @@ if (shouldSkipInitialization) {
     through: 'user_roles',
   });
 
-  // Call associate methods
   Object.keys(db).forEach(modelName => {
     if (db[modelName].associate) {
       db[modelName].associate(db);
     }
   });
+};
+
+if (existsSync(getSetupTokenPath())) {
+  log.database.info('Setup token present; the database opens after the setup write');
+} else {
+  await initializeDatabase();
 }
 
-db.ROLES = ['user', 'admin'];
+export { initializeDatabase };
 
 export default db;

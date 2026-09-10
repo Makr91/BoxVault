@@ -4,9 +4,8 @@
 // carry BoxVault's identity rather than the auth server's. The hub is used
 // only for the in-page bell feed (see notifyHub.js).
 import webpush from 'web-push';
-import { loadConfig, getConfigPath, readConfigFile } from './config-loader.js';
+import { loadConfig, saveConfig } from './config-loader.js';
 import { log } from './Logger.js';
-import { writeConfig } from '../controllers/config/helpers.js';
 import db from '../models/index.js';
 
 // 404/410 = the push service dropped the endpoint; 403 = the subscription was
@@ -56,18 +55,18 @@ const getVapidPublicKey = () => getVapidDetails()?.publicKey || null;
  */
 const ensureVapidKeys = async () => {
   try {
-    const config = readConfigFile('app');
-    const section = { ...(config.notifications || {}) };
+    const section = loadConfig('app').notifications;
 
     if (section.vapid_public_key && section.vapid_private_key) {
       return false;
     }
 
     const keys = webpush.generateVAPIDKeys();
-    section.vapid_public_key = keys.publicKey;
-    section.vapid_private_key = keys.privateKey;
-
-    await writeConfig(getConfigPath('app'), { ...config, notifications: section });
+    await saveConfig(
+      'app',
+      { notifications: { vapid_public_key: keys.publicKey, vapid_private_key: keys.privateKey } },
+      'boxvault'
+    );
     log.app.info('Generated BoxVault VAPID keypair for push notifications');
     return true;
   } catch (err) {

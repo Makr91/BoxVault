@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import { X509Certificate } from 'crypto';
 import { fileURLToPath } from 'url';
 import db from '../app/models/index.js';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
 import { runNotificationSweeps, startNotificationSweeps } from '../app/utils/notificationSweeps.js';
 
@@ -18,15 +18,15 @@ const garbagePath = path.join(certDir, 'garbage.crt');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const updateAppConfig = mutate => {
+const updateAppConfig = async mutate => {
   const original = fs.readFileSync(appConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(appConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(appConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -99,61 +99,61 @@ describe('Notification sweeps', () => {
   });
 
   it('should honour a configured warning window', async () => {
-    const restore = updateAppConfig(config => {
+    const restore = await updateAppConfig(config => {
       config.monitoring = { sa_expiry_warning_days: 3 };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
     } finally {
-      restore();
+      await restore();
     }
   });
 
   it('should skip the certificate sweep when the file is missing', async () => {
-    const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: 'missing-sweep.crt' };
+    const restore = await updateAppConfig(config => {
+      config.ssl = { generate_ssl: false, cert_path: 'missing-sweep.crt' };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
     } finally {
-      restore();
+      await restore();
     }
   });
 
   it('should survive an unreadable certificate', async () => {
-    const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: garbagePath };
+    const restore = await updateAppConfig(config => {
+      config.ssl = { generate_ssl: false, cert_path: garbagePath };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
     } finally {
-      restore();
+      await restore();
     }
   });
 
   it('should read the certificate and stay quiet outside the warning window', async () => {
-    const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: certPath };
+    const restore = await updateAppConfig(config => {
+      config.ssl = { generate_ssl: false, cert_path: certPath };
       config.monitoring = { ssl_expiry_warning_days: 30 };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
     } finally {
-      restore();
+      await restore();
     }
   });
 
   it('should warn the global admins when the certificate enters the window', async () => {
     const cert = new X509Certificate(fs.readFileSync(certPath));
     const daysLeft = Math.ceil((new Date(cert.validTo).getTime() - Date.now()) / DAY_MS);
-    const restore = updateAppConfig(config => {
-      config.ssl = { cert_path: certPath };
+    const restore = await updateAppConfig(config => {
+      config.ssl = { generate_ssl: false, cert_path: certPath };
       config.monitoring = { ssl_expiry_warning_days: daysLeft };
     });
     try {
       await expect(runNotificationSweeps()).resolves.toBeUndefined();
     } finally {
-      restore();
+      await restore();
     }
   });
 

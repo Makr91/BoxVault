@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const authConfigPath = getConfigPath('auth');
 
@@ -44,15 +44,15 @@ const { sendHubNotification } = await import('../app/utils/notifyHub.js');
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
-const writeAuthConfig = mutate => {
+const writeAuthConfig = async mutate => {
   const original = fs.readFileSync(authConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(authConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -99,7 +99,7 @@ describe('Identity-provider delegation', () => {
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
-    restoreConfig = writeAuthConfig(config => {
+    restoreConfig = await writeAuthConfig(config => {
       config.auth.oidc.providers = {
         hubidp: { enabled: true, issuer: ISSUER },
         undiscovered: { enabled: true, issuer: UNDISCOVERED_ISSUER },
@@ -156,7 +156,7 @@ describe('Identity-provider delegation', () => {
   });
 
   afterAll(async () => {
-    restoreConfig();
+    await restoreConfig();
     await db.Request.destroy({ where: { user_id: [requester.id, localAdmin.id] } });
     await db.organization.destroy({ where: { id: [externalOrg.id, noUuidOrg.id, localOrg.id] } });
     await db.user.destroy({ where: { id: [owner.id, localAdmin.id, requester.id] } });
@@ -187,7 +187,7 @@ describe('Identity-provider delegation', () => {
     });
 
     it('should mint with the client credentials and cache the token per scope', async () => {
-      const restore = writeAuthConfig(config => {
+      const restore = await writeAuthConfig(config => {
         config.auth.oidc.s2s_client_id = 'boxvault-s2s';
         config.auth.oidc.s2s_client_secret = 'shared-secret';
       });
@@ -206,12 +206,12 @@ describe('Identity-provider delegation', () => {
         await expect(getS2sToken(ISSUER, scope)).resolves.toBe('tok-1');
         expect(axiosPost).toHaveBeenCalledTimes(1);
       } finally {
-        restore();
+        await restore();
       }
     });
 
     it('should mint again when the cached token is about to expire', async () => {
-      const restore = writeAuthConfig(config => {
+      const restore = await writeAuthConfig(config => {
         config.auth.oidc.s2s_client_secret = 'shared-secret';
       });
       try {
@@ -224,7 +224,7 @@ describe('Identity-provider delegation', () => {
         expect(axiosPost).toHaveBeenCalledTimes(2);
         expect(axiosPost.mock.calls[0][2].auth.username).toBe('boxvault_s2s');
       } finally {
-        restore();
+        await restore();
       }
     });
   });
@@ -248,29 +248,29 @@ describe('Identity-provider delegation', () => {
     });
 
     it('should report failure when no service token can be minted', async () => {
-      const restore = writeAuthConfig(config => {
+      const restore = await writeAuthConfig(config => {
         config.auth.oidc.notifications_enabled = true;
       });
       try {
         await expect(send()).resolves.toBe(false);
         expect(axiosPost).not.toHaveBeenCalled();
       } finally {
-        restore();
+        await restore();
       }
     });
 
     describe('with the hub enabled', () => {
       let restoreHub;
 
-      beforeAll(() => {
-        restoreHub = writeAuthConfig(config => {
+      beforeAll(async () => {
+        restoreHub = await writeAuthConfig(config => {
           config.auth.oidc.notifications_enabled = true;
           config.auth.oidc.s2s_client_secret = 'shared-secret';
         });
       });
 
-      afterAll(() => {
-        restoreHub();
+      afterAll(async () => {
+        await restoreHub();
       });
 
       it('should post the payload with the minted token', async () => {
@@ -345,15 +345,15 @@ describe('Identity-provider delegation', () => {
     let restoreHub;
     let externalRequestId;
 
-    beforeAll(() => {
-      restoreHub = writeAuthConfig(config => {
+    beforeAll(async () => {
+      restoreHub = await writeAuthConfig(config => {
         config.auth.oidc.notifications_enabled = true;
         config.auth.oidc.s2s_client_secret = 'shared-secret';
       });
     });
 
-    afterAll(() => {
-      restoreHub();
+    afterAll(async () => {
+      await restoreHub();
     });
 
     it('should address the organization on the hub for an external organization', async () => {

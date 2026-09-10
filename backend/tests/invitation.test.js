@@ -109,18 +109,13 @@ const mockableConfigLoader = {
   getSetupTokenPath: jest.fn().mockReturnValue('/tmp/setup.token'),
   getRateLimitConfig: jest.fn().mockReturnValue({ window_minutes: 15, max_requests: 100 }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
-  checkConfigs: jest.fn().mockReturnValue([]),
-  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
-  readConfigFile: jest.fn(name => mockableConfigLoader.loadConfig(name)),
-  fillDefaults: jest.fn((schema, config) => {
-    void schema;
-    return config;
-  }),
-  validateConfig: jest.fn().mockReturnValue([]),
-  unknownKeys: jest.fn().mockReturnValue([]),
-  loadConfigs: jest.fn(),
-  clearConfigCache: jest.fn(),
+  saveConfig: jest.fn().mockResolvedValue([]),
+  reloadConfig: jest.fn().mockResolvedValue(),
   getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  setupTokenGuard: jest.fn((req, res) => {
+    void req;
+    res.status(403).end();
+  }),
   isProduction: false,
   CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
@@ -129,16 +124,11 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   loadConfig: (...args) => mockableConfigLoader.loadConfig(...args),
   getConfigPath: (...args) => mockableConfigLoader.getConfigPath(...args),
   getSetupTokenPath: (...args) => mockableConfigLoader.getSetupTokenPath(...args),
+  setupTokenGuard: (...args) => mockableConfigLoader.setupTokenGuard(...args),
   getRateLimitConfig: (...args) => mockableConfigLoader.getRateLimitConfig(...args),
   getI18nConfig: (...args) => mockableConfigLoader.getI18nConfig(...args),
-  checkConfigs: (...args) => mockableConfigLoader.checkConfigs(...args),
-  loadSchema: (...args) => mockableConfigLoader.loadSchema(...args),
-  readConfigFile: (...args) => mockableConfigLoader.readConfigFile(...args),
-  fillDefaults: (...args) => mockableConfigLoader.fillDefaults(...args),
-  validateConfig: (...args) => mockableConfigLoader.validateConfig(...args),
-  unknownKeys: (...args) => mockableConfigLoader.unknownKeys(...args),
-  loadConfigs: (...args) => mockableConfigLoader.loadConfigs(...args),
-  clearConfigCache: (...args) => mockableConfigLoader.clearConfigCache(...args),
+  saveConfig: (...args) => mockableConfigLoader.saveConfig(...args),
+  reloadConfig: (...args) => mockableConfigLoader.reloadConfig(...args),
   getConfigDir: (...args) => mockableConfigLoader.getConfigDir(...args),
   isProduction: mockableConfigLoader.isProduction,
   CONFIG_NAMES: mockableConfigLoader.CONFIG_NAMES,

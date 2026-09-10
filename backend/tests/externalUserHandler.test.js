@@ -155,7 +155,7 @@ describe('External user handling from identity-provider claims', () => {
         ])
       ).rejects.toThrow();
       expect(await orgByUuid(`delta-${uniqueId}`)).toBeNull();
-      expect(await membershipOf(user, clashUuid)).not.toBeNull();
+      expect(await membershipOf(user, reservedUuid)).not.toBeNull();
     });
   });
 

@@ -1,8 +1,28 @@
 import jwt from 'jsonwebtoken';
-import { loadConfig } from './config-loader.js';
+import { randomBytes } from 'crypto';
+import { loadConfig, saveConfig } from './config-loader.js';
 import { log } from './Logger.js';
 
 const { verify, sign } = jwt;
+
+/**
+ * Write a random 64-character JWT secret into auth.config.yaml when none is
+ * configured, as the service user, through the engine.
+ * @returns {Promise<boolean>} True when a secret was written
+ */
+const ensureJwtSecret = async () => {
+  const current = loadConfig('auth').auth.jwt.jwt_secret;
+  if (typeof current === 'string' && current.trim() !== '') {
+    return false;
+  }
+  await saveConfig(
+    'auth',
+    { auth: { jwt: { jwt_secret: randomBytes(32).toString('hex') } } },
+    'boxvault'
+  );
+  log.app.info('Generated auth.jwt.jwt_secret');
+  return true;
+};
 
 // Issuer/audience claims stamped on every BoxVault-minted JWT and enforced on
 // every verification of our own tokens. Foreign OIDC access tokens are
@@ -55,4 +75,10 @@ const generateDownloadToken = (payload, expiresIn = '1h') => {
   });
 };
 
-export { verifySessionToken, verifyDownloadToken, generateDownloadToken, getJwtClaimOptions };
+export {
+  ensureJwtSecret,
+  verifySessionToken,
+  verifyDownloadToken,
+  generateDownloadToken,
+  getJwtClaimOptions,
+};

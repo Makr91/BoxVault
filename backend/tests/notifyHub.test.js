@@ -10,6 +10,7 @@ const mockLog = {
 
 const mockConfigLoader = {
   loadConfig: jest.fn(),
+  saveConfig: jest.fn(),
 };
 
 const mockExternalInvites = {

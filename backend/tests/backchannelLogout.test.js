@@ -3,7 +3,7 @@ import fs from 'fs';
 import yaml from 'js-yaml';
 import { createServer } from 'http';
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const authConfigPath = getConfigPath('auth');
 
@@ -53,15 +53,15 @@ const jwt = (await import('jsonwebtoken')).default;
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
-const writeAuthConfig = mutate => {
+const writeAuthConfig = async mutate => {
   const original = fs.readFileSync(authConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(authConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -92,7 +92,7 @@ describe('OIDC back-channel logout', () => {
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
-    restoreConfig = writeAuthConfig(config => {
+    restoreConfig = await writeAuthConfig(config => {
       config.auth.oidc.providers = {
         logoutidp: {
           enabled: true,
@@ -129,7 +129,7 @@ describe('OIDC back-channel logout', () => {
   });
 
   afterAll(async () => {
-    restoreConfig();
+    await restoreConfig();
     await new Promise(resolve => {
       jwksServer.close(resolve);
     });

@@ -31,6 +31,7 @@ properties:
         description: The origin URL for BoxVault
         order: 1
         requiresRestart: true
+        restartReason: the CORS origin list and the OIDC redirect are built at boot
       api_url:
         type: string
         format: uri
@@ -46,6 +47,7 @@ properties:
         description: The port BoxVault listens on for HTTP (may not be the proxied port)
         order: 3
         requiresRestart: true
+        restartReason: the HTTP listener is bound at boot
       api_listen_port_encrypted:
         type: integer
         minimum: 1
@@ -55,6 +57,7 @@ properties:
         description: The port BoxVault listens on for HTTPS (may not be the proxied port)
         order: 4
         requiresRestart: true
+        restartReason: the HTTPS listener is bound at boot
       box_storage_directory:
         type: string
         default: /var/lib/boxvault/storage
@@ -62,6 +65,7 @@ properties:
         description: The directory on the OS in which the boxes are stored
         order: 5
         requiresRestart: true
+        restartReason: the storage root is resolved once at boot
       box_max_file_size:
         type: integer
         minimum: 1
@@ -70,6 +74,7 @@ properties:
         description: The largest box upload accepted, in GB
         order: 6
         requiresRestart: true
+        restartReason: the body size limit is set on the server at boot
       iso_storage_directory:
         type: string
         default: ''
@@ -89,6 +94,7 @@ properties:
         description: Trust the X-Forwarded-For header from a proxy or CDN in front of BoxVault
         order: 9
         requiresRestart: true
+        restartReason: the proxy trust is set on the server at boot
       org_code_seed:
         type: string
         pattern: '^[0-9A-F]{6}$'
@@ -106,6 +112,7 @@ properties:
         description: Additional browser origins allowed to call the BoxVault API cross-origin
         order: 11
         requiresRestart: true
+        restartReason: the CORS origin list is built at boot
       upload_timeout_hours:
         type: integer
         minimum: 1
@@ -219,22 +226,35 @@ properties:
         description: Generate self-signed SSL certificates when none exist
         order: 1
         requiresRestart: true
+        restartReason: the certificate pair is generated at boot
       cert_path:
         type: string
         default: /etc/boxvault/ssl/public.crt
         title: Certificate path
-        description: Path to the SSL certificate file
-        upload: true
+        description: Path to the SSL certificate file; a relative path is under the configuration directory
+        action:
+          kind: upload
+          route: /api/config/app/upload
+          method: POST
+          body: file
+          step_up: false
         order: 2
         requiresRestart: true
+        restartReason: the certificate is read when the HTTPS listener is bound at boot
       key_path:
         type: string
         default: /etc/boxvault/ssl/private.key
         title: Private key path
-        description: Path to the SSL private key file
-        upload: true
+        description: Path to the SSL private key file; a relative path is under the configuration directory
+        action:
+          kind: upload
+          route: /api/config/app/upload
+          method: POST
+          body: file
+          step_up: false
         order: 3
         requiresRestart: true
+        restartReason: the private key is read when the HTTPS listener is bound at boot
   logging:
     type: object
     section: application
@@ -253,6 +273,7 @@ properties:
         description: Default logging level for every category
         order: 1
         requiresRestart: true
+        restartReason: the loggers take their level at boot
       console_enabled:
         type: boolean
         default: true
@@ -260,6 +281,7 @@ properties:
         description: Write log lines to the console outside production
         order: 2
         requiresRestart: true
+        restartReason: the console transport is attached at boot
       log_directory:
         type: string
         default: /var/log/boxvault
@@ -267,6 +289,7 @@ properties:
         description: Directory where log files are stored
         order: 3
         requiresRestart: true
+        restartReason: the log files are opened at boot
       performance_threshold_ms:
         type: integer
         minimum: 1
@@ -301,6 +324,7 @@ properties:
         description: Write no log lines to any transport
         order: 8
         requiresRestart: true
+        restartReason: the loggers are created silent or not at boot
       categories:
         type: object
         subsection: loggingCategories
@@ -312,6 +336,8 @@ properties:
             - warn
             - info
             - debug
+          requiresRestart: true
+          restartReason: each category logger takes its level at boot
   frontend_logging:
     type: object
     section: application
@@ -406,6 +432,7 @@ properties:
         description: Time window for rate limiting
         order: 1
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       max_requests:
         type: integer
         minimum: 1
@@ -414,6 +441,7 @@ properties:
         description: Requests allowed per window
         order: 2
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       message:
         type: string
         default: Too many requests from this IP, please try again later.
@@ -421,6 +449,7 @@ properties:
         description: Message shown to rate-limited clients
         order: 3
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       skip_successful_requests:
         type: boolean
         default: false
@@ -428,6 +457,7 @@ properties:
         description: Do not count successful requests toward the limit
         order: 4
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       skip_failed_requests:
         type: boolean
         default: false
@@ -435,6 +465,7 @@ properties:
         description: Do not count failed requests toward the limit
         order: 5
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       file_operations_max_requests:
         type: integer
         minimum: 1
@@ -443,6 +474,7 @@ properties:
         description: File operation requests allowed per window
         order: 6
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       download_max_requests:
         type: integer
         minimum: 1
@@ -451,6 +483,7 @@ properties:
         description: Download requests allowed per window
         order: 7
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       download_link_max_requests:
         type: integer
         minimum: 1
@@ -459,6 +492,7 @@ properties:
         description: Download link requests allowed per window
         order: 8
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       architecture_operations_max_requests:
         type: integer
         minimum: 1
@@ -467,6 +501,7 @@ properties:
         description: Architecture operation requests allowed per window
         order: 9
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
       auth_max_requests:
         type: integer
         minimum: 1
@@ -475,6 +510,7 @@ properties:
         description: Sign-in and sign-up requests allowed per window
         order: 10
         requiresRestart: true
+        restartReason: the rate limiters are created at boot
   internationalization:
     type: object
     section: application

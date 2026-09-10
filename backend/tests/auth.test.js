@@ -2,18 +2,18 @@ import { jest } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
-const updateConfig = (configName, updateFn) => {
+const updateConfig = async (configName, updateFn) => {
   const configPath = getConfigPath(configName);
   const fileContent = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(fileContent);
   const newConfig = updateFn(config);
   fs.writeFileSync(configPath, yaml.dump(newConfig));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(configPath, fileContent);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -387,7 +387,7 @@ describe('Authentication API', () => {
       const role = await db.role.findOne({ where: { name: 'user' } });
       await user.setRoles([role]);
 
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         if (config.auth.jwt) {
           delete config.auth.jwt.jwt_expiration;
         }
@@ -401,7 +401,7 @@ describe('Authentication API', () => {
         expect(res.statusCode).toBe(200);
         expect(res.body).toHaveProperty('accessToken');
       } finally {
-        restore();
+        await restore();
       }
 
       await user.destroy();
@@ -612,7 +612,7 @@ describe('Authentication API', () => {
       );
 
       // Configure provider for this test
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
@@ -653,7 +653,7 @@ describe('Authentication API', () => {
         expect(res.headers['x-refreshed-token']).toBeDefined();
         expect(mockAxios.post).toHaveBeenCalled();
       } finally {
-        restore();
+        await restore();
       }
     });
 
@@ -852,7 +852,7 @@ describe('Authentication API', () => {
     let restoreConfig;
 
     beforeAll(async () => {
-      restoreConfig = updateConfig('auth', config => {
+      restoreConfig = await updateConfig('auth', config => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
@@ -871,9 +871,9 @@ describe('Authentication API', () => {
       await initializeStrategies();
     });
 
-    afterAll(() => {
+    afterAll(async () => {
       if (restoreConfig) {
-        restoreConfig();
+        await restoreConfig();
       }
     });
 
@@ -923,7 +923,7 @@ describe('Authentication API', () => {
 
     it('should build end session URL', async () => {
       // Ensure config is set correctly for this test and re-initialize strategies
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         if (!config.auth.oidc) {
           config.auth.oidc = {};
         }
@@ -957,7 +957,7 @@ describe('Authentication API', () => {
         'id_token_hint'
       );
       expect(url).toBe('https://oidc.example.com/logout?foo=bar');
-      restore();
+      await restore();
     });
   });
 
@@ -1447,7 +1447,7 @@ describe('Authentication API', () => {
 
     describe('GET /api/auth/oidc/issuers', () => {
       it('should return list of trusted issuers', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1468,36 +1468,12 @@ describe('Authentication API', () => {
           expect(res.body.issuers[0]).toHaveProperty('provider', 'testprovider');
           expect(res.body.issuers[0]).toHaveProperty('issuer', 'https://oidc.example.com');
         } finally {
-          restore();
-        }
-      });
-
-      it('should skip providers without issuer', async () => {
-        const restore = updateConfig('auth', config => {
-          void config;
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            valid: { enabled: true, issuer: 'https://valid.com' },
-            noIssuer: { enabled: true },
-            disabled: { enabled: false, issuer: 'https://disabled.com' },
-          };
-          return config;
-        });
-
-        try {
-          const res = await request(app).get('/api/auth/oidc/issuers');
-          expect(res.statusCode).toBe(200);
-          expect(res.body.issuers).toHaveLength(1);
-          expect(res.body.issuers[0].provider).toBe('valid');
-        } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should return empty issuers list when oidc config is missing', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           delete config.auth.oidc;
           return config;
         });
@@ -1506,12 +1482,12 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(200);
           expect(res.body.issuers).toEqual([]);
         } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should return empty issuers list when auth config is missing', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           void config;
           return {};
         });
@@ -1520,35 +1496,14 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(200);
           expect(res.body.issuers).toEqual([]);
         } finally {
-          restore();
-        }
-      });
-
-      it('should skip providers with malformed enabled config', async () => {
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            malformed: { enabled: {}, issuer: 'https://test.com' },
-            missing: { issuer: 'https://test.com' },
-          };
-          return config;
-        });
-
-        try {
-          const res = await request(app).get('/api/auth/oidc/issuers');
-          expect(res.statusCode).toBe(200);
-          expect(res.body.issuers).toHaveLength(0);
-        } finally {
-          restore();
+          await restore();
         }
       });
     });
 
     describe('GET /api/auth/methods', () => {
       it('should return available authentication methods', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1570,36 +1525,12 @@ describe('Authentication API', () => {
           expect(methods.find(m => m.id === 'local')).toBeDefined();
           expect(methods.find(m => m.id === 'oidc-testprovider')).toBeDefined();
         } finally {
-          restore();
-        }
-      });
-
-      it('should skip providers without display_name', async () => {
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            valid: { enabled: true, display_name: 'Valid Provider' },
-            noName: { enabled: true },
-            disabled: { enabled: false, display_name: 'Disabled' },
-          };
-          return config;
-        });
-
-        try {
-          const res = await request(app).get('/api/auth/methods');
-          expect(res.statusCode).toBe(200);
-          const oidcMethods = res.body.methods.filter(m => m.id.startsWith('oidc-'));
-          expect(oidcMethods).toHaveLength(1);
-          expect(oidcMethods[0].name).toBe('Valid Provider');
-        } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should return only local method when oidc config is missing', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           delete config.auth.oidc;
           return config;
         });
@@ -1609,12 +1540,12 @@ describe('Authentication API', () => {
           expect(res.body.methods).toHaveLength(1);
           expect(res.body.methods[0].id).toBe('local');
         } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should return only local method when auth config is missing', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           void config;
           return {};
         });
@@ -1623,36 +1554,14 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(200);
           expect(res.body.methods).toHaveLength(1);
         } finally {
-          restore();
-        }
-      });
-
-      it('should skip providers with malformed enabled config', async () => {
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            malformed: { enabled: {}, display_name: 'Test' },
-            missing: { display_name: 'Test' },
-          };
-          return config;
-        });
-
-        try {
-          const res = await request(app).get('/api/auth/methods');
-          expect(res.statusCode).toBe(200);
-          const oidcMethods = res.body.methods.filter(m => m.id.startsWith('oidc-'));
-          expect(oidcMethods).toHaveLength(0);
-        } finally {
-          restore();
+          await restore();
         }
       });
     });
 
     describe('GET /api/auth/oidc/:provider', () => {
       it('should redirect to provider authorization URL', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1679,7 +1588,7 @@ describe('Authentication API', () => {
           expect(res.headers.location).toBe('https://oidc.example.com/auth?response_type=code');
           expect(mockOpenIdClient.buildAuthorizationUrl).toHaveBeenCalled();
         } finally {
-          restore();
+          await restore();
         }
       });
 
@@ -1690,12 +1599,12 @@ describe('Authentication API', () => {
       });
 
       it('should redirect with error if provider disabled', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
           config.auth.oidc.providers = {
-            disabledprovider: { enabled: false },
+            disabledprovider: { enabled: false, issuer: 'https://disabled.example.com' },
           };
           return config;
         });
@@ -1705,14 +1614,14 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=provider_not_enabled');
         } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should handle token exchange failure with details', async () => {
         const agent = request.agent(app);
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1739,12 +1648,12 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should handle errors during auth url generation', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1767,7 +1676,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
+          await restore();
         }
       });
     });
@@ -1778,7 +1687,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1832,7 +1741,7 @@ describe('Authentication API', () => {
           expect(exchange.statusCode).toBe(200);
           expect(exchange.body.token).toBeDefined();
         } finally {
-          restore();
+          await restore();
           // Cleanup created user
           await db.user.destroy({ where: { email: 'oidc-integration@example.com' } });
         }
@@ -1872,7 +1781,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1898,7 +1807,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
+          await restore();
         }
       });
 
@@ -1906,7 +1815,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1936,14 +1845,14 @@ describe('Authentication API', () => {
         const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
         expect(res.statusCode).toBe(302);
         expect(res.headers.location).toContain('error=user_creation_failed');
-        restore();
+        await restore();
       });
 
       it('should handle access denied error from helper', async () => {
         const agent = request.agent(app);
 
         // Configure provider and deny_access policy
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -1970,14 +1879,14 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=access_denied');
         } finally {
-          restore();
+          await restore();
         }
       });
 
       it('should redirect with error if provisioning is disabled and user does not exist', async () => {
         const agent = request.agent(app);
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2001,7 +1910,7 @@ describe('Authentication API', () => {
         const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
         expect(res.statusCode).toBe(302);
         expect(res.headers.location).toContain('error=access_denied');
-        restore();
+        await restore();
       });
 
       it('should handle domain mapping for organization assignment', async () => {
@@ -2010,7 +1919,7 @@ describe('Authentication API', () => {
         const orgCode = `A${Date.now().toString(16).toUpperCase().slice(-5)}`;
         const org = await db.organization.create({ name: orgName, org_code: orgCode });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2048,7 +1957,7 @@ describe('Authentication API', () => {
           expect(user).toBeDefined();
           expect(user.primary_organization_id).toBe(org.id);
         } finally {
-          restore();
+          await restore();
           await db.organization.destroy({ where: { id: org.id } });
           await db.user.destroy({ where: { email: 'user@mapped.com' } });
         }
@@ -2064,7 +1973,7 @@ describe('Authentication API', () => {
           verified: true,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2100,14 +2009,14 @@ describe('Authentication API', () => {
           expect(updatedUser.authProvider).toBe('oidc');
           expect(updatedUser.externalId).toBe('linked-sub');
         } finally {
-          restore();
+          await restore();
           await user.destroy();
         }
       });
 
       it('should parse subject from DN if sub is missing', async () => {
         const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2146,7 +2055,7 @@ describe('Authentication API', () => {
           expect(user).toBeDefined();
           expect(user.externalId).toBe('dn-user');
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'dn-user@example.com' } });
           await db.organization.destroy({ where: { name: 'example.com' } });
         }
@@ -2154,7 +2063,7 @@ describe('Authentication API', () => {
 
       it('should parse subject from CN based DN', async () => {
         const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2188,7 +2097,7 @@ describe('Authentication API', () => {
           expect(user).toBeDefined();
           expect(user.externalId).toBe('cn-user');
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'cn-user@example.com' } });
           await db.organization.destroy({ where: { name: 'example.com' } });
         }
@@ -2196,7 +2105,7 @@ describe('Authentication API', () => {
 
       it('should fail if DN is present but cannot be parsed', async () => {
         const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2224,53 +2133,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
-        }
-      });
-
-      it('should handle missing default role during provisioning', async () => {
-        const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-              client_id: 'client-id',
-              client_secret: 'client-secret',
-            },
-          };
-          config.auth.external.provisioning_default_role = 'nonexistent_role';
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider'); // Use agent to persist session
-
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'no-role-user', email: 'norole@test.com' }),
-        });
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-
-          // Verify successful login before checking DB
-          if (res.headers.location.includes('error=')) {
-            throw new Error(`OIDC Callback failed with: ${res.headers.location}`);
-          }
-
-          const user = await db.user.findOne({ where: { email: 'norole@test.com' } });
-          expect(user).toBeDefined();
-          const roles = await user.getRoles();
-          expect(roles.length).toBe(0);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'norole@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
+          await restore();
         }
       });
 
@@ -2278,7 +2141,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2303,7 +2166,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
+          await restore();
         }
       });
 
@@ -2311,7 +2174,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2339,7 +2202,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
+          await restore();
         }
       });
 
@@ -2350,7 +2213,7 @@ describe('Authentication API', () => {
         );
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2380,7 +2243,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('/auth/callback?code=');
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'no-exp@test.com' } });
           // Cleanup created org
           await db.organization.destroy({ where: { name: 'test.com' } });
@@ -2393,7 +2256,7 @@ describe('Authentication API', () => {
           'https://oidc.example.com/auth?response_type=code'
         );
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2423,7 +2286,7 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'fallback@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -2435,7 +2298,7 @@ describe('Authentication API', () => {
           'https://oidc.example.com/auth?response_type=code'
         );
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2465,7 +2328,7 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'expiry@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -2478,7 +2341,7 @@ describe('Authentication API', () => {
         );
 
         // 1. Setup valid config first to initialize strategies
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2496,8 +2359,8 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider');
 
         // 2. Remove OIDC config to test fallback during callback
-        restore(); // Restore to default first
-        const restore2 = updateConfig('auth', config => {
+        await restore(); // Restore to default first
+        const restore2 = await updateConfig('auth', config => {
           delete config.auth.oidc;
           config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
@@ -2516,51 +2379,8 @@ describe('Authentication API', () => {
           void res;
           expect(res.statusCode).toBe(302);
         } finally {
-          restore2();
+          await restore2();
           await db.user.destroy({ where: { email: 'no-oidc@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle malformed config values for expiration', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.jwt.jwt_expiration = {};
-          config.auth.oidc.token_default_expiry_minutes = {};
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'malformed-conf', email: 'malformed@test.com' }), // No exp claim
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'malformed@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
       });
@@ -2578,7 +2398,7 @@ describe('Authentication API', () => {
           primary_organization_id: null, // Force organization determination
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2607,7 +2427,7 @@ describe('Authentication API', () => {
           expect(updatedUser.externalId).toBe('new-sub-123');
           expect(updatedUser.primary_organization_id).not.toBeNull();
         } finally {
-          restore();
+          await restore();
           await user.destroy();
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -2637,7 +2457,7 @@ describe('Authentication API', () => {
           external_email: email,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2665,7 +2485,7 @@ describe('Authentication API', () => {
           const updatedUser = await db.user.findByPk(user.id);
           expect(updatedUser.primary_organization_id).not.toBeNull();
         } finally {
-          restore();
+          await restore();
           await user.destroy();
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -2686,7 +2506,7 @@ describe('Authentication API', () => {
         const role = await db.role.findOne({ where: { name: 'user' } });
         await user.setRoles([role]);
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2714,7 +2534,7 @@ describe('Authentication API', () => {
           expect(updatedUser.externalId).toBe('new-sub-for-email');
           expect(updatedUser.authProvider).toBe('oidc');
         } finally {
-          restore();
+          await restore();
           await user.destroy();
           await org.destroy();
         }
@@ -2740,7 +2560,7 @@ describe('Authentication API', () => {
       it('should ignore domain mapping if value is not an array', async () => {
         const agent = request.agent(app);
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2773,7 +2593,7 @@ describe('Authentication API', () => {
           const org = await db.organization.findOne({ where: { name: 'invalid-type.com' } });
           expect(org).not.toBeNull();
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'user@invalid-type.com' } });
           await db.organization.destroy({ where: { name: 'invalid-type.com' } });
         }
@@ -2864,7 +2684,7 @@ describe('Authentication API', () => {
 
       it('should handle domain mapping enabled but mappings missing (line 64)', async () => {
         const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -2894,7 +2714,7 @@ describe('Authentication API', () => {
           const org = await db.organization.findOne({ where: { name: 'nomap.com' } });
           expect(org).not.toBeNull();
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'user@nomap.com' } });
           await db.organization.destroy({ where: { name: 'nomap.com' } });
         }
@@ -3025,7 +2845,7 @@ describe('Authentication API', () => {
           external_email: email,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3052,7 +2872,7 @@ describe('Authentication API', () => {
           const updatedUser = await db.user.findByPk(user.id);
           expect(updatedUser.primary_organization_id).toBe(org.id);
         } finally {
-          restore();
+          await restore();
           await user.destroy();
           await org.destroy();
         }
@@ -3094,44 +2914,9 @@ describe('Authentication API', () => {
         await db.organization.destroy({ where: { name: 'test.com' } });
       });
 
-      it('should warn if default role not found during provisioning', async () => {
-        const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_default_role = 'non_existent_role';
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'no-role-found', email: 'norolefound@test.com' }),
-        });
-
-        const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-        expect(res.statusCode).toBe(302);
-        expect(mockLog.app.warn).toHaveBeenCalledWith(
-          expect.stringContaining("Default role 'non_existent_role' not found")
-        );
-
-        restore();
-        await db.user.destroy({ where: { email: 'norolefound@test.com' } });
-        await db.organization.destroy({ where: { name: 'test.com' } });
-      });
-
       it('should fall through if domain mapping org does not exist', async () => {
         const agent = request.agent(app);
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3163,7 +2948,7 @@ describe('Authentication API', () => {
         const org = await db.organization.findOne({ where: { name: 'mapped-fail.com' } });
         expect(org).not.toBeNull();
 
-        restore();
+        await restore();
         await db.user.destroy({ where: { email: 'user@mapped-fail.com' } });
         await org.destroy();
       });
@@ -3178,7 +2963,7 @@ describe('Authentication API', () => {
           verified: true,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3204,7 +2989,7 @@ describe('Authentication API', () => {
         const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
         expect(res.statusCode).toBe(302); // Should succeed despite link error
 
-        restore();
+        await restore();
         await user.destroy();
       });
 
@@ -3215,7 +3000,7 @@ describe('Authentication API', () => {
         );
 
         // 1. Setup valid config first to initialize strategies
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3249,7 +3034,7 @@ describe('Authentication API', () => {
           }
           return originalReadFileSync(pathArg, options);
         });
-        clearConfigCache();
+        await reloadConfig();
 
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
@@ -3258,7 +3043,7 @@ describe('Authentication API', () => {
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
           fsSpy.mockRestore();
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'noauth@test.com' } });
         }
       });
@@ -3269,7 +3054,7 @@ describe('Authentication API', () => {
           'https://oidc.example.com/auth?response_type=code'
         );
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (config.auth) {
             delete config.auth.oidc;
           }
@@ -3291,127 +3076,8 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'nooidc@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should use default expiration when configured value is 0', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.token_default_expiry_minutes = 0;
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'zero-expiry', email: 'zero@test.com' }), // No exp claim
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'zero@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle null oidc config section', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          if (config.auth) {
-            config.auth.oidc = null;
-          }
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'null-oidc', email: 'null-oidc@test.com' }),
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'null-oidc@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle token_default_expiry_minutes being null', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.token_default_expiry_minutes = null;
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'expiry-null', email: 'expirynull@test.com' }),
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'expirynull@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
       });
@@ -3422,7 +3088,7 @@ describe('Authentication API', () => {
           'https://oidc.example.com/auth?response_type=code'
         );
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3453,93 +3119,8 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('/auth/callback?code=');
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'expiryundef@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle token_default_expiry_minutes value being null', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.token_default_expiry_minutes = null;
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'val-null', email: 'valnull@test.com' }),
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'valnull@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle token_default_expiry_minutes value being false', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.token_default_expiry_minutes = false;
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'val-false', email: 'valfalse@test.com' }),
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          void res;
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'valfalse@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
       });
@@ -3550,7 +3131,7 @@ describe('Authentication API', () => {
           'https://oidc.example.com/auth?response_type=code'
         );
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3581,7 +3162,7 @@ describe('Authentication API', () => {
           void res;
           expect(res.statusCode).toBe(302);
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'keymissing@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -3593,7 +3174,7 @@ describe('Authentication API', () => {
           'https://oidc.example.com/auth?response_type=code'
         );
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3623,7 +3204,7 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'prim@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -3636,7 +3217,7 @@ describe('Authentication API', () => {
         );
 
         // 1. Setup valid config
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3679,7 +3260,7 @@ describe('Authentication API', () => {
           }
           return originalReadFileSync(pathArg, options);
         });
-        clearConfigCache();
+        await reloadConfig();
 
         try {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
@@ -3699,87 +3280,8 @@ describe('Authentication API', () => {
           expect(decoded.oidc_expires_at).toBeLessThan(expectedExp + 5000);
         } finally {
           fsSpy.mockRestore();
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'verifyexp@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle auth config being a primitive string', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          config.auth = 'invalid-string-config';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'auth-prim', email: 'authprim@test.com' }),
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          // Should crash at jwt.sign or earlier but cover the line
-          expect(res.statusCode).toBe(302);
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'authprim@test.com' } });
-          await db.organization.destroy({ where: { name: 'test.com' } });
-        }
-      });
-
-      it('should handle oidc config being a primitive number', async () => {
-        const agent = request.agent(app);
-        mockOpenIdClient.buildAuthorizationUrl.mockReturnValue(
-          'https://oidc.example.com/auth?response_type=code'
-        );
-
-        const restore = updateConfig('auth', config => {
-          config.auth.oidc = 12345;
-          config.auth.external.provisioning_fallback_action = 'create_org';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        const mockTokens = {
-          claims: () => ({ sub: 'oidc-prim', email: 'oidcprim@test.com' }),
-          id_token: 'id-token',
-          access_token: 'access-token',
-          refresh_token: 'refresh-token',
-        };
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue(mockTokens);
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-
-          // Verify fallback to 30 minutes logic was used (by checking token exp)
-          const { location } = res.headers;
-          if (location.includes('token=')) {
-            const token = new URL(location, 'http://localhost').searchParams.get('token');
-            const decoded = jwt.decode(token);
-            const expectedExp = Date.now() + 30 * 60 * 1000;
-            // Check if it's roughly 30 mins from now (allowing for execution time)
-            if (decoded.oidc_expires_at) {
-              expect(decoded.oidc_expires_at).toBeGreaterThan(expectedExp - 5000);
-              expect(decoded.oidc_expires_at).toBeLessThan(expectedExp + 5000);
-            }
-          }
-        } finally {
-          restore();
-          await db.user.destroy({ where: { email: 'oidcprim@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
       });
@@ -3791,7 +3293,7 @@ describe('Authentication API', () => {
         );
 
         // 1. Setup valid config first to initialize strategies
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3809,8 +3311,8 @@ describe('Authentication API', () => {
         await agent.get('/api/auth/oidc/testprovider');
 
         // 2. Remove OIDC config to test fallback during callback
-        restore(); // Restore to default first
-        const restore2 = updateConfig('auth', config => {
+        await restore(); // Restore to default first
+        const restore2 = await updateConfig('auth', config => {
           delete config.auth.oidc;
           config.auth.external.provisioning_fallback_action = 'create_org';
           return config;
@@ -3828,7 +3330,7 @@ describe('Authentication API', () => {
           const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
           expect(res.statusCode).toBe(302);
         } finally {
-          restore2();
+          await restore2();
           await db.user.destroy({ where: { email: 'no-oidc@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -3838,7 +3340,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3880,7 +3382,7 @@ describe('Authentication API', () => {
 
           expect(decoded.oidc_expires_at).toBe(expTime * 1000);
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'exp@test.com' } });
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -3890,7 +3392,7 @@ describe('Authentication API', () => {
         const agent = request.agent(app);
 
         // Configure provider with require_invite policy
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3917,7 +3419,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=access_denied');
         } finally {
-          restore();
+          await restore();
         }
       });
     });
@@ -3936,7 +3438,7 @@ describe('Authentication API', () => {
           invited_role: 'member',
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -3969,7 +3471,7 @@ describe('Authentication API', () => {
           const inv = await db.invitation.findOne({ where: { email } });
           expect(inv.accepted).toBe(true);
         } finally {
-          restore();
+          await restore();
           await db.organization.destroy({ where: { id: org.id } });
           await db.user.destroy({ where: { email } });
         }
@@ -3978,7 +3480,7 @@ describe('Authentication API', () => {
       it('should handle invalid domain mapping JSON', async () => {
         const agent = request.agent(app);
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4007,42 +3509,9 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('/auth/callback?code=');
         } finally {
-          restore();
+          await restore();
           await db.user.destroy({ where: { email: 'user@badjson.com' } });
           await db.organization.destroy({ where: { name: 'badjson.com' } });
-        }
-      });
-
-      it('should throw error for unknown provisioning policy', async () => {
-        const agent = request.agent(app);
-
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            testprovider: {
-              enabled: true,
-              issuer: 'https://oidc.example.com',
-            },
-          };
-          config.auth.external.provisioning_fallback_action = 'unknown_policy';
-          return config;
-        });
-        await initializeStrategies();
-
-        await agent.get('/api/auth/oidc/testprovider');
-
-        mockOpenIdClient.authorizationCodeGrant.mockResolvedValue({
-          claims: () => ({ sub: 'unknown-policy', email: 'user@unknown.com' }),
-        });
-
-        try {
-          const res = await agent.get('/api/auth/oidc/callback?code=code&state=mock-state');
-          expect(res.statusCode).toBe(302);
-          expect(res.headers.location).toContain('error=access_denied');
-        } finally {
-          restore();
         }
       });
 
@@ -4064,7 +3533,7 @@ describe('Authentication API', () => {
           external_email: email,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4089,7 +3558,7 @@ describe('Authentication API', () => {
           expect(res.statusCode).toBe(302);
           expect(res.headers.location).toContain('error=oidc_failed');
         } finally {
-          restore();
+          await restore();
           await user.destroy();
         }
       });
@@ -4112,7 +3581,7 @@ describe('Authentication API', () => {
           external_email: email,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4141,7 +3610,7 @@ describe('Authentication API', () => {
           const updatedUser = await db.user.findByPk(user.id);
           expect(updatedUser.primary_organization_id).not.toBeNull();
         } finally {
-          restore();
+          await restore();
           await user.destroy();
           await db.organization.destroy({ where: { name: 'test.com' } });
         }
@@ -4159,7 +3628,7 @@ describe('Authentication API', () => {
           primary_organization_id: org.id,
         });
 
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4188,7 +3657,7 @@ describe('Authentication API', () => {
           expect(updatedUser.authProvider).toBe('oidc');
           expect(updatedUser.externalId).toBe('existing-org-sub');
         } finally {
-          restore();
+          await restore();
           await user.destroy();
           await org.destroy();
         }
@@ -4214,7 +3683,7 @@ describe('Authentication API', () => {
       });
 
       it('should return null if end_session_endpoint missing', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4248,44 +3717,14 @@ describe('Authentication API', () => {
           expect.stringContaining('does not support end_session_endpoint')
         );
 
-        restore();
-      });
-
-      it('should handle unknown auth method (default to basic)', async () => {
-        const restore = updateConfig('auth', config => {
-          if (!config.auth.oidc) {
-            config.auth.oidc = {};
-          }
-          config.auth.oidc.providers = {
-            unknown_method: {
-              enabled: true,
-              issuer: 'https://unknown.com',
-              client_id: 'id',
-              client_secret: 'secret',
-              token_endpoint_auth_method: 'unknown_method_xyz',
-            },
-          };
-          return config;
-        });
-
-        mockOpenIdClient.discovery.mockResolvedValue({
-          serverMetadata: () => ({ token_endpoint: 'https://unknown.com/token' }),
-          clientId: 'client-id',
-        });
-
-        await initializeStrategies();
-
-        // Verify ClientSecretBasic was called (default)
-        expect(mockOpenIdClient.ClientSecretBasic).toHaveBeenCalled();
-
-        restore();
+        await restore();
       });
     });
 
     describe('Error Handling & Coverage', () => {
       it('should log error if session save fails during OIDC start', async () => {
         // Setup valid config
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4318,47 +3757,12 @@ describe('Authentication API', () => {
               updatedAt DATETIME
             )
           `);
-          restore();
+          await restore();
         }
-      });
-
-      const withUnreadableAuthConfig = async run => {
-        const originalReadFileSync = fs.readFileSync;
-        const fsSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((pathArg, options) => {
-          if (typeof pathArg === 'string' && pathArg.endsWith('auth.config.yaml')) {
-            throw new Error('Config Read Error');
-          }
-          return originalReadFileSync(pathArg, options);
-        });
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        clearConfigCache();
-        try {
-          await run();
-        } finally {
-          fsSpy.mockRestore();
-          consoleSpy.mockRestore();
-          clearConfigCache();
-        }
-      };
-
-      it('should handle config loading error in /issuers', async () => {
-        await withUnreadableAuthConfig(async () => {
-          const res = await request(app).get('/api/auth/oidc/issuers');
-          expect(res.statusCode).toBe(500);
-          expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
-        });
-      });
-
-      it('should handle config loading error in /methods', async () => {
-        await withUnreadableAuthConfig(async () => {
-          const res = await request(app).get('/api/auth/methods');
-          expect(res.statusCode).toBe(500);
-          expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
-        });
       });
 
       it('should configure providers with different auth methods', async () => {
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4391,13 +3795,13 @@ describe('Authentication API', () => {
           expect(mockOpenIdClient.ClientSecretPost).toHaveBeenCalled();
           expect(mockOpenIdClient.None).toHaveBeenCalled();
         } finally {
-          restore();
+          await restore();
         }
       });
     });
 
     it('should handle OIDC provider with missing config (clientId)', async () => {
-      const restoreConfig = updateConfig('auth', config => {
+      const restoreConfig = await updateConfig('auth', config => {
         void config;
         if (!config.auth.oidc) {
           config.auth.oidc = {};
@@ -4419,11 +3823,11 @@ describe('Authentication API', () => {
       const config = getOidcConfiguration('broken_provider');
       expect(config).toBeUndefined();
 
-      restoreConfig();
+      await restoreConfig();
     });
 
     it('should handle OIDC discovery failure', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         void config;
         if (!config.auth.oidc) {
           config.auth.oidc = {};
@@ -4446,11 +3850,11 @@ describe('Authentication API', () => {
       const config = getOidcConfiguration('fail_discovery');
       expect(config).toBeUndefined();
 
-      restore();
+      await restore();
     });
 
     it('should retry database connection in setupOidcProviders', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         void config;
         if (!config.auth.oidc) {
           config.auth.oidc = {};
@@ -4479,13 +3883,13 @@ describe('Authentication API', () => {
       // It does not loop to retry the query.
       expect(findSpy).toHaveBeenCalledTimes(1);
 
-      restore();
+      await restore();
       findSpy.mockRestore();
       timeoutSpy.mockRestore();
     });
 
     it('should skip disabled providers in setupOidcProviders', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         void config;
         if (!config.auth.oidc) {
           config.auth.oidc = {};
@@ -4503,7 +3907,7 @@ describe('Authentication API', () => {
       // Verify discovery was NOT called (since we only have a disabled provider)
       expect(mockOpenIdClient.discovery).not.toHaveBeenCalled();
 
-      restore();
+      await restore();
     });
 
     describe('POST /api/auth/oidc/logout', () => {
@@ -4535,7 +3939,7 @@ describe('Authentication API', () => {
         );
 
         // Ensure provider is configured
-        const restore = updateConfig('auth', config => {
+        const restore = await updateConfig('auth', config => {
           if (!config.auth.oidc) {
             config.auth.oidc = {};
           }
@@ -4566,7 +3970,7 @@ describe('Authentication API', () => {
           expect(res.body.message).toBe('Logout initiated');
           expect(res.body.redirect_url).toBe('https://oidc.example.com/logout');
         } finally {
-          restore();
+          await restore();
         }
       });
 

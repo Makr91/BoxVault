@@ -7,7 +7,7 @@ import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
@@ -889,7 +889,7 @@ describe('User API', () => {
       // 2. Modify config to remove expiration
       delete parsedConfig.auth.jwt.jwt_expiration;
       fs.writeFileSync(configPath, yaml.dump(parsedConfig));
-      clearConfigCache();
+      await reloadConfig();
 
       try {
         // 3. Make request - controller will reload config from disk
@@ -903,7 +903,7 @@ describe('User API', () => {
       } finally {
         // 4. Restore original config
         fs.writeFileSync(configPath, originalConfig);
-        clearConfigCache();
+        await reloadConfig();
       }
     });
 

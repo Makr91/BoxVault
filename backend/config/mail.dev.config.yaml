@@ -1,0 +1,13 @@
+schemaVersion: 2
+smtp_connect:
+  host: smtp.example.com
+  port: 587
+  secure: true
+  reject_unauthorized: true
+smtp_settings:
+  from: noreply@your-domain.com
+  reply_to: support@your-domain.com
+  rate_limit: 10
+smtp_auth:
+  user: your-smtp-username
+  password: CHANGE_THIS_SMTP_PASSWORD

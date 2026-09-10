@@ -52,12 +52,12 @@ mkdir -p "$DESTDIR"
 #   ui/
 #   node_modules/
 #   startup.sh
-#   shutdown.sh
 # /etc/boxvault/
 #   app.config.yaml
 #   auth.config.yaml
 #   db.config.yaml
 #   mail.config.yaml
+#   setup.token
 # /var/lib/boxvault/
 # /var/log/boxvault/
 
@@ -117,10 +117,9 @@ install_app() {
         logcmd cp -r $SRCDIR/backend/node_modules .
     fi
     
-    # Copy SMF method scripts
+    # Copy SMF method script
     logcmd cp $SRCDIR/packaging/omnios/startup.sh .
-    logcmd cp $SRCDIR/packaging/omnios/shutdown.sh .
-    logcmd chmod 755 startup.sh shutdown.sh
+    logcmd chmod 755 startup.sh
     
     popd >/dev/null # /opt/boxvault
 
@@ -131,6 +130,7 @@ install_app() {
     logcmd cp $SRCDIR/packaging/config/auth.config.yaml etc/boxvault/
     logcmd cp $SRCDIR/packaging/config/db.config.yaml etc/boxvault/
     logcmd cp $SRCDIR/packaging/config/mail.config.yaml etc/boxvault/
+    logcmd touch etc/boxvault/setup.token
 
     # Create data and log directories
     logcmd mkdir -p var/lib/boxvault

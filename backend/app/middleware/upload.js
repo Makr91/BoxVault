@@ -61,8 +61,8 @@ const headerErrors = headers => {
   } else if (total !== null && total >= 1 && index >= total) {
     errors.push({
       pointer: '/x-chunk-index',
-      rule: 'range',
-      params: { minimum: 0, maximum: total - 1 },
+      rule: 'maximum',
+      params: { maximum: total - 1 },
     });
   }
   return errors;

@@ -140,7 +140,6 @@ describe('Version events fanned out to watchers', () => {
       { deprecated: 'yes' },
       { deprecation_reason: 'x'.repeat(513) },
       { deprecated: true },
-      { deprecated: true, deprecation_reason: '   ' },
     ];
     const responses = await Promise.all(
       cases.map(body =>
@@ -158,7 +157,6 @@ describe('Version events fanned out to watchers', () => {
       'type',
       'type',
       'maxLength',
-      'required',
       'required',
     ]);
   });

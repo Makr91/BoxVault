@@ -124,18 +124,13 @@ const mockableConfigLoader = {
   getSetupTokenPath: jest.fn().mockReturnValue('/tmp/setup.token'),
   getRateLimitConfig: jest.fn().mockReturnValue({ window_minutes: 15, max_requests: 100 }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
-  checkConfigs: jest.fn().mockReturnValue([]),
-  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
-  readConfigFile: jest.fn(name => mockableConfigLoader.loadConfig(name)),
-  fillDefaults: jest.fn((schema, config) => {
-    void schema;
-    return config;
-  }),
-  validateConfig: jest.fn().mockReturnValue([]),
-  unknownKeys: jest.fn().mockReturnValue([]),
-  loadConfigs: jest.fn(),
-  clearConfigCache: jest.fn(),
+  saveConfig: jest.fn().mockResolvedValue([]),
+  reloadConfig: jest.fn().mockResolvedValue(),
   getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  setupTokenGuard: jest.fn((req, res) => {
+    void req;
+    res.status(403).end();
+  }),
   isProduction: false,
   CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };
@@ -144,16 +139,11 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   loadConfig: (...args) => mockableConfigLoader.loadConfig(...args),
   getConfigPath: (...args) => mockableConfigLoader.getConfigPath(...args),
   getSetupTokenPath: (...args) => mockableConfigLoader.getSetupTokenPath(...args),
+  setupTokenGuard: (...args) => mockableConfigLoader.setupTokenGuard(...args),
   getRateLimitConfig: (...args) => mockableConfigLoader.getRateLimitConfig(...args),
   getI18nConfig: (...args) => mockableConfigLoader.getI18nConfig(...args),
-  checkConfigs: (...args) => mockableConfigLoader.checkConfigs(...args),
-  loadSchema: (...args) => mockableConfigLoader.loadSchema(...args),
-  readConfigFile: (...args) => mockableConfigLoader.readConfigFile(...args),
-  fillDefaults: (...args) => mockableConfigLoader.fillDefaults(...args),
-  validateConfig: (...args) => mockableConfigLoader.validateConfig(...args),
-  unknownKeys: (...args) => mockableConfigLoader.unknownKeys(...args),
-  loadConfigs: (...args) => mockableConfigLoader.loadConfigs(...args),
-  clearConfigCache: (...args) => mockableConfigLoader.clearConfigCache(...args),
+  saveConfig: (...args) => mockableConfigLoader.saveConfig(...args),
+  reloadConfig: (...args) => mockableConfigLoader.reloadConfig(...args),
   getConfigDir: (...args) => mockableConfigLoader.getConfigDir(...args),
   isProduction: mockableConfigLoader.isProduction,
   CONFIG_NAMES: mockableConfigLoader.CONFIG_NAMES,
@@ -242,19 +232,21 @@ describe('Mail API', () => {
   });
 
   describe('POST /api/mail/test-smtp', () => {
-    it('should send a test email (Admin only)', async () => {
+    it('should send the test message to the caller with the form values laid over the file', async () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ test_email: 'test@example.com' });
+        .send({ smtp_connect: { host: 'form.example', port: 2525 } });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toContain('Test email sent successfully');
-      expect(mockCreateTransport).toHaveBeenCalled();
-      // Verify is called on the transporter instance returned by the helper
+      expect(mockCreateTransport).toHaveBeenCalledWith(
+        expect.objectContaining({ host: 'form.example', port: 2525, secure: false })
+      );
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
-          to: 'test@example.com',
+          to: adminUser.email,
+          from: 'noreply@example.com',
           subject: expect.any(String),
         })
       );
@@ -264,7 +256,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', userToken)
-        .send({ test_email: 'test@example.com' });
+        .send({});
 
       expect(res.statusCode).toBe(403);
     });
@@ -275,7 +267,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ test_email: 'test@example.com' });
+        .send({});
 
       expect(res.statusCode).toBe(503);
       expect(res.headers['retry-after']).toBe('60');
@@ -291,7 +283,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ test_email: 'test@example.com' });
+        .send({});
 
       expect(res.statusCode).toBe(503);
       expect(res.headers['retry-after']).toBe('60');
@@ -299,51 +291,10 @@ describe('Mail API', () => {
       expect(res.body.title).toBe('mail.errorSendingEmail');
     });
 
-    it('should handle SMTP errors with response object', async () => {
-      const error = new Error('SMTP Error with Response');
-      error.response = '550 Blocked';
-      mockSendMail.mockRejectedValueOnce(error);
-
-      const res = await request(app)
-        .post('/api/mail/test-smtp')
-        .set('x-access-token', adminToken)
-        .send({ test_email: 'test@example.com' });
-
-      expect(res.statusCode).toBe(503);
-      expect(res.headers['retry-after']).toBe('60');
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
-      expect(res.body.title).toBe('mail.errorSendingEmail');
-    });
-
-    it('should handle invalid SMTP config', async () => {
-      // Temporarily mock loadConfig to return an invalid mail configuration
+    it('should refuse a form without a host or a sender as send-failed', async () => {
       const originalLoadConfig = mockableConfigLoader.loadConfig;
       mockableConfigLoader.loadConfig = jest.fn(name => {
         if (name === 'mail') {
-          return {}; // Invalid config
-        }
-        return originalLoadConfig(name);
-      });
-
-      const res = await request(app)
-        .post('/api/mail/test-smtp')
-        .set('x-access-token', adminToken)
-        .send({ test_email: 'test@example.com' });
-
-      mockableConfigLoader.loadConfig = originalLoadConfig;
-
-      expect(res.statusCode).toBe(503);
-      expect(res.headers['retry-after']).toBe('60');
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
-      expect(res.body.title).toBe('mail.errorSendingEmail');
-    });
-
-    it('should handle partially invalid SMTP config (missing connect/auth)', async () => {
-      // This test covers the check inside createTransporter in helpers.js
-      const originalLoadConfig = mockableConfigLoader.loadConfig;
-      mockableConfigLoader.loadConfig = jest.fn(name => {
-        if (name === 'mail') {
-          // This config is valid enough to pass the check in test.js, but not createTransporter
           return { smtp_settings: { from: 'test@from.com' } };
         }
         return originalLoadConfig(name);
@@ -352,7 +303,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ test_email: 'test@example.com' });
+        .send({});
 
       mockableConfigLoader.loadConfig = originalLoadConfig;
 
@@ -360,6 +311,7 @@ describe('Mail API', () => {
       expect(res.headers['retry-after']).toBe('60');
       expect(res.body.type).toBe('https://auth.startcloud.com/probs/send-failed');
       expect(res.body.title).toBe('mail.errorSendingEmail');
+      expect(mockCreateTransport).not.toHaveBeenCalled();
     });
   });
 

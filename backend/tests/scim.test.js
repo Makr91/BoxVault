@@ -4,7 +4,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { createServer } from 'http';
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const authConfigPath = getConfigPath('auth');
 
@@ -56,15 +56,15 @@ const { getSecureBoxPath } = await import('../app/utils/paths.js');
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
-const writeAuthConfig = mutate => {
+const writeAuthConfig = async mutate => {
   const original = fs.readFileSync(authConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(authConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -171,12 +171,12 @@ describe('SCIM receiver', () => {
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
-    restoreConfig = writeAuthConfig(enableScim);
+    restoreConfig = await writeAuthConfig(enableScim);
     token = await mintToken();
   });
 
   afterAll(async () => {
-    restoreConfig();
+    await restoreConfig();
     await new Promise(resolve => {
       jwksServer.close(resolve);
     });
@@ -186,7 +186,7 @@ describe('SCIM receiver', () => {
 
   describe('scimAuth', () => {
     it('should refuse every request while SCIM is disabled', async () => {
-      const restore = writeAuthConfig(config => {
+      const restore = await writeAuthConfig(config => {
         config.auth.scim.enabled = false;
       });
       try {
@@ -198,7 +198,7 @@ describe('SCIM receiver', () => {
           status: '403',
         });
       } finally {
-        restore();
+        await restore();
       }
     });
 
@@ -247,7 +247,7 @@ describe('SCIM receiver', () => {
     });
 
     it('should refuse to validate without a configured audience', async () => {
-      const restore = writeAuthConfig(config => {
+      const restore = await writeAuthConfig(config => {
         config.auth.scim.audience = '';
       });
       try {
@@ -255,7 +255,7 @@ describe('SCIM receiver', () => {
         expect(res.statusCode).toBe(403);
         expect(res.body.detail).toBe('SCIM audience is not configured');
       } finally {
-        restore();
+        await restore();
       }
     });
 

@@ -8,7 +8,6 @@ export default {
   collectCoverageFrom: [
     'app/**/*.js',
     '!app/config/locales/**',
-    '!app/config/ssl/**',
     '!app/config/**/*.yaml',
     '!app/models/index.js',
     '!ui/**',

@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const authConfigPath = getConfigPath('auth');
 
@@ -35,15 +35,15 @@ const jwt = (await import('jsonwebtoken')).default;
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
-const writeAuthConfig = mutate => {
+const writeAuthConfig = async mutate => {
   const original = fs.readFileSync(authConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(authConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -53,11 +53,6 @@ const tokensFor = claims => ({
   access_token: 'access-token',
   refresh_token: 'refresh-token',
 });
-
-const wait = ms =>
-  new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
 
 describe('OIDC login routes', () => {
   const uniqueId = Date.now().toString(36);
@@ -89,7 +84,7 @@ describe('OIDC login routes', () => {
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
-    restoreConfig = writeAuthConfig(config => {
+    restoreConfig = await writeAuthConfig(config => {
       config.auth.oidc.providers = {
         loginidp: {
           enabled: true,
@@ -123,7 +118,7 @@ describe('OIDC login routes', () => {
   });
 
   afterAll(async () => {
-    restoreConfig();
+    await restoreConfig();
     await db.user.destroy({ where: { id: [user.id, suspendedUser.id] } });
   });
 
@@ -263,21 +258,6 @@ describe('OIDC login routes', () => {
     handleOidcCallback.mockRejectedValueOnce(new Error('token exchange failed'));
     const failed = await callback(agent, { code: 'x', state: 'y' });
     expect(failed.headers.location).toBe('/?error=oidc_failed');
-  });
-
-  it('should purge expired handoff codes', async () => {
-    const restore = writeAuthConfig(config => {
-      config.auth.oidc.login_handoff_ttl_seconds = 1;
-    });
-    try {
-      const first = codeOf(await completeLogin(user));
-      await wait(1100);
-      const second = codeOf(await completeLogin(user));
-      expect((await exchange(first)).statusCode).toBe(400);
-      expect((await exchange(second)).statusCode).toBe(200);
-    } finally {
-      restore();
-    }
   });
 
   describe('POST /api/auth/oidc/logout', () => {

@@ -5,6 +5,12 @@ sections:
   mail:
     title: Mail
     order: 1
+    action:
+      kind: test
+      route: /api/mail/test-smtp
+      method: POST
+      body: form
+      step_up: false
 properties:
   schemaVersion:
     type: integer

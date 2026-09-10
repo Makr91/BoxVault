@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { clearConfigCache, getConfigPath } from '../app/utils/config-loader.js';
+import { reloadConfig, getConfigPath } from '../app/utils/config-loader.js';
 
 const appConfigPath = getConfigPath('app');
 
@@ -17,15 +17,15 @@ const jwt = (await import('jsonwebtoken')).default;
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
-const updateAppConfig = mutate => {
+const updateAppConfig = async mutate => {
   const original = fs.readFileSync(appConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(appConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(appConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -51,7 +51,7 @@ describe('Public configuration endpoints', () => {
     });
 
     it('should answer 404 while no base URL is configured', async () => {
-      const restore = updateAppConfig(config => {
+      const restore = await updateAppConfig(config => {
         config.gravatar = { base_url: '' };
       });
       try {
@@ -59,15 +59,15 @@ describe('Public configuration endpoints', () => {
         expect(res.statusCode).toBe(404);
         expect(axiosGet).not.toHaveBeenCalled();
       } finally {
-        restore();
+        await restore();
       }
     });
 
     describe('with the proxy configured', () => {
       let restore;
 
-      beforeAll(() => {
-        restore = updateAppConfig(config => {
+      beforeAll(async () => {
+        restore = await updateAppConfig(config => {
           config.gravatar = {
             base_url: 'https://api.gravatar.example/v3/profiles/',
             api_key: 'secret-key',
@@ -75,8 +75,8 @@ describe('Public configuration endpoints', () => {
         });
       });
 
-      afterAll(() => {
-        restore();
+      afterAll(async () => {
+        await restore();
       });
 
       it('should relay the profile with the server-side key', async () => {
@@ -103,7 +103,7 @@ describe('Public configuration endpoints', () => {
     });
 
     it('should call Gravatar without a key when none is configured', async () => {
-      const restore = updateAppConfig(config => {
+      const restore = await updateAppConfig(config => {
         config.gravatar = { base_url: 'https://api.gravatar.example/v3/profiles/' };
       });
       try {
@@ -112,7 +112,7 @@ describe('Public configuration endpoints', () => {
         expect(res.statusCode).toBe(200);
         expect(axiosGet).toHaveBeenCalledWith(expect.any(String), { headers: {} });
       } finally {
-        restore();
+        await restore();
       }
     });
   });
@@ -124,7 +124,7 @@ describe('Public configuration endpoints', () => {
     });
 
     it('should answer the section once configured', async () => {
-      const restore = updateAppConfig(config => {
+      const restore = await updateAppConfig(config => {
         config.hyperweaver = { url: 'https://hw.example' };
       });
       try {
@@ -132,35 +132,37 @@ describe('Public configuration endpoints', () => {
         expect(res.statusCode).toBe(200);
         expect(res.body).toEqual({ hyperweaver: { url: 'https://hw.example' } });
       } finally {
-        restore();
+        await restore();
       }
     });
   });
 
-  describe('secret knobs on the admin config routes', () => {
+  describe('writeOnly knobs on the admin config routes', () => {
     let restore;
 
-    beforeAll(() => {
-      restore = updateAppConfig(config => {
+    beforeAll(async () => {
+      restore = await updateAppConfig(config => {
         config.gravatar = {
           base_url: 'https://api.gravatar.example/v3/profiles/',
-          api_key: 'hidden-value',
+          api_key: 'stored-value',
         };
       });
     });
 
-    afterAll(() => {
-      restore();
+    afterAll(async () => {
+      await restore();
     });
 
-    it('should mask writeOnly knobs on read', async () => {
+    it('should answer the raw file with every writeOnly value in the clear', async () => {
       const res = await request(app).get('/api/config/app').set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.gravatar.api_key).toBe('********');
+      expect(res.body.gravatar.api_key).toBe('stored-value');
       expect(res.body.gravatar.base_url).toBe('https://api.gravatar.example/v3/profiles/');
+      expect(res.body.gravatar.extra).toBeUndefined();
+      expect(res.body.ticket_system.req_type).toBeUndefined();
     });
 
-    it('should keep the stored secret when the sentinel comes back and ignore prototype keys', async () => {
+    it('should write a blank blank, keep an omitted key and ignore prototype keys', async () => {
       const res = await request(app)
         .put('/api/config/app')
         .set('x-access-token', adminToken)
@@ -168,8 +170,7 @@ describe('Public configuration endpoints', () => {
           JSON.parse(
             JSON.stringify({
               gravatar: {
-                api_key: '********',
-                base_url: 'https://changed.example/profiles/',
+                api_key: '',
                 extra: 1,
               },
               __proto__: { polluted: true },
@@ -179,8 +180,8 @@ describe('Public configuration endpoints', () => {
         );
       expect(res.statusCode).toBe(200);
       const written = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
-      expect(written.gravatar.api_key).toBe('hidden-value');
-      expect(written.gravatar.base_url).toBe('https://changed.example/profiles/');
+      expect(written.gravatar.api_key).toBe('');
+      expect(written.gravatar.base_url).toBe('https://api.gravatar.example/v3/profiles/');
       expect(written.gravatar.extra).toBe(1);
       expect(Object.hasOwn(written, 'polluted')).toBe(false);
     });

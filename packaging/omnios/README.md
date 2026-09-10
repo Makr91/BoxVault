@@ -49,7 +49,7 @@ cp -r /path/to/boxvault-source/* .
 # The build.sh script expects these files:
 # - build.sh (provided)
 # - boxvault-smf.xml (SMF manifest)
-# - startup.sh, shutdown.sh (method scripts)
+# - startup.sh (start method)
 # - All source files (controllers, models, etc.)
 ```
 
@@ -159,14 +159,14 @@ The IPS package will create:
 ├── scripts/
 ├── ui/                             # STARTcloud UI artifact
 ├── node_modules/                   # Production dependencies
-├── startup.sh                      # SMF start method
-└── shutdown.sh                     # SMF stop method
+└── startup.sh                      # SMF start method, execs node in the foreground
 
 /etc/boxvault/                      # Configuration
 ├── app.config.yaml                 # Application configuration
 ├── auth.config.yaml                # Authentication configuration
 ├── db.config.yaml                  # Database configuration
-└── mail.config.yaml                # Mail configuration
+├── mail.config.yaml                # Mail configuration
+└── setup.token                     # Empty until the first start fills it; deleted by setup
 
 /var/lib/boxvault/                  # Data directory
 └── database/                       # SQLite database directory
@@ -226,7 +226,6 @@ svcs -xv application/management/boxvault
 
 # View detailed logs
 tail -f /var/svc/log/application-management-boxvault:default.log
-tail -f /var/log/boxvault/boxvault.log
 
 # Debug startup issues
 /opt/boxvault/startup.sh
@@ -258,7 +257,6 @@ chown -R boxvault:boxvault /var/log/boxvault
 
 # Fix permissions
 chmod 755 /opt/boxvault/startup.sh
-chmod 755 /opt/boxvault/shutdown.sh
 ```
 
 ## Service Management
@@ -306,4 +304,4 @@ After installation, BoxVault will be available at:
 - **HTTPS:** `https://localhost` (port 443)
 - **Configuration:** `/etc/boxvault/app.config.yaml`
 
-The first start of the service generates `/etc/boxvault/setup.token` and broadcasts it with `wall`; its first-run message names port 80, the schema default, when it cannot read `api_listen_port_unencrypted` from the configuration. The default configuration can be customized before starting the service.
+The package ships an empty `/etc/boxvault/setup.token`; the first start fills it with 64 hex characters and logs its path, and the setup page deletes it. `startup.sh` runs the configuration migrations and then `exec`s node in the foreground, so SMF supervises the process under `startd/duration = child` and brings it back after `POST /api/config/restart`. The default configuration can be customized before starting the service.

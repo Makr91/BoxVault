@@ -1,6 +1,6 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Database Config
-schemaVersion: 1
+schemaVersion: 2
 sections:
   database:
     title: Database
@@ -9,7 +9,7 @@ properties:
   schemaVersion:
     type: integer
     readOnly: true
-    default: 1
+    default: 2
     title: Schema version
   database_type:
     type: string
@@ -23,6 +23,7 @@ properties:
     description: MySQL for production, SQLite for simple deployments
     order: 1
     requiresRestart: true
+    restartReason: the database connection is opened at boot
   sql:
     type: object
     section: database
@@ -40,6 +41,7 @@ properties:
           - mysql
         order: 1
         requiresRestart: true
+        restartReason: the database connection is opened at boot
       port:
         type: integer
         minimum: 1
@@ -52,6 +54,7 @@ properties:
           - mysql
         order: 2
         requiresRestart: true
+        restartReason: the database connection is opened at boot
       logging:
         type: boolean
         default: false
@@ -59,6 +62,7 @@ properties:
         description: Log SQL queries to the backend console
         order: 3
         requiresRestart: true
+        restartReason: the database connection is opened at boot
       user:
         type: string
         default: boxvault
@@ -69,6 +73,7 @@ properties:
           - mysql
         order: 4
         requiresRestart: true
+        restartReason: the database connection is opened at boot
       password:
         type: string
         writeOnly: true
@@ -80,6 +85,7 @@ properties:
           - mysql
         order: 5
         requiresRestart: true
+        restartReason: the database connection is opened at boot
       database:
         type: string
         default: boxvault
@@ -90,6 +96,7 @@ properties:
           - mysql
         order: 6
         requiresRestart: true
+        restartReason: the database connection is opened at boot
       storage:
         type: string
         default: /var/lib/boxvault/database/boxvault.db
@@ -100,14 +107,7 @@ properties:
           - sqlite
         order: 7
         requiresRestart: true
-      dialect:
-        type: string
-        readOnly: true
-        default: ''
-        title: Dialect
-        description: Database dialect, set from the database type
-        order: 8
-        requiresRestart: true
+        restartReason: the database connection is opened at boot
   mysql_pool:
     type: object
     section: database
@@ -125,6 +125,7 @@ properties:
           - mysql
         order: 1
         requiresRestart: true
+        restartReason: the connection pool is created at boot
       min:
         type: integer
         minimum: 0
@@ -136,6 +137,7 @@ properties:
           - mysql
         order: 2
         requiresRestart: true
+        restartReason: the connection pool is created at boot
       acquire:
         type: integer
         minimum: 1
@@ -147,6 +149,7 @@ properties:
           - mysql
         order: 3
         requiresRestart: true
+        restartReason: the connection pool is created at boot
       idle:
         type: integer
         minimum: 1
@@ -158,3 +161,4 @@ properties:
           - mysql
         order: 4
         requiresRestart: true
+        restartReason: the connection pool is created at boot

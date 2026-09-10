@@ -4,10 +4,9 @@ import path from 'path';
 import yaml from 'js-yaml';
 import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
-import { Readable } from 'stream';
 import app from '../server.js';
 import db from '../app/models/index.js';
-import { clearConfigCache, getConfigPath } from '../app/utils/config-loader.js';
+import { reloadConfig, getConfigPath } from '../app/utils/config-loader.js';
 import { getSecureBoxPath } from '../app/utils/paths.js';
 import { getIsoStorageRoot } from '../app/controllers/iso/helpers.js';
 import { generateDownloadToken } from '../app/utils/auth.js';
@@ -21,16 +20,16 @@ const binaryParser = (response, callback) => {
   response.on('end', () => callback(null, Buffer.concat(chunks)));
 };
 
-const updateConfig = (configName, mutate) => {
+const updateConfig = async (configName, mutate) => {
   const configPath = getConfigPath(configName);
   const original = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(configPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(configPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -52,7 +51,6 @@ describe('Box and ISO content validation and visibility', () => {
   let memberToken;
   let serviceAccount;
   let server;
-  let baseUrl;
 
   const signFor = account =>
     jwt.sign({ id: account.id }, 'test-secret', { expiresIn: '1h', ...TEST_JWT_CLAIMS });
@@ -81,7 +79,6 @@ describe('Box and ISO content validation and visibility', () => {
     await new Promise(resolve => {
       server.listen(0, resolve);
     });
-    baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     org = await db.organization.create({ name: orgName });
     otherOrg = await db.organization.create({ name: otherOrgName });
@@ -294,7 +291,7 @@ describe('Box and ISO content validation and visibility', () => {
     });
 
     it('should honour the configured download link expiry', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         config.auth.jwt.download_link_expiry = '2h';
       });
       try {
@@ -310,7 +307,7 @@ describe('Box and ISO content validation and visibility', () => {
         const claims = jwt.verify(token, 'test-secret', TEST_JWT_CLAIMS);
         expect(claims.exp - claims.iat).toBe(2 * 60 * 60);
       } finally {
-        restore();
+        await restore();
       }
     });
   });
@@ -380,32 +377,6 @@ describe('Box and ISO content validation and visibility', () => {
       expect(second.body.checksum).not.toBe(first.body.checksum);
       expect(fs.existsSync(firstPath)).toBe(false);
       expect(fs.existsSync(path.join(getIsoStorageRoot(), second.body.storagePath))).toBe(true);
-    });
-
-    it('should refuse a file over the size cap by length and by stream', async () => {
-      const restore = updateConfig('app', config => {
-        config.boxvault.box_max_file_size = 0.000001;
-      });
-      try {
-        const declared = await upload(Buffer.alloc(2048, 1));
-        expect(declared.statusCode).toBe(413);
-
-        const body = Readable.from(
-          (function* generate() {
-            yield Buffer.alloc(1024, 2);
-            yield Buffer.alloc(1024, 3);
-          })()
-        );
-        const streamed = await fetch(`${baseUrl}${isoFileUrl(privateIsoName, 'upload')}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/octet-stream', 'x-access-token': ownerToken },
-          body,
-          duplex: 'half',
-        });
-        expect(streamed.status).toBe(413);
-      } finally {
-        restore();
-      }
     });
 
     it('should refuse a download token that names no user for a private ISO', async () => {

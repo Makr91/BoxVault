@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const ISSUER = 'https://notify-idp.example';
 
@@ -26,16 +26,16 @@ const jwt = (await import('jsonwebtoken')).default;
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
-const updateConfig = (configName, mutate) => {
+const updateConfig = async (configName, mutate) => {
   const configPath = getConfigPath(configName);
   const original = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(configPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(configPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -53,7 +53,7 @@ describe('Notifications API', () => {
 
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
-    restoreAuth = updateConfig('auth', config => {
+    restoreAuth = await updateConfig('auth', config => {
       config.auth.oidc.providers = {
         notifyidp: { enabled: true, issuer: ISSUER },
       };
@@ -91,7 +91,7 @@ describe('Notifications API', () => {
   });
 
   afterAll(async () => {
-    restoreAuth();
+    await restoreAuth();
     await db.pushSubscription.destroy({ where: { user_id: [localUser.id, oidcUser.id] } });
     await localUser.destroy();
     await oidcUser.destroy();
@@ -123,8 +123,8 @@ describe('Notifications API', () => {
   describe('push subscriptions', () => {
     let restoreApp;
 
-    beforeAll(() => {
-      restoreApp = updateConfig('app', config => {
+    beforeAll(async () => {
+      restoreApp = await updateConfig('app', config => {
         config.notifications = {
           enabled: true,
           vapid_subject: 'mailto:ops@example.com',
@@ -134,8 +134,8 @@ describe('Notifications API', () => {
       });
     });
 
-    afterAll(() => {
-      restoreApp();
+    afterAll(async () => {
+      await restoreApp();
     });
 
     it('should expose the configured public key', async () => {

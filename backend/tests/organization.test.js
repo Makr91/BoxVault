@@ -8,19 +8,19 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { getSecureBoxPath } from '../app/utils/paths.js';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const authConfigPath = getConfigPath('auth');
 
-const writeAuthConfig = mutate => {
+const writeAuthConfig = async mutate => {
   const original = fs.readFileSync(authConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(authConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(authConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -717,7 +717,7 @@ describe('Organization API', () => {
     });
 
     it('should refuse new organizations while the knob is off, except to a global admin', async () => {
-      const restore = writeAuthConfig(config => {
+      const restore = await writeAuthConfig(config => {
         config.auth.local = { ...(config.auth.local || {}), local_allow_new_organizations: false };
       });
       const gatedName = `GatedOrg-${uniqueId}`;
@@ -742,7 +742,7 @@ describe('Organization API', () => {
         expect(allowed.statusCode).toBe(201);
         expect(allowed.body.name).toBe(adminGatedName);
       } finally {
-        restore();
+        await restore();
         await db.organization.destroy({ where: { name: adminGatedName } });
       }
     });

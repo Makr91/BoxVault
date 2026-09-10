@@ -196,6 +196,7 @@ export default [
     rules: {
       'no-process-env': 'off', // Allow process.env in config files
       'no-magic-numbers': 'off', // Allow magic numbers in configs
+      'no-process-exit': 'off',
     },
   },
 ];

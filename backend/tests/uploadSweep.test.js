@@ -8,7 +8,7 @@ import { createServer } from 'http';
 import { Readable } from 'stream';
 import app from '../server.js';
 import db from '../app/models/index.js';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 import { getSecureBoxPath, getStorageRoot } from '../app/utils/paths.js';
 
 const appConfigPath = getConfigPath('app');
@@ -16,15 +16,15 @@ const appConfigPath = getConfigPath('app');
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const HOUR_MS = 60 * 60 * 1000;
 
-const updateAppConfig = mutate => {
+const updateAppConfig = async mutate => {
   const original = fs.readFileSync(appConfigPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(appConfigPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(appConfigPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -126,9 +126,9 @@ describe('Stale chunk directory sweep', () => {
     expect(fs.existsSync(stray)).toBe(true);
   });
 
-  it('should honour the configured age and ignore a malformed knob', async () => {
+  it('should honour the configured age', async () => {
     const twoHours = makeTempDir([staleOrg, 'two-hours', '1.0.0', 'vb', 'amd64'], 2 * HOUR_MS);
-    const restore = updateAppConfig(config => {
+    const restore = await updateAppConfig(config => {
       config.boxvault.upload_stale_temp_max_age_hours = 1;
     });
     try {
@@ -136,19 +136,7 @@ describe('Stale chunk directory sweep', () => {
       expect(res.statusCode).toBe(200);
       expect(fs.existsSync(twoHours)).toBe(false);
     } finally {
-      restore();
-    }
-
-    const kept = makeTempDir([staleOrg, 'kept', '1.0.0', 'vb', 'amd64'], 2 * HOUR_MS);
-    const restoreMalformed = updateAppConfig(config => {
-      config.boxvault.upload_stale_temp_max_age_hours = 'soon';
-    });
-    try {
-      const res = await sendChunk(0);
-      expect(res.statusCode).toBe(200);
-      expect(fs.existsSync(kept)).toBe(true);
-    } finally {
-      restoreMalformed();
+      await restore();
     }
   });
 

@@ -13,9 +13,9 @@ export default () => {
   process.env.CONFIG_DIR = configDir;
 
   const dbConfig = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    database_type: process.env.TEST_DB_DIALECT || 'sqlite',
     sql: {
-      dialect: process.env.TEST_DB_DIALECT || 'sqlite',
       storage: ':memory:',
       logging: false,
     },
@@ -38,9 +38,13 @@ export default () => {
     internationalization: {
       default_language: 'en',
     },
+    ssl: {
+      generate_ssl: false,
+    },
     logging: {
       level: 'error',
       console_enabled: true,
+      log_directory: path.join(__dirname, '__test_logs__'),
     },
   };
 
@@ -58,7 +62,7 @@ export default () => {
 
   const mailConfig = {
     schemaVersion: 2,
-    smtp_connect: { host: 'localhost', port: 1025 },
+    smtp_connect: { host: '127.0.0.1', port: 1025 },
     smtp_settings: { from: 'noreply@example.com' },
   };
 

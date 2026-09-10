@@ -1,15 +1,10 @@
 schemaVersion: 1
 auth:
-  enabled_strategies:
-    - local
-    - jwt
-    - oidc
-  default_strategy: local
   jwt:
     jwt_secret: ''
     jwt_expiration: 24h
-    jwt_issuer: boxvault
-    jwt_audience: boxvault
+    jwt_issuer: zoneweaver
+    jwt_audience: zoneweaver-api
     download_link_expiry: 1h
     invitation_token_expiry_hours: 24
     verification_token_expiry_hours: 24
@@ -26,17 +21,27 @@ auth:
     local_session_timeout: 24
     local_allow_new_organizations: false
   oidc:
-    token_refresh_threshold_minutes: 5
-    token_default_expiry_minutes: 30
     default_provider: ''
     silent_login: false
+    login_handoff_ttl_seconds: 60
+    token_default_expiry_minutes: 30
+    token_refresh_threshold_minutes: 5
+    s2s_client_id: boxvault_s2s
+    s2s_client_secret: ''
+    notifications_enabled: false
     providers: {}
   resource_server:
     enabled: false
     audience: boxvault
+  scim:
+    enabled: true
+    audience: boxvault
   external:
     domain_mapping_enabled: true
-    domain_mappings: '{}'
+    domain_mappings: |
+      {
+        "A55D94": ["m4kr.net", "philotic.cloud"]
+      }
     provisioning_enabled: true
     provisioning_policy: invite_only
     provisioning_default_role: user

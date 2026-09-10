@@ -59,10 +59,6 @@ license opt/boxvault/LICENSE.md license="GPL-3.0" must-accept=false
 <transform file path=opt/boxvault/startup.sh -> set group sys>
 <transform file path=opt/boxvault/startup.sh -> set mode 0755>
 
-<transform file path=opt/boxvault/shutdown.sh -> set owner root>
-<transform file path=opt/boxvault/shutdown.sh -> set group sys>
-<transform file path=opt/boxvault/shutdown.sh -> set mode 0755>
-
 
 # Make scripts and node binaries executable
 <transform file path=opt/boxvault/scripts/.* -> set mode 0755>
@@ -71,7 +67,12 @@ license opt/boxvault/LICENSE.md license="GPL-3.0" must-accept=false
 # Configuration directory and files (config files preserved via preserve=true)
 <transform dir path=etc/boxvault$ -> set owner boxvault>
 <transform dir path=etc/boxvault$ -> set group boxvault>
-<transform dir path=etc/boxvault$ -> set mode 0755>
+<transform dir path=etc/boxvault$ -> set mode 0750>
+
+<transform file path=etc/boxvault/setup.token -> set owner boxvault>
+<transform file path=etc/boxvault/setup.token -> set group boxvault>
+<transform file path=etc/boxvault/setup.token -> set mode 0600>
+<transform file path=etc/boxvault/setup.token -> set preserve abandon>
 
 <transform file path=etc/boxvault/app.config.yaml -> set owner boxvault>
 <transform file path=etc/boxvault/app.config.yaml -> set group boxvault>

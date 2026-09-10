@@ -1,20 +1,22 @@
 import express from 'express';
 import cors from 'cors';
-import { existsSync, mkdirSync, chmodSync, readFileSync, writeFileSync, watch } from 'fs';
-import { isAbsolute, join, dirname, basename } from 'path';
+import { existsSync, mkdirSync, chmodSync, readFileSync } from 'fs';
+import { join, dirname, basename, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import responseTime from 'response-time';
 import {
   loadConfig,
-  getConfigPath,
+  getConfigDir,
   getSetupTokenPath,
-  checkConfigs,
-  clearConfigCache,
+  setupTokenGuard,
 } from './app/utils/config-loader.js';
+import { routes as configEngineRoutes } from './app/config/config-engine.js';
+import { exit, onConfigSaved, SERVICE_USER, UPLOAD_LIMIT } from './app/config/boxvault.js';
 import { log, morganMiddleware } from './app/utils/Logger.js';
 import { startNotificationSweeps } from './app/utils/notificationSweeps.js';
 import { startHealthWatch } from './app/controllers/health/info.js';
 import { ensureVapidKeys } from './app/utils/webPush.js';
+import { ensureJwtSecret } from './app/utils/auth.js';
 import { randomBytes, constants } from 'crypto';
 import { createServer } from 'http';
 import { createServer as _createServer } from 'https';
@@ -27,12 +29,13 @@ import { execSync } from 'child_process';
 
 // Import routes and middleware
 import {
+  authJwt,
   vagrantHandler,
   i18nMiddleware,
   rateLimiter,
   errorHandler,
 } from './app/middleware/index.js';
-import db from './app/models/index.js';
+import db, { initializeDatabase } from './app/models/index.js';
 import statusRoutes from './app/routes/status.routes.js';
 import rulesRoutes from './app/routes/rules.routes.js';
 import healthRoutes from './app/routes/health.routes.js';
@@ -52,8 +55,6 @@ import serviceAccountRoutes from './app/routes/service_account.routes.js';
 import favoritesRoutes from './app/routes/favorites.routes.js';
 import notificationRoutes from './app/routes/notification.routes.js';
 import eventsRoutes from './app/routes/events.routes.js';
-import setupRoutes from './app/routes/setup.routes.js';
-import sslRoutes from './app/routes/ssl.routes.js';
 import isoRoutes from './app/routes/iso.routes.js';
 import systemRoutes from './app/routes/system.routes.js';
 import clientErrorsRoutes from './app/routes/client_errors.routes.js';
@@ -70,58 +71,15 @@ const { json, urlencoded } = express;
 const SequelizeStore = connectSessionSequelize(session.Store);
 const { csrf } = lusca;
 
-/**
- * Evaluate every configuration file against its schema before anything
- * else runs: one line per failing pointer, one warning per unknown key, and
- * a thrown error when any file fails so the host refuses to start.
- * @throws {Error} When a configuration file fails its schema
- */
-const refuseBadConfigs = () => {
-  const results = checkConfigs();
-  results.forEach(({ name, errors, unknown }) => {
-    unknown.forEach(pointer => {
-      log.app.warn('Unknown configuration key ignored', { config: name, pointer });
-    });
-    errors.forEach(error => {
-      log.app.error('Configuration value failed its schema', {
-        config: name,
-        pointer: error.pointer,
-        rule: error.rule,
-        params: error.params,
-      });
-    });
-  });
-  const failing = results.filter(({ errors }) => errors.length > 0).map(({ name }) => name);
-  if (failing.length > 0) {
-    throw new Error(`Configuration failed validation: ${failing.join(', ')}`);
-  }
-};
-
-refuseBadConfigs();
-
 const boxConfig = loadConfig('app');
 
-const dbConfigPath = getConfigPath('db');
-
-const isDialectConfigured = () => {
-  try {
-    const dbConfig = loadConfig('db');
-    const { dialect } = dbConfig.sql;
-    return dialect !== undefined && dialect !== null && dialect.trim() !== '';
-  } catch (error) {
-    log.database.error('Error reading db.config.yaml', { error: error.message });
-    return false;
-  }
-};
+const isSetupComplete = () => !existsSync(getSetupTokenPath());
 
 const resolveSSLPath = filePath => {
   if (!filePath) {
     return null;
   }
-  if (isAbsolute(filePath)) {
-    return filePath;
-  }
-  return join(__dirname, 'app', 'config', 'ssl', filePath);
+  return resolve(getConfigDir(), filePath);
 };
 
 const isSSLConfigured = () => {
@@ -181,36 +139,6 @@ const generateSSLCertificatesIfNeeded = () => {
     log.app.warn('Continuing with HTTP fallback...');
     return false; // Generation failed
   }
-};
-
-const getOrGenerateSetupToken = () => {
-  const setupTokenPath = getSetupTokenPath();
-
-  // Check if setup token already exists (from package installation)
-  if (existsSync(setupTokenPath)) {
-    try {
-      const existingToken = readFileSync(setupTokenPath, 'utf8').trim();
-      if (existingToken && existingToken.length === 64) {
-        // Valid hex token
-        log.app.info('Using existing setup token from installation');
-        return existingToken;
-      }
-    } catch (error) {
-      log.app.warn('Error reading existing setup token, generating new one:', error.message);
-    }
-  }
-
-  // Generate new token if none exists or existing one is invalid
-  const token = randomBytes(32).toString('hex');
-
-  // Ensure the directory exists before writing the token
-  const tokenDir = dirname(setupTokenPath);
-  if (!existsSync(tokenDir)) {
-    mkdirSync(tokenDir, { recursive: true, mode: 0o755 });
-  }
-
-  writeFileSync(setupTokenPath, token, { mode: 0o600 });
-  return token;
 };
 
 /**
@@ -337,7 +265,7 @@ log.app.info('i18n internationalization middleware applied');
 // Configure body parsers with appropriate limits, but exclude file upload route
 app.use((req, res, next) => {
   // Skip body parsing for file uploads
-  if (req.url.includes('/file/upload') || req.url.includes('/config/ssl/upload')) {
+  if (req.url.includes('/file/upload')) {
     // Set upload-specific headers
     res.setHeader('Cache-Control', 'no-transform');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -370,6 +298,24 @@ app.use(morganMiddleware);
 // Rate limiting middleware (applied at top level for CodeQL detection)
 app.use(rateLimiter);
 log.app.info('Rate limiting middleware applied globally');
+
+app.use('/api', statusRoutes);
+app.use('/api', configRoutes);
+configEngineRoutes(
+  app,
+  {
+    admin: [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+    setup: setupTokenGuard,
+    actor: async req => {
+      const user = await db.user.findByPk(req.userId, { attributes: ['email'] });
+      return user.email;
+    },
+    user: SERVICE_USER,
+  },
+  exit,
+  UPLOAD_LIMIT
+);
+log.app.info('Configuration and setup routes mounted');
 
 // Initialize roles in database (must be defined before initializeApp uses it)
 const initial = async () => {
@@ -516,12 +462,10 @@ const initializeApp = async () => {
     // NOW load all routes - strategies are guaranteed to exist
     log.app.info('Loading application routes...');
 
-    app.use('/api', statusRoutes);
     app.use('/api', rulesRoutes);
     app.use('/api', healthRoutes);
     app.use('/api', authRoutes);
     app.use('/api', mailRoutes);
-    app.use('/api', configRoutes);
     app.use('/api', userRoutes);
     app.use('/api', requestRoutes);
     app.use('/api', boxRouter);
@@ -535,8 +479,6 @@ const initializeApp = async () => {
     app.use('/api', favoritesRoutes);
     app.use('/api', notificationRoutes);
     app.use('/api', eventsRoutes);
-    app.use('/api', setupRoutes);
-    app.use('/api', sslRoutes);
     app.use('/api', isoRoutes);
     app.use('/api', systemRoutes);
     app.use('/api', clientErrorsRoutes);
@@ -614,18 +556,25 @@ const initializeApp = async () => {
   }
 };
 
-// Check if the database dialect is configured
-let isConfigured = isDialectConfigured();
+let initializing = null;
 
-if (isConfigured) {
-  initializeApp();
+const startApplication = () => {
+  if (!initializing) {
+    initializing = initializeDatabase()
+      .then(() => initializeApp())
+      .catch(error => {
+        log.error.error('Application start failed', { error: error.message });
+      });
+  }
+  return initializing;
+};
+
+if (isSetupComplete()) {
+  startApplication();
 } else {
-  const setupToken = getOrGenerateSetupToken();
-  log.app.info(`Setup token: ${setupToken}`);
-
-  // Load only the setup route
-  app.use('/api', statusRoutes);
-  app.use('/api', setupRoutes);
+  log.app.info('Setup token present; serving the setup routes until the setup write', {
+    path: getSetupTokenPath(),
+  });
 
   app.get('/', (req, res) => {
     void req;
@@ -634,35 +583,12 @@ if (isConfigured) {
 
   app.use(errorHandler);
 
-  // Watch for changes in the db.config.yaml file
-  const watchTarget = existsSync(dbConfigPath) ? dbConfigPath : dirname(dbConfigPath);
-  const dbConfigFileName = basename(dbConfigPath);
-
-  try {
-    watch(watchTarget, (eventType, filename) => {
-      // If watching directory, ensure we only react to the specific config file
-      if (watchTarget !== dbConfigPath && filename && filename !== dbConfigFileName) {
-        return;
-      }
-
-      if (eventType === 'change' || eventType === 'rename') {
-        // Ignore temporary files created during atomic writes
-        if (filename && filename.endsWith('.tmp')) {
-          return;
-        }
-
-        clearConfigCache();
-        const newConfiguredState = isDialectConfigured();
-        if (!isConfigured && newConfiguredState) {
-          isConfigured = true;
-          log.app.info('Configuration updated. Initializing application...');
-          initializeApp();
-        }
-      }
-    });
-  } catch (error) {
-    log.app.warn('Failed to setup file watcher for config:', error.message);
-  }
+  onConfigSaved((name, actor) => {
+    if (name === 'db' && actor === 'setup') {
+      log.app.info('Setup wrote the database configuration. Initializing application...');
+      startApplication();
+    }
+  });
 }
 
 const HTTP_PORT = boxConfig.boxvault.api_listen_port_unencrypted || 5000;
@@ -701,7 +627,9 @@ const startHTTPServer = (port = HTTP_PORT) => {
 };
 
 // SSL/HTTPS Configuration with auto-generation
-const startServer = () => {
+const startServer = async () => {
+  await ensureJwtSecret();
+
   // Generate SSL certificates BEFORE setup wizard (synchronous operation)
   generateSSLCertificatesIfNeeded();
 

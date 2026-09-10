@@ -93,13 +93,20 @@ describe('validateValue', () => {
       { pointer: '', rule: 'minLength', params: { minLength: 3 } },
     ]);
     expect(validateValue({ type: 'integer', minimum: 1, maximum: 10 }, 11)).toEqual([
-      { pointer: '', rule: 'range', params: { minimum: 1, maximum: 10 } },
+      { pointer: '', rule: 'maximum', params: { maximum: 10 } },
+    ]);
+    expect(validateValue({ type: 'integer', minimum: 1, maximum: 10 }, 0)).toEqual([
+      { pointer: '', rule: 'minimum', params: { minimum: 1 } },
     ]);
     expect(validateValue({ type: 'integer', minimum: 1 }, 0)).toEqual([
-      { pointer: '', rule: 'minimum', params: { minimum: 1, maximum: undefined } },
+      { pointer: '', rule: 'minimum', params: { minimum: 1 } },
     ]);
     expect(validateValue({ type: 'integer', maximum: 5 }, 6)).toEqual([
-      { pointer: '', rule: 'maximum', params: { minimum: undefined, maximum: 5 } },
+      { pointer: '', rule: 'maximum', params: { maximum: 5 } },
+    ]);
+    expect(validateValue({ type: 'string', format: 'uri', enum: ['a'] }, '')).toEqual([]);
+    expect(validateValue({ type: 'string', minLength: 1 }, '')).toEqual([
+      { pointer: '', rule: 'minLength', params: { minLength: 1 } },
     ]);
     expect(validateValue({ type: 'string', enum: ['a', 'b'] }, 'c')).toEqual([
       { pointer: '', rule: 'enum', params: { enum: 'a, b' } },
@@ -166,7 +173,7 @@ describe('validateObject', () => {
     expect(errors).toEqual([
       { pointer: '/name', rule: 'pattern', params: { pattern: 'slug' } },
       { pointer: '/deprecation_reason', rule: 'required', params: {} },
-      { pointer: '/sql/port', rule: 'range', params: { minimum: 1, maximum: 65535 } },
+      { pointer: '/sql/port', rule: 'maximum', params: { maximum: 65535 } },
       { pointer: '/providers/idp/issuer', rule: 'format', params: { format: 'uri' } },
       { pointer: '/providers/other/issuer', rule: 'required', params: {} },
       { pointer: '/levels/app', rule: 'enum', params: { enum: 'info' } },
@@ -194,6 +201,9 @@ describe('isVisible and scopesFor', () => {
     expect(isVisible({ dependsOn: 'database_type', showWhen: ['sqlite'] }, scopes)).toBe(false);
     expect(isVisible({ dependsOn: 'missing', showWhen: [true] }, scopes)).toBe(false);
     expect(isVisible({}, scopes)).toBe(true);
+    const flags = [{ enabled: true, text: 'true' }];
+    expect(isVisible({ dependsOn: 'enabled', showWhen: [true] }, flags)).toBe(true);
+    expect(isVisible({ dependsOn: 'text', showWhen: [true] }, flags)).toBe(false);
   });
 });
 

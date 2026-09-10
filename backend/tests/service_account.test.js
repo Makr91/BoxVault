@@ -252,8 +252,8 @@ describe('Service Account API', () => {
       expect(res.body.errors).toEqual([
         expect.objectContaining({
           pointer: '/expiration_days',
-          rule: 'range',
-          params: { minimum: 1, maximum: 365 },
+          rule: 'maximum',
+          params: { maximum: 365 },
         }),
       ]);
     });

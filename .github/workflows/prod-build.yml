@@ -50,16 +50,6 @@ jobs:
           mkdir -p backend/ui
           curl -fsSL "https://github.com/STARTcloud/startcloud-ui/releases/download/v${UI_VERSION}/startcloud-ui-${UI_VERSION}.tar.gz" | tar -xz -C backend/ui
 
-      - name: Prepare dev configs for documentation build
-        run: |
-          mkdir -p backend/app/config
-          sed 's|/var/log/boxvault|./logs|g; s|/var/lib/boxvault/storage|./storage|g' \
-              packaging/config/app.config.yaml > backend/app/config/app.dev.config.yaml
-          sed "s|/var/lib/boxvault/database/boxvault.db|./boxvault.db|g; s|dialect: ''|dialect: sqlite|g" \
-              packaging/config/db.config.yaml > backend/app/config/db.dev.config.yaml
-          cp packaging/config/auth.config.yaml backend/app/config/auth.dev.config.yaml
-          cp packaging/config/mail.config.yaml backend/app/config/mail.dev.config.yaml
-
       - name: Generate OpenAPI documentation
         run: npm run generate-docs
 
@@ -92,7 +82,7 @@ jobs:
 
       - name: Create Debian package structure
         run: |
-          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/config-templates,opt/boxvault/scripts,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
+          mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/config-templates,opt/boxvault/scripts,etc/boxvault,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
 
       - name: Copy application files to Debian package
         run: |

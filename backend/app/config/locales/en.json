@@ -69,7 +69,6 @@
     "pattern": "{{field}} must match {{pattern}}.",
     "minimum": "{{field}} must be at least {{minimum}}.",
     "maximum": "{{field}} must be at most {{maximum}}.",
-    "range": "{{field}} must be between {{minimum}} and {{maximum}}.",
     "enum": "{{field}} must be one of: {{enum}}.",
     "format": "{{field}} must be a valid {{format}}.",
     "minItems": "{{field}} must have at least {{minItems}} items.",
@@ -390,10 +389,7 @@
   "config": {
     "gravatarNotFound": "Gravatar configuration not found.",
     "hyperweaverNotConfigured": "Hyperweaver is not configured.",
-    "restartInitiated": "Server restart initiated",
-    "ticketSystemNotConfigured": "Ticket system not configured.",
-    "updated": "Configuration updated successfully.",
-    "updateError": "Failed to update configuration"
+    "ticketSystemNotConfigured": "Ticket system not configured."
   },
   "favorites": {
     "oidcRequired": "OIDC authentication required to manage favorites",
@@ -446,12 +442,6 @@
   },
   "health": {
     "checkFailed": "Health check failed"
-  },
-  "setup": {
-    "checkError": "Failed to check setup status",
-    "readError": "Failed to read configurations",
-    "invalidToken": "Invalid authorization token",
-    "notAllowed": "Setup is not allowed"
   },
   "isos": {
     "notFound": "ISO not found.",

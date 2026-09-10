@@ -5,145 +5,41 @@
 
 set -e
 
-# Environment is set by SMF, but ensure we have the basics
 export PATH="/opt/ooce/bin:/opt/ooce/node-22/bin:/usr/gnu/bin:/usr/bin:/usr/sbin:/sbin"
 export CONFIG_DIR="${CONFIG_DIR:-/etc/boxvault}"
-export CONFIG_PATH="${CONFIG_DIR}"
 export HOME="${HOME:-/var/lib/boxvault}"
 
 cd /opt/boxvault
 
-PIDFILE="/var/lib/boxvault/boxvault.pid"
-
-# Create runtime directories following IPS best practices
-# These are unpackaged content - preserved across package operations
 mkdir -p /var/lib/boxvault/database
-mkdir -p /etc/boxvault/ssl
 mkdir -p /var/log/boxvault
 
-# Set proper ownership for runtime directories
-chown -R boxvault:boxvault /var/lib/boxvault
-chown -R boxvault:boxvault /etc/boxvault/ssl
-chown -R boxvault:boxvault /var/log/boxvault
-
-# Set proper permissions for SSL directory (more restrictive)
-chmod 700 /etc/boxvault/ssl
-
-# Generate setup token if it doesn't exist (first run)
-SETUP_TOKEN_FILE="/etc/boxvault/setup.token"
-if [ ! -f "$SETUP_TOKEN_FILE" ]; then
-    echo "First run detected - generating setup token..."
-    SETUP_TOKEN=$(openssl rand -hex 32)
-    echo "$SETUP_TOKEN" > "$SETUP_TOKEN_FILE"
-    chown boxvault:boxvault "$SETUP_TOKEN_FILE"
-    chmod 600 "$SETUP_TOKEN_FILE"
-    
-    # Get the port from config
-    HTTP_PORT=$(grep "^  api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | sed 's/.*: *\([0-9]*\).*/\1/' | head -1)
-    if [ -z "$HTTP_PORT" ]; then
-        HTTP_PORT=80
-    fi
-
-    # Broadcast setup token to all logged-in users
-    TEMP_MSG=$(mktemp)
-    cat > "$TEMP_MSG" << EOF
-
-BoxVault has been started for the first time!
-
-SETUP TOKEN (save this for initial configuration):
-  $SETUP_TOKEN
-
-Access BoxVault at: http://localhost:$HTTP_PORT
-Use the setup token above for initial configuration.
-
-Configuration files: /etc/boxvault/
-
-EOF
-    wall "$TEMP_MSG"
-    rm -f "$TEMP_MSG"
-    
-    echo "Setup token generated and broadcast to all users: $SETUP_TOKEN"
-fi
-
-if grep -qF 'jwt_secret: ${JWT_SECRET}' /etc/boxvault/auth.config.yaml; then
-    JWT_SECRET=$(openssl rand -hex 32)
-    sed -i "s|jwt_secret: \${JWT_SECRET}|jwt_secret: ${JWT_SECRET}|" /etc/boxvault/auth.config.yaml
-    echo "Generated JWT secret in auth.config.yaml"
-fi
-
-# Check if Node.js is available
 if ! command -v node >/dev/null 2>&1; then
     echo "Error: Node.js not found in PATH" >&2
     exit 1
 fi
 
-# Check if main application file exists
 if [ ! -f "/opt/boxvault/server.js" ]; then
     echo "Error: BoxVault application not found at /opt/boxvault/server.js" >&2
     exit 1
 fi
 
-# Check if configuration directory exists
-if [ ! -d "$CONFIG_PATH" ]; then
-    echo "Error: Configuration directory not found at $CONFIG_PATH" >&2
+if [ ! -d "$CONFIG_DIR" ]; then
+    echo "Error: Configuration directory not found at $CONFIG_DIR" >&2
     exit 1
 fi
 
-# Check if essential configuration files exist
-if [ ! -f "$CONFIG_PATH/db.config.yaml" ]; then
-    echo "Error: Database configuration not found at $CONFIG_PATH/db.config.yaml" >&2
-    exit 1
-fi
-
-if [ ! -f "$CONFIG_PATH/app.config.yaml" ]; then
-    echo "Error: Application configuration not found at $CONFIG_PATH/app.config.yaml" >&2
-    exit 1
-fi
-
-if [ ! -f "$CONFIG_PATH/auth.config.yaml" ]; then
-    echo "Error: Authentication configuration not found at $CONFIG_PATH/auth.config.yaml" >&2
-    exit 1
-fi
-
-# Remove stale PID file if it exists
-if [ -f "$PIDFILE" ]; then
-    if ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-        echo "Removing stale PID file $PIDFILE"
-        rm -f "$PIDFILE"
-    else
-        echo "Error: BoxVault appears to be already running (PID $(cat "$PIDFILE"))" >&2
+for config_file in app.config.yaml auth.config.yaml db.config.yaml mail.config.yaml; do
+    if [ ! -f "$CONFIG_DIR/$config_file" ]; then
+        echo "Error: $config_file not found in $CONFIG_DIR" >&2
         exit 1
     fi
-fi
+done
+
+node scripts/migrate-config.js
 
 echo "Starting BoxVault Vagrant Box Repository Management System..."
 echo "Node.js version: $(node --version)"
-echo "Configuration: $CONFIG_PATH"
+echo "Configuration: $CONFIG_DIR"
 
-# Start the Node.js application in the background
-# Output goes to log file so we can see SSL generation messages
-nohup node server.js </dev/null >>/var/log/boxvault/boxvault.log 2>&1 &
-NODE_PID=$!
-
-# Save the PID
-echo $NODE_PID > "$PIDFILE"
-
-# Give it a moment to start and check if it's still running
-sleep 2
-if ! kill -0 $NODE_PID 2>/dev/null; then
-    echo "Error: BoxVault failed to start" >&2
-    rm -f "$PIDFILE"
-    exit 1
-fi
-
-# Get the port from config for final message
-HTTP_PORT=$(grep "^  api_listen_port_unencrypted:" /etc/boxvault/app.config.yaml | sed 's/.*: *\([0-9]*\).*/\1/' | head -1)
-if [ -z "$HTTP_PORT" ]; then
-    HTTP_PORT=80
-fi
-
-echo "BoxVault started successfully with PID $NODE_PID"
-echo "Log output will be available via SMF logging"
-echo "Access the web interface at http://localhost:$HTTP_PORT"
-
-exit 0
+exec node server.js

@@ -762,36 +762,92 @@ const options = {
             },
           },
         },
-        SetupTokenResponse: {
+        RestartEntry: {
           type: 'object',
+          required: ['pointer', 'title', 'reason'],
           properties: {
-            authorizedSetupToken: {
+            pointer: {
               type: 'string',
-              description: 'Authorized setup token for subsequent requests',
-              example: 'setup-token-abc123',
+              description: 'RFC 6901 pointer of the changed key',
+              example: '/boxvault/api_listen_port_encrypted',
+            },
+            title: {
+              type: 'string',
+              description: "The key's title from its schema",
+              example: 'HTTPS port',
+            },
+            reason: {
+              type: 'string',
+              description: 'Why the key needs a restart, from its schema',
+              example: 'the listener is bound at boot',
+            },
+          },
+        },
+        ConfigSaved: {
+          type: 'object',
+          required: ['message', 'requires_restart'],
+          properties: {
+            message: {
+              type: 'string',
+              example: 'Configuration saved.',
+            },
+            requires_restart: {
+              type: 'array',
+              description: 'The changed keys that need a restart; empty when none',
+              items: { $ref: '#/components/schemas/RestartEntry' },
+            },
+          },
+        },
+        RestartStatus: {
+          type: 'object',
+          required: [
+            'restart_required',
+            'requires_restart',
+            'last_modified_by',
+            'last_modified_time',
+          ],
+          properties: {
+            restart_required: {
+              type: 'boolean',
+              description: 'True exactly when the list is not empty',
+            },
+            requires_restart: {
+              type: 'array',
+              description: 'The union of every write since the last restart',
+              items: { $ref: '#/components/schemas/RestartEntry' },
+            },
+            last_modified_by: {
+              type: 'string',
+              nullable: true,
+              description: 'The last actor; null until the first write of the process',
+            },
+            last_modified_time: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'RFC 3339 instant in UTC; null until the first write of the process',
             },
           },
         },
         ConfigUpdateRequest: {
           type: 'object',
+          required: ['configs'],
           properties: {
             configs: {
               type: 'object',
-              description: 'Configuration updates organized by config type',
+              description: 'One JSON Merge Patch per file name',
               additionalProperties: {
                 type: 'object',
-                description: 'Configuration values for a specific config type',
+                description: 'The merge patch over the raw file',
               },
               example: {
                 app: {
                   boxvault: {
-                    api_url: { value: 'https://api.example.com' },
+                    origin: 'https://boxvault.example.com',
                   },
                 },
                 db: {
-                  sql: {
-                    dialect: { value: 'postgres' },
-                  },
+                  database_type: 'sqlite',
                 },
               },
             },
@@ -802,23 +858,33 @@ const options = {
           properties: {
             configs: {
               type: 'object',
-              description: 'Current configuration values',
+              description: 'The raw files by name',
               additionalProperties: {
                 type: 'object',
-                description: 'Configuration section',
+                description: 'One raw file parsed to JSON',
               },
             },
           },
         },
         MailTestRequest: {
           type: 'object',
-          required: ['test_email'],
+          description:
+            "The mail section's form values under their keys, unsaved; any key omitted keeps its stored value",
           properties: {
-            test_email: {
-              type: 'string',
-              format: 'email',
-              description: 'Email address to send test message to',
-              example: 'test@example.com',
+            smtp_connect: {
+              type: 'object',
+              additionalProperties: true,
+              example: { host: 'smtp.example.com', port: 587, secure: true },
+            },
+            smtp_settings: {
+              type: 'object',
+              additionalProperties: true,
+              example: { from: 'noreply@example.com' },
+            },
+            smtp_auth: {
+              type: 'object',
+              additionalProperties: true,
+              example: { user: 'mailer', password: 'secret' },
             },
           },
         },
@@ -845,7 +911,12 @@ const options = {
       },
     ],
   },
-  apis: ['./app/controllers/**/*.js', './app/routes/**/*.js', './app/models/**/*.js'], // paths to files containing OpenAPI definitions - ** scans subdirectories
+  apis: [
+    './app/controllers/**/*.js',
+    './app/routes/**/*.js',
+    './app/models/**/*.js',
+    './app/config/config-engine.js',
+  ],
 };
 
 const specs = swaggerJsdoc(options);

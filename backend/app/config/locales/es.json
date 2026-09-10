@@ -69,7 +69,6 @@
     "pattern": "{{field}} debe coincidir con {{pattern}}.",
     "minimum": "{{field}} debe ser al menos {{minimum}}.",
     "maximum": "{{field}} debe ser como máximo {{maximum}}.",
-    "range": "{{field}} debe estar entre {{minimum}} y {{maximum}}.",
     "enum": "{{field}} debe ser uno de: {{enum}}.",
     "format": "{{field}} debe ser un {{format}} válido.",
     "minItems": "{{field}} debe tener al menos {{minItems}} elementos.",
@@ -390,10 +389,7 @@
   "config": {
     "gravatarNotFound": "Configuración de Gravatar no encontrada.",
     "hyperweaverNotConfigured": "Hyperweaver no está configurado.",
-    "restartInitiated": "Reinicio del servidor iniciado",
-    "ticketSystemNotConfigured": "Sistema de tickets no configurado.",
-    "updated": "Configuración actualizada exitosamente.",
-    "updateError": "Error al actualizar la configuración"
+    "ticketSystemNotConfigured": "Sistema de tickets no configurado."
   },
   "favorites": {
     "oidcRequired": "Se requiere autenticación OIDC para gestionar favoritos",
@@ -446,12 +442,6 @@
   },
   "health": {
     "checkFailed": "Verificación de salud fallida"
-  },
-  "setup": {
-    "checkError": "Error al verificar el estado de configuración",
-    "readError": "Error al leer configuraciones",
-    "invalidToken": "Token de autorización inválido",
-    "notAllowed": "La configuración no está permitida"
   },
   "isos": {
     "notFound": "ISO no encontrada.",

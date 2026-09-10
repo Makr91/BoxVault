@@ -1,0 +1,48 @@
+schemaVersion: 1
+boxvault:
+  origin: https://172.20.73.113
+  api_url: https://172.20.73.113/api
+  api_listen_port_unencrypted: 80
+  api_listen_port_encrypted: 443
+  box_storage_directory: ./storage
+  box_max_file_size: 10
+  trust_proxy: true
+  org_code_seed: B00000
+  upload_stale_temp_max_age_hours: 24
+  artwork_max_size_mb: 5
+  allowed_origins: []
+gravatar:
+  base_url: https://api.gravatar.com/v3/profiles/
+  api_key: dfasfdfsdfdsafsa
+ssl:
+  generate_ssl: true
+  cert_path: ./ssl/public.crt
+  key_path: ./ssl/private.key
+logging:
+  level: info
+  console_enabled: true
+  log_directory: ./logs
+  performance_threshold_ms: 1000
+  categories:
+    app: info
+    api: info
+    database: warn
+    auth: info
+    file: info
+rate_limiting:
+  window_minutes: 15
+  max_requests: 400
+  message: Too many requests from this IP, please try again later.
+  skip_successful_requests: false
+  skip_failed_requests: false
+  file_operations_max_requests: 8000
+  download_max_requests: 8000
+  download_link_max_requests: 400
+  architecture_operations_max_requests: 2000
+notifications:
+  enabled: true
+  vapid_subject: mailto:admin@localhost
+  vapid_public_key: ''
+  vapid_private_key: ''
+hyperweaver:
+  url: ''

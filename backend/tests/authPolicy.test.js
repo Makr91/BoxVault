@@ -5,23 +5,23 @@ import jwt from 'jsonwebtoken';
 import { hashSync } from 'bcryptjs';
 import app from '../server.js';
 import db from '../app/models/index.js';
-import { getConfigPath, clearConfigCache } from '../app/utils/config-loader.js';
+import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const PASSWORD = 'Secret123!';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const updateConfig = (configName, mutate) => {
+const updateConfig = async (configName, mutate) => {
   const configPath = getConfigPath(configName);
   const original = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(original);
   mutate(config);
   fs.writeFileSync(configPath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
+  await reloadConfig();
+  return async () => {
     fs.writeFileSync(configPath, original);
-    clearConfigCache();
+    await reloadConfig();
   };
 };
 
@@ -104,7 +104,7 @@ describe('Local authentication policy', () => {
     });
 
     it('should refuse local accounts while local authentication is switched off', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         config.auth.jwt.local_enabled = false;
       });
       try {
@@ -113,7 +113,7 @@ describe('Local authentication policy', () => {
         const registration = await signup({});
         expect(registration.statusCode).toBe(403);
       } finally {
-        restore();
+        await restore();
       }
     });
 
@@ -128,7 +128,7 @@ describe('Local authentication policy', () => {
     });
 
     it('should refuse an unverified account when verification is required', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         config.auth.local.local_require_email_verification = true;
       });
       await account.update({ verified: false });
@@ -136,7 +136,7 @@ describe('Local authentication policy', () => {
         const res = await signin({ username: account.username, password: PASSWORD });
         expect(res.statusCode).toBe(403);
       } finally {
-        restore();
+        await restore();
         await account.update({ verified: true });
       }
     });
@@ -162,8 +162,8 @@ describe('Local authentication policy', () => {
   describe('password policy', () => {
     let restore;
 
-    beforeAll(() => {
-      restore = updateConfig('auth', config => {
+    beforeAll(async () => {
+      restore = await updateConfig('auth', config => {
         config.auth.local.local_password_min_length = 8;
         config.auth.local.local_password_require_uppercase = true;
         config.auth.local.local_password_require_lowercase = true;
@@ -172,8 +172,8 @@ describe('Local authentication policy', () => {
       });
     });
 
-    afterAll(() => {
-      restore();
+    afterAll(async () => {
+      await restore();
     });
 
     it('should reject every weak password shape on signup', async () => {
@@ -245,14 +245,14 @@ describe('Local authentication policy', () => {
     });
 
     it('should refuse a new personal organization when the knob is off', async () => {
-      const restore = updateConfig('auth', config => {
+      const restore = await updateConfig('auth', config => {
         config.auth.local.local_allow_new_organizations = false;
       });
       try {
         const res = await signup({});
         expect(res.statusCode).toBe(403);
       } finally {
-        restore();
+        await restore();
       }
     });
 
@@ -298,14 +298,14 @@ describe('Local authentication policy', () => {
         name: `Exhausted-${uniqueId}`,
         org_code: 'FFFFFF',
       });
-      const restore = updateConfig('app', config => {
+      const restore = await updateConfig('app', config => {
         config.boxvault.org_code_seed = 'FFFFFF';
       });
       try {
         const res = await signup({});
         expect(res.statusCode).toBe(500);
       } finally {
-        restore();
+        await restore();
         await holder.destroy();
       }
     });
@@ -314,14 +314,14 @@ describe('Local authentication policy', () => {
   describe('defaults when the local knobs are absent', () => {
     let restore;
 
-    beforeAll(() => {
-      restore = updateConfig('auth', config => {
+    beforeAll(async () => {
+      restore = await updateConfig('auth', config => {
         config.auth.local = { local_allow_new_organizations: true };
       });
     });
 
-    afterAll(() => {
-      restore();
+    afterAll(async () => {
+      await restore();
     });
 
     it('should fall back to the default password length and hashing cost', async () => {
@@ -445,8 +445,8 @@ describe('Local authentication policy', () => {
       expect(malformed.body.errors).toEqual([
         expect.objectContaining({
           pointer: '/new_email',
-          rule: 'format',
-          params: { format: 'email' },
+          rule: 'pattern',
+          params: { pattern: 'email' },
         }),
       ]);
     });

@@ -342,13 +342,53 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
 curl -X GET https://boxvault.example.com/api/setup/status
 ```
 
-### Upload SSL Certificate
+**Response:**
 
-During first-run setup the certificate and the private key are uploaded one file per request, each authenticated with the setup token. The response carries the path the file was saved under, which is what goes into `ssl.cert_path` or `ssl.key_path` when the configuration is submitted.
+```json
+{
+  "setup_complete": false
+}
+```
+
+### Read and Write a Configuration File
+
+`GET` answers the raw file; `PUT` is a JSON Merge Patch over it, `null` removing a key. Admin only.
 
 ```bash
-curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
+curl https://boxvault.example.com/api/config/app \
+  -H "x-access-token: YOUR_ADMIN_JWT_TOKEN"
+
+curl -X PUT https://boxvault.example.com/api/config/app \
+  -H "x-access-token: YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "boxvault": { "api_listen_port_encrypted": 8443 } }'
+```
+
+**Response:**
+
+```json
+{
+  "message": "Configuration saved.",
+  "requires_restart": [
+    {
+      "pointer": "/boxvault/api_listen_port_encrypted",
+      "title": "HTTPS port",
+      "reason": "the HTTPS listener is bound at boot"
+    }
+  ]
+}
+```
+
+`GET /api/config/restart-status` answers the pending union until `POST /api/config/restart` answers `202 { "message": "Restarting." }` and the process exits for its process manager.
+
+### Upload SSL Certificate
+
+The certificate and the private key are uploaded one file per request through the one upload route, under the admin session or the setup token. The `pointer` part names the property whose value is the path the file is written to.
+
+```bash
+curl -X POST https://boxvault.example.com/api/config/app/upload \
   -H "Authorization: Bearer YOUR_SETUP_TOKEN" \
+  -F "pointer=/ssl/cert_path" \
   -F "file=@/path/to/fullchain.pem"
 ```
 
@@ -356,19 +396,19 @@ curl -X POST https://boxvault.example.com/api/setup/upload-ssl \
 
 ```json
 {
-  "path": "/etc/boxvault/ssl/fullchain.pem"
+  "path": "/etc/boxvault/ssl/public.crt"
 }
 ```
 
 ### Test SMTP Configuration
 
-The SMTP server, sender and credentials come from `mail.config.yaml`; the body names the recipient only. Admin only.
+The body is the mail section's form values under their keys, unsaved and laid over the file, so a test exercises what the administrator is about to save; the message goes to the signed-in administrator's own address. Admin only.
 
 ```bash
 curl -X POST https://boxvault.example.com/api/mail/test-smtp \
   -H "x-access-token: YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "test_email": "recipient@example.com" }'
+  -d '{ "smtp_connect": { "host": "smtp.example.com", "port": 587, "secure": true } }'
 ```
 
 ---

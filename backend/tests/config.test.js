@@ -10,58 +10,56 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { createServer } from 'net';
 import { fileURLToPath } from 'url';
 import {
   isProduction,
+  getConfigDir,
   getConfigPath,
-  clearConfigCache,
-  loadConfig,
-  loadConfigs,
-  checkConfigs,
   getSetupTokenPath,
+  reloadConfig,
+  loadConfig,
   getRateLimitConfig,
   getI18nConfig,
 } from '../app/utils/config-loader.js';
 import { t } from '../app/config/i18n.js';
-import { writeConfig } from '../app/controllers/config/helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const authConfigPath = getConfigPath('auth');
 const appConfigPath = getConfigPath('app');
 
-const withFile = (filePath, mutate) => {
-  const original = fs.readFileSync(filePath, 'utf8');
-  const config = yaml.load(original);
-  mutate(config);
-  fs.writeFileSync(filePath, yaml.dump(config));
-  clearConfigCache();
-  return () => {
-    fs.writeFileSync(filePath, original);
-    clearConfigCache();
-  };
-};
+const readApp = () => yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
 
-const minimalAuthYaml = `
-auth:
-  jwt:
-    jwt_secret: test-secret
-`;
+const closedPort = async () => {
+  const listener = createServer();
+  await new Promise(resolve => {
+    listener.listen(0, '127.0.0.1', resolve);
+  });
+  const { port } = listener.address();
+  await new Promise(resolve => {
+    listener.close(resolve);
+  });
+  return port;
+};
 
 describe('Config API', () => {
   let adminToken;
   let nonAdminToken;
   let adminUser;
   let nonAdminUser;
+  let originalApp;
 
   const uniqueId = Date.now().toString(36);
 
+  const putApp = body =>
+    request(app).put('/api/config/app').set('x-access-token', adminToken).send(body);
+
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
+    originalApp = fs.readFileSync(appConfigPath, 'utf8');
 
     const hashedPassword = await bcrypt.hash('password', 8);
 
-    // Create Admin User
     adminUser = await db.user.create({
       username: `config-admin-${uniqueId}`,
       email: `config-admin-${uniqueId}@example.com`,
@@ -71,7 +69,6 @@ describe('Config API', () => {
     const adminRole = await db.role.findOne({ where: { name: 'admin' } });
     await adminUser.setRoles([adminRole]);
 
-    // Create Non-Admin User
     nonAdminUser = await db.user.create({
       username: `config-user-${uniqueId}`,
       email: `config-user-${uniqueId}@example.com`,
@@ -81,7 +78,6 @@ describe('Config API', () => {
     const userRole = await db.role.findOne({ where: { name: 'user' } });
     await nonAdminUser.setRoles([userRole]);
 
-    // Get tokens
     const adminAuth = await request(app)
       .post('/api/auth/signin')
       .send({ username: adminUser.username, password: 'password' });
@@ -94,526 +90,429 @@ describe('Config API', () => {
   });
 
   afterAll(async () => {
+    fs.writeFileSync(appConfigPath, originalApp);
+    await reloadConfig();
+    fs.rmSync(path.join(getConfigDir(), 'ssl'), { recursive: true, force: true });
     await db.user.destroy({ where: { id: [adminUser.id, nonAdminUser.id] } });
   });
 
-  describe('GET /api/config/gravatar', () => {
-    it('should reject unauthenticated access to gravatar config', async () => {
+  describe('names outside status.config', () => {
+    it('should answer 404 not-found before any guard', async () => {
       const res = await request(app).get('/api/config/gravatar');
-      expect(res.statusCode).toBe(403);
+      expect(res.statusCode).toBe(404);
       expect(res.headers['content-type']).toContain('application/problem+json');
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
-      expect(res.body.title).toBe('No token provided!');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
+
+      const put = await request(app)
+        .put('/api/config/invalidConfigName')
+        .set('x-access-token', adminToken)
+        .send({ some: 'value' });
+      expect(put.statusCode).toBe(404);
     });
   });
 
   describe('GET /api/config/ticket', () => {
-    it('should get ticket configuration', async () => {
+    it('should answer the filled ticket section without auth', async () => {
       const res = await request(app).get('/api/config/ticket');
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('ticket_system');
-      expect(res.body.ticket_system).toHaveProperty('enabled');
+      expect(res.body.ticket_system.enabled).toBe(true);
+      expect(res.body.ticket_system.req_type).toBe('sso');
     });
   });
 
-  describe('GET /api/config/:configName', () => {
-    it('should get a specific config for an admin', async () => {
+  describe('GET /api/config/:name', () => {
+    it('should answer the raw file to an admin, nothing filled and nothing masked', async () => {
       const res = await request(app).get('/api/config/app').set('x-access-token', adminToken);
-
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('boxvault');
+      expect(res.body).toEqual(readApp());
+      expect(res.body.ticket_system.req_type).toBeUndefined();
+      expect(res.body.gravatar).toBeUndefined();
+
+      const auth = await request(app).get('/api/config/auth').set('x-access-token', adminToken);
+      expect(auth.body.auth.jwt.jwt_secret).toBe('test-secret');
     });
 
-    it('should fail to get config for a non-admin', async () => {
+    it('should refuse a non-admin', async () => {
       const res = await request(app).get('/api/config/app').set('x-access-token', nonAdminToken);
-
       expect(res.statusCode).toBe(403);
     });
   });
 
-  describe('GET /api/config/:configName/schema', () => {
-    it('should answer the schema document for an admin', async () => {
+  describe('GET /api/config/:name/schema', () => {
+    it('should answer the schema document verbatim for an admin', async () => {
       const res = await request(app)
         .get('/api/config/app/schema')
         .set('x-access-token', adminToken);
-
       expect(res.statusCode).toBe(200);
       expect(res.body.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
       expect(res.body.schemaVersion).toBe(1);
-      expect(res.body.properties.boxvault.properties.origin.format).toBe('uri');
-      expect(res.body.properties.gravatar.properties.api_key.writeOnly).toBe(true);
+      expect(res.body.properties.boxvault.properties.origin.restartReason).toEqual(
+        expect.any(String)
+      );
+      expect(res.body.properties.ssl.properties.cert_path.action).toEqual({
+        kind: 'upload',
+        route: '/api/config/app/upload',
+        method: 'POST',
+        body: 'file',
+        step_up: false,
+      });
+
+      const mail = await request(app)
+        .get('/api/config/mail/schema')
+        .set('x-access-token', adminToken);
+      expect(mail.body.sections.mail.action.kind).toBe('test');
     });
 
     it('should refuse the schema for a non-admin', async () => {
       const res = await request(app)
         .get('/api/config/app/schema')
         .set('x-access-token', nonAdminToken);
-
       expect(res.statusCode).toBe(403);
     });
   });
 
-  describe('masked secrets', () => {
-    it('should mask every writeOnly value on read', async () => {
-      const res = await request(app).get('/api/config/auth').set('x-access-token', adminToken);
-
+  describe('PUT /api/config/:name', () => {
+    it('should merge a sent key, keep an omitted one and write nothing else', async () => {
+      const res = await putApp({ internationalization: { default_language: 'es' } });
       expect(res.statusCode).toBe(200);
-      expect(res.body.auth.jwt.jwt_secret).toBe('********');
-      expect(res.body.auth.jwt.jwt_issuer).toBe('boxvault');
+      expect(res.body).toEqual({ message: 'Configuration saved.', requires_restart: [] });
+      const written = readApp();
+      expect(written.internationalization).toEqual({ default_language: 'es' });
+      expect(written.boxvault.origin).toBe('http://localhost:3000');
+      expect(written.ticket_system.req_type).toBeUndefined();
+      expect(loadConfig('app').internationalization.default_language).toBe('es');
     });
 
-    it('should keep the stored secret when the mask comes back and report a restart', async () => {
-      const original = fs.readFileSync(authConfigPath, 'utf8');
-      try {
-        const unchanged = await request(app)
-          .put('/api/config/auth')
-          .set('x-access-token', adminToken)
-          .send({ auth: { jwt: { jwt_secret: '********', jwt_expiration: '2h' } } });
-        expect(unchanged.statusCode).toBe(200);
-        expect(unchanged.body.requires_restart).toBe(false);
-        const written = yaml.load(fs.readFileSync(authConfigPath, 'utf8'));
-        expect(written.auth.jwt.jwt_secret).toBe('test-secret');
-        expect(written.auth.jwt.jwt_expiration).toBe('2h');
+    it('should remove a key on null and write a blank blank', async () => {
+      const cleared = await putApp({ internationalization: null, gravatar: { api_key: '' } });
+      expect(cleared.statusCode).toBe(200);
+      const written = readApp();
+      expect(Object.hasOwn(written, 'internationalization')).toBe(false);
+      expect(written.gravatar.api_key).toBe('');
+      expect(loadConfig('app').internationalization.default_language).toBe('en');
 
-        const restart = await request(app)
-          .put('/api/config/auth')
-          .set('x-access-token', adminToken)
-          .send({ auth: { jwt: { jwt_issuer: 'other-issuer' } } });
-        expect(restart.statusCode).toBe(200);
-        expect(restart.body.requires_restart).toBe(true);
-      } finally {
-        fs.writeFileSync(authConfigPath, original);
-        clearConfigCache();
-      }
+      const numeric = await putApp({ boxvault: { upload_timeout_hours: null } });
+      expect(numeric.statusCode).toBe(200);
+      expect(Object.hasOwn(readApp().boxvault, 'upload_timeout_hours')).toBe(false);
     });
-  });
 
-  describe('PUT /api/config/:configName', () => {
-    it('should update a config for an admin', async () => {
-      const updatePayload = {
-        internationalization: {
-          default_language: 'es',
+    it('should replace an array whole', async () => {
+      await putApp({ boxvault: { allowed_origins: ['https://a.example', 'https://b.example'] } });
+      const res = await putApp({ boxvault: { allowed_origins: ['https://c.example'] } });
+      expect(res.statusCode).toBe(200);
+      expect(readApp().boxvault.allowed_origins).toEqual(['https://c.example']);
+      expect(res.body.requires_restart).toEqual([
+        {
+          pointer: '/boxvault/allowed_origins',
+          title: 'Allowed origins',
+          reason: 'the CORS origin list is built at boot',
         },
-      };
-
-      const res = await request(app)
-        .put('/api/config/app')
-        .set('x-access-token', adminToken)
-        .send(updatePayload);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('message', 'Configuration updated successfully.');
-      expect(res.body.requires_restart).toBe(false);
+      ]);
     });
 
-    it('should keep unknown nested keys through the deep merge', async () => {
-      const updatePayload = {
-        boxvault: {
-          new_nested_section: {
-            some_key: 'new-value',
-          },
-        },
-      };
-
-      const res = await request(app)
-        .put('/api/config/app')
-        .set('x-access-token', adminToken)
-        .send(updatePayload);
-
-      expect(res.statusCode).toBe(200);
-      const written = yaml.load(fs.readFileSync(appConfigPath, 'utf8'));
-      expect(written.boxvault.new_nested_section.some_key).toBe('new-value');
+    it('should refuse a readOnly key', async () => {
+      const res = await putApp({ schemaVersion: 2 });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/schemaVersion', rule: 'readOnly', params: {} }),
+      ]);
     });
 
-    it('should refuse a value that breaks the schema with a pointer and write nothing', async () => {
+    it('should refuse a value that breaks the schema with pointers and write nothing', async () => {
       const before = fs.readFileSync(appConfigPath, 'utf8');
-      const res = await request(app)
-        .put('/api/config/app')
-        .set('x-access-token', adminToken)
-        .send({ boxvault: { origin: { nested: 'object' }, api_listen_port_encrypted: 70000 } });
-
+      const res = await putApp({
+        boxvault: { origin: { nested: 'object' }, api_listen_port_encrypted: 70000 },
+      });
       expect(res.statusCode).toBe(422);
       expect(res.headers['content-type']).toContain('application/problem+json');
       expect(res.body.type).toBe('https://auth.startcloud.com/probs/validation');
+      expect(res.body.title).toBe('The configuration did not pass validation.');
       expect(res.body.errors).toEqual([
         expect.objectContaining({ pointer: '/boxvault/origin', rule: 'type' }),
-        expect.objectContaining({ pointer: '/boxvault/api_listen_port_encrypted', rule: 'range' }),
+        expect.objectContaining({
+          pointer: '/boxvault/api_listen_port_encrypted',
+          rule: 'maximum',
+          params: { maximum: 65535 },
+        }),
       ]);
       expect(fs.readFileSync(appConfigPath, 'utf8')).toBe(before);
     });
-  });
 
-  describe('boot refusal', () => {
-    it('should report the failing pointers of every file', () => {
-      const restore = withFile(appConfigPath, config => {
-        config.boxvault.api_listen_port_unencrypted = 'eighty';
-        config.stray = true;
-      });
-      try {
-        const results = checkConfigs();
-        const appResult = results.find(result => result.name === 'app');
-        expect(appResult.errors).toEqual([
-          expect.objectContaining({
-            pointer: '/boxvault/api_listen_port_unencrypted',
-            rule: 'type',
-          }),
-        ]);
-        expect(appResult.unknown).toContain('/stray');
-        expect(results.filter(result => result.errors.length > 0).map(r => r.name)).toEqual([
-          'app',
-        ]);
-      } finally {
-        restore();
-      }
+    it('should refuse an unwritable storage directory with the service user', async () => {
+      const res = await putApp({ boxvault: { box_storage_directory: '/proc/boxvault-storage' } });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/boxvault/box_storage_directory',
+          rule: 'writable',
+          params: { user: 'boxvault' },
+        }),
+      ]);
     });
 
-    it('should refuse to start the host while a file fails its schema', async () => {
-      const restore = withFile(appConfigPath, config => {
-        config.boxvault.api_listen_port_unencrypted = 'eighty';
-      });
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    it('should answer 400 for a body that is not an object', async () => {
+      const res = await request(app)
+        .put('/api/config/app')
+        .set('x-access-token', adminToken)
+        .set('Content-Type', 'application/json')
+        .send('[]');
+      expect(res.statusCode).toBe(400);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+    });
+
+    it('should keep a backup beside the file', () => {
+      expect(fs.existsSync(`${appConfigPath}.bak`)).toBe(true);
+      expect(fs.existsSync(`${appConfigPath}.tmp`)).toBe(false);
+    });
+  });
+
+  describe('the reachable hook', () => {
+    const mailConfigPath = getConfigPath('mail');
+
+    it('should refuse a mail host whose port does not answer on save, with host and port', async () => {
+      const port = await closedPort();
+      const before = fs.readFileSync(mailConfigPath, 'utf8');
+      const res = await request(app)
+        .put('/api/config/mail')
+        .set('x-access-token', adminToken)
+        .send({ smtp_connect: { host: '127.0.0.1', port } });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/smtp_connect/host',
+          rule: 'reachable',
+          params: { host: '127.0.0.1', port },
+        }),
+      ]);
+      expect(fs.readFileSync(mailConfigPath, 'utf8')).toBe(before);
+    });
+
+    it('should never probe the mail host at load', async () => {
+      const port = await closedPort();
+      const original = fs.readFileSync(mailConfigPath, 'utf8');
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined);
+      const config = yaml.load(original);
+      config.smtp_connect = { host: '127.0.0.1', port };
+      fs.writeFileSync(mailConfigPath, yaml.dump(config));
       try {
-        jest.resetModules();
-        await expect(import('../server.js')).rejects.toThrow(
-          'Configuration failed validation: app'
-        );
+        await reloadConfig();
+        expect(exitSpy).not.toHaveBeenCalled();
+        expect(loadConfig('mail').smtp_connect.port).toBe(port);
       } finally {
-        restore();
-        consoleErrorSpy.mockRestore();
+        fs.writeFileSync(mailConfigPath, original);
+        exitSpy.mockRestore();
+        await reloadConfig();
       }
+    });
+  });
+
+  describe('the restart list', () => {
+    it('should list the changed flagged leaves and hold the union until the restart', async () => {
+      const changed = await putApp({ boxvault: { api_listen_port_encrypted: 5003 } });
+      expect(changed.statusCode).toBe(200);
+      expect(changed.body.requires_restart).toEqual([
+        {
+          pointer: '/boxvault/api_listen_port_encrypted',
+          title: 'HTTPS port',
+          reason: 'the HTTPS listener is bound at boot',
+        },
+      ]);
+
+      const unchanged = await putApp({ boxvault: { api_listen_port_encrypted: 5003 } });
+      expect(unchanged.body.requires_restart).toEqual([]);
+
+      const status = await request(app)
+        .get('/api/config/restart-status')
+        .set('x-access-token', adminToken);
+      expect(status.statusCode).toBe(200);
+      expect(status.body.restart_required).toBe(true);
+      expect(status.body.requires_restart.map(entry => entry.pointer)).toEqual(
+        expect.arrayContaining(['/boxvault/api_listen_port_encrypted', '/boxvault/allowed_origins'])
+      );
+      expect(status.body.last_modified_by).toBe(adminUser.email);
+      expect(status.body.last_modified_time).toMatch(/Z$/);
+
+      await putApp({ boxvault: { api_listen_port_encrypted: 5002 } });
+    });
+
+    it('should refuse the status to a non-admin', async () => {
+      const res = await request(app)
+        .get('/api/config/restart-status')
+        .set('x-access-token', nonAdminToken);
+      expect(res.statusCode).toBe(403);
     });
   });
 
   describe('POST /api/config/restart', () => {
-    it('should return a success message for server restart', done => {
-      const mockExit = jest.spyOn(process, 'exit').mockImplementation(code => {
-        expect(code).toBe(1);
-        mockExit.mockRestore();
-        done();
-        return undefined;
-      });
-
-      request(app)
-        .post('/api/config/restart')
-        .set('x-access-token', adminToken)
-        .set('Accept-Language', 'en')
-        .expect(200)
-        .end((err, res) => {
-          if (err) {
-            done(err);
-            return;
-          }
-          expect(res.body).toHaveProperty('message', 'Server restart initiated');
+    it('should answer 202, clear the list and call the exit function after the answer', async () => {
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined);
+      try {
+        const res = await request(app)
+          .post('/api/config/restart')
+          .set('x-access-token', adminToken);
+        expect(res.statusCode).toBe(202);
+        expect(res.body).toEqual({ message: 'Restarting.' });
+        await new Promise(resolve => {
+          setImmediate(resolve);
         });
+        expect(exitSpy).toHaveBeenCalledWith(1);
+
+        const status = await request(app)
+          .get('/api/config/restart-status')
+          .set('x-access-token', adminToken);
+        expect(status.body).toMatchObject({ restart_required: false, requires_restart: [] });
+      } finally {
+        exitSpy.mockRestore();
+      }
     });
   });
 
-  describe('Config Controller Error Handling', () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-      clearConfigCache();
-    });
+  describe('POST /api/config/:name/upload', () => {
+    const sslDir = path.join(getConfigDir(), 'ssl');
 
-    it('GET /api/config/:configName - should handle file read errors', async () => {
-      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        if (filePath.toString().includes('auth')) {
-          return minimalAuthYaml;
-        }
-        throw new Error('File system error');
+    beforeAll(async () => {
+      const res = await putApp({
+        ssl: { cert_path: 'ssl/public.crt', key_path: 'ssl/private.key' },
       });
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-      jest.spyOn(console, 'warn').mockImplementation(() => {});
-      clearConfigCache();
-
-      const res = await request(app)
-        .get('/api/config/app')
-        .set('Accept-Language', 'en')
-        .set('x-access-token', adminToken);
-
-      expect(res.statusCode).toBe(500);
-      expect(res.headers['content-type']).toContain('application/problem+json');
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
-    });
-
-    it('PUT /api/config/:configName - should answer 404 for a name outside status.config', async () => {
-      const res = await request(app)
-        .put('/api/config/invalidConfigName')
-        .set('x-access-token', adminToken)
-        .set('Accept-Language', 'en')
-        .send({ some: 'value' });
-
-      expect(res.statusCode).toBe(404);
-      expect(res.headers['content-type']).toContain('application/problem+json');
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
-    });
-
-    it('GET /api/config/gravatar - should answer 404 for a name outside status.config while the loader fails', async () => {
-      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        if (filePath.toString().includes('auth')) {
-          return minimalAuthYaml;
-        }
-        throw new Error('Config Load Error');
-      });
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-      jest.spyOn(console, 'warn').mockImplementation(() => {});
-      clearConfigCache();
-
-      const res = await request(app).get('/api/config/gravatar').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(404);
-      expect(res.headers['content-type']).toContain('application/problem+json');
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/not-found');
-    });
-
-    it('GET /api/config/ticket - should handle config load error', async () => {
-      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        if (filePath.toString().includes('auth')) {
-          return minimalAuthYaml;
-        }
-        throw new Error('Config Load Error');
-      });
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-      jest.spyOn(console, 'warn').mockImplementation(() => {});
-      clearConfigCache();
-
-      const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(500);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
-      expect(res.body.title).toBe('Operation failed.');
-    });
-
-    it('GET /api/config/gravatar - should answer 404 while the section is absent', async () => {
-      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        const p = filePath.toString();
-        if (p.includes('auth')) {
-          return minimalAuthYaml;
-        }
-        if (p.includes('app')) {
-          return 'boxvault: {}';
-        }
-        return '';
-      });
-      clearConfigCache();
-
-      const res = await request(app).get('/api/config/gravatar').set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('GET /api/config/ticket - should answer the schema defaults when the section is absent', async () => {
-      jest.spyOn(fs, 'readFileSync').mockImplementation(filePath => {
-        const p = filePath.toString();
-        if (p.includes('auth')) {
-          return minimalAuthYaml;
-        }
-        if (p.includes('app')) {
-          return 'boxvault: {}';
-        }
-        return '';
-      });
-      clearConfigCache();
-
-      const res = await request(app).get('/api/config/ticket').set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.ticket_system.enabled).toBe(false);
     });
 
-    it('PUT /api/config/:configName - should handle file write error', async () => {
-      jest.spyOn(fs, 'copyFileSync').mockImplementation(() => {
-        throw new Error('Write Error');
-      });
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-
+    it('should write the upload at the path the property holds, under the config directory', async () => {
       const res = await request(app)
-        .put('/api/config/app')
+        .post('/api/config/app/upload')
         .set('x-access-token', adminToken)
-        .set('Accept-Language', 'en')
-        .send({ internationalization: { default_language: 'en' } });
+        .field('pointer', '/ssl/cert_path')
+        .attach('file', Buffer.from('certificate content'), 'server.crt');
+      expect(res.statusCode).toBe(200);
+      expect(res.body.path).toBe(path.join(fs.realpathSync(getConfigDir()), 'ssl', 'public.crt'));
+      expect(fs.readFileSync(path.join(sslDir, 'public.crt'), 'utf8')).toBe('certificate content');
+      expect(readApp().ssl.cert_path).toBe('ssl/public.crt');
+    });
 
-      expect(res.statusCode).toBe(500);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
-      expect(res.body.title).toBe('Failed to update configuration');
+    it('should refuse a pointer that names no upload property', async () => {
+      const res = await request(app)
+        .post('/api/config/app/upload')
+        .set('x-access-token', adminToken)
+        .field('pointer', '/boxvault/origin')
+        .attach('file', Buffer.from('x'), 'x.crt');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/pointer', rule: 'pointer', params: {} }),
+      ]);
+    });
+
+    it('should refuse a missing file part', async () => {
+      const res = await request(app)
+        .post('/api/config/app/upload')
+        .set('x-access-token', adminToken)
+        .field('pointer', '/ssl/key_path');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/file', rule: 'required' }),
+      ]);
+    });
+
+    it('should refuse a path outside the config directory as writable', async () => {
+      await putApp({ ssl: { key_path: '/etc/boxvault-elsewhere/private.key' } });
+      const res = await request(app)
+        .post('/api/config/app/upload')
+        .set('x-access-token', adminToken)
+        .field('pointer', '/ssl/key_path')
+        .attach('file', Buffer.from('key'), 'k.key');
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/ssl/key_path', rule: 'writable' }),
+      ]);
+      await putApp({ ssl: { key_path: 'ssl/private.key' } });
+    });
+
+    it('should answer 413 above the upload limit', async () => {
+      const res = await request(app)
+        .post('/api/config/app/upload')
+        .set('x-access-token', adminToken)
+        .field('pointer', '/ssl/cert_path')
+        .attach('file', Buffer.alloc(2 * 1024 * 1024), 'big.crt');
+      expect(res.statusCode).toBe(413);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/payload-too-large');
+    });
+
+    it('should refuse a caller without the admin session or the setup token', async () => {
+      const res = await request(app)
+        .post('/api/config/app/upload')
+        .set('Authorization', 'Bearer not-the-token')
+        .field('pointer', '/ssl/cert_path')
+        .attach('file', Buffer.from('x'), 'x.crt');
+      expect(res.statusCode).toBe(401);
     });
   });
 
-  describe('Config Loader Utility', () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-      clearConfigCache();
-    });
-
-    describe('getConfigPath', () => {
-      it('should place every file in CONFIG_DIR', () => {
-        expect(getConfigPath('app')).toBe(path.join(process.env.CONFIG_DIR, 'app.config.yaml'));
-      });
-
-      it('should run as production while CONFIG_DIR exists', () => {
-        expect(isProduction).toBe(true);
-      });
-
-      it('should throw error for invalid config names', () => {
-        expect(() => getConfigPath('invalid')).toThrow('Invalid config name: invalid');
-      });
-    });
-
-    describe('loadConfig', () => {
-      it('should load and parse a valid config file', () => {
-        jest.spyOn(fs, 'readFileSync').mockReturnValue('key: value');
-        clearConfigCache();
-
-        const config = loadConfig('app');
-        expect(config.key).toBe('value');
-        expect(config.boxvault.api_listen_port_unencrypted).toBe(80);
-      });
-
-      it('should throw when the file cannot be read', () => {
-        jest.spyOn(console, 'error').mockImplementation(() => {});
-        jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-          throw new Error('File not found');
-        });
-        clearConfigCache();
-
-        expect(() => loadConfig('app')).toThrow('File not found');
-      });
-
-      it('should answer the cached file until the cache is cleared', () => {
-        const readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('key: value');
-        clearConfigCache();
-
-        loadConfig('auth');
-        loadConfig('auth');
-        expect(readSpy).toHaveBeenCalledTimes(1);
-
-        clearConfigCache();
-        loadConfig('auth');
-        expect(readSpy).toHaveBeenCalledTimes(2);
-      });
-    });
-
-    describe('loadConfigs', () => {
-      it('should load multiple configs', () => {
-        jest.spyOn(fs, 'readFileSync').mockReturnValue('dummy: content');
-        clearConfigCache();
-
-        const configs = loadConfigs(['app', 'db']);
-
-        expect(configs).toHaveProperty('app');
-        expect(configs).toHaveProperty('db');
-        expect(fs.readFileSync).toHaveBeenCalledTimes(2);
-      });
-    });
-
-    describe('getSetupTokenPath', () => {
-      it('should place the token beside the config files', () => {
-        expect(getSetupTokenPath()).toBe(path.join(process.env.CONFIG_DIR, 'setup.token'));
-      });
-    });
-
-    describe('getRateLimitConfig', () => {
-      it('should return configured values', () => {
-        const mockYaml = `
-rate_limiting:
-  window_minutes: 30
-  max_requests: 500
-  message: 'Slow down'
-`;
-        jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
-        clearConfigCache();
-
-        const config = getRateLimitConfig();
-
-        expect(config.window_minutes).toBe(30);
-        expect(config.max_requests).toBe(500);
-        expect(config.message).toBe('Slow down');
-      });
-
-      it('should return defaults on error', () => {
-        jest.spyOn(console, 'warn').mockImplementation(() => {});
-        jest.spyOn(console, 'error').mockImplementation(() => {});
-        jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-          throw new Error('Config missing');
-        });
-        clearConfigCache();
-
-        const config = getRateLimitConfig();
-
-        expect(config.window_minutes).toBe(15);
-        expect(config.max_requests).toBe(1000);
-        expect(config.auth_max_requests).toBe(20);
-        expect(console.warn).toHaveBeenCalled();
-      });
-
-      it('should return defaults if config is empty', () => {
-        jest.spyOn(fs, 'readFileSync').mockReturnValue('rate_limiting: {}');
-        clearConfigCache();
-
-        const config = getRateLimitConfig();
-        expect(config.window_minutes).toBe(15);
-        expect(config.max_requests).toBe(1000);
-      });
-    });
-
-    describe('getI18nConfig', () => {
-      it('should return configured values', () => {
-        const mockYaml = `
-internationalization:
-  default_language: 'es'
-  auto_detect: false
-`;
-        jest.spyOn(fs, 'readFileSync').mockReturnValue(mockYaml);
-        clearConfigCache();
-
-        const config = getI18nConfig();
-
-        expect(config.default_language).toBe('es');
-        expect(config.auto_detect).toBe(false);
-      });
-
-      it('should return defaults on error', () => {
-        jest.spyOn(console, 'warn').mockImplementation(() => {});
-        jest.spyOn(console, 'error').mockImplementation(() => {});
-        jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-          throw new Error('Config missing');
-        });
-        clearConfigCache();
-
-        const config = getI18nConfig();
-
-        expect(config.default_language).toBe('en');
-        expect(config.auto_detect).toBe(true);
-      });
-
-      it('should return defaults if config is empty', () => {
-        jest.spyOn(fs, 'readFileSync').mockReturnValue('internationalization: {}');
-        clearConfigCache();
-
-        const config = getI18nConfig();
-        expect(config.default_language).toBe('en');
-        expect(config.auto_detect).toBe(true);
-      });
+  describe('boot refusal', () => {
+    it('should log every failing pointer and stop the process', async () => {
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined);
+      const stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+      const config = readApp();
+      config.boxvault.api_listen_port_unencrypted = 'eighty';
+      config.stray = true;
+      fs.writeFileSync(appConfigPath, yaml.dump(config));
+      try {
+        await reloadConfig();
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        const lines = stderrSpy.mock.calls.map(([line]) => JSON.parse(line));
+        expect(lines).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              level: 'error',
+              config: 'app',
+              pointer: '/boxvault/api_listen_port_unencrypted',
+              rule: 'type',
+            }),
+            expect.objectContaining({ level: 'warn', config: 'app', pointer: '/stray' }),
+          ])
+        );
+      } finally {
+        fs.writeFileSync(appConfigPath, originalApp);
+        exitSpy.mockRestore();
+        stderrSpy.mockRestore();
+        await reloadConfig();
+      }
     });
   });
 
-  describe('Config Controller Helpers', () => {
-    it('writeConfig should reject invalid paths', async () => {
-      await expect(writeConfig('/invalid/path/config.yaml', {})).rejects.toThrow(
-        'Invalid config file path'
+  describe('the loader', () => {
+    it('should place every file and the token in CONFIG_DIR', () => {
+      expect(getConfigPath('app')).toBe(path.join(process.env.CONFIG_DIR, 'app.config.yaml'));
+      expect(getSetupTokenPath()).toBe(path.join(process.env.CONFIG_DIR, 'setup.token'));
+      expect(isProduction).toBe(true);
+      expect(() => getConfigPath('invalid')).toThrow('Invalid config name: invalid');
+      expect(() => loadConfig('invalid')).toThrow('Invalid config name: invalid');
+    });
+
+    it('should answer the filled document as a copy', () => {
+      const first = loadConfig('app');
+      first.boxvault.origin = 'changed';
+      expect(loadConfig('app').boxvault.origin).toBe('http://localhost:3000');
+      expect(loadConfig('app').boxvault.api_listen_port_unencrypted).toBe(
+        Number(process.env.TEST_PORT) || 5001
       );
+    });
+
+    it('should answer the rate limiting and i18n sections with their defaults filled', () => {
+      expect(getRateLimitConfig()).toMatchObject({ window_minutes: 15, max_requests: 1000000 });
+      expect(getI18nConfig()).toMatchObject({
+        default_language: 'en',
+        auto_detect: true,
+        force_language: null,
+      });
     });
   });
 
   describe('i18n Configuration & Middleware', () => {
-    let originalConfig;
-
-    beforeAll(() => {
-      originalConfig = fs.readFileSync(appConfigPath, 'utf8');
-    });
-
-    afterEach(() => {
-      fs.writeFileSync(appConfigPath, originalConfig);
-      clearConfigCache();
+    afterEach(async () => {
+      fs.writeFileSync(appConfigPath, originalApp);
+      await reloadConfig();
     });
 
     it('should use t() helper', () => {
-      // Test the exported helper directly
       const result = t('auth.invalidPassword');
       expect(result).toBe('Invalid Password!');
     });
@@ -626,40 +525,26 @@ internationalization:
     });
 
     it('should force language if configured', async () => {
-      // Update config to force Spanish
-      const config = yaml.load(originalConfig);
+      const config = yaml.load(originalApp);
       config.internationalization = {
         force_language: 'es',
         default_language: 'en',
       };
       fs.writeFileSync(appConfigPath, yaml.dump(config));
-      clearConfigCache();
+      await reloadConfig();
 
-      // Make request (should be in Spanish regardless of header)
-      await request(app)
-        .get('/api/health') // Health endpoint doesn't use i18n much, but middleware runs
-        .set('Accept-Language', 'en');
-
-      // We can't easily check the locale from response unless the endpoint returns it.
-      // But we can check if the middleware didn't crash.
-      // To verify locale, we might need an endpoint that returns translated text.
-      // The auth endpoints return translated messages.
+      await request(app).get('/api/health').set('Accept-Language', 'en');
 
       const authRes = await request(app)
         .post('/api/auth/signin')
         .set('Accept-Language', 'en')
         .send({ username: adminUser.username, password: 'wrong' });
 
-      // If we had Spanish translations for "Invalid Password!", we could check.
-      // Since we only have en.json in context, this test mainly ensures the middleware logic executes without error.
       expect(authRes.statusCode).toBe(401);
     });
 
     it('should respect lang query parameter', async () => {
       const res = await request(app).get('/api/health?lang=es').set('Accept-Language', 'en');
-
-      // We can't easily verify the locale was set without an endpoint that returns it,
-      // but this exercises the middleware logic.
       expect(res.statusCode).toBe(200);
     });
 
@@ -667,13 +552,11 @@ internationalization:
       const res = await request(app)
         .get('/api/health?lang=es&lang=fr')
         .set('Accept-Language', 'en');
-
       expect(res.statusCode).toBe(200);
     });
 
     it('should handle object lang query parameter', async () => {
       const res = await request(app).get('/api/health?lang[foo]=bar').set('Accept-Language', 'en');
-
       expect(res.statusCode).toBe(200);
     });
 
@@ -681,13 +564,11 @@ internationalization:
       const res = await request(app)
         .get('/api/health')
         .set('Accept-Language', 'es-ES,es;q=0.9,en;q=0.8');
-
       expect(res.statusCode).toBe(200);
     });
 
     it('should handle unsupported locale in Accept-Language header', async () => {
       const res = await request(app).get('/api/health').set('Accept-Language', 'xx-XX');
-
       expect(res.statusCode).toBe(200);
     });
 
@@ -700,7 +581,6 @@ internationalization:
       }
 
       try {
-        // Re-import to trigger initialization logic
         jest.resetModules();
         await import('../app/config/i18n.js');
       } finally {
@@ -719,7 +599,6 @@ internationalization:
       }
       fs.mkdirSync(localesDir);
 
-      // Mock Logger to verify warning
       const mockLog = {
         app: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
       };
@@ -740,62 +619,6 @@ internationalization:
     });
   });
 
-  describe('Config Loader Error Handling', () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-      clearConfigCache();
-    });
-
-    it('loadConfig should log the failure before rethrowing', () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Read Error');
-      });
-      clearConfigCache();
-
-      expect(() => loadConfig('app')).toThrow('Read Error');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to load configuration',
-        expect.any(Object)
-      );
-    });
-
-    it('getRateLimitConfig should log warning and return defaults on error', () => {
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Read Error');
-      });
-      clearConfigCache();
-
-      const config = getRateLimitConfig();
-      expect(config.window_minutes).toBe(15);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to load rate limiting config'),
-        expect.any(String)
-      );
-    });
-
-    it('getI18nConfig should log warning and return defaults on error', () => {
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        throw new Error('Read Error');
-      });
-      clearConfigCache();
-
-      const config = getI18nConfig();
-      expect(config.default_language).toBe('en');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to load i18n config'),
-        expect.any(String)
-      );
-    });
-  });
-
   describe('i18n Internal Callbacks', () => {
     beforeEach(() => {
       jest.resetModules();
@@ -804,7 +627,6 @@ internationalization:
     it('should execute log callbacks', async () => {
       const mockConfigure = jest.fn();
 
-      // Mock i18n module
       jest.unstable_mockModule('i18n', () => ({
         default: {
           configure: mockConfigure,
@@ -816,7 +638,6 @@ internationalization:
         },
       }));
 
-      // Mock Logger to verify callbacks
       const mockLog = {
         app: { debug: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn() },
       };
@@ -833,27 +654,22 @@ internationalization:
         getConfigPath: jest.fn(),
       }));
 
-      // Re-import to trigger configure
       await import('../app/config/i18n.js');
 
       expect(mockConfigure).toHaveBeenCalled();
       const [[config]] = mockConfigure.mock.calls;
 
-      // Test logDebugFn
       config.logDebugFn('debug msg');
       expect(mockLog.app.debug).toHaveBeenCalledWith('i18n debug', { message: 'debug msg' });
 
-      // Test logWarnFn
       config.logWarnFn('warn msg');
       expect(mockLog.app.warn).toHaveBeenCalledWith('i18n warning', { message: 'warn msg' });
 
-      // Test logErrorFn
       config.logErrorFn('error msg');
       expect(mockLog.app.error).toHaveBeenCalledWith('i18n error', { message: 'error msg' });
     });
 
     it('should handle error scanning locales directory', async () => {
-      // Mock fs.readdirSync to throw
       const originalReaddirSync = fs.readdirSync;
       const readdirSpy = jest.spyOn(fs, 'readdirSync').mockImplementation((pathArg, options) => {
         if (pathArg.toString().includes('locales')) {
@@ -862,13 +678,11 @@ internationalization:
         return originalReaddirSync(pathArg, options);
       });
 
-      // Mock Logger to verify callbacks
       const mockLog = {
         app: { debug: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn() },
       };
       jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
 
-      // Re-import i18n to trigger initialization
       await import('../app/config/i18n.js');
 
       expect(mockLog.app.error).toHaveBeenCalledWith(
@@ -879,16 +693,15 @@ internationalization:
       readdirSpy.mockRestore();
     });
 
-    it('should handle non-string locale in middleware (i18n.js line 144)', async () => {
+    it('should handle non-string locale in middleware', async () => {
       const req = {
-        query: { lang: { some: 'object' } }, // Invalid type
+        query: { lang: { some: 'object' } },
         get: jest.fn(),
         setLocale: jest.fn(),
       };
       const res = {};
       const next = jest.fn();
 
-      // Mock i18n init to call callback immediately
       jest.unstable_mockModule('i18n', () => ({
         default: {
           configure: jest.fn(),
@@ -902,57 +715,6 @@ internationalization:
         },
       }));
 
-      // Mock config-loader to ensure default language is 'en'
-      jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
-        isProduction: false,
-        getI18nConfig: jest.fn().mockReturnValue({
-          default_language: 'en',
-          auto_detect: true,
-          supported_languages: ['en'],
-        }),
-        loadConfig: jest.fn(),
-        getConfigPath: jest.fn(),
-      }));
-
-      // Re-import to get middleware with mocked i18n
-      const { configAwareI18nMiddleware } = await import('../app/config/i18n.js');
-
-      configAwareI18nMiddleware(req, res, next);
-      expect(req.setLocale).toHaveBeenCalledWith('en'); // Default
-    });
-
-    it('should handle findBestMatchingLocale fallback (i18n.js line 86)', async () => {
-      // We can test this via the middleware by providing a non-matching locale
-      const req = {
-        query: { lang: 'xx-XX' },
-        get: jest.fn(),
-        setLocale: jest.fn(),
-      };
-      const res = {};
-      const next = jest.fn();
-
-      // Re-import to ensure we use the real function logic (mocked in previous test)
-      jest.resetModules();
-      // Mock i18n module
-      jest.unstable_mockModule('i18n', () => ({
-        default: {
-          configure: jest.fn(),
-          init: (reqArg, resArg, cb) => {
-            void reqArg;
-            void resArg;
-            cb();
-          },
-          getLocale: jest.fn(),
-          setLocale: jest.fn(),
-        },
-      }));
-      // Mock Logger
-      const mockLog = {
-        app: { debug: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn() },
-      };
-      jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
-
-      // Mock config-loader to ensure default language is 'en'
       jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
         isProduction: false,
         getI18nConfig: jest.fn().mockReturnValue({
@@ -970,7 +732,51 @@ internationalization:
       expect(req.setLocale).toHaveBeenCalledWith('en');
     });
 
-    it('should handle findBestMatchingLocale with null requested locale (i18n.js line 86)', async () => {
+    it('should handle findBestMatchingLocale fallback', async () => {
+      const req = {
+        query: { lang: 'xx-XX' },
+        get: jest.fn(),
+        setLocale: jest.fn(),
+      };
+      const res = {};
+      const next = jest.fn();
+
+      jest.resetModules();
+      jest.unstable_mockModule('i18n', () => ({
+        default: {
+          configure: jest.fn(),
+          init: (reqArg, resArg, cb) => {
+            void reqArg;
+            void resArg;
+            cb();
+          },
+          getLocale: jest.fn(),
+          setLocale: jest.fn(),
+        },
+      }));
+      const mockLog = {
+        app: { debug: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      };
+      jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
+
+      jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
+        isProduction: false,
+        getI18nConfig: jest.fn().mockReturnValue({
+          default_language: 'en',
+          auto_detect: true,
+          supported_languages: ['en'],
+        }),
+        loadConfig: jest.fn(),
+        getConfigPath: jest.fn(),
+      }));
+
+      const { configAwareI18nMiddleware } = await import('../app/config/i18n.js');
+
+      configAwareI18nMiddleware(req, res, next);
+      expect(req.setLocale).toHaveBeenCalledWith('en');
+    });
+
+    it('should handle findBestMatchingLocale with null requested locale', async () => {
       const req = {
         query: {},
         get: jest.fn(),
@@ -998,7 +804,7 @@ internationalization:
       jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
         isProduction: false,
         getI18nConfig: jest.fn().mockReturnValue({
-          default_language: null, // Force null to be passed to findBestMatchingLocale
+          default_language: null,
           auto_detect: true,
           supported_languages: ['en'],
         }),
@@ -1008,11 +814,10 @@ internationalization:
 
       const { configAwareI18nMiddleware } = await import('../app/config/i18n.js');
       configAwareI18nMiddleware(req, res, next);
-      expect(req.setLocale).toHaveBeenCalledWith('en'); // Should fallback to defaultLocale constant in i18n.js
+      expect(req.setLocale).toHaveBeenCalledWith('en');
     });
 
     it('should fallback to first available locale if en is missing', async () => {
-      // Mock fs.readdirSync to return locales without 'en'
       const originalReaddirSync = fs.readdirSync;
       const readdirSpy = jest.spyOn(fs, 'readdirSync').mockImplementation((pathArg, options) => {
         if (pathArg.toString().includes('locales')) {
@@ -1021,17 +826,15 @@ internationalization:
         return originalReaddirSync(pathArg, options);
       });
 
-      // Mock Logger
       const mockLog = {
         app: { debug: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn() },
       };
       jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
 
-      // Re-import i18n
       jest.resetModules();
       const { getDefaultLocale } = await import('../app/config/i18n.js');
 
-      expect(getDefaultLocale()).toBe('es'); // First one
+      expect(getDefaultLocale()).toBe('es');
 
       readdirSpy.mockRestore();
     });

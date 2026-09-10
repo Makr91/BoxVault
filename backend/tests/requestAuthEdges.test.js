@@ -31,6 +31,7 @@ const mockConfigLoader = {
     }
     return { boxvault: { origin: ORIGIN } };
   }),
+  saveConfig: jest.fn(),
 };
 
 const mockDb = {

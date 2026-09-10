@@ -194,7 +194,6 @@ const mockConfigLoader = {
       gravatar: {},
     };
   }),
-  loadConfigs: jest.fn(() => ({})),
   getConfigPath: jest.fn(),
   getSetupTokenPath: jest.fn().mockReturnValue('/tmp/setup.token'),
   getRateLimitConfig: jest.fn().mockReturnValue({
@@ -210,17 +209,13 @@ const mockConfigLoader = {
     fallback_language: 'en',
     auto_detect: true,
   }),
-  checkConfigs: jest.fn().mockReturnValue([]),
-  loadSchema: jest.fn().mockReturnValue({ properties: {} }),
-  readConfigFile: jest.fn(name => mockConfigLoader.loadConfig(name)),
-  fillDefaults: jest.fn((schema, config) => {
-    void schema;
-    return config;
-  }),
-  validateConfig: jest.fn().mockReturnValue([]),
-  unknownKeys: jest.fn().mockReturnValue([]),
-  clearConfigCache: jest.fn(),
+  saveConfig: jest.fn().mockResolvedValue([]),
+  reloadConfig: jest.fn().mockResolvedValue(),
   getConfigDir: jest.fn().mockReturnValue('/tmp'),
+  setupTokenGuard: jest.fn((req, res) => {
+    void req;
+    res.status(403).end();
+  }),
   isProduction: true,
   CONFIG_NAMES: ['app', 'auth', 'db', 'mail'],
 };

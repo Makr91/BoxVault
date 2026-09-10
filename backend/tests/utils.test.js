@@ -25,6 +25,7 @@ const mockFs = {
 
 const mockConfigLoader = {
   loadConfig: jest.fn(),
+  saveConfig: jest.fn(),
 };
 
 const mockLog = {

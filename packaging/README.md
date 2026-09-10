@@ -34,7 +34,7 @@ export PACKAGE_NAME="boxvault"
 export ARCH="amd64"
 
 # Create directory structure
-mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/config-templates,opt/boxvault/scripts,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
+mkdir -p "${PACKAGE_NAME}_${VERSION}_${ARCH}"/{opt/boxvault/config-templates,opt/boxvault/scripts,etc/boxvault,etc/systemd/system,var/lib/boxvault,var/log/boxvault,DEBIAN}
 ```
 
 ### 3. Copy Application Files
@@ -100,7 +100,7 @@ sudo systemctl enable --now boxvault
 sudo systemctl status boxvault
 ```
 
-`postinst` prints the setup token at the end of a fresh install; open `https://localhost` and complete first-run setup with it.
+`postinst` creates an empty `/etc/boxvault/setup.token` on a fresh install; the first start fills it, so read it with `sudo cat /etc/boxvault/setup.token`, open `https://localhost` and complete first-run setup with it.
 
 ## Critical Build Notes
 
@@ -109,10 +109,11 @@ sudo systemctl status boxvault
 **Must include these directories in the copy command or the package will fail:**
 
 - `backend/app/` - Contains all backend application code
-- `backend/scripts/` - The config migration `postinst` runs on every upgrade
+- `backend/scripts/` - The config migration `postinst` runs as the service user on every upgrade
 - `backend/node_modules/` - Backend dependencies
 - `backend/ui/` - The STARTcloud UI artifact pinned by `startcloudUiVersion` in `backend/package.json`
-- `packaging/config/*.yaml` into `opt/boxvault/config-templates/` - `postinst` installs `/etc/boxvault/*.config.yaml` from them on a fresh install
+- `packaging/config/*.yaml` into `opt/boxvault/config-templates/` - `postinst` installs `/etc/boxvault/*.config.yaml` from them where no file of that name exists
+- `etc/boxvault/` in the payload - the unit re-asserts its owner and mode on every start
 - `packaging/DEBIAN/preinst` beside `postinst`, `prerm` and `postrm`
 
 ### 🔧 Systemd Service
@@ -120,6 +121,7 @@ sudo systemctl status boxvault
 The service includes:
 
 - **Environment variable** (`CONFIG_DIR=/etc/boxvault`)
+- **Configuration directory** (`ConfigurationDirectory=boxvault`, `ConfigurationDirectoryMode=0750`)
 - **Security restrictions** (NoNewPrivileges, ProtectSystem, etc.)
 - **MySQL ordering** (starts after mysql.service)
 

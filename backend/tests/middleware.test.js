@@ -53,6 +53,7 @@ const mockConfigLoader = {
     skip_successful_requests: false,
     skip_failed_requests: false,
   }),
+  saveConfig: jest.fn(),
 };
 
 // BoxVault JWT verification enforces issuer/audience; the mocked auth config
@@ -864,8 +865,8 @@ describe('Middleware Tests', () => {
           errors: [
             expect.objectContaining({
               pointer: '/x-chunk-index',
-              rule: 'range',
-              params: { minimum: 0, maximum: 1 },
+              rule: 'maximum',
+              params: { maximum: 1 },
             }),
           ],
         })
@@ -2256,7 +2257,7 @@ describe('Middleware Tests', () => {
 
     // authJwt.js coverage
     it('authJwt.verifyToken should return 401 for invalid token (inner catch)', async () => {
-      req.headers['x-access-token'] = 'invalid.token';
+      req.headers['x-access-token'] = 'invalid.jwt.token';
       await authJwt.verifyToken(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.type).toHaveBeenCalledWith('application/problem+json');

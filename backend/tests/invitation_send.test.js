@@ -14,6 +14,7 @@ const mockDb = {
 
 const mockConfigLoader = {
   loadConfig: jest.fn(() => ({ auth: { jwt: {} } })),
+  saveConfig: jest.fn(),
 };
 
 const mockMail = {

@@ -100,16 +100,13 @@ const boundsCheck = (rule, value) => {
   if (Number.isNaN(number) || (rule.minimum === undefined && rule.maximum === undefined)) {
     return null;
   }
-  const below = rule.minimum !== undefined && number < rule.minimum;
-  const above = rule.maximum !== undefined && number > rule.maximum;
-  if (!below && !above) {
-    return null;
+  if (rule.minimum !== undefined && number < rule.minimum) {
+    return { rule: 'minimum', params: { minimum: rule.minimum } };
   }
-  const params = { minimum: rule.minimum, maximum: rule.maximum };
-  if (rule.minimum !== undefined && rule.maximum !== undefined) {
-    return { rule: 'range', params };
+  if (rule.maximum !== undefined && number > rule.maximum) {
+    return { rule: 'maximum', params: { maximum: rule.maximum } };
   }
-  return { rule: below ? 'minimum' : 'maximum', params };
+  return null;
 };
 
 const enumCheck = (rule, value) => {
@@ -140,16 +137,9 @@ const itemsCheck = (rule, value) => {
   return null;
 };
 
-const CHECKS = [
-  typeCheck,
-  nonBlankCheck,
-  lengthCheck,
-  patternCheck,
-  boundsCheck,
-  enumCheck,
-  formatCheck,
-  itemsCheck,
-];
+const BLANK_CHECKS = [typeCheck, nonBlankCheck, lengthCheck, patternCheck];
+
+const CHECKS = [...BLANK_CHECKS, boundsCheck, enumCheck, formatCheck, itemsCheck];
 
 const subschemaFailure = ({ schema, value, patternName, document, evaluate }) => {
   const inner = resolve(schema, document);
@@ -180,7 +170,7 @@ const notCheck = ({ rule, value, patternName, document, evaluate }) => {
 };
 
 const firstFailure = (rule, value, patternName, document) => {
-  for (const check of CHECKS) {
+  for (const check of value === '' ? BLANK_CHECKS : CHECKS) {
     const failure = check(rule, value, patternName);
     if (failure) {
       return failure;
@@ -193,7 +183,8 @@ const firstFailure = (rule, value, patternName, document) => {
 /**
  * Evaluate one value against one schema: `type`, `required` (presence
  * alone: undefined and null count as missing when the schema says
- * `required: true`, a blank string is judged by `minLength` and `pattern`),
+ * `required: true`, a blank string is judged by `minLength` and `pattern`
+ * alone and skips `format`, `enum`, `minimum` and `maximum`),
  * `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`,
  * `format`, `minItems`, `maxItems`, `allOf` (every branch must pass) and
  * `not` (the branch must fail), with `$ref` resolved within `document`. A
@@ -218,8 +209,8 @@ const validateValue = (schema, value, document = {}) => {
 
 /**
  * Whether a property is evaluated: without `dependsOn` always, else while
- * the nearest enclosing object carrying the named key holds one of the
- * `showWhen` values.
+ * the nearest enclosing object carrying the named key holds a value equal
+ * by JSON value to one of the `showWhen` members.
  *
  * @param {Object} rule - The property's schema
  * @param {Array<Object>} scopes - The value objects from the root down to the property's parent
@@ -233,7 +224,8 @@ const isVisible = (rule, scopes) => {
     .reverse()
     .find(entry => entry && typeof entry === 'object' && Object.hasOwn(entry, rule.dependsOn));
   const current = scope ? scope[rule.dependsOn] : undefined;
-  return (rule.showWhen || []).map(String).includes(String(current));
+  const encoded = JSON.stringify(current ?? null);
+  return (rule.showWhen || []).some(expected => JSON.stringify(expected ?? null) === encoded);
 };
 
 /**

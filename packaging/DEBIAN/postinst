@@ -1,77 +1,55 @@
 #!/bin/bash
 set -e
 
-# Create system user and group
 if ! getent passwd boxvault > /dev/null 2>&1; then
     adduser --system --group --home /opt/boxvault \
             --no-create-home --shell /usr/sbin/nologin \
             --gecos "BoxVault system user" boxvault
 fi
 
-# Create /etc/boxvault directory if it doesn't exist
-mkdir -p /etc/boxvault
-
-# Set ownership and permissions
 chown -R boxvault:boxvault /opt/boxvault
 chown -R boxvault:boxvault /var/lib/boxvault
 chown -R boxvault:boxvault /var/log/boxvault
-chown -R boxvault:boxvault /etc/boxvault
 
+chown boxvault:boxvault /etc/boxvault
+chmod 0750 /etc/boxvault
 
-# Handle configuration files properly for fresh installs vs upgrades
 case "$1" in
     configure)
-        if [ -z "$2" ]; then
-            # Fresh install (no previous version)
-            echo "Fresh installation detected"
-            
-            # Install default config files from templates only if they don't exist
-            for config_file in app.config.yaml auth.config.yaml db.config.yaml mail.config.yaml; do
-                if [ ! -f "/etc/boxvault/$config_file" ]; then
-                    if [ -f "/opt/boxvault/config-templates/$config_file" ]; then
-                        cp "/opt/boxvault/config-templates/$config_file" "/etc/boxvault/$config_file"
-                        chown boxvault:boxvault "/etc/boxvault/$config_file"
-                        chmod 600 "/etc/boxvault/$config_file"
-                        echo "Installed default $config_file from template"
-                    fi
-                fi
-            done
-
-            # Only generate JWT secret if config file has the default placeholder
-            if [ -f /etc/boxvault/auth.config.yaml ]; then
-                if grep -qF 'jwt_secret: ${JWT_SECRET}' /etc/boxvault/auth.config.yaml; then
-                    JWT_SECRET=$(openssl rand -hex 32)
-                    sed -i "s|jwt_secret: \${JWT_SECRET}|jwt_secret: ${JWT_SECRET}|" /etc/boxvault/auth.config.yaml
-                    echo "Generated and updated JWT secret in auth.config.yaml"
+        for config_file in app.config.yaml auth.config.yaml db.config.yaml mail.config.yaml; do
+            if [ ! -f "/etc/boxvault/$config_file" ]; then
+                if [ -f "/opt/boxvault/config-templates/$config_file" ]; then
+                    cp "/opt/boxvault/config-templates/$config_file" "/etc/boxvault/$config_file"
+                    chown boxvault:boxvault "/etc/boxvault/$config_file"
+                    chmod 600 "/etc/boxvault/$config_file"
+                    echo "Installed $config_file from its template"
                 fi
             fi
+        done
+
+        if [ -z "$2" ]; then
+            echo "Fresh installation detected"
+            if [ ! -f /etc/boxvault/setup.token ]; then
+                : > /etc/boxvault/setup.token
+                chown boxvault:boxvault /etc/boxvault/setup.token
+                chmod 600 /etc/boxvault/setup.token
+            fi
         else
-            # Upgrade (previous version exists) - existing configs are migrated in place
             echo "Upgrade from version $2 detected - migrating configuration files"
-            (cd /opt/boxvault && node scripts/migrate-config.js)
-            chown boxvault:boxvault /etc/boxvault/*.config.yaml /etc/boxvault/*.config.yaml.bak
-            chmod 600 /etc/boxvault/*.config.yaml /etc/boxvault/*.config.yaml.bak
+            runuser -u boxvault -- /usr/bin/node /opt/boxvault/scripts/migrate-config.js
             echo "Configuration files in /etc/boxvault/ migrated; the previous copies sit beside them as .bak"
             echo "Database files in /var/lib/boxvault/ will NOT be modified"
-            echo "Configuration templates are available in /opt/boxvault/config-templates/ for reference"
         fi
         ;;
 esac
 
-# Initialize directories for BoxVault
 mkdir -p /var/lib/boxvault/uploads
 mkdir -p /var/log/boxvault
-mkdir -p /etc/boxvault/ssl
 chown boxvault:boxvault /var/lib/boxvault/uploads
 chown boxvault:boxvault /var/log/boxvault
-chown boxvault:boxvault /etc/boxvault/ssl
-chmod 700 /etc/boxvault/ssl
 
-# Install Certbot hook if Certbot is already present
 if [ -d "/etc/letsencrypt/renewal-hooks/deploy" ]; then
     echo "Certbot detected - installing BoxVault certificate renewal hook"
-    
-    # Copy hook script to Certbot renewal hooks directory
     if [ -f "/opt/boxvault/scripts/certbot-deploy-hook.sh" ]; then
         cp /opt/boxvault/scripts/certbot-deploy-hook.sh \
            /etc/letsencrypt/renewal-hooks/deploy/boxvault-cert-deploy.sh
@@ -86,56 +64,23 @@ else
     echo "If you install Certbot later, BoxVault will provide integration instructions"
 fi
 
-# Generate setup token only on fresh installation
-case "$1" in
-    configure)
-        if [ -z "$2" ]; then
-            # Fresh install only - generate setup token
-            SETUP_TOKEN=$(openssl rand -hex 32)
-            echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
-            chown boxvault:boxvault /etc/boxvault/setup.token
-            chmod 600 /etc/boxvault/setup.token
-            SHOW_SETUP_TOKEN=true
-        else
-            # Upgrade - preserve existing setup token
-            if [ -f /etc/boxvault/setup.token ]; then
-                echo "Preserving existing setup token"
-                SETUP_TOKEN=$(cat /etc/boxvault/setup.token)
-                SHOW_SETUP_TOKEN=false
-            else
-                # Upgrade but no setup token exists - generate one
-                SETUP_TOKEN=$(openssl rand -hex 32)
-                echo "$SETUP_TOKEN" > /etc/boxvault/setup.token
-                chown boxvault:boxvault /etc/boxvault/setup.token
-                chmod 600 /etc/boxvault/setup.token
-                SHOW_SETUP_TOKEN=true
-            fi
-        fi
-        ;;
-esac
-
-# Function to extract port from config file
 get_port_from_config() {
     local port_key="$1"
     local config_file="/etc/boxvault/app.config.yaml"
-    
+
     if [ -f "$config_file" ]; then
-        # Extract port value using grep and sed
         grep "^  $port_key:" "$config_file" | sed 's/.*: *\([0-9]*\).*/\1/' | head -1
     else
         echo ""
     fi
 }
 
-# Get configured ports
 HTTP_PORT=$(get_port_from_config "api_listen_port_unencrypted")
 HTTPS_PORT=$(get_port_from_config "api_listen_port_encrypted")
 
-# Set default ports if not found in config
 HTTP_PORT=${HTTP_PORT:-80}
 HTTPS_PORT=${HTTPS_PORT:-443}
 
-# Build access URLs
 if [ "$HTTP_PORT" = "80" ]; then
     HTTP_URL="http://localhost"
 else
@@ -148,7 +93,6 @@ else
     HTTPS_URL="https://localhost:$HTTPS_PORT"
 fi
 
-# Reload systemd daemon
 systemctl daemon-reload
 
 echo ""
@@ -156,19 +100,10 @@ echo "======================================================================"
 if [ -z "$2" ]; then
     echo "BoxVault has been installed successfully!"
     echo ""
-    if [ "$SHOW_SETUP_TOKEN" = "true" ]; then
-        echo "SETUP TOKEN (save this for initial configuration):"
-        echo "  $SETUP_TOKEN"
-        echo ""
-    fi
     echo "Next steps:"
     echo "1. Start the service: sudo systemctl enable --now boxvault"
-    echo "2. Access BoxVault at: $HTTP_URL or $HTTPS_URL"
-    if [ "$SHOW_SETUP_TOKEN" = "true" ]; then
-        echo "3. Use the setup token above for initial configuration"
-    else
-        echo "3. Use your existing setup token for configuration"
-    fi
+    echo "2. Read the setup token the first start writes: sudo cat /etc/boxvault/setup.token"
+    echo "3. Access BoxVault at: $HTTP_URL or $HTTPS_URL and enter the setup token"
     echo "4. Check status: systemctl status boxvault"
     echo "5. View logs: journalctl -u boxvault -f"
     echo ""
