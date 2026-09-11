@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.82.0](https://github.com/Makr91/BoxVault/compare/v0.81.0...v0.82.0) (2026-09-11)
+
+
+### Features
+
+* config engine module, contract routes, packaging ownership and the settled-contract tests ([d0f9e2a](https://github.com/Makr91/BoxVault/commit/d0f9e2af4b7c13a53fb4410e871ef257f8507323))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.12.1 ([753ee94](https://github.com/Makr91/BoxVault/commit/753ee9482d9f62ee06926983f96bf3b202c14e06))
+* bump startcloud-ui to v0.12.1 ([3b32f8b](https://github.com/Makr91/BoxVault/commit/3b32f8bc87d5c17106a7df512d54d3f8eef5a9e6))
+* bump startcloud-ui to v0.12.2 ([a0a7251](https://github.com/Makr91/BoxVault/commit/a0a7251aab6dd7654cd255b14a9c18df25d79805))
+* bump startcloud-ui to v0.12.2 ([71fd220](https://github.com/Makr91/BoxVault/commit/71fd2206b60b0d158c727ff9afadea67ac0299ce))
+
 ## [0.81.0](https://github.com/Makr91/BoxVault/compare/v0.80.0...v0.81.0) (2026-09-09)
 
 
