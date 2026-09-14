@@ -31,9 +31,9 @@ const { organization: Organization } = db;
  *             properties:
  *               access_mode:
  *                 type: string
- *                 enum: [private, invite_only, request_to_join]
+ *                 enum: [private, invite, request]
  *                 description: Organization visibility and access mode
- *                 example: "request_to_join"
+ *                 example: "request"
  *               default_role:
  *                 type: string
  *                 enum: [member, admin]
@@ -50,10 +50,10 @@ const { organization: Organization } = db;
  *                 message:
  *                   type: string
  *                   example: "Organization access mode updated successfully!"
- *                 accessMode:
+ *                 access_mode:
  *                   type: string
- *                   example: "request_to_join"
- *                 defaultRole:
+ *                   example: "request"
+ *                 default_role:
  *                   type: string
  *                   example: "member"
  *       401:
@@ -90,15 +90,15 @@ const { organization: Organization } = db;
 const updateAccessMode = async (req, res) => {
   try {
     const { organization: organizationName } = req.params;
-    const { access_mode: accessMode, default_role: defaultRole } = req.body;
+    const { access_mode, default_role } = req.body;
 
     // Find the organization
     const organization = await Organization.findOne({ where: { name: organizationName } });
 
     // Update access mode
-    const updateData = { access_mode: accessMode };
-    if (defaultRole) {
-      updateData.default_role = defaultRole;
+    const updateData = { access_mode };
+    if (default_role) {
+      updateData.default_role = default_role;
     }
 
     await organization.update(updateData);
@@ -106,14 +106,14 @@ const updateAccessMode = async (req, res) => {
     log.api.info('Organization access mode updated', {
       organizationName,
       organizationId: organization.id,
-      accessMode,
-      defaultRole: defaultRole || organization.default_role,
+      access_mode,
+      default_role: default_role || organization.default_role,
     });
 
     return res.send({
       message: req.__('organizations.accessModeUpdated'),
-      accessMode,
-      defaultRole: defaultRole || organization.default_role,
+      access_mode,
+      default_role: default_role || organization.default_role,
     });
   } catch (err) {
     log.error.error('Error updating organization access mode:', {

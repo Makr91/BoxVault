@@ -116,7 +116,7 @@ describe('Organization API', () => {
   describe('Organization Model', () => {
     it('should get discoverable organizations', async () => {
       // Ensure org is discoverable
-      await organization.update({ access_mode: 'invite_only' });
+      await organization.update({ access_mode: 'invite' });
 
       const discoverable = await db.organization.getDiscoverable(false); // Non-admin
       expect(Array.isArray(discoverable)).toBe(true);
@@ -142,7 +142,7 @@ describe('Organization API', () => {
       });
 
       // Ensure org is discoverable
-      await organization.update({ access_mode: 'invite_only' });
+      await organization.update({ access_mode: 'invite' });
 
       const discoverable = await db.organization.getDiscoverable(false);
       const found = discoverable.find(o => o.id === organization.id);
@@ -168,7 +168,7 @@ describe('Organization API', () => {
 
     it('should get discoverable organizations with default admin flag (false)', async () => {
       // Ensure org is discoverable
-      await organization.update({ access_mode: 'invite_only' });
+      await organization.update({ access_mode: 'invite' });
 
       // Call without arguments to test default parameter
       const discoverable = await db.organization.getDiscoverable();
@@ -503,10 +503,10 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ access_mode: 'invite_only', default_role: 'member' });
+        .send({ access_mode: 'invite', default_role: 'member' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('accessMode', 'invite_only');
+      expect(res.body).toHaveProperty('access_mode', 'invite');
     });
 
     it('should fail with invalid access mode', async () => {
@@ -521,11 +521,23 @@ describe('Organization API', () => {
       ]);
     });
 
+    it('should refuse a retired access mode word', async () => {
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/access-mode`)
+        .set('x-access-token', adminToken)
+        .send({ access_mode: 'invite_only' });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/access_mode', rule: 'enum' }),
+      ]);
+    });
+
     it('should fail with invalid default role', async () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ access_mode: 'invite_only', default_role: 'invalid_role' });
+        .send({ access_mode: 'invite', default_role: 'invalid_role' });
 
       expect(res.statusCode).toBe(422);
       expect(res.body.errors).toEqual([
@@ -551,7 +563,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ access_mode: 'invite_only' });
+        .send({ access_mode: 'invite' });
 
       expect(res.statusCode).toBe(500);
     });
@@ -563,8 +575,8 @@ describe('Organization API', () => {
         .send({ access_mode: 'private' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('accessMode', 'private');
-      expect(res.body).toHaveProperty('defaultRole');
+      expect(res.body).toHaveProperty('access_mode', 'private');
+      expect(res.body).toHaveProperty('default_role');
     });
   });
 
@@ -751,8 +763,8 @@ describe('Organization API', () => {
   describe('GET /api/organizations/discover', () => {
     it('should list discoverable organizations', async () => {
       await organization.reload();
-      // Ensure org is discoverable (invite_only or request_to_join)
-      await organization.update({ access_mode: 'invite_only', suspended: false });
+      // Ensure org is discoverable (invite or request)
+      await organization.update({ access_mode: 'invite', suspended: false });
 
       const res = await request(app)
         .get('/api/organizations/discover')
@@ -762,6 +774,8 @@ describe('Organization API', () => {
       expect(Array.isArray(res.body)).toBe(true);
       const found = res.body.find(o => o.name === orgName);
       expect(found).toBeDefined();
+      expect(['invite', 'request']).toContain(found.access_mode);
+      expect(found).not.toHaveProperty('accessMode');
     });
   });
 
@@ -1499,7 +1513,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ access_mode: 'invite_only' });
+        .send({ access_mode: 'invite' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();
@@ -1594,7 +1608,7 @@ describe('Organization API', () => {
       const res = await request(app)
         .put(`/api/organization/${orgName}/access-mode`)
         .set('x-access-token', adminToken)
-        .send({ access_mode: 'invite_only' });
+        .send({ access_mode: 'invite' });
 
       expect(res.statusCode).toBe(500);
       jest.restoreAllMocks();

@@ -304,6 +304,66 @@ describe('Config API', () => {
         await reloadConfig();
       }
     });
+
+    it('should leave a host the body does not send unprobed', async () => {
+      const port = await closedPort();
+      const original = fs.readFileSync(mailConfigPath, 'utf8');
+      const config = yaml.load(original);
+      config.smtp_connect = { host: '127.0.0.1', port };
+      fs.writeFileSync(mailConfigPath, yaml.dump(config));
+      try {
+        await reloadConfig();
+        const res = await request(app)
+          .put('/api/config/mail')
+          .set('x-access-token', adminToken)
+          .send({ smtp_settings: { reply_to: 'ops@example.com' } });
+        expect(res.statusCode).toBe(200);
+        const written = yaml.load(fs.readFileSync(mailConfigPath, 'utf8'));
+        expect(written.smtp_settings.reply_to).toBe('ops@example.com');
+        expect(written.smtp_connect.port).toBe(port);
+      } finally {
+        fs.writeFileSync(mailConfigPath, original);
+        await reloadConfig();
+      }
+    });
+
+    it('should accept a mail host whose port answers', async () => {
+      const listener = createServer();
+      await new Promise(resolve => {
+        listener.listen(0, '127.0.0.1', resolve);
+      });
+      const { port } = listener.address();
+      const original = fs.readFileSync(mailConfigPath, 'utf8');
+      try {
+        const res = await request(app)
+          .put('/api/config/mail')
+          .set('x-access-token', adminToken)
+          .send({ smtp_connect: { host: '127.0.0.1', port } });
+        expect(res.statusCode).toBe(200);
+        expect(yaml.load(fs.readFileSync(mailConfigPath, 'utf8')).smtp_connect.port).toBe(port);
+      } finally {
+        await new Promise(resolve => {
+          listener.close(resolve);
+        });
+        fs.writeFileSync(mailConfigPath, original);
+        await reloadConfig();
+      }
+    });
+
+    it('should write a blank host without a probe', async () => {
+      const original = fs.readFileSync(mailConfigPath, 'utf8');
+      try {
+        const res = await request(app)
+          .put('/api/config/mail')
+          .set('x-access-token', adminToken)
+          .send({ smtp_connect: { host: '' } });
+        expect(res.statusCode).toBe(200);
+        expect(yaml.load(fs.readFileSync(mailConfigPath, 'utf8')).smtp_connect.host).toBe('');
+      } finally {
+        fs.writeFileSync(mailConfigPath, original);
+        await reloadConfig();
+      }
+    });
   });
 
   describe('the restart list', () => {
@@ -446,6 +506,29 @@ describe('Config API', () => {
     });
   });
 
+  describe('the writable hook', () => {
+    it('should accept a certificate path naming a readable file', async () => {
+      const res = await putApp({ ssl: { cert_path: 'ssl/public.crt' } });
+      expect(res.statusCode).toBe(200);
+      expect(readApp().ssl.cert_path).toBe('ssl/public.crt');
+    });
+
+    it('should refuse a missing key path it cannot generate into', async () => {
+      const res = await putApp({
+        ssl: { generate_ssl: true, key_path: '/proc/boxvault-ssl/private.key' },
+      });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/ssl/key_path',
+          rule: 'writable',
+          params: { user: 'boxvault' },
+        }),
+      ]);
+      expect(readApp().ssl.generate_ssl).toBe(false);
+    });
+  });
+
   describe('boot refusal', () => {
     it('should log every failing pointer and stop the process', async () => {
       const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined);
@@ -467,6 +550,34 @@ describe('Config API', () => {
               rule: 'type',
             }),
             expect.objectContaining({ level: 'warn', config: 'app', pointer: '/stray' }),
+          ])
+        );
+      } finally {
+        fs.writeFileSync(appConfigPath, originalApp);
+        exitSpy.mockRestore();
+        stderrSpy.mockRestore();
+        await reloadConfig();
+      }
+    });
+
+    it('should refuse an unwritable directory at boot with the writable rule', async () => {
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined);
+      const stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+      const config = readApp();
+      config.logging.log_directory = '/proc/boxvault-logs';
+      fs.writeFileSync(appConfigPath, yaml.dump(config));
+      try {
+        await reloadConfig();
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        const lines = stderrSpy.mock.calls.map(([line]) => JSON.parse(line));
+        expect(lines).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              level: 'error',
+              config: 'app',
+              pointer: '/logging/log_directory',
+              rule: 'writable',
+            }),
           ])
         );
       } finally {

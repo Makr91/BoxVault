@@ -81,7 +81,7 @@
   "organizations": {
     "organizationNotFoundWithName": "Organization not found with name: {{organization}}.",
     "organizationNotFound": "Organization not found.",
-    "invalidAccessMode": "Invalid access mode. Must be private, invite_only, or request_to_join.",
+    "invalidAccessMode": "Invalid access mode. Must be private, invite, or request.",
     "invalidDefaultRole": "Invalid default role. Must be member or admin.",
     "accessModeUpdated": "Organization access mode updated successfully!",
     "updateAccessModeError": "Error updating organization access mode",

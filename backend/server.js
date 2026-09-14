@@ -219,13 +219,15 @@ app.use(
         path: filePath,
         type: filePath.endsWith('.ico') ? 'image/x-icon' : null,
       });
+      res.setHeader(
+        'Cache-Control',
+        basename(filePath) === 'index.html' ? 'no-store, no-transform' : 'no-cache'
+      );
       if (filePath.endsWith('.ico')) {
         res.setHeader('Content-Type', 'image/x-icon');
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache favicons for 24 hours
       }
       if (basename(filePath) === 'notification-sw.js') {
         res.setHeader('Service-Worker-Allowed', '/push/');
-        res.setHeader('Cache-Control', 'no-cache');
       }
     },
   })
@@ -531,7 +533,9 @@ const initializeApp = async () => {
     // SPA catch-all route
     app.get('*splat', spaLimiter, (req, res) => {
       void req;
-      res.sendFile(join(static_path, 'index.html'));
+      res.sendFile(join(static_path, 'index.html'), {
+        headers: { 'Cache-Control': 'no-store, no-transform' },
+      });
     });
 
     // Error handler middleware (MUST be last)
@@ -578,7 +582,9 @@ if (isSetupComplete()) {
 
   app.get('/', (req, res) => {
     void req;
-    res.sendFile(join(static_path, 'index.html'));
+    res.sendFile(join(static_path, 'index.html'), {
+      headers: { 'Cache-Control': 'no-store, no-transform' },
+    });
   });
 
   app.use(errorHandler);

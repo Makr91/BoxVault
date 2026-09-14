@@ -119,6 +119,15 @@ describe('GET /api/rules', () => {
     ]);
   });
 
+  it('should enumerate the access modes', () => {
+    expect(document.forms.accessMode.properties.access_mode.enum).toEqual([
+      'private',
+      'invite',
+      'request',
+    ]);
+    expect(document.forms.accessMode.properties.default_role.enum).toEqual(['member', 'admin']);
+  });
+
   it('should name the scope of every unique member', () => {
     expect(document.forms.register.properties.username.unique).toBe('global');
     expect(document.forms.organization.properties.organization.unique).toBe('global');

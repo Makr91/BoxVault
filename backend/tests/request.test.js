@@ -51,7 +51,7 @@ describe('Request API Integration Tests', () => {
     testOrg = await Organization.create({
       name: orgName,
       description: 'Test Organization for Requests',
-      access_mode: 'request_to_join',
+      access_mode: 'request',
     });
 
     // Assign Org Memberships
@@ -333,7 +333,7 @@ describe('Request API Integration Tests', () => {
     it('should return 404 when approving request from another organization', async () => {
       const otherOrg = await Organization.create({
         name: `OtherOrg_${uniqueId}`,
-        access_mode: 'request_to_join',
+        access_mode: 'request',
       });
       const tempUser = await User.create({
         username: `TempOther_${uniqueId}`,

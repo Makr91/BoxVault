@@ -112,7 +112,7 @@ const organizationWhereFor = (viewer, isAdmin) => {
   if (isAdmin) {
     return {};
   }
-  const discoverable = { access_mode: { [Op.in]: ['invite_only', 'request_to_join'] } };
+  const discoverable = { access_mode: { [Op.in]: ['invite', 'request'] } };
   if (!viewer) {
     return discoverable;
   }

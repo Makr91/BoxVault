@@ -60,7 +60,7 @@ describe('Database failures answer 500 and never crash the request', () => {
     await global.testHelpers.waitForAppReady(app);
     admin = await db.user.findOne({ where: { username: 'SomeUser' } });
     org = await db.organization.create({ name: orgName });
-    openOrg = await db.organization.create({ name: openOrgName, access_mode: 'request_to_join' });
+    openOrg = await db.organization.create({ name: openOrgName, access_mode: 'request' });
     owner = await createUser('err-owner', 'owner');
     outsider = await createUser('err-outsider', null);
     ownerToken = signFor(owner);

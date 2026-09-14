@@ -122,7 +122,7 @@ const ORG_PROFILE_STRING_KEYS = ['logo', 'url', 'telephone', 'locale', 'timezone
 
 // IdP-managed org settings: always present on the extension by contract, with
 // these defaults when missing or malformed.
-const ORG_ACCESS_MODES = ['private', 'invite_only', 'request_to_join'];
+const ORG_ACCESS_MODES = ['private', 'invite', 'request'];
 const ORG_DEFAULT_ROLES = ['member', 'admin'];
 
 /**

@@ -65,7 +65,7 @@ export default (sequelize, Sequelize) => {
         defaultValue: false,
       },
       access_mode: {
-        type: Sequelize.ENUM('private', 'invite_only', 'request_to_join'),
+        type: Sequelize.ENUM('private', 'invite', 'request'),
         allowNull: false,
         defaultValue: 'private',
         comment: 'Organization visibility and access mode',
@@ -168,7 +168,7 @@ export default (sequelize, Sequelize) => {
     const whereClause = {};
     if (!isAdmin) {
       whereClause.access_mode = {
-        [sequelize.Sequelize.Op.in]: ['invite_only', 'request_to_join'],
+        [sequelize.Sequelize.Op.in]: ['invite', 'request'],
       };
     }
 

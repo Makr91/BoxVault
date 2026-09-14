@@ -60,7 +60,7 @@ describe('Search finders across the catalog', () => {
     org = await db.organization.create({
       name: orgName,
       display_name: 'Search Organization',
-      access_mode: 'invite_only',
+      access_mode: 'invite',
     });
     owner = await createUser('search-owner');
     member = await createUser('search-member');

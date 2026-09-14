@@ -189,23 +189,12 @@ const propertyAt = (schema, pointer) =>
     return undefined;
   }, schema);
 
-const leaves = (schema, document, base = '') =>
-  Object.entries(schema.properties || {}).flatMap(([key, property]) => {
-    const pointer = `${base}/${escapeSegment(key)}`;
-    const value = isPlainObject(document) ? document[key] : undefined;
-    if (property.properties && !isFreeSubtree(property)) {
-      return leaves(property, value, pointer);
-    }
-    if (isMapSchema(property) && property.additionalProperties.properties) {
-      return Object.entries(isPlainObject(value) ? value : {}).flatMap(([entryKey, entry]) =>
-        leaves(property.additionalProperties, entry, `${pointer}/${escapeSegment(entryKey)}`)
-      );
-    }
-    if (isFreeSubtree(property)) {
-      return [];
-    }
-    return [{ pointer, property, value }];
-  });
+const leaves = (node, base = '') =>
+  isPlainObject(node)
+    ? Object.entries(node)
+        .filter(([key]) => !PROTOTYPE_KEYS.includes(key))
+        .flatMap(([key, value]) => leaves(value, `${base}/${escapeSegment(key)}`))
+    : [{ pointer: base, value: node }];
 
 const changed = (before, after) => JSON.stringify(before ?? null) !== JSON.stringify(after ?? null);
 
@@ -242,12 +231,14 @@ const restartDiff = (schema, before, after, base = '') =>
     return [];
   });
 
-const hookErrors = async (name, schema, document, { writable, reachable }) => {
+const hookErrors = async (name, document, scope, { writable, reachable }) => {
   const results = await Promise.all(
-    leaves(schema, document).flatMap(({ pointer, value }) => [
-      writable ? writable(pointer, value, name, document) : [],
-      reachable ? reachable(pointer, value, name, document) : [],
-    ])
+    leaves(scope)
+      .filter(({ value }) => value !== null)
+      .flatMap(({ pointer }) => [
+        writable ? writable(pointer, valueAt(document, pointer), name, document) : [],
+        reachable ? reachable(pointer, valueAt(document, pointer), name, document) : [],
+      ])
   );
   return results.flat();
 };
@@ -302,7 +293,7 @@ const loadOne = async name => {
   const filled = fillDefaults(schema, raw);
   const errors = [
     ...validateObject(schema, filled, schema),
-    ...(await hookErrors(name, schema, filled, { writable: state.hooks.writable })),
+    ...(await hookErrors(name, filled, filled, { writable: state.hooks.writable })),
     ...flaggedWithoutReason(schema).map(pointer => ({
       pointer,
       rule: 'restartReason',
@@ -398,7 +389,7 @@ const prepare = async (name, body) => {
       params: {},
     })),
     ...validateObject(fileSchema, filled, fileSchema),
-    ...(await hookErrors(name, fileSchema, filled, state.hooks)),
+    ...(await hookErrors(name, filled, body, state.hooks)),
   ];
   return { name, merged, filled, errors };
 };

@@ -8,7 +8,7 @@ const { organization: Organization, user: User, role: Role } = db;
  * /api/organizations/discover:
  *   get:
  *     summary: Discover public organizations
- *     description: Retrieve organizations that are discoverable (have access_mode of 'invite_only' or 'request_to_join'). Admins see all organizations.
+ *     description: Retrieve organizations that are discoverable (have access_mode of 'invite' or 'request'). Admins see all organizations.
  *     tags: [Organizations]
  *     parameters:
  *       - in: header
@@ -35,9 +35,9 @@ const { organization: Organization, user: User, role: Role } = db;
  *                   description:
  *                     type: string
  *                     description: Organization description
- *                   accessMode:
+ *                   access_mode:
  *                     type: string
- *                     enum: [private, invite_only, request_to_join]
+ *                     enum: [private, invite, request]
  *                     description: Organization access mode
  *                   emailHash:
  *                     type: string
@@ -76,7 +76,7 @@ const discoverOrganizations = async (req, res) => {
       id: org.id,
       name: org.name,
       description: org.description,
-      accessMode: org.access_mode,
+      access_mode: org.access_mode,
       emailHash: org.emailHash || '',
       memberCount: org.memberCount || 0,
       publicBoxCount: org.publicBoxCount || 0,

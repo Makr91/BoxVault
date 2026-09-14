@@ -110,10 +110,10 @@ describe('Identity-provider delegation', () => {
       name: externalOrgName,
       external_issuer: ISSUER,
       external_org_id: `org-uuid-${uniqueId}`,
-      access_mode: 'request_to_join',
+      access_mode: 'request',
     });
     noUuidOrg = await db.organization.create({ name: noUuidOrgName, external_issuer: ISSUER });
-    localOrg = await db.organization.create({ name: localOrgName, access_mode: 'request_to_join' });
+    localOrg = await db.organization.create({ name: localOrgName, access_mode: 'request' });
 
     owner = await createUser('hub-owner');
     localAdmin = await createUser('hub-local');

@@ -48,7 +48,7 @@ describe('Organization administration guards', () => {
     admin = await db.user.findOne({ where: { username: 'SomeUser' } });
     orgA = await db.organization.create({ name: orgAName });
     orgB = await db.organization.create({ name: orgBName });
-    openOrg = await db.organization.create({ name: openOrgName, access_mode: 'request_to_join' });
+    openOrg = await db.organization.create({ name: openOrgName, access_mode: 'request' });
     extOrg = await db.organization.create({
       name: extOrgName,
       email: `ext-${uniqueId}@example.com`,

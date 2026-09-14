@@ -407,7 +407,7 @@ const options = {
             },
             access_mode: {
               type: 'string',
-              enum: ['private', 'invite_only', 'request_to_join'],
+              enum: ['private', 'invite', 'request'],
               description: 'Organization visibility and access mode',
               example: 'private',
             },

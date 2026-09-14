@@ -163,7 +163,7 @@ describe('SCIM receiver', () => {
       locale: 'en-US',
       timezone: 'America/Chicago',
       address: { streetAddress: '1 Main St', locality: 'Springfield' },
-      accessMode: 'invite_only',
+      accessMode: 'invite',
       defaultRole: 'admin',
     },
     ...overrides,
@@ -482,7 +482,7 @@ describe('SCIM receiver', () => {
       expect(org.locale).toBe('en-US');
       expect(org.timezone).toBe('America/Chicago');
       expect(org.address).toEqual({ streetAddress: '1 Main St', locality: 'Springfield' });
-      expect(org.access_mode).toBe('invite_only');
+      expect(org.access_mode).toBe('invite');
       expect(org.default_role).toBe('admin');
 
       const membership = await db.UserOrg.findUserOrgRole(userId, org.id);

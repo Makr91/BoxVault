@@ -80,7 +80,7 @@ Open `/register`. The first account gets the global `admin` role and a personal 
 ### 5. Create Your First Organization
 
 1. Open the user menu and choose the organization console
-2. Create an organization: name, description, access mode (`private`, `invite_only` or `request_to_join`)
+2. Create an organization: name, description, access mode (`private`, `invite` or `request`)
 3. Invite members by email; an invitation carries the role `member` or `admin`
 
 Users can belong to several organizations, create boxes in any organization they are a member of, and switch the active organization from the user menu. A service account is scoped to one organization at creation.
@@ -147,7 +147,7 @@ BoxVault reads four plain YAML files from `CONFIG_DIR` (`/etc/boxvault`): `app.c
 
 ### Creating Users
 
-A global admin creates a user inside an organization from the admin page; anyone else joins by invitation, by a join request to a `request_to_join` organization, or by self-registration while `auth.local.local_allow_new_organizations` is on.
+A global admin creates a user inside an organization from the admin page; anyone else joins by invitation, by a join request to a `request` organization, or by self-registration while `auth.local.local_allow_new_organizations` is on.
 
 ### Organization Management
 

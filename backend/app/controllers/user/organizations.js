@@ -71,9 +71,9 @@ const findPersonalOrgUuids = async orgUuids => {
  *                     type: string
  *                     format: date-time
  *                     description: When user joined this organization
- *                   accessMode:
+ *                   access_mode:
  *                     type: string
- *                     enum: [private, invite_only, request_to_join]
+ *                     enum: [private, invite, request]
  *                     description: Organization access mode
  *       401:
  *         description: Authentication required
@@ -118,7 +118,7 @@ const getUserOrganizations = async (req, res) => {
             logo: org.logo,
             display_name: org.display_name,
             url: org.url,
-            accessMode: org.access_mode,
+            access_mode: org.access_mode,
           },
           role: membership.role,
           isPrimary: true,
@@ -156,7 +156,7 @@ const getUserOrganizations = async (req, res) => {
         logo: userOrg.organization.logo,
         display_name: userOrg.organization.display_name,
         url: userOrg.organization.url,
-        accessMode: userOrg.organization.access_mode,
+        access_mode: userOrg.organization.access_mode,
       },
       role: userOrg.role,
       isPrimary: userOrg.organization.id === primaryOrganizationId,

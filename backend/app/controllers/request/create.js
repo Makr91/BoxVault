@@ -12,7 +12,7 @@ const badRequest = (req, res, key) =>
  * /api/organization/{organization}/requests:
  *   post:
  *     summary: Create a join request for an organization
- *     description: Submit a request to join an organization that has 'request_to_join' access mode
+ *     description: Submit a request to join an organization that has 'request' access mode
  *     tags: [Join Requests]
  *     security:
  *       - JwtAuth: []
@@ -101,7 +101,7 @@ export const createJoinRequest = async (req, res) => {
     }
 
     // Check if organization allows join requests
-    if (organization.access_mode !== 'request_to_join') {
+    if (organization.access_mode !== 'request') {
       return problem(res, req, {
         status: 403,
         type: 'forbidden',

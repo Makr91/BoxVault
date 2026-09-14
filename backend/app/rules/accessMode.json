@@ -6,7 +6,7 @@
       "type": "string",
       "minLength": 1,
       "pattern": "\\S",
-      "enum": ["private", "invite_only", "request_to_join"]
+      "enum": ["private", "invite", "request"]
     },
     "default_role": { "type": "string", "enum": ["member", "admin"] }
   }
