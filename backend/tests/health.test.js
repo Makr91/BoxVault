@@ -210,6 +210,7 @@ const mockConfigLoader = {
     auto_detect: true,
   }),
   getSiteConfig: jest.fn().mockReturnValue(null),
+  getOrigin: jest.fn().mockReturnValue('http://localhost:3000'),
   saveConfig: jest.fn().mockResolvedValue([]),
   reloadConfig: jest.fn().mockResolvedValue(),
   getConfigDir: jest.fn().mockReturnValue('/tmp'),

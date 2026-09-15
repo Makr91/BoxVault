@@ -38,6 +38,7 @@ const mockConfigLoader = {
   getRateLimitConfig: actualConfigLoader.getRateLimitConfig,
   getI18nConfig: actualConfigLoader.getI18nConfig,
   getSiteConfig: actualConfigLoader.getSiteConfig,
+  getOrigin: actualConfigLoader.getOrigin,
   saveConfig: actualConfigLoader.saveConfig,
   reloadConfig: actualConfigLoader.reloadConfig,
   getConfigDir: actualConfigLoader.getConfigDir,

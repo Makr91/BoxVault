@@ -374,19 +374,39 @@ const upload = (req, res) => {
     }
 
     let download = await Download.findOne({ where: { name, organizationId: organization.id } });
-    if (download) {
-      if (!canWriteDownload(req, download, membership)) {
-        return problem(res, req, {
-          status: 403,
-          type: 'forbidden',
-          title: req.__('downloads.permissionDenied'),
-        });
-      }
-    } else {
-      const refusal = refused(res, req, 'download', { name });
-      if (refusal) {
-        return refusal;
-      }
+    if (download && !canWriteDownload(req, download, membership)) {
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('downloads.permissionDenied'),
+      });
+    }
+    let release = download
+      ? await DownloadRelease.findOne({ where: { versionNumber, downloadId: download.id } })
+      : null;
+    let patch = release
+      ? await DownloadPatch.findOne({ where: { name: patchName, downloadReleaseId: release.id } })
+      : null;
+    let file = patch
+      ? await DownloadFile.findOne({
+          where: { downloadPatchId: patch.id, [Op.or]: [{ key }, { fileName: key }] },
+        })
+      : null;
+
+    const checks = [
+      [download, 'download', { name }],
+      [release, 'release', { version_number: versionNumber }],
+      [patch, 'patch', { name: patchName }],
+      [file, 'downloadFile', { key }],
+    ];
+    const refusal = checks
+      .filter(([row]) => !row)
+      .reduce((found, [, form, values]) => found || refused(res, req, form, values), null);
+    if (refusal) {
+      return refusal;
+    }
+
+    if (!download) {
       download = await Download.create({
         name,
         published: false,
@@ -395,32 +415,13 @@ const upload = (req, res) => {
         organizationId: organization.id,
       });
     }
-
-    let release = await DownloadRelease.findOne({
-      where: { versionNumber, downloadId: download.id },
-    });
     if (!release) {
-      const refusal = refused(res, req, 'release', { version_number: versionNumber });
-      if (refusal) {
-        return refusal;
-      }
       release = await DownloadRelease.create({ versionNumber, downloadId: download.id });
     }
-
-    let patch = await DownloadPatch.findOne({
-      where: { name: patchName, downloadReleaseId: release.id },
-    });
     if (!patch) {
-      const refusal = refused(res, req, 'patch', { name: patchName });
-      if (refusal) {
-        return refusal;
-      }
       patch = await DownloadPatch.create({ name: patchName, downloadReleaseId: release.id });
     }
 
-    let file = await DownloadFile.findOne({
-      where: { downloadPatchId: patch.id, [Op.or]: [{ key }, { fileName: key }] },
-    });
     if (file) {
       if (file.storagePath) {
         if (file.original) {
@@ -436,10 +437,6 @@ const upload = (req, res) => {
         file = await file.update({ fileName });
       }
     } else {
-      const refusal = refused(res, req, 'downloadFile', { key });
-      if (refusal) {
-        return refusal;
-      }
       file = await DownloadFile.create({
         key,
         fileName,
