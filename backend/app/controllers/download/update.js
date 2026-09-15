@@ -2,7 +2,12 @@ import fs from 'fs';
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
-import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from './helpers.js';
+import {
+  getSecureDownloadPath,
+  isReservedProductName,
+  renameStoragePaths,
+  storagePathFor,
+} from './helpers.js';
 import { notifyDownloadPublished } from './notifications.js';
 const { download: Download, organization: Organization } = db;
 
@@ -121,6 +126,9 @@ const update = async (req, res) => {
     }
 
     if (updatedName && updatedName !== name) {
+      if (isReservedProductName(updatedName)) {
+        return conflict(res, req, '/name', 'reserved');
+      }
       const existingDownload = await Download.findOne({
         where: { name: updatedName, organizationId: req.organizationId },
       });

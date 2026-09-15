@@ -3,16 +3,23 @@ import { createHash } from 'crypto';
 import { Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 import { join, dirname } from 'path';
+import db from '../models/index.js';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { problem } from '../utils/problem.js';
 import { safeUnlink, safeRmdirSync, ensureDirSync, safeExistsSync } from '../utils/fsHelper.js';
 import {
+  PENDING_SEGMENT,
   absolutePath,
   findOriginalByChecksum,
+  getPendingPath,
   getSecureDownloadPath,
+  pendingSummary,
   storagePathFor,
 } from '../controllers/download/helpers.js';
+
+const { downloadPendingUploads: PendingUpload, Sequelize } = db;
+const { Op } = Sequelize;
 
 const CHECKSUM_ALGORITHMS = {
   md5: 'md5',
@@ -261,12 +268,35 @@ const dedupe = async (entities, checksum, finalPath) => {
   return { original: false, linksTo: original.id };
 };
 
-const updateDatabase = async (entities, finalSize, headers, finalPath) => {
-  const { organization, download, release, patch, file } = entities;
+/**
+ * The checksum an assembled file is recorded with: the declared x-checksum
+ * lower-cased with its declared type, else a sha256 computed over the bytes.
+ * @param {Object} headers - The request headers
+ * @param {string} finalPath - The assembled file
+ * @returns {Promise<{checksum: string, checksumType: string}>} The checksum and its type
+ */
+const checksumOf = async (headers, finalPath) => {
   const declared = headers['x-checksum'] || null;
   const declaredType = (headers['x-checksum-type'] || 'NULL').toUpperCase().replace('-', '');
-  const checksum = declared ? declared.toLowerCase() : await digestFile(finalPath, 'sha256');
-  const checksumType = declared ? declaredType : 'SHA256';
+  if (declared) {
+    return { checksum: declared.toLowerCase(), checksumType: declaredType };
+  }
+  return { checksum: await digestFile(finalPath, 'sha256'), checksumType: 'SHA256' };
+};
+
+/**
+ * Record the bytes at their product path on the file row: deduplicated by
+ * checksum against the organization's originals, the storagePath the
+ * product path of the row's file name.
+ * @param {Object} entities - The organization, download, release, patch and file rows
+ * @param {number} finalSize - The size of the bytes
+ * @param {string} checksum - The checksum of the bytes
+ * @param {string} checksumType - The checksum's type
+ * @param {string} finalPath - The file at its product path
+ * @returns {Promise<void>}
+ */
+const recordFile = async (entities, finalSize, checksum, checksumType, finalPath) => {
+  const { organization, download, release, patch, file } = entities;
   const ownership = await dedupe(entities, checksum, finalPath);
 
   await file.update({
@@ -291,9 +321,47 @@ const addressOf = ({ download, release, patch, file }) => ({
   key: file.key,
 });
 
+/**
+ * The target of a level upload: the patch directory, the row's file name,
+ * the address in every answer, the file row recorded on completion.
+ * @param {Object} entities - The organization, download, release, patch and file rows
+ * @returns {{dir: string, fileName: string, details: Function, complete: Function}} The target
+ */
+const levelTarget = entities => {
+  const { organization, download, release, patch, file } = entities;
+  return {
+    dir: getSecureDownloadPath(organization.name, download.name, release.versionNumber, patch.name),
+    fileName: file.fileName,
+    details: () => addressOf(entities),
+    complete: async (finalSize, headers, finalPath) => {
+      const { checksum, checksumType } = await checksumOf(headers, finalPath);
+      await recordFile(entities, finalSize, checksum, checksumType, finalPath);
+      return addressOf(entities);
+    },
+  };
+};
+
+/**
+ * The target of a pending upload: the organization's pending store, the
+ * pending row's file name, `{ id, file_name, size, guess }` in every answer,
+ * the row's size and checksum recorded on completion.
+ * @param {{organization: Object, pending: Object}} context - The organization and the pending upload row
+ * @returns {{dir: string, fileName: string, details: Function, complete: Function}} The target
+ */
+const pendingTarget = ({ organization, pending }) => ({
+  dir: getPendingPath(organization.name, pending.id),
+  fileName: pending.fileName,
+  details: () => pendingSummary(pending),
+  complete: async (finalSize, headers, finalPath) => {
+    const { checksum, checksumType } = await checksumOf(headers, finalPath);
+    await pending.update({ size: finalSize, checksum, checksumType });
+    return pendingSummary(pending);
+  },
+});
+
 const handleChunkedUpload = async (
   req,
-  entities,
+  target,
   tempDir,
   finalPath,
   contentLength,
@@ -354,7 +422,7 @@ const handleChunkedUpload = async (
         }
       }
 
-      await updateDatabase(entities, finalSize, req.headers, finalPath);
+      const extra = await target.complete(finalSize, req.headers, finalPath);
 
       const duration = Date.now() - startTime;
       const speed = Math.round(((finalSize / duration) * 1000) / (1024 * 1024));
@@ -373,7 +441,7 @@ const handleChunkedUpload = async (
             isComplete: true,
             status: 'complete',
             fileSize: finalSize,
-            ...addressOf(entities),
+            ...extra,
           },
         },
       };
@@ -389,7 +457,7 @@ const handleChunkedUpload = async (
           chunksReceived: chunks.length,
           totalChunks,
           currentChunk: chunkIndex,
-          ...addressOf(entities),
+          ...target.details(),
         },
       },
     };
@@ -404,8 +472,62 @@ const handleChunkedUpload = async (
 };
 
 const STALE_TEMP_DIR_MAX_AGE_HOURS_FALLBACK = 24;
+const PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-const sweepStaleTempDirs = () => {
+const removePendingDir = (dir, reason) => {
+  log.app.info('Removing stale pending upload directory:', { path: dir, reason });
+  safeRmdirSync(dir);
+};
+
+/**
+ * Drop every pending upload nobody placed within a day: the rows older than
+ * the day with their directories, and every directory of the pending stores
+ * found by the walk that has no row and is older than the day.
+ * @param {Array<string>} pendingDirs - The `.pending` directories the walk found
+ * @returns {Promise<void>}
+ */
+const sweepPendingUploads = async pendingDirs => {
+  const cutoff = new Date(Date.now() - PENDING_MAX_AGE_MS);
+  const stale = await PendingUpload.findAll({ where: { createdAt: { [Op.lt]: cutoff } } });
+  await Promise.all(
+    stale.map(async row => {
+      removePendingDir(dirname(absolutePath(row.storagePath)), 'row older than a day');
+      await row.destroy();
+    })
+  );
+  const orphans = pendingDirs.flatMap(dir => {
+    try {
+      return readdirSync(dir, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => ({ id: entry.name, path: join(dir, entry.name) }));
+    } catch {
+      return [];
+    }
+  });
+  await Promise.all(
+    orphans.map(async orphan => {
+      const row = await PendingUpload.findByPk(orphan.id);
+      if (row) {
+        return;
+      }
+      try {
+        if (statSync(orphan.path).mtimeMs < cutoff.getTime()) {
+          removePendingDir(orphan.path, 'no row, older than a day');
+        }
+      } catch (err) {
+        log.app.warn(`Could not inspect pending directory ${orphan.path}: ${err.message}`);
+      }
+    })
+  );
+};
+
+/**
+ * The one sweep of the storage tree, run at chunk 0 of a download upload:
+ * stale chunk `.temp` directories removed by their mtime, and the pending
+ * uploads older than a day removed with their rows.
+ * @returns {Promise<void>}
+ */
+const sweepStaleTempDirs = async () => {
   let appConfig;
   try {
     appConfig = loadConfig('app');
@@ -424,6 +546,7 @@ const sweepStaleTempDirs = () => {
       ? configuredMaxAgeHours
       : STALE_TEMP_DIR_MAX_AGE_HOURS_FALLBACK;
   const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
+  const pendingDirs = [];
   const walk = (dir, depth) => {
     let entries;
     try {
@@ -446,16 +569,20 @@ const sweepStaleTempDirs = () => {
           log.app.warn(`Could not inspect temp directory ${fullPath}: ${err.message}`);
         }
       } else if (depth < 6) {
+        if (entry.name === PENDING_SEGMENT) {
+          pendingDirs.push(fullPath);
+        }
         walk(fullPath, depth + 1);
       }
     }
   };
   walk(storageRoot, 0);
+  await sweepPendingUploads(pendingDirs);
 };
 
 const handleSingleUpload = async (
   req,
-  entities,
+  target,
   finalPath,
   contentLength,
   isChunked,
@@ -519,7 +646,7 @@ const handleSingleUpload = async (
     }
   }
 
-  await updateDatabase(entities, finalSize, req.headers, finalPath);
+  const extra = await target.complete(finalSize, req.headers, finalPath);
 
   const duration = Date.now() - startTime;
   const speed = Math.round(((finalSize / duration) * 1000) / (1024 * 1024));
@@ -538,22 +665,23 @@ const handleSingleUpload = async (
         isComplete: true,
         status: 'complete',
         fileSize: finalSize,
-        ...addressOf(entities),
+        ...extra,
       },
     },
   };
 };
 
 /**
- * Stream a download file to its product path, whole or in chunks: the same
- * shape as the box upload middleware, the file stored under the real file
- * name of its row and deduplicated by checksum against the organization's
- * originals. Answers the request itself.
- * @param {import('express').Request} req - The request, req.entities carrying organization, download, release, patch and file
+ * Stream the bytes of one upload into a target directory, whole or in
+ * chunks: the same shape as the box upload middleware, the file stored under
+ * the target's file name, the target's completion recording it. Answers the
+ * request itself.
+ * @param {import('express').Request} req - The request
  * @param {import('express').Response} res - The response
+ * @param {{dir: string, fileName: string, details: Function, complete: Function}} target - Where the bytes go and what the answers carry
  * @returns {Promise<void>}
  */
-const uploadDownloadMiddleware = async (req, res) => {
+const runUpload = async (req, res, target) => {
   log.app.info('=== DOWNLOAD UPLOAD MIDDLEWARE ENTRY ===', {
     method: req.method,
     url: req.url,
@@ -577,15 +705,10 @@ const uploadDownloadMiddleware = async (req, res) => {
 
   try {
     const maxFileSize = getMaxFileSize();
-    const { entities } = req;
-    const { organization, download, release, patch, file } = entities;
 
     log.app.info('Download upload middleware processing request for:', {
-      organization: organization.name,
-      download: download.name,
-      release: release.versionNumber,
-      patch: patch.name,
-      file: file.fileName,
+      dir: target.dir,
+      file: target.fileName,
     });
 
     const isChunked = req.headers['transfer-encoding'] === 'chunked';
@@ -602,33 +725,28 @@ const uploadDownloadMiddleware = async (req, res) => {
       return problem(res, req, { status: 400, type: 'bad-request', errors: refused });
     }
 
-    const uploadDir = getSecureDownloadPath(
-      organization.name,
-      download.name,
-      release.versionNumber,
-      patch.name
-    );
+    const uploadDir = target.dir;
 
     log.app.info('Creating upload directory:', { uploadDir });
     ensureDirSync(uploadDir);
-    finalPath = join(uploadDir, file.fileName);
+    finalPath = join(uploadDir, target.fileName);
 
     const isMultipart =
       req.headers['x-chunk-index'] !== undefined || req.headers['x-total-chunks'] !== undefined;
     const chunkIndex = isMultipart ? Number(req.headers['x-chunk-index']) : NaN;
     const totalChunks = isMultipart ? Number(req.headers['x-total-chunks']) : NaN;
 
-    const tempDir = join(uploadDir, '.temp', file.fileName);
+    const tempDir = join(uploadDir, '.temp', target.fileName);
     if (isMultipart) {
       if (chunkIndex === 0) {
-        sweepStaleTempDirs();
+        await sweepStaleTempDirs();
       }
       log.app.info('Creating temp directory for chunks:', { tempDir });
       ensureDirSync(tempDir);
     }
 
     log.app.info('=== STARTING DOWNLOAD FILE UPLOAD PROCESS ===', {
-      fileName: file.fileName,
+      fileName: target.fileName,
       fileSize: contentLength,
       checksum: req.headers['x-checksum'] || 'none',
       checksumType: req.headers['x-checksum-type'] || 'NULL',
@@ -642,7 +760,7 @@ const uploadDownloadMiddleware = async (req, res) => {
     if (isMultipart) {
       result = await handleChunkedUpload(
         req,
-        entities,
+        target,
         tempDir,
         finalPath,
         contentLength,
@@ -652,7 +770,7 @@ const uploadDownloadMiddleware = async (req, res) => {
     } else {
       result = await handleSingleUpload(
         req,
-        entities,
+        target,
         finalPath,
         contentLength,
         isChunked,
@@ -687,4 +805,24 @@ const uploadDownloadMiddleware = async (req, res) => {
   return undefined;
 };
 
-export const uploadDownloadFile = uploadDownloadMiddleware;
+/**
+ * Stream a download file to its product path, whole or in chunks, the file
+ * stored under the real file name of its row and deduplicated by checksum
+ * against the organization's originals. Answers the request itself.
+ * @param {import('express').Request} req - The request, req.entities carrying organization, download, release, patch and file
+ * @param {import('express').Response} res - The response
+ * @returns {Promise<void>}
+ */
+const uploadDownloadFile = (req, res) => runUpload(req, res, levelTarget(req.entities));
+
+/**
+ * Stream a file into the organization's pending store, whole or in chunks,
+ * every answer carrying `{ id, file_name, size, guess }` beside
+ * `isComplete` and `status`. Answers the request itself.
+ * @param {import('express').Request} req - The request, req.pending carrying organization and the pending upload row
+ * @param {import('express').Response} res - The response
+ * @returns {Promise<void>}
+ */
+const uploadPendingFile = (req, res) => runUpload(req, res, pendingTarget(req.pending));
+
+export { uploadDownloadFile, uploadPendingFile, recordFile, addressOf };

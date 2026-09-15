@@ -13,6 +13,16 @@ const {
 const { Op } = Sequelize;
 
 const DOWNLOADS_SEGMENT = 'downloads';
+const PENDING_SEGMENT = '.pending';
+const RESERVED_PRODUCT_NAMES = new Set(['pending']);
+
+/**
+ * Whether a product name is a segment the download routes own, so no
+ * product may take it; compared case-insensitively.
+ * @param {string} name - The product name
+ * @returns {boolean}
+ */
+const isReservedProductName = name => RESERVED_PRODUCT_NAMES.has(String(name).toLowerCase());
 
 /**
  * Securely construct a path within the downloads tree of an organization:
@@ -35,6 +45,55 @@ const storagePathFor = (organization, ...pathSegments) =>
   [organization, DOWNLOADS_SEGMENT, ...pathSegments].join('/');
 
 const absolutePath = storagePath => join(getStorageRoot(), storagePath);
+
+/**
+ * The pending store of an organization: `<root>/<org>/downloads/.pending/<id>`,
+ * the file name appended when given.
+ * @param {string} organization - Organization name
+ * @param {string} id - The pending upload's id
+ * @param {...string} rest - The file name
+ * @returns {string} Secure path within the storage root
+ */
+const getPendingPath = (organization, id, ...rest) =>
+  getSecureDownloadPath(organization, PENDING_SEGMENT, id, ...rest);
+
+/**
+ * The storagePath a pending upload row carries.
+ * @param {string} organization - Organization name
+ * @param {string} id - The pending upload's id
+ * @param {string} fileName - The real file name
+ * @returns {string} The relative storage path
+ */
+const pendingStoragePathFor = (organization, id, fileName) =>
+  storagePathFor(organization, PENDING_SEGMENT, id, fileName);
+
+/**
+ * The guess a pending upload row carries, the words its file name gave.
+ * @param {Object} pending - The pending upload row
+ * @returns {{product: string, release: string, patch: string, key: string, kind: string, platform: string, architecture: string, language: string}} The guess
+ */
+const pendingGuess = pending => ({
+  product: pending.guessProduct,
+  release: pending.guessRelease,
+  patch: pending.guessPatch,
+  key: pending.guessKey,
+  kind: pending.guessKind,
+  platform: pending.guessPlatform,
+  architecture: pending.guessArchitecture,
+  language: pending.guessLanguage,
+});
+
+/**
+ * The members every answer of the pending routes carries.
+ * @param {Object} pending - The pending upload row
+ * @returns {{id: string, file_name: string, size: number, guess: Object}} The summary
+ */
+const pendingSummary = pending => ({
+  id: pending.id,
+  file_name: pending.fileName,
+  size: Number(pending.size),
+  guess: pendingGuess(pending),
+});
 
 /**
  * Total downloads of a product: the sum of every file's downloadCount across
@@ -228,9 +287,15 @@ const renameStoragePaths = async (oldPrefix, newPrefix) => {
 };
 
 export {
+  PENDING_SEGMENT,
+  isReservedProductName,
   getSecureDownloadPath,
   storagePathFor,
   absolutePath,
+  getPendingPath,
+  pendingStoragePathFor,
+  pendingGuess,
+  pendingSummary,
   sumDownloadDownloads,
   filesWithCounts,
   withCounts,

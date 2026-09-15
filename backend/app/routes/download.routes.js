@@ -37,6 +37,10 @@ import { info as fileInfo } from '../controllers/download/file/info.js';
 import { download as downloadFile } from '../controllers/download/file/download.js';
 import { getDownloadLink } from '../controllers/download/file/link.js';
 import { remove as removeFile } from '../controllers/download/file/remove.js';
+import { upload as uploadPending } from '../controllers/download/pending/upload.js';
+import { info as pendingInfo } from '../controllers/download/pending/info.js';
+import { place as placePending } from '../controllers/download/pending/place.js';
+import { remove as removePending } from '../controllers/download/pending/remove.js';
 import { bulk as bulkDownloads } from '../controllers/download/bulk.js';
 import { bulk as bulkReleases } from '../controllers/download/release/bulk.js';
 import { bulk as bulkPatches } from '../controllers/download/patch/bulk.js';
@@ -52,6 +56,35 @@ router.use((req, res, next) => {
 
 router.get('/downloads/discover', sessionAuth, discoverAll);
 router.get('/organization/:organization/download', sessionAuth, findAll);
+
+router.post(
+  '/organization/:organization/download/pending/upload',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  uploadPending
+);
+
+router.get(
+  '/organization/:organization/download/pending/:id/info',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  pendingInfo
+);
+
+router.post(
+  '/organization/:organization/download/pending/:id/place',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  placePending
+);
+
+router.delete(
+  '/organization/:organization/download/pending/:id',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  removePending
+);
+
 router.get('/organization/:organization/download/:name', sessionAuth, findOne);
 
 router.post(

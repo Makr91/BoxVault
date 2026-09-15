@@ -2,7 +2,7 @@ import fs from 'fs';
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
-import { getSecureDownloadPath } from './helpers.js';
+import { getSecureDownloadPath, isReservedProductName } from './helpers.js';
 const { download: Download } = db;
 
 /**
@@ -89,6 +89,10 @@ const create = async (req, res) => {
   } = req.body;
 
   try {
+    if (isReservedProductName(name)) {
+      return conflict(res, req, '/name', 'reserved');
+    }
+
     const existingDownload = await Download.findOne({
       where: { name, organizationId: req.organizationId },
     });

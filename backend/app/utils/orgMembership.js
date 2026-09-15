@@ -208,6 +208,18 @@ const canWriteDownload = (caller, download, membership) =>
   canWriteInOrg(membership) &&
   (ownsDownload(caller, download, membership) || MANAGING_ROLES.includes(membership.role));
 
+/**
+ * Whether the caller may place or discard a pending upload: the member who
+ * uploaded it, or an admin or owner of its organization; a guest never.
+ * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
+ * @param {{userId: number}} pending - The pending upload row
+ * @param {{role: string}|null} membership - The caller's membership in the upload's organization
+ * @returns {boolean} True when the caller may place or discard it
+ */
+const canWritePendingUpload = (caller, pending, membership) =>
+  canWriteInOrg(membership) &&
+  (ownsDownload(caller, pending, membership) || MANAGING_ROLES.includes(membership.role));
+
 export {
   ORG_ROLES,
   ROLE_RANK,
@@ -222,4 +234,5 @@ export {
   canWriteBox,
   ownsDownload,
   canWriteDownload,
+  canWritePendingUpload,
 };

@@ -74,6 +74,10 @@ const initializeDatabase = async () => {
   db.downloadPatches = (await import('./download-patch.model.js')).default(sequelize, Sequelize);
   db.downloadFiles = (await import('./download-file.model.js')).default(sequelize, Sequelize);
   db.downloadWatcher = (await import('./download-watcher.model.js')).default(sequelize, Sequelize);
+  db.downloadPendingUploads = (await import('./download-pending-upload.model.js')).default(
+    sequelize,
+    Sequelize
+  );
   db.pushSubscription = (await import('./push-subscription.model.js')).default(
     sequelize,
     Sequelize

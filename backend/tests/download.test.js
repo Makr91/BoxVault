@@ -121,6 +121,24 @@ describe('Download API', () => {
       ]);
     });
 
+    it('should refuse the reserved product name pending as taken', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken)
+        .send({ name: 'pending' });
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/name',
+          rule: 'unique',
+          params: { scope: 'reserved' },
+        }),
+      ]);
+      expect(await db.download.count({ where: { name: 'pending', organizationId: org.id } })).toBe(
+        0
+      );
+    });
+
     it('should reject a docs_url that is not a URI', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/download`)

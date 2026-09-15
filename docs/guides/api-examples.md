@@ -404,6 +404,75 @@ curl --progress-bar \
 
 A product name that is not a slug, or a release or patch that is not an identifier, is refused with `422` and the pointer of the failing part.
 
+### Upload File in Two Steps
+
+A person's upload lands the bytes first and names the levels after. The pending route takes the same chunks (or the whole file) into the organization's pending store and validates nothing but the upload headers and the file name; every chunk answers `details.isComplete` and `details.status` beside `{ id, file_name, size, guess }`, the guess read from the file name and empty where the name gives nothing:
+
+```bash
+curl -X POST "https://boxvault.example.com/api/organization/myorg/download/pending/upload" \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-File-Name: Domino_14.5.1_Linux_English.tar" \
+  --upload-file Domino_14.5.1_Linux_English.tar
+```
+
+**Response:**
+
+```json
+{
+  "message": "File upload completed",
+  "details": {
+    "isComplete": true,
+    "status": "complete",
+    "fileSize": 1508591037,
+    "id": "3f9c2a7e0b6d4e1f8a2c5d7b9e0f1a2b",
+    "file_name": "Domino_14.5.1_Linux_English.tar",
+    "size": 1508591037,
+    "guess": {
+      "product": "domino",
+      "release": "14.5.1",
+      "patch": "release",
+      "key": "Domino_14.5.1_Linux_English.tar",
+      "kind": "other",
+      "platform": "linux",
+      "architecture": "any",
+      "language": "en"
+    }
+  }
+}
+```
+
+`GET …/download/pending/{id}/info` answers the assembled size for a chunked upload's poll. Placing names the levels and the file's members, validated as the level routes validate them; the absent product, release and patch are created, the bytes move to the product path and the answer is the file's address:
+
+```bash
+curl -X POST "https://boxvault.example.com/api/organization/myorg/download/pending/3f9c2a7e0b6d4e1f8a2c5d7b9e0f1a2b/place" \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product": "domino-server",
+    "release": "14.5.1",
+    "patch": "release",
+    "key": "linux-x64",
+    "kind": "installer",
+    "platform": "linux",
+    "architecture": "x64",
+    "language": "en"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "product": "domino-server",
+  "release": "14.5.1",
+  "patch": "release",
+  "key": "linux-x64"
+}
+```
+
+A blank release answers `422` with the pointer `/version_number`. `DELETE …/download/pending/{id}` discards a pending upload; the member who uploaded it, or an admin or owner of the organization, may place or discard it, and the server drops a pending upload nobody placed after a day.
+
 ### Set the Patch Kind
 
 ```bash

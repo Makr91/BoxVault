@@ -278,7 +278,11 @@ log.app.info('i18n internationalization middleware applied');
 // Configure body parsers with appropriate limits, but exclude file upload route
 app.use((req, res, next) => {
   // Skip body parsing for file uploads
-  if (req.url.includes('/file/upload') || /\/download\/.+\/file\/[^/]+\/upload/.test(req.url)) {
+  if (
+    req.url.includes('/file/upload') ||
+    req.url.includes('/download/pending/upload') ||
+    /\/download\/.+\/file\/[^/]+\/upload/.test(req.url)
+  ) {
     // Set upload-specific headers
     res.setHeader('Cache-Control', 'no-transform');
     res.setHeader('X-Content-Type-Options', 'nosniff');

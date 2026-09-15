@@ -7,11 +7,11 @@ import {
   canWriteInOrg,
   resolveOrgMembership,
 } from '../../../utils/orgMembership.js';
-import { problem, refuse } from '../../../utils/problem.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getRulesDocument } from '../../../utils/rules.js';
 import { validateObject } from '../../../utils/validation.js';
 import { uploadDownloadFile } from '../../../middleware/uploadDownload.js';
-import { absolutePath, promoteOriginal } from '../helpers.js';
+import { absolutePath, isReservedProductName, promoteOriginal } from '../helpers.js';
 
 const {
   organization: Organization,
@@ -29,11 +29,47 @@ const EXTENSION_PATTERN = /(?:\.[A-Za-z][A-Za-z0-9]*)+$/;
 const TOKEN_SEPARATOR = /[_\- ]+/;
 const VERSION_PATTERN = /^\d+(?:\.\d+)*$/;
 
+/**
+ * Refuse the write when the values break the named form of the rules
+ * document, 422 with pointers (409 when every failing rule is unique).
+ * @param {import('express').Response} res - The response
+ * @param {import('express').Request} req - The request (i18n)
+ * @param {string} form - A key of the rules document's forms
+ * @param {Object} values - The values to evaluate
+ * @returns {import('express').Response|null} The refusal, or null when the values pass
+ */
 const refused = (res, req, form, values) => {
   const document = getRulesDocument();
   const errors = validateObject(document.forms[form], values, document);
   return errors.length > 0 ? refuse(res, req, errors) : null;
 };
+
+/**
+ * Whether a file name may be stored: letters, digits, dot, dash and
+ * underscore, no `..`, at most 255 characters.
+ * @param {string} fileName - The real file name
+ * @returns {boolean} True when the name is allowed
+ */
+const isAllowedFileName = fileName =>
+  FILENAME_PATTERN.test(fileName) &&
+  !fileName.includes('..') &&
+  fileName.length <= FILENAME_MAX_LENGTH;
+
+/**
+ * The extension chain of a file name, lower-cased (`.tar.gz`), empty when none.
+ * @param {string} fileName - The real file name
+ * @returns {string} The extension chain
+ */
+const extensionOf = fileName => (fileName.match(EXTENSION_PATTERN) || [''])[0].toLowerCase();
+
+/**
+ * The tokens of a file name's stem: the extension chain stripped, the stem
+ * split on underscore, dash and space.
+ * @param {string} fileName - The real file name
+ * @returns {Array<string>} The tokens
+ */
+const tokensOf = fileName =>
+  fileName.replace(EXTENSION_PATTERN, '').split(TOKEN_SEPARATOR).filter(Boolean);
 
 /**
  * The product slug and the release identifier a file name carries: the
@@ -46,7 +82,7 @@ const refused = (res, req, form, values) => {
  * @returns {{ name: string, versionNumber: string }} The guessed levels
  */
 const levelsFromFileName = fileName => {
-  const tokens = fileName.replace(EXTENSION_PATTERN, '').split(TOKEN_SEPARATOR).filter(Boolean);
+  const tokens = tokensOf(fileName);
   const at = tokens.findIndex(token => VERSION_PATTERN.test(token));
   return {
     name: tokens
@@ -365,16 +401,16 @@ const upload = (req, res) => {
       });
     }
 
-    if (
-      !FILENAME_PATTERN.test(fileName) ||
-      fileName.includes('..') ||
-      fileName.length > FILENAME_MAX_LENGTH
-    ) {
+    if (!isAllowedFileName(fileName)) {
       return problem(res, req, {
         status: 400,
         type: 'bad-request',
         title: req.__('files.invalidFileName'),
       });
+    }
+
+    if (isReservedProductName(name)) {
+      return conflict(res, req, '/name', 'reserved');
     }
 
     let download = await Download.findOne({ where: { name, organizationId: organization.id } });
@@ -489,4 +525,4 @@ const upload = (req, res) => {
   });
 };
 
-export { upload };
+export { upload, refused, isAllowedFileName, extensionOf, tokensOf, levelsFromFileName };
