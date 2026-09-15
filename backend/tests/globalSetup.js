@@ -46,6 +46,18 @@ export default () => {
       console_enabled: true,
       log_directory: path.join(__dirname, '__test_logs__'),
     },
+    sites: {
+      'downloads.test': {
+        brand: {
+          name: 'Test Downloads',
+          logo_url: '/brand/test.svg',
+          default_theme: 'dark',
+          pack: { name: 'testpack', css: '/themes/testpack/testpack.css?v=abc' },
+        },
+        collections: ['downloads'],
+        links: { docs: 'https://docs.test', contact: 'help@test' },
+      },
+    },
   };
 
   const authConfig = {

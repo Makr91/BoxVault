@@ -119,6 +119,13 @@ const getI18nConfig = () => {
   };
 };
 
+/**
+ * The sites map entry of one hostname, or null for the unnamed hostname
+ * @param {string} hostname - The request's hostname
+ * @returns {Object|null} The site entry
+ */
+const getSiteConfig = hostname => loadConfig('app').sites?.[hostname] || null;
+
 export {
   CONFIG_NAMES,
   isProduction,
@@ -131,6 +138,7 @@ export {
   reloadConfig,
   getRateLimitConfig,
   getI18nConfig,
+  getSiteConfig,
 };
 
 export default {
@@ -145,4 +153,5 @@ export default {
   reloadConfig,
   getRateLimitConfig,
   getI18nConfig,
+  getSiteConfig,
 };

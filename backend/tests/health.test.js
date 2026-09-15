@@ -209,6 +209,7 @@ const mockConfigLoader = {
     fallback_language: 'en',
     auto_detect: true,
   }),
+  getSiteConfig: jest.fn().mockReturnValue(null),
   saveConfig: jest.fn().mockResolvedValue([]),
   reloadConfig: jest.fn().mockResolvedValue(),
   getConfigDir: jest.fn().mockReturnValue('/tmp'),

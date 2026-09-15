@@ -16,6 +16,12 @@ describe('Search finders across the catalog', () => {
   const architectureName = `arch-${uniqueId}`;
   const boxChecksum = `abcdef${uniqueId}000000000000000000`;
   const isoChecksum = `fedcba${uniqueId}000000000000000000`;
+  const downloadName = `sdl-${uniqueId}`;
+  const familyTerm = `fam-${uniqueId}`;
+  const releaseNumber = `v${uniqueId}c`;
+  const patchName = `fp-${uniqueId}`;
+  const downloadFileName = `Domino-${uniqueId}.tar`;
+  const downloadChecksum = `dcba00${uniqueId}000000000000000000`;
   const metaTerm = `zzmeta${uniqueId}`;
   const numberTerm = '987650199';
   let org;
@@ -110,9 +116,38 @@ describe('Search finders across the catalog', () => {
       storagePath: `iso/${uniqueId}.iso`,
       isoVersionId: isoVersion.id,
     });
+
+    const download = await db.download.create({
+      name: downloadName,
+      description: 'download',
+      family: familyTerm,
+      vendor: `ven-${uniqueId}`,
+      isPublic: true,
+      published: true,
+      organizationId: org.id,
+      userId: owner.id,
+    });
+    const release = await db.downloadReleases.create({
+      versionNumber: releaseNumber,
+      downloadId: download.id,
+    });
+    const patch = await db.downloadPatches.create({
+      name: patchName,
+      kind: 'fixpack',
+      downloadReleaseId: release.id,
+    });
+    await db.downloadFiles.create({
+      key: 'linux-x64',
+      fileName: downloadFileName,
+      checksum: downloadChecksum,
+      checksumType: 'SHA256',
+      fileSize: 10,
+      downloadPatchId: patch.id,
+    });
   });
 
   afterAll(async () => {
+    await db.download.destroy({ where: { organizationId: org.id } });
     await db.iso.destroy({ where: { organizationId: org.id } });
     await db.box.destroy({ where: { organizationId: org.id } });
     await org.destroy();
@@ -127,13 +162,64 @@ describe('Search finders across the catalog', () => {
     ]);
   });
 
-  it('should find box and ISO versions', async () => {
+  it('should find the download as an item by name and by family', async () => {
+    const byName = await search({ q: downloadName, kinds: 'item' });
+    expect(byName.statusCode).toBe(200);
+    expect(byName.body.results).toEqual([
+      expect.objectContaining({
+        kind: 'item',
+        collection: 'downloads',
+        org: orgName,
+        name: downloadName,
+        subtitle: `${orgName} · downloads`,
+        matched: 'name',
+      }),
+    ]);
+    const byFamily = await search({ q: familyTerm, kinds: 'item' });
+    expect(byFamily.body.results).toEqual([
+      expect.objectContaining({ collection: 'downloads', name: downloadName, matched: 'family' }),
+    ]);
+  });
+
+  it('should find box, ISO and download versions', async () => {
     const res = await search({ q: `v${uniqueId}`, kinds: 'version' });
     expect(res.body.results.map(row => [row.collection, row.version])).toEqual([
       ['boxes', boxVersionNumber],
       ['isos', isoVersionNumber],
+      ['downloads', releaseNumber],
     ]);
     expect(res.body.results[1].subtitle).toBe(`${orgName} · isos · ${isoName}`);
+    expect(res.body.results[2].subtitle).toBe(`${orgName} · downloads · ${downloadName}`);
+  });
+
+  it('should find patches as providers and files as architectures', async () => {
+    const patch = await search({ q: patchName, kinds: 'provider' });
+    expect(patch.body.results).toEqual([
+      expect.objectContaining({
+        kind: 'provider',
+        collection: 'downloads',
+        version: releaseNumber,
+        provider: patchName,
+        subtitle: `${orgName} · downloads · ${downloadName} · ${releaseNumber}`,
+      }),
+    ]);
+    const byChecksum = await search({ q: downloadChecksum.slice(0, 10), kinds: 'architecture' });
+    expect(byChecksum.body.results).toEqual([
+      expect.objectContaining({
+        kind: 'architecture',
+        collection: 'downloads',
+        version: releaseNumber,
+        provider: patchName,
+        architecture: 'linux-x64',
+        title: downloadFileName,
+        subtitle: `${orgName} · downloads · ${downloadName} · ${releaseNumber} · ${patchName}`,
+        matched: 'checksum',
+      }),
+    ]);
+    const byFileName = await search({ q: downloadFileName, kinds: 'architecture' });
+    expect(byFileName.body.results).toEqual([
+      expect.objectContaining({ architecture: 'linux-x64', matched: 'fileName' }),
+    ]);
   });
 
   it('should find providers and architectures with their chain', async () => {

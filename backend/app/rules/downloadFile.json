@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "required": ["key"],
+  "properties": {
+    "key": { "$ref": "#/$defs/identifier", "minLength": 1, "pattern": "\\S", "unique": "patch" },
+    "file_name": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "installer",
+        "fixpack",
+        "hotfix",
+        "interim-fix",
+        "container-image",
+        "package",
+        "template",
+        "notes",
+        "tool",
+        "other"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["linux", "windows", "macos", "omnios", "other", "any"]
+    },
+    "architecture": { "type": "string", "enum": ["x64", "x86", "arm64", "other", "any"] },
+    "language": { "$ref": "#/$defs/languageTag" },
+    "variant": { "type": "string" },
+    "checksum_type": {
+      "type": "string",
+      "enum": ["NULL", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"]
+    },
+    "checksum": { "$ref": "#/$defs/hex" }
+  }
+}

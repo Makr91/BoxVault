@@ -289,6 +289,183 @@ console.log(bytesToGB(1508591037)); // Outputs: "1.40"
 
 ---
 
+## Downloads
+
+A download product owns releases, a release owns patches, and a patch owns files. Visibility: a public, published product is accessible to anyone; a published, private product to anyone in the same organization; an unpublished product to no one but the user who uploaded it, not even people in their organization. Any organization member can create a product; the product's owner, or an admin or owner of the organization, adds releases, patches and files and updates or deletes them.
+
+### Create Product
+
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/download \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "domino-server",
+    "description": "HCL Domino server installers and fix packs",
+    "family": "HCL Domino",
+    "vendor": "HCL",
+    "is_public": false
+  }'
+```
+
+A new product is unpublished until you publish it.
+
+### Create Release
+
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/download/domino-server/release \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version_number": "14.5.1",
+    "description": "Domino 14.5.1"
+  }'
+```
+
+### Create Patch
+
+The release itself is the patch named `release`; fix packs, interim fixes and hotfixes are patches beside it.
+
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "FP1",
+    "kind": "fixpack",
+    "released_at": "2026-07-16"
+  }'
+```
+
+### Create File
+
+```bash
+curl -X POST https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "linux-x64",
+    "file_name": "Domino_1451FP1_Linux_English.tar",
+    "kind": "fixpack",
+    "platform": "linux",
+    "architecture": "x64",
+    "language": "en",
+    "checksum_type": "SHA256",
+    "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }'
+```
+
+### Upload File in Chunks
+
+The web interface uploads in 5 MB chunks; the same route takes them from curl. Split the file, send one request per chunk with its index, and poll the file info until `fileSize` is set:
+
+```bash
+split -b 5m -d -a 4 Domino_1451FP1_Linux_English.tar chunk-
+
+TOTAL=$(ls chunk-* | wc -l)
+INDEX=0
+for CHUNK in chunk-*; do
+  curl -X POST "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/upload" \
+    -H "x-access-token: YOUR_JWT_TOKEN" \
+    -H "Content-Type: application/octet-stream" \
+    -H "X-File-Name: Domino_1451FP1_Linux_English.tar" \
+    -H "X-Checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" \
+    -H "X-Checksum-Type: sha256" \
+    -H "X-Chunk-Index: $INDEX" \
+    -H "X-Total-Chunks: $TOTAL" \
+    --upload-file "$CHUNK"
+  INDEX=$((INDEX + 1))
+done
+
+curl "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/info" \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+### Upload File in One Call
+
+One request with the whole file creates the product, the release, the patch and the file row when they are absent, with the defaults: the product unpublished and owned by you, the patch `release` with kind `release`, the file kind `other`, platform `any`, architecture `any`, language `any`, the key from the URL and the file name from `X-File-Name`. Meant for CI with a service account:
+
+```bash
+curl --progress-bar \
+  --max-time 0 \
+  --connect-timeout 0 \
+  --retry 5 \
+  --retry-delay 10 \
+  --retry-max-time 0 \
+  -o upload_response.txt \
+  -X POST "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/upload" \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/octet-stream" \
+  -H "X-File-Name: Domino_1451FP1_Linux_English.tar" \
+  -H "X-Checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" \
+  -H "X-Checksum-Type: sha256" \
+  --upload-file Domino_1451FP1_Linux_English.tar
+```
+
+A product name that is not a slug, or a release or patch that is not an identifier, is refused with `422` and the pointer of the failing part.
+
+### Set the Patch Kind
+
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1 \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "kind": "fixpack", "released_at": "2026-07-16" }'
+```
+
+### Publish Product
+
+```bash
+curl -X PUT https://boxvault.example.com/api/organization/myorg/download/domino-server \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "published": true }'
+```
+
+### Get Download Link
+
+```bash
+curl -X POST "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/get-download-link" \
+  -H "x-access-token: YOUR_JWT_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "downloadUrl": "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/download?token=..."
+}
+```
+
+### Download File
+
+A public, published product needs no credential; a private one takes a service-account key as Basic or Bearer auth, or the tokened link above:
+
+```bash
+curl -O -J "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/download"
+
+curl -O -J "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/download" \
+  -H "Authorization: Bearer RAW_SERVICE_ACCOUNT_TOKEN"
+```
+
+The file name is accepted in place of the key, so a fetch saves the file under its own name:
+
+```bash
+curl -O -J "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/Domino_1451FP1_Linux_English.tar/download"
+```
+
+### One Address for the Page and the Bytes
+
+The browser address of a file answers the patch page to a browser (an `Accept` naming `text/html`) and the bytes to anything else, with `Content-Disposition: attachment` and the file name:
+
+```bash
+curl -O -J "https://boxvault.example.com/myorg/downloads/domino-server/14.5.1/FP1/Domino_1451FP1_Linux_English.tar"
+```
+
+The product, release and patch addresses answer their JSON the same way. On a hostname whose `sites.<host>.collections` starts with `downloads`, the `downloads` segment is dropped: `https://downloads.example.com/myorg/domino-server/14.5.1/FP1/Domino_1451FP1_Linux_English.tar`.
+
+---
+
 ## Service Account Management
 
 ### Create Service Account

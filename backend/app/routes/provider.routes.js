@@ -7,6 +7,7 @@ import { findOne } from '../controllers/provider/findone.js';
 import { update } from '../controllers/provider/update.js';
 import { delete as deleteProvider } from '../controllers/provider/delete.js';
 import { deleteAllByVersion } from '../controllers/provider/deleteallbyversion.js';
+import { bulk as bulkProviders } from '../controllers/provider/bulk.js';
 
 const router = Router();
 
@@ -58,6 +59,18 @@ router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
   deleteProvider
+);
+
+router.post(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/bulk',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.attachBox,
+    verifyOrgAccess.attachProvider,
+    validateBody('bulkLeaf'),
+  ],
+  bulkProviders
 );
 
 router.delete(

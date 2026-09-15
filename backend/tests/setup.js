@@ -59,6 +59,18 @@ const appConfig = {
     architecture_operations_max_requests: 1000000,
     auth_max_requests: 1000000,
   },
+  sites: {
+    'downloads.test': {
+      brand: {
+        name: 'Test Downloads',
+        logo_url: '/brand/test.svg',
+        default_theme: 'dark',
+        pack: { name: 'testpack', css: '/themes/testpack/testpack.css?v=abc' },
+      },
+      collections: ['downloads'],
+      links: { docs: 'https://docs.test', contact: 'help@test' },
+    },
+  },
 };
 
 const authConfig = {

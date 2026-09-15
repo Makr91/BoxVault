@@ -20,6 +20,10 @@ const {
   iso: Iso,
   isoVersions: IsoVersion,
   isoFiles: IsoFile,
+  download: Download,
+  downloadReleases: DownloadRelease,
+  downloadPatches: DownloadPatch,
+  downloadFiles: DownloadFile,
   Sequelize,
 } = db;
 const { Op } = Sequelize;
@@ -27,8 +31,10 @@ const { Op } = Sequelize;
 const ORGANIZATION_FIELDS = ['name', 'display_name', 'description'];
 const BOX_FIELDS = ['name', 'description', 'shortDescription', 'readme', 'githubRepo'];
 const ISO_FIELDS = ['name', 'description'];
+const DOWNLOAD_FIELDS = ['name', 'description', 'family', 'vendor'];
 const VERSION_FIELDS = ['versionNumber', 'description', 'releaseNotes', 'deprecationReason'];
 const PROVIDER_FIELDS = ['name', 'description'];
+const PATCH_FIELDS = ['name', 'description'];
 const ARCHITECTURE_FIELDS = ['name'];
 const FILE_FIELDS = ['fileName'];
 
@@ -108,6 +114,31 @@ const isoVersionInclude = isoWhere => ({
   required: true,
   attributes: ['versionNumber'],
   include: [isoInclude(isoWhere)],
+});
+
+const downloadInclude = downloadWhere => ({
+  model: Download,
+  as: 'download',
+  where: downloadWhere,
+  required: true,
+  attributes: ['name'],
+  include: [organizationInclude()],
+});
+
+const releaseInclude = downloadWhere => ({
+  model: DownloadRelease,
+  as: 'release',
+  required: true,
+  attributes: ['versionNumber'],
+  include: [downloadInclude(downloadWhere)],
+});
+
+const patchInclude = downloadWhere => ({
+  model: DownloadPatch,
+  as: 'patch',
+  required: true,
+  attributes: ['name'],
+  include: [releaseInclude(downloadWhere)],
 });
 
 const fileClauses = ({ contains, prefix, term }) => {
@@ -204,6 +235,36 @@ const findIsos = async ({ term, contains, isoWhere }) => {
     .filter(Boolean);
 };
 
+const findDownloads = async ({ term, contains, downloadWhere }) => {
+  const downloads = await Download.findAll({
+    where: {
+      [Op.and]: [downloadWhere, { [Op.or]: likeClauses(DOWNLOAD_FIELDS, contains) }],
+    },
+    attributes: ['id', ...DOWNLOAD_FIELDS],
+    include: [organizationInclude()],
+  });
+  return downloads
+    .map(download => {
+      const matched = matchedField(download, DOWNLOAD_FIELDS, term);
+      if (!matched) {
+        return null;
+      }
+      const org = download.organization.name;
+      return row(
+        {
+          kind: 'item',
+          collection: 'downloads',
+          org,
+          name: download.name,
+          title: download.name,
+          matched,
+        },
+        [org, 'downloads']
+      );
+    })
+    .filter(Boolean);
+};
+
 const findBoxVersions = async ({ term, contains, boxWhere }) => {
   const versions = await Version.findAll({
     where: { [Op.or]: likeClauses(VERSION_FIELDS, contains) },
@@ -264,6 +325,36 @@ const findIsoVersions = async ({ term, contains, isoWhere }) => {
     .filter(Boolean);
 };
 
+const findReleases = async ({ term, contains, downloadWhere }) => {
+  const releases = await DownloadRelease.findAll({
+    where: { [Op.or]: likeClauses(VERSION_FIELDS, contains) },
+    attributes: ['id', ...VERSION_FIELDS],
+    include: [downloadInclude(downloadWhere)],
+  });
+  return releases
+    .map(release => {
+      const matched = matchedField(release, VERSION_FIELDS, term);
+      if (!matched) {
+        return null;
+      }
+      const org = release.download.organization.name;
+      const { name } = release.download;
+      return row(
+        {
+          kind: 'version',
+          collection: 'downloads',
+          org,
+          name,
+          version: release.versionNumber,
+          title: release.versionNumber,
+          matched,
+        },
+        [org, 'downloads', name]
+      );
+    })
+    .filter(Boolean);
+};
+
 const findProviders = async ({ term, contains, boxWhere }) => {
   const providers = await Provider.findAll({
     where: { [Op.or]: likeClauses(PROVIDER_FIELDS, contains) },
@@ -291,6 +382,38 @@ const findProviders = async ({ term, contains, boxWhere }) => {
           matched,
         },
         [org, 'boxes', name, version.versionNumber]
+      );
+    })
+    .filter(Boolean);
+};
+
+const findPatches = async ({ term, contains, downloadWhere }) => {
+  const patches = await DownloadPatch.findAll({
+    where: { [Op.or]: likeClauses(PATCH_FIELDS, contains) },
+    attributes: ['id', ...PATCH_FIELDS],
+    include: [releaseInclude(downloadWhere)],
+  });
+  return patches
+    .map(patch => {
+      const matched = matchedField(patch, PATCH_FIELDS, term);
+      if (!matched) {
+        return null;
+      }
+      const { release } = patch;
+      const org = release.download.organization.name;
+      const { name } = release.download;
+      return row(
+        {
+          kind: 'provider',
+          collection: 'downloads',
+          org,
+          name,
+          version: release.versionNumber,
+          provider: patch.name,
+          title: patch.name,
+          matched,
+        },
+        [org, 'downloads', name, release.versionNumber]
       );
     })
     .filter(Boolean);
@@ -325,6 +448,41 @@ const findArchitectures = async ({ term, contains, boxWhere }) => {
           matched,
         },
         [org, 'boxes', name, version.versionNumber, provider.name]
+      );
+    })
+    .filter(Boolean);
+};
+
+const findDownloadFiles = async context => {
+  const { term, downloadWhere } = context;
+  const files = await DownloadFile.findAll({
+    where: { [Op.or]: fileClauses(context) },
+    attributes: ['id', 'key', 'fileName', 'checksum'],
+    include: [patchInclude(downloadWhere)],
+  });
+  return files
+    .map(file => {
+      const matched = matchedFileField(file, term);
+      if (!matched) {
+        return null;
+      }
+      const { patch } = file;
+      const { release } = patch;
+      const org = release.download.organization.name;
+      const { name } = release.download;
+      return row(
+        {
+          kind: 'architecture',
+          collection: 'downloads',
+          org,
+          name,
+          version: release.versionNumber,
+          provider: patch.name,
+          architecture: file.key,
+          title: file.fileName,
+          matched,
+        },
+        [org, 'downloads', name, release.versionNumber, patch.name]
       );
     })
     .filter(Boolean);
@@ -442,13 +600,21 @@ const findUsers = async ({ term, contains, viewer, isAdmin, managedOrgIds }) => 
 
 const FINDERS = {
   organization: findOrganizations,
-  item: async context => [...(await findBoxes(context)), ...(await findIsos(context))],
+  item: async context => [
+    ...(await findBoxes(context)),
+    ...(await findIsos(context)),
+    ...(await findDownloads(context)),
+  ],
   version: async context => [
     ...(await findBoxVersions(context)),
     ...(await findIsoVersions(context)),
+    ...(await findReleases(context)),
   ],
-  provider: findProviders,
-  architecture: findArchitectures,
+  provider: async context => [...(await findProviders(context)), ...(await findPatches(context))],
+  architecture: async context => [
+    ...(await findArchitectures(context)),
+    ...(await findDownloadFiles(context)),
+  ],
   artifact: async context => [...(await findBoxFiles(context)), ...(await findIsoFiles(context))],
   user: findUsers,
 };

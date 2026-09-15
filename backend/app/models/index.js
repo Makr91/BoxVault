@@ -69,6 +69,11 @@ const initializeDatabase = async () => {
   db.scimGroup = (await import('./scim-group.model.js')).default(sequelize, Sequelize);
   db.boxWatcher = (await import('./box-watcher.model.js')).default(sequelize, Sequelize);
   db.isoWatcher = (await import('./iso-watcher.model.js')).default(sequelize, Sequelize);
+  db.download = (await import('./download.model.js')).default(sequelize, Sequelize);
+  db.downloadReleases = (await import('./download-release.model.js')).default(sequelize, Sequelize);
+  db.downloadPatches = (await import('./download-patch.model.js')).default(sequelize, Sequelize);
+  db.downloadFiles = (await import('./download-file.model.js')).default(sequelize, Sequelize);
+  db.downloadWatcher = (await import('./download-watcher.model.js')).default(sequelize, Sequelize);
   db.pushSubscription = (await import('./push-subscription.model.js')).default(
     sequelize,
     Sequelize
@@ -105,6 +110,7 @@ const initializeDatabase = async () => {
     foreignKey: 'organizationId',
     as: 'organization',
   });
+  db.organization.hasMany(db.download, { as: 'downloads' });
 
   db.role.belongsToMany(db.user, {
     through: 'user_roles',

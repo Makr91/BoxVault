@@ -324,6 +324,83 @@ const options = {
             },
           },
         },
+        Download: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              description: 'Unique download product identifier',
+              example: 1,
+            },
+            name: {
+              type: 'string',
+              description: 'Product name, a slug unique in its organization',
+              example: 'domino-server',
+            },
+            description: {
+              type: 'string',
+              description: 'Product description',
+              example: 'HCL Domino server installers and fix packs',
+              nullable: true,
+            },
+            family: {
+              type: 'string',
+              description: 'Product family, a group heading in the UI',
+              example: 'HCL Domino',
+              nullable: true,
+            },
+            vendor: {
+              type: 'string',
+              description: 'Vendor name',
+              example: 'HCL',
+              nullable: true,
+            },
+            docsUrl: {
+              type: 'string',
+              format: 'uri',
+              description: 'Documentation link',
+              nullable: true,
+            },
+            notesUrl: {
+              type: 'string',
+              format: 'uri',
+              description: 'Release notes link',
+              nullable: true,
+            },
+            published: {
+              type: 'boolean',
+              description: 'Whether the product is published (visible beyond its uploader)',
+              example: false,
+            },
+            isPublic: {
+              type: 'boolean',
+              description: 'Whether the product is publicly accessible without authentication',
+              example: false,
+            },
+            organizationId: {
+              type: 'integer',
+              description: 'Organization ID that owns the product',
+              example: 1,
+            },
+            userId: {
+              type: 'integer',
+              description: 'User ID of the product creator',
+              example: 1,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Product creation timestamp',
+              example: '2025-01-04T17:18:00.324Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-01-04T17:19:19.921Z',
+            },
+          },
+        },
         Version: {
           type: 'object',
           properties: {
@@ -582,6 +659,26 @@ const options = {
                   type: 'array',
                   items: { $ref: '#/components/schemas/Architecture' },
                   description: 'Available architectures',
+                },
+              },
+            },
+          ],
+        },
+        DownloadWithReleases: {
+          type: 'object',
+          allOf: [
+            { $ref: '#/components/schemas/Download' },
+            {
+              type: 'object',
+              properties: {
+                releases: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/DownloadRelease' },
+                  description: 'Product releases, newest first',
+                },
+                organization: {
+                  $ref: '#/components/schemas/Organization',
+                  description: 'Organization details',
                 },
               },
             },

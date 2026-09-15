@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { existsSync, mkdirSync, chmodSync, readFileSync } from 'fs';
-import { join, dirname, basename, resolve } from 'path';
+import { dirname, basename, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import responseTime from 'response-time';
 import {
@@ -31,6 +31,8 @@ import { execSync } from 'child_process';
 import {
   authJwt,
   vagrantHandler,
+  downloadsHandler,
+  uiIndex,
   i18nMiddleware,
   rateLimiter,
   errorHandler,
@@ -56,6 +58,7 @@ import favoritesRoutes from './app/routes/favorites.routes.js';
 import notificationRoutes from './app/routes/notification.routes.js';
 import eventsRoutes from './app/routes/events.routes.js';
 import isoRoutes from './app/routes/iso.routes.js';
+import downloadRoutes from './app/routes/download.routes.js';
 import systemRoutes from './app/routes/system.routes.js';
 import clientErrorsRoutes from './app/routes/client_errors.routes.js';
 import scimRoutes from './app/routes/scim.routes.js';
@@ -210,9 +213,13 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/index.html', uiIndex(404));
+app.get('/callback/index.html', uiIndex(404));
+
 // Configure static file serving with proper content types first
 app.use(
   express.static(static_path, {
+    index: false,
     setHeaders: (res, filePath, stat) => {
       void stat;
       log.app.info('Serving static file:', {
@@ -267,7 +274,7 @@ log.app.info('i18n internationalization middleware applied');
 // Configure body parsers with appropriate limits, but exclude file upload route
 app.use((req, res, next) => {
   // Skip body parsing for file uploads
-  if (req.url.includes('/file/upload')) {
+  if (req.url.includes('/file/upload') || /\/download\/.+\/file\/[^/]+\/upload/.test(req.url)) {
     // Set upload-specific headers
     res.setHeader('Cache-Control', 'no-transform');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -346,6 +353,7 @@ const initializeApp = async () => {
   try {
     // Add Vagrant request handler
     app.use(vagrantHandler);
+    app.use(downloadsHandler);
 
     // Ensure database is initialized before creating session store
     if (!db.sequelize) {
@@ -482,6 +490,7 @@ const initializeApp = async () => {
     app.use('/api', notificationRoutes);
     app.use('/api', eventsRoutes);
     app.use('/api', isoRoutes);
+    app.use('/api', downloadRoutes);
     app.use('/api', systemRoutes);
     app.use('/api', clientErrorsRoutes);
     app.use('/api', searchRoutes);
@@ -531,12 +540,7 @@ const initializeApp = async () => {
     });
 
     // SPA catch-all route
-    app.get('*splat', spaLimiter, (req, res) => {
-      void req;
-      res.sendFile(join(static_path, 'index.html'), {
-        headers: { 'Cache-Control': 'no-store, no-transform' },
-      });
-    });
+    app.get('*splat', spaLimiter, uiIndex());
 
     // Error handler middleware (MUST be last)
     app.use(errorHandler);
@@ -580,12 +584,7 @@ if (isSetupComplete()) {
     path: getSetupTokenPath(),
   });
 
-  app.get('/', (req, res) => {
-    void req;
-    res.sendFile(join(static_path, 'index.html'), {
-      headers: { 'Cache-Control': 'no-store, no-transform' },
-    });
-  });
+  app.get('/', uiIndex());
 
   app.use(errorHandler);
 

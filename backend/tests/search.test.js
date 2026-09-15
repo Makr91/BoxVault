@@ -32,12 +32,16 @@ describe('Search API', () => {
   let provider;
   let architecture;
   let file;
+  let privateDownload;
+  let unpublishedDownload;
   const uniqueId = Date.now();
   const orgName = `SearchOrg_${uniqueId}`;
   const memberName = `searchmember_${uniqueId}`;
   const publicBoxName = `search-public-${uniqueId}`;
   const privateBoxName = `search-private-${uniqueId}`;
   const fileName = `search-artifact-${uniqueId}.box`;
+  const privateDownloadName = `private-dl-${uniqueId}`;
+  const unpublishedDownloadName = `unpub-dl-${uniqueId}`;
   const checksum = createHash('sha256').update(`search-${uniqueId}`).digest('hex');
 
   const signFor = account =>
@@ -97,9 +101,27 @@ describe('Search API', () => {
       fileSize: 10,
       architectureId: architecture.id,
     });
+    privateDownload = await db.download.create({
+      name: privateDownloadName,
+      description: 'A private download',
+      published: true,
+      isPublic: false,
+      userId: member.id,
+      organizationId: org.id,
+    });
+    unpublishedDownload = await db.download.create({
+      name: unpublishedDownloadName,
+      description: 'An unpublished download',
+      published: false,
+      isPublic: true,
+      userId: member.id,
+      organizationId: org.id,
+    });
   });
 
   afterAll(async () => {
+    await unpublishedDownload.destroy();
+    await privateDownload.destroy();
     await file.destroy();
     await architecture.destroy();
     await provider.destroy();
@@ -200,6 +222,33 @@ describe('Search API', () => {
           matched: 'name',
         },
       ]);
+    });
+
+    it('should answer downloads by the three-line visibility rule', async () => {
+      const anonymous = await request(app)
+        .get('/api/search')
+        .query({ q: `dl-${uniqueId}`, kinds: 'item' });
+      expect(anonymous.statusCode).toBe(200);
+      expect(anonymous.body.results).toEqual([]);
+
+      const asMember = await request(app)
+        .get('/api/search')
+        .query({ q: `dl-${uniqueId}`, kinds: 'item' })
+        .set('x-access-token', memberToken);
+      expect(asMember.statusCode).toBe(200);
+      const memberNames = asMember.body.results.map(row => row.name);
+      expect(memberNames).toContain(privateDownloadName);
+      expect(memberNames).toContain(unpublishedDownloadName);
+      expect(asMember.body.results.every(row => row.collection === 'downloads')).toBe(true);
+
+      const asAdmin = await request(app)
+        .get('/api/search')
+        .query({ q: `dl-${uniqueId}`, kinds: 'item' })
+        .set('x-access-token', adminToken);
+      expect(asAdmin.statusCode).toBe(200);
+      const adminNames = asAdmin.body.results.map(row => row.name);
+      expect(adminNames).toContain(privateDownloadName);
+      expect(adminNames).not.toContain(unpublishedDownloadName);
     });
 
     it('should never answer users to a plain member', async () => {

@@ -1,5 +1,6 @@
 import db from '../../models/index.js';
 import { isoWhereFor, resolveIsoViewer } from '../iso/visibility.js';
+import { downloadWhereFor } from '../download/visibility.js';
 
 const { user: User, role: Role, Sequelize, sequelize } = db;
 const { Op } = Sequelize;
@@ -219,6 +220,7 @@ const buildContext = async (req, term, kinds) => {
     managedOrgIds: managed,
     boxWhere: boxWhereFor(viewer),
     isoWhere: isoWhereFor(viewer),
+    downloadWhere: downloadWhereFor(viewer),
     organizationWhere: organizationWhereFor(viewer, isAdmin),
   };
 };

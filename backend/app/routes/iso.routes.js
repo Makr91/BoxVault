@@ -30,6 +30,9 @@ import { info as fileInfo } from '../controllers/iso/file/info.js';
 import { download as downloadFile } from '../controllers/iso/file/download.js';
 import { getDownloadLink } from '../controllers/iso/file/link.js';
 import { remove as removeFile } from '../controllers/iso/file/remove.js';
+import { bulk as bulkIsos } from '../controllers/iso/bulk.js';
+import { bulk as bulkVersions } from '../controllers/iso/version/bulk.js';
+import { bulk as bulkArchitectures } from '../controllers/iso/file/bulk.js';
 
 const router = Router();
 
@@ -83,6 +86,17 @@ router.delete(
   deleteIso
 );
 
+router.post(
+  '/organization/:organization/iso/bulk',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    validateBody('bulkItem'),
+  ],
+  bulkIsos
+);
+
 router.delete(
   '/organization/:organization/iso',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
@@ -134,6 +148,30 @@ router.delete(
     verifyOrgAccess.attachIso,
   ],
   deleteVersion
+);
+
+router.post(
+  '/organization/:organization/iso/:name/version/bulk',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyOrgAccess.attachIso,
+    validateBody('bulkVersion'),
+  ],
+  bulkVersions
+);
+
+router.post(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/bulk',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+    verifyOrgAccess.attachIso,
+    validateBody('bulkLeaf'),
+  ],
+  bulkArchitectures
 );
 
 router.post(

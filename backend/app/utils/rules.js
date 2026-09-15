@@ -24,6 +24,13 @@ const FORMS = [
   'version',
   'provider',
   'architecture',
+  'download',
+  'release',
+  'patch',
+  'downloadFile',
+  'bulkItem',
+  'bulkVersion',
+  'bulkLeaf',
 ];
 
 const readRule = name => JSON.parse(readFileSync(join(__dirname, `../rules/${name}.json`), 'utf8'));

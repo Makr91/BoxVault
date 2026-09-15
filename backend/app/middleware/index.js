@@ -5,9 +5,12 @@ import * as _verifyOrgAccess from './verifyOrgAccess.js';
 const verifyOrgAccess = { ..._verifyOrgAccess };
 
 import vagrantHandler from './vagrantHandler.js';
+import downloadsHandler from './downloadsHandler.js';
+import { uiIndex } from './uiIndex.js';
 import { rateLimiter, fileOperationLimiter, architectureOperationLimiter } from './rateLimiter.js';
 import { verifyBoxFilePath } from './verifyBoxFilePath.js';
 import { verifyIsoFilePath } from './verifyIsoFilePath.js';
+import { verifyDownloadFilePath } from './verifyDownloadFilePath.js';
 import { downloadAuth } from './downloadAuth.js';
 import { sessionAuth } from './sessionAuth.js';
 import { errorHandler } from './errorHandler.js';
@@ -20,9 +23,12 @@ export {
   verifySignUp,
   verifyOrgAccess,
   vagrantHandler,
+  downloadsHandler,
+  uiIndex,
   rateLimiter,
   verifyBoxFilePath,
   verifyIsoFilePath,
+  verifyDownloadFilePath,
   fileOperationLimiter,
   architectureOperationLimiter,
   downloadAuth,

@@ -10,6 +10,7 @@ import { delete as deleteBox } from '../controllers/box/delete.js';
 import { deleteAll } from '../controllers/box/deleteall.js';
 import { uploadArtwork, getArtwork } from '../controllers/box/artwork.js';
 import { watchBox, unwatchBox } from '../controllers/box/watch.js';
+import { bulk as bulkBoxes } from '../controllers/box/bulk.js';
 
 const router = Router();
 
@@ -74,6 +75,17 @@ router.delete(
   '/organization/:organization/box/:name',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
   deleteBox
+);
+
+router.post(
+  '/organization/:organization/box/bulk',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgMember,
+    validateBody('bulkItem'),
+  ],
+  bulkBoxes
 );
 
 router.delete(

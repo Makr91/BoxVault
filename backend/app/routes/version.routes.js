@@ -7,6 +7,7 @@ import { findAllByBox } from '../controllers/version/box/findall.js';
 import { findOne } from '../controllers/version/findone.js';
 import { delete as deleteVersion } from '../controllers/version/delete.js';
 import { deleteAllByBox } from '../controllers/version/box/deleteall.js';
+import { bulk as bulkVersions } from '../controllers/version/bulk.js';
 
 const router = Router();
 
@@ -56,6 +57,17 @@ router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachBox],
   deleteVersion
+);
+
+router.post(
+  '/organization/:organization/box/:boxId/version/bulk',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.attachBox,
+    validateBody('bulkVersion'),
+  ],
+  bulkVersions
 );
 
 router.delete(

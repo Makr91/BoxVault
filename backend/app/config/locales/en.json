@@ -342,6 +342,10 @@
       "title": "ISO published: {{organization}}/{{iso}}",
       "body": "{{iso}} is now available."
     },
+    "downloadPublished": {
+      "title": "Download published: {{organization}}/{{download}}",
+      "body": "{{download}} is now available."
+    },
     "serviceAccountExpiry": {
       "title": "Service account expiring: {{username}}",
       "bodyOne": "Expires in 1 day. Recreate it before automation breaks.",
@@ -464,6 +468,26 @@
     "watch": {
       "error": "Some error occurred while updating the ISO watch.",
       "listError": "Some error occurred while retrieving watched ISOs."
+    }
+  },
+  "downloads": {
+    "notFound": "Download not found.",
+    "notFoundWithName": "Download {{name}} not found in organization {{organization}}.",
+    "deleted": "Download deleted successfully.",
+    "deletedAll": "{{count}} downloads were deleted successfully.",
+    "noDownloadsFound": "No downloads found for this organization.",
+    "permissionDenied": "You can only change downloads you own, or you need admin/owner role.",
+    "releases": {
+      "notFound": "Release not found.",
+      "deleted": "Release deleted successfully!"
+    },
+    "patches": {
+      "notFound": "Patch not found.",
+      "deleted": "Patch deleted successfully!"
+    },
+    "watch": {
+      "error": "Some error occurred while updating the download watch.",
+      "listError": "Some error occurred while retrieving watched downloads."
     }
   },
   "requests": {

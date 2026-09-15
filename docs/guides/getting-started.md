@@ -30,6 +30,8 @@ BoxVault is a self-hosted Vagrant box repository:
 - **Control access** - Organizations with owner, admin and member roles, service accounts for automation
 - **API integration** - A REST API for CI/CD, and the Vagrant box protocol at the root
 
+BoxVault also serves downloads: a product (with a family and a vendor) owns releases, a release owns patches, and a patch owns files, browsed on the same pages as boxes and ISOs. A download has one address for a person and a program: a browser at `/<organization>/downloads/<product>/<release>/<patch>/<file>` is shown the patch page with that file marked, and a program at the same address receives the bytes.
+
 ## Prerequisites
 
 - A Debian host (bookworm or trixie) with `nodejs (>= 22.0.0)`, `sqlite3` and `openssl`, or an OmniOS host with `ooce/runtime/node-22`
@@ -98,7 +100,7 @@ Users can belong to several organizations, create boxes in any organization they
 
 ### Web Interface
 
-- **Home** - the boxes and ISOs of every organization you can see, with search and filters
+- **Home** - the boxes, ISOs and downloads of every organization you can see, with search and filters
 - **Organization console** - the organization record, members, invitations and join requests
 - **Admin** - every organization, user and the four configuration files
 - **Profile** - password, email, display name, preferences and service accounts

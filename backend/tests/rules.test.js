@@ -17,6 +17,13 @@ const FORMS = [
   'version',
   'provider',
   'architecture',
+  'download',
+  'release',
+  'patch',
+  'downloadFile',
+  'bulkItem',
+  'bulkVersion',
+  'bulkLeaf',
 ];
 
 describe('GET /api/rules', () => {
@@ -135,11 +142,44 @@ describe('GET /api/rules', () => {
     expect(document.forms.version.properties.version_number.unique).toBe('box');
     expect(document.forms.provider.properties.name.unique).toBe('version');
     expect(document.forms.architecture.properties.name.unique).toBe('provider');
+    expect(document.forms.download.properties.name.unique).toBe('organization');
+    expect(document.forms.release.properties.version_number.unique).toBe('download');
+    expect(document.forms.patch.properties.name.unique).toBe('release');
+    expect(document.forms.downloadFile.properties.key.unique).toBe('patch');
+    expect(document.forms.patch.properties.released_at.format).toBe('date');
+    expect(document.forms.download.properties.icon_url.format).toBe('uri');
+    expect(document.forms.patch.properties.kind.enum).toEqual([
+      'release',
+      'fixpack',
+      'interim-fix',
+      'hotfix',
+    ]);
     expect(Object.hasOwn(document.forms.version, 'dependentRequired')).toBe(false);
     expect(document.forms.version.if).toEqual({
       properties: { deprecated: { const: true } },
       required: ['deprecated'],
     });
     expect(document.forms.version.then).toEqual({ required: ['deprecation_reason'] });
+  });
+
+  it('should carry one bulk form per level shape', () => {
+    expect(document.forms.bulkItem.properties.action.enum).toEqual([
+      'delete',
+      'make_public',
+      'make_private',
+      'publish',
+      'unpublish',
+    ]);
+    expect(document.forms.bulkVersion.properties.action.enum).toEqual(['delete', 'deprecate']);
+    expect(document.forms.bulkLeaf.properties.action.enum).toEqual(['delete']);
+    ['bulkItem', 'bulkVersion', 'bulkLeaf'].forEach(form => {
+      expect(document.forms[form].required).toEqual(['action', 'names']);
+      expect(document.forms[form].properties.names.minItems).toBe(1);
+    });
+    expect(document.forms.bulkVersion.if).toEqual({
+      properties: { action: { const: 'deprecate' } },
+      required: ['action'],
+    });
+    expect(document.forms.bulkVersion.then).toEqual({ required: ['deprecation_reason'] });
   });
 });

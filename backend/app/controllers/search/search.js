@@ -8,7 +8,7 @@ import { FINDERS } from './finders.js';
  * /api/search:
  *   get:
  *     summary: Search the whole app
- *     description: Case-insensitive substring search across organizations, boxes, ISOs, versions, providers, architectures, artifacts and users, answering deep-linkable hits. A caller only gets what the caller could already list - anonymous requests see public, published items and discoverable organizations; a signed-in user additionally sees every organization they belong to and its items, a service-account key its own organization; users are answered only to a global admin (every user) or to an organization owner or admin (that organization's members). Box and ISO metadata is matched on its whitelisted keys, never on the password key, and no metadata value is returned.
+ *     description: Case-insensitive substring search across organizations, boxes, ISOs, downloads with their releases, patches and files, versions, providers, architectures, artifacts and users, answering deep-linkable hits. A caller only gets what the caller could already list - anonymous requests see public, published items and discoverable organizations; a signed-in user additionally sees every organization they belong to and its items, a service-account key its own organization; users are answered only to a global admin (every user) or to an organization owner or admin (that organization's members). Box and ISO metadata is matched on its whitelisted keys, never on the password key, and no metadata value is returned.
  *     tags: [Search]
  *     security:
  *       - bearerAuth: []
@@ -62,7 +62,7 @@ import { FINDERS } from './finders.js';
  *                       collection:
  *                         type: string
  *                         nullable: true
- *                         enum: [boxes, isos]
+ *                         enum: [boxes, isos, downloads]
  *                       org:
  *                         type: string
  *                         description: The organization slug

@@ -580,3 +580,75 @@ properties:
         title: VAPID private key
         description: Private half of the VAPID keypair; generated on first start when empty
         order: 4
+  sites:
+    type: object
+    section: application
+    subsection: sites
+    title: Sites
+    description: One entry per hostname BoxVault answers on; the unnamed hostname answers as BoxVault
+    additionalProperties:
+      type: object
+      title: Site
+      properties:
+        brand:
+          type: object
+          title: Brand
+          properties:
+            name:
+              type: string
+              title: Brand name
+              description: The name the UI draws for this hostname
+              order: 1
+            logo_url:
+              type: string
+              title: Logo URL
+              description: Path or URL of the brand mark served for this hostname
+              order: 3
+            default_theme:
+              type: string
+              enum:
+                - light
+                - dark
+              default: light
+              title: Default theme
+              description: The variant stamped on the page before a person has chosen one
+              order: 4
+            pack:
+              type: object
+              title: Pack
+              properties:
+                name:
+                  type: string
+                  title: Pack name
+                  description: The bare pack name stamped as data-brand; empty paints stock Bootstrap
+                  order: 5
+                css:
+                  type: string
+                  title: Pack stylesheet
+                  description: The stylesheet URL of the pack, with its ?v= hash
+                  order: 6
+        collections:
+          type: array
+          items:
+            type: string
+            enum:
+              - boxes
+              - isos
+              - downloads
+          title: Collections
+          description: The collections this hostname mounts, in order; the first owns the root
+          order: 2
+        links:
+          type: object
+          title: Links
+          properties:
+            docs:
+              type: string
+              title: Docs link
+              order: 7
+            contact:
+              type: string
+              title: Contact address
+              order: 8
+    propertyNames:
+      pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$'

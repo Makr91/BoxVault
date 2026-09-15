@@ -173,6 +173,30 @@ const canWriteBox = (caller, box, membership) =>
   ownsBox(caller, box, membership) ||
   Boolean(membership && MANAGING_ROLES.includes(membership.role));
 
+/**
+ * Whether the caller owns a download: a user by the download's userId, a
+ * service account by its owner's userId while it is a member of the
+ * download's organization, never outside that organization.
+ * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
+ * @param {{userId: number}} download - The download
+ * @param {{role: string}|null} membership - The caller's membership in the download's organization
+ * @returns {boolean} True when the caller owns the download
+ */
+const ownsDownload = (caller, download, membership) =>
+  download.userId === caller.userId && (!caller.isServiceAccount || Boolean(membership));
+
+/**
+ * Whether the caller may write a download and its tree: its owner, or an
+ * admin or owner of its organization.
+ * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
+ * @param {{userId: number}} download - The download
+ * @param {{role: string}|null} membership - The caller's membership in the download's organization
+ * @returns {boolean} True when the caller may write the download
+ */
+const canWriteDownload = (caller, download, membership) =>
+  ownsDownload(caller, download, membership) ||
+  Boolean(membership && MANAGING_ROLES.includes(membership.role));
+
 export {
   ORG_ROLES,
   ROLE_RANK,
@@ -184,4 +208,6 @@ export {
   resolveViewer,
   ownsBox,
   canWriteBox,
+  ownsDownload,
+  canWriteDownload,
 };

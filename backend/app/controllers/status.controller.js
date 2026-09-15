@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { loadConfig } from '../utils/config-loader.js';
+import { loadConfig, getSiteConfig } from '../utils/config-loader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,7 +18,7 @@ const STATUS = {
     logoUrl: '/brand/boxvault.svg',
     repo: 'https://github.com/Makr91/BoxVault',
   },
-  collections: ['boxes', 'isos'],
+  collections: ['boxes', 'isos', 'downloads'],
   config: ['app', 'auth', 'db', 'mail'],
   features: [
     'setup',
@@ -59,12 +59,47 @@ const enabledIdp = providers => {
   };
 };
 
+const packOf = site => {
+  const pack = site?.brand?.pack;
+  return pack && typeof pack.name === 'string' && pack.name.trim() !== ''
+    ? { name: pack.name, css: pack.css }
+    : null;
+};
+
+/**
+ * The brand, collections and links of one hostname: the sites map entry over
+ * the defaults, the defaults alone for the unnamed hostname
+ * @param {Object|null} site - The sites map entry
+ * @returns {{brand: Object, collections: string[], links: Object}} The per-host members
+ */
+const faceOf = site => {
+  if (!site) {
+    return { brand: STATUS.brand, collections: STATUS.collections, links: STATUS.links };
+  }
+  const theme = site.brand?.default_theme;
+  const pack = packOf(site);
+  return {
+    brand: {
+      ...STATUS.brand,
+      name: site.brand?.name || STATUS.brand.name,
+      logoUrl: site.brand?.logo_url || STATUS.brand.logoUrl,
+      ...(theme ? { theme } : {}),
+      ...(pack ? { pack } : {}),
+    },
+    collections: site.collections?.length ? site.collections : STATUS.collections,
+    links: {
+      docs: site.links?.docs ?? STATUS.links.docs,
+      contact: site.links?.contact ?? STATUS.links.contact,
+    },
+  };
+};
+
 /**
  * @swagger
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections and links are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -95,6 +130,22 @@ const enabledIdp = providers => {
  *                     repo:
  *                       type: string
  *                       example: https://github.com/Makr91/BoxVault
+ *                     theme:
+ *                       type: string
+ *                       description: The site's default variant, present when the hostname's sites entry names one
+ *                       enum: [light, dark]
+ *                       example: dark
+ *                     pack:
+ *                       type: object
+ *                       description: The pack the page is stamped with, present when the hostname's sites entry names one
+ *                       required: [name, css]
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           example: prominic
+ *                         css:
+ *                           type: string
+ *                           example: /themes/prominic/prominic.css?v=a1b2c3
  *                 auth:
  *                   type: array
  *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session, answered while local accounts are on; idp is browser OIDC against the issuer named in idp, answered while local accounts are off and a provider is enabled
@@ -126,7 +177,7 @@ const enabledIdp = providers => {
  *                   description: Collection registry entries to mount, in order; the first is implicit (no route segment)
  *                   items:
  *                     type: string
- *                   example: [boxes, isos]
+ *                   example: [boxes, isos, downloads]
  *                 config:
  *                   type: array
  *                   description: Config file names the admin page draws one tab each for, served at /api/config/<name>
@@ -170,12 +221,12 @@ const enabledIdp = providers => {
  *                   example: null
  */
 const getStatus = (req, res) => {
-  void req;
   const authConfig = loadConfig('auth');
   const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
   const idp = localEnabled ? null : enabledIdp(authConfig.auth?.oidc?.providers || {});
   return res.json({
     ...STATUS,
+    ...faceOf(getSiteConfig(req.hostname)),
     auth: idp ? ['idp'] : ['backend'],
     ...(idp ? { idp } : {}),
     features: localEnabled ? ['local-accounts', ...STATUS.features] : STATUS.features,

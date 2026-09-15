@@ -1,0 +1,437 @@
+import request from 'supertest';
+import { jest } from '@jest/globals';
+import fs from 'fs';
+import jwt from 'jsonwebtoken';
+import app from '../server.js';
+import db from '../app/models/index.js';
+import { getSecureDownloadPath } from '../app/controllers/download/helpers.js';
+
+const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
+
+describe('Download API', () => {
+  const uniqueId = Date.now().toString(36);
+  const orgName = `DownloadOrg_${uniqueId}`;
+  const productName = 'domino-server';
+  const productBase = `/api/organization/${orgName}/download/${productName}`;
+  let org;
+  let owner;
+  let member;
+  let other;
+  let outsider;
+  let ownerToken;
+  let memberToken;
+  let otherToken;
+  let outsiderToken;
+
+  const signFor = account =>
+    jwt.sign({ id: account.id }, 'test-secret', { expiresIn: '1h', ...TEST_JWT_CLAIMS });
+
+  const createUser = async (label, orgRole) => {
+    const account = await db.user.create({
+      username: `${label}-${uniqueId}`,
+      email: `${label}-${uniqueId}@example.com`,
+      password: 'password',
+      verified: true,
+    });
+    const role = await db.role.findOne({ where: { name: 'user' } });
+    await account.setRoles([role]);
+    if (orgRole) {
+      await db.UserOrg.create({ user_id: account.id, organization_id: org.id, role: orgRole });
+    }
+    return account;
+  };
+
+  const setProduct = values =>
+    db.download.update(values, { where: { name: productName, organizationId: org.id } });
+
+  beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
+    org = await db.organization.create({ name: orgName, access_mode: 'private' });
+    owner = await createUser('dl-owner', 'owner');
+    member = await createUser('dl-member', 'member');
+    other = await createUser('dl-other', 'member');
+    outsider = await createUser('dl-outsider', null);
+    ownerToken = signFor(owner);
+    memberToken = signFor(member);
+    otherToken = signFor(other);
+    outsiderToken = signFor(outsider);
+  });
+
+  afterAll(async () => {
+    await db.download.destroy({ where: { organizationId: org.id } });
+    await org.destroy();
+    await db.user.destroy({ where: { id: [owner.id, member.id, other.id, outsider.id] } });
+    fs.rmSync(getSecureDownloadPath(orgName), { recursive: true, force: true });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('POST /api/organization/:organization/download', () => {
+    it('should let any member create a product, unpublished and private by default', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken)
+        .send({
+          name: productName,
+          description: 'HCL Domino server',
+          family: 'HCL Domino',
+          vendor: 'HCL',
+          docs_url: 'https://help.hcl-software.com/domino',
+          icon_url: 'https://www.hcl-software.com/domino.svg',
+        });
+      expect(res.statusCode).toBe(201);
+      expect(res.body.name).toBe(productName);
+      expect(res.body.published).toBe(false);
+      expect(res.body.isPublic).toBe(false);
+      expect(res.body.family).toBe('HCL Domino');
+      expect(res.body.vendor).toBe('HCL');
+      expect(res.body.docsUrl).toBe('https://help.hcl-software.com/domino');
+      expect(res.body.iconUrl).toBe('https://www.hcl-software.com/domino.svg');
+      expect(res.body.userId).toBe(member.id);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, productName))).toBe(true);
+    });
+
+    it('should reject a product name outside the slug pattern', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken)
+        .send({ name: 'bad_name' });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'pattern', params: { pattern: 'slug' } }),
+      ]);
+    });
+
+    it('should reject a duplicate product name with 409', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken)
+        .send({ name: productName });
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'unique', params: { scope: orgName } }),
+      ]);
+    });
+
+    it('should reject a docs_url that is not a URI', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken)
+        .send({ name: 'bad-docs', docs_url: 'not a uri' });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/docs_url',
+          rule: 'format',
+          params: { format: 'uri' },
+        }),
+      ]);
+    });
+
+    it('should reject an icon_url that is not a URI', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken)
+        .send({ name: 'bad-icon', icon_url: 'not a uri' });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/icon_url',
+          rule: 'format',
+          params: { format: 'uri' },
+        }),
+      ]);
+    });
+
+    it('should refuse a non-member', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', outsiderToken)
+        .send({ name: 'outsider-product' });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 404 for an unknown organization', async () => {
+      const res = await request(app)
+        .post(`/api/organization/NoOrg-${uniqueId}/download`)
+        .set('x-access-token', memberToken)
+        .send({ name: 'nowhere' });
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('visibility', () => {
+    it('should show an unpublished product to its creator alone', async () => {
+      const creator = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken);
+      expect(creator.statusCode).toBe(200);
+      expect(creator.body.some(entry => entry.name === productName)).toBe(true);
+
+      const otherMember = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', otherToken);
+      expect(otherMember.body.some(entry => entry.name === productName)).toBe(false);
+
+      const asOwner = await request(app).get(productBase).set('x-access-token', ownerToken);
+      expect(asOwner.statusCode).toBe(403);
+
+      const asOther = await request(app).get(productBase).set('x-access-token', otherToken);
+      expect(asOther.statusCode).toBe(403);
+
+      const anonymous = await request(app).get(productBase);
+      expect(anonymous.statusCode).toBe(403);
+
+      const asCreator = await request(app).get(productBase).set('x-access-token', memberToken);
+      expect(asCreator.statusCode).toBe(200);
+      expect(asCreator.body.name).toBe(productName);
+      expect(Array.isArray(asCreator.body.releases)).toBe(true);
+      expect(asCreator.body.downloadCount).toBe(0);
+      expect(asCreator.body.iconUrl).toBe('https://www.hcl-software.com/domino.svg');
+      expect(asCreator.body.organization.name).toBe(orgName);
+      const listedEntry = creator.body.find(entry => entry.name === productName);
+      expect(listedEntry.iconUrl).toBe('https://www.hcl-software.com/domino.svg');
+      expect(listedEntry.downloadCount).toBe(0);
+    });
+
+    it('should show a published private product to every member and nobody else', async () => {
+      await setProduct({ published: true, isPublic: false });
+
+      const asOther = await request(app).get(productBase).set('x-access-token', otherToken);
+      expect(asOther.statusCode).toBe(200);
+
+      const asOwner = await request(app).get(productBase).set('x-access-token', ownerToken);
+      expect(asOwner.statusCode).toBe(200);
+
+      const listed = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', otherToken);
+      expect(listed.body.some(entry => entry.name === productName)).toBe(true);
+
+      const asOutsider = await request(app).get(productBase).set('x-access-token', outsiderToken);
+      expect(asOutsider.statusCode).toBe(403);
+
+      const anonymous = await request(app).get(productBase);
+      expect(anonymous.statusCode).toBe(403);
+
+      const anonymousList = await request(app).get(`/api/organization/${orgName}/download`);
+      expect(anonymousList.statusCode).toBe(200);
+      expect(anonymousList.body.some(entry => entry.name === productName)).toBe(false);
+    });
+
+    it('should show a public published product to anyone', async () => {
+      await setProduct({ published: true, isPublic: true });
+
+      const anonymous = await request(app).get(productBase);
+      expect(anonymous.statusCode).toBe(200);
+      expect(anonymous.body.downloadCount).toBeNull();
+
+      const anonymousList = await request(app).get(`/api/organization/${orgName}/download`);
+      expect(anonymousList.body.some(entry => entry.name === productName)).toBe(true);
+      expect(anonymousList.body.find(entry => entry.name === productName).downloadCount).toBeNull();
+
+      const asOutsider = await request(app).get(productBase).set('x-access-token', outsiderToken);
+      expect(asOutsider.statusCode).toBe(200);
+      expect(asOutsider.body.downloadCount).toBeNull();
+
+      const asMember = await request(app).get(productBase).set('x-access-token', otherToken);
+      expect(asMember.body.downloadCount).toBe(0);
+
+      const discovered = await request(app).get('/api/downloads/discover');
+      expect(discovered.statusCode).toBe(200);
+      expect(discovered.body.some(entry => entry.name === productName)).toBe(true);
+      discovered.body.forEach(entry => expect(Array.isArray(entry.releases)).toBe(true));
+      expect(discovered.body.find(entry => entry.name === productName).downloadCount).toBeNull();
+
+      const discoveredAsMember = await request(app)
+        .get('/api/downloads/discover')
+        .set('x-access-token', otherToken);
+      expect(discoveredAsMember.body.find(entry => entry.name === productName).downloadCount).toBe(
+        0
+      );
+    });
+
+    it('should hide a public unpublished product from everyone but its creator', async () => {
+      await setProduct({ published: false, isPublic: true });
+
+      const anonymous = await request(app).get(`/api/organization/${orgName}/download`);
+      expect(anonymous.body.some(entry => entry.name === productName)).toBe(false);
+
+      const discovered = await request(app)
+        .get('/api/downloads/discover')
+        .set('x-access-token', otherToken);
+      expect(discovered.body.some(entry => entry.name === productName)).toBe(false);
+
+      const asCreator = await request(app)
+        .get('/api/downloads/discover')
+        .set('x-access-token', memberToken);
+      expect(asCreator.body.some(entry => entry.name === productName)).toBe(true);
+
+      await setProduct({ published: true, isPublic: false });
+    });
+
+    it('should return 404 for an unknown organization or product', async () => {
+      const noOrg = await request(app).get(`/api/organization/NoOrg-${uniqueId}/download`);
+      expect(noOrg.statusCode).toBe(404);
+      const noProduct = await request(app)
+        .get(`/api/organization/${orgName}/download/no-such-product`)
+        .set('x-access-token', memberToken);
+      expect(noProduct.statusCode).toBe(404);
+    });
+
+    it('should handle DB errors in findAll, findOne and discover', async () => {
+      jest.spyOn(db.download, 'findAll').mockRejectedValue(new Error('DB Error'));
+      const list = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken);
+      expect(list.statusCode).toBe(500);
+      const discovered = await request(app).get('/api/downloads/discover');
+      expect(discovered.statusCode).toBe(500);
+      expect(discovered.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      jest.restoreAllMocks();
+      jest.spyOn(db.download, 'findOne').mockRejectedValue(new Error('DB Error'));
+      const one = await request(app).get(productBase).set('x-access-token', memberToken);
+      expect(one.statusCode).toBe(500);
+    });
+  });
+
+  describe('PUT /api/organization/:organization/download/:name', () => {
+    it('should refuse a member who neither owns the product nor administers the organization', async () => {
+      const res = await request(app)
+        .put(productBase)
+        .set('x-access-token', otherToken)
+        .send({ description: 'hijack' });
+      expect(res.statusCode).toBe(403);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+    });
+
+    it('should let the owner update the record and an organization owner publish it', async () => {
+      const res = await request(app).put(productBase).set('x-access-token', memberToken).send({
+        description: 'Updated',
+        vendor: 'HCL Software',
+        notes_url: 'https://x.example',
+        icon_url: 'https://x.example/icon.png',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.description).toBe('Updated');
+      expect(res.body.vendor).toBe('HCL Software');
+      expect(res.body.notesUrl).toBe('https://x.example');
+      expect(res.body.iconUrl).toBe('https://x.example/icon.png');
+
+      await setProduct({ published: false });
+      const published = await request(app)
+        .put(productBase)
+        .set('x-access-token', ownerToken)
+        .send({ published: true });
+      expect(published.statusCode).toBe(200);
+      expect(published.body.published).toBe(true);
+    });
+
+    it('should rename the product and move its directory', async () => {
+      await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'rename-me' })
+        .expect(201);
+
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/download/rename-me`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'renamed-product', is_public: true });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.name).toBe('renamed-product');
+      expect(res.body.isPublic).toBe(true);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'renamed-product'))).toBe(true);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'rename-me'))).toBe(false);
+
+      const conflict = await request(app)
+        .put(`/api/organization/${orgName}/download/renamed-product`)
+        .set('x-access-token', ownerToken)
+        .send({ name: productName });
+      expect(conflict.statusCode).toBe(409);
+
+      await db.download.destroy({ where: { name: 'renamed-product', organizationId: org.id } });
+    });
+
+    it('should update with an empty body and answer 404 for an unknown product', async () => {
+      const res = await request(app).put(productBase).set('x-access-token', memberToken).send();
+      expect(res.statusCode).toBe(200);
+      const missing = await request(app)
+        .put(`/api/organization/${orgName}/download/no-such-product`)
+        .set('x-access-token', memberToken)
+        .send({ description: 'x' });
+      expect(missing.statusCode).toBe(404);
+    });
+
+    it('should handle a DB error during update', async () => {
+      jest.spyOn(db.download, 'findOne').mockRejectedValue(new Error('DB Error'));
+      const res = await request(app)
+        .put(productBase)
+        .set('x-access-token', memberToken)
+        .send({ description: 'x' });
+      expect(res.statusCode).toBe(500);
+    });
+  });
+
+  describe('DELETE /api/organization/:organization/download/:name', () => {
+    it('should refuse a member who does not own the product', async () => {
+      const res = await request(app).delete(productBase).set('x-access-token', otherToken);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 404 for an unknown product', async () => {
+      const res = await request(app)
+        .delete(`/api/organization/${orgName}/download/no-such-product`)
+        .set('x-access-token', memberToken);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should handle a DB error during delete', async () => {
+      jest.spyOn(db.download, 'findOne').mockRejectedValue(new Error('DB Error'));
+      const res = await request(app).delete(productBase).set('x-access-token', memberToken);
+      expect(res.statusCode).toBe(500);
+    });
+
+    it('should let the owner delete the product with its directory', async () => {
+      const res = await request(app).delete(productBase).set('x-access-token', memberToken);
+      expect(res.statusCode).toBe(200);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, productName))).toBe(false);
+      expect(
+        await db.download.count({ where: { name: productName, organizationId: org.id } })
+      ).toBe(0);
+    });
+  });
+
+  describe('DELETE /api/organization/:organization/download', () => {
+    it('should remove every product of the organization and answer 404 once empty', async () => {
+      await db.download.create({ name: 'remove-a', organizationId: org.id, userId: owner.id });
+      await db.download.create({ name: 'remove-b', organizationId: org.id, userId: member.id });
+
+      const asMember = await request(app)
+        .delete(`/api/organization/${orgName}/download`)
+        .set('x-access-token', memberToken);
+      expect(asMember.statusCode).toBe(403);
+
+      const removed = await request(app)
+        .delete(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken);
+      expect(removed.statusCode).toBe(200);
+      expect(await db.download.count({ where: { organizationId: org.id } })).toBe(0);
+
+      const empty = await request(app)
+        .delete(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken);
+      expect(empty.statusCode).toBe(404);
+    });
+
+    it('should handle a DB error during deleteAll', async () => {
+      jest.spyOn(db.download, 'findAll').mockRejectedValue(new Error('DB Error'));
+      const res = await request(app)
+        .delete(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken);
+      expect(res.statusCode).toBe(500);
+    });
+  });
+});

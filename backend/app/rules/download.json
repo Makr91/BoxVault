@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": { "$ref": "#/$defs/slug", "minLength": 1, "pattern": "\\S", "unique": "organization" },
+    "description": { "type": "string" },
+    "is_public": { "type": "boolean" },
+    "published": { "type": "boolean" },
+    "family": { "type": "string" },
+    "vendor": { "type": "string" },
+    "docs_url": { "type": "string", "format": "uri" },
+    "notes_url": { "type": "string", "format": "uri" },
+    "icon_url": { "type": "string", "format": "uri" }
+  }
+}

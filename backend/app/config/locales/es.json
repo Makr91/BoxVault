@@ -342,6 +342,10 @@
       "title": "ISO publicada: {{organization}}/{{iso}}",
       "body": "{{iso}} ya está disponible."
     },
+    "downloadPublished": {
+      "title": "Descarga publicada: {{organization}}/{{download}}",
+      "body": "{{download}} ya está disponible."
+    },
     "serviceAccountExpiry": {
       "title": "Cuenta de servicio por caducar: {{username}}",
       "bodyOne": "Caduca en 1 día. Vuelve a crearla antes de que se rompa la automatización.",
@@ -464,6 +468,26 @@
     "watch": {
       "error": "Ocurrió un error al actualizar el seguimiento de la ISO.",
       "listError": "Ocurrió un error al recuperar las ISOs seguidas."
+    }
+  },
+  "downloads": {
+    "notFound": "Descarga no encontrada.",
+    "notFoundWithName": "Descarga {{name}} no encontrada en la organización {{organization}}.",
+    "deleted": "Descarga eliminada exitosamente.",
+    "deletedAll": "Se eliminaron {{count}} descargas exitosamente.",
+    "noDownloadsFound": "No se encontraron descargas para esta organización.",
+    "permissionDenied": "Solo puedes cambiar descargas que posees, o necesitas rol de administrador/propietario.",
+    "releases": {
+      "notFound": "Versión no encontrada.",
+      "deleted": "¡Versión eliminada exitosamente!"
+    },
+    "patches": {
+      "notFound": "Parche no encontrado.",
+      "deleted": "¡Parche eliminado exitosamente!"
+    },
+    "watch": {
+      "error": "Ocurrió un error al actualizar el seguimiento de la descarga.",
+      "listError": "Ocurrió un error al recuperar las descargas seguidas."
     }
   },
   "requests": {

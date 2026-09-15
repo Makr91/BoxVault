@@ -25,6 +25,7 @@ import { deleteUser as deleteUserAuth } from '../controllers/auth/user/delete.js
 import { signup } from '../controllers/auth/signup.js';
 import { listUserWatches } from '../controllers/box/watch.js';
 import { listUserIsoWatches } from '../controllers/iso/watch.js';
+import { listUserDownloadWatches } from '../controllers/download/watch.js';
 
 const router = Router();
 
@@ -86,6 +87,12 @@ router.patch(
 router.get('/user/watches', [authJwt.verifyToken, authJwt.isUser], listUserWatches);
 
 router.get('/user/iso-watches', [authJwt.verifyToken, authJwt.isUser], listUserIsoWatches);
+
+router.get(
+  '/user/download-watches',
+  [authJwt.verifyToken, authJwt.isUser],
+  listUserDownloadWatches
+);
 
 router.post('/user/leave/:orgName', [authJwt.verifyToken, authJwt.isUser], leaveOrganization);
 

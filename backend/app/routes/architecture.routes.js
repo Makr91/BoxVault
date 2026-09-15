@@ -8,6 +8,7 @@ import { create } from '../controllers/architecture/create.js';
 import { update } from '../controllers/architecture/update.js';
 import { delete as deleteArchitecture } from '../controllers/architecture/delete.js';
 import { deleteAllByProvider } from '../controllers/architecture/provider/deleteall.js';
+import { bulk as bulkArchitectures } from '../controllers/architecture/bulk.js';
 
 const router = Router();
 
@@ -57,6 +58,16 @@ router.delete(
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   deleteArchitecture
+);
+
+router.post(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/bulk',
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  verifyOrgAccess.attachProvider,
+  validateBody('bulkLeaf'),
+  bulkArchitectures
 );
 
 router.delete(

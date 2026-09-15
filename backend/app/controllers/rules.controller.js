@@ -24,7 +24,7 @@ import { getRulesDocument } from '../utils/rules.js';
  *                   description: The named patterns every host shares
  *                 forms:
  *                   type: object
- *                   description: One object schema per form, keyed login, register, displayName, password, email, serviceAccount, organization, accessMode, invitation, joinRequest, box, iso, version, provider, architecture
+ *                   description: One object schema per form, keyed login, register, displayName, password, email, serviceAccount, organization, accessMode, invitation, joinRequest, box, iso, version, provider, architecture, download, release, patch, downloadFile, bulkItem, bulkVersion, bulkLeaf
  */
 const getRules = (req, res) => {
   void req;

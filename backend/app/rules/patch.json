@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": { "$ref": "#/$defs/identifier", "minLength": 1, "pattern": "\\S", "unique": "release" },
+    "kind": { "type": "string", "enum": ["release", "fixpack", "interim-fix", "hotfix"] },
+    "description": { "type": "string" },
+    "released_at": { "type": "string", "format": "date" },
+    "notes_url": { "type": "string", "format": "uri" }
+  }
+}

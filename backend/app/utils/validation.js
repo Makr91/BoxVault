@@ -3,6 +3,7 @@ const EMAIL_RE =
 const HOSTNAME_RE =
   /^(?=.{1,255}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 const IPV4_RE = /^(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?:\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)){3}$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const INTEGER_RE = /^-?\d+$/;
 const NUMBER_RE = /^-?\d+(?:\.\d+)?$/;
 const NON_BLANK_PATTERN = '\\S';
@@ -22,6 +23,7 @@ const FORMATS = {
   uri: isUri,
   hostname: value => HOSTNAME_RE.test(value),
   ipv4: value => IPV4_RE.test(value),
+  date: value => DATE_RE.test(value),
 };
 
 const TYPE_CHECKS = {

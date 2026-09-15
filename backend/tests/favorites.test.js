@@ -116,6 +116,7 @@ const mockConfigLoader = {
     architecture_operations_max_requests: 1000,
   }),
   getI18nConfig: jest.fn().mockReturnValue({ default_language: 'en' }),
+  getSiteConfig: jest.fn().mockReturnValue(null),
   getConfigDir: jest.fn().mockReturnValue('/tmp'),
   setupTokenGuard: jest.fn((req, res) => {
     void req;

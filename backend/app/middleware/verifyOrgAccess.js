@@ -14,6 +14,9 @@ const {
   iso: ISO,
   versions: Version,
   providers: Provider,
+  download: Download,
+  downloadReleases: DownloadRelease,
+  downloadPatches: DownloadPatch,
 } = db;
 
 const MANAGING_ROLES = ['admin', 'owner'];
@@ -397,6 +400,84 @@ const attachIso = async (req, res, next) => {
 };
 
 /**
+ * Middleware resolving the organization and download named by the route and
+ * attaching them as req.organizationData and req.downloadData; 404 when either is missing.
+ */
+const attachDownload = async (req, res, next) => {
+  const { organization, name } = req.params;
+
+  try {
+    const organizationData = await Organization.findOne({
+      where: { name: organization },
+    });
+
+    if (!organizationData) {
+      return notFound(
+        req,
+        res,
+        req.__('organizations.organizationNotFoundWithName', { organization })
+      );
+    }
+
+    const download = await Download.findOne({
+      where: { name, organizationId: organizationData.id },
+    });
+
+    if (!download) {
+      return notFound(req, res, req.__('downloads.notFoundWithName', { name, organization }));
+    }
+
+    req.organizationData = organizationData;
+    req.downloadData = download;
+
+    return next();
+  } catch (err) {
+    log.error.error('Error attaching download entities:', err);
+    return internal(req, res, 'errors.operationFailed');
+  }
+};
+
+/**
+ * Middleware resolving the release and patch named by the route beneath
+ * req.downloadData and attaching them as req.releaseData and req.patchData; 404
+ * when either is missing. The patch is resolved only when the route names one.
+ */
+const attachRelease = async (req, res, next) => {
+  const { versionNumber, patch: patchName } = req.params;
+
+  try {
+    const release = await DownloadRelease.findOne({
+      where: { versionNumber, downloadId: req.downloadData.id },
+    });
+
+    if (!release) {
+      return notFound(req, res, req.__('downloads.releases.notFound'));
+    }
+
+    req.releaseData = release;
+
+    if (patchName === undefined) {
+      return next();
+    }
+
+    const patch = await DownloadPatch.findOne({
+      where: { name: patchName, downloadReleaseId: release.id },
+    });
+
+    if (!patch) {
+      return notFound(req, res, req.__('downloads.patches.notFound'));
+    }
+
+    req.patchData = patch;
+
+    return next();
+  } catch (err) {
+    log.error.error('Error attaching release entities:', err);
+    return internal(req, res, 'errors.operationFailed');
+  }
+};
+
+/**
  * Helper function to get user's role in organization (for controllers)
  * @param {number} userId - User ID
  * @param {string} orgName - Organization name
@@ -434,5 +515,7 @@ export {
   attachBox,
   attachProvider,
   attachIso,
+  attachDownload,
+  attachRelease,
   getUserOrgContext,
 };

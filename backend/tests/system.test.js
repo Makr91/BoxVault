@@ -37,6 +37,7 @@ const mockConfigLoader = {
   setupTokenGuard: actualConfigLoader.setupTokenGuard,
   getRateLimitConfig: actualConfigLoader.getRateLimitConfig,
   getI18nConfig: actualConfigLoader.getI18nConfig,
+  getSiteConfig: actualConfigLoader.getSiteConfig,
   saveConfig: actualConfigLoader.saveConfig,
   reloadConfig: actualConfigLoader.reloadConfig,
   getConfigDir: actualConfigLoader.getConfigDir,
