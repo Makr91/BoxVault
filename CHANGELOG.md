@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.82.0](https://github.com/Makr91/BoxVault/compare/v0.81.0...v0.82.0) (2026-09-15)
+
+
+### Features
+
+* add the downloads collection, the per-host faces, bulk routes per level and the product icon ([5b3a8d2](https://github.com/Makr91/BoxVault/commit/5b3a8d2cd05b90bf7dc286aadb67e82b5d0da92b))
+* config engine module, contract routes, packaging ownership and the settled-contract tests ([d0f9e2a](https://github.com/Makr91/BoxVault/commit/d0f9e2af4b7c13a53fb4410e871ef257f8507323))
+* scope config hooks to the merge patch, serve the UI no-cache, rename the access-mode words ([5915742](https://github.com/Makr91/BoxVault/commit/5915742ef196bcc1a03873f9b5ccdde01a646e44))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.12.1 ([753ee94](https://github.com/Makr91/BoxVault/commit/753ee9482d9f62ee06926983f96bf3b202c14e06))
+* bump startcloud-ui to v0.12.1 ([3b32f8b](https://github.com/Makr91/BoxVault/commit/3b32f8bc87d5c17106a7df512d54d3f8eef5a9e6))
+* bump startcloud-ui to v0.12.2 ([a0a7251](https://github.com/Makr91/BoxVault/commit/a0a7251aab6dd7654cd255b14a9c18df25d79805))
+* bump startcloud-ui to v0.12.2 ([71fd220](https://github.com/Makr91/BoxVault/commit/71fd2206b60b0d158c727ff9afadea67ac0299ce))
+* bump startcloud-ui to v0.14.0 ([0377d54](https://github.com/Makr91/BoxVault/commit/0377d542c17ce0253f22e7590bbcc7b780231815))
+* bump startcloud-ui to v0.14.0 ([6f34eef](https://github.com/Makr91/BoxVault/commit/6f34eefc2d141077b63bfcc2bb29c07cd713dda9))
+* bump startcloud-ui to v0.15.0 ([72bb330](https://github.com/Makr91/BoxVault/commit/72bb330d041263edafb2bb29bce064896d7ead6a))
+* bump startcloud-ui to v0.15.0 ([3496cff](https://github.com/Makr91/BoxVault/commit/3496cff8720bada3b67b60fa90b4f86b49e5b95f))
+
 ## [0.81.0](https://github.com/Makr91/BoxVault/compare/v0.80.0...v0.81.0) (2026-09-09)
 
 
