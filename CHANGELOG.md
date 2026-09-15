@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.83.0](https://github.com/Makr91/BoxVault/compare/v0.82.1...v0.83.0) (2026-09-15)
+
+
+### Features
+
+* add the guest organization role, deep-link every hub notification to its row, name the upload's address and the brand pack by name ([6bfca28](https://github.com/Makr91/BoxVault/commit/6bfca284478265b654a736261e242b3f4e98e48f))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.16.0 ([65932fb](https://github.com/Makr91/BoxVault/commit/65932fb9fa894b7967e585b8c5b2c494fd5235b0))
+* bump startcloud-ui to v0.16.0 ([10f789c](https://github.com/Makr91/BoxVault/commit/10f789c398ef6936a5a1e36525381d5ec2380c3a))
+* resolve the SSL paths against the loaded config directory, keep the database type across the upgrade, mount the download upload at every level and answer features per hostname ([6459922](https://github.com/Makr91/BoxVault/commit/6459922237e8893335c014d2ecd797812ae1a698))
+* validate every derived upload level before creating a row, and mock the origin resolver in the suites that stub the config loader ([d77fd1b](https://github.com/Makr91/BoxVault/commit/d77fd1b94e40fd5c436c51a582ace1685f8d56a5))
+
 ## [0.82.1](https://github.com/Makr91/BoxVault/compare/v0.82.0...v0.82.1) (2026-09-15)
 
 
