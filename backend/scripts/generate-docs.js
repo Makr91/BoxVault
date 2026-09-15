@@ -8,13 +8,14 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { log } from '../app/utils/Logger.js';
 import swaggerConfig from '../app/config/swagger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const { specs } = swaggerConfig;
+
+const say = line => process.stdout.write(`${line}\n`);
 
 /**
  * Generate pure HTML Swagger UI page (no Jekyll processing)
@@ -113,7 +114,7 @@ permalink: /api/reference/
  * Generate static API documentation files
  */
 const generateDocs = () => {
-  log.app.info('🔧 Generating API documentation...');
+  say('🔧 Generating API documentation...');
 
   const docsDir = path.join(__dirname, '../../docs/api');
   if (!fs.existsSync(docsDir)) {
@@ -121,30 +122,30 @@ const generateDocs = () => {
   }
 
   try {
-    log.app.info('📝 Writing OpenAPI specification...');
+    say('📝 Writing OpenAPI specification...');
     const openApiJson = JSON.stringify(specs, null, 2);
     fs.writeFileSync(path.join(docsDir, 'openapi.json'), openApiJson);
-    log.app.info('✅ Generated docs/api/openapi.json');
+    say('✅ Generated docs/api/openapi.json');
 
-    log.app.info('📝 Generating Swagger UI HTML...');
+    say('📝 Generating Swagger UI HTML...');
     const swaggerHtml = generateSwaggerUI();
     fs.writeFileSync(path.join(docsDir, 'swagger-ui.html'), swaggerHtml);
-    log.app.info('✅ Generated docs/api/swagger-ui.html');
+    say('✅ Generated docs/api/swagger-ui.html');
 
-    log.app.info('📝 Generating Jekyll redirect page...');
+    say('📝 Generating Jekyll redirect page...');
     const redirectPage = generateRedirectPage();
     fs.writeFileSync(path.join(docsDir, 'reference.md'), redirectPage);
-    log.app.info('✅ Generated docs/api/reference.md');
+    say('✅ Generated docs/api/reference.md');
 
-    log.app.info('🎉 Documentation generation completed successfully!');
-    log.app.info('');
-    log.app.info('Generated files:');
-    log.app.info('  - docs/api/openapi.json - Raw OpenAPI specification');
-    log.app.info('  - docs/api/swagger-ui.html - Pure HTML Swagger UI (no Jekyll processing)');
-    log.app.info('  - docs/api/reference.md - Jekyll page with embedded Swagger UI');
-    log.app.info('');
+    say('🎉 Documentation generation completed successfully!');
+    say('');
+    say('Generated files:');
+    say('  - docs/api/openapi.json - Raw OpenAPI specification');
+    say('  - docs/api/swagger-ui.html - Pure HTML Swagger UI (no Jekyll processing)');
+    say('  - docs/api/reference.md - Jekyll page with embedded Swagger UI');
+    say('');
   } catch (error) {
-    log.error.error('❌ Error generating documentation:', error.message);
+    process.stderr.write(`❌ Error generating documentation: ${error.message}\n`);
     process.exitCode = 1;
   }
 };

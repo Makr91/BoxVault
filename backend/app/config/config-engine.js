@@ -236,7 +236,9 @@ const hookErrors = async (name, document, scope, { writable, reachable }) => {
     leaves(scope)
       .filter(({ value }) => value !== null)
       .flatMap(({ pointer }) => [
-        writable ? writable(pointer, valueAt(document, pointer), name, document) : [],
+        writable
+          ? writable(pointer, valueAt(document, pointer), name, document, state.configDir)
+          : [],
         reachable ? reachable(pointer, valueAt(document, pointer), name, document) : [],
       ])
   );

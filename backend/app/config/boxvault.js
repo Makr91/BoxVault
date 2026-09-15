@@ -14,12 +14,6 @@ const DIRECTORY_POINTERS = ['/boxvault/box_storage_directory', '/logging/log_dir
 const SSL_POINTERS = ['/ssl/cert_path', '/ssl/key_path'];
 const REACHABLE_TIMEOUT_MS = 3000;
 
-let configDir = PRODUCTION_CONFIG_DIR;
-
-const setConfigDir = directory => {
-  configDir = directory;
-};
-
 const nearestExisting = path => {
   let current = path;
   while (!fs.existsSync(current)) {
@@ -43,7 +37,7 @@ const isWritable = path => {
 
 const failure = (pointer, rule, params) => [{ pointer, rule, params }];
 
-const writable = (pointer, value, name, document) => {
+const writable = (pointer, value, name, document, configDir) => {
   if (name !== 'app' || typeof value !== 'string' || value.trim() === '') {
     return [];
   }
@@ -120,7 +114,6 @@ export {
   PRODUCTION_CONFIG_DIR,
   SCHEMA_DIR,
   UPLOAD_LIMIT,
-  setConfigDir,
   hooks,
   exit,
   onConfigSaved,

@@ -2,13 +2,7 @@ import fs from 'fs';
 import { join } from 'path';
 import { timingSafeEqual } from 'crypto';
 import { load, get, save } from '../config/config-engine.js';
-import {
-  CONFIG_NAMES,
-  PRODUCTION_CONFIG_DIR,
-  SCHEMA_DIR,
-  hooks,
-  setConfigDir,
-} from '../config/boxvault.js';
+import { CONFIG_NAMES, PRODUCTION_CONFIG_DIR, SCHEMA_DIR, hooks } from '../config/boxvault.js';
 import { problem } from './problem.js';
 
 const layout = { configDir: PRODUCTION_CONFIG_DIR, development: false };
@@ -21,7 +15,6 @@ const layout = { configDir: PRODUCTION_CONFIG_DIR, development: false };
  */
 const reloadConfig = async () => {
   Object.assign(layout, await load(PRODUCTION_CONFIG_DIR, CONFIG_NAMES, SCHEMA_DIR, hooks));
-  setConfigDir(layout.configDir);
 };
 
 await reloadConfig();
