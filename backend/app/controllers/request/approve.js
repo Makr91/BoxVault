@@ -113,8 +113,8 @@ const approveViaIdpInvite = async (
  *             properties:
  *               assigned_role:
  *                 type: string
- *                 enum: [member, admin]
- *                 description: Role to assign to the user (defaults to 'member')
+ *                 enum: [member, admin, guest]
+ *                 description: Role to assign to the user (defaults to 'member'); a guest reads what a member reads and writes nothing
  *                 example: "member"
  *     responses:
  *       200:
@@ -182,7 +182,7 @@ export const approveJoinRequest = async (req, res) => {
     const assignedRole = assignedRoleInput || 'member';
 
     // Validate assigned role
-    const validRoles = ['member', 'admin'];
+    const validRoles = ['member', 'admin', 'guest'];
     if (!validRoles.includes(assignedRole)) {
       return badRequest(req, res, 'requests.invalidRole');
     }

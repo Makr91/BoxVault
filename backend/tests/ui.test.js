@@ -41,7 +41,7 @@ describe('The served UI build', () => {
     expect(res.statusCode).toBe(200);
     expect(res.text).toContain('<html data-brand-theme="dark" data-brand="testpack"');
     expect(res.text).toContain(
-      '<link rel="stylesheet" href="/themes/testpack/testpack.css?v=abc"></head>'
+      '<link rel="stylesheet" href="/themes/testpack/testpack.css"></head>'
     );
   });
 

@@ -37,7 +37,7 @@ export default (sequelize, Sequelize) => {
         field: 'organization_id',
       },
       requested_role: {
-        type: Sequelize.ENUM('member', 'admin'),
+        type: Sequelize.ENUM('member', 'admin', 'guest'),
         allowNull: false,
         defaultValue: 'member',
         comment: 'Role requested by user (always defaults to member for requests)',
@@ -179,7 +179,7 @@ export default (sequelize, Sequelize) => {
    * Approve join request and add user to organization
    * @param {number} requestId - Request ID
    * @param {number} reviewerId - Admin/owner approving
-   * @param {string} assignedRole - Role to assign (member/admin)
+   * @param {string} assignedRole - Role to assign (member/admin/guest)
    * @returns {Promise<void>}
    */
   Request.approveRequest = async function (requestId, reviewerId, assignedRole = 'member') {

@@ -77,6 +77,20 @@ describe('External user handling from identity-provider claims', () => {
       expect(user.primary_organization_id).toBe((await orgByUuid(alphaUuid)).id);
     });
 
+    it('should mirror a GUEST role and let a higher role win over it', async () => {
+      await sync(user, [
+        { uuid: alphaUuid, name: 'Alpha Org', roles: ['GUEST'] },
+        { uuid: betaUuid, name: 'Beta Org', roles: ['admin'] },
+      ]);
+      expect((await membershipOf(user, alphaUuid)).role).toBe('guest');
+
+      await sync(user, [
+        { uuid: alphaUuid, name: 'Alpha Org', roles: ['GUEST', 'MEMBER'] },
+        { uuid: betaUuid, name: 'Beta Org', roles: ['admin'] },
+      ]);
+      expect((await membershipOf(user, alphaUuid)).role).toBe('member');
+    });
+
     it('should drop stale memberships, clear the pointer and demote roles on resync', async () => {
       await sync(user, [{ uuid: betaUuid, name: 'Beta Org', roles: [] }]);
       expect(await membershipOf(user, alphaUuid)).toBeNull();
@@ -225,6 +239,29 @@ describe('External user handling from identity-provider claims', () => {
         authConfig
       );
       expect(returning.avatar_url).toBe('https://cdn.example/fresher.png');
+    });
+
+    it('should provision a guest from the organizations claim', async () => {
+      const guestEmail = `guest-${uniqueId}@example.com`;
+      const guest = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        {
+          iss: ISSUER,
+          sub: guestEmail,
+          UUID: `guest-uuid-${uniqueId}`,
+          email: guestEmail,
+          email_verified: true,
+          organizations: [
+            { uuid: `guest-org-${uniqueId}`, name: 'Guest Org', roles: ['GUEST'], primary: true },
+          ],
+        },
+        db,
+        authConfig
+      );
+      const membership = await membershipOf(guest, `guest-org-${uniqueId}`);
+      expect(membership.role).toBe('guest');
+      expect(membership.is_primary).toBe(true);
+      expect(guest.primary_organization_id).toBe((await orgByUuid(`guest-org-${uniqueId}`)).id);
     });
 
     it('should provision an account with no organization when the claim names none', async () => {

@@ -23,8 +23,10 @@ const ROW_KEYS = [
 describe('Search API', () => {
   let memberToken;
   let adminToken;
+  let guestToken;
   let member;
   let admin;
+  let guest;
   let org;
   let publicBox;
   let privateBox;
@@ -73,6 +75,16 @@ describe('Search API', () => {
     await admin.setRoles([adminRole]);
     await db.UserOrg.create({ user_id: admin.id, organization_id: org.id, role: 'owner' });
     adminToken = signFor(admin);
+
+    guest = await db.user.create({
+      username: `searchguest_${uniqueId}`,
+      email: `searchguest_${uniqueId}@example.com`,
+      password: 'password',
+      verified: true,
+    });
+    await guest.setRoles([userRole]);
+    await db.UserOrg.create({ user_id: guest.id, organization_id: org.id, role: 'guest' });
+    guestToken = signFor(guest);
 
     publicBox = await db.box.create({
       name: publicBoxName,
@@ -131,6 +143,7 @@ describe('Search API', () => {
     await org.destroy();
     await member.destroy();
     await admin.destroy();
+    await guest.destroy();
   });
 
   describe('GET /api/search', () => {
@@ -222,6 +235,27 @@ describe('Search API', () => {
           matched: 'name',
         },
       ]);
+    });
+
+    it('should answer private rows of the own organization to a guest as to a member', async () => {
+      const boxes = await request(app)
+        .get('/api/search')
+        .query({ q: 'search-p' })
+        .set('x-access-token', guestToken);
+      expect(boxes.statusCode).toBe(200);
+      const names = boxes.body.results.map(row => row.name);
+      expect(names).toContain(publicBoxName);
+      expect(names).toContain(privateBoxName);
+
+      const downloads = await request(app)
+        .get('/api/search')
+        .query({ q: `dl-${uniqueId}`, kinds: 'item' })
+        .set('x-access-token', guestToken);
+      expect(downloads.statusCode).toBe(200);
+      const downloadNames = downloads.body.results.map(row => row.name);
+      expect(downloadNames).toContain(privateDownloadName);
+      expect(downloadNames).not.toContain(unpublishedDownloadName);
+      expect(downloads.body.results.some(row => row.kind === 'user')).toBe(false);
     });
 
     it('should answer downloads by the three-line visibility rule', async () => {

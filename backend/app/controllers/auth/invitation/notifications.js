@@ -3,7 +3,7 @@ import { log } from '../../../utils/Logger.js';
 import { sendHubNotification } from '../../../utils/notifyHub.js';
 import { resolveUserRecipients } from '../../../utils/notifyRecipients.js';
 
-const notifyInvitationAccepted = async (invitation, organization, acceptedEmail) => {
+const notifyInvitationAccepted = async (invitation, organization, acceptedUser) => {
   try {
     if (!invitation.invited_by) {
       return;
@@ -17,8 +17,8 @@ const notifyInvitationAccepted = async (invitation, organization, acceptedEmail)
           recipient: { user_uuid: uuid },
           notification: {
             title: `Invitation accepted for ${organization.name}`,
-            body: `${acceptedEmail} joined as ${invitation.invited_role}.`,
-            navigate: `${origin}/org-console`,
+            body: `${acceptedUser.email} joined as ${invitation.invited_role}.`,
+            navigate: `${origin}/org-console/members#${acceptedUser.id}`,
             tag: 'boxvault-invite-accepted',
           },
           type: 'ACCOUNT',

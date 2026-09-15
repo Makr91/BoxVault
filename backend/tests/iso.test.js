@@ -577,6 +577,142 @@ describe('ISO API', () => {
     });
   });
 
+  describe('Guest membership', () => {
+    const guestContent = Buffer.from(`iso-guest-content-${uniqueId}`);
+    const guestFileBase = `${versionBase}/architecture/guest64/file`;
+    let guest;
+    let guestToken;
+
+    beforeAll(async () => {
+      guest = await db.user.create({
+        username: `IsoGuest_${uniqueId}`,
+        email: `isoguest_${uniqueId}@example.com`,
+        password: 'password',
+        verified: true,
+      });
+      const userRole = await db.role.findOne({ where: { name: 'user' } });
+      await guest.setRoles([userRole]);
+      await db.UserOrg.create({ user_id: guest.id, organization_id: org.id, role: 'guest' });
+      guestToken = signFor(guest);
+    });
+
+    afterAll(async () => {
+      await guest.destroy();
+    });
+
+    it('should list and read the private published ISO as a member does', async () => {
+      const list = await request(app)
+        .get(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', guestToken);
+      expect(list.statusCode).toBe(200);
+      expect(list.body.some(entry => entry.name === isoName)).toBe(true);
+
+      const one = await request(app).get(isoBase).set('x-access-token', guestToken);
+      expect(one.statusCode).toBe(200);
+      expect(one.body.name).toBe(isoName);
+
+      const versions = await request(app)
+        .get(`${isoBase}/version`)
+        .set('x-access-token', guestToken);
+      expect(versions.statusCode).toBe(200);
+      expect(versions.body.some(entry => entry.versionNumber === versionNumber)).toBe(true);
+    });
+
+    it('should be refused every ISO write', async () => {
+      const created = await request(app)
+        .post(`/api/organization/${orgName}/iso`)
+        .set('x-access-token', guestToken)
+        .send({ name: 'guest-iso' });
+      expect(created.statusCode).toBe(403);
+      expect(created.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+
+      const updated = await request(app)
+        .put(isoBase)
+        .set('x-access-token', guestToken)
+        .send({ description: 'hijack' });
+      expect(updated.statusCode).toBe(403);
+
+      const deleted = await request(app).delete(isoBase).set('x-access-token', guestToken);
+      expect(deleted.statusCode).toBe(403);
+
+      const bulk = await request(app)
+        .post(`/api/organization/${orgName}/iso/bulk`)
+        .set('x-access-token', guestToken)
+        .send({ action: 'delete', names: [isoName] });
+      expect(bulk.statusCode).toBe(403);
+
+      const version = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', guestToken)
+        .send({ version_number: '3.0.0' });
+      expect(version.statusCode).toBe(403);
+
+      const versionUpdated = await request(app)
+        .put(versionBase)
+        .set('x-access-token', guestToken)
+        .send({ description: 'hijack' });
+      expect(versionUpdated.statusCode).toBe(403);
+
+      const versionDeleted = await request(app)
+        .delete(versionBase)
+        .set('x-access-token', guestToken);
+      expect(versionDeleted.statusCode).toBe(403);
+
+      const upload = await request(app)
+        .post(`${guestFileBase}/upload`)
+        .set('x-access-token', guestToken)
+        .set('x-file-name', 'guest.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(guestContent);
+      expect(upload.statusCode).toBe(403);
+
+      const removed = await request(app)
+        .delete(`${guestFileBase}/delete`)
+        .set('x-access-token', guestToken);
+      expect(removed.statusCode).toBe(403);
+      expect(await db.iso.count({ where: { name: isoName, organizationId: org.id } })).toBe(1);
+    });
+
+    it('should download a file and watch the ISO', async () => {
+      await request(app)
+        .post(`${guestFileBase}/upload`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'debian-13-guest64.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(guestContent)
+        .expect(201);
+
+      const info = await request(app)
+        .get(`${guestFileBase}/info`)
+        .set('x-access-token', guestToken);
+      expect(info.statusCode).toBe(200);
+      expect(info.body.downloadCount).toBe(0);
+
+      const link = await request(app)
+        .post(`${guestFileBase}/get-download-link`)
+        .set('x-access-token', guestToken);
+      expect(link.statusCode).toBe(200);
+      expect(link.body).toHaveProperty('downloadUrl');
+
+      const download = await request(app)
+        .get(`${guestFileBase}/download`)
+        .set('x-access-token', guestToken);
+      expect(download.statusCode).toBe(200);
+
+      const watched = await request(app).post(`${isoBase}/watch`).set('x-access-token', guestToken);
+      expect(watched.statusCode).toBe(201);
+      const unwatched = await request(app)
+        .delete(`${isoBase}/watch`)
+        .set('x-access-token', guestToken);
+      expect(unwatched.statusCode).toBe(200);
+
+      await request(app)
+        .delete(`${guestFileBase}/delete`)
+        .set('x-access-token', adminToken)
+        .expect(200);
+    });
+  });
+
   describe('ISO files', () => {
     const checksum = sha256(fileContent);
     const storagePath = () => `${org.id}/${checksum}.iso`;

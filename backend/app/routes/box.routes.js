@@ -33,7 +33,7 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgMember,
+    verifyOrgAccess.isOrgWriter,
     validateBody('box'),
   ],
   create
@@ -44,7 +44,7 @@ router.put(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgMember,
+    verifyOrgAccess.isOrgWriter,
     validateBody('box', { partial: true }),
   ],
   update
@@ -54,7 +54,7 @@ router.put(
 // create/rename; auth matches the box update chain.
 router.post(
   '/organization/:organization/box/:name/artwork',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   uploadArtwork
 );
 
@@ -72,7 +72,7 @@ router.delete(
 
 router.delete(
   '/organization/:organization/box/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   deleteBox
 );
 
@@ -81,7 +81,7 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgMember,
+    verifyOrgAccess.isOrgWriter,
     validateBody('bulkItem'),
   ],
   bulkBoxes

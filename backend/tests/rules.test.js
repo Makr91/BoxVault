@@ -132,7 +132,11 @@ describe('GET /api/rules', () => {
       'invite',
       'request',
     ]);
-    expect(document.forms.accessMode.properties.default_role.enum).toEqual(['member', 'admin']);
+    expect(document.forms.accessMode.properties.default_role.enum).toEqual([
+      'member',
+      'admin',
+      'guest',
+    ]);
   });
 
   it('should name the scope of every unique member', () => {

@@ -13,8 +13,10 @@ const escape = value =>
     .replace(/>/g, '&gt;');
 
 const packOf = site => {
-  const pack = site?.brand?.pack;
-  return pack && typeof pack.name === 'string' && pack.name.trim() !== '' ? pack : null;
+  const name = site?.brand?.pack;
+  return typeof name === 'string' && name.trim() !== ''
+    ? { name, css: `/themes/${name}/${name}.css` }
+    : null;
 };
 
 const stamp = (html, theme, pack) => {

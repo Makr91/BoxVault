@@ -36,8 +36,8 @@ const { organization: Organization } = db;
  *                 example: "request"
  *               default_role:
  *                 type: string
- *                 enum: [member, admin]
- *                 description: Default role for new members
+ *                 enum: [member, admin, guest]
+ *                 description: Default role for new members; guest opens a read-only door
  *                 example: "member"
  *     responses:
  *       200:

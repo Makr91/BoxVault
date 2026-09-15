@@ -284,6 +284,13 @@ const updateDatabase = async (entities, finalSize, headers, finalPath) => {
   });
 };
 
+const addressOf = ({ download, release, patch, file }) => ({
+  product: download.name,
+  release: release.versionNumber,
+  patch: patch.name,
+  key: file.key,
+});
+
 const handleChunkedUpload = async (
   req,
   entities,
@@ -366,6 +373,7 @@ const handleChunkedUpload = async (
             isComplete: true,
             status: 'complete',
             fileSize: finalSize,
+            ...addressOf(entities),
           },
         },
       };
@@ -381,6 +389,7 @@ const handleChunkedUpload = async (
           chunksReceived: chunks.length,
           totalChunks,
           currentChunk: chunkIndex,
+          ...addressOf(entities),
         },
       },
     };
@@ -529,6 +538,7 @@ const handleSingleUpload = async (
         isComplete: true,
         status: 'complete',
         fileSize: finalSize,
+        ...addressOf(entities),
       },
     },
   };

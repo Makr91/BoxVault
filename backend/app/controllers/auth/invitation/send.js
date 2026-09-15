@@ -116,8 +116,8 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *                 description: Name of the organization to invite user to
  *               invite_role:
  *                 type: string
- *                 enum: [member, admin]
- *                 description: Role the invitee joins with (member by default)
+ *                 enum: [member, admin, guest]
+ *                 description: Role the invitee joins with (member by default); an owner or an admin may invite a guest, only an owner an admin
  *     responses:
  *       200:
  *         description: Invitation sent successfully

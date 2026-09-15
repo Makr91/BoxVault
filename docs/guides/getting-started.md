@@ -27,7 +27,7 @@ BoxVault is a self-hosted Vagrant box repository:
 
 - **Host Vagrant boxes** - Store and distribute boxes and ISOs for your team
 - **Manage versions** - Track versions, providers and architectures of every box
-- **Control access** - Organizations with owner, admin and member roles, service accounts for automation
+- **Control access** - Organizations with owner, admin, member and guest roles, service accounts for automation
 - **API integration** - A REST API for CI/CD, and the Vagrant box protocol at the root
 
 BoxVault also serves downloads: a product (with a family and a vendor) owns releases, a release owns patches, and a patch owns files, browsed on the same pages as boxes and ISOs. A download has one address for a person and a program: a browser at `/<organization>/downloads/<product>/<release>/<patch>/<file>` is shown the patch page with that file marked, and a program at the same address receives the bytes.
@@ -83,9 +83,9 @@ Open `/register`. The first account gets the global `admin` role and a personal 
 
 1. Open the user menu and choose the organization console
 2. Create an organization: name, description, access mode (`private`, `invite` or `request`)
-3. Invite members by email; an invitation carries the role `member` or `admin`
+3. Invite members by email; an invitation carries the role `member`, `admin` or `guest`
 
-Users can belong to several organizations, create boxes in any organization they are a member of, and switch the active organization from the user menu. A service account is scoped to one organization at creation.
+Users can belong to several organizations, create boxes in any organization they are a member of, and switch the active organization from the user menu. A guest sees what a member sees, the published private items of the organization included, downloads them, and changes nothing. A service account is scoped to one organization at creation.
 
 ### 6. Upload Your First Box
 
@@ -144,7 +144,7 @@ BoxVault reads four plain YAML files from `CONFIG_DIR` (`/etc/boxvault`): `app.c
 | Scope           | Roles                                                     |
 | --------------- | --------------------------------------------------------- |
 | global          | `user`, `admin` (the admin page, every organization)      |
-| organization    | `owner`, `admin`, `member`                                |
+| organization    | `owner`, `admin`, `member`, `guest` (read-only)           |
 | service account | `ROLE_SERVICE_ACCOUNT`, scoped to one organization        |
 
 ### Creating Users
@@ -155,7 +155,7 @@ A global admin creates a user inside an organization from the admin page; anyone
 
 An owner or admin manages membership from the organization console:
 
-1. Invite by email with the role `member` or `admin`
+1. Invite by email with the role `member`, `admin` or `guest`
 2. Approve or deny join requests
 3. Change a member's role (owner only) or remove a member
 4. Create service accounts for CI

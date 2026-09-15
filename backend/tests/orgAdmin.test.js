@@ -22,6 +22,7 @@ describe('Organization administration guards', () => {
   let ownerA;
   let adminA;
   let memberA;
+  let guestA;
   let ownerB;
   let memberB;
   let ownerE;
@@ -59,6 +60,7 @@ describe('Organization administration guards', () => {
     ownerA = await createUser('adm-ownerA', orgA, 'owner');
     adminA = await createUser('adm-adminA', orgA, 'admin');
     memberA = await createUser('adm-memberA', orgA, 'member');
+    guestA = await createUser('adm-guestA', orgA, 'guest');
     ownerB = await createUser('adm-ownerB', orgB, 'owner');
     memberB = await createUser('adm-memberB', orgB, 'member');
     ownerE = await createUser('adm-ownerE', extOrg, 'owner');
@@ -79,7 +81,9 @@ describe('Organization administration guards', () => {
     });
     await db.organization.destroy({ where: { id: [orgA.id, orgB.id, extOrg.id, openOrg.id] } });
     await db.user.destroy({
-      where: { id: [ownerA.id, adminA.id, memberA.id, ownerB.id, memberB.id, ownerE.id] },
+      where: {
+        id: [ownerA.id, adminA.id, memberA.id, guestA.id, ownerB.id, memberB.id, ownerE.id],
+      },
     });
   });
 
@@ -203,6 +207,43 @@ describe('Organization administration guards', () => {
       } finally {
         await memberA.update({ suspended: false });
       }
+    });
+  });
+
+  describe('guest membership', () => {
+    it('should let a guest list the members and refuse it every management write', async () => {
+      const listed = await request(app)
+        .get(`/api/organization/${orgAName}/users`)
+        .set('x-access-token', signFor(guestA));
+      expect(listed.statusCode).toBe(200);
+      expect(listed.body.find(entry => entry.id === guestA.id).orgRole).toBe('guest');
+
+      const removed = await request(app)
+        .delete(`/api/organization/${orgAName}/members/${memberA.id}`)
+        .set('x-access-token', signFor(guestA));
+      expect(removed.statusCode).toBe(403);
+
+      const role = await request(app)
+        .put(`/api/organization/${orgAName}/users/${memberA.id}/role`)
+        .set('x-access-token', signFor(guestA))
+        .send({ role: 'guest' });
+      expect(role.statusCode).toBe(403);
+
+      const accessMode = await request(app)
+        .put(`/api/organization/${orgAName}/access-mode`)
+        .set('x-access-token', signFor(guestA))
+        .send({ access_mode: 'request' });
+      expect(accessMode.statusCode).toBe(403);
+
+      expect((await db.UserOrg.findUserOrgRole(memberA.id, orgA.id)).role).toBe('member');
+    });
+
+    it('should let an organization admin remove a guest', async () => {
+      const res = await request(app)
+        .delete(`/api/organization/${orgAName}/members/${guestA.id}`)
+        .set('x-access-token', signFor(adminA));
+      expect(res.statusCode).toBe(200);
+      expect(await db.UserOrg.findUserOrgRole(guestA.id, orgA.id)).toBeNull();
     });
   });
 

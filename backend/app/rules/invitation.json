@@ -4,6 +4,6 @@
   "properties": {
     "email": { "$ref": "#/$defs/email", "minLength": 1 },
     "organization_name": { "$ref": "#/$defs/slug", "minLength": 1, "pattern": "\\S" },
-    "invite_role": { "type": "string", "enum": ["member", "admin"] }
+    "invite_role": { "type": "string", "enum": ["member", "admin", "guest"] }
   }
 }

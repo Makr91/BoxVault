@@ -119,32 +119,33 @@ The answer carries `redirect_url`, the provider's end-session URL, when the prov
 | Scope           | Roles                                                                 |
 | --------------- | --------------------------------------------------------------------- |
 | global          | `admin` (full system access), `user`                                  |
-| organization    | `owner`, `admin`, `member`                                            |
+| organization    | `owner`, `admin`, `member`, `guest`                                   |
 | service account | `ROLE_SERVICE_ACCOUNT`, acting as its creator inside one organization |
 
-The sign-in answers the global roles as `ROLE_USER` and `ROLE_ADMIN`; the organization role is per membership.
+The sign-in answers the global roles as `ROLE_USER` and `ROLE_ADMIN`; the organization role is per membership. A `guest` is the read-only membership below `member`: it sees exactly what a member sees, the published private boxes, ISOs and downloads of the organization included, downloads them, watches and favorites them, and every write answers `403`.
 
 ### Permission Matrix
 
-| Action                     | Admin | Org Admin          | Member                 | Service Account    |
-| -------------------------- | ----- | ------------------ | ---------------------- | ------------------ |
-| Create Organization        | ✓     | ✓                  | ✗                      | ✗                  |
-| Manage Users               | ✓     | ✓ (org only)       | ✗                      | ✗                  |
-| Create Boxes               | ✓     | ✓                  | ✓ (in any member org)  | ✓ (scoped to org)  |
-| Update Own Boxes           | ✓     | ✓                  | ✓                      | ✓                  |
-| Update Others' Boxes       | ✓     | ✓ (org only)       | ✗                      | ✗                  |
-| Delete Own Boxes           | ✓     | ✓                  | ✓                      | ✓                  |
-| Delete Others' Boxes       | ✓     | ✓ (org only)       | ✗                      | ✗                  |
-| Download Public Boxes      | ✓     | ✓                  | ✓                      | ✓                  |
-| Download Private Boxes     | ✓     | ✓ (member orgs)    | ✓ (member orgs)        | ✓ (scoped org)     |
-| Delete All Boxes (org)     | ✓     | ✓ (org only)       | ✗                      | ✗                  |
-| System Settings            | ✓     | ✗                  | ✗                      | ✗                  |
+| Action                     | Admin | Org Admin          | Member                 | Guest              | Service Account    |
+| -------------------------- | ----- | ------------------ | ---------------------- | ------------------ | ------------------ |
+| Create Organization        | ✓     | ✓                  | ✗                      | ✗                  | ✗                  |
+| Manage Users               | ✓     | ✓ (org only)       | ✗                      | ✗                  | ✗                  |
+| Create Boxes               | ✓     | ✓                  | ✓ (in any member org)  | ✗                  | ✓ (scoped to org)  |
+| Update Own Boxes           | ✓     | ✓                  | ✓                      | ✗                  | ✓                  |
+| Update Others' Boxes       | ✓     | ✓ (org only)       | ✗                      | ✗                  | ✗                  |
+| Delete Own Boxes           | ✓     | ✓                  | ✓                      | ✗                  | ✓                  |
+| Delete Others' Boxes       | ✓     | ✓ (org only)       | ✗                      | ✗                  | ✗                  |
+| Download Public Boxes      | ✓     | ✓                  | ✓                      | ✓                  | ✓                  |
+| Download Private Boxes     | ✓     | ✓ (member orgs)    | ✓ (member orgs)        | ✓ (guest orgs)     | ✓ (scoped org)     |
+| Delete All Boxes (org)     | ✓     | ✓ (org only)       | ✗                      | ✗                  | ✗                  |
+| System Settings            | ✓     | ✗                  | ✗                      | ✗                  | ✗                  |
 
 **Notes:**
 
-- Users can create boxes in ANY organization they belong to (not just their primary organization)
+- Users can create boxes in ANY organization they belong to as a member, admin or owner (not just their primary organization)
 - Users can only modify/delete boxes they created
 - Org admins and owners can modify/delete ANY box within their organizations
+- A guest reads and downloads only; a service account created by a guest acts as a guest
 - Service accounts are scoped to a specific organization at creation time
 
 ## Service Accounts

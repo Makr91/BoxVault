@@ -3,16 +3,25 @@ import db from '../models/index.js';
 const { service_account: ServiceAccount, user: User, organization: Organization, UserOrg } = db;
 
 const ORG_ROLES = ['member', 'admin', 'owner'];
-const ROLE_RANK = { member: 0, admin: 1, owner: 2, superadmin: 3 };
+const ROLE_RANK = { guest: 0, member: 1, admin: 2, owner: 3, superadmin: 4 };
+const WRITING_ROLES = ['member', 'admin', 'owner'];
 const MANAGING_ROLES = ['admin', 'owner'];
 
 /**
  * The lower of two organization roles.
- * @param {string} first - member, admin or owner
- * @param {string} second - member, admin or owner
+ * @param {string} first - guest, member, admin or owner
+ * @param {string} second - guest, member, admin or owner
  * @returns {string} The role with the lower rank
  */
 const lowerRole = (first, second) => (ROLE_RANK[first] <= ROLE_RANK[second] ? first : second);
+
+/**
+ * Whether a membership may write in its organization: any role above guest.
+ * A guest reads as a member and never writes; no membership never writes.
+ * @param {{role: string}|null} membership - The caller's membership in the organization
+ * @returns {boolean} True for a member, admin or owner
+ */
+const canWriteInOrg = membership => Boolean(membership && WRITING_ROLES.includes(membership.role));
 
 /**
  * Whether a user holds the global admin role.
@@ -162,16 +171,17 @@ const ownsBox = (caller, box, membership) =>
   box.userId === caller.userId && (!caller.isServiceAccount || Boolean(membership));
 
 /**
- * Whether the caller may write a box and its tree: its owner, or an admin or
- * owner of its organization.
+ * Whether the caller may write a box and its tree: a writing member of its
+ * organization who owns it, or an admin or owner of its organization; a guest
+ * never.
  * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
  * @param {{userId: number}} box - The box
  * @param {{role: string}|null} membership - The caller's membership in the box's organization
  * @returns {boolean} True when the caller may write the box
  */
 const canWriteBox = (caller, box, membership) =>
-  ownsBox(caller, box, membership) ||
-  Boolean(membership && MANAGING_ROLES.includes(membership.role));
+  canWriteInOrg(membership) &&
+  (ownsBox(caller, box, membership) || MANAGING_ROLES.includes(membership.role));
 
 /**
  * Whether the caller owns a download: a user by the download's userId, a
@@ -186,21 +196,23 @@ const ownsDownload = (caller, download, membership) =>
   download.userId === caller.userId && (!caller.isServiceAccount || Boolean(membership));
 
 /**
- * Whether the caller may write a download and its tree: its owner, or an
- * admin or owner of its organization.
+ * Whether the caller may write a download and its tree: a writing member of
+ * its organization who owns it, or an admin or owner of its organization; a
+ * guest never.
  * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
  * @param {{userId: number}} download - The download
  * @param {{role: string}|null} membership - The caller's membership in the download's organization
  * @returns {boolean} True when the caller may write the download
  */
 const canWriteDownload = (caller, download, membership) =>
-  ownsDownload(caller, download, membership) ||
-  Boolean(membership && MANAGING_ROLES.includes(membership.role));
+  canWriteInOrg(membership) &&
+  (ownsDownload(caller, download, membership) || MANAGING_ROLES.includes(membership.role));
 
 export {
   ORG_ROLES,
   ROLE_RANK,
   lowerRole,
+  canWriteInOrg,
   holdsGlobalAdmin,
   serviceAccountIsSuperadmin,
   serviceAccountMembership,

@@ -2087,4 +2087,114 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(401);
     });
   });
+
+  describe('Guest membership', () => {
+    let guest;
+    let guestToken;
+    let demoted;
+
+    beforeAll(async () => {
+      const hashedPassword = await bcrypt.hash('password', 8);
+      const userRole = await db.role.findOne({ where: { name: 'user' } });
+      guest = await db.user.create({
+        username: `org-guest-${uniqueId}`,
+        email: `org-guest-${uniqueId}@example.com`,
+        password: hashedPassword,
+        verified: true,
+      });
+      await guest.setRoles([userRole]);
+      await db.UserOrg.create({
+        user_id: guest.id,
+        organization_id: organization.id,
+        role: 'guest',
+      });
+      guestToken = jwt.sign({ id: guest.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
+
+      demoted = await db.user.create({
+        username: `org-demoted-${uniqueId}`,
+        email: `org-demoted-${uniqueId}@example.com`,
+        password: hashedPassword,
+        verified: true,
+      });
+      await demoted.setRoles([userRole]);
+      await db.UserOrg.create({
+        user_id: demoted.id,
+        organization_id: organization.id,
+        role: 'member',
+      });
+    });
+
+    afterAll(async () => {
+      await db.user.destroy({ where: { id: [guest.id, demoted.id] } });
+    });
+
+    it('should list the members of the organization to a guest', async () => {
+      const res = await request(app)
+        .get(`/api/organization/${orgName}/users`)
+        .set('x-access-token', guestToken);
+
+      expect(res.statusCode).toBe(200);
+      const self = res.body.find(u => u.id === guest.id);
+      expect(self).toBeDefined();
+      expect(self.orgRole).toBe('guest');
+    });
+
+    it('should refuse a guest every console write', async () => {
+      const role = await request(app)
+        .put(`/api/organization/${orgName}/users/${demoted.id}/role`)
+        .set('x-access-token', guestToken)
+        .send({ role: 'admin' });
+      expect(role.statusCode).toBe(403);
+
+      const removed = await request(app)
+        .delete(`/api/organization/${orgName}/members/${demoted.id}`)
+        .set('x-access-token', guestToken);
+      expect(removed.statusCode).toBe(403);
+
+      const accessMode = await request(app)
+        .put(`/api/organization/${orgName}/access-mode`)
+        .set('x-access-token', guestToken)
+        .send({ access_mode: 'request' });
+      expect(accessMode.statusCode).toBe(403);
+
+      const profile = await request(app)
+        .put(`/api/organization/${orgName}`)
+        .set('x-access-token', guestToken)
+        .send({ description: 'hijack' });
+      expect(profile.statusCode).toBe(403);
+
+      const invited = await request(app)
+        .post('/api/auth/invite')
+        .set('x-access-token', guestToken)
+        .send({ email: `guest-invite-${uniqueId}@example.com`, organization_name: orgName });
+      expect(invited.statusCode).toBe(403);
+
+      expect((await db.UserOrg.findUserOrgRole(demoted.id, organization.id)).role).toBe('member');
+    });
+
+    it('should let an owner demote a member to guest and open a guest door by default', async () => {
+      const role = await request(app)
+        .put(`/api/organization/${orgName}/users/${demoted.id}/role`)
+        .set('x-access-token', adminToken)
+        .send({ role: 'guest' });
+      expect(role.statusCode).toBe(200);
+      expect(role.body.newRole).toBe('guest');
+      expect((await db.UserOrg.findUserOrgRole(demoted.id, organization.id)).role).toBe('guest');
+
+      const accessMode = await request(app)
+        .put(`/api/organization/${orgName}/access-mode`)
+        .set('x-access-token', adminToken)
+        .send({ access_mode: 'request', default_role: 'guest' });
+      expect(accessMode.statusCode).toBe(200);
+      expect(accessMode.body.default_role).toBe('guest');
+      await organization.reload();
+      expect(organization.default_role).toBe('guest');
+
+      await organization.update({ access_mode: 'private', default_role: 'member' });
+    });
+  });
 });

@@ -263,6 +263,23 @@ describe('Invitation API', () => {
       );
     });
 
+    it('should let an admin invite a guest', async () => {
+      const guestEmail = `guest-invitee-${uniqueId}@example.com`;
+      const res = await request(app)
+        .post('/api/auth/invite')
+        .set('x-access-token', adminToken)
+        .send({
+          email: guestEmail,
+          organization_name: orgName,
+          invite_role: 'guest',
+        });
+
+      expect(res.statusCode).toBe(200);
+      const invitation = await db.invitation.findOne({ where: { email: guestEmail } });
+      expect(invitation.invited_role).toBe('guest');
+      await invitation.destroy();
+    });
+
     it('should return 404 if organization not found', async () => {
       const res = await request(app)
         .post('/api/auth/invite')

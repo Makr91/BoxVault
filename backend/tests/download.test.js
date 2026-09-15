@@ -17,10 +17,12 @@ describe('Download API', () => {
   let owner;
   let member;
   let other;
+  let guest;
   let outsider;
   let ownerToken;
   let memberToken;
   let otherToken;
+  let guestToken;
   let outsiderToken;
 
   const signFor = account =>
@@ -50,17 +52,21 @@ describe('Download API', () => {
     owner = await createUser('dl-owner', 'owner');
     member = await createUser('dl-member', 'member');
     other = await createUser('dl-other', 'member');
+    guest = await createUser('dl-guest', 'guest');
     outsider = await createUser('dl-outsider', null);
     ownerToken = signFor(owner);
     memberToken = signFor(member);
     otherToken = signFor(other);
+    guestToken = signFor(guest);
     outsiderToken = signFor(outsider);
   });
 
   afterAll(async () => {
     await db.download.destroy({ where: { organizationId: org.id } });
     await org.destroy();
-    await db.user.destroy({ where: { id: [owner.id, member.id, other.id, outsider.id] } });
+    await db.user.destroy({
+      where: { id: [owner.id, member.id, other.id, guest.id, outsider.id] },
+    });
     fs.rmSync(getSecureDownloadPath(orgName), { recursive: true, force: true });
   });
 
@@ -294,6 +300,78 @@ describe('Download API', () => {
       jest.spyOn(db.download, 'findOne').mockRejectedValue(new Error('DB Error'));
       const one = await request(app).get(productBase).set('x-access-token', memberToken);
       expect(one.statusCode).toBe(500);
+    });
+  });
+
+  describe('guest membership', () => {
+    it('should read the published private product as a member does', async () => {
+      const listed = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', guestToken);
+      expect(listed.statusCode).toBe(200);
+      const entry = listed.body.find(candidate => candidate.name === productName);
+      expect(entry).toBeDefined();
+      expect(entry.downloadCount).toBe(0);
+
+      const one = await request(app).get(productBase).set('x-access-token', guestToken);
+      expect(one.statusCode).toBe(200);
+      expect(one.body.downloadCount).toBe(0);
+    });
+
+    it('should be refused every product write', async () => {
+      const created = await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', guestToken)
+        .send({ name: 'guest-product' });
+      expect(created.statusCode).toBe(403);
+      expect(created.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(created.body.title).toBe(
+        'A guest of this organization may read and download, never change anything!'
+      );
+
+      const updated = await request(app)
+        .put(productBase)
+        .set('x-access-token', guestToken)
+        .send({ description: 'hijack' });
+      expect(updated.statusCode).toBe(403);
+
+      const deleted = await request(app).delete(productBase).set('x-access-token', guestToken);
+      expect(deleted.statusCode).toBe(403);
+
+      const bulk = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', guestToken)
+        .send({ action: 'unpublish', names: [productName] });
+      expect(bulk.statusCode).toBe(403);
+
+      const release = await request(app)
+        .post(`${productBase}/release`)
+        .set('x-access-token', guestToken)
+        .send({ version_number: '1.0.0' });
+      expect(release.statusCode).toBe(403);
+
+      const dropped = await request(app)
+        .post(`${productBase}/file/upload`)
+        .set('x-access-token', guestToken)
+        .set('Content-Type', 'application/octet-stream')
+        .set('x-file-name', 'Domino_1.0.0_Linux.tar')
+        .send(Buffer.from('guest bytes'));
+      expect(dropped.statusCode).toBe(403);
+
+      expect(
+        await db.download.count({ where: { name: 'guest-product', organizationId: org.id } })
+      ).toBe(0);
+    });
+
+    it('should watch and unwatch the product', async () => {
+      const watched = await request(app)
+        .post(`${productBase}/watch`)
+        .set('x-access-token', guestToken);
+      expect(watched.statusCode).toBe(201);
+      const unwatched = await request(app)
+        .delete(`${productBase}/watch`)
+        .set('x-access-token', guestToken);
+      expect(unwatched.statusCode).toBe(200);
     });
   });
 

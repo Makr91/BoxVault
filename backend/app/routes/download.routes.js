@@ -59,7 +59,7 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgMember,
+    verifyOrgAccess.isOrgWriter,
     validateBody('download'),
   ],
   create
@@ -70,7 +70,7 @@ router.put(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgMember,
+    verifyOrgAccess.isOrgWriter,
     validateBody('download', { partial: true }),
   ],
   update
@@ -90,7 +90,7 @@ router.delete(
 
 router.delete(
   '/organization/:organization/download/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgMember],
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   deleteDownload
 );
 
@@ -99,7 +99,7 @@ router.post(
   [
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgMember,
+    verifyOrgAccess.isOrgWriter,
     validateBody('bulkItem'),
   ],
   bulkDownloads

@@ -8,6 +8,6 @@
       "pattern": "\\S",
       "enum": ["private", "invite", "request"]
     },
-    "default_role": { "type": "string", "enum": ["member", "admin"] }
+    "default_role": { "type": "string", "enum": ["member", "admin", "guest"] }
   }
 }

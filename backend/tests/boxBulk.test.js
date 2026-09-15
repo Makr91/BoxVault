@@ -14,9 +14,11 @@ describe('Box bulk API', () => {
   let org;
   let owner;
   let member;
+  let guest;
   let outsider;
   let ownerToken;
   let memberToken;
+  let guestToken;
   let outsiderToken;
 
   const signFor = account =>
@@ -45,16 +47,18 @@ describe('Box bulk API', () => {
     org = await db.organization.create({ name: orgName, access_mode: 'private' });
     owner = await createUser('bulk-owner', 'owner');
     member = await createUser('bulk-member', 'member');
+    guest = await createUser('bulk-guest', 'guest');
     outsider = await createUser('bulk-outsider', null);
     ownerToken = signFor(owner);
     memberToken = signFor(member);
+    guestToken = signFor(guest);
     outsiderToken = signFor(outsider);
   });
 
   afterAll(async () => {
     await db.box.destroy({ where: { organizationId: org.id } });
     await org.destroy();
-    await db.user.destroy({ where: { id: [owner.id, member.id, outsider.id] } });
+    await db.user.destroy({ where: { id: [owner.id, member.id, guest.id, outsider.id] } });
     fs.rmSync(getSecureBoxPath(orgName), { recursive: true, force: true });
   });
 
@@ -161,6 +165,16 @@ describe('Box bulk API', () => {
       ]);
     });
 
+    it('should refuse a guest before any row', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', guestToken)
+        .send({ action: 'delete', names: ['flip-a'] });
+      expect(res.statusCode).toBe(403);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(await db.box.count({ where: { name: 'flip-a', organizationId: org.id } })).toBe(1);
+    });
+
     it('should refuse a non-member and an unknown organization', async () => {
       const asOutsider = await request(app)
         .post(`/api/organization/${orgName}/box/bulk`)
@@ -204,6 +218,15 @@ describe('Box bulk API', () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/box/${boxName}/version/bulk`)
         .set('x-access-token', memberToken)
+        .send({ action: 'delete', names: ['1.0.0'] });
+      expect(res.statusCode).toBe(403);
+      expect(await db.versions.count({ where: { boxId: box.id } })).toBe(3);
+    });
+
+    it('should refuse a guest before any row', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/box/${boxName}/version/bulk`)
+        .set('x-access-token', guestToken)
         .send({ action: 'delete', names: ['1.0.0'] });
       expect(res.statusCode).toBe(403);
       expect(await db.versions.count({ where: { boxId: box.id } })).toBe(3);

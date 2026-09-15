@@ -104,6 +104,7 @@ describe('SCIM receiver', () => {
   const hexId = Date.now().toString(16).toUpperCase().slice(-5);
   const userUuid = `user-uuid-${uniqueId}`;
   const secondUserUuid = `user-uuid-two-${uniqueId}`;
+  const guestUserUuid = `user-uuid-guest-${uniqueId}`;
   const ghostUuid = `ghost-uuid-${uniqueId}`;
   const orgUuid = `org-uuid-${uniqueId}`;
   const customerId = `A${hexId}`;
@@ -111,8 +112,10 @@ describe('SCIM receiver', () => {
   let token;
   let userId;
   let secondUserId;
+  let guestUserId;
   let ownerGroupId;
   let memberGroupId;
+  let guestGroupId;
 
   const scimPost = (route, body) =>
     request(app)
@@ -181,6 +184,7 @@ describe('SCIM receiver', () => {
       jwksServer.close(resolve);
     });
     await db.user.destroy({ where: { username: `scim.user.${uniqueId}` } });
+    await db.user.destroy({ where: { username: `scim.guest.${uniqueId}` } });
     await db.organization.destroy({ where: { external_org_id: orgUuid } });
   });
 
@@ -383,6 +387,20 @@ describe('SCIM receiver', () => {
       expect(res.statusCode).toBe(201);
       secondUserId = Number(res.body.id);
     });
+
+    it('should provision a guest user for the group tests', async () => {
+      const res = await scimPost(
+        '/Users',
+        userBody({
+          externalId: guestUserUuid,
+          userName: `scim.guest.${uniqueId}`,
+          displayName: 'Guest User',
+          emails: [{ value: `scim-guest-${uniqueId}@example.com`, primary: true }],
+        })
+      );
+      expect(res.statusCode).toBe(201);
+      guestUserId = Number(res.body.id);
+    });
   });
 
   describe('GET /scim/v2/Users', () => {
@@ -512,6 +530,27 @@ describe('SCIM receiver', () => {
       expect(second.role).toBe('member');
       const memberships = await db.UserOrg.findAll({ where: { organization_id: org.id } });
       expect(memberships).toHaveLength(2);
+    });
+
+    it('should grant the guest group its read-only role and keep a higher role above it', async () => {
+      const res = await scimPost(
+        '/Groups',
+        groupBody('guest', {
+          members: [{ value: guestUserUuid }, { value: secondUserUuid }],
+        })
+      );
+      expect(res.statusCode).toBe(201);
+      expect(res.body.externalId).toBe(`${orgUuid}:guest`);
+      expect(res.body[GROUP_EXTENSION].role).toBe('guest');
+      guestGroupId = Number(res.body.id);
+
+      const org = await db.organization.findOne({ where: { external_org_id: orgUuid } });
+      const guest = await db.UserOrg.findUserOrgRole(guestUserId, org.id);
+      expect(guest.role).toBe('guest');
+      const second = await db.UserOrg.findUserOrgRole(secondUserId, org.id);
+      expect(second.role).toBe('member');
+      const memberships = await db.UserOrg.findAll({ where: { organization_id: org.id } });
+      expect(memberships).toHaveLength(3);
     });
 
     it('should disambiguate the slug when a local organization already holds the name', async () => {
@@ -872,6 +911,16 @@ describe('SCIM receiver', () => {
       const org = await db.organization.findOne({ where: { external_org_id: orgUuid } });
       expect(org).not.toBeNull();
       expect(await db.UserOrg.findUserOrgRole(userId, org.id)).toBeNull();
+      const second = await db.UserOrg.findUserOrgRole(secondUserId, org.id);
+      expect(second.role).toBe('owner');
+    });
+
+    it('should drop the guest membership with its group', async () => {
+      const res = await scimDelete(`/Groups/${guestGroupId}`);
+      expect(res.statusCode).toBe(204);
+      const org = await db.organization.findOne({ where: { external_org_id: orgUuid } });
+      expect(org).not.toBeNull();
+      expect(await db.UserOrg.findUserOrgRole(guestUserId, org.id)).toBeNull();
       const second = await db.UserOrg.findUserOrgRole(secondUserId, org.id);
       expect(second.role).toBe('owner');
     });

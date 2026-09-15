@@ -2,6 +2,7 @@ import db from '../models/index.js';
 import { log } from '../utils/Logger.js';
 import { problem } from '../utils/problem.js';
 import {
+  canWriteInOrg,
   holdsGlobalAdmin,
   resolveOrgMembership,
   serviceAccountIsSuperadmin,
@@ -87,6 +88,51 @@ const isOrgMember = async (req, res, next) => {
     return next();
   } catch (err) {
     log.error.error('Org membership check error:', {
+      error: err.message,
+      stack: err.stack,
+      userId: req.userId,
+      organization: req.params.organization,
+    });
+    return internal(req, res, 'organizations.membershipCheckError');
+  }
+};
+
+/**
+ * Middleware to verify the caller holds a writing membership in the
+ * organization named by the route: member, admin or owner; a guest is refused.
+ */
+const isOrgWriter = async (req, res, next) => {
+  try {
+    const { organization: orgName } = req.params;
+
+    if (!orgName) {
+      return parameterRequired(req, res);
+    }
+
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return userNotFound(req, res);
+    }
+
+    const organization = await Organization.findOne({ where: { name: orgName } });
+    if (!organization) {
+      return notFound(req, res, req.__('organizations.organizationNotFound'));
+    }
+
+    const membership = await resolveOrgMembership(req, organization.id);
+    if (!membership) {
+      return forbidden(req, res, 'organizations.userNotMember');
+    }
+    if (!canWriteInOrg(membership)) {
+      return forbidden(req, res, 'organizations.requireWriter');
+    }
+
+    req.userOrgRole = membership.role;
+    req.organizationId = organization.id;
+
+    return next();
+  } catch (err) {
+    log.error.error('Org writer check error:', {
       error: err.message,
       stack: err.stack,
       userId: req.userId,
@@ -508,6 +554,7 @@ const getUserOrgContext = async (userId, orgName) => {
 
 export {
   isOrgMember,
+  isOrgWriter,
   isOrgAdmin,
   isOrgOwner,
   isOrgAdminOrOwner,

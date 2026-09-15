@@ -7,7 +7,7 @@ import { findFreeOrgName, upsertExternalOrg } from '../utils/externalOrgs.js';
  * claim vocabulary IS BoxVault's per-org enum — no translation, just
  * lowercase and highest privilege across overlapping roles.
  * @param {string[]|undefined} roles - Roles from the organizations claim
- * @returns {'owner'|'admin'|'member'}
+ * @returns {'owner'|'admin'|'member'|'guest'}
  */
 const pickOrgRole = roles => {
   const list = Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()) : [];
@@ -16,6 +16,12 @@ const pickOrgRole = roles => {
   }
   if (list.includes('admin')) {
     return 'admin';
+  }
+  if (list.includes('member')) {
+    return 'member';
+  }
+  if (list.includes('guest')) {
+    return 'guest';
   }
   return 'member';
 };

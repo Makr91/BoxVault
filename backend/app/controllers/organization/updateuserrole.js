@@ -44,8 +44,8 @@ const notFound = (req, res, key) =>
  *             properties:
  *               role:
  *                 type: string
- *                 enum: [member, admin, owner]
- *                 description: New role to assign
+ *                 enum: [guest, member, admin, owner]
+ *                 description: New role to assign; a guest reads what a member reads and writes nothing
  *                 example: "admin"
  *     responses:
  *       200:
@@ -102,7 +102,7 @@ const updateUserOrgRole = async (req, res) => {
     const { organizationId } = req; // Set by verifyOrgAccess middleware
 
     // Validate role
-    const validRoles = ['member', 'admin', 'owner'];
+    const validRoles = ['guest', 'member', 'admin', 'owner'];
     if (!validRoles.includes(role)) {
       return badRequest(req, res, 'organizations.invalidRole');
     }

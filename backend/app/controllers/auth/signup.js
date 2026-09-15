@@ -254,7 +254,7 @@ export const signup = async (req, res) => {
     // If signup was done with an invitation, mark it as accepted
     if (invitation) {
       await invitation.update({ accepted: true, accepted_at: new Date() });
-      await notifyInvitationAccepted(invitation, organization, user.email);
+      await notifyInvitationAccepted(invitation, organization, user);
     }
 
     // Send verification email asynchronously

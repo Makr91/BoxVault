@@ -9,6 +9,7 @@ import http from 'http';
 import nodemailer from 'nodemailer';
 import { getSupportedLocales, getDefaultLocale } from '../../config/i18n.js';
 import { getIsoStorageRoot } from '../iso/helpers.js';
+import { getStorageRoot } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { notifyHealth } from '../../utils/events.js';
@@ -280,7 +281,7 @@ const sendDiskAlertEmail = async (boxDisk, isoDisk) => {
   }
 };
 
-const sendDiskAlertNotifications = async (boxDisk, isoDisk, appConfig) => {
+const sendDiskAlertNotifications = async (boxDisk, isoDisk, appConfig, storagePath) => {
   try {
     const recipients = await resolveGlobalAdminRecipients();
     const origin = appConfig.boxvault?.origin || '';
@@ -293,7 +294,7 @@ const sendDiskAlertNotifications = async (boxDisk, isoDisk, appConfig) => {
           notification: {
             title: 'BoxVault disk space alert',
             body: `Box storage: ${boxDisk.message}. ISO storage: ${isoDisk.message}.`,
-            navigate: `${origin}/admin`,
+            navigate: `${origin}/admin/system#${storagePath}`,
             tag: 'boxvault-disk',
           },
           type: 'SYSTEM',
@@ -307,7 +308,7 @@ const sendDiskAlertNotifications = async (boxDisk, isoDisk, appConfig) => {
   }
 };
 
-const handleDiskAlerting = async (boxDisk, isoDisk, appConfig) => {
+const handleDiskAlerting = async (boxDisk, isoDisk, appConfig, boxStorageDir, isoStorageDir) => {
   if (boxDisk.status !== 'warning' && isoDisk.status !== 'warning') {
     return;
   }
@@ -317,7 +318,12 @@ const handleDiskAlerting = async (boxDisk, isoDisk, appConfig) => {
   // Alert at most once every X hours
   if (alertFrequencyHours === 0 || now - lastAlertTime > alertFrequencyHours * 60 * 60 * 1000) {
     await sendDiskAlertEmail(boxDisk, isoDisk);
-    await sendDiskAlertNotifications(boxDisk, isoDisk, appConfig);
+    await sendDiskAlertNotifications(
+      boxDisk,
+      isoDisk,
+      appConfig,
+      boxDisk.status === 'warning' ? boxStorageDir : isoStorageDir
+    );
     lastAlertTime = now;
   }
 };
@@ -351,7 +357,7 @@ const getHealthReport = async () => {
   };
 
   // Check Storage
-  const boxStorageDir = appConfig.boxvault?.box_storage_directory;
+  const boxStorageDir = getStorageRoot();
   const isoStorageDir = getIsoStorageRoot();
   const boxDisk = await checkDiskUsage(boxStorageDir);
   const isoDisk = await checkDiskUsage(isoStorageDir);
@@ -359,7 +365,7 @@ const getHealthReport = async () => {
   services.storage_isos = mapStatus(isoDisk.status);
 
   // Alerting Logic
-  await handleDiskAlerting(boxDisk, isoDisk, appConfig);
+  await handleDiskAlerting(boxDisk, isoDisk, appConfig, boxStorageDir, isoStorageDir);
 
   // Check OIDC Providers (#54): the public payload carries ONE coarse,
   // threshold-derived status word for the whole OIDC set — never counts,

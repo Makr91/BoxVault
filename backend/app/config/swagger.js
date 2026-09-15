@@ -490,9 +490,10 @@ const options = {
             },
             default_role: {
               type: 'string',
-              enum: ['member', 'admin'],
-              description: 'Default role for new members',
-              example: 'user',
+              enum: ['member', 'admin', 'guest'],
+              description:
+                'Default role for new members; guest is the read-only fourth organization role',
+              example: 'member',
             },
             createdAt: {
               type: 'string',

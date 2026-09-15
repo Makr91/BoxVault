@@ -60,9 +60,9 @@ const enabledIdp = providers => {
 };
 
 const packOf = site => {
-  const pack = site?.brand?.pack;
-  return pack && typeof pack.name === 'string' && pack.name.trim() !== ''
-    ? { name: pack.name, css: pack.css }
+  const name = site?.brand?.pack;
+  return typeof name === 'string' && name.trim() !== ''
+    ? { name, css: `/themes/${name}/${name}.css` }
     : null;
 };
 
@@ -161,7 +161,7 @@ const featuresOf = (site, localEnabled) => {
  *                           example: prominic
  *                         css:
  *                           type: string
- *                           example: /themes/prominic/prominic.css?v=a1b2c3
+ *                           example: /themes/prominic/prominic.css
  *                 auth:
  *                   type: array
  *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session, answered while local accounts are on; idp is browser OIDC against the issuer named in idp, answered while local accounts are off and a provider is enabled

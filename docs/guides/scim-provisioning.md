@@ -118,13 +118,13 @@ from stranding the accounts that used both doors.
 ## Groups
 
 Groups carry organization membership. Each group is one org **and** one role,
-identified by an `externalId` of the form `<org-uuid>:<owner|admin|member>`.
+identified by an `externalId` of the form `<org-uuid>:<owner|admin|member|guest>`.
 
 Memberships are recomputed from **all** stored groups for that org, not from the
 single group in the request:
 
 - the highest role wins when a user appears in more than one group
-  (`owner` > `admin` > `member`)
+  (`owner` > `admin` > `member` > `guest`)
 - a user absent from every group loses their membership
 - member UUIDs matching no known BoxVault user are ignored as ghosts
 

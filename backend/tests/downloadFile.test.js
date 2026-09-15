@@ -30,9 +30,11 @@ describe('Download file API', () => {
   let org;
   let owner;
   let member;
+  let guest;
   let outsider;
   let ownerToken;
   let memberToken;
+  let guestToken;
   let outsiderToken;
 
   const signFor = account =>
@@ -73,9 +75,11 @@ describe('Download file API', () => {
     org = await db.organization.create({ name: orgName, access_mode: 'private' });
     owner = await createUser('file-owner', 'owner');
     member = await createUser('file-member', 'member');
+    guest = await createUser('file-guest', 'guest');
     outsider = await createUser('file-outsider', null);
     ownerToken = signFor(owner);
     memberToken = signFor(member);
+    guestToken = signFor(guest);
     outsiderToken = signFor(outsider);
     await request(app)
       .post(`/api/organization/${orgName}/download`)
@@ -97,7 +101,7 @@ describe('Download file API', () => {
   afterAll(async () => {
     await db.download.destroy({ where: { organizationId: org.id } });
     await org.destroy();
-    await db.user.destroy({ where: { id: [owner.id, member.id, outsider.id] } });
+    await db.user.destroy({ where: { id: [owner.id, member.id, guest.id, outsider.id] } });
     fs.rmSync(getSecureDownloadPath(orgName), { recursive: true, force: true });
   });
 
@@ -222,6 +226,12 @@ describe('Download file API', () => {
       expect(first.statusCode).toBe(200);
       expect(first.body.details.isComplete).toBe(false);
       expect(first.body.details.chunksReceived).toBe(1);
+      expect(first.body.details).toMatchObject({
+        product: productName,
+        release: releaseNumber,
+        patch: patchName,
+        key: 'container',
+      });
 
       const second = await uploadTo('container', ownerToken, content.subarray(half), {
         'x-file-name': 'Domino_14.5.1_Container_Image.tgz',
@@ -393,6 +403,70 @@ describe('Download file API', () => {
     });
   });
 
+  describe('guest membership', () => {
+    it('should read the info and download a file of the published private product', async () => {
+      const info = await request(app)
+        .get(`${patchBase}/file/linux-x64/info`)
+        .set('x-access-token', guestToken);
+      expect(info.statusCode).toBe(200);
+      expect(info.body.downloadCount).toBe(0);
+
+      const link = await request(app)
+        .post(`${patchBase}/file/linux-x64/get-download-link`)
+        .set('x-access-token', guestToken);
+      expect(link.statusCode).toBe(200);
+      expect(link.body).toHaveProperty('downloadUrl');
+
+      const download = await request(app)
+        .get(`${patchBase}/file/linux-x64/download`)
+        .set('x-access-token', guestToken)
+        .buffer(true)
+        .parse(binaryParser);
+      expect(download.statusCode).toBe(200);
+      expect(Buffer.compare(download.body, fileContent)).toBe(0);
+    });
+
+    it('should be refused every file write', async () => {
+      const created = await request(app)
+        .post(`${patchBase}/file`)
+        .set('x-access-token', guestToken)
+        .send({ key: 'guest-x64' });
+      expect(created.statusCode).toBe(403);
+
+      const uploaded = await uploadTo('guest-file', guestToken, fileContent, {
+        'x-file-name': 'guest.bin',
+      });
+      expect(uploaded.statusCode).toBe(403);
+
+      const updated = await request(app)
+        .put(`${patchBase}/file/linux-x64`)
+        .set('x-access-token', guestToken)
+        .send({ variant: 'hijack' });
+      expect(updated.statusCode).toBe(403);
+
+      const removed = await request(app)
+        .delete(`${patchBase}/file/linux-x64/delete`)
+        .set('x-access-token', guestToken);
+      expect(removed.statusCode).toBe(403);
+
+      const bulk = await request(app)
+        .post(`${patchBase}/file/bulk`)
+        .set('x-access-token', guestToken)
+        .send({ action: 'delete', names: ['linux-x64'] });
+      expect(bulk.statusCode).toBe(403);
+
+      const dropped = await request(app)
+        .post(`/api/organization/${orgName}/download/file/upload`)
+        .set('x-access-token', guestToken)
+        .set('Content-Type', 'application/octet-stream')
+        .set('x-file-name', 'Guest_1.0.0_Linux.tar')
+        .send(fileContent);
+      expect(dropped.statusCode).toBe(403);
+      expect(await db.download.count({ where: { name: 'guest', organizationId: org.id } })).toBe(0);
+      expect(fs.existsSync(filePath(releaseNumber, patchName, installerName))).toBe(true);
+    });
+  });
+
   describe('POST <level>/file/upload', () => {
     const dropAt = (url, token, content, fileName) => {
       const req = request(app)
@@ -415,6 +489,12 @@ describe('Download file API', () => {
       );
       expect(res.statusCode).toBe(200);
       expect(res.body.details.fileSize).toBe(content.length);
+      expect(res.body.details).toMatchObject({
+        product: 'traveler',
+        release: '14.0.0',
+        patch: 'release',
+        key: 'Traveler_14.0.0_Linux.tar.gz',
+      });
 
       const product = await db.download.findOne({
         where: { name: 'traveler', organizationId: org.id },

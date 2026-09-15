@@ -199,6 +199,19 @@ describe('Request API Integration Tests', () => {
       await UserOrg.destroy({ where: { user_id: outsiderUser.id, organization_id: testOrg.id } });
     });
 
+    it('should approve request as guest', async () => {
+      const res = await request(app)
+        .post(`/api/organization/${orgName}/requests/${requestId}/approve`)
+        .set('x-access-token', orgAdminToken)
+        .send({ assigned_role: 'guest' });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.assignedRole).toBe('guest');
+      const membership = await UserOrg.findUserOrgRole(outsiderUser.id, testOrg.id);
+      expect(membership.role).toBe('guest');
+
+      await UserOrg.destroy({ where: { user_id: outsiderUser.id, organization_id: testOrg.id } });
+    });
+
     it('should return 500 on DB error', async () => {
       jest.spyOn(Request, 'approveRequest').mockRejectedValueOnce(new Error('DB Error'));
       const res = await request(app)

@@ -614,19 +614,10 @@ properties:
               description: The variant stamped on the page before a person has chosen one
               order: 4
             pack:
-              type: object
+              type: string
               title: Pack
-              properties:
-                name:
-                  type: string
-                  title: Pack name
-                  description: The bare pack name stamped as data-brand; empty paints stock Bootstrap
-                  order: 5
-                css:
-                  type: string
-                  title: Pack stylesheet
-                  description: The stylesheet URL of the pack, with its ?v= hash
-                  order: 6
+              description: The bare pack name stamped as data-brand, its stylesheet served at /themes/<name>/<name>.css; empty paints stock Bootstrap
+              order: 5
         collections:
           type: array
           items:

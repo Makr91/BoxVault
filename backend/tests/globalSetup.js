@@ -52,7 +52,7 @@ export default () => {
           name: 'Test Downloads',
           logo_url: '/brand/test.svg',
           default_theme: 'dark',
-          pack: { name: 'testpack', css: '/themes/testpack/testpack.css?v=abc' },
+          pack: 'testpack',
         },
         collections: ['downloads'],
         links: { docs: 'https://docs.test', contact: 'help@test' },

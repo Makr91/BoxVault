@@ -38,7 +38,7 @@ export default (sequelize, Sequelize) => {
         field: 'organization_id',
       },
       role: {
-        type: Sequelize.ENUM('member', 'admin', 'owner'),
+        type: Sequelize.ENUM('member', 'admin', 'owner', 'guest'),
         allowNull: false,
         defaultValue: 'member',
         comment: 'User role within this specific organization',

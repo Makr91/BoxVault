@@ -2089,4 +2089,166 @@ describe('Box API', () => {
       findSpy.mockRestore();
     });
   });
+
+  describe('Guest membership', () => {
+    const guestForbidden =
+      'A guest of this organization may read and download, never change anything!';
+    const publishedName = `guest-pub-${uniqueId}`;
+    const pendingName = `guest-pending-${uniqueId}`;
+    const fileBase = `/api/organization/${orgName}/box/${publishedName}/version/1.0.0/provider/virtualbox/architecture/amd64/file`;
+    let guest;
+    let guestToken;
+
+    beforeAll(async () => {
+      guest = await db.user.create({
+        username: `guest-${uniqueId}`,
+        email: `guest-${uniqueId}@example.com`,
+        password: 'password',
+        verified: true,
+      });
+      const userRole = await db.role.findOne({ where: { name: 'user' } });
+      await guest.setRoles([userRole]);
+      await db.UserOrg.create({
+        user_id: guest.id,
+        organization_id: organization.id,
+        role: 'guest',
+      });
+      guestToken = jwt.sign({ id: guest.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
+
+      const publishedBox = await db.box.create({
+        name: publishedName,
+        description: 'Published for guests',
+        isPublic: false,
+        published: true,
+        organizationId: organization.id,
+        userId: user.id,
+      });
+      await db.box.create({
+        name: pendingName,
+        description: 'Pending, hidden from guests',
+        isPublic: false,
+        published: false,
+        organizationId: organization.id,
+        userId: user.id,
+      });
+      const version = await db.versions.create({ versionNumber: '1.0.0', boxId: publishedBox.id });
+      const provider = await db.providers.create({ name: 'virtualbox', versionId: version.id });
+      await db.architectures.create({ name: 'amd64', providerId: provider.id });
+      await request(app)
+        .post(`${fileBase}/upload`)
+        .set('x-access-token', authToken)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from('guest download content'));
+    });
+
+    afterAll(async () => {
+      await db.box.destroy({ where: { name: [publishedName, pendingName] } });
+      await guest.destroy();
+    });
+
+    it('should list and read the published private boxes of the organization', async () => {
+      const list = await request(app)
+        .get(`/api/organization/${orgName}/box`)
+        .set('x-access-token', guestToken);
+      expect(list.statusCode).toBe(200);
+      const names = list.body.map(b => b.name);
+      expect(names).toContain(publishedName);
+      expect(names).not.toContain(pendingName);
+
+      const one = await request(app)
+        .get(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', guestToken);
+      expect(one.statusCode).toBe(200);
+      expect(one.body.name).toBe(publishedName);
+    });
+
+    it('should download a file of a published private box', async () => {
+      const link = await request(app)
+        .post(`${fileBase}/get-download-link`)
+        .set('x-access-token', guestToken);
+      expect(link.statusCode).toBe(200);
+      expect(link.body).toHaveProperty('downloadUrl');
+
+      const download = await request(app)
+        .get(`${fileBase}/download`)
+        .set('x-access-token', guestToken);
+      expect(download.statusCode).toBe(200);
+    });
+
+    it('should be refused every write on boxes', async () => {
+      const created = await request(app)
+        .post(`/api/organization/${orgName}/box`)
+        .set('x-access-token', guestToken)
+        .send({ name: `guest-made-${uniqueId}` });
+      expect(created.statusCode).toBe(403);
+      expect(created.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(created.body.title).toBe(guestForbidden);
+
+      const updated = await request(app)
+        .put(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', guestToken)
+        .send({ description: 'hijack' });
+      expect(updated.statusCode).toBe(403);
+      expect(updated.body.title).toBe(guestForbidden);
+
+      const artwork = await request(app)
+        .post(`/api/organization/${orgName}/box/${publishedName}/artwork`)
+        .set('x-access-token', guestToken)
+        .set('Content-Type', 'image/png')
+        .send(Buffer.from('png'));
+      expect(artwork.statusCode).toBe(403);
+
+      const bulk = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', guestToken)
+        .send({ action: 'publish', names: [publishedName] });
+      expect(bulk.statusCode).toBe(403);
+
+      const version = await request(app)
+        .post(`/api/organization/${orgName}/box/${publishedName}/version`)
+        .set('x-access-token', guestToken)
+        .send({ version_number: '2.0.0' });
+      expect(version.statusCode).toBe(403);
+
+      const upload = await request(app)
+        .post(`${fileBase}/upload`)
+        .set('x-access-token', guestToken)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from('guest upload'));
+      expect(upload.statusCode).toBe(403);
+
+      const removed = await request(app)
+        .delete(`${fileBase}/delete`)
+        .set('x-access-token', guestToken);
+      expect(removed.statusCode).toBe(403);
+
+      const deleted = await request(app)
+        .delete(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', guestToken);
+      expect(deleted.statusCode).toBe(403);
+      expect(deleted.body.title).toBe(guestForbidden);
+      expect(await db.box.count({ where: { name: publishedName } })).toBe(1);
+    });
+
+    it('should watch and unwatch a box', async () => {
+      const watched = await request(app)
+        .post(`/api/organization/${orgName}/box/${publishedName}/watch`)
+        .set('x-access-token', guestToken);
+      expect(watched.statusCode).toBe(201);
+      expect(watched.body).toEqual({ watched: true });
+
+      const listed = await request(app).get('/api/user/watches').set('x-access-token', guestToken);
+      expect(listed.statusCode).toBe(200);
+      expect(listed.body.some(entry => entry.name === publishedName)).toBe(true);
+
+      const unwatched = await request(app)
+        .delete(`/api/organization/${orgName}/box/${publishedName}/watch`)
+        .set('x-access-token', guestToken);
+      expect(unwatched.statusCode).toBe(200);
+      expect(unwatched.body).toEqual({ watched: false });
+    });
+  });
 });

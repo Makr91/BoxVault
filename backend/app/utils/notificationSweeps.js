@@ -54,7 +54,7 @@ const sweepServiceAccountExpiry = async () => {
             : 'notifications.serviceAccountExpiry.bodyOther',
           { days: daysLeft }
         ),
-        navigate: `${origin}/profile`,
+        navigate: `${origin}/profile/service-accounts#${account.id}`,
         tag: 'boxvault-sa-expiry',
       };
       await Promise.all(
@@ -107,7 +107,7 @@ const sweepSslExpiry = async () => {
       daysLeft === 1 ? 'notifications.sslExpiry.bodyOne' : 'notifications.sslExpiry.bodyOther',
       { days: daysLeft, expiry: cert.validTo }
     ),
-    navigate: `${origin}/admin`,
+    navigate: `${origin}/admin/config/ssl`,
     tag: 'boxvault-ssl-expiry',
   };
   await Promise.all(

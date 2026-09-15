@@ -114,7 +114,7 @@ const putIdentityMismatch = (body, extension, row) => {
 
 /**
  * POST /scim/v2/Groups — create the SCIM resource for one role group. Identity
- * arrives ONLY in externalId (`<org-uuid>:<owner|admin|member>`); BoxVault
+ * arrives ONLY in externalId (`<org-uuid>:<owner|admin|member|guest>`); BoxVault
  * assigns the resource id and returns 201 with the full resource (including id
  * and meta.location, also sent as the Location header per RFC 7644 §3.3). A
  * resource already holding this externalId for the issuer is a 409 with
@@ -134,7 +134,7 @@ const createGroup = async (req, res) => {
     return scimError(
       res,
       400,
-      'Group externalId must be <org-uuid>:<owner|admin|member>',
+      'Group externalId must be <org-uuid>:<owner|admin|member|guest>',
       'invalidValue'
     );
   }

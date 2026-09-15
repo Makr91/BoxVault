@@ -62,7 +62,7 @@ describe('GET /api/status per Host', () => {
       logoUrl: '/brand/test.svg',
       repo: 'https://github.com/Makr91/BoxVault',
       theme: 'dark',
-      pack: { name: 'testpack', css: '/themes/testpack/testpack.css?v=abc' },
+      pack: { name: 'testpack', css: '/themes/testpack/testpack.css' },
     });
     expect(res.body.links).toEqual({ docs: 'https://docs.test', contact: 'help@test' });
     expect(res.body.features).toEqual(plain.body.features);

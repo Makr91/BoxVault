@@ -36,7 +36,7 @@ export default (sequelize, Sequelize) => {
         },
       },
       invited_role: {
-        type: Sequelize.ENUM('member', 'admin'),
+        type: Sequelize.ENUM('member', 'admin', 'guest'),
         allowNull: false,
         defaultValue: 'member',
         comment: 'Role to assign when invitation is accepted',

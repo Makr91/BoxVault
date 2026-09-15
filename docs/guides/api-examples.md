@@ -150,7 +150,7 @@ curl -X POST https://boxvault.example.com/api/organization/otherorg/box \
 
 **Permission Notes:**
 
-- Any organization member can create boxes
+- Any organization member can create boxes; a guest reads and downloads only, every write answers `403`
 - You can only update/delete boxes you created
 - Org admins and owners can update/delete any box in their organizations
 
@@ -291,7 +291,7 @@ console.log(bytesToGB(1508591037)); // Outputs: "1.40"
 
 ## Downloads
 
-A download product owns releases, a release owns patches, and a patch owns files. Visibility: a public, published product is accessible to anyone; a published, private product to anyone in the same organization; an unpublished product to no one but the user who uploaded it, not even people in their organization. Any organization member can create a product; the product's owner, or an admin or owner of the organization, adds releases, patches and files and updates or deletes them.
+A download product owns releases, a release owns patches, and a patch owns files. Visibility: a public, published product is accessible to anyone; a published, private product to anyone in the same organization; an unpublished product to no one but the user who uploaded it, not even people in their organization. Any organization member can create a product; the product's owner, or an admin or owner of the organization, adds releases, patches and files and updates or deletes them. A guest of the organization sees and downloads what a member sees and writes nothing.
 
 ### Create Product
 

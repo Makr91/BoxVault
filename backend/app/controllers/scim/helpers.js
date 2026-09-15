@@ -11,14 +11,14 @@ const SCIM_USER_SCHEMA = 'urn:ietf:params:scim:schemas:core:2.0:User';
 const SCIM_GROUP_SCHEMA = 'urn:ietf:params:scim:schemas:core:2.0:Group';
 const SCIM_LIST_RESPONSE_SCHEMA = 'urn:ietf:params:scim:api:messages:2.0:ListResponse';
 
-const GROUP_ROLES = ['owner', 'admin', 'member'];
+const GROUP_ROLES = ['owner', 'admin', 'member', 'guest'];
 
 // Auth-server org roles ARE BoxVault's per-org role enum; precedence
 // resolves overlapping group membership (highest privilege wins).
-const GROUP_ROLE_PRECEDENCE = { owner: 3, admin: 2, member: 1 };
+const GROUP_ROLE_PRECEDENCE = { owner: 3, admin: 2, member: 1, guest: 0 };
 
 /**
- * Parse a SCIM Group externalId of the form `<org-uuid>:<owner|admin|member>`
+ * Parse a SCIM Group externalId of the form `<org-uuid>:<owner|admin|member|guest>`
  * (the auth server's identity for one role group).
  * @param {string} externalId - The externalId value
  * @returns {{orgUuid: string, role: string}|null} Parsed parts or null
@@ -123,7 +123,7 @@ const ORG_PROFILE_STRING_KEYS = ['logo', 'url', 'telephone', 'locale', 'timezone
 // IdP-managed org settings: always present on the extension by contract, with
 // these defaults when missing or malformed.
 const ORG_ACCESS_MODES = ['private', 'invite', 'request'];
-const ORG_DEFAULT_ROLES = ['member', 'admin'];
+const ORG_DEFAULT_ROLES = ['member', 'admin', 'guest'];
 
 /**
  * Extract the org-profile keys from the urn:startcloud Group extension
@@ -199,7 +199,7 @@ const applyOrgProfile = async (org, profile, transaction) => {
 
 /**
  * Recompute a mirrored org's memberships from ALL stored role groups of its
- * org_uuid. Per user: highest role across groups wins (owner>admin>member).
+ * org_uuid. Per user: highest role across groups wins (owner>admin>member>guest).
  * Users absent from every group lose their membership. Member UUIDs that
  * match no known BoxVault user are ignored (ghost members, per contract).
  * @param {Object} db - Database models

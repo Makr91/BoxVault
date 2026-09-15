@@ -28,7 +28,7 @@ export default (sequelize, Sequelize) => {
         field: 'org_uuid',
       },
       role: {
-        type: Sequelize.ENUM('owner', 'admin', 'member'),
+        type: Sequelize.ENUM('owner', 'admin', 'member', 'guest'),
         allowNull: false,
         comment: 'Auth-server org role this group carries (Group externalId = <orgUuid>:<role>)',
       },

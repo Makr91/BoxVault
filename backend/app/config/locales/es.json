@@ -82,7 +82,7 @@
     "organizationNotFoundWithName": "Organización no encontrada con el nombre: {{organization}}.",
     "organizationNotFound": "Organización no encontrada.",
     "invalidAccessMode": "Modo de acceso inválido. Debe ser privado, solo invitación o solicitud para unirse.",
-    "invalidDefaultRole": "Rol predeterminado inválido. Debe ser miembro o administrador.",
+    "invalidDefaultRole": "Rol predeterminado inválido. Debe ser miembro, administrador o invitado.",
     "accessModeUpdated": "¡Modo de acceso de la organización actualizado exitosamente!",
     "updateAccessModeError": "Error al actualizar el modo de acceso de la organización",
     "nameCannotBeEmpty": "¡La organización no puede estar vacía!",
@@ -109,7 +109,7 @@
     "orgCodeInUse": "El código de organización {{org_code}} ya está en uso.",
     "updated": "Organización actualizada exitosamente.",
     "updateError": "Ocurrió un error al actualizar la organización.",
-    "invalidRole": "Rol inválido. Debe ser miembro, administrador o propietario.",
+    "invalidRole": "Rol inválido. Debe ser invitado, miembro, administrador o propietario.",
     "userRoleUpdated": "Rol de usuario actualizado a {{role}}",
     "updateUserRoleError": "Error al actualizar el rol del usuario",
     "cannotLeaveOnlyOrg": "¡No puedes dejar tu única organización! Debes pertenecer al menos a una organización.",
@@ -124,6 +124,7 @@
     "parameterRequired": "¡Se requiere el parámetro de organización!",
     "requireAdminOrOwner": "¡Se requiere el rol de administrador o propietario en esta organización!",
     "requireOwner": "¡Se requiere el rol de propietario en esta organización!",
+    "requireWriter": "¡Un invitado de esta organización puede leer y descargar, nunca cambiar nada!",
     "membershipCheckError": "Error al verificar la membresía de la organización",
     "permissionCheckError": "Error al verificar los permisos de la organización",
     "managementCheckError": "Error al verificar el origen de gestión de la organización",
@@ -304,7 +305,7 @@
     "get": {
       "error": "Ocurrió un error al recuperar las invitaciones activas."
     },
-    "invalidRole": "Rol inválido. Las invitaciones solo pueden asignar roles de miembro o administrador.",
+    "invalidRole": "Rol inválido. Las invitaciones solo pueden asignar roles de miembro, administrador o invitado.",
     "adminInviteRequiresOwner": "Solo los propietarios de la organización pueden invitar administradores.",
     "requiresIdpAccount": "Esta organización es administrada por tu proveedor de identidad; inicia sesión a través de él para administrar sus invitaciones.",
     "sent": "¡Invitación enviada exitosamente!",
@@ -481,7 +482,7 @@
     }
   },
   "requests": {
-    "invalidRole": "Rol inválido. Debe ser miembro o administrador.",
+    "invalidRole": "Rol inválido. Debe ser miembro, administrador o invitado.",
     "notFound": "¡Solicitud de unión no encontrada!",
     "alreadyProcessed": "¡La solicitud ya ha sido procesada!",
     "approved": "¡Solicitud de unión aprobada exitosamente!",

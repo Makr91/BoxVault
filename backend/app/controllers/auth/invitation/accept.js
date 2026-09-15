@@ -113,7 +113,7 @@ export const acceptInvitation = async (req, res) => {
 
     await invitation.update({ accepted: true, accepted_at: new Date() });
 
-    await notifyInvitationAccepted(invitation, organization, user.email);
+    await notifyInvitationAccepted(invitation, organization, user);
 
     log.api.info('Invitation accepted', {
       userId,

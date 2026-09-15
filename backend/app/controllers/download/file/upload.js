@@ -2,7 +2,11 @@ import fs from 'fs';
 import db from '../../../models/index.js';
 import { loadConfig } from '../../../utils/config-loader.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
+import {
+  canWriteDownload,
+  canWriteInOrg,
+  resolveOrgMembership,
+} from '../../../utils/orgMembership.js';
 import { problem, refuse } from '../../../utils/problem.js';
 import { getRulesDocument } from '../../../utils/rules.js';
 import { validateObject } from '../../../utils/validation.js';
@@ -353,7 +357,7 @@ const upload = (req, res) => {
     }
 
     const membership = await resolveOrgMembership(req, organization.id);
-    if (!membership) {
+    if (!canWriteInOrg(membership)) {
       return problem(res, req, {
         status: 403,
         type: 'forbidden',

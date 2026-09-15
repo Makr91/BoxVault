@@ -3,7 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 const { user: User, Sequelize, UserOrg, invitation: Invitation } = db;
 
-const ROLE_RANK = { owner: 3, admin: 2, member: 1 };
+const ROLE_RANK = { owner: 3, admin: 2, member: 1, guest: 0 };
 
 /**
  * Shared org-scoped membership removal (the ONE removal implementation).

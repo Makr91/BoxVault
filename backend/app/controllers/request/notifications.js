@@ -9,7 +9,7 @@ const notifyJoinRequestCreated = async (organization, requester, requestId) => {
     const notification = {
       title: `Join request for ${organization.name}`,
       body: `${requester.username} (${requester.email}) requested to join.`,
-      navigate: `${origin}/org-console`,
+      navigate: `${origin}/org-console/requests#${requestId}`,
       tag: 'boxvault-join-request',
     };
 
