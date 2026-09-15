@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.82.1](https://github.com/Makr91/BoxVault/compare/v0.82.0...v0.82.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* docs/swagger generation ([e5fdcec](https://github.com/Makr91/BoxVault/commit/e5fdcecd6035e29b1efd60ade4d695626488b4a7))
+
 ## [0.82.0](https://github.com/Makr91/BoxVault/compare/v0.81.0...v0.82.0) (2026-09-15)
 
 
