@@ -956,25 +956,20 @@ describe('ISO API', () => {
   });
 
   describe('DELETE /api/organization/:organization/iso', () => {
-    it('should remove every ISO of the organization and answer 404 once empty', async () => {
+    it('should no longer exist, the bulk route taking its place', async () => {
       const otherOrg = await db.organization.create({
         name: `IsoRemoveAllOrg_${Date.now()}`,
         access_mode: 'private',
       });
       await db.iso.create({ name: 'remove-a', organizationId: otherOrg.id });
-      await db.iso.create({ name: 'remove-b', organizationId: otherOrg.id });
 
-      const removed = await request(app)
+      const res = await request(app)
         .delete(`/api/organization/${otherOrg.name}/iso`)
         .set('x-access-token', adminToken);
-      expect(removed.statusCode).toBe(200);
-      expect(await db.iso.count({ where: { organizationId: otherOrg.id } })).toBe(0);
+      expect(res.statusCode).toBe(404);
+      expect(await db.iso.count({ where: { organizationId: otherOrg.id } })).toBe(1);
 
-      const empty = await request(app)
-        .delete(`/api/organization/${otherOrg.name}/iso`)
-        .set('x-access-token', adminToken);
-      expect(empty.statusCode).toBe(404);
-
+      await db.iso.destroy({ where: { organizationId: otherOrg.id } });
       await otherOrg.destroy();
     });
   });

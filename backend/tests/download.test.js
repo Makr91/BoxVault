@@ -405,33 +405,14 @@ describe('Download API', () => {
   });
 
   describe('DELETE /api/organization/:organization/download', () => {
-    it('should remove every product of the organization and answer 404 once empty', async () => {
+    it('should no longer exist, the bulk route taking its place', async () => {
       await db.download.create({ name: 'remove-a', organizationId: org.id, userId: owner.id });
-      await db.download.create({ name: 'remove-b', organizationId: org.id, userId: member.id });
 
-      const asMember = await request(app)
-        .delete(`/api/organization/${orgName}/download`)
-        .set('x-access-token', memberToken);
-      expect(asMember.statusCode).toBe(403);
-
-      const removed = await request(app)
-        .delete(`/api/organization/${orgName}/download`)
-        .set('x-access-token', ownerToken);
-      expect(removed.statusCode).toBe(200);
-      expect(await db.download.count({ where: { organizationId: org.id } })).toBe(0);
-
-      const empty = await request(app)
-        .delete(`/api/organization/${orgName}/download`)
-        .set('x-access-token', ownerToken);
-      expect(empty.statusCode).toBe(404);
-    });
-
-    it('should handle a DB error during deleteAll', async () => {
-      jest.spyOn(db.download, 'findAll').mockRejectedValue(new Error('DB Error'));
       const res = await request(app)
         .delete(`/api/organization/${orgName}/download`)
         .set('x-access-token', ownerToken);
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(404);
+      expect(await db.download.count({ where: { organizationId: org.id } })).toBe(1);
     });
   });
 });

@@ -61,7 +61,7 @@ const migrate = name => {
 
   const fromVersion = Number(file.schemaVersion) || 1;
   migrations
-    .filter(entry => entry.version > fromVersion)
+    .filter(entry => entry.version > fromVersion && entry.version <= schema.schemaVersion)
     .forEach(entry => {
       file = entry.migrate(name, file);
       changed = true;

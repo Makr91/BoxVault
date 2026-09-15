@@ -7,7 +7,6 @@ import { findOne } from '../controllers/box/findone.js';
 import { create } from '../controllers/box/create.js';
 import { update } from '../controllers/box/update.js';
 import { delete as deleteBox } from '../controllers/box/delete.js';
-import { deleteAll } from '../controllers/box/deleteall.js';
 import { uploadArtwork, getArtwork } from '../controllers/box/artwork.js';
 import { watchBox, unwatchBox } from '../controllers/box/watch.js';
 import { bulk as bulkBoxes } from '../controllers/box/bulk.js';
@@ -86,12 +85,6 @@ router.post(
     validateBody('bulkItem'),
   ],
   bulkBoxes
-);
-
-router.delete(
-  '/organization/:organization/box',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
-  deleteAll
 );
 
 export default router;

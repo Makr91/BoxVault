@@ -158,16 +158,16 @@ describe('Download watches', () => {
     await settle();
   });
 
-  it('should discover the published products and delete every product of the organization', async () => {
+  it('should discover the published products and answer 404 on the removed delete-all route', async () => {
     const discovered = await request(app).get('/api/downloads/discover');
     expect(discovered.statusCode).toBe(200);
     expect(discovered.body.map(download => download.name)).toContain(publicName);
     expect(discovered.body.map(download => download.name)).not.toContain(draftName);
 
-    const deleted = await request(app)
+    const gone = await request(app)
       .delete(`/api/organization/${orgName}/download`)
       .set('x-access-token', ownerToken);
-    expect(deleted.statusCode).toBe(200);
-    expect(await db.download.count({ where: { organizationId: org.id } })).toBe(0);
+    expect(gone.statusCode).toBe(404);
+    expect(await db.download.count({ where: { organizationId: org.id } })).toBe(2);
   });
 });

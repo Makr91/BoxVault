@@ -17,7 +17,6 @@ import { findAll } from '../controllers/download/findall.js';
 import { findOne } from '../controllers/download/findone.js';
 import { update } from '../controllers/download/update.js';
 import { delete as deleteDownload } from '../controllers/download/delete.js';
-import { deleteAll } from '../controllers/download/deleteall.js';
 import { discoverAll } from '../controllers/download/discover.js';
 import { watchDownload, unwatchDownload } from '../controllers/download/watch.js';
 import { create as createRelease } from '../controllers/download/release/create.js';
@@ -104,12 +103,6 @@ router.post(
     validateBody('bulkItem'),
   ],
   bulkDownloads
-);
-
-router.delete(
-  '/organization/:organization/download',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
-  deleteAll
 );
 
 router.post(
@@ -253,6 +246,38 @@ router.put(
 
 router.post(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file/:key/upload',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  uploadFile
+);
+
+router.post(
+  '/organization/:organization/download/file/upload',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  uploadFile
+);
+
+router.post(
+  '/organization/:organization/download/:name/file/upload',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  uploadFile
+);
+
+router.post(
+  '/organization/:organization/download/:name/release/:versionNumber/file/upload',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  uploadFile
+);
+
+router.post(
+  '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file/upload',
   fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,

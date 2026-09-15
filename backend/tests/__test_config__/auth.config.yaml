@@ -1,0 +1,22 @@
+schemaVersion: 1
+auth:
+  jwt:
+    jwt_secret: test-secret
+    jwt_expiration: 1h
+    jwt_issuer: boxvault
+    jwt_audience: boxvault-api
+    local_enabled: true
+  local:
+    local_require_email_verification: false
+    local_password_min_length: 6
+    local_password_require_uppercase: false
+    local_password_require_lowercase: false
+    local_password_require_numbers: false
+    local_password_require_symbols: false
+    local_bcrypt_rounds: 8
+    local_session_timeout: 24
+    local_allow_new_organizations: true
+  oidc:
+    providers: {}
+  external:
+    provisioning_fallback_action: require_invite

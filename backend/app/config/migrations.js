@@ -27,6 +27,9 @@ const migrations = [
       if (name === 'db') {
         const migrated = structuredClone(file);
         if (migrated.sql && Object.hasOwn(migrated.sql, 'dialect')) {
+          if (['mysql', 'sqlite'].includes(migrated.sql.dialect)) {
+            migrated.database_type = migrated.sql.dialect;
+          }
           delete migrated.sql.dialect;
         }
         return migrated;

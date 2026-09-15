@@ -119,6 +119,14 @@ const getI18nConfig = () => {
  */
 const getSiteConfig = hostname => loadConfig('app').sites?.[hostname] || null;
 
+/**
+ * The origin of one hostname: the sites map entry's origin when it names one,
+ * boxvault.origin otherwise
+ * @param {string} hostname - The request's hostname
+ * @returns {string} The origin URL
+ */
+const getOrigin = hostname => getSiteConfig(hostname)?.origin || loadConfig('app').boxvault.origin;
+
 export {
   CONFIG_NAMES,
   isProduction,
@@ -132,6 +140,7 @@ export {
   getRateLimitConfig,
   getI18nConfig,
   getSiteConfig,
+  getOrigin,
 };
 
 export default {
@@ -147,4 +156,5 @@ export default {
   getRateLimitConfig,
   getI18nConfig,
   getSiteConfig,
+  getOrigin,
 };

@@ -36,6 +36,10 @@ case "$1" in
             fi
         else
             echo "Upgrade from version $2 detected - migrating configuration files"
+            if [ -f /etc/boxvault/setup.token ] && [ -f /etc/boxvault/db.config.yaml ]; then
+                rm -f /etc/boxvault/setup.token
+                echo "Removed the setup token left by the previous version; setup is already complete"
+            fi
             runuser -u boxvault -- /usr/bin/node /opt/boxvault/scripts/migrate-config.js
             echo "Configuration files in /etc/boxvault/ migrated; the previous copies sit beside them as .bak"
             echo "Database files in /var/lib/boxvault/ will NOT be modified"

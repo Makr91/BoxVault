@@ -244,9 +244,13 @@ const allowedOrigins = (boxConfig.boxvault.allowed_origins || [])
   .map(origin => origin.trim())
   .filter(Boolean);
 
+const siteOrigins = Object.values(boxConfig.sites || {})
+  .map(site => site.origin)
+  .filter(Boolean);
+
 // Enhanced CORS for Cloudflare
 const corsOptions = {
-  origin: [boxConfig.boxvault.origin, ...allowedOrigins],
+  origin: [boxConfig.boxvault.origin, ...siteOrigins, ...allowedOrigins],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'x-access-token',

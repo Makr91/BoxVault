@@ -1,0 +1,5 @@
+schemaVersion: 2
+database_type: sqlite
+sql:
+  storage: ':memory:'
+  logging: false

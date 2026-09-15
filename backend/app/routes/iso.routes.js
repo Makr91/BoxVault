@@ -17,7 +17,6 @@ import { findAll } from '../controllers/iso/findall.js';
 import { findOne } from '../controllers/iso/findone.js';
 import { update } from '../controllers/iso/update.js';
 import { delete as deleteIso } from '../controllers/iso/delete.js';
-import { deleteAll } from '../controllers/iso/deleteall.js';
 import { discoverAll } from '../controllers/iso/discover.js';
 import { watchIso, unwatchIso } from '../controllers/iso/watch.js';
 import { create as createVersion } from '../controllers/iso/version/create.js';
@@ -95,12 +94,6 @@ router.post(
     validateBody('bulkItem'),
   ],
   bulkIsos
-);
-
-router.delete(
-  '/organization/:organization/iso',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
-  deleteAll
 );
 
 router.post(

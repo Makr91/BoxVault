@@ -95,9 +95,7 @@ const handleOidcCallback = async (providerName, currentUrl, state, codeVerifier)
   try {
     log.auth.info('Processing OIDC callback', { provider: providerName });
 
-    // CRITICAL: Get redirect_uri from app config to ensure consistency
-    const appConfig = loadConfig('app');
-    const redirectUri = `${appConfig.boxvault.origin}/api/auth/oidc/callback`;
+    const redirectUri = `${currentUrl.origin}/api/auth/oidc/callback`;
 
     log.auth.debug('Token exchange parameters', {
       provider: providerName,

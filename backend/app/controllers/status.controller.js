@@ -95,6 +95,22 @@ const faceOf = site => {
 };
 
 /**
+ * The feature tokens of one hostname: every token BoxVault supports, with
+ * local-accounts first while local accounts are on, for a site without a
+ * features list; exactly the listed tokens for a site with one, local-accounts
+ * among them only while listed and local accounts are on
+ * @param {Object|null} site - The sites map entry
+ * @param {boolean} localEnabled - Whether auth.jwt.local_enabled is on
+ * @returns {string[]} The feature tokens
+ */
+const featuresOf = (site, localEnabled) => {
+  if (!Array.isArray(site?.features)) {
+    return localEnabled ? ['local-accounts', ...STATUS.features] : STATUS.features;
+  }
+  return site.features.filter(token => token !== 'local-accounts' || localEnabled);
+};
+
+/**
  * @swagger
  * /api/status:
  *   get:
@@ -186,7 +202,7 @@ const faceOf = site => {
  *                   example: [app, auth, db, mail]
  *                 features:
  *                   type: array
- *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path
+ *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path. Answered per Host header from the sites map, a site entry without a features list answering every token above and a site entry with one answering exactly the tokens it lists, local-accounts among them only while listed and auth.jwt.local_enabled is on
  *                   items:
  *                     type: string
  *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, footer, search, events]
@@ -224,12 +240,13 @@ const getStatus = (req, res) => {
   const authConfig = loadConfig('auth');
   const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
   const idp = localEnabled ? null : enabledIdp(authConfig.auth?.oidc?.providers || {});
+  const site = getSiteConfig(req.hostname);
   return res.json({
     ...STATUS,
-    ...faceOf(getSiteConfig(req.hostname)),
+    ...faceOf(site),
     auth: idp ? ['idp'] : ['backend'],
     ...(idp ? { idp } : {}),
-    features: localEnabled ? ['local-accounts', ...STATUS.features] : STATUS.features,
+    features: featuresOf(site, localEnabled),
   });
 };
 

@@ -21,7 +21,7 @@ import { buildAuthorizationUrl, handleOidcCallback, buildEndSessionUrl } from '.
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { randomState, randomPKCECodeVerifier } from 'openid-client';
-import { loadConfig } from '../utils/config-loader.js';
+import { loadConfig, getOrigin } from '../utils/config-loader.js';
 import { getJwtClaimOptions } from '../utils/auth.js';
 import { log } from '../utils/Logger.js';
 import { problem } from '../utils/problem.js';
@@ -438,13 +438,12 @@ router.get('/auth/oidc/callback', async (req, res) => {
 
   try {
     const authConfig = loadConfig('auth');
-    const appConfig = loadConfig('app');
 
     log.auth.info('Processing OIDC callback', { provider });
 
     // CRITICAL FIX: Use req.originalUrl instead of req.url
     // req.url doesn't include the /api/ prefix when route is mounted
-    const currentUrl = new URL(appConfig.boxvault.origin + req.originalUrl);
+    const currentUrl = new URL(getOrigin(req.hostname) + req.originalUrl);
 
     log.auth.debug('OIDC callback URL', {
       currentUrl: currentUrl.toString(),
@@ -640,7 +639,6 @@ router.get('/auth/oidc/:provider', async (req, res) => {
     log.auth.info('OIDC authentication request', { provider });
 
     const authConfig = loadConfig('auth');
-    const appConfig = loadConfig('app');
 
     // Validate provider exists and is enabled
     const providerConfig = authConfig.auth?.oidc?.providers?.[provider];
@@ -680,7 +678,7 @@ router.get('/auth/oidc/:provider', async (req, res) => {
     });
 
     // Generate authorization URL
-    const redirectUri = `${appConfig.boxvault.origin}/api/auth/oidc/callback`;
+    const redirectUri = `${getOrigin(req.hostname)}/api/auth/oidc/callback`;
     const authUrl = await buildAuthorizationUrl(
       provider,
       redirectUri,
@@ -758,7 +756,6 @@ router.post('/auth/oidc/logout', (req, res) => {
 
   try {
     const authConfig = loadConfig('auth');
-    const appConfig = loadConfig('app');
 
     // Verify and decode token
     const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret, getJwtClaimOptions());
@@ -772,7 +769,7 @@ router.post('/auth/oidc/logout', (req, res) => {
     if (decoded.provider?.startsWith('oidc-')) {
       const providerName = decoded.provider.replace('oidc-', '');
       const state = randomState();
-      const postLogoutRedirectUri = `${appConfig.boxvault.origin}/login?logout=success`;
+      const postLogoutRedirectUri = `${getOrigin(req.hostname)}/login?logout=success`;
 
       log.auth.info('Attempting RP-initiated logout', {
         provider: providerName,

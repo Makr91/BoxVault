@@ -21,6 +21,9 @@ const { Op } = Sequelize;
 
 const FILENAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 const FILENAME_MAX_LENGTH = 255;
+const EXTENSION_PATTERN = /(?:\.[A-Za-z][A-Za-z0-9]*)+$/;
+const TOKEN_SEPARATOR = /[_\- ]+/;
+const VERSION_PATTERN = /^\d+(?:\.\d+)*$/;
 
 const refused = (res, req, form, values) => {
   const document = getRulesDocument();
@@ -29,11 +32,207 @@ const refused = (res, req, form, values) => {
 };
 
 /**
+ * The product slug and the release identifier a file name carries: the
+ * extension chain stripped, the stem split on underscore, dash and space, the
+ * first token shaped digits(.digits)* the release, the tokens before it the
+ * product, lower-cased and joined by dashes (every token when no version
+ * token exists). A missing value is left empty for the form that validates
+ * it to refuse.
+ * @param {string} fileName - The real file name
+ * @returns {{ name: string, versionNumber: string }} The guessed levels
+ */
+const levelsFromFileName = fileName => {
+  const tokens = fileName.replace(EXTENSION_PATTERN, '').split(TOKEN_SEPARATOR).filter(Boolean);
+  const at = tokens.findIndex(token => VERSION_PATTERN.test(token));
+  return {
+    name: tokens
+      .slice(0, at >= 0 ? at : tokens.length)
+      .join('-')
+      .toLowerCase(),
+    versionNumber: at >= 0 ? tokens[at] : '',
+  };
+};
+
+/**
+ * The four levels of the upload: what the path names, else what the file
+ * name names (product and release), the patch `release` and the key the
+ * file name.
+ * @param {Object} params - The route parameters
+ * @param {string} fileName - The real file name
+ * @returns {{ name: string, versionNumber: string, patchName: string, key: string }} The levels
+ */
+const levelsOf = (params, fileName) => {
+  const guessed = levelsFromFileName(fileName);
+  return {
+    name: params.name ?? guessed.name,
+    versionNumber: params.versionNumber ?? guessed.versionNumber,
+    patchName: params.patch ?? 'release',
+    key: params.key ?? fileName,
+  };
+};
+
+/**
  * @swagger
+ * /api/organization/{organization}/download/file/upload:
+ *   post:
+ *     summary: Upload a download file into the organization
+ *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. `?is_public=true` makes a product the upload creates public.
+ *     tags: [Downloads]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: is_public
+ *         schema:
+ *           type: boolean
+ *       - in: header
+ *         name: x-file-name
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/octet-stream:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: The chunk was stored, or the file was assembled and its row updated
+ *       400:
+ *         description: No file name, or one that is not allowed
+ *       403:
+ *         description: The caller is not a member
+ *       422:
+ *         description: The file name yields no slug or no identifier
+ * /api/organization/{organization}/download/{name}/file/upload:
+ *   post:
+ *     summary: Upload a download file into a product
+ *     description: The release identifier read from x-file-name, the patch `release`, the key the file name.
+ *     tags: [Downloads]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: is_public
+ *         schema:
+ *           type: boolean
+ *       - in: header
+ *         name: x-file-name
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/octet-stream:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: The chunk was stored, or the file was assembled and its row updated
+ * /api/organization/{organization}/download/{name}/release/{versionNumber}/file/upload:
+ *   post:
+ *     summary: Upload a download file into a release
+ *     description: The patch `release`, the key the file name.
+ *     tags: [Downloads]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: x-file-name
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/octet-stream:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: The chunk was stored, or the file was assembled and its row updated
+ * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/upload:
+ *   post:
+ *     summary: Upload a download file into a patch
+ *     description: The key the file name.
+ *     tags: [Downloads]
+ *     security:
+ *       - JwtAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organization
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: versionNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: patch
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: x-file-name
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/octet-stream:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: The chunk was stored, or the file was assembled and its row updated
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/upload:
  *   post:
  *     summary: Upload a download file
- *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it.
+ *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. `?is_public=true` makes a product the upload creates public.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -130,7 +329,9 @@ const refused = (res, req, form, values) => {
  *         description: Internal server error
  */
 const upload = (req, res) => {
-  const { organization: organizationName, name, versionNumber, patch: patchName, key } = req.params;
+  const { organization: organizationName } = req.params;
+  const fileName = req.headers['x-file-name'] || req.params.key || '';
+  const { name, versionNumber, patchName, key } = levelsOf(req.params, fileName);
   const uploadStartTime = Date.now();
 
   const appConfig = loadConfig('app');
@@ -160,7 +361,6 @@ const upload = (req, res) => {
       });
     }
 
-    const fileName = req.headers['x-file-name'] || key;
     if (
       !FILENAME_PATTERN.test(fileName) ||
       fileName.includes('..') ||
@@ -190,7 +390,7 @@ const upload = (req, res) => {
       download = await Download.create({
         name,
         published: false,
-        isPublic: false,
+        isPublic: req.query.is_public === 'true',
         userId: req.userId,
         organizationId: organization.id,
       });

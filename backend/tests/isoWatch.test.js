@@ -267,20 +267,15 @@ describe('ISO watches and ISO route guards', () => {
     await settle();
   });
 
-  it('should discover the published ISOs and delete every ISO of the organization', async () => {
+  it('should discover the published ISOs and answer 404 on the removed delete-all route', async () => {
     const discovered = await request(app).get('/api/isos/discover');
     expect(discovered.statusCode).toBe(200);
     expect(discovered.body.map(iso => iso.name)).toContain(publicName);
 
-    const deleted = await request(app)
+    const gone = await request(app)
       .delete(`/api/organization/${orgName}/iso`)
       .set('x-access-token', ownerToken);
-    expect(deleted.statusCode).toBe(200);
-    expect(await db.iso.count({ where: { organizationId: org.id } })).toBe(0);
-
-    const nothing = await request(app)
-      .delete(`/api/organization/${orgName}/iso`)
-      .set('x-access-token', ownerToken);
-    expect(nothing.statusCode).toBe(404);
+    expect(gone.statusCode).toBe(404);
+    expect(await db.iso.count({ where: { organizationId: org.id } })).toBe(2);
   });
 });

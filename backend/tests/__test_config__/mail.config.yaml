@@ -1,0 +1,6 @@
+schemaVersion: 2
+smtp_connect:
+  host: 127.0.0.1
+  port: 1025
+smtp_settings:
+  from: noreply@example.com

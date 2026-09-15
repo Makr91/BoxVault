@@ -57,6 +57,21 @@ export default () => {
         collections: ['downloads'],
         links: { docs: 'https://docs.test', contact: 'help@test' },
       },
+      'face.test': {
+        collections: ['downloads'],
+        features: [
+          'admin',
+          'discover',
+          'uploads',
+          'watches',
+          'favorites',
+          'notifications',
+          'health',
+          'search',
+          'events',
+        ],
+        origin: 'https://face.test',
+      },
     },
   };
 

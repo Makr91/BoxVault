@@ -139,12 +139,6 @@
       "error": "Ocurrió un error al crear la Caja."
     },
     "boxDeleted": "¡Box eliminada exitosamente!",
-    "noBoxesFoundInOrg": "No se encontraron Boxes bajo la organización {{organization}}.",
-    "deletedAllInOrg": "¡{{count}} Boxes fueron eliminadas exitosamente bajo la organización={{organization}}!",
-    "notFoundToDelete": "No se encontraron Boxes para eliminar",
-    "deleteAll": {
-      "error": "Ocurrió un error al eliminar todas las cajas."
-    },
     "discover": {
       "error": "Ocurrió un error al recuperar las cajas."
     },
@@ -455,8 +449,6 @@
     "duplicateName": "Ya existe una ISO con el nombre {{name}} en la organización {{organization}}.",
     "invalidArchitecture": "Arquitectura inválida. Solo debe contener caracteres alfanuméricos, guiones, guiones bajos y puntos, y no debe comenzar con guion ni punto.",
     "deleted": "ISO eliminada exitosamente.",
-    "deletedAll": "Se eliminaron {{count}} ISOs exitosamente.",
-    "noIsosFound": "No se encontraron ISOs para esta organización.",
     "versions": {
       "notFound": "Versión de ISO no encontrada.",
       "duplicate": "Ya existe una versión con el número {{versionNumber}} para la ISO {{name}}.",
@@ -474,8 +466,6 @@
     "notFound": "Descarga no encontrada.",
     "notFoundWithName": "Descarga {{name}} no encontrada en la organización {{organization}}.",
     "deleted": "Descarga eliminada exitosamente.",
-    "deletedAll": "Se eliminaron {{count}} descargas exitosamente.",
-    "noDownloadsFound": "No se encontraron descargas para esta organización.",
     "permissionDenied": "Solo puedes cambiar descargas que posees, o necesitas rol de administrador/propietario.",
     "releases": {
       "notFound": "Versión no encontrada.",

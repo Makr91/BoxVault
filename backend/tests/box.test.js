@@ -318,11 +318,10 @@ describe('Box API', () => {
   });
 
   describe('DELETE /api/organization/:organization/box', () => {
-    it('should delete all boxes in organization', async () => {
-      // Create a box to delete
-      await db.box.create({
-        name: `todelete-${uniqueId}`,
-        description: 'To delete',
+    it('should no longer exist, the bulk route taking its place', async () => {
+      const kept = await db.box.create({
+        name: `kept-${uniqueId}`,
+        description: 'Kept',
         organizationId: organization.id,
         userId: user.id,
       });
@@ -331,11 +330,9 @@ describe('Box API', () => {
         .delete(`/api/organization/${orgName}/box`)
         .set('x-access-token', authToken);
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.message).toMatch(/\d+ Boxes were deleted successfully/);
-
-      const boxes = await db.box.findAll({ where: { organizationId: organization.id } });
-      expect(boxes.length).toBe(0);
+      expect(res.statusCode).toBe(404);
+      expect(await db.box.findByPk(kept.id)).not.toBeNull();
+      await kept.destroy();
     });
   });
 
@@ -851,16 +848,6 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(500);
     });
 
-    it('should handle database errors during deleteAll', async () => {
-      jest.spyOn(db.box, 'findAll').mockRejectedValue(new Error('DB Error'));
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/box`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(500);
-    });
-
     it('should handle database errors during findOne', async () => {
       jest.spyOn(db.box, 'findOne').mockRejectedValue(new Error('DB Error'));
 
@@ -992,17 +979,6 @@ describe('Box API', () => {
       await box.destroy();
     });
 
-    it('should return 404 if no boxes to delete in deleteAll', async () => {
-      // Ensure org has no boxes
-      await db.box.destroy({ where: { organizationId: organization.id } });
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/box`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(404);
-    });
-
     it('should handle errors in discover', async () => {
       jest.spyOn(db.box, 'findAll').mockRejectedValue(new Error('DB Error'));
       const res = await request(app).get('/api/discover');
@@ -1098,22 +1074,6 @@ describe('Box API', () => {
       destroySpy.mockRestore();
     });
 
-    it('should handle deleteAll error with fallback message', async () => {
-      // Mock findAll to return boxes so we proceed to destroy
-      jest.spyOn(db.box, 'findAll').mockResolvedValue([{ id: 1, name: 'box1' }]);
-
-      // Mock destroy to throw error with no message
-      const destroySpy = jest.spyOn(db.box, 'destroy').mockRejectedValue(new Error(''));
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/box`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(500);
-
-      destroySpy.mockRestore();
-    });
-
     it('should handle findOne error with fallback message', async () => {
       jest.spyOn(db.box, 'findOne').mockRejectedValue(new Error(''));
 
@@ -1170,27 +1130,6 @@ describe('Box API', () => {
 
       rmSpy.mockRestore();
       logSpy.mockRestore();
-    });
-
-    it('should log error when fs.rm fails during deleteAll', async () => {
-      await db.box.create({
-        name: `del-all-fs-err-${uniqueId}`,
-        organizationId: organization.id,
-        userId: user.id,
-      });
-
-      // Mock fs.promises.rm to fail
-      const rmSpy = jest
-        .spyOn(fs.promises, 'rm')
-        .mockRejectedValue(new Error('FS Delete All Error'));
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/box`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(200);
-
-      rmSpy.mockRestore();
     });
 
     it('should handle errors in getOrganizationBoxDetails', async () => {
@@ -1302,25 +1241,6 @@ describe('Box API', () => {
       rmSpy.mockRestore();
     });
 
-    it('should execute fs.rm callback on success during deleteAll', async () => {
-      await db.box.create({
-        name: `del-all-cb-1-${uniqueId}`,
-        organizationId: organization.id,
-        userId: user.id,
-      });
-
-      const rmSpy = jest.spyOn(fs.promises, 'rm').mockResolvedValue(undefined);
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/box`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(200);
-      expect(rmSpy).toHaveBeenCalled();
-
-      rmSpy.mockRestore();
-    });
-
     it('should return 403 for delete/update if user is member but not owner/admin', async () => {
       // Create regular member
       const member = await db.user.create({
@@ -1368,24 +1288,6 @@ describe('Box API', () => {
 
       await member.destroy();
       await adminBox.destroy();
-    });
-
-    it('should throw error in deleteAll if destroy returns 0 but boxes existed', async () => {
-      // Mock findAll to return boxes
-      const findAllSpy = jest.spyOn(db.box, 'findAll').mockResolvedValue([{ name: 'ghost-box' }]);
-      // Mock destroy to return 0
-      const destroySpy = jest.spyOn(db.box, 'destroy').mockResolvedValue(0);
-
-      const res = await request(app)
-        .delete(`/api/organization/${orgName}/box`)
-        .set('x-access-token', authToken);
-
-      expect(res.statusCode).toBe(500);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
-      expect(res.body.title).toBeDefined();
-
-      findAllSpy.mockRestore();
-      destroySpy.mockRestore();
     });
 
     it('should handle null emailHash in discover', async () => {

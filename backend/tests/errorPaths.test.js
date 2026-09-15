@@ -169,7 +169,7 @@ describe('Database failures answer 500 and never crash the request', () => {
       expect(list.statusCode).toBe(500);
     });
 
-    it('should answer 500 when creating, checking or deleting ISOs fails', async () => {
+    it('should answer 500 when creating or checking ISOs fails', async () => {
       failing(db.iso, 'findOne');
       const duplicate = await request(app)
         .post(`/api/organization/${orgName}/iso`)
@@ -182,11 +182,6 @@ describe('Database failures answer 500 and never crash the request', () => {
         .set('x-access-token', ownerToken)
         .send({ name: `fresh-${uniqueId}` });
       expect(create.statusCode).toBe(500);
-      failing(db.iso, 'findAll');
-      const deleteAll = await request(app)
-        .delete(`/api/organization/${orgName}/iso`)
-        .set('x-access-token', ownerToken);
-      expect(deleteAll.statusCode).toBe(500);
     });
 
     it('should still publish when the watcher fan-out fails', async () => {

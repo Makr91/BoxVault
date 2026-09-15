@@ -139,12 +139,6 @@
       "error": "Some error occurred while creating the Box."
     },
     "boxDeleted": "Box deleted successfully!",
-    "noBoxesFoundInOrg": "No boxes found under organization {{organization}}.",
-    "deletedAllInOrg": "{{count}} Boxes were deleted successfully under organization={{organization}}!",
-    "notFoundToDelete": "No boxes found to delete",
-    "deleteAll": {
-      "error": "Some error occurred while removing all boxes."
-    },
     "discover": {
       "error": "Some error occurred while retrieving boxes."
     },
@@ -455,8 +449,6 @@
     "duplicateName": "An ISO with the name {{name}} already exists in organization {{organization}}.",
     "invalidArchitecture": "Invalid architecture. It should contain only alphanumeric characters, hyphens, underscores, and periods, and not start with a hyphen or period.",
     "deleted": "ISO deleted successfully.",
-    "deletedAll": "{{count}} ISOs were deleted successfully.",
-    "noIsosFound": "No ISOs found for this organization.",
     "versions": {
       "notFound": "ISO version not found.",
       "duplicate": "A version with the number {{versionNumber}} already exists for ISO {{name}}.",
@@ -474,8 +466,6 @@
     "notFound": "Download not found.",
     "notFoundWithName": "Download {{name}} not found in organization {{organization}}.",
     "deleted": "Download deleted successfully.",
-    "deletedAll": "{{count}} downloads were deleted successfully.",
-    "noDownloadsFound": "No downloads found for this organization.",
     "permissionDenied": "You can only change downloads you own, or you need admin/owner role.",
     "releases": {
       "notFound": "Release not found.",

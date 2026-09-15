@@ -393,6 +393,194 @@ describe('Download file API', () => {
     });
   });
 
+  describe('POST <level>/file/upload', () => {
+    const dropAt = (url, token, content, fileName) => {
+      const req = request(app)
+        .post(url)
+        .set('x-access-token', token)
+        .set('Content-Type', 'application/octet-stream');
+      if (fileName) {
+        req.set('x-file-name', fileName);
+      }
+      return req.send(content);
+    };
+
+    it('should create the product, release and patch the file name names from the collection', async () => {
+      const content = Buffer.from(`traveler-${uniqueId}`);
+      const res = await dropAt(
+        `/api/organization/${orgName}/download/file/upload?is_public=true`,
+        memberToken,
+        content,
+        'Traveler_14.0.0_Linux.tar.gz'
+      );
+      expect(res.statusCode).toBe(200);
+      expect(res.body.details.fileSize).toBe(content.length);
+
+      const product = await db.download.findOne({
+        where: { name: 'traveler', organizationId: org.id },
+      });
+      expect(product.userId).toBe(member.id);
+      expect(product.isPublic).toBe(true);
+      expect(product.published).toBe(false);
+      const release = await db.downloadReleases.findOne({
+        where: { versionNumber: '14.0.0', downloadId: product.id },
+      });
+      const patch = await db.downloadPatches.findOne({
+        where: { name: 'release', downloadReleaseId: release.id },
+      });
+      expect(patch.kind).toBe('release');
+      const file = await db.downloadFiles.findOne({
+        where: { fileName: 'Traveler_14.0.0_Linux.tar.gz', downloadPatchId: patch.id },
+      });
+      expect(file.key).toBe('Traveler_14.0.0_Linux.tar.gz');
+      const travelerPath = getSecureDownloadPath(
+        orgName,
+        'traveler',
+        '14.0.0',
+        'release',
+        'Traveler_14.0.0_Linux.tar.gz'
+      );
+      expect(fs.readFileSync(travelerPath)).toEqual(content);
+    });
+
+    it('should leave a product private without the query and refuse a name without levels', async () => {
+      const res = await dropAt(
+        `/api/organization/${orgName}/download/file/upload`,
+        memberToken,
+        Buffer.from(`sametime-${uniqueId}`),
+        'Sametime-12.0.2-Premium.zip'
+      );
+      expect(res.statusCode).toBe(200);
+      const product = await db.download.findOne({
+        where: { name: 'sametime', organizationId: org.id },
+      });
+      expect(product.isPublic).toBe(false);
+
+      const noName = await dropAt(
+        `/api/organization/${orgName}/download/file/upload`,
+        memberToken,
+        fileContent
+      );
+      expect(noName.statusCode).toBe(400);
+
+      const noVersion = await dropAt(
+        `/api/organization/${orgName}/download/file/upload`,
+        memberToken,
+        fileContent,
+        'README.pdf'
+      );
+      expect(noVersion.statusCode).toBe(422);
+      expect(noVersion.body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ pointer: '/version_number' })])
+      );
+      expect(await db.download.count({ where: { name: 'readme', organizationId: org.id } })).toBe(
+        0
+      );
+
+      const noProduct = await dropAt(
+        `/api/organization/${orgName}/download/file/upload`,
+        memberToken,
+        fileContent,
+        '1.0.0-tool.zip'
+      );
+      expect(noProduct.statusCode).toBe(422);
+      expect(noProduct.body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ pointer: '/name' })])
+      );
+    });
+
+    it('should create the release the file name names under the product', async () => {
+      const content = Buffer.from(`domino-1202-${uniqueId}`);
+      const res = await dropAt(
+        `${productBase}/file/upload`,
+        ownerToken,
+        content,
+        'Domino_12.0.2_Win_English.exe'
+      );
+      expect(res.statusCode).toBe(200);
+
+      const product = await db.download.findOne({
+        where: { name: productName, organizationId: org.id },
+      });
+      const release = await db.downloadReleases.findOne({
+        where: { versionNumber: '12.0.2', downloadId: product.id },
+      });
+      expect(release).not.toBeNull();
+      const patch = await db.downloadPatches.findOne({
+        where: { name: 'release', downloadReleaseId: release.id },
+      });
+      const file = await db.downloadFiles.findOne({ where: { downloadPatchId: patch.id } });
+      expect(file.key).toBe('Domino_12.0.2_Win_English.exe');
+      expect(fs.existsSync(filePath('12.0.2', 'release', 'Domino_12.0.2_Win_English.exe'))).toBe(
+        true
+      );
+
+      const asMember = await dropAt(
+        `${productBase}/file/upload`,
+        memberToken,
+        content,
+        'Domino_12.0.2_Linux_English.tar'
+      );
+      expect(asMember.statusCode).toBe(403);
+    });
+
+    it('should take the path release over the one the file name names', async () => {
+      const content = Buffer.from(`notes-${uniqueId}`);
+      const res = await dropAt(
+        `${productBase}/release/${releaseNumber}/file/upload`,
+        ownerToken,
+        content,
+        'Notes_Domino_14.5_Release_Notes.pdf'
+      );
+      expect(res.statusCode).toBe(200);
+
+      const file = await db.downloadFiles.findOne({
+        where: { fileName: 'Notes_Domino_14.5_Release_Notes.pdf' },
+      });
+      expect(file.key).toBe('Notes_Domino_14.5_Release_Notes.pdf');
+      expect(
+        fs.readFileSync(filePath(releaseNumber, patchName, 'Notes_Domino_14.5_Release_Notes.pdf'))
+      ).toEqual(content);
+      const product = await db.download.findOne({
+        where: { name: productName, organizationId: org.id },
+      });
+      expect(
+        await db.downloadReleases.count({
+          where: { versionNumber: '14.5', downloadId: product.id },
+        })
+      ).toBe(0);
+    });
+
+    it('should create the patch the path names and key the file by its name', async () => {
+      const content = Buffer.from(`if1-${uniqueId}`);
+      const res = await dropAt(
+        `${productBase}/release/${releaseNumber}/patch/IF1/file/upload`,
+        ownerToken,
+        content,
+        'Domino_1451IF1_Linux.tar'
+      );
+      expect(res.statusCode).toBe(200);
+
+      const product = await db.download.findOne({
+        where: { name: productName, organizationId: org.id },
+      });
+      const release = await db.downloadReleases.findOne({
+        where: { versionNumber: releaseNumber, downloadId: product.id },
+      });
+      const patch = await db.downloadPatches.findOne({
+        where: { name: 'IF1', downloadReleaseId: release.id },
+      });
+      expect(patch).not.toBeNull();
+      const file = await db.downloadFiles.findOne({
+        where: { key: 'Domino_1451IF1_Linux.tar', downloadPatchId: patch.id },
+      });
+      expect(file.fileName).toBe('Domino_1451IF1_Linux.tar');
+      expect(fs.readFileSync(filePath(releaseNumber, 'IF1', 'Domino_1451IF1_Linux.tar'))).toEqual(
+        content
+      );
+    });
+  });
+
   describe('deduplication by symlink', () => {
     const linkPath = () => filePath(releaseNumber, 'FP1', 'Domino_1451FP1_Linux.tar');
     const originalPath = () => filePath(releaseNumber, patchName, installerName);

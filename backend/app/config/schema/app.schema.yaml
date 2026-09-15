@@ -638,6 +638,37 @@ properties:
           title: Collections
           description: The collections this hostname mounts, in order; the first owns the root
           order: 2
+        features:
+          type: array
+          items:
+            type: string
+            enum:
+              - local-accounts
+              - setup
+              - admin
+              - org-console
+              - discover
+              - invitations
+              - uploads
+              - watches
+              - deploy
+              - favorites
+              - notifications
+              - health
+              - footer
+              - search
+              - events
+          title: Features
+          description: The feature tokens this hostname answers, in order; absent answers every token BoxVault supports
+          order: 9
+        origin:
+          type: string
+          format: uri
+          title: Origin
+          description: The origin URL this hostname is reached at, used for its OIDC redirects and allowed cross-origin
+          order: 10
+          requiresRestart: true
+          restartReason: the CORS origin list is built at boot
         links:
           type: object
           title: Links
