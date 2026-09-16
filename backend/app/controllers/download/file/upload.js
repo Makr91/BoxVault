@@ -25,6 +25,15 @@ const { Op } = Sequelize;
 
 const FILENAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 const FILENAME_MAX_LENGTH = 255;
+const FILE_MEMBERS = ['kind', 'platform', 'architecture', 'language', 'variant'];
+const FILE_DEFAULTS = { kind: 'other', platform: 'any', architecture: 'any', language: 'any' };
+
+const membersOf = query =>
+  Object.fromEntries(
+    FILE_MEMBERS.map(member => [member, query[member]]).filter(
+      ([, value]) => typeof value === 'string' && value !== ''
+    )
+  );
 const EXTENSION_PATTERN = /(?:\.[A-Za-z][A-Za-z0-9]*)+$/;
 const TOKEN_SEPARATOR = /[_\- ]+/;
 const VERSION_PATTERN = /^\d+(?:\.\d+)*$/;
@@ -116,7 +125,7 @@ const levelsOf = (params, fileName) => {
  * /api/organization/{organization}/download/file/upload:
  *   post:
  *     summary: Upload a download file into the organization
- *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. `?is_public=true` makes a product the upload creates public.
+ *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. `?is_public=true` makes a product the upload creates public. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value, the defaults other, any, any, any on a row the upload creates.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -272,7 +281,7 @@ const levelsOf = (params, fileName) => {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/upload:
  *   post:
  *     summary: Upload a download file
- *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. `?is_public=true` makes a product the upload creates public.
+ *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. `?is_public=true` makes a product the upload creates public. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -433,11 +442,12 @@ const upload = (req, res) => {
         })
       : null;
 
+    const members = membersOf(req.query);
     const checks = [
       [download, 'download', { name }],
       [release, 'release', { version_number: versionNumber }],
       [patch, 'patch', { name: patchName }],
-      [file, 'downloadFile', { key }],
+      [file && Object.keys(members).length === 0, 'downloadFile', { key, ...members }],
     ];
     const refusal = checks
       .filter(([row]) => !row)
@@ -473,17 +483,19 @@ const upload = (req, res) => {
           fs.unlinkSync(existingPath);
         }
       }
+      const changes = { ...members };
       if (req.headers['x-file-name'] && file.fileName !== fileName) {
-        file = await file.update({ fileName });
+        changes.fileName = fileName;
+      }
+      if (Object.keys(changes).length > 0) {
+        file = await file.update(changes);
       }
     } else {
       file = await DownloadFile.create({
         key,
         fileName,
-        kind: 'other',
-        platform: 'any',
-        architecture: 'any',
-        language: 'any',
+        ...FILE_DEFAULTS,
+        ...members,
         fileSize: 0,
         original: true,
         downloadPatchId: patch.id,

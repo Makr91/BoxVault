@@ -482,7 +482,7 @@ describe('Download file API', () => {
     it('should create the product, release and patch the file name names from the collection', async () => {
       const content = Buffer.from(`traveler-${uniqueId}`);
       const res = await dropAt(
-        `/api/organization/${orgName}/download/file/upload?is_public=true`,
+        `/api/organization/${orgName}/download/file/upload?is_public=true&kind=package&platform=linux&architecture=x64&language=en`,
         memberToken,
         content,
         'Traveler_14.0.0_Linux.tar.gz'
@@ -513,6 +513,21 @@ describe('Download file API', () => {
         where: { fileName: 'Traveler_14.0.0_Linux.tar.gz', downloadPatchId: patch.id },
       });
       expect(file.key).toBe('Traveler_14.0.0_Linux.tar.gz');
+      expect(file.kind).toBe('package');
+      expect(file.platform).toBe('linux');
+      expect(file.architecture).toBe('x64');
+      expect(file.language).toBe('en');
+
+      const badMember = await dropAt(
+        `/api/organization/${orgName}/download/file/upload?platform=amiga`,
+        memberToken,
+        content,
+        'Traveler_14.0.0_Linux.tar.gz'
+      );
+      expect(badMember.statusCode).toBe(422);
+      expect(badMember.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/platform', rule: 'enum' }),
+      ]);
       const travelerPath = getSecureDownloadPath(
         orgName,
         'traveler',
