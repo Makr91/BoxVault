@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.84.3](https://github.com/Makr91/BoxVault/compare/v0.84.2...v0.84.3) (2026-09-16)
+
+
+### Bug Fixes
+
+* answer the place route's pointers as the body was sent and take the form's empty members as absent ([1daa7ae](https://github.com/Makr91/BoxVault/commit/1daa7ae377e978a7a09347f8c1345671ed2364c8))
+* bump startcloud-ui to v0.18.2 ([ff520f7](https://github.com/Makr91/BoxVault/commit/ff520f7fba5ff9e9553bc194664c0572e798232f))
+* bump startcloud-ui to v0.18.2 ([2040ccc](https://github.com/Makr91/BoxVault/commit/2040ccc1bf7545d0e1940f1e0dbb84b9d47c3354))
+* bump startcloud-ui to v0.18.3 ([c9784a9](https://github.com/Makr91/BoxVault/commit/c9784a98c11e02093301a4f7bab2b3bd78c638df))
+* bump startcloud-ui to v0.18.3 ([448b36a](https://github.com/Makr91/BoxVault/commit/448b36a606bd87482d7431a3507d8313163bcf73))
+
 ## [0.84.2](https://github.com/Makr91/BoxVault/compare/v0.84.1...v0.84.2) (2026-09-16)
 
 
