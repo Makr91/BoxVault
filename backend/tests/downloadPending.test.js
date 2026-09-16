@@ -158,14 +158,24 @@ describe('Download pending upload API', () => {
       expect(info.body.guess.release).toBe('');
     });
 
-    it('should refuse a blank release with the /version_number pointer and keep the upload', async () => {
+    it('should refuse a blank release with the /release pointer and keep the upload', async () => {
       const res = await request(app)
         .post(`${pendingBase}/${pendingId}/place`)
         .set('x-access-token', memberToken)
         .send({ product: 'test-db', release: '', patch: 'release' });
       expect(res.statusCode).toBe(422);
       expect(res.body.errors).toEqual(
-        expect.arrayContaining([expect.objectContaining({ pointer: '/version_number' })])
+        expect.arrayContaining([expect.objectContaining({ pointer: '/release' })])
+      );
+      expect(res.body.errors.some(error => error.pointer === '/version_number')).toBe(false);
+
+      const blankProduct = await request(app)
+        .post(`${pendingBase}/${pendingId}/place`)
+        .set('x-access-token', memberToken)
+        .send({ product: '', release: '1.0' });
+      expect(blankProduct.statusCode).toBe(422);
+      expect(blankProduct.body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ pointer: '/product' })])
       );
       expect(await db.downloadPendingUploads.count({ where: { id: pendingId } })).toBe(1);
       expect(fs.existsSync(getPendingPath(orgName, pendingId, 'test.nsf'))).toBe(true);
@@ -178,7 +188,15 @@ describe('Download pending upload API', () => {
       const res = await request(app)
         .post(`${pendingBase}/${pendingId}/place`)
         .set('x-access-token', memberToken)
-        .send({ product: 'test-db', release: '1.0', patch: 'release', kind: 'template' });
+        .send({
+          product: 'test-db',
+          release: '1.0',
+          patch: 'release',
+          kind: 'template',
+          variant: '',
+          checksum_type: 'NULL',
+          checksum: '',
+        });
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({
         product: 'test-db',

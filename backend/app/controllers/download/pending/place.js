@@ -3,7 +3,9 @@ import { dirname, join } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { canWriteDownload, canWritePendingUpload } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
+import { getRulesDocument } from '../../../utils/rules.js';
+import { validateObject } from '../../../utils/validation.js';
 import { ensureDirSync, safeRmdirSync } from '../../../utils/fsHelper.js';
 import { addressOf, recordFile } from '../../../middleware/uploadDownload.js';
 import {
@@ -13,7 +15,7 @@ import {
   isReservedProductName,
   promoteOriginal,
 } from '../helpers.js';
-import { isAllowedFileName, refused } from '../file/upload.js';
+import { isAllowedFileName } from '../file/upload.js';
 import { resolvePending } from './resolve.js';
 
 const {
@@ -37,9 +39,32 @@ const FILE_MEMBERS = [
 
 const FILE_DEFAULTS = { kind: 'other', platform: 'any', architecture: 'any', language: 'any' };
 
-const definedOf = entries => Object.fromEntries(entries.filter(([, value]) => value !== undefined));
+const NO_CHECKSUM_TYPE = 'null';
 
-const givenOf = body => definedOf(FILE_MEMBERS.map(member => [member, body[member]]));
+const POINTERS = {
+  download: { '/name': '/product' },
+  release: { '/version_number': '/release' },
+  patch: { '/name': '/patch' },
+};
+
+const definedOf = entries =>
+  Object.fromEntries(entries.filter(([, value]) => value !== undefined && value !== ''));
+
+const givenOf = body => {
+  const given = definedOf(FILE_MEMBERS.map(member => [member, body[member]]));
+  if (String(given.checksum_type ?? NO_CHECKSUM_TYPE).toLowerCase() === NO_CHECKSUM_TYPE) {
+    delete given.checksum;
+  }
+  return given;
+};
+
+const errorsOf = (form, values) => {
+  const document = getRulesDocument();
+  return validateObject(document.forms[form], values, document).map(error => ({
+    ...error,
+    pointer: POINTERS[form]?.[error.pointer] ?? error.pointer,
+  }));
+};
 
 const attributesOf = given => ({
   kind: given.kind,
@@ -240,11 +265,11 @@ const place = async (req, res) => {
       [patch, 'patch', { name: patchName }],
       [null, 'downloadFile', { key, file_name: fileName, ...given }],
     ];
-    const refusal = checks
+    const errors = checks
       .filter(([row]) => !row)
-      .reduce((found, [, form, values]) => found || refused(res, req, form, values), null);
-    if (refusal) {
-      return refusal;
+      .flatMap(([, form, values]) => errorsOf(form, values));
+    if (errors.length > 0) {
+      return refuse(res, req, errors);
     }
 
     const source = absolutePath(pending.storagePath);
