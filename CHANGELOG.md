@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.0](https://github.com/Makr91/BoxVault/compare/v0.83.0...v0.84.0) (2026-09-15)
+
+
+### Features
+
+* land a download drop in a pending store and place it from the form ([7d5a3df](https://github.com/Makr91/BoxVault/commit/7d5a3dfbffa4a10e9a2e02606f20ff232b72bd95))
+
 ## [0.83.0](https://github.com/Makr91/BoxVault/compare/v0.82.1...v0.83.0) (2026-09-15)
 
 
