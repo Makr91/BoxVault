@@ -6,9 +6,13 @@ import {
   extractBearerToken,
   findServiceAccountByRawToken,
 } from '../../../utils/serviceAccountAuth.js';
-import { resolveOrgMembership } from '../../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  isGuestMembership,
+  resolveOrgMembership,
+} from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
-import { sumBoxDownloads } from '../helpers.js';
+import { boxFilesWithCounts, sumBoxDownloads } from '../helpers.js';
 import db from '../../../models/index.js';
 const {
   organization: Organization,
@@ -26,7 +30,7 @@ const { verify } = jwt;
  * /api/organization/{organization}/box:
  *   get:
  *     summary: Get organization box details
- *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a service account being a member of its own organization only.
+ *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a guest of the organization its published private boxes flagged for guests, a service account being a member of its own organization only. Every downloadCount is null to a guest of the organization.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -66,7 +70,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
   const { organization } = req.params;
   const token = req.headers['x-access-token'];
   let userId = null;
-  let userOrganizationId = null;
+  let membership = null;
   let isServiceAccount = false;
 
   let authConfig;
@@ -86,8 +90,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
       });
 
       if (orgData) {
-        const membership = await resolveOrgMembership(req, orgData.id);
-        userOrganizationId = membership ? orgData.id : null;
+        membership = await resolveOrgMembership(req, orgData.id);
       }
     } else if (token) {
       try {
@@ -99,11 +102,10 @@ export const getOrganizationBoxDetails = async (req, res) => {
         });
 
         if (orgData) {
-          const membership = await resolveOrgMembership(
+          membership = await resolveOrgMembership(
             { userId, isServiceAccount, serviceAccountId: decoded.serviceAccountId },
             orgData.id
           );
-          userOrganizationId = membership ? orgData.id : null;
         }
       } catch {
         // Not a valid JWT — may be a raw service-account key, checked below
@@ -125,11 +127,10 @@ export const getOrganizationBoxDetails = async (req, res) => {
         });
 
         if (orgData) {
-          const membership = await resolveOrgMembership(
+          membership = await resolveOrgMembership(
             { userId, isServiceAccount, serviceAccountId: rawServiceAccount.id },
             orgData.id
           );
-          userOrganizationId = membership ? orgData.id : null;
         }
       } else if (token || extractBearerToken(req)) {
         log.app.warn('Unauthorized User.');
@@ -183,21 +184,17 @@ export const getOrganizationBoxDetails = async (req, res) => {
       ],
     });
 
-    const isMember = Boolean(userId) && userOrganizationId === organizationData.id;
-    const ownsBoxes = Boolean(userId) && (!isServiceAccount || isMember);
+    const ownsBoxes = Boolean(userId) && (!isServiceAccount || Boolean(membership));
+    const counted = !isGuestMembership(membership);
 
     boxes = boxes.filter(box => {
-      const hasAccess = box.isPublic || isMember || (ownsBoxes && box.userId === userId);
-
-      if (!hasAccess) {
-        return false;
-      }
-
-      if (box.published) {
+      if (ownsBoxes && box.userId === userId) {
         return true;
       }
-
-      return ownsBoxes && box.userId === userId;
+      if (!box.published) {
+        return false;
+      }
+      return box.isPublic || canReadInOrg(membership, box);
     });
 
     // Map boxes to response format
@@ -212,10 +209,11 @@ export const getOrganizationBoxDetails = async (req, res) => {
       artwork: box.artwork,
       published: box.published,
       isPublic: box.isPublic,
+      guestAccess: box.guestAccess,
       userId: box.userId,
       createdAt: box.createdAt,
       updatedAt: box.updatedAt,
-      downloadCount: sumBoxDownloads(box),
+      downloadCount: counted ? sumBoxDownloads(box) : null,
       versions: box.versions.map(version => ({
         id: version.id,
         versionNumber: version.versionNumber,
@@ -240,7 +238,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
             providerId: architecture.providerId,
             createdAt: architecture.createdAt,
             updatedAt: architecture.updatedAt,
-            files: architecture.files.map(file => ({
+            files: boxFilesWithCounts(architecture.files, counted).map(file => ({
               id: file.id,
               fileName: file.fileName,
               checksum: file.checksum,

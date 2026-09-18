@@ -51,6 +51,46 @@ const sumIsoDownloads = iso =>
     .reduce((total, file) => total + (file.downloadCount || 0), 0);
 
 /**
+ * The file rows of an ISO as JSON with their downloadCount kept when counted
+ * and answered null otherwise.
+ * @param {Array<Object>} files - File rows or their JSON
+ * @param {boolean} counted - Whether the caller is answered the counts
+ * @returns {Array<Object>} The files as JSON
+ */
+const isoFilesWithCounts = (files, counted) =>
+  (files || []).map(file => ({
+    ...(typeof file.toJSON === 'function' ? file.toJSON() : file),
+    downloadCount: counted ? file.downloadCount : null,
+  }));
+
+/**
+ * The version rows of an ISO as JSON with their files' downloadCount answered
+ * when counted and null otherwise.
+ * @param {Array<Object>} versions - Version rows with nested files
+ * @param {boolean} counted - Whether the caller is answered the counts
+ * @returns {Array<Object>} The versions as JSON
+ */
+const isoVersionsWithCounts = (versions, counted) =>
+  (versions || []).map(version => ({
+    ...version.toJSON(),
+    files: isoFilesWithCounts(version.files, counted),
+  }));
+
+/**
+ * The ISO's JSON with its downloadCount and every nested file's downloadCount
+ * answered when counted and null otherwise; a guest of the organization is
+ * never counted.
+ * @param {Object} iso - An ISO row with nested versions and files
+ * @param {boolean} counted - Whether the caller is answered the counts
+ * @returns {Object} The ISO JSON
+ */
+const isoWithCounts = (iso, counted) => ({
+  ...iso.toJSON(),
+  versions: isoVersionsWithCounts(iso.versions, counted),
+  downloadCount: counted ? sumIsoDownloads(iso) : null,
+});
+
+/**
  * Remove the physical files behind iso_files rows that have already been
  * deleted from the database, keeping any file still referenced by another row
  * with the same storage path (deduplication within an organization).
@@ -84,5 +124,8 @@ export {
   getSecureIsoPath,
   cleanupTempFile,
   sumIsoDownloads,
+  isoFilesWithCounts,
+  isoVersionsWithCounts,
+  isoWithCounts,
   removeUnreferencedIsoFiles,
 };

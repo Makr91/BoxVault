@@ -19,7 +19,7 @@ const PUBLIC_ISO = { isPublic: true, published: true };
  * identity-provider token, sees every organization they belong to; anonymous
  * callers resolve to null and see only public, published ISOs.
  * @param {import('express').Request} req - The request carrying the credentials
- * @returns {Promise<{userId: number, isServiceAccount: boolean, orgIds: number[], managedOrgIds: number[]}|null>}
+ * @returns {Promise<{userId: number, isServiceAccount: boolean, orgIds: number[], guestOrgIds: number[], managedOrgIds: number[]}|null>}
  *   The viewer of resolveViewer, or null
  */
 const resolveIsoViewer = async req => {
@@ -41,16 +41,24 @@ const resolveIsoViewer = async req => {
 /**
  * The where clause for the ISOs a viewer may list, the rule the box discover
  * route applies: anyone sees public published ISOs, a member sees every
- * published ISO of their organizations plus the unpublished ones they created.
- * @param {{userId: number, orgIds: number[]}|null} viewer - From resolveIsoViewer
+ * published ISO of their organizations plus the unpublished ones they created,
+ * a guest sees the published ISOs flagged for guests plus the ones they created.
+ * @param {{userId: number, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveIsoViewer
  * @param {number} [organizationId] - Limit to one organization
  * @returns {Object} Sequelize where clause
  */
 const isoWhereFor = (viewer, organizationId) => {
   if (organizationId !== undefined) {
-    return viewer && viewer.orgIds.includes(organizationId)
-      ? { organizationId, [Op.or]: [{ published: true }, { userId: viewer.userId }] }
-      : { organizationId, ...PUBLIC_ISO };
+    if (viewer && viewer.orgIds.includes(organizationId)) {
+      return { organizationId, [Op.or]: [{ published: true }, { userId: viewer.userId }] };
+    }
+    if (viewer && viewer.guestOrgIds.includes(organizationId)) {
+      return {
+        organizationId,
+        [Op.or]: [PUBLIC_ISO, { published: true, guestAccess: true }, { userId: viewer.userId }],
+      };
+    }
+    return { organizationId, ...PUBLIC_ISO };
   }
   if (!viewer) {
     return { ...PUBLIC_ISO };
@@ -60,14 +68,18 @@ const isoWhereFor = (viewer, organizationId) => {
       PUBLIC_ISO,
       { published: true, organizationId: { [Op.in]: viewer.orgIds } },
       { organizationId: { [Op.in]: viewer.orgIds }, userId: viewer.userId },
+      { published: true, guestAccess: true, organizationId: { [Op.in]: viewer.guestOrgIds } },
+      { organizationId: { [Op.in]: viewer.guestOrgIds }, userId: viewer.userId },
     ],
   };
 };
 
 /**
- * Whether a viewer may read one ISO: public and published, or a member of its
- * organization when it is published or the viewer created it.
- * @param {{userId: number, orgIds: number[]}|null} viewer - From resolveIsoViewer
+ * Whether a viewer may read one ISO: public and published, a member of its
+ * organization when it is published or the viewer created it, a guest of its
+ * organization when it is published and flagged for guests or the viewer
+ * created it.
+ * @param {{userId: number, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveIsoViewer
  * @param {Object} iso - The ISO row
  * @returns {boolean} True when the ISO is visible to the viewer
  */
@@ -77,6 +89,11 @@ const canSeeIso = (viewer, iso) =>
     viewer &&
     viewer.orgIds.includes(iso.organizationId) &&
     (iso.published || iso.userId === viewer.userId)
+  ) ||
+  Boolean(
+    viewer &&
+    viewer.guestOrgIds.includes(iso.organizationId) &&
+    ((iso.published && iso.guestAccess) || iso.userId === viewer.userId)
   );
 
 export { resolveIsoViewer, isoWhereFor, canSeeIso };

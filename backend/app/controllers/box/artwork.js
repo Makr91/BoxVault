@@ -6,7 +6,7 @@ import configLoader from '../../utils/config-loader.js';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { ensureDirSync, safeExistsSync, safeUnlink } from '../../utils/fsHelper.js';
 import { log } from '../../utils/Logger.js';
-import { ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import { canReadInOrg, ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { organization: Organization, box: Box } = db;
@@ -262,7 +262,7 @@ export const uploadArtwork = async (req, res) => {
  * /api/organization/{organization}/box/{name}/artwork:
  *   get:
  *     summary: Get box artwork
- *     description: Stream the stored box artwork image. Public for public boxes; private boxes require organization membership or box ownership (same access rules as box findone, a service account being a member of its own organization only).
+ *     description: Stream the stored box artwork image. Public for public boxes; private boxes require a writing membership of the organization or box ownership, a guest of the organization reading it only while it is published and flagged for guests (same access rules as box findone, a service account being a member of its own organization only).
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -346,7 +346,7 @@ export const getArtwork = async (req, res) => {
         return forbidden(req, res, 'boxes.unauthorized');
       }
       const membership = await resolveOrgMembership(caller, organizationData.id);
-      const hasAccess = !!membership || ownsBox(caller, box, membership);
+      const hasAccess = canReadInOrg(membership, box) || ownsBox(caller, box, membership);
       if (!hasAccess) {
         return forbidden(req, res, 'boxes.unauthorized');
       }

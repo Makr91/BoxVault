@@ -300,6 +300,12 @@ const options = {
               description: 'Whether the box is publicly accessible without authentication',
               example: false,
             },
+            guestAccess: {
+              type: 'boolean',
+              description:
+                'Whether guests of the organization may read the box while it is published',
+              example: false,
+            },
             organizationId: {
               type: 'integer',
               description: 'Organization ID that owns the box',
@@ -375,6 +381,12 @@ const options = {
             isPublic: {
               type: 'boolean',
               description: 'Whether the product is publicly accessible without authentication',
+              example: false,
+            },
+            guestAccess: {
+              type: 'boolean',
+              description:
+                'Whether guests of the organization may read the product while it is published',
               example: false,
             },
             organizationId: {
@@ -779,9 +791,9 @@ const options = {
             },
             role: {
               type: 'string',
-              enum: ['member', 'admin', 'owner', 'superadmin'],
+              enum: ['guest', 'member', 'admin', 'owner', 'superadmin'],
               description:
-                'Stored role. member, admin and owner act inside the organization only, at the lower of this role and the creator’s current role there; superadmin acts as a global admin on every organization while its creator keeps ROLE_ADMIN.',
+                'Stored role. guest, member, admin and owner act inside the organization only, at the lower of this role and the creator’s current role there, a guest reading only what is flagged for guests; superadmin acts as a global admin on every organization while its creator keeps ROLE_ADMIN.',
               example: 'member',
             },
             expiresAt: {
@@ -841,10 +853,10 @@ const options = {
             },
             role: {
               type: 'string',
-              enum: ['member', 'admin', 'owner', 'superadmin'],
+              enum: ['guest', 'member', 'admin', 'owner', 'superadmin'],
               default: 'member',
               description:
-                'Role of the account, at most the creator’s own role in the organization; superadmin only for a global admin. Absent means member.',
+                'Role of the account, guest through the creator’s own role in the organization, a guest membership creating none; superadmin only for a global admin. Absent means member.',
               example: 'member',
             },
           },

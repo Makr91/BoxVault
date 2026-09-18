@@ -120,6 +120,7 @@ describe('GET /api/rules', () => {
     expect(document.forms.password.properties.password.minLength).toBe(6);
     expect(document.forms.serviceAccount.properties.expiration_days.maximum).toBe(365);
     expect(document.forms.serviceAccount.properties.role.enum).toEqual([
+      'guest',
       'member',
       'admin',
       'owner',
@@ -153,6 +154,9 @@ describe('GET /api/rules', () => {
     expect(document.forms.downloadFile.properties.key.unique).toBe('patch');
     expect(document.forms.patch.properties.released_at.format).toBe('date');
     expect(document.forms.download.properties.icon_url.format).toBe('uri');
+    ['box', 'iso', 'download'].forEach(form => {
+      expect(document.forms[form].properties.guest_access).toEqual({ type: 'boolean' });
+    });
     expect(document.forms.patch.properties.kind.enum).toEqual([
       'release',
       'fixpack',
@@ -174,6 +178,8 @@ describe('GET /api/rules', () => {
       'make_private',
       'publish',
       'unpublish',
+      'allow_guests',
+      'deny_guests',
     ]);
     expect(document.forms.bulkVersion.properties.action.enum).toEqual(['delete', 'deprecate']);
     expect(document.forms.bulkLeaf.properties.action.enum).toEqual(['delete']);

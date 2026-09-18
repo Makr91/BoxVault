@@ -141,8 +141,9 @@ describe('Request authentication', () => {
     mockDb.credential.findByIssuerAndSubject.mockResolvedValue({ user_id: 7 });
     mockDb.user.findByPk.mockResolvedValue({ id: 7, suspended: false, sessionsInvalidAfter: null });
     mockDb.UserOrg.getUserOrganizations.mockResolvedValue([
-      { organization_id: 2 },
-      { organization_id: 5 },
+      { organization_id: 2, role: 'member' },
+      { organization_id: 5, role: 'member' },
+      { organization_id: 9, role: 'guest' },
     ]);
   });
 
@@ -434,6 +435,7 @@ describe('Request authentication', () => {
         isServiceAccount: false,
         isSuperadmin: false,
         orgIds: [2, 5],
+        guestOrgIds: [9],
         managedOrgIds: [],
       });
     });

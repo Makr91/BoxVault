@@ -1,6 +1,6 @@
 // findone.js
 import { log } from '../../utils/Logger.js';
-import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions } = db;
@@ -15,7 +15,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   get:
  *     summary: Get a specific provider by name
- *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication; a service account is a member of its own organization only.
+ *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication, a guest of the organization reading a private box only while it is published and flagged for guests; a service account is a member of its own organization only.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -102,7 +102,7 @@ export const findOne = async (req, res) => {
 
     const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic'],
+      attributes: ['id', 'name', 'isPublic', 'published', 'guestAccess'],
     });
 
     if (!box) {
@@ -145,7 +145,7 @@ export const findOne = async (req, res) => {
     }
 
     const membership = await resolveOrgMembership(req, organizationData.id);
-    if (!membership) {
+    if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
     }
 

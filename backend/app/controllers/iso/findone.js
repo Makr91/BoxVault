@@ -1,8 +1,9 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { isGuestOf } from '../../utils/orgMembership.js';
 import { canSeeIso, resolveIsoViewer } from './visibility.js';
-import { sumIsoDownloads } from './helpers.js';
+import { isoWithCounts } from './helpers.js';
 const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
 
 /**
@@ -10,7 +11,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/organization/{organization}/iso/{name}:
  *   get:
  *     summary: Get ISO details
- *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires membership of its organization, by JWT or by a service-account key of the organization.
+ *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, by JWT or by a service-account key of the organization, a guest of the organization reading it only while it is published and flagged for guests. Every downloadCount is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -70,7 +71,7 @@ const findOne = async (req, res) => {
     if (!canSeeIso(viewer, iso)) {
       return problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
     }
-    return res.send({ ...iso.toJSON(), downloadCount: sumIsoDownloads(iso) });
+    return res.send(isoWithCounts(iso, !isGuestOf(viewer, iso.organizationId)));
   } catch (err) {
     log.error.error('Error finding ISO', err);
     return problem(res, req, {

@@ -251,6 +251,53 @@ describe('Download bulk API', () => {
       });
       expect(memberProduct.isPublic).toBe(true);
       expect(memberProduct.published).toBe(true);
+      expect(memberProduct.guestAccess).toBe(false);
+    });
+
+    it('should open and close the named products to guests by the single route permission', async () => {
+      const asOther = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', otherToken)
+        .send({ action: 'allow_guests', names: [productName, 'member-product'] });
+      expect(asOther.body).toEqual({
+        processed: 0,
+        skipped: 2,
+        errors: [
+          { name: productName, code: 'forbidden' },
+          { name: 'member-product', code: 'forbidden' },
+        ],
+      });
+
+      const asOwner = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'allow_guests', names: [productName, 'member-product', 'missing'] });
+      expect(asOwner.statusCode).toBe(200);
+      expect(asOwner.body).toEqual({
+        processed: 2,
+        skipped: 1,
+        errors: [{ name: 'missing', code: 'not_found' }],
+      });
+      const opened = await db.download.findAll({ where: { organizationId: org.id } });
+      opened.forEach(row => expect(row.guestAccess).toBe(true));
+
+      const asMember = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', memberToken)
+        .send({ action: 'deny_guests', names: [productName, 'member-product'] });
+      expect(asMember.body).toEqual({
+        processed: 1,
+        skipped: 1,
+        errors: [{ name: productName, code: 'forbidden' }],
+      });
+      const memberProduct = await db.download.findOne({
+        where: { name: 'member-product', organizationId: org.id },
+      });
+      expect(memberProduct.guestAccess).toBe(false);
+      const product = await db.download.findOne({
+        where: { name: productName, organizationId: org.id },
+      });
+      expect(product.guestAccess).toBe(true);
     });
 
     it('should delete the named products with their files and directories', async () => {

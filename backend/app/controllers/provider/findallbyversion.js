@@ -1,6 +1,6 @@
 // findallbyversion.js
 import { log } from '../../utils/Logger.js';
-import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions } = db;
@@ -15,7 +15,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   get:
  *     summary: Get all providers for a version
- *     description: A private box needs membership of its organization; a service account is a member of its own organization only.
+ *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -94,7 +94,7 @@ export const findAllByVersion = async (req, res) => {
 
     const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic'],
+      attributes: ['id', 'name', 'isPublic', 'published', 'guestAccess'],
     });
 
     if (!box) {
@@ -125,7 +125,7 @@ export const findAllByVersion = async (req, res) => {
     }
 
     const membership = await resolveOrgMembership(req, organizationData.id);
-    if (!membership) {
+    if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
     }
 

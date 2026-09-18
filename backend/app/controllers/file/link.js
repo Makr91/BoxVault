@@ -1,7 +1,7 @@
 // download.link.file.controller.js
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { problem } from '../../utils/problem.js';
 
@@ -13,7 +13,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/get-download-link:
  *   post:
  *     summary: Generate a secure download link
- *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs membership of its organization; a service account is a member of its own organization only, at its effective role.
+ *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs a writing membership of its organization, a guest of the organization minting one only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -98,7 +98,7 @@ const getDownloadLink = async (req, res) => {
       }
 
       const membership = await resolveOrgMembership(req, organizationData.id);
-      if (!membership) {
+      if (!canReadInOrg(membership, box)) {
         return unauthorized(req, res);
       }
     }

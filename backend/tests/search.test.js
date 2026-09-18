@@ -36,14 +36,18 @@ describe('Search API', () => {
   let file;
   let privateDownload;
   let unpublishedDownload;
+  let hiddenBox;
+  let hiddenDownload;
   const uniqueId = Date.now();
   const orgName = `SearchOrg_${uniqueId}`;
   const memberName = `searchmember_${uniqueId}`;
   const publicBoxName = `search-public-${uniqueId}`;
   const privateBoxName = `search-private-${uniqueId}`;
+  const hiddenBoxName = `search-phidden-${uniqueId}`;
   const fileName = `search-artifact-${uniqueId}.box`;
   const privateDownloadName = `private-dl-${uniqueId}`;
   const unpublishedDownloadName = `unpub-dl-${uniqueId}`;
+  const hiddenDownloadName = `hidden-dl-${uniqueId}`;
   const checksum = createHash('sha256').update(`search-${uniqueId}`).digest('hex');
 
   const signFor = account =>
@@ -100,6 +104,15 @@ describe('Search API', () => {
       description: 'A private box',
       published: true,
       isPublic: false,
+      guestAccess: true,
+      userId: member.id,
+      organizationId: org.id,
+    });
+    hiddenBox = await db.box.create({
+      name: hiddenBoxName,
+      description: 'A private box closed to guests',
+      published: true,
+      isPublic: false,
       userId: member.id,
       organizationId: org.id,
     });
@@ -118,6 +131,15 @@ describe('Search API', () => {
       description: 'A private download',
       published: true,
       isPublic: false,
+      guestAccess: true,
+      userId: member.id,
+      organizationId: org.id,
+    });
+    hiddenDownload = await db.download.create({
+      name: hiddenDownloadName,
+      description: 'A private download closed to guests',
+      published: true,
+      isPublic: false,
       userId: member.id,
       organizationId: org.id,
     });
@@ -132,6 +154,8 @@ describe('Search API', () => {
   });
 
   afterAll(async () => {
+    await hiddenDownload.destroy();
+    await hiddenBox.destroy();
     await unpublishedDownload.destroy();
     await privateDownload.destroy();
     await file.destroy();
@@ -237,7 +261,7 @@ describe('Search API', () => {
       ]);
     });
 
-    it('should answer private rows of the own organization to a guest as to a member', async () => {
+    it('should answer a guest the private rows flagged for guests only', async () => {
       const boxes = await request(app)
         .get('/api/search')
         .query({ q: 'search-p' })
@@ -246,6 +270,13 @@ describe('Search API', () => {
       const names = boxes.body.results.map(row => row.name);
       expect(names).toContain(publicBoxName);
       expect(names).toContain(privateBoxName);
+      expect(names).not.toContain(hiddenBoxName);
+
+      const asMember = await request(app)
+        .get('/api/search')
+        .query({ q: 'search-p' })
+        .set('x-access-token', memberToken);
+      expect(asMember.body.results.map(row => row.name)).toContain(hiddenBoxName);
 
       const downloads = await request(app)
         .get('/api/search')
@@ -254,8 +285,15 @@ describe('Search API', () => {
       expect(downloads.statusCode).toBe(200);
       const downloadNames = downloads.body.results.map(row => row.name);
       expect(downloadNames).toContain(privateDownloadName);
+      expect(downloadNames).not.toContain(hiddenDownloadName);
       expect(downloadNames).not.toContain(unpublishedDownloadName);
       expect(downloads.body.results.some(row => row.kind === 'user')).toBe(false);
+
+      const organizations = await request(app)
+        .get('/api/search')
+        .query({ q: orgName, kinds: 'organization' })
+        .set('x-access-token', guestToken);
+      expect(organizations.body.results.map(row => row.name)).toContain(orgName);
     });
 
     it('should answer downloads by the three-line visibility rule', async () => {
@@ -272,6 +310,7 @@ describe('Search API', () => {
       expect(asMember.statusCode).toBe(200);
       const memberNames = asMember.body.results.map(row => row.name);
       expect(memberNames).toContain(privateDownloadName);
+      expect(memberNames).toContain(hiddenDownloadName);
       expect(memberNames).toContain(unpublishedDownloadName);
       expect(asMember.body.results.every(row => row.collection === 'downloads')).toBe(true);
 
@@ -343,7 +382,7 @@ describe('Search API', () => {
         .set('x-access-token', memberToken);
       expect(res.statusCode).toBe(200);
       expect(res.body.results).toHaveLength(1);
-      expect(res.body.truncated).toEqual({ item: 1 });
+      expect(res.body.truncated).toEqual({ item: 2 });
     });
   });
 });

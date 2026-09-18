@@ -20,7 +20,7 @@ export default (sequelize, Sequelize) => {
         field: 'last_used_at',
       },
       role: {
-        type: Sequelize.ENUM('member', 'admin', 'owner', 'superadmin'),
+        type: Sequelize.ENUM('guest', 'member', 'admin', 'owner', 'superadmin'),
         allowNull: false,
         defaultValue: 'member',
       },

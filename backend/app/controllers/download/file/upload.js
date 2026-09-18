@@ -125,7 +125,7 @@ const levelsOf = (params, fileName) => {
  * /api/organization/{organization}/download/file/upload:
  *   post:
  *     summary: Upload a download file into the organization
- *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. `?is_public=true` makes a product the upload creates public. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value, the defaults other, any, any, any on a row the upload creates.
+ *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. `?is_public=true` makes a product the upload creates public, `?guest_access=true` opens it to guests of the organization. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value, the defaults other, any, any, any on a row the upload creates.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -137,6 +137,10 @@ const levelsOf = (params, fileName) => {
  *           type: string
  *       - in: query
  *         name: is_public
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: guest_access
  *         schema:
  *           type: boolean
  *       - in: header
@@ -180,6 +184,10 @@ const levelsOf = (params, fileName) => {
  *           type: string
  *       - in: query
  *         name: is_public
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: guest_access
  *         schema:
  *           type: boolean
  *       - in: header
@@ -281,7 +289,7 @@ const levelsOf = (params, fileName) => {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/upload:
  *   post:
  *     summary: Upload a download file
- *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. `?is_public=true` makes a product the upload creates public. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value.
+ *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. `?is_public=true` makes a product the upload creates public, `?guest_access=true` opens it to guests of the organization. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -461,6 +469,7 @@ const upload = (req, res) => {
         name,
         published: false,
         isPublic: req.query.is_public === 'true',
+        guestAccess: req.query.guest_access === 'true',
         userId: req.userId,
         organizationId: organization.id,
       });

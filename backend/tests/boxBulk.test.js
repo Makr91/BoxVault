@@ -136,6 +136,43 @@ describe('Box bulk API', () => {
       expect(flipB.published).toBe(false);
     });
 
+    it('should open and close the named boxes to guests', async () => {
+      const allowed = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'allow_guests', names: ['flip-a', 'flip-b', 'missing-box'] });
+      expect(allowed.statusCode).toBe(200);
+      expect(allowed.body).toEqual({
+        processed: 2,
+        skipped: 1,
+        errors: [{ name: 'missing-box', code: 'not_found' }],
+      });
+      const opened = await db.box.findAll({ where: { name: ['flip-a', 'flip-b'] } });
+      opened.forEach(row => expect(row.guestAccess).toBe(true));
+
+      const asMember = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', memberToken)
+        .send({ action: 'deny_guests', names: ['flip-a', 'flip-b'] });
+      expect(asMember.body).toEqual({
+        processed: 1,
+        skipped: 1,
+        errors: [{ name: 'flip-a', code: 'forbidden' }],
+      });
+      const flipA = await db.box.findOne({ where: { name: 'flip-a', organizationId: org.id } });
+      const flipB = await db.box.findOne({ where: { name: 'flip-b', organizationId: org.id } });
+      expect(flipA.guestAccess).toBe(true);
+      expect(flipB.guestAccess).toBe(false);
+
+      const denied = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'deny_guests', names: ['flip-a'] });
+      expect(denied.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      await flipA.reload();
+      expect(flipA.guestAccess).toBe(false);
+    });
+
     it('should refuse a body outside the bulkItem form', async () => {
       const badAction = await request(app)
         .post(`/api/organization/${orgName}/box/bulk`)

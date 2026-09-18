@@ -40,6 +40,10 @@ const { iso: ISO } = db;
  *               is_public:
  *                 type: boolean
  *                 default: false
+ *               guest_access:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Whether guests of the organization may read the ISO while it is published
  *               metadata:
  *                 type: object
  *                 nullable: true
@@ -64,7 +68,7 @@ const { iso: ISO } = db;
  */
 const create = async (req, res) => {
   const { organization } = req.params;
-  const { name, description, published, is_public: isPublic } = req.body;
+  const { name, description, published, is_public: isPublic, guest_access: guestAccess } = req.body;
 
   const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(req.body);
   if (contentErrors.length > 0) {
@@ -84,6 +88,7 @@ const create = async (req, res) => {
       description,
       published: published ?? true,
       isPublic: isPublic || false,
+      guestAccess: guestAccess === true,
       organizationId: req.organizationId,
       userId: req.userId,
       metadata: contentFields.metadata ?? null,

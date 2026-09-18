@@ -204,6 +204,33 @@ describe('ISO bulk API', () => {
       });
       const iso = await db.iso.findOne({ where: { name: isoName, organizationId: org.id } });
       expect(iso.published).toBe(true);
+      expect(iso.guestAccess).toBe(false);
+
+      const guestsRefused = await request(app)
+        .post(`/api/organization/${orgName}/iso/bulk`)
+        .set('x-access-token', memberToken)
+        .send({ action: 'allow_guests', names: [isoName] });
+      expect(guestsRefused.statusCode).toBe(403);
+
+      const allowed = await request(app)
+        .post(`/api/organization/${orgName}/iso/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'allow_guests', names: [isoName, 'no-such-iso'] });
+      expect(allowed.body).toEqual({
+        processed: 1,
+        skipped: 1,
+        errors: [{ name: 'no-such-iso', code: 'not_found' }],
+      });
+      await iso.reload();
+      expect(iso.guestAccess).toBe(true);
+
+      const denied = await request(app)
+        .post(`/api/organization/${orgName}/iso/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'deny_guests', names: [isoName] });
+      expect(denied.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      await iso.reload();
+      expect(iso.guestAccess).toBe(false);
 
       const content = Buffer.from(`delete-iso-${uniqueId}`);
       await upload('1.0.0', 'amd64', 'delete-iso.iso', content).expect(201);

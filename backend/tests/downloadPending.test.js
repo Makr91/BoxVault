@@ -211,6 +211,7 @@ describe('Download pending upload API', () => {
       expect(product.userId).toBe(member.id);
       expect(product.published).toBe(false);
       expect(product.isPublic).toBe(false);
+      expect(product.guestAccess).toBe(false);
       const release = await db.downloadReleases.findOne({
         where: { versionNumber: '1.0', downloadId: product.id },
       });
@@ -307,7 +308,7 @@ describe('Download pending upload API', () => {
       const res = await request(app)
         .post(`${pendingBase}/${details.id}/place`)
         .set('x-access-token', adminToken)
-        .send({ product: 'theirs', release: '2.0', is_public: true });
+        .send({ product: 'theirs', release: '2.0', is_public: true, guest_access: true });
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({
         product: 'theirs',
@@ -320,6 +321,21 @@ describe('Download pending upload API', () => {
       });
       expect(product.userId).toBe(admin.id);
       expect(product.isPublic).toBe(true);
+      expect(product.guestAccess).toBe(true);
+
+      const badFlag = await dropWhole(memberToken, Buffer.from(`flag-${uniqueId}`), 'flag.nsf');
+      const refused = await request(app)
+        .post(`${pendingBase}/${badFlag.id}/place`)
+        .set('x-access-token', memberToken)
+        .send({ product: 'flagged', release: '1.0', guest_access: 'yes' });
+      expect(refused.statusCode).toBe(422);
+      expect(refused.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/guest_access', rule: 'type' }),
+      ]);
+      await request(app)
+        .delete(`${pendingBase}/${badFlag.id}`)
+        .set('x-access-token', memberToken)
+        .expect(204);
       expect(
         fs.readFileSync(getSecureDownloadPath(orgName, 'theirs', '2.0', 'release', 'theirs.nsf'))
       ).toEqual(content);

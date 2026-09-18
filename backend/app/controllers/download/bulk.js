@@ -16,6 +16,8 @@ const CHANGES = {
   make_private: { isPublic: false },
   publish: { published: true },
   unpublish: { published: false },
+  allow_guests: { guestAccess: true },
+  deny_guests: { guestAccess: false },
 };
 
 /**
@@ -44,7 +46,7 @@ const CHANGES = {
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete, make_public, make_private, publish, unpublish]
+ *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1

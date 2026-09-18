@@ -2095,7 +2095,9 @@ describe('Box API', () => {
       'A guest of this organization may read and download, never change anything!';
     const publishedName = `guest-pub-${uniqueId}`;
     const pendingName = `guest-pending-${uniqueId}`;
+    const hiddenName = `guest-hidden-${uniqueId}`;
     const fileBase = `/api/organization/${orgName}/box/${publishedName}/version/1.0.0/provider/virtualbox/architecture/amd64/file`;
+    const hiddenFileBase = `/api/organization/${orgName}/box/${hiddenName}/version/1.0.0/provider/virtualbox/architecture/amd64/file`;
     let guest;
     let guestToken;
 
@@ -2123,6 +2125,7 @@ describe('Box API', () => {
         description: 'Published for guests',
         isPublic: false,
         published: true,
+        guestAccess: true,
         organizationId: organization.id,
         userId: user.id,
       });
@@ -2131,6 +2134,15 @@ describe('Box API', () => {
         description: 'Pending, hidden from guests',
         isPublic: false,
         published: false,
+        guestAccess: true,
+        organizationId: organization.id,
+        userId: user.id,
+      });
+      const hiddenBox = await db.box.create({
+        name: hiddenName,
+        description: 'Published, not flagged for guests',
+        isPublic: false,
+        published: true,
         organizationId: organization.id,
         userId: user.id,
       });
@@ -2142,14 +2154,28 @@ describe('Box API', () => {
         .set('x-access-token', authToken)
         .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from('guest download content'));
+      const hiddenVersion = await db.versions.create({
+        versionNumber: '1.0.0',
+        boxId: hiddenBox.id,
+      });
+      const hiddenProvider = await db.providers.create({
+        name: 'virtualbox',
+        versionId: hiddenVersion.id,
+      });
+      await db.architectures.create({ name: 'amd64', providerId: hiddenProvider.id });
+      await request(app)
+        .post(`${hiddenFileBase}/upload`)
+        .set('x-access-token', authToken)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from('hidden download content'));
     });
 
     afterAll(async () => {
-      await db.box.destroy({ where: { name: [publishedName, pendingName] } });
+      await db.box.destroy({ where: { name: [publishedName, pendingName, hiddenName] } });
       await guest.destroy();
     });
 
-    it('should list and read the published private boxes of the organization', async () => {
+    it('should list and read the published private boxes flagged for guests', async () => {
       const list = await request(app)
         .get(`/api/organization/${orgName}/box`)
         .set('x-access-token', guestToken);
@@ -2157,25 +2183,182 @@ describe('Box API', () => {
       const names = list.body.map(b => b.name);
       expect(names).toContain(publishedName);
       expect(names).not.toContain(pendingName);
+      expect(names).not.toContain(hiddenName);
+      const listed = list.body.find(b => b.name === publishedName);
+      expect(listed.guestAccess).toBe(true);
+      expect(listed.downloadCount).toBeNull();
 
       const one = await request(app)
         .get(`/api/organization/${orgName}/box/${publishedName}`)
         .set('x-access-token', guestToken);
       expect(one.statusCode).toBe(200);
       expect(one.body.name).toBe(publishedName);
+      expect(one.body.guestAccess).toBe(true);
+      expect(one.body.downloadCount).toBeNull();
+
+      const hidden = await request(app)
+        .get(`/api/organization/${orgName}/box/${hiddenName}`)
+        .set('x-access-token', guestToken);
+      expect(hidden.statusCode).toBe(403);
+
+      const discovered = await request(app).get('/api/discover').set('x-access-token', guestToken);
+      expect(discovered.statusCode).toBe(200);
+      const discoveredNames = discovered.body.map(b => b.name);
+      expect(discoveredNames).toContain(publishedName);
+      expect(discoveredNames).not.toContain(hiddenName);
+      expect(discovered.body.find(b => b.name === publishedName).downloadCount).toBeNull();
+
+      const asMember = await request(app)
+        .get(`/api/organization/${orgName}/box/${hiddenName}`)
+        .set('x-access-token', authToken);
+      expect(asMember.statusCode).toBe(200);
+      expect(asMember.body.downloadCount).toBe(0);
     });
 
-    it('should download a file of a published private box', async () => {
+    it('should be refused every deeper level of an unflagged box', async () => {
+      const boxBase = `/api/organization/${orgName}/box/${hiddenName}`;
+      const versions = await request(app)
+        .get(`${boxBase}/version`)
+        .set('x-access-token', guestToken);
+      expect(versions.statusCode).toBe(403);
+      const version = await request(app)
+        .get(`${boxBase}/version/1.0.0`)
+        .set('x-access-token', guestToken);
+      expect(version.statusCode).toBe(403);
+      const providers = await request(app)
+        .get(`${boxBase}/version/1.0.0/provider`)
+        .set('x-access-token', guestToken);
+      expect(providers.statusCode).toBe(403);
+      const provider = await request(app)
+        .get(`${boxBase}/version/1.0.0/provider/virtualbox`)
+        .set('x-access-token', guestToken);
+      expect(provider.statusCode).toBe(403);
+      const architectures = await request(app)
+        .get(`${boxBase}/version/1.0.0/provider/virtualbox/architecture`)
+        .set('x-access-token', guestToken);
+      expect(architectures.statusCode).toBe(403);
+      const architecture = await request(app)
+        .get(`${boxBase}/version/1.0.0/provider/virtualbox/architecture/amd64`)
+        .set('x-access-token', guestToken);
+      expect(architecture.statusCode).toBe(403);
+      const info = await request(app)
+        .get(`${hiddenFileBase}/info`)
+        .set('x-access-token', guestToken);
+      expect(info.statusCode).toBe(403);
+      const link = await request(app)
+        .post(`${hiddenFileBase}/get-download-link`)
+        .set('x-access-token', guestToken);
+      expect(link.statusCode).toBe(403);
+      const download = await request(app)
+        .get(`${hiddenFileBase}/download`)
+        .set('x-access-token', guestToken);
+      expect(download.statusCode).toBe(403);
+      const artwork = await request(app)
+        .get(`${boxBase}/artwork`)
+        .set('x-access-token', guestToken);
+      expect(artwork.statusCode).toBe(403);
+      const watched = await request(app).post(`${boxBase}/watch`).set('x-access-token', guestToken);
+      expect(watched.statusCode).toBe(403);
+    });
+
+    it('should read every deeper level of a flagged box without counts', async () => {
+      const boxBase = `/api/organization/${orgName}/box/${publishedName}`;
+      const versions = await request(app)
+        .get(`${boxBase}/version`)
+        .set('x-access-token', guestToken);
+      expect(versions.statusCode).toBe(200);
+      const providers = await request(app)
+        .get(`${boxBase}/version/1.0.0/provider`)
+        .set('x-access-token', guestToken);
+      expect(providers.statusCode).toBe(200);
+      const architectures = await request(app)
+        .get(`${boxBase}/version/1.0.0/provider/virtualbox/architecture`)
+        .set('x-access-token', guestToken);
+      expect(architectures.statusCode).toBe(200);
+      const info = await request(app).get(`${fileBase}/info`).set('x-access-token', guestToken);
+      expect(info.statusCode).toBe(200);
+      expect(info.body.downloadCount).toBeNull();
+    });
+
+    it('should download a file of a published private box flagged for guests', async () => {
       const link = await request(app)
         .post(`${fileBase}/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
       expect(link.body).toHaveProperty('downloadUrl');
 
+      const [, token] = link.body.downloadUrl.split('token=');
+      const byToken = await request(app).get(`${fileBase}/download?token=${token}`);
+      expect(byToken.statusCode).toBe(200);
+
       const download = await request(app)
         .get(`${fileBase}/download`)
         .set('x-access-token', guestToken);
       expect(download.statusCode).toBe(200);
+    });
+
+    it('should lose the flagged box once the flag is withdrawn and regain it on allow_guests', async () => {
+      await db.box.update({ guestAccess: false }, { where: { name: publishedName } });
+      const list = await request(app)
+        .get(`/api/organization/${orgName}/box`)
+        .set('x-access-token', guestToken);
+      expect(list.body.map(b => b.name)).not.toContain(publishedName);
+      const one = await request(app)
+        .get(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', guestToken);
+      expect(one.statusCode).toBe(403);
+      const download = await request(app)
+        .get(`${fileBase}/download`)
+        .set('x-access-token', guestToken);
+      expect(download.statusCode).toBe(403);
+
+      const allowed = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', authToken)
+        .send({ action: 'allow_guests', names: [publishedName] });
+      expect(allowed.statusCode).toBe(200);
+      expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const again = await request(app)
+        .get(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', guestToken);
+      expect(again.statusCode).toBe(200);
+
+      const denied = await request(app)
+        .post(`/api/organization/${orgName}/box/bulk`)
+        .set('x-access-token', authToken)
+        .send({ action: 'deny_guests', names: [publishedName] });
+      expect(denied.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const gone = await request(app)
+        .get(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', guestToken);
+      expect(gone.statusCode).toBe(403);
+
+      const updated = await request(app)
+        .put(`/api/organization/${orgName}/box/${publishedName}`)
+        .set('x-access-token', authToken)
+        .send({ guest_access: true });
+      expect(updated.statusCode).toBe(200);
+      expect(updated.body.guestAccess).toBe(true);
+    });
+
+    it('should create a box with guest_access and answer the flag', async () => {
+      const created = await request(app)
+        .post(`/api/organization/${orgName}/box`)
+        .set('x-access-token', authToken)
+        .send({ name: `guest-created-${uniqueId}`, guest_access: true, published: true });
+      expect(created.statusCode).toBe(201);
+      expect(created.body.guestAccess).toBe(true);
+
+      const defaulted = await request(app)
+        .post(`/api/organization/${orgName}/box`)
+        .set('x-access-token', authToken)
+        .send({ name: `guest-default-${uniqueId}` });
+      expect(defaulted.statusCode).toBe(201);
+      expect(defaulted.body.guestAccess).toBe(false);
+
+      await db.box.destroy({
+        where: { name: [`guest-created-${uniqueId}`, `guest-default-${uniqueId}`] },
+      });
     });
 
     it('should be refused every write on boxes', async () => {

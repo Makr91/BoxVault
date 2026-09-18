@@ -107,7 +107,7 @@ const settleFileRow = async (file, patch, key, fileName, attributes) => {
  * /api/organization/{organization}/download/pending/{id}/place:
  *   post:
  *     summary: Place a pending upload
- *     description: The second step of a person's upload. Takes `product`, `release`, `patch` (`release` when absent) and the downloadFile form's members (`key` the file name when absent), validated as the level routes validate them (the download, release, patch and downloadFile forms, 422 with pointers); creates the product, the release and the patch when absent (`is_public` for a product it creates), moves the bytes to the product path with the checksum, deduplication and symlink rules of the level upload, drops the pending upload and answers the file's address. The member who uploaded it, or an admin or owner of the organization, may place it; an existing product takes its owner, or an admin or owner of the organization.
+ *     description: The second step of a person's upload. Takes `product`, `release`, `patch` (`release` when absent) and the downloadFile form's members (`key` the file name when absent), validated as the level routes validate them (the download, release, patch and downloadFile forms, 422 with pointers); creates the product, the release and the patch when absent (`is_public` and `guest_access` for a product it creates), moves the bytes to the product path with the checksum, deduplication and symlink rules of the level upload, drops the pending upload and answers the file's address. The member who uploaded it, or an admin or owner of the organization, may place it; an existing product takes its owner, or an admin or owner of the organization.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -144,6 +144,9 @@ const settleFileRow = async (file, patch, key, fileName, attributes) => {
  *               is_public:
  *                 type: boolean
  *                 description: Whether a product this call creates is public
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether a product this call creates is open to guests of the organization
  *               key:
  *                 type: string
  *                 description: File key, the file name when absent
@@ -260,7 +263,7 @@ const place = async (req, res) => {
       : null;
 
     const checks = [
-      [download, 'download', { name, is_public: body.is_public }],
+      [download, 'download', { name, is_public: body.is_public, guest_access: body.guest_access }],
       [release, 'release', { version_number: versionNumber }],
       [patch, 'patch', { name: patchName }],
       [null, 'downloadFile', { key, file_name: fileName, ...given }],
@@ -286,6 +289,7 @@ const place = async (req, res) => {
         name,
         published: false,
         isPublic: body.is_public === true,
+        guestAccess: body.guest_access === true,
         userId: req.userId,
         organizationId: organization.id,
       });

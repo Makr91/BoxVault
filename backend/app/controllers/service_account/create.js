@@ -3,20 +3,27 @@ import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { problem, refuse } from '../../utils/problem.js';
 import { hashServiceAccountToken } from '../../utils/serviceAccountAuth.js';
-import { ORG_ROLES, ROLE_RANK, holdsGlobalAdmin } from '../../utils/orgMembership.js';
+import {
+  ORG_ROLES,
+  ROLE_RANK,
+  canWriteInOrg,
+  holdsGlobalAdmin,
+} from '../../utils/orgMembership.js';
 
 const { service_account: ServiceAccount, user: User, UserOrg } = db;
 
 /**
- * The roles a creator may give a service account: the organization roles up
- * to the creator's own in that organization, plus superadmin for a global
- * admin.
+ * The roles a creator may give a service account: the organization roles from
+ * guest up to the creator's own in that organization for a writing member,
+ * none for a guest, plus superadmin for a global admin.
  * @param {{role: string}|null} membership - The creator's membership in the organization
  * @param {boolean} globalAdmin - Whether the creator holds ROLE_ADMIN
  * @returns {string[]} The assignable roles
  */
 const assignableRoles = (membership, globalAdmin) => [
-  ...ORG_ROLES.filter(role => membership && ROLE_RANK[role] <= ROLE_RANK[membership.role]),
+  ...ORG_ROLES.filter(
+    role => canWriteInOrg(membership) && ROLE_RANK[role] <= ROLE_RANK[membership.role]
+  ),
   ...(globalAdmin ? ['superadmin'] : []),
 ];
 
@@ -29,10 +36,11 @@ const assignableRoles = (membership, globalAdmin) => [
  *       Create a service account with an authentication token for automated
  *       access. The raw token is returned ONLY in this response — it is stored
  *       hashed and can never be retrieved again. The account acts only inside
- *       its organization at its role, capped at request time by the creator's
- *       current role there; a superadmin account, which only a global admin may
- *       create, acts as a global admin on every organization while its creator
- *       keeps ROLE_ADMIN.
+ *       its organization at its role, guest through owner, capped at request
+ *       time by the creator's current role there; a guest-role account reads
+ *       only what is flagged for guests; a guest membership creates nothing;
+ *       a superadmin account, which only a global admin may create, acts as a
+ *       global admin on every organization while its creator keeps ROLE_ADMIN.
  *     tags: [Service Accounts]
  *     security:
  *       - JwtAuth: []
@@ -56,7 +64,7 @@ const assignableRoles = (membership, globalAdmin) => [
  *             schema:
  *               $ref: '#/components/schemas/Problem'
  *       403:
- *         description: The caller is not a member of the organization
+ *         description: The caller is not a member of the organization, or is a guest of it
  *         content:
  *           application/problem+json:
  *             schema:
@@ -92,6 +100,13 @@ export const create = async (req, res) => {
         status: 403,
         type: 'forbidden',
         title: req.__('serviceAccounts.membershipRequired'),
+      });
+    }
+    if (role !== 'superadmin' && !canWriteInOrg(membership)) {
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('organizations.requireWriter'),
       });
     }
 

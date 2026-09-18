@@ -1,6 +1,6 @@
 // findall.js
 import { log } from '../../../utils/Logger.js';
-import { resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { canReadInOrg, resolveOrgMembership } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import db from '../../../models/index.js';
 const {
@@ -21,7 +21,7 @@ const forbidden = (req, res, key) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
  *   get:
  *     summary: Get all architectures for a provider
- *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication; a service account is a member of its own organization only.
+ *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication, a guest of the organization reading a private box only while it is published and flagged for guests; a service account is a member of its own organization only.
  *     tags: [Architectures]
  *     parameters:
  *       - in: path
@@ -105,7 +105,7 @@ export const findAllByProvider = async (req, res) => {
     // Find the box by organizationId
     const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic'],
+      attributes: ['id', 'name', 'isPublic', 'published', 'guestAccess'],
       include: [
         {
           model: versions,
@@ -154,7 +154,7 @@ export const findAllByProvider = async (req, res) => {
     }
 
     const membership = await resolveOrgMembership(req, organizationData.id);
-    if (!membership) {
+    if (!canReadInOrg(membership, box)) {
       return forbidden(req, res, 'architectures.unauthorized');
     }
 

@@ -1,6 +1,7 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
+import { isGuestOf } from '../../../utils/orgMembership.js';
 import { canSeeIso, resolveIsoViewer } from '../visibility.js';
 const { isoFiles: IsoFile } = db;
 
@@ -9,7 +10,7 @@ const { isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/info:
  *   get:
  *     summary: Get ISO file information
- *     description: Retrieve the file record of one architecture of an ISO version. A public, published ISO is readable by anyone; any other ISO requires membership of its organization.
+ *     description: Retrieve the file record of one architecture of an ISO version. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. downloadCount is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -59,6 +60,8 @@ const { isoFiles: IsoFile } = db;
  *                   type: string
  *                 downloadCount:
  *                   type: integer
+ *                   nullable: true
+ *                   description: The count, null to a guest of the organization
  *                 createdAt:
  *                   type: string
  *                   format: date-time
@@ -103,7 +106,7 @@ const info = async (req, res) => {
       fileSize: fileRecord.fileSize,
       checksum: fileRecord.checksum,
       checksumType: fileRecord.checksumType,
-      downloadCount: fileRecord.downloadCount,
+      downloadCount: isGuestOf(viewer, iso.organizationId) ? null : fileRecord.downloadCount,
       createdAt: fileRecord.createdAt,
       updatedAt: fileRecord.updatedAt,
     });

@@ -84,7 +84,7 @@ describe('Download file API', () => {
     await request(app)
       .post(`/api/organization/${orgName}/download`)
       .set('x-access-token', ownerToken)
-      .send({ name: productName, published: true })
+      .send({ name: productName, published: true, guest_access: true })
       .expect(201);
     await request(app)
       .post(`${productBase}/release`)
@@ -404,18 +404,36 @@ describe('Download file API', () => {
   });
 
   describe('guest membership', () => {
-    it('should read the info and download a file of the published private product', async () => {
+    it('should read the info and download a file of the published private product flagged for guests', async () => {
       const info = await request(app)
         .get(`${patchBase}/file/linux-x64/info`)
         .set('x-access-token', guestToken);
       expect(info.statusCode).toBe(200);
-      expect(info.body.downloadCount).toBe(0);
+      expect(info.body.downloadCount).toBeNull();
+
+      const files = await request(app).get(`${patchBase}/file`).set('x-access-token', guestToken);
+      expect(files.statusCode).toBe(200);
+      files.body.forEach(entry => expect(entry.downloadCount).toBeNull());
+
+      const releases = await request(app)
+        .get(`${productBase}/release`)
+        .set('x-access-token', guestToken);
+      expect(releases.statusCode).toBe(200);
+      releases.body.forEach(entry =>
+        entry.patches.forEach(patchEntry =>
+          patchEntry.files.forEach(file => expect(file.downloadCount).toBeNull())
+        )
+      );
 
       const link = await request(app)
         .post(`${patchBase}/file/linux-x64/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
       expect(link.body).toHaveProperty('downloadUrl');
+
+      const [, token] = link.body.downloadUrl.split('token=');
+      const byToken = await request(app).get(`${patchBase}/file/linux-x64/download?token=${token}`);
+      expect(byToken.statusCode).toBe(200);
 
       const download = await request(app)
         .get(`${patchBase}/file/linux-x64/download`)
@@ -424,6 +442,40 @@ describe('Download file API', () => {
         .parse(binaryParser);
       expect(download.statusCode).toBe(200);
       expect(Buffer.compare(download.body, fileContent)).toBe(0);
+
+      const memberInfo = await request(app)
+        .get(`${patchBase}/file/linux-x64/info`)
+        .set('x-access-token', memberToken);
+      expect(memberInfo.body.downloadCount).toBe(2);
+    });
+
+    it('should be refused the files of the product while the flag is off', async () => {
+      await setProduct({ guestAccess: false });
+
+      const info = await request(app)
+        .get(`${patchBase}/file/linux-x64/info`)
+        .set('x-access-token', guestToken);
+      expect(info.statusCode).toBe(403);
+      const link = await request(app)
+        .post(`${patchBase}/file/linux-x64/get-download-link`)
+        .set('x-access-token', guestToken);
+      expect(link.statusCode).toBe(403);
+      const download = await request(app)
+        .get(`${patchBase}/file/linux-x64/download`)
+        .set('x-access-token', guestToken);
+      expect(download.statusCode).toBe(403);
+      const files = await request(app).get(`${patchBase}/file`).set('x-access-token', guestToken);
+      expect(files.statusCode).toBe(403);
+      const patches = await request(app)
+        .get(`${productBase}/release/${releaseNumber}/patch`)
+        .set('x-access-token', guestToken);
+      expect(patches.statusCode).toBe(403);
+      const releases = await request(app)
+        .get(`${productBase}/release`)
+        .set('x-access-token', guestToken);
+      expect(releases.statusCode).toBe(403);
+
+      await setProduct({ guestAccess: true });
     });
 
     it('should be refused every file write', async () => {
@@ -482,7 +534,7 @@ describe('Download file API', () => {
     it('should create the product, release and patch the file name names from the collection', async () => {
       const content = Buffer.from(`traveler-${uniqueId}`);
       const res = await dropAt(
-        `/api/organization/${orgName}/download/file/upload?is_public=true&kind=package&platform=linux&architecture=x64&language=en`,
+        `/api/organization/${orgName}/download/file/upload?is_public=true&guest_access=true&kind=package&platform=linux&architecture=x64&language=en`,
         memberToken,
         content,
         'Traveler_14.0.0_Linux.tar.gz'
@@ -501,6 +553,7 @@ describe('Download file API', () => {
       });
       expect(product.userId).toBe(member.id);
       expect(product.isPublic).toBe(true);
+      expect(product.guestAccess).toBe(true);
       expect(product.published).toBe(false);
       const release = await db.downloadReleases.findOne({
         where: { versionNumber: '14.0.0', downloadId: product.id },
@@ -538,7 +591,7 @@ describe('Download file API', () => {
       expect(fs.readFileSync(travelerPath)).toEqual(content);
     });
 
-    it('should leave a product private without the query and refuse a name without levels', async () => {
+    it('should leave a product private and closed to guests without the query and refuse a name without levels', async () => {
       const res = await dropAt(
         `/api/organization/${orgName}/download/file/upload`,
         memberToken,
@@ -550,6 +603,7 @@ describe('Download file API', () => {
         where: { name: 'sametime', organizationId: org.id },
       });
       expect(product.isPublic).toBe(false);
+      expect(product.guestAccess).toBe(false);
 
       const noName = await dropAt(
         `/api/organization/${orgName}/download/file/upload`,

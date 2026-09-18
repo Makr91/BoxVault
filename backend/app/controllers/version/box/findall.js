@@ -2,7 +2,7 @@
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../../utils/config-loader.js';
 import { log } from '../../../utils/Logger.js';
-import { resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { canReadInOrg, resolveOrgMembership } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import db from '../../../models/index.js';
 
@@ -16,7 +16,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version:
  *   get:
  *     summary: Get all versions for a box
- *     description: A private box needs membership of its organization; a service account is a member of its own organization only.
+ *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only.
  *     tags: [Versions]
  *     parameters:
  *       - in: path
@@ -114,7 +114,7 @@ export const findAllByBox = async (req, res) => {
     }
 
     const membership = await resolveOrgMembership(caller, organizationData.id);
-    if (!membership) {
+    if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
     }
 

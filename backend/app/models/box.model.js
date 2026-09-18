@@ -13,6 +13,11 @@ export default (sequelize, Sequelize) => {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
     },
+    guestAccess: {
+      type: Sequelize.BOOLEAN,
+      defaultValue: false,
+      field: 'guest_access',
+    },
     userId: {
       type: Sequelize.INTEGER,
       references: {

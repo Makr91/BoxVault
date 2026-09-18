@@ -2,7 +2,7 @@ import db from '../models/index.js';
 
 const { service_account: ServiceAccount, user: User, organization: Organization, UserOrg } = db;
 
-const ORG_ROLES = ['member', 'admin', 'owner'];
+const ORG_ROLES = ['guest', 'member', 'admin', 'owner'];
 const ROLE_RANK = { guest: 0, member: 1, admin: 2, owner: 3, superadmin: 4 };
 const WRITING_ROLES = ['member', 'admin', 'owner'];
 const MANAGING_ROLES = ['admin', 'owner'];
@@ -17,11 +17,39 @@ const lowerRole = (first, second) => (ROLE_RANK[first] <= ROLE_RANK[second] ? fi
 
 /**
  * Whether a membership may write in its organization: any role above guest.
- * A guest reads as a member and never writes; no membership never writes.
+ * A guest reads what is flagged for guests and never writes; no membership never writes.
  * @param {{role: string}|null} membership - The caller's membership in the organization
  * @returns {boolean} True for a member, admin or owner
  */
 const canWriteInOrg = membership => Boolean(membership && WRITING_ROLES.includes(membership.role));
+
+/**
+ * Whether a membership may read an item of its organization: a writing member
+ * reads it, a guest reads it only while it is published and flagged for
+ * guests; no membership reads nothing.
+ * @param {{role: string}|null} membership - The caller's membership in the item's organization
+ * @param {{published: boolean, guestAccess: boolean}} item - The box, ISO or download row
+ * @returns {boolean} True when the membership may read the item
+ */
+const canReadInOrg = (membership, item) =>
+  Boolean(membership) && (canWriteInOrg(membership) || Boolean(item.published && item.guestAccess));
+
+/**
+ * Whether a membership is a guest seat, the one seat never answered a
+ * download count.
+ * @param {{role: string}|null} membership - The caller's membership in the organization
+ * @returns {boolean} True for a guest
+ */
+const isGuestMembership = membership => Boolean(membership && membership.role === 'guest');
+
+/**
+ * Whether a viewer is a guest of an organization.
+ * @param {{guestOrgIds: number[]}|null} viewer - From resolveViewer
+ * @param {number} organizationId - Organization id
+ * @returns {boolean} True when the viewer holds the guest seat there
+ */
+const isGuestOf = (viewer, organizationId) =>
+  Boolean(viewer && viewer.guestOrgIds.includes(organizationId));
 
 /**
  * Whether a user holds the global admin role.
@@ -137,9 +165,10 @@ const resolveOrgMembership = async (caller, organizationId) => {
 
 /**
  * The viewer the optional-auth read routes filter by: the caller's id, the
- * organizations the caller belongs to and the ones the caller administers.
+ * organizations the caller writes in, the ones the caller is a guest of and
+ * the ones the caller administers.
  * @param {{userId: number, isServiceAccount?: boolean, serviceAccountId?: number}} caller - The caller
- * @returns {Promise<{userId: number, isServiceAccount: boolean, isSuperadmin: boolean, orgIds: number[], managedOrgIds: number[]}>} The viewer
+ * @returns {Promise<{userId: number, isServiceAccount: boolean, isSuperadmin: boolean, orgIds: number[], guestOrgIds: number[], managedOrgIds: number[]}>} The viewer
  */
 const resolveViewer = async caller => {
   const isServiceAccount = Boolean(caller.isServiceAccount);
@@ -151,7 +180,12 @@ const resolveViewer = async caller => {
     userId: caller.userId,
     isServiceAccount,
     isSuperadmin,
-    orgIds: memberships.map(membership => membership.organization_id),
+    orgIds: memberships
+      .filter(membership => WRITING_ROLES.includes(membership.role))
+      .map(membership => membership.organization_id),
+    guestOrgIds: memberships
+      .filter(membership => membership.role === 'guest')
+      .map(membership => membership.organization_id),
     managedOrgIds: memberships
       .filter(membership => MANAGING_ROLES.includes(membership.role))
       .map(membership => membership.organization_id),
@@ -225,6 +259,9 @@ export {
   ROLE_RANK,
   lowerRole,
   canWriteInOrg,
+  canReadInOrg,
+  isGuestMembership,
+  isGuestOf,
   holdsGlobalAdmin,
   serviceAccountIsSuperadmin,
   serviceAccountMembership,

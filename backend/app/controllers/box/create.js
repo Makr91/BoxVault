@@ -46,6 +46,10 @@ const { box: Box } = db;
  *                 type: boolean
  *                 description: Whether the box is publicly accessible
  *                 default: false
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the box while it is published
+ *                 default: false
  *               github_repo:
  *                 type: string
  *                 description: GitHub repository building the box
@@ -97,8 +101,16 @@ const { box: Box } = db;
  */
 export const create = async (req, res) => {
   const { organization } = req.params;
-  const { name, description, published, is_public, github_repo, workflow_file, cicd_url } =
-    req.body;
+  const {
+    name,
+    description,
+    published,
+    is_public,
+    guest_access,
+    github_repo,
+    workflow_file,
+    cicd_url,
+  } = req.body;
 
   const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(req.body);
   if (contentErrors.length > 0) {
@@ -126,6 +138,7 @@ export const create = async (req, res) => {
       description,
       published: published || false,
       isPublic: is_public || false,
+      guestAccess: guest_access === true,
       userId: req.userId,
       organizationId: req.organizationId,
       githubRepo: github_repo || null,

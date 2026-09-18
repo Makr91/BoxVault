@@ -40,6 +40,9 @@ const { iso: ISO, organization: Organization } = db;
  *                 type: string
  *               is_public:
  *                 type: boolean
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the ISO while it is published
  *               published:
  *                 type: boolean
  *                 description: Unpublished ISOs are visible to organization members only
@@ -70,7 +73,13 @@ const { iso: ISO, organization: Organization } = db;
 const update = async (req, res) => {
   const { organization, name } = req.params;
   const body = req.body || {};
-  const { name: updatedName, description, published, is_public: isPublic } = body;
+  const {
+    name: updatedName,
+    description,
+    published,
+    is_public: isPublic,
+    guest_access: guestAccess,
+  } = body;
 
   const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(body);
   if (contentErrors.length > 0) {
@@ -101,6 +110,7 @@ const update = async (req, res) => {
       description: description !== undefined ? description : iso.description,
       published: published !== undefined ? published : iso.published,
       isPublic: isPublic !== undefined ? isPublic : iso.isPublic,
+      guestAccess: guestAccess !== undefined ? guestAccess : iso.guestAccess,
       ...(Object.hasOwn(contentFields, 'metadata') ? { metadata: contentFields.metadata } : {}),
     });
 

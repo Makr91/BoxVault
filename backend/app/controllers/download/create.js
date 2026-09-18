@@ -41,6 +41,10 @@ const { download: Download } = db;
  *               is_public:
  *                 type: boolean
  *                 default: false
+ *               guest_access:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Whether guests of the organization may read the product while it is published
  *               family:
  *                 type: string
  *                 description: Product family (HCL Domino, Fortinet)
@@ -81,6 +85,7 @@ const create = async (req, res) => {
     description,
     published,
     is_public: isPublic,
+    guest_access: guestAccess,
     family,
     vendor,
     docs_url: docsUrl,
@@ -110,6 +115,7 @@ const create = async (req, res) => {
       description,
       published: published || false,
       isPublic: isPublic || false,
+      guestAccess: guestAccess === true,
       family: family || null,
       vendor: vendor || null,
       docsUrl: docsUrl || null,

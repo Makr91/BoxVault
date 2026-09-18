@@ -86,7 +86,7 @@ const metadataLike = (alias, pattern) =>
 /**
  * The where clause for the boxes a viewer may list, the rule /api/discover
  * applies.
- * @param {{userId: number, orgIds: number[]}|null} viewer - From resolveIsoViewer
+ * @param {{userId: number, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveIsoViewer
  * @returns {Object} Sequelize where clause
  */
 const boxWhereFor = viewer => {
@@ -98,14 +98,17 @@ const boxWhereFor = viewer => {
       { published: true, isPublic: true },
       { published: true, organizationId: { [Op.in]: viewer.orgIds } },
       { organizationId: { [Op.in]: viewer.orgIds }, userId: viewer.userId },
+      { published: true, guestAccess: true, organizationId: { [Op.in]: viewer.guestOrgIds } },
+      { organizationId: { [Op.in]: viewer.guestOrgIds }, userId: viewer.userId },
     ],
   };
 };
 
 /**
  * The where clause for the organizations a viewer may list: the ones
- * /api/organizations/discover answers plus the viewer's own memberships.
- * @param {{userId: number, orgIds: number[]}|null} viewer - From resolveIsoViewer
+ * /api/organizations/discover answers plus the viewer's own memberships,
+ * guest seats included.
+ * @param {{userId: number, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveIsoViewer
  * @param {boolean} isAdmin - Whether the viewer is a global admin
  * @returns {Object} Sequelize where clause
  */
@@ -117,14 +120,16 @@ const organizationWhereFor = (viewer, isAdmin) => {
   if (!viewer) {
     return discoverable;
   }
-  return { [Op.or]: [discoverable, { id: { [Op.in]: viewer.orgIds } }] };
+  return {
+    [Op.or]: [discoverable, { id: { [Op.in]: [...viewer.orgIds, ...viewer.guestOrgIds] } }],
+  };
 };
 
 /**
  * Whether the viewer acts as a global admin: a user holding the role, or a
  * live superadmin service account; any other service account never does,
  * whatever its owner's global role.
- * @param {{userId: number, isServiceAccount: boolean, isSuperadmin: boolean, orgIds: number[], managedOrgIds: number[]}|null} viewer - From resolveIsoViewer
+ * @param {{userId: number, isServiceAccount: boolean, isSuperadmin: boolean, orgIds: number[], guestOrgIds: number[], managedOrgIds: number[]}|null} viewer - From resolveIsoViewer
  * @returns {Promise<boolean>} True for a global admin
  */
 const isGlobalAdmin = async viewer => {

@@ -75,7 +75,7 @@ describe('Download API', () => {
   });
 
   describe('POST /api/organization/:organization/download', () => {
-    it('should let any member create a product, unpublished and private by default', async () => {
+    it('should let any member create a product, unpublished, private and closed to guests by default', async () => {
       const res = await request(app)
         .post(`/api/organization/${orgName}/download`)
         .set('x-access-token', memberToken)
@@ -91,6 +91,7 @@ describe('Download API', () => {
       expect(res.body.name).toBe(productName);
       expect(res.body.published).toBe(false);
       expect(res.body.isPublic).toBe(false);
+      expect(res.body.guestAccess).toBe(false);
       expect(res.body.family).toBe('HCL Domino');
       expect(res.body.vendor).toBe('HCL');
       expect(res.body.docsUrl).toBe('https://help.hcl-software.com/domino');
@@ -322,18 +323,101 @@ describe('Download API', () => {
   });
 
   describe('guest membership', () => {
-    it('should read the published private product as a member does', async () => {
+    it('should read the published private product flagged for guests without counts', async () => {
+      await setProduct({ guestAccess: true });
+
       const listed = await request(app)
         .get(`/api/organization/${orgName}/download`)
         .set('x-access-token', guestToken);
       expect(listed.statusCode).toBe(200);
       const entry = listed.body.find(candidate => candidate.name === productName);
       expect(entry).toBeDefined();
-      expect(entry.downloadCount).toBe(0);
+      expect(entry.guestAccess).toBe(true);
+      expect(entry.downloadCount).toBeNull();
 
       const one = await request(app).get(productBase).set('x-access-token', guestToken);
       expect(one.statusCode).toBe(200);
-      expect(one.body.downloadCount).toBe(0);
+      expect(one.body.downloadCount).toBeNull();
+
+      const discovered = await request(app)
+        .get('/api/downloads/discover')
+        .set('x-access-token', guestToken);
+      expect(discovered.statusCode).toBe(200);
+      expect(discovered.body.find(candidate => candidate.name === productName).downloadCount).toBe(
+        null
+      );
+
+      const asMember = await request(app).get(productBase).set('x-access-token', otherToken);
+      expect(asMember.body.downloadCount).toBe(0);
+    });
+
+    it('should be hidden while the flag is off and shown again by allow_guests', async () => {
+      await setProduct({ guestAccess: false });
+
+      const listed = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', guestToken);
+      expect(listed.statusCode).toBe(200);
+      expect(listed.body.some(candidate => candidate.name === productName)).toBe(false);
+      const one = await request(app).get(productBase).set('x-access-token', guestToken);
+      expect(one.statusCode).toBe(403);
+      const releases = await request(app)
+        .get(`${productBase}/release`)
+        .set('x-access-token', guestToken);
+      expect(releases.statusCode).toBe(403);
+      const watched = await request(app)
+        .post(`${productBase}/watch`)
+        .set('x-access-token', guestToken);
+      expect(watched.statusCode).toBe(403);
+      const discovered = await request(app)
+        .get('/api/downloads/discover')
+        .set('x-access-token', guestToken);
+      expect(discovered.body.some(candidate => candidate.name === productName)).toBe(false);
+
+      const allowed = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'allow_guests', names: [productName] });
+      expect(allowed.statusCode).toBe(200);
+      expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const again = await request(app).get(productBase).set('x-access-token', guestToken);
+      expect(again.statusCode).toBe(200);
+      expect(again.body.guestAccess).toBe(true);
+
+      const denied = await request(app)
+        .put(productBase)
+        .set('x-access-token', memberToken)
+        .send({ guest_access: false });
+      expect(denied.statusCode).toBe(200);
+      expect(denied.body.guestAccess).toBe(false);
+      const gone = await request(app).get(productBase).set('x-access-token', guestToken);
+      expect(gone.statusCode).toBe(403);
+
+      await setProduct({ guestAccess: true });
+    });
+
+    it('should show a guest the unpublished product it uploaded itself', async () => {
+      const own = await db.download.create({
+        name: 'guest-own',
+        published: false,
+        isPublic: false,
+        userId: guest.id,
+        organizationId: org.id,
+      });
+      const listed = await request(app)
+        .get(`/api/organization/${orgName}/download`)
+        .set('x-access-token', guestToken);
+      expect(listed.body.some(candidate => candidate.name === 'guest-own')).toBe(true);
+      const one = await request(app)
+        .get(`/api/organization/${orgName}/download/guest-own`)
+        .set('x-access-token', guestToken);
+      expect(one.statusCode).toBe(200);
+      expect(one.body.downloadCount).toBeNull();
+      const asOther = await request(app)
+        .get(`/api/organization/${orgName}/download/guest-own`)
+        .set('x-access-token', otherToken);
+      expect(asOther.statusCode).toBe(403);
+      await own.destroy();
     });
 
     it('should be refused every product write', async () => {

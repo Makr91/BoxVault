@@ -2,7 +2,11 @@
 import { loadConfig } from '../../utils/config-loader.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
-import { resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  isGuestMembership,
+  resolveOrgMembership,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { files: File } = db;
@@ -22,7 +26,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/info:
  *   get:
  *     summary: Get file information
- *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs membership of its organization; a service account is a member of its own organization only, at its effective role.
+ *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs a writing membership of its organization, a guest of the organization reading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. downloadCount is null to a guest of the organization.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -78,8 +82,9 @@ const unauthorized = (req, res) =>
  *                   description: Secure download URL with token
  *                 downloadCount:
  *                   type: integer
+ *                   nullable: true
  *                   example: 42
- *                   description: Number of times the file has been downloaded
+ *                   description: Number of times the file has been downloaded, null to a guest of the organization
  *                 checksum:
  *                   type: string
  *                   example: "a1b2c3d4e5f6..."
@@ -136,6 +141,8 @@ const info = async (req, res) => {
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
     const { organization: organizationData, box, architecture } = req.entities;
+    const membership = userId ? await resolveOrgMembership(req, organizationData.id) : null;
+    const counted = !isGuestMembership(membership);
 
     // If the box is public, allow access
     if (box.isPublic) {
@@ -168,7 +175,7 @@ const info = async (req, res) => {
         return res.send({
           fileName: fileRecord.fileName,
           downloadUrl,
-          downloadCount: fileRecord.downloadCount,
+          downloadCount: counted ? fileRecord.downloadCount : null,
           checksum: fileRecord.checksum,
           checksumType: fileRecord.checksumType,
           fileSize: fileRecord.fileSize,
@@ -184,8 +191,7 @@ const info = async (req, res) => {
       return unauthorized(req, res);
     }
 
-    const membership = await resolveOrgMembership(req, organizationData.id);
-    if (!membership) {
+    if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
     }
 
@@ -218,7 +224,7 @@ const info = async (req, res) => {
       return res.send({
         fileName: fileRecord.fileName,
         downloadUrl,
-        downloadCount: fileRecord.downloadCount,
+        downloadCount: counted ? fileRecord.downloadCount : null,
         checksum: fileRecord.checksum,
         checksumType: fileRecord.checksumType,
         fileSize: fileRecord.fileSize,

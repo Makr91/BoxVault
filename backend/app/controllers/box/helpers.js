@@ -116,4 +116,40 @@ const sumBoxDownloads = box =>
     .flatMap(architecture => architecture.files || [])
     .reduce((total, file) => total + (file.downloadCount || 0), 0);
 
-export { parseBoxContentFields, sumBoxDownloads };
+/**
+ * The file rows of a box as JSON with their downloadCount kept when counted
+ * and answered null otherwise.
+ * @param {Array<Object>} files - File rows or their JSON
+ * @param {boolean} counted - Whether the caller is answered the counts
+ * @returns {Array<Object>} The files as JSON
+ */
+const boxFilesWithCounts = (files, counted) =>
+  (files || []).map(file => ({
+    ...(typeof file.toJSON === 'function' ? file.toJSON() : file),
+    downloadCount: counted ? file.downloadCount : null,
+  }));
+
+/**
+ * The box's JSON with its downloadCount and every nested file's downloadCount
+ * answered when counted and null otherwise; a guest of the organization is
+ * never counted.
+ * @param {Object} box - A box row with nested versions, providers, architectures and files
+ * @param {boolean} counted - Whether the caller is answered the counts
+ * @returns {Object} The box JSON
+ */
+const boxWithCounts = (box, counted) => ({
+  ...box.toJSON(),
+  versions: (box.versions || []).map(version => ({
+    ...version.toJSON(),
+    providers: (version.providers || []).map(provider => ({
+      ...provider.toJSON(),
+      architectures: (provider.architectures || []).map(architecture => ({
+        ...architecture.toJSON(),
+        files: boxFilesWithCounts(architecture.files, counted),
+      })),
+    })),
+  })),
+  downloadCount: counted ? sumBoxDownloads(box) : null,
+});
+
+export { parseBoxContentFields, sumBoxDownloads, boxFilesWithCounts, boxWithCounts };

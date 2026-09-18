@@ -8,7 +8,7 @@ import { resolveViewer } from './orgMembership.js';
  * or a service-account key, by the one request-auth rule.
  *
  * @param {import('express').Request} req - The request carrying the credentials.
- * @returns {Promise<{userId: number, isServiceAccount: boolean, orgIds: number[], managedOrgIds: number[]}|null>}
+ * @returns {Promise<{userId: number, isServiceAccount: boolean, isSuperadmin: boolean, orgIds: number[], guestOrgIds: number[], managedOrgIds: number[]}|null>}
  *   The viewer of resolveViewer, or null when no credential resolves; a
  *   refused credential never errors, it only leaves the caller on the
  *   anonymous public-only view.

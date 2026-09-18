@@ -1,7 +1,9 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
+import { isGuestOf } from '../../../utils/orgMembership.js';
 import { canSeeIso, resolveIsoViewer } from '../visibility.js';
+import { isoVersionsWithCounts } from '../helpers.js';
 const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
 /**
@@ -9,7 +11,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}:
  *   get:
  *     summary: Get a specific version of an ISO
- *     description: Retrieve one version of an ISO with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires membership of its organization.
+ *     description: Retrieve one version of an ISO with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file downloadCount is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -72,7 +74,8 @@ const findOne = async (req, res) => {
       });
     }
 
-    return res.send(version);
+    const [answer] = isoVersionsWithCounts([version], !isGuestOf(viewer, iso.organizationId));
+    return res.send(answer);
   } catch (err) {
     log.error.error('Error retrieving ISO version', err);
     return problem(res, req, {

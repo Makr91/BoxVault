@@ -166,7 +166,11 @@ describe('Service Account API', () => {
       expect(res.statusCode).toBe(422);
       expect(res.headers['content-type']).toContain('application/problem+json');
       expect(res.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/role', rule: 'enum', params: { enum: 'member' } }),
+        expect.objectContaining({
+          pointer: '/role',
+          rule: 'enum',
+          params: { enum: 'guest, member' },
+        }),
       ]);
     });
 
@@ -183,8 +187,85 @@ describe('Service Account API', () => {
 
       expect(res.statusCode).toBe(422);
       expect(res.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/role', rule: 'enum', params: { enum: 'member' } }),
+        expect.objectContaining({
+          pointer: '/role',
+          rule: 'enum',
+          params: { enum: 'guest, member' },
+        }),
       ]);
+    });
+
+    it('should let an owner and a member mint a guest-role service account', async () => {
+      const asOwner = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', adminToken)
+        .send({
+          description: 'Guest SA by owner',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'guest',
+        });
+      expect(asOwner.statusCode).toBe(201);
+      expect(asOwner.body.role).toBe('guest');
+      expect((await ServiceAccount.findByPk(asOwner.body.id)).role).toBe('guest');
+
+      const asMember = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', userToken)
+        .send({
+          description: 'Guest SA by member',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'guest',
+        });
+      expect(asMember.statusCode).toBe(201);
+      expect(asMember.body.role).toBe('guest');
+    });
+
+    it('should refuse a guest membership any service account', async () => {
+      const guestUser = await User.create({
+        username: `SAGuest_${uniqueId}`,
+        email: `sa_guest_${uniqueId}@example.com`,
+        password: await bcrypt.hash('password', 8),
+        verified: true,
+      });
+      const userRole = await Role.findOne({ where: { name: 'user' } });
+      await guestUser.setRoles([userRole]);
+      await UserOrg.create({ user_id: guestUser.id, organization_id: testOrg.id, role: 'guest' });
+      const guestToken = jwt.sign({ id: guestUser.id }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
+
+      const refused = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', guestToken)
+        .send({
+          description: 'Guest minting',
+          expiration_days: 30,
+          organization_id: testOrg.id,
+          role: 'guest',
+        });
+      expect(refused.statusCode).toBe(403);
+      expect(refused.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(refused.body.title).toBe(
+        'A guest of this organization may read and download, never change anything!'
+      );
+
+      const defaulted = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', guestToken)
+        .send({ description: 'Guest minting', expiration_days: 30, organization_id: testOrg.id });
+      expect(defaulted.statusCode).toBe(403);
+
+      const organizations = await request(app)
+        .get('/api/service-accounts/organizations')
+        .set('x-access-token', guestToken);
+      expect(organizations.statusCode).toBe(200);
+      expect(organizations.body).toEqual([]);
+
+      await UserOrg.destroy({ where: { user_id: guestUser.id } });
+      await guestUser.destroy();
     });
 
     it('should let a global admin create a superadmin service account', async () => {
@@ -218,7 +299,7 @@ describe('Service Account API', () => {
         expect.objectContaining({
           pointer: '/role',
           rule: 'enum',
-          params: { enum: 'member, admin, owner, superadmin' },
+          params: { enum: 'guest, member, admin, owner, superadmin' },
         }),
       ]);
     });
@@ -330,6 +411,29 @@ describe('Service Account API', () => {
       expect(res.statusCode).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.some(o => o.id === testOrg.id)).toBe(true);
+      expect(res.body.every(o => ['member', 'admin', 'owner'].includes(o.role))).toBe(true);
+    });
+
+    it('should leave a guest seat out of the list', async () => {
+      const guestOrg = await Organization.create({
+        name: `SAGuestOrg_${uniqueId}`,
+        access_mode: 'private',
+      });
+      await UserOrg.create({
+        user_id: regularUser.id,
+        organization_id: guestOrg.id,
+        role: 'guest',
+      });
+
+      const res = await request(app)
+        .get('/api/service-accounts/organizations')
+        .set('x-access-token', userToken);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.some(o => o.id === testOrg.id)).toBe(true);
+      expect(res.body.some(o => o.id === guestOrg.id)).toBe(false);
+
+      await UserOrg.destroy({ where: { organization_id: guestOrg.id } });
+      await guestOrg.destroy();
     });
 
     it('should return 500 on DB error', async () => {
@@ -532,6 +636,68 @@ describe('Service Account API', () => {
         .get('/api/user/organizations')
         .set('x-access-token', signFor(superadminAccount));
       expect(revoked.body).toEqual([]);
+    });
+
+    it('should let a guest-role service account read only what is flagged for guests', async () => {
+      const guestAccount = await ServiceAccount.create({
+        username: `sa-guest-role-${uniqueId}`,
+        token: `sa-guest-role-token-${uniqueId}`,
+        role: 'guest',
+        userId: adminUser.id,
+        organization_id: testOrg.id,
+      });
+      const flagged = await db.box.create({
+        name: `sa-guest-flagged-${uniqueId}`,
+        isPublic: false,
+        published: true,
+        guestAccess: true,
+        organizationId: testOrg.id,
+        userId: regularUser.id,
+      });
+      const hidden = await db.box.create({
+        name: `sa-guest-hidden-${uniqueId}`,
+        isPublic: false,
+        published: true,
+        guestAccess: false,
+        organizationId: testOrg.id,
+        userId: regularUser.id,
+      });
+
+      const seat = await request(app)
+        .get('/api/user/organizations')
+        .set('x-access-token', signFor(guestAccount));
+      expect(seat.statusCode).toBe(200);
+      expect(seat.body[0].role).toBe('guest');
+
+      const list = await request(app)
+        .get(`/api/organization/${orgName}/box`)
+        .set('x-access-token', signFor(guestAccount));
+      expect(list.statusCode).toBe(200);
+      const names = list.body.map(entry => entry.name);
+      expect(names).toContain(flagged.name);
+      expect(names).not.toContain(hidden.name);
+      expect(list.body.find(entry => entry.name === flagged.name).downloadCount).toBeNull();
+
+      const readFlagged = await request(app)
+        .get(`/api/organization/${orgName}/box/${flagged.name}`)
+        .set('x-access-token', signFor(guestAccount));
+      expect(readFlagged.statusCode).toBe(200);
+      expect(readFlagged.body.downloadCount).toBeNull();
+
+      const readHidden = await request(app)
+        .get(`/api/organization/${orgName}/box/${hidden.name}`)
+        .set('x-access-token', signFor(guestAccount));
+      expect(readHidden.statusCode).toBe(403);
+
+      const created = await request(app)
+        .post(`/api/organization/${orgName}/box`)
+        .set('x-access-token', signFor(guestAccount))
+        .send({ name: `sa-guest-made-${uniqueId}` });
+      expect(created.statusCode).toBe(403);
+
+      await flagged.destroy();
+      await hidden.destroy();
+      await guestAccount.destroy();
     });
   });
 });

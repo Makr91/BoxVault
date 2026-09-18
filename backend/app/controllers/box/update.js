@@ -48,6 +48,9 @@ const { box: Box } = db;
  *               is_public:
  *                 type: boolean
  *                 description: Whether the box is publicly accessible
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the box while it is published
  *               github_repo:
  *                 type: string
  *                 description: GitHub repository building the box
@@ -116,6 +119,7 @@ export const update = async (req, res) => {
     description,
     published,
     is_public,
+    guest_access,
     github_repo,
     workflow_file,
     cicd_url,
@@ -188,6 +192,7 @@ export const update = async (req, res) => {
       description: description !== undefined ? description : box.description,
       published: published !== undefined ? published : box.published,
       isPublic: is_public !== undefined ? is_public : box.isPublic,
+      guestAccess: guest_access !== undefined ? guest_access : box.guestAccess,
       githubRepo: github_repo !== undefined ? github_repo : box.githubRepo,
       workflowFile: workflow_file !== undefined ? workflow_file : box.workflowFile,
       cicdUrl: cicd_url !== undefined ? cicd_url : box.cicdUrl,

@@ -1,5 +1,6 @@
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { canReadInOrg } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
 const { organization: Organization, box: Box, boxWatcher: BoxWatcher, UserOrg } = db;
 
@@ -25,7 +26,7 @@ const findVisibleBox = async (req, res) => {
 
   if (!box.isPublic) {
     const membership = await UserOrg.findUserOrgRole(req.userId, organizationData.id);
-    if (!membership && box.userId !== req.userId) {
+    if (!canReadInOrg(membership, box) && box.userId !== req.userId) {
       problem(res, req, { status: 403, type: 'forbidden', title: req.__('boxes.unauthorized') });
       return null;
     }

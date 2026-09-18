@@ -46,6 +46,9 @@ const { download: Download, organization: Organization } = db;
  *                 type: string
  *               is_public:
  *                 type: boolean
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the product while it is published
  *               published:
  *                 type: boolean
  *                 description: An unpublished product is visible to its creator alone
@@ -93,6 +96,7 @@ const update = async (req, res) => {
     description,
     published,
     is_public: isPublic,
+    guest_access: guestAccess,
     family,
     vendor,
     docs_url: docsUrl,
@@ -159,6 +163,7 @@ const update = async (req, res) => {
       description: description !== undefined ? description : download.description,
       published: published !== undefined ? published : download.published,
       isPublic: isPublic !== undefined ? isPublic : download.isPublic,
+      guestAccess: guestAccess !== undefined ? guestAccess : download.guestAccess,
       family: family !== undefined ? family : download.family,
       vendor: vendor !== undefined ? vendor : download.vendor,
       docsUrl: docsUrl !== undefined ? docsUrl : download.docsUrl,

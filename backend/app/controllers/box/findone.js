@@ -3,9 +3,14 @@ import configLoader from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import jwt from 'jsonwebtoken';
 import db from '../../models/index.js';
-import { ownsBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  isGuestMembership,
+  ownsBox,
+  resolveOrgMembership,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
-import { sumBoxDownloads } from './helpers.js';
+import { boxWithCounts } from './helpers.js';
 const {
   organization: Organization,
   user: Users,
@@ -107,7 +112,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  * /api/organization/{organization}/box/{name}:
  *   get:
  *     summary: Get a specific box
- *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs membership of its organization or ownership of the box; a service account is a member of its own organization only, at its effective role.
+ *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs a writing membership of its organization or ownership of the box; a guest of the organization reads it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. Every downloadCount is null to a guest of the organization.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -256,6 +261,9 @@ export const findOne = async (req, res) => {
       });
     }
 
+    const caller = userId ? { userId, isServiceAccount, serviceAccountId } : null;
+    const membership = caller ? await resolveOrgMembership(caller, organizationData.id) : null;
+
     let response;
     if (req.isVagrantRequest) {
       // Format response for Vagrant metadata request
@@ -273,8 +281,7 @@ export const findOne = async (req, res) => {
     } else {
       // Format response for frontend
       response = {
-        ...box.toJSON(),
-        downloadCount: sumBoxDownloads(box),
+        ...boxWithCounts(box, !isGuestMembership(membership)),
         organization: {
           id: organizationData.id,
           name: organizationData.name,
@@ -306,11 +313,7 @@ export const findOne = async (req, res) => {
       return unauthorized();
     }
 
-    const caller = { userId, isServiceAccount, serviceAccountId };
-    const membership = await resolveOrgMembership(caller, organizationData.id);
-    const isMember = !!membership;
-
-    const hasAccess = isMember || ownsBox(caller, box, membership);
+    const hasAccess = canReadInOrg(membership, box) || ownsBox(caller, box, membership);
 
     if (hasAccess) {
       return res.json(response);
