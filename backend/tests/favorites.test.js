@@ -41,7 +41,6 @@ jest.unstable_mockModule('../app/auth/passport.js', () => ({
   initializeStrategies: jest.fn().mockResolvedValue(),
   getOidcConfiguration: jest.fn().mockReturnValue({
     serverMetadata: () => ({ token_endpoint: 'http://mock-auth-server.com/token' }),
-    clientId: 'client-id',
   }),
   buildAuthorizationUrl: jest.fn(),
   buildEndSessionUrl: jest.fn(),
@@ -55,9 +54,11 @@ const mockConfig = {
       jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
       oidc: {
         token_refresh_threshold_minutes: 10,
+        token_default_expiry_minutes: 30,
         providers: {
           testprovider: {
             issuer: 'http://mock-auth-server.com',
+            client_id: 'boxvault',
             client_secret: 'mock-secret',
             token_endpoint_auth_method: 'client_secret_post',
           },
@@ -203,6 +204,19 @@ describe('Favorites API', () => {
     await db.user.destroy({ where: { id: testUser.id } });
   });
 
+  const refreshableToken = () =>
+    jwt.sign(
+      {
+        id: testUser.id,
+        provider: 'oidc-testprovider',
+        oidc_access_token: 'stale-token',
+        oidc_refresh_token: `refresh-${Math.random()}`,
+        oidc_expires_at: Date.now() + 60 * 60 * 1000,
+      },
+      'test-secret',
+      { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+    );
+
   // Clear mocks after each test
   afterEach(() => {
     axiosPost.mockClear();
@@ -260,6 +274,73 @@ describe('Favorites API', () => {
         .set('x-access-token', oidcUserToken);
       expect(down.statusCode).toBe(502);
       expect(down.body.type).toBe('https://auth.startcloud.com/probs/internal');
+    });
+
+    it('should obtain one fresh token and retry once when the identity provider answers 401', async () => {
+      axiosGet
+        .mockRejectedValueOnce({ message: 'Unauthorized', response: { status: 401, data: {} } })
+        .mockResolvedValueOnce({ status: 200, data: [{ clientId: 'app1' }] });
+      axiosPost.mockResolvedValueOnce({
+        data: { access_token: 'fresh-token', expires_in: 3600, refresh_token: 'next-refresh' },
+      });
+
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', refreshableToken());
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual([{ clientId: 'app1' }]);
+      expect(axiosPost).toHaveBeenCalledTimes(1);
+      expect(axiosPost.mock.calls[0][1]).toContain('client_id=boxvault');
+      expect(axiosGet).toHaveBeenCalledTimes(2);
+      expect(axiosGet.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh-token');
+      expect(jwt.decode(res.headers['x-refreshed-token']).oidc_refresh_token).toBe('next-refresh');
+    });
+
+    it('should answer 401 when the identity provider refuses the fresh token too', async () => {
+      axiosGet.mockRejectedValue({ message: 'Unauthorized', response: { status: 401, data: {} } });
+      axiosPost.mockResolvedValueOnce({ data: { access_token: 'fresh-token', expires_in: 3600 } });
+
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', refreshableToken());
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(axiosGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('should answer 401 when the grant is dead and the identity provider refused the token', async () => {
+      axiosGet.mockRejectedValueOnce({
+        message: 'Unauthorized',
+        response: { status: 401, data: {} },
+      });
+      axiosPost.mockRejectedValueOnce({
+        message: 'Bad Request',
+        response: { status: 400, data: { error: 'invalid_grant' } },
+      });
+
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', refreshableToken());
+
+      expect(res.statusCode).toBe(401);
+      expect(axiosGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('should answer 401 without a retry when the session holds no refresh token', async () => {
+      axiosGet.mockRejectedValueOnce({
+        message: 'Unauthorized',
+        response: { status: 401, data: {} },
+      });
+
+      const res = await request(app)
+        .get('/api/user/favorites')
+        .set('x-access-token', oidcUserToken);
+
+      expect(res.statusCode).toBe(401);
+      expect(axiosPost).not.toHaveBeenCalled();
+      expect(axiosGet).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -323,13 +404,41 @@ describe('Favorites API', () => {
       expect(res.body.favorite_apps).toEqual([]);
     });
 
-    it('should handle auth server errors gracefully', async () => {
+    it('should answer 502 when the identity provider cannot be reached', async () => {
       axiosGet.mockRejectedValue(new Error('Auth Server Error'));
       const res = await request(app)
         .get('/api/userinfo/claims')
         .set('x-access-token', oidcUserToken);
+      expect(res.statusCode).toBe(502);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+    });
+
+    it('should obtain one fresh token and retry once when the identity provider answers 401', async () => {
+      axiosGet
+        .mockRejectedValueOnce({ message: 'Unauthorized', response: { status: 401, data: {} } })
+        .mockResolvedValueOnce({ status: 200, data: { sub: 'user123', favorite_apps: [] } });
+      axiosPost.mockResolvedValueOnce({ data: { access_token: 'fresh-token', expires_in: 3600 } });
+
+      const res = await request(app)
+        .get('/api/userinfo/claims')
+        .set('x-access-token', refreshableToken());
+
       expect(res.statusCode).toBe(200);
-      expect(res.body.favorite_apps).toEqual([]);
+      expect(res.body.sub).toBe('user123');
+      expect(res.headers['x-refreshed-token']).toBeDefined();
+      expect(axiosGet.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh-token');
+    });
+
+    it('should answer 401 when the identity provider refuses the fresh token too', async () => {
+      axiosGet.mockRejectedValue({ message: 'Unauthorized', response: { status: 401, data: {} } });
+      axiosPost.mockResolvedValueOnce({ data: { access_token: 'fresh-token', expires_in: 3600 } });
+
+      const res = await request(app)
+        .get('/api/userinfo/claims')
+        .set('x-access-token', refreshableToken());
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
     });
   });
 

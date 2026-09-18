@@ -8,20 +8,17 @@ const RETRY_AFTER_SECONDS = '60';
 
 const isPlainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const formOver = (stored, form) =>
-  Object.fromEntries(
-    Object.entries(stored).map(([key, section]) => [
-      key,
-      isPlainObject(section) && isPlainObject(form[key]) ? { ...section, ...form[key] } : section,
-    ])
-  );
+const formOver = (stored, form) => ({
+  ...stored,
+  smtp_connect: { ...(stored.smtp_connect || {}), ...form },
+});
 
 /**
  * @swagger
  * /api/mail/test-smtp:
  *   post:
  *     summary: Test the mail settings the administrator is about to save
- *     description: The test action of the mail section. The body is the section's current form values under their keys (smtp_connect, smtp_settings, smtp_auth), unsaved, laid over the stored file; one message is sent to the signed-in caller's own address. Global admins only.
+ *     description: The test action of the SMTP connection object. The body is that object's current form values (host, port, secure, reject_unauthorized), unsaved, laid over the stored connection; the sender and the credentials come from the stored file; one message is sent to the signed-in caller's own address. Global admins only.
  *     tags: [Mail]
  *     security:
  *       - JwtAuth: []

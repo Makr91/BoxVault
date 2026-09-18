@@ -160,7 +160,14 @@ describe('Config API', () => {
       const mail = await request(app)
         .get('/api/config/mail/schema')
         .set('x-access-token', adminToken);
-      expect(mail.body.sections.mail.action.kind).toBe('test');
+      expect(Object.hasOwn(mail.body.sections.mail, 'action')).toBe(false);
+      expect(mail.body.properties.smtp_connect.action).toEqual({
+        kind: 'test',
+        route: '/api/mail/test-smtp',
+        method: 'POST',
+        body: 'form',
+        step_up: false,
+      });
     });
 
     it('should refuse the schema for a non-admin', async () => {

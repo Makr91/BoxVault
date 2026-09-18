@@ -1,4 +1,5 @@
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
 import { notifyUnreadCount } from '../utils/events.js';
@@ -6,8 +7,11 @@ import { sendHubNotification } from '../utils/notifyHub.js';
 import { resolveUserRecipients } from '../utils/notifyRecipients.js';
 import { getVapidPublicKey, sendPushToUsers } from '../utils/webPush.js';
 import { problem } from '../utils/problem.js';
+import { isGrantRefused, refreshOidcSession, adoptRefreshedSession } from '../utils/oidcRefresh.js';
 import db from '../models/index.js';
 import { getAuthServerUrl, extractOidcAccessToken } from './favorites/helpers.js';
+
+const { decode } = jwt;
 
 const RETRY_AFTER_SECONDS = '60';
 
@@ -62,11 +66,70 @@ const pushUnreadCount = async (req, headers) => {
   }
 };
 
+const refreshableClaims = req => {
+  const claims = { ...decode(req.headers['x-access-token']), ...(req.oidcTokens || {}) };
+  return claims.provider?.startsWith('oidc-') && claims.oidc_refresh_token ? claims : null;
+};
+
+const retryWithFreshToken = async (req, res, sendRequest) => {
+  const claims = refreshableClaims(req);
+  if (!claims) {
+    return null;
+  }
+  const session = await refreshOidcSession(claims);
+  adoptRefreshedSession(req, res, claims, session);
+  const headers = buildAuthHeaders(session.tokens.oidc_access_token);
+  return { headers, response: await sendRequest(headers) };
+};
+
 /**
- * Forward one request to the identity provider with the session's OIDC access
- * token and answer its status and body unmapped: a 401 authentication problem
- * without a token, the provider's own 401 or 403 as an authentication or
- * forbidden problem, a 502 internal problem when the provider cannot be reached.
+ * Send one request to the identity provider with the session's OIDC access
+ * token; on a 401 obtain one fresh token and send it once more (RFC 6750
+ * §3.1), the refreshed session going out in `X-Refreshed-Token`. Answers the
+ * caller's problem itself and resolves null when the request could not be
+ * served: 401 without a token or when the provider refused twice, the
+ * provider's 403 as forbidden, 502 when it cannot be reached.
+ * @param {import('express').Request} req - The request, with the session resolved
+ * @param {import('express').Response} res - The response
+ * @param {function(Object): Promise<{status: number, data: *}>} sendRequest - Sends the upstream request with the bearer headers
+ * @returns {Promise<{headers: Object, response: {status: number, data: *}}|null>} The headers used and the provider's answer, or null once a problem was sent
+ */
+export const forwardToProvider = async (req, res, sendRequest) => {
+  const oidcAccessToken = extractOidcAccessToken(req);
+
+  if (!oidcAccessToken) {
+    problem(res, req, {
+      status: 401,
+      type: 'authentication',
+      title: req.__('auth.unauthorized'),
+    });
+    return null;
+  }
+
+  const headers = buildAuthHeaders(oidcAccessToken);
+  try {
+    return { headers, response: await sendRequest(headers) };
+  } catch (error) {
+    if (error.response?.status !== 401) {
+      respondAuthServerError(req, res, error);
+      return null;
+    }
+    try {
+      const retried = await retryWithFreshToken(req, res, sendRequest);
+      if (retried) {
+        return retried;
+      }
+      respondAuthServerError(req, res, error);
+    } catch (retryError) {
+      respondAuthServerError(req, res, isGrantRefused(retryError) ? error : retryError);
+    }
+    return null;
+  }
+};
+
+/**
+ * Forward one request to the identity provider through `forwardToProvider`
+ * and answer its status and body unmapped.
  * @param {import('express').Request} req - The request, with the session resolved
  * @param {import('express').Response} res - The response
  * @param {function(Object): Promise<{status: number, data: *}>} sendRequest - Sends the upstream request with the bearer headers
@@ -79,27 +142,14 @@ export const proxyNotificationRequest = async (
   sendRequest,
   { pushCount = false } = {}
 ) => {
-  const oidcAccessToken = extractOidcAccessToken(req);
-
-  if (!oidcAccessToken) {
-    return problem(res, req, {
-      status: 401,
-      type: 'authentication',
-      title: req.__('auth.unauthorized'),
-    });
+  const forwarded = await forwardToProvider(req, res, sendRequest);
+  if (!forwarded) {
+    return;
   }
-
-  const headers = buildAuthHeaders(oidcAccessToken);
-  try {
-    const response = await sendRequest(headers);
-    res.status(response.status).json(response.data || {});
-  } catch (error) {
-    return respondAuthServerError(req, res, error);
-  }
+  res.status(forwarded.response.status).json(forwarded.response.data || {});
   if (pushCount) {
-    await pushUnreadCount(req, headers);
+    await pushUnreadCount(req, forwarded.headers);
   }
-  return undefined;
 };
 
 const buildListQuery = query => {

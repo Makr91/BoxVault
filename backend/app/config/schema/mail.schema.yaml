@@ -5,12 +5,6 @@ sections:
   mail:
     title: Mail
     order: 1
-    action:
-      kind: test
-      route: /api/mail/test-smtp
-      method: POST
-      body: form
-      step_up: false
 properties:
   schemaVersion:
     type: integer
@@ -22,6 +16,12 @@ properties:
     section: mail
     subsection: smtpConnection
     title: SMTP Connection
+    action:
+      kind: test
+      route: /api/mail/test-smtp
+      method: POST
+      body: form
+      step_up: false
     required:
       - host
       - port

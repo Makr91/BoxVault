@@ -137,6 +137,7 @@ const mockDb = {
   user: { findOne: jest.fn(), findByPk: jest.fn(), count: jest.fn() },
   organization: { findOne: jest.fn(), findAll: jest.fn() },
   UserOrg: { findUserOrgRole: jest.fn(), hasRole: jest.fn() },
+  revokedSession: { findOne: jest.fn() },
   Sequelize: { Op: { or: 'or', gt: 'gt', eq: 'eq' } },
   ROLES: ['user', 'admin'],
 };
@@ -2435,99 +2436,162 @@ describe('Middleware Tests', () => {
         JWT_CLAIM_OPTIONS
       );
       req.headers['x-access-token'] = token;
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
 
       await oidcTokenRefresh(req, res, next);
       expect(next).toHaveBeenCalled();
+      expect(axios.post).not.toHaveBeenCalled();
     });
 
-    it('oidcTokenRefresh should return 401 if config missing', async () => {
-      const soon = Date.now() + 60 * 1000; // 1 minute
-      const token = jwt.sign(
+    const expiringSession = () =>
+      jwt.sign(
         {
           id: 1,
           provider: 'oidc-test',
-          oidc_expires_at: soon,
+          oidc_expires_at: Date.now() + 60 * 1000,
           oidc_refresh_token: 'rt',
         },
         'test-secret',
         JWT_CLAIM_OPTIONS
       );
-      req.headers['x-access-token'] = token;
 
-      getOidcConfiguration.mockReturnValue(null);
-
-      await oidcTokenRefresh(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-    });
-
-    it('oidcTokenRefresh should return 401 if refresh fails', async () => {
-      const soon = Date.now() + 60 * 1000;
-      const token = jwt.sign(
-        {
-          id: 1,
-          provider: 'oidc-test',
-          oidc_expires_at: soon,
-          oidc_refresh_token: 'rt',
-        },
-        'test-secret',
-        JWT_CLAIM_OPTIONS
-      );
-      req.headers['x-access-token'] = token;
-
-      getOidcConfiguration.mockReturnValue({
-        serverMetadata: () => ({ token_endpoint: 'http://test' }),
-        clientId: 'id',
-      });
-
-      axios.post.mockRejectedValue(new Error('Refresh Failed'));
-
-      await oidcTokenRefresh(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-    });
-
-    it('oidcTokenRefresh should use client_secret_basic auth method', async () => {
-      const token = jwt.sign(
-        {
-          id: 1,
-          provider: 'oidc-test',
-          oidc_expires_at: Date.now() + 60000,
-          oidc_refresh_token: 'rt',
-        },
-        'test-secret',
-        JWT_CLAIM_OPTIONS
-      );
-      req.headers['x-access-token'] = token;
-
-      getOidcConfiguration.mockReturnValue({
-        serverMetadata: () => ({ token_endpoint: 'http://test' }),
-        clientId: 'id',
-      });
-
-      mockConfigLoader.loadConfig.mockReturnValue({
-        auth: {
-          jwt: { jwt_secret: 'test-secret' },
-          oidc: {
-            token_refresh_threshold_minutes: 5,
-            providers: {
-              test: {
-                client_secret: 'secret',
-                token_endpoint_auth_method: 'client_secret_basic',
-              },
+    const refreshAuthConfig = (method = 'client_secret_basic') => ({
+      auth: {
+        jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
+        oidc: {
+          token_refresh_threshold_minutes: 5,
+          token_default_expiry_minutes: 30,
+          providers: {
+            test: {
+              client_id: 'id',
+              client_secret: 'secret',
+              token_endpoint_auth_method: method,
             },
           },
         },
+      },
+    });
+
+    it('oidcTokenRefresh should continue on the old token when the provider is not discovered', async () => {
+      req.headers['x-access-token'] = expiringSession();
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
+      getOidcConfiguration.mockReturnValue(null);
+
+      await oidcTokenRefresh(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.setHeader).not.toHaveBeenCalled();
+      expect(axios.post).not.toHaveBeenCalled();
+    });
+
+    it('oidcTokenRefresh should answer 401 when the token endpoint refuses the grant', async () => {
+      req.headers['x-access-token'] = expiringSession();
+      getOidcConfiguration.mockReturnValue({
+        serverMetadata: () => ({ token_endpoint: 'http://test' }),
+      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
+      axios.post.mockRejectedValue({
+        message: 'Request failed with status code 400',
+        response: { status: 400, data: { error: 'invalid_grant' } },
       });
 
+      await oidcTokenRefresh(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'https://auth.startcloud.com/probs/authentication' })
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('oidcTokenRefresh should continue on the old token when the token endpoint refuses the client', async () => {
+      req.headers['x-access-token'] = expiringSession();
+      getOidcConfiguration.mockReturnValue({
+        serverMetadata: () => ({ token_endpoint: 'http://test' }),
+      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
+      axios.post.mockRejectedValue({
+        message: 'Request failed with status code 400',
+        response: { status: 400, data: { error: 'invalid_client' } },
+      });
+
+      await oidcTokenRefresh(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.setHeader).not.toHaveBeenCalled();
+      expect(mockLog.auth.error).toHaveBeenCalledWith(
+        'OIDC token refresh failed',
+        expect.objectContaining({ status: 400 })
+      );
+    });
+
+    it('oidcTokenRefresh should continue on the old token when the token endpoint fails', async () => {
+      req.headers['x-access-token'] = expiringSession();
+      getOidcConfiguration.mockReturnValue({
+        serverMetadata: () => ({ token_endpoint: 'http://test' }),
+      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
+      axios.post.mockRejectedValue({ message: 'ECONNREFUSED' });
+
+      await oidcTokenRefresh(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
+    it('oidcTokenRefresh should send the configured client id as the Basic username', async () => {
+      req.headers['x-access-token'] = expiringSession();
+      getOidcConfiguration.mockReturnValue({
+        serverMetadata: () => ({ token_endpoint: 'http://test' }),
+      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
       axios.post.mockResolvedValue({ data: { access_token: 'new' } });
 
       await oidcTokenRefresh(req, res, next);
       expect(axios.post).toHaveBeenCalledWith(
-        expect.any(String),
+        'http://test',
         expect.stringContaining('grant_type=refresh_token'),
         expect.objectContaining({
-          headers: expect.objectContaining({ Authorization: expect.stringContaining('Basic') }),
+          headers: expect.objectContaining({
+            Authorization: `Basic ${Buffer.from('id:secret').toString('base64')}`,
+          }),
         })
       );
+      expect(axios.post.mock.calls[0][1]).toContain('client_id=id');
+      expect(res.setHeader).toHaveBeenCalledWith('X-Refreshed-Token', expect.any(String));
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('oidcTokenRefresh should present one refresh token once for concurrent requests', async () => {
+      const token = expiringSession();
+      const second = { headers: { 'x-access-token': token }, __: key => key };
+      const secondRes = {
+        setHeader: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn(),
+      };
+      const secondNext = jest.fn();
+      req.headers['x-access-token'] = token;
+      getOidcConfiguration.mockReturnValue({
+        serverMetadata: () => ({ token_endpoint: 'http://test' }),
+      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig());
+      axios.post.mockImplementation(
+        () =>
+          new Promise(resolve => {
+            setTimeout(() => resolve({ data: { access_token: 'new', refresh_token: 'rt2' } }), 20);
+          })
+      );
+
+      await Promise.all([
+        oidcTokenRefresh(req, res, next),
+        oidcTokenRefresh(second, secondRes, secondNext),
+      ]);
+      expect(axios.post).toHaveBeenCalledTimes(1);
+      const [[, firstToken]] = res.setHeader.mock.calls;
+      const [[, secondToken]] = secondRes.setHeader.mock.calls;
+      expect(firstToken).toBe(secondToken);
+      expect(jwt.decode(firstToken).oidc_refresh_token).toBe('rt2');
+      expect(next).toHaveBeenCalled();
+      expect(secondNext).toHaveBeenCalled();
     });
 
     it('oidcTokenRefresh should handle unknown auth method', async () => {
@@ -2545,29 +2609,16 @@ describe('Middleware Tests', () => {
 
       getOidcConfiguration.mockReturnValue({
         serverMetadata: () => ({ token_endpoint: 'http://test' }),
-        clientId: 'id',
       });
 
-      mockConfigLoader.loadConfig.mockReturnValue({
-        auth: {
-          jwt: { jwt_secret: 'test-secret' },
-          oidc: {
-            token_refresh_threshold_minutes: 5,
-            providers: {
-              test: {
-                client_secret: 'secret',
-                token_endpoint_auth_method: 'unknown',
-              },
-            },
-          },
-        },
-      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig('unknown'));
 
       axios.post.mockResolvedValue({ data: { access_token: 'new' } });
 
       await oidcTokenRefresh(req, res, next);
-      // Should proceed without setting Authorization header or body param for secret
       expect(axios.post).toHaveBeenCalled();
+      expect(axios.post.mock.calls[0][2].headers.Authorization).toBeUndefined();
+      expect(axios.post.mock.calls[0][1]).not.toContain('client_secret');
     });
 
     it('oidcTokenRefresh should use client_secret_post auth method', async () => {
@@ -2585,23 +2636,9 @@ describe('Middleware Tests', () => {
 
       getOidcConfiguration.mockReturnValue({
         serverMetadata: () => ({ token_endpoint: 'http://test' }),
-        clientId: 'id',
       });
 
-      mockConfigLoader.loadConfig.mockReturnValue({
-        auth: {
-          jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
-          oidc: {
-            token_refresh_threshold_minutes: 5,
-            providers: {
-              test: {
-                client_secret: 'secret',
-                token_endpoint_auth_method: 'client_secret_post',
-              },
-            },
-          },
-        },
-      });
+      mockConfigLoader.loadConfig.mockReturnValue(refreshAuthConfig('client_secret_post'));
 
       axios.post.mockResolvedValue({ data: { access_token: 'new' } });
 
@@ -2611,9 +2648,10 @@ describe('Middleware Tests', () => {
         expect.stringContaining('client_secret=secret'),
         expect.any(Object)
       );
+      expect(axios.post.mock.calls[0][1]).toContain('client_id=id');
     });
 
-    it('oidcTokenRefresh should use default expiration if config missing', async () => {
+    it('oidcTokenRefresh should mint the new session with the configured JWT lifetime', async () => {
       const token = jwt.sign(
         {
           id: 1,
@@ -2628,16 +2666,15 @@ describe('Middleware Tests', () => {
 
       getOidcConfiguration.mockReturnValue({
         serverMetadata: () => ({ token_endpoint: 'http://test' }),
-        clientId: 'id',
       });
 
-      // Mock config without jwt_expiration
       mockConfigLoader.loadConfig.mockReturnValue({
         auth: {
-          jwt: { jwt_secret: 'test-secret' },
+          jwt: { jwt_secret: 'test-secret', jwt_expiration: '2h' },
           oidc: {
             token_refresh_threshold_minutes: 5,
-            providers: { test: { client_secret: 's' } },
+            token_default_expiry_minutes: 30,
+            providers: { test: { client_id: 'id', client_secret: 's' } },
           },
         },
       });
@@ -2649,8 +2686,10 @@ describe('Middleware Tests', () => {
       expect(res.setHeader).toHaveBeenCalledWith('X-Refreshed-Token', expect.any(String));
       const [[, newToken]] = res.setHeader.mock.calls;
       const decoded = jwt.decode(newToken);
-      const expectedExp = Math.floor(Date.now() / 1000) + 24 * 3600;
+      const expectedExp = Math.floor(Date.now() / 1000) + 2 * 3600;
       expect(decoded.exp).toBeGreaterThanOrEqual(expectedExp - 5);
+      expect(decoded.exp).toBeLessThanOrEqual(expectedExp + 5);
+      expect(decoded.oidc_expires_at).toBeGreaterThanOrEqual(Date.now() + 29 * 60 * 1000);
     });
 
     it('oidcTokenRefresh should preserve old refresh token if new one not provided', async () => {
@@ -2668,10 +2707,8 @@ describe('Middleware Tests', () => {
 
       getOidcConfiguration.mockReturnValue({
         serverMetadata: () => ({ token_endpoint: 'http://test' }),
-        clientId: 'id',
       });
 
-      // Use mockImplementation to ensure fresh config
       mockConfigLoader.loadConfig.mockImplementation(name => {
         if (name === 'auth') {
           return {
@@ -2679,7 +2716,8 @@ describe('Middleware Tests', () => {
               jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
               oidc: {
                 token_refresh_threshold_minutes: 5,
-                providers: { test: { client_secret: 's' } },
+                token_default_expiry_minutes: 30,
+                providers: { test: { client_id: 'id', client_secret: 's' } },
               },
             },
           };
@@ -2687,7 +2725,7 @@ describe('Middleware Tests', () => {
         return {};
       });
 
-      axios.post.mockResolvedValue({ data: { access_token: 'new' } }); // No refresh_token in response
+      axios.post.mockResolvedValue({ data: { access_token: 'new' } });
 
       await oidcTokenRefresh(req, res, next);
 

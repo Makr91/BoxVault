@@ -211,11 +211,87 @@ describe('OIDC back-channel logout', () => {
     expect(res.body.error_description).toBe('logout token must not contain a nonce claim');
   });
 
-  it('should accept a sid-only token without mapping anything locally', async () => {
-    const res = await postLogout(await mintLogoutToken({ claims: { sid: 'session-1' } }));
+  const sessionWithSid = sid =>
+    jwt.sign(
+      { id: user.id, provider: 'oidc-logoutidp', id_token: jwt.sign({ iss: ISSUER, sid }, 'idp') },
+      'test-secret',
+      { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+    );
+
+  it('should end only the session a sid names and leave the other sessions of the user', async () => {
+    const named = sessionWithSid(`sid-named-${uniqueId}`);
+    const other = sessionWithSid(`sid-other-${uniqueId}`);
+    expect((await request(app).get('/api/user').set('x-access-token', named)).statusCode).toBe(200);
+
+    const res = await postLogout(
+      await mintLogoutToken({ claims: { sub: subjectUuid, sid: `sid-named-${uniqueId}` } })
+    );
+    expect(res.statusCode).toBe(200);
+
+    await user.reload();
+    expect(user.sessionsInvalidAfter).toBeNull();
+    const stored = await db.revokedSession.findByPk(`sid-named-${uniqueId}`);
+    expect(stored.issuer).toBe(ISSUER);
+    expect(stored.userId).toBe(user.id);
+    expect(stored.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+    const ended = await request(app).get('/api/user').set('x-access-token', named);
+    expect(ended.statusCode).toBe(401);
+    expect(ended.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+    const refresh = await request(app)
+      .post('/api/auth/refresh-token')
+      .set('x-access-token', named)
+      .send({ stay_logged_in: true });
+    expect(refresh.statusCode).toBe(401);
+    expect((await request(app).get('/api/user').set('x-access-token', other)).statusCode).toBe(200);
+  });
+
+  it('should accept a sid-only token and end that session without naming a user', async () => {
+    const session = sessionWithSid(`sid-only-${uniqueId}`);
+    const res = await postLogout(
+      await mintLogoutToken({ claims: { sid: `sid-only-${uniqueId}` } })
+    );
     expect(res.statusCode).toBe(200);
     await user.reload();
     expect(user.sessionsInvalidAfter).toBeNull();
+    const stored = await db.revokedSession.findByPk(`sid-only-${uniqueId}`);
+    expect(stored.userId).toBeNull();
+    expect((await request(app).get('/api/user').set('x-access-token', session)).statusCode).toBe(
+      401
+    );
+  });
+
+  it('should keep a session whose sid matches under another issuer', async () => {
+    const foreign = jwt.sign(
+      {
+        id: user.id,
+        provider: 'oidc-logoutidp',
+        id_token: jwt.sign(
+          { iss: 'https://other-idp.example', sid: `sid-only-${uniqueId}` },
+          'idp'
+        ),
+      },
+      'test-secret',
+      { expiresIn: '1h', ...TEST_JWT_CLAIMS }
+    );
+    expect((await request(app).get('/api/user').set('x-access-token', foreign)).statusCode).toBe(
+      200
+    );
+  });
+
+  it('should drop revoked sessions past their horizon on the next logout', async () => {
+    await db.revokedSession.create({
+      sid: `sid-stale-${uniqueId}`,
+      issuer: ISSUER,
+      userId: null,
+      expiresAt: new Date(Date.now() - 1000),
+    });
+    const res = await postLogout(
+      await mintLogoutToken({ claims: { sid: `sid-fresh-${uniqueId}` } })
+    );
+    expect(res.statusCode).toBe(200);
+    expect(await db.revokedSession.findByPk(`sid-stale-${uniqueId}`)).toBeNull();
+    expect(await db.revokedSession.findByPk(`sid-fresh-${uniqueId}`)).not.toBeNull();
   });
 
   it('should accept a token whose subject matches no local credential', async () => {

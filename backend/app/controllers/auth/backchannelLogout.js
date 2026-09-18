@@ -1,4 +1,5 @@
 import { decodeJwt, jwtVerify } from 'jose';
+import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
 import { findProviderByIssuer } from '../../utils/oidcProviders.js';
@@ -7,7 +8,8 @@ import { getOidcConfiguration } from '../../auth/passport.js';
 import { notifySessionTerminated } from '../../utils/events.js';
 import db from '../../models/index.js';
 
-const { credential: Credential, user: User } = db;
+const { credential: Credential, user: User, revokedSession: RevokedSession } = db;
+const { Op } = db.Sequelize;
 
 const BACKCHANNEL_LOGOUT_EVENT = 'http://schemas.openid.net/event/backchannel-logout';
 
@@ -87,11 +89,27 @@ const resolveLogoutUserId = async (issuer, payload) => {
   return null;
 };
 
+const sessionExpiryHorizon = () => {
+  const { jwt: jwtConfig } = loadConfig('auth').auth;
+  const probe = jwt.sign({}, jwtConfig.jwt_secret, { expiresIn: jwtConfig.jwt_expiration });
+  return new Date(jwt.decode(probe).exp * 1000);
+};
+
+const revokeSession = async (issuer, payload) => {
+  const userId = payload.sub || payload.UUID ? await resolveLogoutUserId(issuer, payload) : null;
+  await RevokedSession.destroy({ where: { expiresAt: { [Op.lt]: new Date() } } });
+  await RevokedSession.upsert({
+    sid: String(payload.sid),
+    issuer,
+    userId,
+    expiresAt: sessionExpiryHorizon(),
+  });
+  log.auth.info('Back-channel logout: session revoked', { issuer, userId });
+};
+
 const revokeUserSessions = async (issuer, payload) => {
-  if (!payload.sub && !payload.UUID) {
-    log.auth.info('Back-channel logout: token carries only sid, nothing to map locally', {
-      issuer,
-    });
+  if (payload.sid) {
+    await revokeSession(issuer, payload);
     return;
   }
 

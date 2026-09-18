@@ -1,202 +1,79 @@
 import jwt from 'jsonwebtoken';
-import axios from 'axios';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
-import { getOidcConfiguration } from '../auth/passport.js';
 import { getJwtClaimOptions } from '../utils/auth.js';
 import { problem } from '../utils/problem.js';
+import { isGrantRefused, refreshOidcSession, adoptRefreshedSession } from '../utils/oidcRefresh.js';
+
+const verifiedClaims = token => {
+  try {
+    return jwt.verify(token, loadConfig('auth').auth.jwt.jwt_secret, getJwtClaimOptions());
+  } catch (error) {
+    log.auth.debug('JWT verification failed in refresh middleware', { error: error.message });
+    return null;
+  }
+};
+
+const needsRefresh = claims => {
+  if (!claims.oidc_expires_at || !claims.oidc_refresh_token) {
+    log.auth.warn('OIDC token missing refresh data, skipping refresh', {
+      userId: claims.id,
+      provider: claims.provider,
+      hasExpiresAt: !!claims.oidc_expires_at,
+      hasRefreshToken: !!claims.oidc_refresh_token,
+    });
+    return false;
+  }
+  const thresholdMinutes = loadConfig('auth').auth.oidc.token_refresh_threshold_minutes;
+  return claims.oidc_expires_at - Date.now() <= thresholdMinutes * 60 * 1000;
+};
 
 /**
- * Middleware to automatically refresh OIDC access tokens before they expire
- * Checks if OIDC token expires in < 5 minutes and refreshes if needed
+ * Refresh the identity-provider tokens inside a BoxVault session JWT when
+ * they are within the configured threshold of expiry. A grant the token
+ * endpoint refuses with `invalid_grant` ends the session with 401 (RFC 6749
+ * §5.2); any other failure logs and lets the request continue on the tokens
+ * it already carries, the way RFC 6749 §5.2 and RFC 9110 §15.6 describe
+ * client-request and server faults.
+ * @param {import('express').Request} req - The request
+ * @param {import('express').Response} res - The response
+ * @param {import('express').NextFunction} next - The next handler
+ * @returns {Promise<void>}
  */
 const oidcTokenRefresh = async (req, res, next) => {
   const token = req.headers['x-access-token'];
-
   if (!token) {
     return next();
   }
-
+  const claims = verifiedClaims(token);
+  if (!claims?.provider?.startsWith('oidc-') || !needsRefresh(claims)) {
+    return next();
+  }
+  log.auth.info('OIDC token expiring soon, attempting refresh', {
+    userId: claims.id,
+    provider: claims.provider,
+    isExpired: claims.oidc_expires_at < Date.now(),
+  });
   try {
-    const authConfig = loadConfig('auth');
-    // Decode JWT to check OIDC token expiration
-    const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret, getJwtClaimOptions());
-
-    // Only process OIDC-authenticated users
-    if (!decoded.provider || !decoded.provider.startsWith('oidc-')) {
-      return next();
-    }
-
-    // Check if we have required fields for refresh
-    if (!decoded.oidc_expires_at || !decoded.oidc_refresh_token) {
-      log.auth.warn('OIDC token missing refresh data, skipping refresh', {
-        userId: decoded.id,
-        provider: decoded.provider,
-        hasExpiresAt: !!decoded.oidc_expires_at,
-        hasRefreshToken: !!decoded.oidc_refresh_token,
-      });
-      return next();
-    }
-
-    const now = Date.now();
-    const expiresAt = decoded.oidc_expires_at;
-    const timeUntilExpiry = expiresAt - now;
-
-    // Get refresh threshold from config (default 5 minutes)
-    const refreshThresholdMinutes = authConfig.auth?.oidc?.token_refresh_threshold_minutes || 5;
-    const refreshThreshold = refreshThresholdMinutes * 60 * 1000;
-
-    // If token expires in more than 5 minutes, no need to refresh
-    if (timeUntilExpiry > refreshThreshold) {
-      log.auth.debug('OIDC token still valid, no refresh needed', {
-        userId: decoded.id,
-        timeUntilExpiryMinutes: Math.floor(timeUntilExpiry / 60000),
-      });
-      return next();
-    }
-
-    // Token is expiring soon or expired, attempt refresh
-    log.auth.info('OIDC token expiring soon, attempting refresh', {
-      userId: decoded.id,
-      provider: decoded.provider,
-      timeUntilExpiryMinutes: Math.floor(timeUntilExpiry / 60000),
-      isExpired: timeUntilExpiry < 0,
+    const session = await refreshOidcSession(claims);
+    adoptRefreshedSession(req, res, claims, session);
+    log.auth.info('OIDC token refresh successful', {
+      userId: claims.id,
+      provider: claims.provider,
+      hasRefreshToken: !!session.tokens.oidc_refresh_token,
     });
-
-    const providerName = decoded.provider.replace('oidc-', '');
-    const oidcConfig = getOidcConfiguration(providerName);
-
-    if (!oidcConfig) {
-      log.auth.error('OIDC configuration not found for token refresh', {
-        provider: providerName,
-      });
-      return problem(res, req, {
-        status: 401,
-        type: 'authentication',
-        title: 'Provider configuration not available',
-      });
-    }
-
-    try {
-      // Use openid-client to refresh the token
-      const tokenEndpoint = oidcConfig.serverMetadata().token_endpoint;
-      const { clientId } = oidcConfig;
-
-      log.auth.debug('Refreshing OIDC token', {
-        provider: providerName,
-        tokenEndpoint,
-        userId: decoded.id,
-      });
-
-      // Get client authentication from config
-      const providerConfig = authConfig.auth.oidc.providers[providerName];
-      const clientSecret = providerConfig.client_secret;
-
-      // Prepare refresh token request
-      const params = new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: decoded.oidc_refresh_token,
-        client_id: clientId,
-      });
-
-      // Determine auth method
-      const authMethod = providerConfig.token_endpoint_auth_method || 'client_secret_basic';
-
-      const headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      if (authMethod === 'client_secret_basic') {
-        // Send credentials in Authorization header
-        const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-        headers.Authorization = `Basic ${credentials}`;
-      } else if (authMethod === 'client_secret_post') {
-        // Send credentials in POST body
-        params.append('client_secret', clientSecret);
-      }
-
-      const response = await axios.post(tokenEndpoint, params.toString(), { headers });
-
-      const newTokens = response.data;
-
-      log.auth.info('OIDC token refresh successful', {
-        provider: providerName,
-        userId: decoded.id,
-        hasAccessToken: !!newTokens.access_token,
-        hasRefreshToken: !!newTokens.refresh_token,
-      });
-
-      // Calculate new expiration time
-      const defaultExpiryMinutes = authConfig.auth?.oidc?.token_default_expiry_minutes || 30;
-      const newExpiresAt = newTokens.expires_in
-        ? Date.now() + newTokens.expires_in * 1000
-        : Date.now() + defaultExpiryMinutes * 60 * 1000;
-
-      // Generate new JWT with refreshed tokens, preserving every original claim
-      // (organizations, stayLoggedIn, etc.) and overriding only the refreshed
-      // OIDC fields. Registered timestamp/issuer/audience claims are dropped so
-      // jwt.sign can issue fresh ones via expiresIn and the claim options.
-      const refreshedClaims = { ...decoded };
-      delete refreshedClaims.exp;
-      delete refreshedClaims.iat;
-      delete refreshedClaims.nbf;
-      delete refreshedClaims.iss;
-      delete refreshedClaims.aud;
-
-      const refreshedTokens = {
-        id_token: newTokens.id_token || decoded.id_token, // Use new if provided, else keep old
-        oidc_access_token: newTokens.access_token,
-        oidc_refresh_token: newTokens.refresh_token || decoded.oidc_refresh_token, // Some providers don't return new refresh token
-        oidc_expires_at: newExpiresAt,
-      };
-
-      const newJwtToken = jwt.sign(
-        { ...refreshedClaims, ...refreshedTokens },
-        authConfig.auth.jwt.jwt_secret,
-        {
-          algorithm: 'HS256',
-          expiresIn: authConfig.auth.jwt.jwt_expiration || '24h',
-          ...getJwtClaimOptions(),
-        }
-      );
-
-      // Return new token in custom header for frontend to update
-      res.setHeader('X-Refreshed-Token', newJwtToken);
-
-      // Update req object with new token data for this request
-      req.userId = decoded.id;
-      req.isServiceAccount = false;
-      req.oidcAccessToken = newTokens.access_token;
-      req.oidcTokens = refreshedTokens;
-
-      log.auth.info('New JWT token generated after OIDC refresh', {
-        userId: decoded.id,
-        provider: providerName,
-      });
-
-      return next();
-    } catch (refreshError) {
-      // Token refresh failed - likely refresh token is also expired
-      log.auth.error('OIDC token refresh failed', {
-        provider: providerName,
-        userId: decoded.id,
-        error: refreshError.message,
-        status: refreshError.response?.status,
-        errorData: refreshError.response?.data,
-      });
-
-      // Return 401 to force re-authentication
-      return problem(res, req, {
-        status: 401,
-        type: 'authentication',
-        title: 'Session expired. Please log in again.',
-      });
-    }
-  } catch (jwtError) {
-    // JWT verification failed or other error
-    log.auth.debug('JWT verification failed in refresh middleware', {
-      error: jwtError.message,
+    return next();
+  } catch (error) {
+    log.auth.error('OIDC token refresh failed', {
+      provider: claims.provider,
+      userId: claims.id,
+      error: error.message,
+      status: error.response?.status,
+      errorData: error.response?.data,
     });
+    if (isGrantRefused(error)) {
+      return problem(res, req, { status: 401, type: 'authentication' });
+    }
     return next();
   }
 };

@@ -82,6 +82,7 @@ const initializeDatabase = async () => {
     sequelize,
     Sequelize
   );
+  db.revokedSession = (await import('./revoked-session.model.js')).default(sequelize, Sequelize);
 
   db.UserOrg.associate = function (models) {
     db.UserOrg.belongsTo(models.user, {

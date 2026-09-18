@@ -339,6 +339,15 @@ describe('Notifications API', () => {
       expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
     });
 
+    it('should answer 401 on a hub 401 when the session holds no refresh token', async () => {
+      axiosGet.mockRejectedValue({ message: 'Unauthorized', response: { status: 401, data: {} } });
+      const res = await request(app).get('/api/notifications').set('x-access-token', oidcToken);
+      expect(res.statusCode).toBe(401);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/authentication');
+      expect(axiosPost).not.toHaveBeenCalled();
+      expect(axiosGet).toHaveBeenCalledTimes(1);
+    });
+
     it('should answer 502 when the hub fails or is unreachable', async () => {
       axiosGet.mockRejectedValue({ message: 'Boom', response: { status: 500 } });
       const failed = await request(app).get('/api/notifications').set('x-access-token', oidcToken);

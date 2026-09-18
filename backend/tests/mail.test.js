@@ -240,7 +240,7 @@ describe('Mail API', () => {
       const res = await request(app)
         .post('/api/mail/test-smtp')
         .set('x-access-token', adminToken)
-        .send({ smtp_connect: { host: 'form.example', port: 2525 } });
+        .send({ host: 'form.example', port: 2525 });
 
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toContain('Test email sent successfully');

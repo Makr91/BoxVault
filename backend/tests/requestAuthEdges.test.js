@@ -39,6 +39,7 @@ const mockDb = {
   user: { findByPk: jest.fn() },
   service_account: { findOne: jest.fn() },
   UserOrg: { getUserOrganizations: jest.fn() },
+  revokedSession: { findOne: jest.fn() },
   Sequelize: { Op: { or: 'or', gt: 'gt', eq: 'eq' } },
 };
 

@@ -1,8 +1,8 @@
-// claims.js
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { log } from '../../utils/Logger.js';
 import { getAuthServerUrl, extractOidcAccessToken } from './helpers.js';
+import { forwardToProvider } from '../notification.controller.js';
 
 const { decode } = jwt;
 
@@ -11,7 +11,7 @@ const { decode } = jwt;
  * /api/userinfo/claims:
  *   get:
  *     summary: Get enriched user claims including favorites
- *     description: Retrieve user claims with enriched favorite applications data
+ *     description: Retrieve user claims with enriched favorite applications data. A session without an OIDC access token answers minimal claims; a provider 401 is answered with one fresh token and one retry.
  *     tags: [Favorites]
  *     security:
  *       - bearerAuth: []
@@ -52,50 +52,39 @@ const { decode } = jwt;
  *                     type: string
  *                   description: Scopes granted on the OIDC access token BoxVault holds for this session (absent for local sessions)
  *       401:
- *         description: Not authenticated or OIDC access token not available
- *       500:
- *         description: Failed to fetch claims from auth server
+ *         description: The identity provider refused the token twice
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: The identity provider refused the request
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       502:
+ *         description: The identity provider is unreachable
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  */
 export const getUserInfoClaims = async (req, res) => {
-  try {
-    const oidcAccessToken = extractOidcAccessToken(req);
-
-    if (!oidcAccessToken) {
-      log.auth.warn('No OIDC access token available for claims request');
-      // Return minimal claims for non-OIDC users
-      return res.status(200).json({
-        sub: req.userId,
-        favorite_apps: [],
-      });
-    }
-
-    const authServerUrl = getAuthServerUrl(req);
-
-    log.auth.debug('Fetching enriched claims from auth server', {
-      authServerUrl,
-      hasToken: !!oidcAccessToken,
-    });
-
-    const response = await axios.get(`${authServerUrl}/userinfo`, {
-      headers: {
-        Authorization: `Bearer ${oidcAccessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const scope = decode(oidcAccessToken)?.scope;
-    return res.status(200).json({ ...response.data, ...(scope ? { scope } : {}) });
-  } catch (error) {
-    log.error.error('Error fetching claims from auth server:', {
-      error: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-
-    // Return minimal claims on error
+  if (!extractOidcAccessToken(req)) {
+    log.auth.warn('No OIDC access token available for claims request');
     return res.status(200).json({
       sub: req.userId,
       favorite_apps: [],
     });
   }
+
+  const forwarded = await forwardToProvider(req, res, headers =>
+    axios.get(`${getAuthServerUrl(req)}/userinfo`, { headers })
+  );
+  if (!forwarded) {
+    return undefined;
+  }
+  const scope = decode(extractOidcAccessToken(req))?.scope;
+  return res.status(200).json({ ...forwarded.response.data, ...(scope ? { scope } : {}) });
 };

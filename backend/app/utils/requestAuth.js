@@ -19,7 +19,7 @@ import externalUserHandler from '../auth/external-user-handler.js';
 import db from '../models/index.js';
 
 const { JsonWebTokenError } = jwt;
-const { credential: Credential, user: User } = db;
+const { credential: Credential, user: User, revokedSession: RevokedSession } = db;
 
 const AUTHORIZATION_SCHEMES = ['Bearer', 'DPoP'];
 const PROOF_MAX_AGE_SECONDS = 60;
@@ -221,9 +221,35 @@ const resolveExternalAuth = async (req, { scheme, token }) => {
   };
 };
 
+const providerSessionOf = claims => {
+  if (typeof claims.id_token !== 'string') {
+    return null;
+  }
+  try {
+    const { iss, sid } = decodeJwt(claims.id_token);
+    return iss && sid ? { issuer: iss, sid: String(sid) } : null;
+  } catch {
+    return null;
+  }
+};
+
+const isSessionRevoked = async claims => {
+  const named = providerSessionOf(claims);
+  if (!named) {
+    return false;
+  }
+  return Boolean(await RevokedSession.findOne({ where: named }));
+};
+
 const resolveSessionAuth = async token => {
   try {
     const claims = await verifySessionToken(token);
+    if (await isSessionRevoked(claims)) {
+      log.auth.info('Session token refused: the identity provider ended its session', {
+        userId: claims.id,
+      });
+      return null;
+    }
     if (claims.isServiceAccount && claims.serviceAccountId) {
       await touchServiceAccount(claims.serviceAccountId);
     }

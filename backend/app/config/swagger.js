@@ -967,23 +967,12 @@ const options = {
         MailTestRequest: {
           type: 'object',
           description:
-            "The mail section's form values under their keys, unsaved; any key omitted keeps its stored value",
+            "The SMTP connection object's form values, unsaved; any member omitted keeps its stored value",
           properties: {
-            smtp_connect: {
-              type: 'object',
-              additionalProperties: true,
-              example: { host: 'smtp.example.com', port: 587, secure: true },
-            },
-            smtp_settings: {
-              type: 'object',
-              additionalProperties: true,
-              example: { from: 'noreply@example.com' },
-            },
-            smtp_auth: {
-              type: 'object',
-              additionalProperties: true,
-              example: { user: 'mailer', password: 'secret' },
-            },
+            host: { type: 'string', example: 'smtp.example.com' },
+            port: { type: 'integer', example: 587 },
+            secure: { type: 'boolean', example: true },
+            reject_unauthorized: { type: 'boolean', example: true },
           },
         },
         MailTestResponse: {
