@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.84.5](https://github.com/Makr91/BoxVault/compare/v0.84.4...v0.84.5) (2026-09-18)
+
+
+### Bug Fixes
+
+* authenticate the refresh grant and end only the session a logout token names ([90672b5](https://github.com/Makr91/BoxVault/commit/90672b51fa9824b39726d5c32e69ff3085d1db45))
+* bump startcloud-ui to v0.19.0 ([2ff6c3d](https://github.com/Makr91/BoxVault/commit/2ff6c3d315e27a97b7da51dab8604aa607de3d19))
+* bump startcloud-ui to v0.19.0 ([3b095b1](https://github.com/Makr91/BoxVault/commit/3b095b19d228ee4f08c666318d97cefc6c764556))
+* linting testing ([42227b9](https://github.com/Makr91/BoxVault/commit/42227b94acdf33874420f29c498c7518b164668e))
+* take the file's members on the download upload query ([071af40](https://github.com/Makr91/BoxVault/commit/071af4011959dddea25bd24667a393058f5376e7))
+
 ## [0.84.4](https://github.com/Makr91/BoxVault/compare/v0.84.3...v0.84.4) (2026-09-16)
 
 
