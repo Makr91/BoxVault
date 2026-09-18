@@ -6,6 +6,7 @@ import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { buildSigninToken } from '../auth/signin.js';
 import { idpClaimsOf } from '../auth/token.js';
+import { profileOf } from '../../utils/profile.js';
 const { user: User, role: Role, organization: Organization } = db;
 
 /**
@@ -56,6 +57,45 @@ const { user: User, role: Role, organization: Organization } = db;
  *                   type: string
  *                   nullable: true
  *                   description: Stored avatar URL from the identity provider (clients fall back to the emailHash gravatar)
+ *                 given_name:
+ *                   type: string
+ *                   nullable: true
+ *                 family_name:
+ *                   type: string
+ *                   nullable: true
+ *                 middle_name:
+ *                   type: string
+ *                   nullable: true
+ *                 mobile_number:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     value:
+ *                       type: string
+ *                     verified:
+ *                       type: boolean
+ *                 address:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     line1:
+ *                       type: string
+ *                       nullable: true
+ *                     city:
+ *                       type: string
+ *                       nullable: true
+ *                     state:
+ *                       type: string
+ *                       nullable: true
+ *                     postal_code:
+ *                       type: string
+ *                       nullable: true
+ *                     country:
+ *                       type: string
+ *                       nullable: true
+ *                     formatted:
+ *                       type: string
+ *                       nullable: true
  *                 entitlements:
  *                   type: array
  *                   items:
@@ -133,6 +173,7 @@ export const getUserProfile = async (req, res) => {
       verified: user.verified,
       emailHash: user.emailHash,
       avatarUrl: user.avatar_url,
+      ...profileOf(user),
       roles: authorities,
       organization: user.primaryOrganization ? user.primaryOrganization.name : null,
       organizations,

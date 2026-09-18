@@ -103,6 +103,121 @@ describe('User API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('username', testUser.username);
       expect(res.body).toHaveProperty('email', testUser.email);
+      expect(res.body.given_name).toBeNull();
+      expect(res.body.family_name).toBeNull();
+      expect(res.body.middle_name).toBeNull();
+      expect(res.body.mobile_number).toBeNull();
+      expect(res.body.address).toBeNull();
+    });
+  });
+
+  describe('PATCH /api/user', () => {
+    it('should merge the profile members of a local account and answer them', async () => {
+      const res = await request(app)
+        .patch('/api/user')
+        .set('x-access-token', userToken)
+        .send({
+          given_name: 'Test',
+          family_name: 'User',
+          mobile_number: '+15551234',
+          address: { line1: '1 Main St', city: 'Urbana', state: 'IL', postal_code: '61801' },
+        });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({
+        given_name: 'Test',
+        family_name: 'User',
+        middle_name: null,
+        mobile_number: { value: '+15551234', verified: false },
+        address: {
+          line1: '1 Main St',
+          city: 'Urbana',
+          state: 'IL',
+          postal_code: '61801',
+          country: null,
+          formatted: null,
+        },
+      });
+
+      const profile = await request(app).get('/api/user').set('x-access-token', userToken);
+      expect(profile.body.given_name).toBe('Test');
+      expect(profile.body.address.city).toBe('Urbana');
+    });
+
+    it('should leave an omitted member alone, merge the address and clear on null', async () => {
+      const res = await request(app)
+        .patch('/api/user')
+        .set('x-access-token', userToken)
+        .send({ family_name: null, address: { country: 'US', state: '' } });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.given_name).toBe('Test');
+      expect(res.body.family_name).toBeNull();
+      expect(res.body.address).toEqual({
+        line1: '1 Main St',
+        city: 'Urbana',
+        state: null,
+        postal_code: '61801',
+        country: 'US',
+        formatted: null,
+      });
+
+      const cleared = await request(app)
+        .patch('/api/user')
+        .set('x-access-token', userToken)
+        .send({ address: null, mobile_number: '' });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.body.address).toBeNull();
+      expect(cleared.body.mobile_number).toBeNull();
+    });
+
+    it('should refuse a name outside the personName pattern with 422', async () => {
+      const res = await request(app)
+        .patch('/api/user')
+        .set('x-access-token', userToken)
+        .send({ given_name: '1234' });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/validation');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/given_name',
+          rule: 'pattern',
+          params: { pattern: 'personName' },
+        }),
+      ]);
+    });
+
+    it('should refuse every member sent for an identity-provider account with readOnly', async () => {
+      const providerUser = await db.user.create({
+        username: `patch-idp-${uniqueId}`,
+        email: `patch-idp-${uniqueId}@example.com`,
+        password: null,
+        verified: true,
+        authProvider: 'oidc',
+      });
+      const role = await db.role.findOne({ where: { name: 'user' } });
+      await providerUser.setRoles([role]);
+      const token = jwt.sign({ id: providerUser.id, provider: 'oidc-idp' }, 'test-secret', {
+        expiresIn: '1h',
+        ...TEST_JWT_CLAIMS,
+      });
+
+      const res = await request(app)
+        .patch('/api/user')
+        .set('x-access-token', token)
+        .send({ given_name: 'Ada', address: { city: 'Urbana' } });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/validation');
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/given_name', rule: 'readOnly', params: {} }),
+        expect.objectContaining({ pointer: '/address', rule: 'readOnly', params: {} }),
+      ]);
+      await providerUser.reload();
+      expect(providerUser.givenName).toBeNull();
+
+      await providerUser.destroy();
     });
   });
 

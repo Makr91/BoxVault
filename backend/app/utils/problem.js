@@ -11,6 +11,7 @@ const TITLE_KEYS = {
   throttled: 'problems.throttled',
   internal: 'problems.internal',
   'send-failed': 'problems.sendFailed',
+  'bad-gateway': 'problems.badGateway',
 };
 
 const fieldOf = pointer => pointer.split('/').filter(Boolean).pop() || '';

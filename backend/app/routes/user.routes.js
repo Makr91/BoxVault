@@ -11,6 +11,7 @@ import { changePassword } from '../controllers/user/changepassword.js';
 import { changeEmail } from '../controllers/user/changeemail.js';
 import { changeName } from '../controllers/user/changename.js';
 import { getUserProfile } from '../controllers/user/getuserprofile.js';
+import { patchUser } from '../controllers/user/patch.js';
 import { getUserOrganizations } from '../controllers/user/organizations.js';
 import { updatePreferences } from '../controllers/user/preferences.js';
 import { leaveOrganization } from '../controllers/user/leave.js';
@@ -68,6 +69,11 @@ router.delete(
   deleteUserAuth
 );
 router.get('/user', [authJwt.verifyToken, authJwt.isUser], getUserProfile);
+router.patch(
+  '/user',
+  [authJwt.verifyToken, authJwt.isUser, validateBody('profile', { partial: true })],
+  patchUser
+);
 
 // Multi-organization user management (service accounts get their single organization)
 router.get(

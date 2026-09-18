@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "given_name": { "$ref": "#/$defs/personName" },
+    "family_name": { "$ref": "#/$defs/personName" },
+    "middle_name": { "$ref": "#/$defs/personName" },
+    "mobile_number": { "type": "string", "maxLength": 32 },
+    "address": {
+      "type": "object",
+      "properties": {
+        "line1": { "type": "string", "maxLength": 255 },
+        "city": { "type": "string", "maxLength": 128 },
+        "state": { "type": "string", "maxLength": 128 },
+        "postal_code": { "type": "string", "maxLength": 32 },
+        "country": { "type": "string", "maxLength": 128 },
+        "formatted": { "type": "string", "maxLength": 1024 }
+      }
+    }
+  }
+}

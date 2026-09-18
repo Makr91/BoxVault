@@ -31,30 +31,28 @@ const pushNotConfigured = (req, res) =>
   });
 
 const respondAuthServerError = (req, res, error) => {
-  const status = error.response?.status;
+  const { response } = error;
 
   log.error.error('Notification request to auth server failed', {
     error: error.message,
-    status,
-    data: error.response?.data,
+    status: response?.status,
+    data: response?.data,
   });
 
-  if (status === 401) {
+  if (!response) {
+    return problem(res, req, { status: 502, type: 'bad-gateway' });
+  }
+  if (response.status === 401) {
     return problem(res, req, {
       status: 401,
       type: 'authentication',
       title: req.__('auth.unauthorized'),
     });
   }
-  if (status === 403) {
-    return problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
-  }
-
-  return problem(res, req, {
-    status: 502,
-    type: 'internal',
-    title: req.__('users.preferencesDelegationFailed'),
-  });
+  return res
+    .status(response.status)
+    .type(response.headers?.['content-type'] || 'application/json')
+    .send(response.data ?? {});
 };
 
 const pushUnreadCount = async (req, headers) => {

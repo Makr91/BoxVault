@@ -107,6 +107,61 @@ export default (sequelize, Sequelize) => {
           'RFC 7643 core entitlements pushed by SCIM: array of {value,type,display}. Full desired state — absent attribute on push clears to null',
         field: 'entitlements',
       },
+      givenName: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        field: 'given_name',
+      },
+      familyName: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        field: 'family_name',
+      },
+      middleName: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        field: 'middle_name',
+      },
+      mobileNumber: {
+        type: Sequelize.STRING(32),
+        allowNull: true,
+        field: 'mobile_number',
+      },
+      mobileNumberVerified: {
+        type: Sequelize.BOOLEAN,
+        allowNull: true,
+        field: 'mobile_number_verified',
+      },
+      addressLine1: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        field: 'address_line1',
+      },
+      addressCity: {
+        type: Sequelize.STRING(128),
+        allowNull: true,
+        field: 'address_city',
+      },
+      addressState: {
+        type: Sequelize.STRING(128),
+        allowNull: true,
+        field: 'address_state',
+      },
+      addressPostalCode: {
+        type: Sequelize.STRING(32),
+        allowNull: true,
+        field: 'address_postal_code',
+      },
+      addressCountry: {
+        type: Sequelize.STRING(128),
+        allowNull: true,
+        field: 'address_country',
+      },
+      addressFormatted: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: 'address_formatted',
+      },
     },
     {
       indexes: [

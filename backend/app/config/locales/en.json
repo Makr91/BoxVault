@@ -59,6 +59,7 @@
     "throttled": "Too many requests.",
     "internal": "The server could not complete the request.",
     "sendFailed": "The message could not be sent.",
+    "badGateway": "The service behind this request could not be reached.",
     "configValidation": "The configuration did not pass validation."
   },
   "validation": {
@@ -76,7 +77,8 @@
     "unique": "{{field}} is already taken in {{scope}}.",
     "blocklist": "{{field}} is on the blocklist.",
     "writable": "{{field}} is not writable by the service user.",
-    "reachable": "{{field}} did not answer."
+    "reachable": "{{field}} did not answer.",
+    "readOnly": "{{field}} is managed by the identity provider."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organization not found with name: {{organization}}.",

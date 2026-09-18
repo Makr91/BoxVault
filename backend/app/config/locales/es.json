@@ -59,6 +59,7 @@
     "throttled": "Demasiadas solicitudes.",
     "internal": "El servidor no pudo completar la solicitud.",
     "sendFailed": "El mensaje no se pudo enviar.",
+    "badGateway": "No se pudo contactar con el servicio detrás de esta solicitud.",
     "configValidation": "La configuración no pasó la validación."
   },
   "validation": {
@@ -76,7 +77,8 @@
     "unique": "{{field}} ya está en uso en {{scope}}.",
     "blocklist": "{{field}} está en la lista de bloqueo.",
     "writable": "{{field}} no es escribible por el usuario del servicio.",
-    "reachable": "{{field}} no respondió."
+    "reachable": "{{field}} no respondió.",
+    "readOnly": "{{field}} lo gestiona el proveedor de identidad."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organización no encontrada con el nombre: {{organization}}.",

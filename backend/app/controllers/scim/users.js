@@ -100,6 +100,76 @@ const extractStringAttribute = (body, attribute, maxLength) => {
   return trimmed;
 };
 
+const cleanString = (value, maxLength) =>
+  typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : null;
+
+/**
+ * Extract the parts of the core `name` complex attribute (RFC 7643 §4.1.1).
+ * @param {Object} body - SCIM User resource
+ * @returns {{givenName: string|null, familyName: string|null, middleName: string|null}}
+ */
+const extractNameParts = body => {
+  const name = body.name && typeof body.name === 'object' ? body.name : {};
+  return {
+    givenName: cleanString(name.givenName, 255),
+    familyName: cleanString(name.familyName, 255),
+    middleName: cleanString(name.middleName, 255),
+  };
+};
+
+/**
+ * Extract the mobile entry of `phoneNumbers` (RFC 7643 §4.1.2): the entry
+ * typed `mobile`, with the sender's `verified` flag when it carries one.
+ * @param {Object} body - SCIM User resource
+ * @returns {{mobileNumber: string|null, mobileNumberVerified: boolean|null}}
+ */
+const extractMobile = body => {
+  const entries = Array.isArray(body.phoneNumbers) ? body.phoneNumbers : [];
+  const mobile = entries.find(entry => entry?.type === 'mobile' && entry?.value);
+  const mobileNumber = mobile ? cleanString(mobile.value, 32) : null;
+  return {
+    mobileNumber,
+    mobileNumberVerified: mobileNumber ? mobile.verified === true : null,
+  };
+};
+
+const ADDRESS_COLUMNS = {
+  streetAddress: 'addressLine1',
+  locality: 'addressCity',
+  region: 'addressState',
+  postalCode: 'addressPostalCode',
+  country: 'addressCountry',
+  formatted: 'addressFormatted',
+};
+
+/**
+ * Extract the home entry of `addresses` (RFC 7643 §4.1.2), the entry typed
+ * `home` or the first one, onto the address columns.
+ * @param {Object} body - SCIM User resource
+ * @returns {Object} One key per address column
+ */
+const extractAddress = body => {
+  const entries = Array.isArray(body.addresses) ? body.addresses : [];
+  const home =
+    entries.find(entry => entry?.type === 'home') ||
+    entries.find(entry => entry && typeof entry === 'object');
+  return Object.fromEntries(
+    Object.entries(ADDRESS_COLUMNS).map(([attribute, column]) => [
+      column,
+      home && typeof home === 'object' ? cleanString(home[attribute], 1024) : null,
+    ])
+  );
+};
+
+const PROFILE_ATTRIBUTES = [
+  'givenName',
+  'familyName',
+  'middleName',
+  'mobileNumber',
+  'mobileNumberVerified',
+  ...Object.values(ADDRESS_COLUMNS),
+];
+
 /**
  * Extract the core `entitlements` attribute (RFC 7643 §4.1.2): keep
  * value/type/display per entry (string `value` is required — entries without
@@ -143,6 +213,9 @@ const parseScimUserState = body => {
     preferredLanguage: extractStringAttribute(body, 'preferredLanguage', 35),
     locale: extractStringAttribute(body, 'locale', 35),
     timezone: extractStringAttribute(body, 'timezone', 64),
+    ...extractNameParts(body),
+    ...extractMobile(body),
+    ...extractAddress(body),
     suspended: body.active === false,
     emailVerified: typeof extension.emailVerified === 'boolean' ? extension.emailVerified : null,
     primaryOrgUuid:
@@ -164,6 +237,24 @@ const parseScimUserState = body => {
  * @param {string|null} primaryOrgUuid - Extension value to round-trip
  * @returns {Object}
  */
+const scimName = user => {
+  const parts = {
+    ...(user.givenName ? { givenName: user.givenName } : {}),
+    ...(user.familyName ? { familyName: user.familyName } : {}),
+    ...(user.middleName ? { middleName: user.middleName } : {}),
+  };
+  return Object.keys(parts).length ? { name: parts } : {};
+};
+
+const scimAddresses = user => {
+  const home = Object.fromEntries(
+    Object.entries(ADDRESS_COLUMNS)
+      .filter(([, column]) => user[column])
+      .map(([attribute, column]) => [attribute, user[column]])
+  );
+  return Object.keys(home).length ? { addresses: [{ type: 'home', ...home }] } : {};
+};
+
 const toScimUser = (req, user, externalId, primaryOrgUuid) => ({
   schemas: [SCIM_USER_SCHEMA, SCIM_USER_EXTENSION],
   id: String(user.id),
@@ -172,6 +263,19 @@ const toScimUser = (req, user, externalId, primaryOrgUuid) => ({
   active: !user.suspended,
   emails: [{ value: user.email, primary: true }],
   ...(user.name ? { displayName: user.name } : {}),
+  ...scimName(user),
+  ...(user.mobileNumber
+    ? {
+        phoneNumbers: [
+          {
+            value: user.mobileNumber,
+            type: 'mobile',
+            verified: user.mobileNumberVerified === true,
+          },
+        ],
+      }
+    : {}),
+  ...scimAddresses(user),
   ...(user.preferredLanguage ? { preferredLanguage: user.preferredLanguage } : {}),
   ...(user.locale ? { locale: user.locale } : {}),
   ...(user.timezone ? { timezone: user.timezone } : {}),
@@ -241,6 +345,7 @@ const provisionScimUser = async (externalId, issuer, state) => {
       preferredLanguage: state.preferredLanguage,
       locale: state.locale,
       timezone: state.timezone,
+      ...Object.fromEntries(PROFILE_ATTRIBUTES.map(attribute => [attribute, state[attribute]])),
       email: state.email,
       password: null,
       emailHash: generateEmailHash(state.email),
@@ -279,8 +384,8 @@ const buildUserPatch = (user, state) => {
   if (user.name !== state.name) {
     patch.name = state.name;
   }
-  for (const attribute of ['preferredLanguage', 'locale', 'timezone']) {
-    if (user[attribute] !== state[attribute]) {
+  for (const attribute of ['preferredLanguage', 'locale', 'timezone', ...PROFILE_ATTRIBUTES]) {
+    if ((user[attribute] ?? null) !== state[attribute]) {
       patch[attribute] = state[attribute];
     }
   }

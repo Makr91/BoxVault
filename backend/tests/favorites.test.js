@@ -259,21 +259,34 @@ describe('Favorites API', () => {
       expect(axiosGet).not.toHaveBeenCalled();
     });
 
-    it('should pass the identity provider refusal through and answer 502 when it is down', async () => {
-      axiosGet.mockRejectedValueOnce({ message: 'Forbidden', response: { status: 403, data: {} } });
+    it('should pass the identity provider refusal through and answer 502 bad-gateway when it is down', async () => {
+      const refusal = {
+        type: 'https://auth.startcloud.com/probs/forbidden',
+        title: 'This action is not allowed.',
+        status: 403,
+        errors: [],
+      };
+      axiosGet.mockRejectedValueOnce({
+        message: 'Forbidden',
+        response: {
+          status: 403,
+          data: refusal,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      });
       const refused = await request(app)
         .get('/api/user/favorites')
         .set('x-access-token', oidcUserToken);
       expect(refused.statusCode).toBe(403);
       expect(refused.headers['content-type']).toContain('application/problem+json');
-      expect(refused.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(refused.body).toEqual(refusal);
 
       axiosGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
       const down = await request(app)
         .get('/api/user/favorites')
         .set('x-access-token', oidcUserToken);
       expect(down.statusCode).toBe(502);
-      expect(down.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(down.body.type).toBe('https://auth.startcloud.com/probs/bad-gateway');
     });
 
     it('should obtain one fresh token and retry once when the identity provider answers 401', async () => {
@@ -404,13 +417,13 @@ describe('Favorites API', () => {
       expect(res.body.favorite_apps).toEqual([]);
     });
 
-    it('should answer 502 when the identity provider cannot be reached', async () => {
+    it('should answer 502 bad-gateway when the identity provider cannot be reached', async () => {
       axiosGet.mockRejectedValue(new Error('Auth Server Error'));
       const res = await request(app)
         .get('/api/userinfo/claims')
         .set('x-access-token', oidcUserToken);
       expect(res.statusCode).toBe(502);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-gateway');
     });
 
     it('should obtain one fresh token and retry once when the identity provider answers 401', async () => {
@@ -443,7 +456,7 @@ describe('Favorites API', () => {
   });
 
   describe('Helper Edge Cases', () => {
-    it('should answer 502 for a JWT with an unknown provider', async () => {
+    it('should answer 502 bad-gateway for a JWT with an unknown provider', async () => {
       const unknownProviderToken = jwt.sign(
         {
           id: testUser.id,
@@ -458,14 +471,14 @@ describe('Favorites API', () => {
         .get('/api/user/favorites')
         .set('x-access-token', unknownProviderToken);
       expect(res.statusCode).toBe(502);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-gateway');
       expect(mockLog.error.error).toHaveBeenCalledWith(
         'Failed to get auth server URL:',
         expect.stringContaining('Provider unknown not found')
       );
     });
 
-    it('should answer 502 for a JWT without a provider claim', async () => {
+    it('should answer 502 bad-gateway for a JWT without a provider claim', async () => {
       const noProviderToken = jwt.sign(
         {
           id: testUser.id,
@@ -479,7 +492,7 @@ describe('Favorites API', () => {
         .get('/api/user/favorites')
         .set('x-access-token', noProviderToken);
       expect(res.statusCode).toBe(502);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-gateway');
     });
 
     it('should refuse a malformed JWT before the helper runs', async () => {
@@ -527,7 +540,7 @@ describe('Favorites API', () => {
         .set('x-access-token', oidcUserToken);
 
       expect(res.statusCode).toBe(502);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-gateway');
       expect(mockLog.error.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to load configuration')
       );

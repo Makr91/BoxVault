@@ -239,6 +239,113 @@ describe('SCIM Users receiver', () => {
     });
   });
 
+  describe('parseScimUserState name parts, mobile and address', () => {
+    it('should store the name parts, the mobile entry and the home address', async () => {
+      const res = buildResponse();
+      const body = matchingBody({
+        name: { givenName: ' Ada ', familyName: 'Lovelace', middleName: 'Byron', formatted: 'x' },
+        phoneNumbers: [
+          { value: '+15550100', type: 'work' },
+          { value: ' +15551234 ', type: 'mobile', verified: true },
+        ],
+        addresses: [
+          { type: 'work', streetAddress: 'Office' },
+          {
+            type: 'home',
+            streetAddress: '1 Main St',
+            locality: 'Urbana',
+            region: 'IL',
+            postalCode: '61801',
+            country: 'US',
+            formatted: '1 Main St, Urbana, IL 61801, US',
+          },
+        ],
+      });
+
+      await putUser(buildRequest(body), res);
+
+      expect(storedUser.update).toHaveBeenCalledWith({
+        givenName: 'Ada',
+        familyName: 'Lovelace',
+        middleName: 'Byron',
+        mobileNumber: '+15551234',
+        mobileNumberVerified: true,
+        addressLine1: '1 Main St',
+        addressCity: 'Urbana',
+        addressState: 'IL',
+        addressPostalCode: '61801',
+        addressCountry: 'US',
+        addressFormatted: '1 Main St, Urbana, IL 61801, US',
+      });
+    });
+
+    it('should take the first address when none is typed home and leave verified false when unstated', async () => {
+      const res = buildResponse();
+      const body = matchingBody({
+        phoneNumbers: [{ value: '+15551234', type: 'mobile' }],
+        addresses: [{ streetAddress: '2 Side St', locality: 'Champaign' }],
+      });
+
+      await putUser(buildRequest(body), res);
+
+      expect(storedUser.update).toHaveBeenCalledWith({
+        mobileNumber: '+15551234',
+        mobileNumberVerified: false,
+        addressLine1: '2 Side St',
+        addressCity: 'Champaign',
+      });
+    });
+
+    it('should clear the stored parts when the push carries none', async () => {
+      Object.assign(storedUser, {
+        givenName: 'Ada',
+        familyName: 'Lovelace',
+        mobileNumber: '+15551234',
+        mobileNumberVerified: true,
+        addressLine1: '1 Main St',
+      });
+      const res = buildResponse();
+
+      await putUser(buildRequest(matchingBody()), res);
+
+      expect(storedUser.update).toHaveBeenCalledWith({
+        givenName: null,
+        familyName: null,
+        mobileNumber: null,
+        mobileNumberVerified: null,
+        addressLine1: null,
+      });
+    });
+
+    it('should render the stored parts back as SCIM', async () => {
+      Object.assign(storedUser, {
+        givenName: 'Ada',
+        familyName: 'Lovelace',
+        mobileNumber: '+15551234',
+        mobileNumberVerified: true,
+        addressLine1: '1 Main St',
+        addressCity: 'Urbana',
+      });
+      const res = buildResponse();
+      const body = matchingBody({
+        name: { givenName: 'Ada', familyName: 'Lovelace' },
+        phoneNumbers: [{ value: '+15551234', type: 'mobile', verified: true }],
+        addresses: [{ type: 'home', streetAddress: '1 Main St', locality: 'Urbana' }],
+      });
+
+      await putUser(buildRequest(body), res);
+
+      expect(storedUser.update).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: { givenName: 'Ada', familyName: 'Lovelace' },
+          phoneNumbers: [{ value: '+15551234', type: 'mobile', verified: true }],
+          addresses: [{ type: 'home', streetAddress: '1 Main St', locality: 'Urbana' }],
+        })
+      );
+    });
+  });
+
   describe('parseScimUserState language, locale and timezone', () => {
     it('should clear all three when the push omits them', async () => {
       const res = buildResponse();

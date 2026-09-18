@@ -332,11 +332,45 @@ describe('Notifications API', () => {
       );
     });
 
-    it('should pass the hub authorization answer through', async () => {
-      axiosGet.mockRejectedValue({ message: 'Forbidden', response: { status: 403, data: {} } });
+    it('should pass the hub answer through as it came on every 4xx but 401', async () => {
+      const refusal = {
+        type: 'https://auth.startcloud.com/probs/forbidden',
+        title: 'This action is not allowed.',
+        status: 403,
+        errors: [],
+      };
+      axiosGet.mockRejectedValue({
+        message: 'Forbidden',
+        response: {
+          status: 403,
+          data: refusal,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      });
       const res = await request(app).get('/api/notifications').set('x-access-token', oidcToken);
       expect(res.statusCode).toBe(403);
-      expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body).toEqual(refusal);
+
+      const invalid = {
+        type: 'https://auth.startcloud.com/probs/validation',
+        title: 'The request did not pass validation.',
+        status: 422,
+        errors: [{ pointer: '/0/client_id', rule: 'enum', params: {}, detail: 'unknown client' }],
+      };
+      axiosGet.mockRejectedValue({
+        message: 'Unprocessable',
+        response: {
+          status: 422,
+          data: invalid,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      });
+      const validation = await request(app)
+        .get('/api/notifications')
+        .set('x-access-token', oidcToken);
+      expect(validation.statusCode).toBe(422);
+      expect(validation.body).toEqual(invalid);
     });
 
     it('should answer 401 on a hub 401 when the session holds no refresh token', async () => {
@@ -348,17 +382,20 @@ describe('Notifications API', () => {
       expect(axiosGet).toHaveBeenCalledTimes(1);
     });
 
-    it('should answer 502 when the hub fails or is unreachable', async () => {
+    it('should pass a hub failure through and answer 502 bad-gateway only with no response', async () => {
       axiosGet.mockRejectedValue({ message: 'Boom', response: { status: 500 } });
       const failed = await request(app).get('/api/notifications').set('x-access-token', oidcToken);
-      expect(failed.statusCode).toBe(502);
-      expect(failed.body.type).toBe('https://auth.startcloud.com/probs/internal');
+      expect(failed.statusCode).toBe(500);
+      expect(failed.body).toEqual({});
 
       axiosGet.mockRejectedValue(new Error('ECONNREFUSED'));
       const unreachable = await request(app)
         .get('/api/notifications')
         .set('x-access-token', oidcToken);
       expect(unreachable.statusCode).toBe(502);
+      expect(unreachable.headers['content-type']).toContain('application/problem+json');
+      expect(unreachable.body.type).toBe('https://auth.startcloud.com/probs/bad-gateway');
+      expect(unreachable.body.title).toBe('The service behind this request could not be reached.');
     });
 
     it('should mark one notification read and refresh the unread count', async () => {

@@ -5,6 +5,7 @@ const FORMS = [
   'login',
   'register',
   'displayName',
+  'profile',
   'password',
   'email',
   'serviceAccount',
