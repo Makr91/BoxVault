@@ -2410,6 +2410,35 @@ describe('Middleware Tests', () => {
     });
 
     // oidcTokenRefresh.js coverage
+    const expiringSession = () =>
+      jwt.sign(
+        {
+          id: 1,
+          provider: 'oidc-test',
+          oidc_expires_at: Date.now() + 60 * 1000,
+          oidc_refresh_token: 'rt',
+        },
+        'test-secret',
+        JWT_CLAIM_OPTIONS
+      );
+
+    const refreshAuthConfig = (method = 'client_secret_basic') => ({
+      auth: {
+        jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
+        oidc: {
+          token_refresh_threshold_minutes: 5,
+          token_default_expiry_minutes: 30,
+          providers: {
+            test: {
+              client_id: 'id',
+              client_secret: 'secret',
+              token_endpoint_auth_method: method,
+            },
+          },
+        },
+      },
+    });
+
     it('oidcTokenRefresh should skip if no token', async () => {
       req.headers['x-access-token'] = undefined;
       await oidcTokenRefresh(req, res, next);
@@ -2441,35 +2470,6 @@ describe('Middleware Tests', () => {
       await oidcTokenRefresh(req, res, next);
       expect(next).toHaveBeenCalled();
       expect(axios.post).not.toHaveBeenCalled();
-    });
-
-    const expiringSession = () =>
-      jwt.sign(
-        {
-          id: 1,
-          provider: 'oidc-test',
-          oidc_expires_at: Date.now() + 60 * 1000,
-          oidc_refresh_token: 'rt',
-        },
-        'test-secret',
-        JWT_CLAIM_OPTIONS
-      );
-
-    const refreshAuthConfig = (method = 'client_secret_basic') => ({
-      auth: {
-        jwt: { jwt_secret: 'test-secret', jwt_expiration: '1h' },
-        oidc: {
-          token_refresh_threshold_minutes: 5,
-          token_default_expiry_minutes: 30,
-          providers: {
-            test: {
-              client_id: 'id',
-              client_secret: 'secret',
-              token_endpoint_auth_method: method,
-            },
-          },
-        },
-      },
     });
 
     it('oidcTokenRefresh should continue on the old token when the provider is not discovered', async () => {
