@@ -68,7 +68,11 @@ const appConfig = {
         pack: 'testpack',
       },
       collections: ['downloads'],
-      links: { docs: 'https://docs.test', contact: 'help@test' },
+      links: {
+        docs: 'https://docs.test',
+        contact: 'help@test',
+        community: [{ label: 'Test forum', url: 'https://forum.test' }],
+      },
     },
     'face.test': {
       collections: ['downloads'],

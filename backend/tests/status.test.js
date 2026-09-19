@@ -18,8 +18,14 @@ const DEFAULT_FEATURES = [
   'notifications',
   'health',
   'footer',
+  'sidebar',
   'search',
   'events',
+];
+
+const DEFAULT_COMMUNITY = [
+  { label: 'Sponsor BoxVault', url: 'https://github.com/sponsors/Makr91' },
+  { label: 'Makr91 on GitHub', url: 'https://github.com/Makr91' },
 ];
 
 const FACE_FEATURES = [
@@ -45,10 +51,11 @@ describe('GET /api/status per Host', () => {
     expect(res.body.collections).toEqual(['boxes', 'isos', 'downloads']);
     expect(res.body.brand).toEqual({
       name: 'BoxVault',
-      logoUrl: '/brand/boxvault.svg',
+      logo_url: '/brand/boxvault.svg',
       repo: 'https://github.com/Makr91/BoxVault',
+      changelog: 'https://github.com/Makr91/BoxVault/releases',
     });
-    expect(res.body.links).toEqual({ docs: '/docs', contact: '' });
+    expect(res.body.links).toEqual({ docs: '/docs', contact: '', community: DEFAULT_COMMUNITY });
     expect(res.body.features).toEqual(DEFAULT_FEATURES);
   });
 
@@ -59,12 +66,17 @@ describe('GET /api/status per Host', () => {
     expect(res.body.collections).toEqual(['downloads']);
     expect(res.body.brand).toEqual({
       name: 'Test Downloads',
-      logoUrl: '/brand/test.svg',
+      logo_url: '/brand/test.svg',
       repo: 'https://github.com/Makr91/BoxVault',
+      changelog: 'https://github.com/Makr91/BoxVault/releases',
       theme: 'dark',
       pack: { name: 'testpack', css: '/themes/testpack/testpack.css' },
     });
-    expect(res.body.links).toEqual({ docs: 'https://docs.test', contact: 'help@test' });
+    expect(res.body.links).toEqual({
+      docs: 'https://docs.test',
+      contact: 'help@test',
+      community: [{ label: 'Test forum', url: 'https://forum.test' }],
+    });
     expect(res.body.features).toEqual(plain.body.features);
     expect(res.body.config).toEqual(plain.body.config);
   });
@@ -75,6 +87,7 @@ describe('GET /api/status per Host', () => {
     expect(res.body.collections).toEqual(['downloads']);
     expect(res.body.features).toEqual(FACE_FEATURES);
     expect(res.body.brand.name).toBe('BoxVault');
+    expect(res.body.links.community).toEqual(DEFAULT_COMMUNITY);
 
     const plain = await request(app).get('/api/status');
     expect(plain.body.features).toEqual(DEFAULT_FEATURES);

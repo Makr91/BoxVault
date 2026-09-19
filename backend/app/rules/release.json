@@ -8,6 +8,7 @@
       "pattern": "\\S",
       "unique": "download"
     },
+    "download": { "$ref": "#/$defs/slug" },
     "description": { "type": "string" },
     "release_notes": { "type": "string" },
     "deprecated": { "type": "boolean" },

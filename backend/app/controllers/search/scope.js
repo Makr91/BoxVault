@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { isoWhereFor, resolveIsoViewer } from '../iso/visibility.js';
 import { downloadWhereFor } from '../download/visibility.js';
+import { uploaderOrgIds } from '../../utils/orgMembership.js';
 
 const { user: User, role: Role, Sequelize, sequelize } = db;
 const { Op } = Sequelize;
@@ -97,9 +98,8 @@ const boxWhereFor = viewer => {
     [Op.or]: [
       { published: true, isPublic: true },
       { published: true, organizationId: { [Op.in]: viewer.orgIds } },
-      { organizationId: { [Op.in]: viewer.orgIds }, userId: viewer.userId },
       { published: true, guestAccess: true, organizationId: { [Op.in]: viewer.guestOrgIds } },
-      { organizationId: { [Op.in]: viewer.guestOrgIds }, userId: viewer.userId },
+      { organizationId: { [Op.in]: uploaderOrgIds(viewer) }, userId: viewer.userId },
     ],
   };
 };

@@ -206,6 +206,109 @@ describe('Download release API', () => {
     expect(conflict.statusCode).toBe(409);
   });
 
+  it('should move a release to another product of the organization with its files', async () => {
+    const targetName = 'notes-designer';
+    await request(app)
+      .post(`/api/organization/${orgName}/download`)
+      .set('x-access-token', ownerToken)
+      .send({ name: targetName, published: true })
+      .expect(201);
+    const target = await db.download.findOne({
+      where: { name: targetName, organizationId: org.id },
+    });
+    const release = await db.downloadReleases.findOne({ where: { versionNumber: '14.5' } });
+    const patch = await db.downloadPatches.create({
+      name: 'release',
+      kind: 'release',
+      downloadReleaseId: release.id,
+    });
+    fs.mkdirSync(getSecureDownloadPath(orgName, productName, '14.5', 'release'), {
+      recursive: true,
+    });
+    fs.writeFileSync(getSecureDownloadPath(orgName, productName, '14.5', 'release', 'a.bin'), 'a');
+    const file = await db.downloadFiles.create({
+      key: 'a.bin',
+      fileName: 'a.bin',
+      fileSize: 1,
+      storagePath: `${orgName}/downloads/${productName}/14.5/release/a.bin`,
+      downloadPatchId: patch.id,
+    });
+
+    const unknown = await request(app)
+      .put(`${productBase}/release/14.5`)
+      .set('x-access-token', ownerToken)
+      .send({ download: 'no-such-product' });
+    expect(unknown.statusCode).toBe(404);
+
+    const notASlug = await request(app)
+      .put(`${productBase}/release/14.5`)
+      .set('x-access-token', ownerToken)
+      .send({ download: 'bad name' });
+    expect(notASlug.statusCode).toBe(422);
+    expect(notASlug.body.errors).toEqual([
+      expect.objectContaining({
+        pointer: '/download',
+        rule: 'pattern',
+        params: { pattern: 'slug' },
+      }),
+    ]);
+
+    const asMember = await request(app)
+      .put(`${productBase}/release/14.5`)
+      .set('x-access-token', memberToken)
+      .send({ download: targetName });
+    expect(asMember.statusCode).toBe(403);
+
+    const moved = await request(app)
+      .put(`${productBase}/release/14.5`)
+      .set('x-access-token', ownerToken)
+      .send({ download: targetName });
+    expect(moved.statusCode).toBe(200);
+    expect(moved.body.downloadId).toBe(target.id);
+    expect(moved.body.versionNumber).toBe('14.5');
+    expect(
+      fs.existsSync(getSecureDownloadPath(orgName, targetName, '14.5', 'release', 'a.bin'))
+    ).toBe(true);
+    expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5'))).toBe(false);
+    await file.reload();
+    expect(file.storagePath).toBe(`${orgName}/downloads/${targetName}/14.5/release/a.bin`);
+
+    const gone = await request(app)
+      .get(`${productBase}/release/14.5`)
+      .set('x-access-token', memberToken);
+    expect(gone.statusCode).toBe(404);
+    const arrived = await request(app)
+      .get(`/api/organization/${orgName}/download/${targetName}/release/14.5`)
+      .set('x-access-token', memberToken);
+    expect(arrived.statusCode).toBe(200);
+
+    await request(app)
+      .post(`${productBase}/release`)
+      .set('x-access-token', ownerToken)
+      .send({ version_number: '14.5' })
+      .expect(201);
+    const taken = await request(app)
+      .put(`${productBase}/release/14.5`)
+      .set('x-access-token', ownerToken)
+      .send({ download: targetName });
+    expect(taken.statusCode).toBe(409);
+    expect(taken.body.errors).toEqual([
+      expect.objectContaining({
+        pointer: '/version_number',
+        rule: 'unique',
+        params: { scope: targetName },
+      }),
+    ]);
+
+    const renamedIn = await request(app)
+      .put(`${productBase}/release/14.5`)
+      .set('x-access-token', ownerToken)
+      .send({ download: targetName, version_number: '14.5-again' });
+    expect(renamedIn.statusCode).toBe(200);
+    expect(renamedIn.body.downloadId).toBe(target.id);
+    expect(fs.existsSync(getSecureDownloadPath(orgName, targetName, '14.5-again'))).toBe(true);
+  });
+
   it('should delete a release and answer 404 afterwards', async () => {
     const asMember = await request(app)
       .delete(`${productBase}/release/14.5.2`)

@@ -3,7 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
-import { isGuestOf } from '../../utils/orgMembership.js';
+import { isGuestOf, uploaderOrgIds } from '../../utils/orgMembership.js';
 import { boxWithCounts } from './helpers.js';
 const { box: Box, versions, providers, architectures, files, user, organization, Sequelize } = db;
 const { Op } = Sequelize;
@@ -49,9 +49,8 @@ export const discoverAll = async (req, res) => {
         [Op.or]: [
           { published: true, isPublic: true },
           { published: true, organizationId: { [Op.in]: viewer.orgIds } },
-          { organizationId: { [Op.in]: viewer.orgIds }, userId: viewer.userId },
           { published: true, guestAccess: true, organizationId: { [Op.in]: viewer.guestOrgIds } },
-          { organizationId: { [Op.in]: viewer.guestOrgIds }, userId: viewer.userId },
+          { organizationId: { [Op.in]: uploaderOrgIds(viewer) }, userId: viewer.userId },
         ],
       };
     }

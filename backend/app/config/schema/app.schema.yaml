@@ -647,6 +647,7 @@ properties:
               - notifications
               - health
               - footer
+              - sidebar
               - search
               - events
           title: Features
@@ -672,5 +673,28 @@ properties:
               type: string
               title: Contact address
               order: 8
+            community:
+              type: array
+              title: Community links
+              description: The community and support links the About page draws for this hostname, in order; absent answers BoxVault's own
+              order: 9
+              items:
+                type: object
+                title: Community link
+                required:
+                  - label
+                  - url
+                properties:
+                  label:
+                    type: string
+                    title: Label
+                    description: The text drawn for the link, as it is
+                    order: 1
+                  url:
+                    type: string
+                    format: uri
+                    pattern: '^https://'
+                    title: URL
+                    order: 2
     propertyNames:
       pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$'

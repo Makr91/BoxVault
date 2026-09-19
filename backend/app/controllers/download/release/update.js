@@ -1,17 +1,70 @@
 import fs from 'fs';
+import { dirname } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
 import { conflict, problem } from '../../../utils/problem.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
-const { downloadReleases: DownloadRelease } = db;
+const { download: Download, downloadReleases: DownloadRelease } = db;
+
+const forbidden = (req, res) =>
+  problem(res, req, {
+    status: 403,
+    type: 'forbidden',
+    title: req.__('downloads.permissionDenied'),
+  });
+
+const resolveTarget = async (req, res, membership) => {
+  const { organization } = req.params;
+  const { organizationData, downloadData: download } = req;
+  const targetName = req.body.download;
+  if (targetName === undefined || targetName === download.name) {
+    return download;
+  }
+  const target = await Download.findOne({
+    where: { name: targetName, organizationId: organizationData.id },
+  });
+  if (!target) {
+    problem(res, req, {
+      status: 404,
+      type: 'not-found',
+      title: req.__('downloads.notFoundWithName', { name: targetName, organization }),
+    });
+    return null;
+  }
+  if (!canWriteDownload(req, target, membership)) {
+    forbidden(req, res);
+    return null;
+  }
+  return target;
+};
+
+const releasePayload = body => {
+  const payload = {};
+  if (body.version_number) {
+    payload.versionNumber = body.version_number;
+  }
+  if (typeof body.description !== 'undefined') {
+    payload.description = body.description;
+  }
+  if (typeof body.release_notes !== 'undefined') {
+    payload.releaseNotes = body.release_notes;
+  }
+  if (typeof body.deprecated !== 'undefined') {
+    payload.deprecated = body.deprecated;
+  }
+  if (typeof body.deprecation_reason !== 'undefined') {
+    payload.deprecationReason = body.deprecation_reason;
+  }
+  return payload;
+};
 
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}:
  *   put:
- *     summary: Update a release of a download product
- *     description: The product's owner, or an admin or owner of the organization, may update a release; a service account acts inside its own organization at its effective role.
+ *     summary: Update a release of a download product, or move it to another product
+ *     description: The product's owner, or an admin or owner of the organization, may update a release; a service account acts inside its own organization at its effective role. A `download` member naming another product of the same organization moves the release there with its patches and files, the caller having to be allowed to write both products; the directory moves with it and every file keeps downloading.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -44,6 +97,9 @@ const { downloadReleases: DownloadRelease } = db;
  *               version_number:
  *                 type: string
  *                 description: The new release identifier (the identifier pattern of /api/rules, unique in the product)
+ *               download:
+ *                 type: string
+ *                 description: The product of the same organization the release moves to (the slug pattern of /api/rules); absent or the current product leaves it in place
  *               description:
  *                 type: string
  *               release_notes:
@@ -62,11 +118,11 @@ const { downloadReleases: DownloadRelease } = db;
  *       200:
  *         description: Release updated successfully
  *       403:
- *         description: The caller may not write the product
+ *         description: The caller may not write the product, or the target product
  *       404:
- *         description: Organization, product or release not found
+ *         description: Organization, product, release or target product not found
  *       409:
- *         description: A release with the new identifier already exists for the product
+ *         description: A release with the identifier already exists in the product it would sit in
  *         content:
  *           application/problem+json:
  *             schema:
@@ -82,30 +138,14 @@ const { downloadReleases: DownloadRelease } = db;
  */
 const update = async (req, res) => {
   const { organization, versionNumber } = req.params;
-  const {
-    version_number: newVersionNumber,
-    description,
-    release_notes: releaseNotes,
-    deprecated,
-    deprecation_reason: deprecationReason,
-  } = req.body;
+  const { version_number: newVersionNumber } = req.body;
 
   try {
     const { organizationData, downloadData: download } = req;
-    const oldFilePath = getSecureDownloadPath(organization, download.name, versionNumber);
-    const newFilePath = getSecureDownloadPath(
-      organization,
-      download.name,
-      newVersionNumber || versionNumber
-    );
 
     const membership = await resolveOrgMembership(req, organizationData.id);
     if (!canWriteDownload(req, download, membership)) {
-      return problem(res, req, {
-        status: 403,
-        type: 'forbidden',
-        title: req.__('downloads.permissionDenied'),
-      });
+      return forbidden(req, res);
     }
 
     const release = await DownloadRelease.findOne({
@@ -119,42 +159,38 @@ const update = async (req, res) => {
       });
     }
 
-    if (newVersionNumber && newVersionNumber !== versionNumber) {
+    const target = await resolveTarget(req, res, membership);
+    if (!target) {
+      return undefined;
+    }
+    const finalVersionNumber = newVersionNumber || versionNumber;
+    const moving = target.id !== download.id;
+
+    if (moving || finalVersionNumber !== versionNumber) {
       const existingRelease = await DownloadRelease.findOne({
-        where: { versionNumber: newVersionNumber, downloadId: download.id },
+        where: { versionNumber: finalVersionNumber, downloadId: target.id },
       });
       if (existingRelease) {
-        return conflict(res, req, '/version_number', download.name);
+        return conflict(res, req, '/version_number', target.name);
       }
     }
 
-    const updatePayload = {};
-    if (newVersionNumber) {
-      updatePayload.versionNumber = newVersionNumber;
-    }
-    if (typeof description !== 'undefined') {
-      updatePayload.description = description;
-    }
-    if (typeof releaseNotes !== 'undefined') {
-      updatePayload.releaseNotes = releaseNotes;
-    }
-    if (typeof deprecated !== 'undefined') {
-      updatePayload.deprecated = deprecated;
-    }
-    if (typeof deprecationReason !== 'undefined') {
-      updatePayload.deprecationReason = deprecationReason;
-    }
+    const updatedRelease = await release.update({
+      ...releasePayload(req.body),
+      ...(moving ? { downloadId: target.id } : {}),
+    });
 
-    const updatedRelease = await release.update(updatePayload);
-
+    const oldFilePath = getSecureDownloadPath(organization, download.name, versionNumber);
+    const newFilePath = getSecureDownloadPath(organization, target.name, finalVersionNumber);
     if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
       if (fs.existsSync(newFilePath)) {
         fs.rmSync(newFilePath, { recursive: true, force: true });
       }
+      fs.mkdirSync(dirname(newFilePath), { recursive: true });
       fs.renameSync(oldFilePath, newFilePath);
       await renameStoragePaths(
         storagePathFor(organization, download.name, versionNumber),
-        storagePathFor(organization, download.name, newVersionNumber)
+        storagePathFor(organization, target.name, finalVersionNumber)
       );
     }
 

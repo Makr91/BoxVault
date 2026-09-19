@@ -15,8 +15,9 @@ const STATUS = {
   version,
   brand: {
     name: 'BoxVault',
-    logoUrl: '/brand/boxvault.svg',
+    logo_url: '/brand/boxvault.svg',
     repo: 'https://github.com/Makr91/BoxVault',
+    changelog: 'https://github.com/Makr91/BoxVault/releases',
   },
   collections: ['boxes', 'isos', 'downloads'],
   config: ['app', 'auth', 'db', 'mail'],
@@ -33,18 +34,26 @@ const STATUS = {
     'notifications',
     'health',
     'footer',
+    'sidebar',
     'search',
     'events',
   ],
   events: { path: '/api/events', topics: ['session', 'notifications', 'health'] },
-  links: { docs: '/docs', contact: '' },
+  links: {
+    docs: '/docs',
+    contact: '',
+    community: [
+      { label: 'Sponsor BoxVault', url: 'https://github.com/sponsors/Makr91' },
+      { label: 'Makr91 on GitHub', url: 'https://github.com/Makr91' },
+    ],
+  },
   ticket: null,
 };
 
 /**
  * The browser OIDC client of the first enabled provider, in map order
  * @param {Object} providers - The auth.oidc.providers map, defaults filled
- * @returns {{issuer: string, clientId: string, scopes: string, storagePrefix: string}|null} The idp block, or null without an enabled provider
+ * @returns {{issuer: string, client_id: string, scopes: string, storage_prefix: string}|null} The idp block, or null without an enabled provider
  */
 const enabledIdp = providers => {
   const provider = Object.values(providers).find(entry => entry.enabled === true && entry.issuer);
@@ -53,9 +62,9 @@ const enabledIdp = providers => {
   }
   return {
     issuer: provider.issuer,
-    clientId: provider.client_id,
+    client_id: provider.client_id,
     scopes: provider.scope,
-    storagePrefix: STORAGE_PREFIX,
+    storage_prefix: STORAGE_PREFIX,
   };
 };
 
@@ -68,7 +77,8 @@ const packOf = site => {
 
 /**
  * The brand, collections and links of one hostname: the sites map entry over
- * the defaults, the defaults alone for the unnamed hostname
+ * the defaults, the defaults alone for the unnamed hostname; a site's
+ * links.community replaces the default list whole
  * @param {Object|null} site - The sites map entry
  * @returns {{brand: Object, collections: string[], links: Object}} The per-host members
  */
@@ -82,7 +92,7 @@ const faceOf = site => {
     brand: {
       ...STATUS.brand,
       name: site.brand?.name || STATUS.brand.name,
-      logoUrl: site.brand?.logo_url || STATUS.brand.logoUrl,
+      logo_url: site.brand?.logo_url || STATUS.brand.logo_url,
       ...(theme ? { theme } : {}),
       ...(pack ? { pack } : {}),
     },
@@ -90,6 +100,7 @@ const faceOf = site => {
     links: {
       docs: site.links?.docs ?? STATUS.links.docs,
       contact: site.links?.contact ?? STATUS.links.contact,
+      community: site.links?.community ?? STATUS.links.community,
     },
   };
 };
@@ -115,7 +126,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections and links are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections, links (its community list included) and features are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -134,18 +145,22 @@ const featuresOf = (site, localEnabled) => {
  *                   example: "0.77.0"
  *                 brand:
  *                   type: object
- *                   required: [name, logoUrl, repo]
+ *                   required: [name, logo_url, repo, changelog]
  *                   properties:
  *                     name:
  *                       type: string
  *                       example: BoxVault
- *                     logoUrl:
+ *                     logo_url:
  *                       type: string
  *                       description: Path this host serves the brand mark from
  *                       example: /brand/boxvault.svg
  *                     repo:
  *                       type: string
  *                       example: https://github.com/Makr91/BoxVault
+ *                     changelog:
+ *                       type: string
+ *                       description: The releases page the About page's Changelog button opens
+ *                       example: https://github.com/Makr91/BoxVault/releases
  *                     theme:
  *                       type: string
  *                       description: The site's default variant, present when the hostname's sites entry names one
@@ -172,19 +187,19 @@ const featuresOf = (site, localEnabled) => {
  *                 idp:
  *                   type: object
  *                   description: The browser OIDC client, present only when auth is idp; taken from the first enabled entry of auth.oidc.providers in map order
- *                   required: [issuer, clientId, scopes, storagePrefix]
+ *                   required: [issuer, client_id, scopes, storage_prefix]
  *                   properties:
  *                     issuer:
  *                       type: string
  *                       example: https://auth.example.com
- *                     clientId:
+ *                     client_id:
  *                       type: string
  *                       example: boxvault
  *                     scopes:
  *                       type: string
  *                       description: Space-separated scopes requested at authorization
  *                       example: openid profile email
- *                     storagePrefix:
+ *                     storage_prefix:
  *                       type: string
  *                       description: Prefix of the browser storage keys the UI keeps the session under
  *                       example: boxvault
@@ -202,10 +217,10 @@ const featuresOf = (site, localEnabled) => {
  *                   example: [app, auth, db, mail]
  *                 features:
  *                   type: array
- *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path. Answered per Host header from the sites map, a site entry without a features list answering every token above and a site entry with one answering exactly the tokens it lists, local-accounts among them only while listed and auth.jwt.local_enabled is on
+ *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; sidebar gates the sidebar column, every group and tree the mounted features export, without it no column and the brand stays in the header; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path. Answered per Host header from the sites map, a site entry without a features list answering every token above and a site entry with one answering exactly the tokens it lists, local-accounts among them only while listed and auth.jwt.local_enabled is on
  *                   items:
  *                     type: string
- *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, footer, search, events]
+ *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, footer, sidebar, search, events]
  *                 events:
  *                   type: object
  *                   required: [path, topics]
@@ -222,7 +237,7 @@ const featuresOf = (site, localEnabled) => {
  *                       example: [session, notifications, health]
  *                 links:
  *                   type: object
- *                   required: [docs, contact]
+ *                   required: [docs, contact, community]
  *                   properties:
  *                     docs:
  *                       type: string
@@ -230,6 +245,22 @@ const featuresOf = (site, localEnabled) => {
  *                     contact:
  *                       type: string
  *                       example: ""
+ *                     community:
+ *                       type: array
+ *                       description: The community and support links the About page draws after the repository, the changelog and the contact address, in this order; answered per Host header, a sites entry's links.community replacing the defaults whole
+ *                       items:
+ *                         type: object
+ *                         required: [label, url]
+ *                         properties:
+ *                           label:
+ *                             type: string
+ *                             description: The host's own text, drawn as it is
+ *                             example: Sponsor BoxVault
+ *                           url:
+ *                             type: string
+ *                             format: uri
+ *                             description: An https URL
+ *                             example: https://github.com/sponsors/Makr91
  *                 ticket:
  *                   type: object
  *                   nullable: true

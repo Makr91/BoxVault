@@ -194,15 +194,39 @@ const resolveViewer = async caller => {
 
 /**
  * Whether the caller owns a box: a user by the box's userId, a service account
- * by its owner's userId while it is a member of the box's organization, never
- * outside that organization.
+ * by its creator's userId while it writes in the box's organization, never as
+ * a guest seat and never outside that organization.
  * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
  * @param {{userId: number}} box - The box
  * @param {{role: string}|null} membership - The caller's membership in the box's organization
  * @returns {boolean} True when the caller owns the box
  */
 const ownsBox = (caller, box, membership) =>
-  box.userId === caller.userId && (!caller.isServiceAccount || Boolean(membership));
+  box.userId === caller.userId && (!caller.isServiceAccount || canWriteInOrg(membership));
+
+/**
+ * Whether a viewer uploaded an item and may read it unpublished: a user by the
+ * item's userId, a service account by its creator's userId only while it
+ * writes in the item's organization, so a guest-role key never reads its
+ * creator's private items.
+ * @param {{userId: number, isServiceAccount: boolean, orgIds: number[]}|null} viewer - From resolveViewer
+ * @param {{userId: number, organizationId: number}} item - The box, ISO or download row
+ * @returns {boolean} True when the viewer uploaded the item
+ */
+const uploadedBy = (viewer, item) =>
+  Boolean(viewer) &&
+  item.userId === viewer.userId &&
+  (!viewer.isServiceAccount || viewer.orgIds.includes(item.organizationId));
+
+/**
+ * The organizations whose unpublished items the viewer reads as their
+ * uploader: every organization for a user, the writing ones alone for a
+ * service account.
+ * @param {{isServiceAccount: boolean, orgIds: number[], guestOrgIds: number[]}} viewer - From resolveViewer
+ * @returns {number[]} Organization ids
+ */
+const uploaderOrgIds = viewer =>
+  viewer.isServiceAccount ? viewer.orgIds : [...viewer.orgIds, ...viewer.guestOrgIds];
 
 /**
  * Whether the caller may write a box and its tree: a writing member of its
@@ -219,15 +243,15 @@ const canWriteBox = (caller, box, membership) =>
 
 /**
  * Whether the caller owns a download: a user by the download's userId, a
- * service account by its owner's userId while it is a member of the
- * download's organization, never outside that organization.
+ * service account by its creator's userId while it writes in the download's
+ * organization, never as a guest seat and never outside that organization.
  * @param {{userId: number, isServiceAccount?: boolean}} caller - The caller
  * @param {{userId: number}} download - The download
  * @param {{role: string}|null} membership - The caller's membership in the download's organization
  * @returns {boolean} True when the caller owns the download
  */
 const ownsDownload = (caller, download, membership) =>
-  download.userId === caller.userId && (!caller.isServiceAccount || Boolean(membership));
+  download.userId === caller.userId && (!caller.isServiceAccount || canWriteInOrg(membership));
 
 /**
  * Whether the caller may write a download and its tree: a writing member of
@@ -268,6 +292,8 @@ export {
   resolveOrgMembership,
   resolveViewer,
   ownsBox,
+  uploadedBy,
+  uploaderOrgIds,
   canWriteBox,
   ownsDownload,
   canWriteDownload,

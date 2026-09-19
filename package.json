@@ -22,6 +22,8 @@
     "lint:all": "npm run lint:backend",
     "lint": "npm run lint:all",
     "lint:fix:all": "npm run lint:backend:fix",
+    "test:backend": "cd backend && npm test",
+    "test": "npm run test:backend",
     "format:check": "prettier --check .",
     "format:fix": "prettier --write ."
   },

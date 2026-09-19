@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
-import { resolveViewer } from '../../utils/orgMembership.js';
+import { resolveViewer, uploadedBy, uploaderOrgIds } from '../../utils/orgMembership.js';
 import {
   extractBearerToken,
   findServiceAccountByRawToken,
@@ -42,8 +42,10 @@ const resolveDownloadViewer = async req => {
  * The where clause for the downloads a viewer may list: anyone sees public
  * published downloads, a member sees every published download of their
  * organizations plus the unpublished ones they created, a guest sees the
- * published downloads flagged for guests plus the ones they created.
- * @param {{userId: number, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveDownloadViewer
+ * published downloads flagged for guests plus the ones they created; a
+ * service account reads its creator's unpublished downloads only where it
+ * writes.
+ * @param {{userId: number, isServiceAccount: boolean, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveDownloadViewer
  * @param {number} [organizationId] - Limit to one organization
  * @returns {Object} Sequelize where clause
  */
@@ -58,7 +60,7 @@ const downloadWhereFor = (viewer, organizationId) => {
         [Op.or]: [
           PUBLIC_DOWNLOAD,
           { published: true, guestAccess: true },
-          { userId: viewer.userId },
+          ...(viewer.isServiceAccount ? [] : [{ userId: viewer.userId }]),
         ],
       };
     }
@@ -71,34 +73,31 @@ const downloadWhereFor = (viewer, organizationId) => {
     [Op.or]: [
       PUBLIC_DOWNLOAD,
       { published: true, organizationId: { [Op.in]: viewer.orgIds } },
-      { organizationId: { [Op.in]: viewer.orgIds }, userId: viewer.userId },
       { published: true, guestAccess: true, organizationId: { [Op.in]: viewer.guestOrgIds } },
-      { organizationId: { [Op.in]: viewer.guestOrgIds }, userId: viewer.userId },
+      { organizationId: { [Op.in]: uploaderOrgIds(viewer) }, userId: viewer.userId },
     ],
   };
 };
 
 /**
  * Whether a viewer may read one download: public and published, a member of
- * its organization when it is published or the viewer created it, a guest of
+ * its organization when it is published or the viewer uploaded it, a guest of
  * its organization when it is published and flagged for guests or the viewer
- * created it.
- * @param {{userId: number, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveDownloadViewer
+ * uploaded it.
+ * @param {{userId: number, isServiceAccount: boolean, orgIds: number[], guestOrgIds: number[]}|null} viewer - From resolveDownloadViewer
  * @param {Object} download - The download row
  * @returns {boolean} True when the download is visible to the viewer
  */
 const canSeeDownload = (viewer, download) =>
   Boolean(download.isPublic && download.published) ||
-  Boolean(
-    viewer &&
-    viewer.orgIds.includes(download.organizationId) &&
-    (download.published || download.userId === viewer.userId)
-  ) ||
+  Boolean(viewer && viewer.orgIds.includes(download.organizationId) && download.published) ||
   Boolean(
     viewer &&
     viewer.guestOrgIds.includes(download.organizationId) &&
-    ((download.published && download.guestAccess) || download.userId === viewer.userId)
-  );
+    download.published &&
+    download.guestAccess
+  ) ||
+  uploadedBy(viewer, download);
 
 /**
  * Whether a viewer is a writing member of an organization, the rule the

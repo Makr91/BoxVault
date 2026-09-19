@@ -2,9 +2,10 @@ import fs from 'fs';
 import { join } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canReadInOrg, resolveOrgMembership } from '../../../utils/orgMembership.js';
+import { resolveViewer } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { getIsoStorageRoot } from '../helpers.js';
+import { canSeeIso, resolveIsoViewer } from '../visibility.js';
 const { isoFiles: IsoFile } = db;
 
 const forbidden = (req, res, key) =>
@@ -18,7 +19,7 @@ const fileNotFound = (req, res) =>
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/download:
  *   get:
  *     summary: Download an ISO file
- *     description: Stream the ISO file of one architecture of a version, with range support. Public, published ISOs can be downloaded by anyone; any other ISO requires a download token scoped to this file or a writing membership of the organization, a guest of the organization downloading it only while the ISO is published and flagged for guests, a service account being a member of its own organization only.
+ *     description: Stream the ISO file of one architecture of a version, with range support. Public, published ISOs can be downloaded by anyone; any other ISO requires a download token scoped to this file or the same visibility as the ISO itself, a writing member of the organization while it is published, its uploader always, a guest of the organization only while it is published and flagged for guests, a service account being a member of its own organization only.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -97,8 +98,10 @@ const download = async (req, res) => {
         return forbidden(req, res, 'files.download.unauthorized');
       }
 
-      const membership = await resolveOrgMembership(req, iso.organizationId);
-      if (!canReadInOrg(membership, iso)) {
+      const viewer = req.downloadTokenDecoded
+        ? await resolveViewer({ userId })
+        : await resolveIsoViewer(req);
+      if (!canSeeIso(viewer, iso)) {
         return forbidden(req, res, 'files.download.unauthorized');
       }
     }

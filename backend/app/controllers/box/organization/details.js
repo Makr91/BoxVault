@@ -8,6 +8,7 @@ import {
 } from '../../../utils/serviceAccountAuth.js';
 import {
   canReadInOrg,
+  canWriteInOrg,
   isGuestMembership,
   resolveOrgMembership,
 } from '../../../utils/orgMembership.js';
@@ -184,7 +185,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
       ],
     });
 
-    const ownsBoxes = Boolean(userId) && (!isServiceAccount || Boolean(membership));
+    const ownsBoxes = Boolean(userId) && (!isServiceAccount || canWriteInOrg(membership));
     const counted = !isGuestMembership(membership);
 
     boxes = boxes.filter(box => {
