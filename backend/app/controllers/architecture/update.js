@@ -6,9 +6,11 @@ import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import {
   canWriteBox,
+  cascadeBeneath,
   resolveOrgMembership,
   visibilityOf,
   widerThanParent,
+  wordsBeneath,
 } from '../../utils/orgMembership.js';
 const { architectures: Architecture } = db;
 
@@ -17,7 +19,7 @@ const { architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
  *   put:
  *     summary: Update an architecture by name
- *     description: Update an architecture's properties including name, default status and the visibility words is_public, guest_access and published, a word wider than the provider answered 422. Also handles file system directory renaming when architecture name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update an architecture's properties including name, default status and the visibility words is_public, guest_access and published, a word wider than the provider answered 422. A word turned off is turned off on the file beneath the architecture as well; a word turned on reaches it only while recursive is true. Also handles file system directory renaming when architecture name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -84,6 +86,9 @@ const { architectures: Architecture } = db;
  *               published:
  *                 type: boolean
  *                 description: Never wider than the provider
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry the words turned on in this request down to the file beneath; words turned off always go down
  *     responses:
  *       200:
  *         description: Architecture updated successfully
@@ -124,7 +129,7 @@ const { architectures: Architecture } = db;
  */
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
-  const { name, description, default_box: defaultBox } = req.body;
+  const { name, description, default_box: defaultBox, recursive } = req.body;
 
   const oldFilePath = getSecureBoxPath(
     organization,
@@ -222,6 +227,11 @@ export const update = async (req, res) => {
       const updatedArchitecture = await Architecture.findOne({
         where: { name: name || architectureName, providerId: provider.id },
       });
+      await cascadeBeneath(
+        'architecture',
+        [updatedArchitecture.id],
+        wordsBeneath(visibility, recursive === true)
+      );
       return res.send(updatedArchitecture);
     }
 

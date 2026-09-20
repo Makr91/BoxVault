@@ -1,24 +1,16 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { VISIBILITY_CHANGES, cascadeBeneath, wordsBeneath } from '../../utils/orgMembership.js';
 import { removeUnreferencedIsoFiles } from './helpers.js';
 import { notifyIsoPublished } from './notifications.js';
 const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
-
-const CHANGES = {
-  make_public: { isPublic: true },
-  make_private: { isPublic: false },
-  publish: { published: true },
-  unpublish: { published: false },
-  allow_guests: { guestAccess: true },
-  deny_guests: { guestAccess: false },
-};
 
 /**
  * @swagger
  * /api/organization/{organization}/iso/bulk:
  *   post:
  *     summary: One action across a selection of ISOs
- *     description: Each row is isolated; an admin or owner of the organization acts on every row, a missing ISO is counted as skipped and named in errors with not_found, a thrown row with internal. A delete removes the versions and file records the way the single delete does.
+ *     description: Each row is isolated; an admin or owner of the organization acts on every row, a missing ISO is counted as skipped and named in errors with not_found, a thrown row with internal. A closing verb (make_private, unpublish, deny_guests) closes every version and file beneath each ISO as well; an opening verb reaches them only while recursive is true. A delete removes the versions and file records the way the single delete does.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -46,6 +38,9 @@ const CHANGES = {
  *                 items:
  *                   type: string
  *                 description: ISO names
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every row beneath each ISO; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -65,7 +60,7 @@ const CHANGES = {
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { action, names } = req.body;
+  const { action, names, recursive } = req.body;
   const errors = [];
   let processed = 0;
 
@@ -92,7 +87,9 @@ const bulk = async (req, res) => {
       return null;
     }
     const wasPublished = iso.published;
-    const updatedIso = await iso.update(CHANGES[action]);
+    const change = VISIBILITY_CHANGES[action];
+    const updatedIso = await iso.update(change);
+    await cascadeBeneath('iso', [iso.id], wordsBeneath(change, recursive === true));
     if (updatedIso.published && !wasPublished) {
       const organizationData = await Organization.findByPk(updatedIso.organizationId);
       notifyIsoPublished(organizationData, updatedIso);

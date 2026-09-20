@@ -4,8 +4,10 @@ import { log } from '../../../utils/Logger.js';
 import {
   VISIBILITY_CHANGES,
   canWriteDownload,
+  cascadeBeneath,
   resolveOrgMembership,
   widerThanParent,
+  wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { getSecureDownloadPath, removeDownloadFiles } from '../helpers.js';
@@ -20,7 +22,7 @@ const {
  * /api/organization/{organization}/download/{name}/release/bulk:
  *   post:
  *     summary: One action across a selection of releases of a download product
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing release is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the release wider than its product with forbidden. A delete removes patches, file records and the directory the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing release is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the release wider than its product with forbidden. A closing verb closes every patch and file beneath each release as well; an opening verb reaches them only while recursive is true. A delete removes patches, file records and the directory the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -58,6 +60,9 @@ const {
  *                 type: string
  *                 maxLength: 512
  *                 description: Required while action is deprecate
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every row beneath each release; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -78,7 +83,7 @@ const {
  */
 const bulk = async (req, res) => {
   const { organization } = req.params;
-  const { action, names, deprecation_reason: deprecationReason } = req.body;
+  const { action, names, deprecation_reason: deprecationReason, recursive } = req.body;
   const { organizationData, downloadData: download } = req;
 
   const membership = await resolveOrgMembership(req, organizationData.id);
@@ -130,6 +135,7 @@ const bulk = async (req, res) => {
       return 'forbidden';
     }
     await release.update(change);
+    await cascadeBeneath('release', [release.id], wordsBeneath(change, recursive === true));
     return null;
   };
 

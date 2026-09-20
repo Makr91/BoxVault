@@ -7,6 +7,7 @@
     "is_public": { "type": "boolean" },
     "published": { "type": "boolean" },
     "guest_access": { "type": "boolean" },
+    "recursive": { "type": "boolean" },
     "family": { "type": "string" },
     "vendor": { "type": "string" },
     "docs_url": { "type": "string", "format": "uri" },

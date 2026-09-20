@@ -4,9 +4,11 @@ import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import {
   canWriteDownload,
+  cascadeBeneath,
   resolveOrgMembership,
   visibilityOf,
   widerThanParent,
+  wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
@@ -69,7 +71,7 @@ const releasePayload = body => {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}:
  *   put:
  *     summary: Update a release of a download product, or move it to another product
- *     description: The product's owner, or an admin or owner of the organization, may update a release; a service account acts inside its own organization at its effective role. A `download` member naming another product of the same organization moves the release there with its patches and files, the caller having to be allowed to write both products; the directory moves with it and every file keeps downloading. The release may never stand wider than the product it sits in, a wider is_public, guest_access or published answering 422 with the pointer.
+ *     description: The product's owner, or an admin or owner of the organization, may update a release; a service account acts inside its own organization at its effective role. A `download` member naming another product of the same organization moves the release there with its patches and files, the caller having to be allowed to write both products; the directory moves with it and every file keeps downloading. The release may never stand wider than the product it sits in, a wider is_public, guest_access or published answering 422 with the pointer. A word turned off is turned off on every patch and file beneath the release as well; a word turned on reaches them only while recursive is true.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -120,6 +122,9 @@ const releasePayload = body => {
  *               published:
  *                 type: boolean
  *                 description: An unpublished release is readable by the product's writers alone (absent = unchanged)
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry the words turned on in this request down to every row beneath the release; words turned off always go down
  *               deprecated:
  *                 type: boolean
  *                 description: Setting true requires a non-empty deprecation_reason in this request
@@ -199,6 +204,11 @@ const update = async (req, res) => {
       ...payload,
       ...(moving ? { downloadId: target.id } : {}),
     });
+    await cascadeBeneath(
+      'release',
+      [release.id],
+      wordsBeneath(visibilityOf(req.body), req.body.recursive === true)
+    );
 
     const oldFilePath = getSecureDownloadPath(organization, download.name, versionNumber);
     const newFilePath = getSecureDownloadPath(organization, target.name, finalVersionNumber);

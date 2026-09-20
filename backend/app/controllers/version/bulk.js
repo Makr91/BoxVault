@@ -5,8 +5,10 @@ import db from '../../models/index.js';
 import {
   VISIBILITY_CHANGES,
   canWriteBox,
+  cascadeBeneath,
   resolveOrgMembership,
   widerThanParent,
+  wordsBeneath,
 } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import { notifyVersionDeprecated } from './notifications.js';
@@ -17,7 +19,7 @@ const { versions: Version } = db;
  * /api/organization/{organization}/box/{boxId}/version/bulk:
  *   post:
  *     summary: One action across a selection of versions of a box
- *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing version is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the version wider than its box with forbidden. A deprecate carries the required deprecation_reason as the single update does.
+ *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing version is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the version wider than its box with forbidden. A closing verb closes every provider, architecture and file beneath each version as well; an opening verb reaches them only while recursive is true. A deprecate carries the required deprecation_reason as the single update does.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -55,6 +57,9 @@ const { versions: Version } = db;
  *                 type: string
  *                 maxLength: 512
  *                 description: Required while action is deprecate
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every row beneath each version; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -83,7 +88,7 @@ const { versions: Version } = db;
  */
 const bulk = async (req, res) => {
   const { organization, boxId } = req.params;
-  const { action, names, deprecation_reason: deprecationReason } = req.body;
+  const { action, names, deprecation_reason: deprecationReason, recursive } = req.body;
   const { organizationData, boxData: box } = req;
 
   const membership = await resolveOrgMembership(req, organizationData.id);
@@ -121,6 +126,7 @@ const bulk = async (req, res) => {
         return 'forbidden';
       }
       await version.update(change);
+      await cascadeBeneath('version', [version.id], wordsBeneath(change, recursive === true));
       return null;
     }
     const becomesDeprecated = !version.deprecated;

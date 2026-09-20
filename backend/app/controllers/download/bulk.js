@@ -1,6 +1,7 @@
 import fs from 'fs';
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { VISIBILITY_CHANGES, cascadeBeneath, wordsBeneath } from '../../utils/orgMembership.js';
 import { getSecureDownloadPath, removeDownloadFiles } from './helpers.js';
 import { notifyDownloadPublished } from './notifications.js';
 const {
@@ -11,21 +12,12 @@ const {
   organization: Organization,
 } = db;
 
-const CHANGES = {
-  make_public: { isPublic: true },
-  make_private: { isPublic: false },
-  publish: { published: true },
-  unpublish: { published: false },
-  allow_guests: { guestAccess: true },
-  deny_guests: { guestAccess: false },
-};
-
 /**
  * @swagger
  * /api/organization/{organization}/download/bulk:
  *   post:
  *     summary: One action across a selection of download products
- *     description: Each row is isolated and checked against the single route's permission (the product's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A delete removes releases, patches, file records and the directory the way the single delete does.
+ *     description: Each row is isolated and checked against the single route's permission (the product's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A closing verb (make_private, unpublish, deny_guests) closes every release, patch and file beneath each product as well; an opening verb reaches them only while recursive is true. A delete removes releases, patches, file records and the directory the way the single delete does.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -53,6 +45,9 @@ const CHANGES = {
  *                 items:
  *                   type: string
  *                 description: Product names
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every row beneath each product; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -73,7 +68,7 @@ const CHANGES = {
  */
 const bulk = async (req, res) => {
   const { organization } = req.params;
-  const { action, names } = req.body;
+  const { action, names, recursive } = req.body;
   const errors = [];
   let processed = 0;
 
@@ -118,7 +113,9 @@ const bulk = async (req, res) => {
       return null;
     }
     const wasPublished = download.published;
-    const updatedDownload = await download.update(CHANGES[action]);
+    const change = VISIBILITY_CHANGES[action];
+    const updatedDownload = await download.update(change);
+    await cascadeBeneath('download', [download.id], wordsBeneath(change, recursive === true));
     if (updatedDownload.published && !wasPublished) {
       const organizationData = await Organization.findByPk(updatedDownload.organizationId);
       notifyDownloadPublished(organizationData, updatedDownload);

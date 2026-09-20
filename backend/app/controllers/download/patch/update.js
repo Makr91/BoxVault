@@ -3,9 +3,11 @@ import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import {
   canWriteDownload,
+  cascadeBeneath,
   resolveOrgMembership,
   visibilityOf,
   widerThanParent,
+  wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
@@ -16,7 +18,7 @@ const { downloadPatches: DownloadPatch } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}:
  *   put:
  *     summary: Update a patch of a release
- *     description: Update a patch's name, kind, description, release date, notes link or visibility. A rename moves its directory. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role. The patch may never stand wider than its release, a wider is_public, guest_access or published answering 422 with the pointer.
+ *     description: Update a patch's name, kind, description, release date, notes link or visibility. A rename moves its directory. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role. The patch may never stand wider than its release, a wider is_public, guest_access or published answering 422 with the pointer. A word turned off is turned off on every file beneath the patch as well; a word turned on reaches them only while recursive is true.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -78,6 +80,9 @@ const { downloadPatches: DownloadPatch } = db;
  *               published:
  *                 type: boolean
  *                 description: An unpublished patch is readable by the product's writers alone (absent = unchanged)
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry the words turned on in this request down to every file beneath; words turned off always go down
  *     responses:
  *       200:
  *         description: Patch updated successfully
@@ -106,7 +111,14 @@ const { downloadPatches: DownloadPatch } = db;
  */
 const update = async (req, res) => {
   const { organization, patch: patchName } = req.params;
-  const { name, kind, description, released_at: releasedAt, notes_url: notesUrl } = req.body;
+  const {
+    name,
+    kind,
+    description,
+    released_at: releasedAt,
+    notes_url: notesUrl,
+    recursive,
+  } = req.body;
 
   try {
     const { organizationData, downloadData: download, releaseData: release, patchData } = req;
@@ -157,7 +169,8 @@ const update = async (req, res) => {
     if (typeof notesUrl !== 'undefined') {
       updatePayload.notesUrl = notesUrl === '' ? null : notesUrl;
     }
-    Object.assign(updatePayload, visibilityOf(req.body));
+    const visibility = visibilityOf(req.body);
+    Object.assign(updatePayload, visibility);
 
     const wider = widerThanParent({ ...patchData.get({ plain: true }), ...updatePayload }, release);
     if (wider) {
@@ -165,6 +178,7 @@ const update = async (req, res) => {
     }
 
     const updatedPatch = await patchData.update(updatePayload);
+    await cascadeBeneath('patch', [patchData.id], wordsBeneath(visibility, recursive === true));
 
     if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
       if (fs.existsSync(newFilePath)) {

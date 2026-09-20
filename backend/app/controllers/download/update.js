@@ -2,6 +2,7 @@ import fs from 'fs';
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
+import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
 import {
   getSecureDownloadPath,
   isReservedProductName,
@@ -23,7 +24,7 @@ const linkOf = (value, current) => {
  * /api/organization/{organization}/download/{name}:
  *   put:
  *     summary: Update a download product
- *     description: Update the name, description, visibility, publication state, family, vendor or links of a download product. Absent fields stay unchanged. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update the name, description, visibility, publication state, family, vendor or links of a download product. Absent fields stay unchanged. A visibility word turned off is turned off on every release, patch and file beneath the product as well; a word turned on reaches them only while recursive is true. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -59,6 +60,9 @@ const linkOf = (value, current) => {
  *               published:
  *                 type: boolean
  *                 description: An unpublished product is visible to its creator alone
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry the visibility words turned on in this request down to every row beneath the product; words turned off always go down
  *               family:
  *                 type: string
  *               vendor:
@@ -109,6 +113,7 @@ const update = async (req, res) => {
     published,
     is_public: isPublic,
     guest_access: guestAccess,
+    recursive,
     family,
     vendor,
     docs_url: docsUrl,
@@ -182,6 +187,11 @@ const update = async (req, res) => {
       notesUrl: linkOf(notesUrl, download.notesUrl),
       iconUrl: linkOf(iconUrl, download.iconUrl),
     });
+    await cascadeBeneath(
+      'download',
+      [download.id],
+      wordsBeneath(visibilityOf(body), recursive === true)
+    );
 
     if (updatedDownload.published && !wasPublished) {
       const organizationData = await Organization.findByPk(updatedDownload.organizationId);

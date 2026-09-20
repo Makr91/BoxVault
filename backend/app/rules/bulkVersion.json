@@ -18,7 +18,8 @@
       ]
     },
     "names": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-    "deprecation_reason": { "type": "string", "maxLength": 512 }
+    "deprecation_reason": { "type": "string", "maxLength": 512 },
+    "recursive": { "type": "boolean" }
   },
   "if": { "properties": { "action": { "const": "deprecate" } }, "required": ["action"] },
   "then": { "required": ["deprecation_reason"] }

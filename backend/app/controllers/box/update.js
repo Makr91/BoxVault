@@ -4,6 +4,7 @@ import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
+import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
 const { box: Box } = db;
 
@@ -12,7 +13,7 @@ const { box: Box } = db;
  * /api/organization/{organization}/box/{name}:
  *   put:
  *     summary: Update a box
- *     description: Update box information including name, description, and visibility settings
+ *     description: Update box information including name, description, and visibility settings. A visibility word turned off is turned off on every version, provider, architecture and file beneath the box as well; a word turned on reaches them only while recursive is true.
  *     tags: [Boxes]
  *     security:
  *       - bearerAuth: []
@@ -51,6 +52,9 @@ const { box: Box } = db;
  *               guest_access:
  *                 type: boolean
  *                 description: Whether guests of the organization may read the box while it is published
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry the visibility words turned on in this request down to every row beneath the box; words turned off always go down
  *               github_repo:
  *                 type: string
  *                 description: GitHub repository building the box
@@ -120,6 +124,7 @@ export const update = async (req, res) => {
     published,
     is_public,
     guest_access,
+    recursive,
     github_repo,
     workflow_file,
     cicd_url,
@@ -199,6 +204,7 @@ export const update = async (req, res) => {
       // Content fields carry only the keys present in the body (absent = unchanged)
       ...contentFields,
     });
+    await cascadeBeneath('box', [box.id], wordsBeneath(visibilityOf(req.body), recursive === true));
 
     return res.send(updatedBox);
   } catch (err) {

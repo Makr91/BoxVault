@@ -6,9 +6,11 @@ import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import {
   canWriteBox,
+  cascadeBeneath,
   resolveOrgMembership,
   visibilityOf,
   widerThanParent,
+  wordsBeneath,
 } from '../../utils/orgMembership.js';
 const { providers: Provider } = db;
 
@@ -17,7 +19,7 @@ const { providers: Provider } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   put:
  *     summary: Update a provider by name
- *     description: Update a provider's properties including name, description and the visibility words is_public, guest_access and published, a word wider than the version answered 422. Also handles file system directory renaming when provider name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update a provider's properties including name, description and the visibility words is_public, guest_access and published, a word wider than the version answered 422. A word turned off is turned off on every architecture and file beneath the provider as well; a word turned on reaches them only while recursive is true. Also handles file system directory renaming when provider name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -102,7 +104,7 @@ const { providers: Provider } = db;
  */
 export const update = async (req, res) => {
   const { organization, boxId, versionNumber, providerName } = req.params;
-  const { name, description } = req.body;
+  const { name, description, recursive } = req.body;
   const oldFilePath = getSecureBoxPath(organization, boxId, versionNumber, providerName);
   const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, name || providerName);
 
@@ -180,6 +182,11 @@ export const update = async (req, res) => {
       const updatedProvider = await Provider.findOne({
         where: { name: name || providerName, versionId: version.id },
       });
+      await cascadeBeneath(
+        'provider',
+        [updatedProvider.id],
+        wordsBeneath(visibility, recursive === true)
+      );
       return res.send(updatedProvider);
     }
 

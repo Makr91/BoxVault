@@ -142,6 +142,9 @@
  *         published:
  *           type: boolean
  *           description: An unpublished version is readable by the box's writers alone (absent = unchanged)
+ *         recursive:
+ *           type: boolean
+ *           description: Carry the words turned on in this request down to every provider, architecture and file beneath; words turned off always go down
  *         deprecated:
  *           type: boolean
  *           description: Whether the version is deprecated. Setting true requires a non-empty deprecation_reason in this request.

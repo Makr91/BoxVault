@@ -87,6 +87,9 @@
  *         published:
  *           type: boolean
  *           description: Never wider than the version
+ *         recursive:
+ *           type: boolean
+ *           description: Carry the words turned on in this request down to every architecture and file beneath; words turned off always go down
  *       example:
  *         name: "virtualbox"
  *         description: "Updated VirtualBox provider"

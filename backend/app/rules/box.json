@@ -7,6 +7,7 @@
     "is_public": { "type": "boolean" },
     "published": { "type": "boolean" },
     "guest_access": { "type": "boolean" },
+    "recursive": { "type": "boolean" },
     "github_repo": { "type": "string" },
     "workflow_file": { "type": "string" },
     "cicd_url": { "type": "string", "format": "uri" }

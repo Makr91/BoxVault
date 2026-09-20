@@ -3,8 +3,10 @@ import db from '../../models/index.js';
 import {
   VISIBILITY_CHANGES,
   canWriteBox,
+  cascadeBeneath,
   resolveOrgMembership,
   widerThanParent,
+  wordsBeneath,
 } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 const { architectures: Architecture } = db;
@@ -14,7 +16,7 @@ const { architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/bulk:
  *   post:
  *     summary: One action across a selection of architectures of a provider
- *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing architecture is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the architecture wider than its provider with forbidden.
+ *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing architecture is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the architecture wider than its provider with forbidden. A closing verb closes the file beneath each architecture as well; an opening verb reaches it only while recursive is true.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -60,6 +62,9 @@ const { architectures: Architecture } = db;
  *                 items:
  *                   type: string
  *                 description: Architecture names
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to the file beneath each architecture; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -87,7 +92,7 @@ const { architectures: Architecture } = db;
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { action, names } = req.body;
+  const { action, names, recursive } = req.body;
   const { organizationData, boxData: box, providerData: provider } = req;
 
   const membership = await resolveOrgMembership(req, organizationData.id);
@@ -120,6 +125,11 @@ const bulk = async (req, res) => {
       return 'forbidden';
     }
     await architecture.update(change);
+    await cascadeBeneath(
+      'architecture',
+      [architecture.id],
+      wordsBeneath(change, recursive === true)
+    );
     return null;
   };
 

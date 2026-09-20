@@ -1,6 +1,11 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { VISIBILITY_CHANGES, widerThanParent } from '../../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  cascadeBeneath,
+  widerThanParent,
+  wordsBeneath,
+} from '../../../utils/orgMembership.js';
 import { removeUnreferencedIsoFiles } from '../helpers.js';
 const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
@@ -9,7 +14,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/bulk:
  *   post:
  *     summary: One action across a selection of versions of an ISO
- *     description: An admin or owner of the organization acts on every row; each row is isolated, a missing version is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the version wider than its ISO with forbidden. A delete removes the file records the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
+ *     description: An admin or owner of the organization acts on every row; each row is isolated, a missing version is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the version wider than its ISO with forbidden. A closing verb closes every file beneath each version as well; an opening verb reaches them only while recursive is true. A delete removes the file records the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -47,6 +52,9 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  *                 type: string
  *                 maxLength: 512
  *                 description: Required while action is deprecate
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every file beneath each version; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -66,7 +74,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { action, names, deprecation_reason: deprecationReason } = req.body;
+  const { action, names, deprecation_reason: deprecationReason, recursive } = req.body;
   const { isoData: iso } = req;
   const errors = [];
   let processed = 0;
@@ -94,6 +102,7 @@ const bulk = async (req, res) => {
       return 'forbidden';
     }
     await version.update(change);
+    await cascadeBeneath('isoVersion', [version.id], wordsBeneath(change, recursive === true));
     return null;
   };
 

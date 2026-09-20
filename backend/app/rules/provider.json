@@ -6,6 +6,7 @@
     "description": { "type": "string" },
     "is_public": { "type": "boolean" },
     "guest_access": { "type": "boolean" },
-    "published": { "type": "boolean" }
+    "published": { "type": "boolean" },
+    "recursive": { "type": "boolean" }
   }
 }

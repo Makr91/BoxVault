@@ -162,6 +162,25 @@ describe('GET /api/rules', () => {
       expect(document.forms[form].properties.guest_access).toEqual({ type: 'boolean' });
       expect(document.forms[form].properties.published).toEqual({ type: 'boolean' });
     });
+    [
+      'box',
+      'iso',
+      'download',
+      'version',
+      'release',
+      'patch',
+      'provider',
+      'architecture',
+      'bulkItem',
+      'bulkVersion',
+      'bulkPatch',
+      'bulkLeaf',
+    ].forEach(form => {
+      expect(document.forms[form].properties.recursive).toEqual({ type: 'boolean' });
+    });
+    ['downloadFile', 'boxFile', 'isoFile'].forEach(form => {
+      expect(Object.hasOwn(document.forms[form].properties, 'recursive')).toBe(false);
+    });
     expect(document.forms.patch.properties.kind.enum).toEqual([
       'release',
       'fixpack',

@@ -2,6 +2,7 @@ import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from '../box/helpers.js';
+import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
 import { notifyIsoPublished } from './notifications.js';
 const { iso: ISO, organization: Organization } = db;
 
@@ -10,7 +11,7 @@ const { iso: ISO, organization: Organization } = db;
  * /api/organization/{organization}/iso/{name}:
  *   put:
  *     summary: Update ISO details
- *     description: Update the name, description, visibility, publication state or metadata of an ISO. Absent fields stay unchanged.
+ *     description: Update the name, description, visibility, publication state or metadata of an ISO. Absent fields stay unchanged. A visibility word turned off is turned off on every version and file beneath the ISO as well; a word turned on reaches them only while recursive is true.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -46,6 +47,9 @@ const { iso: ISO, organization: Organization } = db;
  *               published:
  *                 type: boolean
  *                 description: Unpublished ISOs are visible to organization members only
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry the visibility words turned on in this request down to every row beneath the ISO; words turned off always go down
  *               metadata:
  *                 type: object
  *                 nullable: true
@@ -79,6 +83,7 @@ const update = async (req, res) => {
     published,
     is_public: isPublic,
     guest_access: guestAccess,
+    recursive,
   } = body;
 
   const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(body);
@@ -113,6 +118,7 @@ const update = async (req, res) => {
       guestAccess: guestAccess !== undefined ? guestAccess : iso.guestAccess,
       ...(Object.hasOwn(contentFields, 'metadata') ? { metadata: contentFields.metadata } : {}),
     });
+    await cascadeBeneath('iso', [iso.id], wordsBeneath(visibilityOf(body), recursive === true));
 
     if (updatedIso.published && !wasPublished) {
       const organizationData = await Organization.findByPk(updatedIso.organizationId);

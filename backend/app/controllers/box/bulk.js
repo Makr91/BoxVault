@@ -2,23 +2,15 @@ import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { VISIBILITY_CHANGES, cascadeBeneath, wordsBeneath } from '../../utils/orgMembership.js';
 const { box: Box } = db;
-
-const CHANGES = {
-  make_public: { isPublic: true },
-  make_private: { isPublic: false },
-  publish: { published: true },
-  unpublish: { published: false },
-  allow_guests: { guestAccess: true },
-  deny_guests: { guestAccess: false },
-};
 
 /**
  * @swagger
  * /api/organization/{organization}/box/bulk:
  *   post:
  *     summary: One action across a selection of boxes
- *     description: Each row is isolated and checked against the single route's permission (the box's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal).
+ *     description: Each row is isolated and checked against the single route's permission (the box's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A closing verb (make_private, unpublish, deny_guests) closes every row beneath each box as well; an opening verb reaches them only while recursive is true.
  *     tags: [Boxes]
  *     security:
  *       - bearerAuth: []
@@ -46,6 +38,9 @@ const CHANGES = {
  *                 items:
  *                   type: string
  *                 description: Box names
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every row beneath each box; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -94,7 +89,7 @@ const CHANGES = {
  */
 const bulk = async (req, res) => {
   const { organization } = req.params;
-  const { action, names } = req.body;
+  const { action, names, recursive } = req.body;
   const errors = [];
   let processed = 0;
 
@@ -119,7 +114,9 @@ const bulk = async (req, res) => {
       }
       return null;
     }
-    await box.update(CHANGES[action]);
+    const change = VISIBILITY_CHANGES[action];
+    await box.update(change);
+    await cascadeBeneath('box', [box.id], wordsBeneath(change, recursive === true));
     return null;
   };
 

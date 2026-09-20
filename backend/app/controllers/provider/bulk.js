@@ -5,8 +5,10 @@ import db from '../../models/index.js';
 import {
   VISIBILITY_CHANGES,
   canWriteBox,
+  cascadeBeneath,
   resolveOrgMembership,
   widerThanParent,
+  wordsBeneath,
 } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 const { providers: Provider, architectures: Architecture } = db;
@@ -16,7 +18,7 @@ const { providers: Provider, architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/bulk:
  *   post:
  *     summary: One action across a selection of providers of a version
- *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing provider is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the provider wider than its version with forbidden. A delete removes the provider's architectures and directories the way the single delete does.
+ *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing provider is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the provider wider than its version with forbidden. A closing verb closes every architecture and file beneath each provider as well; an opening verb reaches them only while recursive is true. A delete removes the provider's architectures and directories the way the single delete does.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -56,6 +58,9 @@ const { providers: Provider, architectures: Architecture } = db;
  *                 items:
  *                   type: string
  *                 description: Provider names
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every row beneath each provider; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -84,7 +89,7 @@ const { providers: Provider, architectures: Architecture } = db;
  */
 const bulk = async (req, res) => {
   const { organization, boxId, versionNumber } = req.params;
-  const { action, names } = req.body;
+  const { action, names, recursive } = req.body;
   const { organizationData, boxData: box, versionData: version } = req;
 
   const membership = await resolveOrgMembership(req, organizationData.id);
@@ -112,6 +117,7 @@ const bulk = async (req, res) => {
         return 'forbidden';
       }
       await provider.update(change);
+      await cascadeBeneath('provider', [provider.id], wordsBeneath(change, recursive === true));
       return null;
     }
     const architectures = await Architecture.findAll({ where: { providerId: provider.id } });

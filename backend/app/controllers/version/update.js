@@ -6,9 +6,11 @@ import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import {
   canWriteBox,
+  cascadeBeneath,
   resolveOrgMembership,
   visibilityOf,
   widerThanParent,
+  wordsBeneath,
 } from '../../utils/orgMembership.js';
 import { notifyVersionDeprecated } from './notifications.js';
 const { versions: Version } = db;
@@ -18,7 +20,7 @@ const { versions: Version } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}:
  *   put:
  *     summary: Update a specific version of a box
- *     description: The box owner, or an admin or owner of the organization, may update a version; a service account acts inside its own organization at its effective role. The version may never stand wider than its box, a wider is_public, guest_access or published answering 422 with the pointer.
+ *     description: The box owner, or an admin or owner of the organization, may update a version; a service account acts inside its own organization at its effective role. The version may never stand wider than its box, a wider is_public, guest_access or published answering 422 with the pointer. A word turned off is turned off on every provider, architecture and file beneath the version as well; a word turned on reaches them only while recursive is true.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -93,6 +95,7 @@ export const update = async (req, res) => {
     release_notes: releaseNotes,
     deprecated,
     deprecation_reason: deprecationReason,
+    recursive,
   } = req.body;
   const oldFilePath = getSecureBoxPath(organization, boxId, versionNumber);
   // Use the new version number for the path if it's provided, otherwise use the old one.
@@ -156,7 +159,8 @@ export const update = async (req, res) => {
     if (typeof deprecationReason !== 'undefined') {
       updatePayload.deprecationReason = deprecationReason;
     }
-    Object.assign(updatePayload, visibilityOf(req.body));
+    const visibility = visibilityOf(req.body);
+    Object.assign(updatePayload, visibility);
 
     const wider = widerThanParent({ ...version.get({ plain: true }), ...updatePayload }, box);
     if (wider) {
@@ -164,6 +168,7 @@ export const update = async (req, res) => {
     }
 
     const updated = await version.update(updatePayload);
+    await cascadeBeneath('version', [version.id], wordsBeneath(visibility, recursive === true));
 
     if (updated) {
       // Rename the directory if necessary

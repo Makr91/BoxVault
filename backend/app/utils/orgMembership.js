@@ -428,6 +428,54 @@ const widerThanParent = (child, parent) => {
   return null;
 };
 
+const BENEATH = {
+  box: ['versions', 'boxId', 'version'],
+  version: ['providers', 'versionId', 'provider'],
+  provider: ['architectures', 'providerId', 'architecture'],
+  architecture: ['files', 'architectureId', null],
+  iso: ['isoVersions', 'isoId', 'isoVersion'],
+  isoVersion: ['isoFiles', 'isoVersionId', null],
+  download: ['downloadReleases', 'downloadId', 'release'],
+  release: ['downloadPatches', 'downloadReleaseId', 'patch'],
+  patch: ['downloadFiles', 'downloadPatchId', null],
+};
+
+/**
+ * The words a write carries down its subtree: every word turned off always,
+ * the words turned on as well when the request asked for the subtree.
+ * @param {{isPublic?: boolean, guestAccess?: boolean, published?: boolean}} words - The words written on the row
+ * @param {boolean} recursive - The request's recursive word
+ * @returns {{isPublic?: boolean, guestAccess?: boolean, published?: boolean}} The words to carry down
+ */
+const wordsBeneath = (words, recursive) =>
+  recursive ? words : Object.fromEntries(Object.entries(words).filter(([, on]) => on === false));
+
+/**
+ * Write words on every row beneath the given rows of a level, one update
+ * per level down to the files; nothing when no words or no rows are given.
+ * @param {string} level - box, version, provider, architecture, iso, isoVersion, download, release or patch
+ * @param {number[]} ids - The ids of the rows at that level
+ * @param {{isPublic?: boolean, guestAccess?: boolean, published?: boolean}} words - The words to write beneath
+ * @returns {Promise<void>}
+ */
+const cascadeBeneath = async (level, ids, words) => {
+  const step = BENEATH[level];
+  if (!step || ids.length === 0 || Object.keys(words).length === 0) {
+    return;
+  }
+  const [model, foreignKey, next] = step;
+  const Model = db[model];
+  await Model.update(words, { where: { [foreignKey]: ids } });
+  if (next) {
+    const rows = await Model.findAll({ where: { [foreignKey]: ids }, attributes: ['id'] });
+    await cascadeBeneath(
+      next,
+      rows.map(row => row.id),
+      words
+    );
+  }
+};
+
 export {
   TIER,
   VISIBILITY_CHANGES,
@@ -438,6 +486,8 @@ export {
   visibilityOf,
   visibilityOfQuery,
   widerThanParent,
+  wordsBeneath,
+  cascadeBeneath,
   ORG_ROLES,
   ROLE_RANK,
   lowerRole,

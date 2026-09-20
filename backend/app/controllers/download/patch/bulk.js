@@ -4,8 +4,10 @@ import { log } from '../../../utils/Logger.js';
 import {
   VISIBILITY_CHANGES,
   canWriteDownload,
+  cascadeBeneath,
   resolveOrgMembership,
   widerThanParent,
+  wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { getSecureDownloadPath, removeDownloadFiles } from '../helpers.js';
@@ -16,7 +18,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/bulk:
  *   post:
  *     summary: One action across a selection of patches of a release
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing patch is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the patch wider than its release with forbidden. A delete removes the file records and the directory the way the single delete does, a shared file handing its bytes to one of its links first.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing patch is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the patch wider than its release with forbidden. A closing verb closes every file beneath each patch as well; an opening verb reaches them only while recursive is true. A delete removes the file records and the directory the way the single delete does, a shared file handing its bytes to one of its links first.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -56,6 +58,9 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  *                 items:
  *                   type: string
  *                 description: Patch names
+ *               recursive:
+ *                 type: boolean
+ *                 description: Carry an opening verb down to every file beneath each patch; a closing verb always goes down
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -76,7 +81,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  */
 const bulk = async (req, res) => {
   const { organization } = req.params;
-  const { action, names } = req.body;
+  const { action, names, recursive } = req.body;
   const { organizationData, downloadData: download, releaseData: release } = req;
 
   const membership = await resolveOrgMembership(req, organizationData.id);
@@ -104,6 +109,7 @@ const bulk = async (req, res) => {
         return 'forbidden';
       }
       await patch.update(change);
+      await cascadeBeneath('patch', [patch.id], wordsBeneath(change, recursive === true));
       return null;
     }
     const files = await DownloadFile.findAll({ where: { downloadPatchId: patch.id } });
