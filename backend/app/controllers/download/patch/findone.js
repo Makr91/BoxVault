@@ -1,7 +1,7 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility.js';
+import { canSeeDownload, canSeePatch, isMemberOf, resolveDownloadViewer } from '../visibility.js';
 import { filesWithCounts } from '../helpers.js';
 const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
 
@@ -10,7 +10,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}:
  *   get:
  *     summary: Get a patch of a release
- *     description: Retrieve one patch of a release with its files. The product must be visible to the caller.
+ *     description: Retrieve one patch of a release with its files. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -54,7 +54,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  */
 const findOne = async (req, res) => {
   try {
-    const { downloadData: download, patchData } = req;
+    const { downloadData: download, releaseData: release, patchData } = req;
 
     const viewer = await resolveDownloadViewer(req);
     if (!canSeeDownload(viewer, download)) {
@@ -62,6 +62,13 @@ const findOne = async (req, res) => {
         status: 403,
         type: 'forbidden',
         title: req.__('providers.unauthorized'),
+      });
+    }
+    if (!canSeePatch(viewer, download, release, patchData)) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('downloads.patches.notFound'),
       });
     }
 

@@ -10,6 +10,9 @@
     },
     "description": { "type": "string" },
     "release_notes": { "type": "string" },
+    "is_public": { "type": "boolean" },
+    "guest_access": { "type": "boolean" },
+    "published": { "type": "boolean" },
     "deprecated": { "type": "boolean" },
     "deprecation_reason": { "type": "string", "maxLength": 512 }
   },

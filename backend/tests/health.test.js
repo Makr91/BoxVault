@@ -229,6 +229,7 @@ const mockIsoHelpers = {
   sumIsoDownloads: jest.fn().mockReturnValue(0),
   isoFilesWithCounts: jest.fn().mockReturnValue([]),
   isoVersionsWithCounts: jest.fn().mockReturnValue([]),
+  isoVersionsWithinReach: jest.fn().mockReturnValue([]),
   isoWithCounts: jest.fn().mockReturnValue({}),
   removeUnreferencedIsoFiles: jest.fn(),
 };

@@ -1,7 +1,13 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility.js';
+import {
+  canSeeDownload,
+  canSeePatch,
+  canSeeRelease,
+  isMemberOf,
+  resolveDownloadViewer,
+} from '../visibility.js';
 import { filesWithCounts } from '../helpers.js';
 const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
 
@@ -10,7 +16,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch:
  *   get:
  *     summary: List the patches of a release
- *     description: Retrieve every patch of a release with its files. The product must be visible to the caller.
+ *     description: Retrieve the patches of a release within the caller's reach, each with its files. The product must be visible to the caller; a release beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -59,6 +65,14 @@ const findAll = async (req, res) => {
       });
     }
 
+    if (!canSeeRelease(viewer, download, release)) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('downloads.releases.notFound'),
+      });
+    }
+
     const patches = await DownloadPatch.findAll({
       where: { downloadReleaseId: release.id },
       include: [{ model: DownloadFile, as: 'files' }],
@@ -67,10 +81,12 @@ const findAll = async (req, res) => {
 
     const member = isMemberOf(viewer, download.organizationId);
     return res.send(
-      patches.map(patch => ({
-        ...patch.toJSON(),
-        files: filesWithCounts(patch.files, member),
-      }))
+      patches
+        .filter(patch => canSeePatch(viewer, download, release, patch))
+        .map(patch => ({
+          ...patch.toJSON(),
+          files: filesWithCounts(patch.files, member),
+        }))
     );
   } catch (err) {
     log.error.error('Error retrieving download patches', err);

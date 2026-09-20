@@ -8,9 +8,16 @@ const mockLog = {
 
 const mockDb = {
   user: { findOne: jest.fn(), findByPk: jest.fn(), create: jest.fn() },
+  role: { findOne: jest.fn() },
   credential: { findOne: jest.fn(), findByIssuerAndSubject: jest.fn(), create: jest.fn() },
   organization: { findOne: jest.fn(), findByPk: jest.fn() },
   UserOrg: { findUserOrgRole: jest.fn(), setPrimaryOrganization: jest.fn() },
+};
+
+const USER_ROLE = { id: 1, name: 'user' };
+
+const mockConfigLoader = {
+  loadConfig: jest.fn().mockReturnValue({ auth: { external: {} } }),
 };
 
 const mockScimError = jest.fn((res, status, detail, scimType = null) =>
@@ -24,6 +31,10 @@ const mockScimError = jest.fn((res, status, detail, scimType = null) =>
 
 jest.unstable_mockModule('../app/utils/Logger.js', () => ({ log: mockLog }));
 jest.unstable_mockModule('../app/models/index.js', () => ({ default: mockDb }));
+jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
+  ...mockConfigLoader,
+  default: mockConfigLoader,
+}));
 jest.unstable_mockModule('../app/middleware/scimAuth.js', () => ({
   scimAuth: jest.fn(),
   scimError: mockScimError,
@@ -106,6 +117,7 @@ describe('SCIM Users receiver', () => {
     mockDb.user.findByPk.mockResolvedValue(storedUser);
     mockDb.credential.findByIssuerAndSubject.mockResolvedValue(null);
     mockDb.user.findOne.mockResolvedValue(null);
+    mockDb.role.findOne.mockResolvedValue(USER_ROLE);
     mockDb.organization.findOne.mockResolvedValue(null);
     mockDb.organization.findByPk.mockResolvedValue(null);
   });
@@ -628,17 +640,30 @@ describe('SCIM Users receiver', () => {
   });
 
   describe('POST /scim/v2/Users', () => {
+    const createdUsers = [];
+
+    const buildCreatedUser = (id, attributes) => {
+      const created = {
+        id,
+        createdAt: new Date('2026-02-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-02-01T00:00:00.000Z'),
+        ...attributes,
+      };
+      created.update = jest.fn();
+      created.getRoles = jest.fn().mockResolvedValue([]);
+      created.setRoles = jest.fn().mockResolvedValue(undefined);
+      createdUsers.push(created);
+      return created;
+    };
+
+    beforeEach(() => {
+      createdUsers.length = 0;
+    });
+
     it('should provision the parsed desired state verbatim', async () => {
-      mockDb.user.create.mockImplementation(attributes => {
-        const created = {
-          id: 11,
-          createdAt: new Date('2026-02-01T00:00:00.000Z'),
-          updatedAt: new Date('2026-02-01T00:00:00.000Z'),
-          ...attributes,
-        };
-        created.update = jest.fn();
-        return Promise.resolve(created);
-      });
+      mockDb.user.create.mockImplementation(attributes =>
+        Promise.resolve(buildCreatedUser(11, attributes))
+      );
       mockDb.credential.create.mockResolvedValue({});
       const res = buildResponse();
 
@@ -678,12 +703,63 @@ describe('SCIM Users receiver', () => {
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
-    it('should fall back to the email when the resource carries no userName', async () => {
-      mockDb.user.create.mockImplementation(attributes => {
-        const created = { id: 12, createdAt: new Date(), updatedAt: new Date(), ...attributes };
-        created.update = jest.fn();
-        return Promise.resolve(created);
+    it('should give a created user the default global role', async () => {
+      mockDb.user.create.mockImplementation(attributes =>
+        Promise.resolve(buildCreatedUser(13, attributes))
+      );
+      mockDb.credential.create.mockResolvedValue({});
+      const res = buildResponse();
+
+      await createUser(
+        buildRequest(
+          {
+            externalId: EXTERNAL_ID,
+            emails: [{ value: 'ada@example.com', primary: true }],
+            [USER_EXTENSION]: { emailVerified: true },
+          },
+          {}
+        ),
+        res
+      );
+
+      expect(mockDb.role.findOne).toHaveBeenCalledWith({ where: { name: 'user' } });
+      expect(createdUsers[0].setRoles).toHaveBeenCalledWith([USER_ROLE]);
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it('should leave the roles of an email-linked existing account alone', async () => {
+      const existing = buildCreatedUser(14, {
+        username: 'ada',
+        email: 'ada@example.com',
+        suspended: false,
+        verified: true,
       });
+      existing.getRoles.mockResolvedValue([{ name: 'admin' }]);
+      mockDb.user.findOne.mockResolvedValue(existing);
+      mockDb.credential.create.mockResolvedValue({});
+      const res = buildResponse();
+
+      await createUser(
+        buildRequest(
+          {
+            externalId: EXTERNAL_ID,
+            userName: 'ada',
+            emails: [{ value: 'ada@example.com', primary: true }],
+            [USER_EXTENSION]: { emailVerified: true },
+          },
+          {}
+        ),
+        res
+      );
+
+      expect(existing.setRoles).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it('should fall back to the email when the resource carries no userName', async () => {
+      mockDb.user.create.mockImplementation(attributes =>
+        Promise.resolve(buildCreatedUser(12, attributes))
+      );
       mockDb.credential.create.mockResolvedValue({});
       const res = buildResponse();
 

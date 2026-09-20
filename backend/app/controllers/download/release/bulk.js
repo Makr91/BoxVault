@@ -1,7 +1,12 @@
 import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  canWriteDownload,
+  resolveOrgMembership,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { getSecureDownloadPath, removeDownloadFiles } from '../helpers.js';
 const {
@@ -15,7 +20,7 @@ const {
  * /api/organization/{organization}/download/{name}/release/bulk:
  *   post:
  *     summary: One action across a selection of releases of a download product
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing release is counted as skipped and named in errors with not_found, a thrown row with internal. A delete removes patches, file records and the directory the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing release is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the release wider than its product with forbidden. A delete removes patches, file records and the directory the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -42,7 +47,7 @@ const {
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete, deprecate]
+ *                 enum: [delete, deprecate, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -116,7 +121,15 @@ const bulk = async (req, res) => {
       }
       return null;
     }
-    await release.update({ deprecated: true, deprecationReason });
+    if (action === 'deprecate') {
+      await release.update({ deprecated: true, deprecationReason });
+      return null;
+    }
+    const change = VISIBILITY_CHANGES[action];
+    if (widerThanParent({ ...release.get({ plain: true }), ...change }, download)) {
+      return 'forbidden';
+    }
+    await release.update(change);
     return null;
   };
 

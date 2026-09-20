@@ -2,8 +2,13 @@ import fs from 'fs';
 import { dirname } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import {
+  canWriteDownload,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
 const { download: Download, downloadReleases: DownloadRelease } = db;
 
@@ -56,7 +61,7 @@ const releasePayload = body => {
   if (typeof body.deprecation_reason !== 'undefined') {
     payload.deprecationReason = body.deprecation_reason;
   }
-  return payload;
+  return { ...payload, ...visibilityOf(body) };
 };
 
 /**
@@ -64,7 +69,7 @@ const releasePayload = body => {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}:
  *   put:
  *     summary: Update a release of a download product, or move it to another product
- *     description: The product's owner, or an admin or owner of the organization, may update a release; a service account acts inside its own organization at its effective role. A `download` member naming another product of the same organization moves the release there with its patches and files, the caller having to be allowed to write both products; the directory moves with it and every file keeps downloading.
+ *     description: The product's owner, or an admin or owner of the organization, may update a release; a service account acts inside its own organization at its effective role. A `download` member naming another product of the same organization moves the release there with its patches and files, the caller having to be allowed to write both products; the directory moves with it and every file keeps downloading. The release may never stand wider than the product it sits in, a wider is_public, guest_access or published answering 422 with the pointer.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -106,6 +111,15 @@ const releasePayload = body => {
  *                 type: string
  *                 nullable: true
  *                 description: Release notes (absent = unchanged)
+ *               is_public:
+ *                 type: boolean
+ *                 description: Whether anyone may read the release; never wider than the product (absent = unchanged)
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the release while it is published; never wider than the product (absent = unchanged)
+ *               published:
+ *                 type: boolean
+ *                 description: An unpublished release is readable by the product's writers alone (absent = unchanged)
  *               deprecated:
  *                 type: boolean
  *                 description: Setting true requires a non-empty deprecation_reason in this request
@@ -175,8 +189,14 @@ const update = async (req, res) => {
       }
     }
 
+    const payload = releasePayload(req.body);
+    const wider = widerThanParent({ ...release.get({ plain: true }), ...payload }, target);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     const updatedRelease = await release.update({
-      ...releasePayload(req.body),
+      ...payload,
       ...(moving ? { downloadId: target.id } : {}),
     });
 

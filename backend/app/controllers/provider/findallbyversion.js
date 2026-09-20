@@ -1,6 +1,11 @@
 // findallbyversion.js
 import { log } from '../../utils/Logger.js';
-import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  reachOfMembership,
+  resolveOrgMembership,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { providers: Provider, organization: _organization, box: _box, versions } = db;
@@ -15,7 +20,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   get:
  *     summary: Get all providers for a version
- *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only.
+ *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only. A version beyond the caller's reach answers 404.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -94,7 +99,7 @@ export const findAllByVersion = async (req, res) => {
 
     const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic', 'published', 'guestAccess'],
+      attributes: ['id', 'name', 'userId', 'isPublic', 'published', 'guestAccess'],
     });
 
     if (!box) {
@@ -105,16 +110,24 @@ export const findAllByVersion = async (req, res) => {
       where: { versionNumber, boxId: box.id },
     });
 
-    if (!version) {
-      return notFound(
+    const caller = userId ? { userId, isServiceAccount: req.isServiceAccount } : null;
+    const membership = caller ? await resolveOrgMembership(req, organizationData.id) : null;
+    const versionNotFound = () =>
+      notFound(
         req,
         res,
         req.__('versions.versionNotFoundInBox', { versionNumber, boxId, organization })
       );
+    if (!version) {
+      return versionNotFound();
     }
+    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
 
     // If the box is public, allow access
     if (box.isPublic) {
+      if (!reachable) {
+        return versionNotFound();
+      }
       const providers = await Provider.findAll({ where: { versionId: version.id } });
       return res.send(providers);
     }
@@ -124,9 +137,11 @@ export const findAllByVersion = async (req, res) => {
       return unauthorized(req, res);
     }
 
-    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
+    }
+    if (!reachable) {
+      return versionNotFound();
     }
 
     // User is member, allow access

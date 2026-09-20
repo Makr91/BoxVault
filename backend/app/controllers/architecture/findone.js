@@ -1,6 +1,11 @@
 // findone.js
 import { log } from '../../utils/Logger.js';
-import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  reachOfMembership,
+  resolveOrgMembership,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const {
@@ -25,7 +30,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
  *   get:
  *     summary: Get a specific architecture
- *     description: Retrieve details of a specific architecture. A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role.
+ *     description: Retrieve details of a specific architecture. A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version beyond the caller's reach answers 404.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -124,7 +129,7 @@ export const findOne = async (req, res) => {
     // Find the box by organizationId
     const box = await _box.findOne({
       where: { name: boxId, organizationId: organizationData.id },
-      attributes: ['id', 'name', 'isPublic', 'published', 'guestAccess'],
+      attributes: ['id', 'name', 'userId', 'isPublic', 'published', 'guestAccess'],
       include: [
         {
           model: versions,
@@ -146,12 +151,19 @@ export const findOne = async (req, res) => {
     }
 
     const version = box.versions.find(v => v.versionNumber === versionNumber);
+    const caller = req.userId
+      ? { userId: req.userId, isServiceAccount: req.isServiceAccount }
+      : null;
+    const membership = caller ? await resolveOrgMembership(req, organizationData.id) : null;
+    const versionNotFound = () =>
+      notFound(req, res, req.__('versions.versionNotFoundForBox', { versionNumber, boxId }));
     if (!version) {
-      return notFound(req, res, req.__('versions.versionNotFoundForBox', { versionNumber, boxId }));
+      return versionNotFound();
     }
+    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
 
     const provider = version.providers.find(p => p.name === providerName);
-    if (!provider) {
+    if (reachable && !provider) {
       return notFound(
         req,
         res,
@@ -161,6 +173,9 @@ export const findOne = async (req, res) => {
 
     // If the box is public, allow access
     if (box.isPublic) {
+      if (!reachable) {
+        return versionNotFound();
+      }
       const architecture = await Architecture.findOne({
         where: { name: architectureName, providerId: provider.id },
       });
@@ -174,9 +189,11 @@ export const findOne = async (req, res) => {
     if (!req.userId) {
       return unauthorized(req, res);
     }
-    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
+    }
+    if (!reachable) {
+      return versionNotFound();
     }
 
     // If the user belongs to the organization, allow access

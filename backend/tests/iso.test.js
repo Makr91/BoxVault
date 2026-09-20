@@ -439,11 +439,71 @@ describe('ISO API', () => {
       const res = await request(app)
         .post(`${isoBase}/version`)
         .set('x-access-token', adminToken)
-        .send({ version_number: versionNumber, description: 'First' });
+        .send({ version_number: versionNumber, description: 'First', published: true });
       expect(res.statusCode).toBe(201);
       expect(res.body.version_number).toBe(versionNumber);
       expect(res.body.description).toBe('First');
       expect(res.body.deprecated).toBe(false);
+      expect(res.body.published).toBe(true);
+      expect(res.body.is_public).toBe(false);
+      expect(res.body.guest_access).toBe(false);
+    });
+
+    it('should be born private and unpublished without the words and never wider than the ISO', async () => {
+      const closed = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', adminToken)
+        .send({ version_number: '0.5.0' });
+      expect(closed.statusCode).toBe(201);
+      expect(closed.body.published).toBe(false);
+      expect(closed.body.is_public).toBe(false);
+      const hidden = await request(app)
+        .get(`${isoBase}/version/0.5.0`)
+        .set('x-access-token', authToken);
+      expect(hidden.statusCode).toBe(404);
+      const listed = await request(app).get(`${isoBase}/version`).set('x-access-token', authToken);
+      expect(listed.body.some(entry => entry.version_number === '0.5.0')).toBe(false);
+      const asAdmin = await request(app)
+        .get(`${isoBase}/version/0.5.0`)
+        .set('x-access-token', adminToken);
+      expect(asAdmin.statusCode).toBe(200);
+
+      const wider = await request(app)
+        .put(`${isoBase}/version/0.5.0`)
+        .set('x-access-token', adminToken)
+        .send({ is_public: true, published: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+      ]);
+      const bornWide = await request(app)
+        .post(`${isoBase}/version`)
+        .set('x-access-token', adminToken)
+        .send({ version_number: '0.6.0', guest_access: true, published: true });
+      expect(bornWide.statusCode).toBe(422);
+      expect(bornWide.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/guest_access', rule: 'enum' }),
+      ]);
+
+      const published = await request(app)
+        .post(`${isoBase}/version/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'publish', names: ['0.5.0'] });
+      expect(published.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const opened = await request(app)
+        .post(`${isoBase}/version/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'make_public', names: ['0.5.0'] });
+      expect(opened.body).toEqual({
+        processed: 0,
+        skipped: 1,
+        errors: [{ name: '0.5.0', code: 'forbidden' }],
+      });
+      const shown = await request(app)
+        .get(`${isoBase}/version/0.5.0`)
+        .set('x-access-token', authToken);
+      expect(shown.statusCode).toBe(200);
+      await request(app).delete(`${isoBase}/version/0.5.0`).set('x-access-token', adminToken);
     });
 
     it('should reject a duplicate version with 409', async () => {
@@ -598,6 +658,8 @@ describe('ISO API', () => {
         { guestAccess: true },
         { where: { name: isoName, organizationId: org.id } }
       );
+      const iso = await db.iso.findOne({ where: { name: isoName, organizationId: org.id } });
+      await db.isoVersions.update({ guestAccess: true }, { where: { isoId: iso.id } });
     });
 
     afterAll(async () => {
@@ -1090,8 +1152,13 @@ describe('ISO API', () => {
 
     it('should allow an anonymous download of a public published ISO', async () => {
       await db.iso.update({ isPublic: true }, { where: { name: isoName, organizationId: org.id } });
+      const iso = await db.iso.findOne({ where: { name: isoName, organizationId: org.id } });
+      const closed = await request(app).get(`${fileBase}/download`);
+      expect(closed.statusCode).toBe(403);
+      await db.isoVersions.update({ isPublic: true }, { where: { versionNumber, isoId: iso.id } });
       const res = await request(app).get(`${fileBase}/download`);
       expect(res.statusCode).toBe(200);
+      await db.isoVersions.update({ isPublic: false }, { where: { versionNumber, isoId: iso.id } });
       await db.iso.update(
         { isPublic: false },
         { where: { name: isoName, organizationId: org.id } }

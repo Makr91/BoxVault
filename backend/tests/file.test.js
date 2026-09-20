@@ -1822,6 +1822,7 @@ describe('File API', () => {
         entities: {
           organization: { id: 1 },
           box: { id: 1, isPublic: true },
+          version: { id: 1, isPublic: true, guestAccess: true, published: true },
           architecture: { id: 1 },
         },
         __: (k, params) => params?.error || k,

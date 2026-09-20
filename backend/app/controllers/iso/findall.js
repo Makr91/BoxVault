@@ -1,7 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
-import { isGuestOf } from '../../utils/orgMembership.js';
+import { isGuestOf, reachOf } from '../../utils/orgMembership.js';
 import { isoWhereFor, resolveIsoViewer } from './visibility.js';
 import { isoWithCounts } from './helpers.js';
 const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
@@ -11,7 +11,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/organization/{organization}/iso:
  *   get:
  *     summary: List ISOs for an organization
- *     description: Retrieve the ISOs of an organization visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs; a member of the organization, by JWT or by a service-account key of the organization, gets every ISO, a guest of the organization the published ISOs flagged for guests — the same rule as the organization box list. Every download_count is null to a guest of the organization.
+ *     description: Retrieve the ISOs of an organization visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs; a member of the organization, by JWT or by a service-account key of the organization, gets every ISO, a guest of the organization the published ISOs flagged for guests — the same rule as the organization box list. Every download_count is null to a guest of the organization. Only the versions within the caller's reach are answered on each ISO.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -59,7 +59,7 @@ const findAll = async (req, res) => {
     });
 
     const counted = !isGuestOf(viewer, organization.id);
-    return res.send(isos.map(iso => isoWithCounts(iso, counted)));
+    return res.send(isos.map(iso => isoWithCounts(iso, counted, reachOf(viewer, iso))));
   } catch (err) {
     log.error.error('Error finding all ISOs', err);
     return problem(res, req, {

@@ -1,13 +1,13 @@
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility.js';
+import { canSeeDownload, canSeePatch, isMemberOf, resolveDownloadViewer } from '../visibility.js';
 
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/info:
  *   get:
  *     summary: Get download file information
- *     description: Retrieve the file row of one file of a patch, by key or file name. The product must be visible to the caller.
+ *     description: Retrieve the file row of one file of a patch, by key or file name. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -93,7 +93,7 @@ import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility
  */
 const info = async (req, res) => {
   try {
-    const { download, file } = req.entities;
+    const { download, release, patch, file } = req.entities;
 
     const viewer = await resolveDownloadViewer(req);
     if (!canSeeDownload(viewer, download)) {
@@ -101,6 +101,13 @@ const info = async (req, res) => {
         status: 403,
         type: 'forbidden',
         title: req.__('files.info.unauthorized'),
+      });
+    }
+    if (!canSeePatch(viewer, download, release, patch)) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('files.notFound'),
       });
     }
 

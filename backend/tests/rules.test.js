@@ -24,6 +24,7 @@ const FORMS = [
   'downloadFile',
   'bulkItem',
   'bulkVersion',
+  'bulkPatch',
   'bulkLeaf',
 ];
 
@@ -154,8 +155,10 @@ describe('GET /api/rules', () => {
     expect(document.forms.downloadFile.properties.key.unique).toBe('patch');
     expect(document.forms.patch.properties.released_at.format).toBe('date');
     expect(document.forms.download.properties.icon_url.format).toBe('uri');
-    ['box', 'iso', 'download'].forEach(form => {
+    ['box', 'iso', 'download', 'version', 'release', 'patch'].forEach(form => {
+      expect(document.forms[form].properties.is_public).toEqual({ type: 'boolean' });
       expect(document.forms[form].properties.guest_access).toEqual({ type: 'boolean' });
+      expect(document.forms[form].properties.published).toEqual({ type: 'boolean' });
     });
     expect(document.forms.patch.properties.kind.enum).toEqual([
       'release',
@@ -181,9 +184,27 @@ describe('GET /api/rules', () => {
       'allow_guests',
       'deny_guests',
     ]);
-    expect(document.forms.bulkVersion.properties.action.enum).toEqual(['delete', 'deprecate']);
+    expect(document.forms.bulkVersion.properties.action.enum).toEqual([
+      'delete',
+      'deprecate',
+      'make_public',
+      'make_private',
+      'publish',
+      'unpublish',
+      'allow_guests',
+      'deny_guests',
+    ]);
+    expect(document.forms.bulkPatch.properties.action.enum).toEqual([
+      'delete',
+      'make_public',
+      'make_private',
+      'publish',
+      'unpublish',
+      'allow_guests',
+      'deny_guests',
+    ]);
     expect(document.forms.bulkLeaf.properties.action.enum).toEqual(['delete']);
-    ['bulkItem', 'bulkVersion', 'bulkLeaf'].forEach(form => {
+    ['bulkItem', 'bulkVersion', 'bulkPatch', 'bulkLeaf'].forEach(form => {
       expect(document.forms[form].required).toEqual(['action', 'names']);
       expect(document.forms[form].properties.names.minItems).toBe(1);
     });

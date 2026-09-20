@@ -2,7 +2,12 @@ import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  canWriteBox,
+  resolveOrgMembership,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import { notifyVersionDeprecated } from './notifications.js';
 const { versions: Version } = db;
@@ -12,7 +17,7 @@ const { versions: Version } = db;
  * /api/organization/{organization}/box/{boxId}/version/bulk:
  *   post:
  *     summary: One action across a selection of versions of a box
- *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing version is counted as skipped and named in errors with not_found, a thrown row with internal. A deprecate carries the required deprecation_reason as the single update does.
+ *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing version is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the version wider than its box with forbidden. A deprecate carries the required deprecation_reason as the single update does.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -39,7 +44,7 @@ const { versions: Version } = db;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete, deprecate]
+ *                 enum: [delete, deprecate, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -108,6 +113,14 @@ const bulk = async (req, res) => {
       } catch (err) {
         log.app.info(`Could not delete the version directory: ${err}`);
       }
+      return null;
+    }
+    if (action !== 'deprecate') {
+      const change = VISIBILITY_CHANGES[action];
+      if (widerThanParent({ ...version.get({ plain: true }), ...change }, box)) {
+        return 'forbidden';
+      }
+      await version.update(change);
       return null;
     }
     const becomesDeprecated = !version.deprecated;

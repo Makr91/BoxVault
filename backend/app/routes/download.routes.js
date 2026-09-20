@@ -243,7 +243,7 @@ router.post(
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
     verifyOrgAccess.attachRelease,
-    validateBody('bulkLeaf'),
+    validateBody('bulkPatch'),
   ],
   bulkPatches
 );

@@ -5,7 +5,9 @@ import { log } from '../../utils/Logger.js';
 import {
   canReadInOrg,
   isGuestMembership,
+  reachOfMembership,
   resolveOrgMembership,
+  withinReach,
 } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -26,7 +28,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/info:
  *   get:
  *     summary: Get file information
- *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs a writing membership of its organization, a guest of the organization reading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. download_count is null to a guest of the organization.
+ *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs a writing membership of its organization, a guest of the organization reading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. download_count is null to a guest of the organization. A version beyond the caller's reach answers 404.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -140,12 +142,17 @@ const info = async (req, res) => {
     const authConfig = loadConfig('auth');
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
-    const { organization: organizationData, box, architecture } = req.entities;
+    const { organization: organizationData, box, version, architecture } = req.entities;
     const membership = userId ? await resolveOrgMembership(req, organizationData.id) : null;
     const counted = !isGuestMembership(membership);
+    const caller = userId ? { userId, isServiceAccount } : null;
+    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
 
     // If the box is public, allow access
     if (box.isPublic) {
+      if (!reachable) {
+        return fileNotFound(req, res);
+      }
       const fileRecord = await File.findOne({
         where: {
           fileName: 'vagrant.box',
@@ -193,6 +200,9 @@ const info = async (req, res) => {
 
     if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
+    }
+    if (!reachable) {
+      return fileNotFound(req, res);
     }
 
     // User is member, allow access

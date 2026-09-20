@@ -64,12 +64,89 @@ describe('Download release API', () => {
     const res = await request(app)
       .post(`${productBase}/release`)
       .set('x-access-token', ownerToken)
-      .send({ version_number: '14.5', description: 'First' });
+      .send({ version_number: '14.5', description: 'First', published: true });
     expect(res.statusCode).toBe(201);
     expect(res.body.version_number).toBe('14.5');
     expect(res.body.description).toBe('First');
     expect(res.body.deprecated).toBe(false);
+    expect(res.body.published).toBe(true);
+    expect(res.body.is_public).toBe(false);
+    expect(res.body.guest_access).toBe(false);
     expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5'))).toBe(true);
+  });
+
+  it('should be born private and unpublished without the words and never wider than the product', async () => {
+    const closed = await request(app)
+      .post(`${productBase}/release`)
+      .set('x-access-token', ownerToken)
+      .send({ version_number: '9.0.1' });
+    expect(closed.statusCode).toBe(201);
+    expect(closed.body.published).toBe(false);
+    expect(closed.body.is_public).toBe(false);
+    expect(closed.body.guest_access).toBe(false);
+
+    const hidden = await request(app)
+      .get(`${productBase}/release/9.0.1`)
+      .set('x-access-token', memberToken);
+    expect(hidden.statusCode).toBe(404);
+    const listed = await request(app)
+      .get(`${productBase}/release`)
+      .set('x-access-token', memberToken);
+    expect(listed.body.map(entry => entry.version_number)).not.toContain('9.0.1');
+    const asOwner = await request(app)
+      .get(`${productBase}/release/9.0.1`)
+      .set('x-access-token', ownerToken);
+    expect(asOwner.statusCode).toBe(200);
+    const product = await request(app).get(productBase).set('x-access-token', memberToken);
+    expect(product.body.releases.map(entry => entry.version_number)).not.toContain('9.0.1');
+
+    const wider = await request(app)
+      .put(`${productBase}/release/9.0.1`)
+      .set('x-access-token', ownerToken)
+      .send({ is_public: true, published: true });
+    expect(wider.statusCode).toBe(422);
+    expect(wider.body.errors).toEqual([
+      expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+    ]);
+    const bornWide = await request(app)
+      .post(`${productBase}/release`)
+      .set('x-access-token', ownerToken)
+      .send({ version_number: '9.0.2', is_public: true, published: true });
+    expect(bornWide.statusCode).toBe(422);
+    expect(bornWide.body.errors).toEqual([
+      expect.objectContaining({ pointer: '/is_public', rule: 'enum' }),
+    ]);
+
+    const published = await request(app)
+      .put(`${productBase}/release/9.0.1`)
+      .set('x-access-token', ownerToken)
+      .send({ published: true });
+    expect(published.statusCode).toBe(200);
+    expect(published.body.published).toBe(true);
+    const shown = await request(app)
+      .get(`${productBase}/release/9.0.1`)
+      .set('x-access-token', memberToken);
+    expect(shown.statusCode).toBe(200);
+
+    const unpublished = await request(app)
+      .post(`${productBase}/release/bulk`)
+      .set('x-access-token', ownerToken)
+      .send({ action: 'unpublish', names: ['9.0.1'] });
+    expect(unpublished.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+    const opened = await request(app)
+      .post(`${productBase}/release/bulk`)
+      .set('x-access-token', ownerToken)
+      .send({ action: 'make_public', names: ['9.0.1'] });
+    expect(opened.body).toEqual({
+      processed: 0,
+      skipped: 1,
+      errors: [{ name: '9.0.1', code: 'forbidden' }],
+    });
+    const gone = await request(app)
+      .get(`${productBase}/release/9.0.1`)
+      .set('x-access-token', memberToken);
+    expect(gone.statusCode).toBe(404);
+    await request(app).delete(`${productBase}/release/9.0.1`).set('x-access-token', ownerToken);
   });
 
   it('should reject a duplicate release with 409', async () => {
@@ -126,7 +203,7 @@ describe('Download release API', () => {
     await request(app)
       .post(`${productBase}/release`)
       .set('x-access-token', ownerToken)
-      .send({ version_number: '14.5.1' })
+      .send({ version_number: '14.5.1', published: true })
       .expect(201);
     const res = await request(app).get(`${productBase}/release`).set('x-access-token', memberToken);
     expect(res.statusCode).toBe(200);
@@ -285,7 +362,7 @@ describe('Download release API', () => {
     await request(app)
       .post(`${productBase}/release`)
       .set('x-access-token', ownerToken)
-      .send({ version_number: '14.5' })
+      .send({ version_number: '14.5', published: true })
       .expect(201);
     const taken = await request(app)
       .put(`${productBase}/release/14.5`)

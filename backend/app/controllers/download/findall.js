@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { downloadWhereFor, isMemberOf, resolveDownloadViewer } from './visibility.js';
 import { withCounts } from './helpers.js';
+import { reachOf } from '../../utils/orgMembership.js';
 const {
   download: Download,
   downloadReleases: DownloadRelease,
@@ -16,7 +17,7 @@ const {
  * /api/organization/{organization}/download:
  *   get:
  *     summary: List the download products of an organization
- *     description: Retrieve the download products of an organization visible to the caller, each with its releases, patches and files. Anonymous requests get the public, published products; a member of the organization gets every published product plus the unpublished ones they created.
+ *     description: Retrieve the download products of an organization visible to the caller, each with its releases, patches and files. Anonymous requests get the public, published products; a member of the organization gets every published product plus the unpublished ones they created. Only the releases and patches within the caller's reach are answered on each product.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -70,7 +71,9 @@ const findAll = async (req, res) => {
     });
 
     const member = isMemberOf(viewer, organization.id);
-    return res.send(downloads.map(download => withCounts(download, member)));
+    return res.send(
+      downloads.map(download => withCounts(download, member, reachOf(viewer, download)))
+    );
   } catch (err) {
     log.error.error('Error finding all downloads', err);
     return problem(res, req, {

@@ -5,6 +5,7 @@ import { isPathInside } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { snakeKeys } from '../../utils/wire.js';
+import { withinReach } from '../../utils/orgMembership.js';
 const { isoFiles: IsoFile, Sequelize } = db;
 const { Op } = Sequelize;
 
@@ -81,17 +82,29 @@ const isoVersionsWithCounts = (versions, counted) =>
   });
 
 /**
+ * The versions of an ISO within a reach, the chain ISO, version judged at
+ * every row.
+ * @param {Object} iso - An ISO row with nested versions
+ * @param {number} reach - From reachOf
+ * @returns {Array<Object>} The version rows the reach meets
+ */
+const isoVersionsWithinReach = (iso, reach) =>
+  (iso.versions || []).filter(version => withinReach(reach, version));
+
+/**
  * The ISO's JSON with its downloadCount and every nested file's downloadCount
  * answered when counted and null otherwise; a guest of the organization is
- * never counted.
+ * never counted; only the versions within the caller's reach.
  * @param {Object} iso - An ISO row with nested versions and files
  * @param {boolean} counted - Whether the caller is answered the counts
+ * @param {number} reach - From reachOf
  * @returns {Object} The ISO JSON
  */
-const isoWithCounts = (iso, counted) => {
+const isoWithCounts = (iso, counted, reach) => {
   const plain = snakeKeys(iso.get({ plain: true }));
-  plain.versions = isoVersionsWithCounts(iso.versions, counted);
-  plain.download_count = counted ? sumIsoDownloads(iso) : null;
+  const versions = isoVersionsWithinReach(iso, reach);
+  plain.versions = isoVersionsWithCounts(versions, counted);
+  plain.download_count = counted ? sumIsoDownloads({ versions }) : null;
   return plain;
 };
 
@@ -131,6 +144,7 @@ export {
   sumIsoDownloads,
   isoFilesWithCounts,
   isoVersionsWithCounts,
+  isoVersionsWithinReach,
   isoWithCounts,
   removeUnreferencedIsoFiles,
 };

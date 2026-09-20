@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { canSeeDownload, isMemberOf, resolveDownloadViewer } from './visibility.js';
 import { withCounts } from './helpers.js';
+import { reachOf } from '../../utils/orgMembership.js';
 const {
   download: Download,
   downloadReleases: DownloadRelease,
@@ -17,7 +18,7 @@ const {
  * /api/organization/{organization}/download/{name}:
  *   get:
  *     summary: Get a download product
- *     description: Retrieve a download product with its releases, patches and files. A public, published product is readable by anyone; a published private product requires membership of its organization; an unpublished product is readable by its creator alone.
+ *     description: Retrieve a download product with its releases, patches and files. A public, published product is readable by anyone; a published private product requires membership of its organization; an unpublished product is readable by its creator alone. Only the releases and patches within the caller's reach are answered, a row never reaching wider than its parent; a writer of the product sees every row.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -88,7 +89,9 @@ const findOne = async (req, res) => {
     if (!canSeeDownload(viewer, download)) {
       return problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
     }
-    return res.send(withCounts(download, isMemberOf(viewer, organization.id)));
+    return res.send(
+      withCounts(download, isMemberOf(viewer, organization.id), reachOf(viewer, download))
+    );
   } catch (err) {
     log.error.error('Error finding download', err);
     return problem(res, req, {

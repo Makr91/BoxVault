@@ -31,6 +31,7 @@ const FORMS = [
   'downloadFile',
   'bulkItem',
   'bulkVersion',
+  'bulkPatch',
   'bulkLeaf',
 ];
 

@@ -3,7 +3,12 @@ import jwt from 'jsonwebtoken';
 const { verify } = jwt;
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  reachOfMembership,
+  resolveOrgMembership,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { versions: Version } = db;
@@ -16,7 +21,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}:
  *   get:
  *     summary: Get a specific version of a box
- *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only.
+ *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only. A version beyond the caller's reach answers 404, a version never reaching wider than its box.
  *     tags: [Versions]
  *     parameters:
  *       - in: path
@@ -107,17 +112,22 @@ export const findOne = async (req, res) => {
     const version = await Version.findOne({
       where: { versionNumber, boxId: box.id },
     });
-    if (!version) {
-      return problem(res, req, {
+    const versionNotFound = () =>
+      problem(res, req, {
         status: 404,
         type: 'not-found',
         title: `Version not found for box ${boxId} in organization ${organization}.`,
       });
+    if (!version) {
+      return versionNotFound();
     }
+
+    const membership = caller ? await resolveOrgMembership(caller, organizationData.id) : null;
+    const reach = reachOfMembership(caller, box, membership);
 
     // If the box is public, allow access
     if (box.isPublic) {
-      return res.send(version);
+      return withinReach(reach, version) ? res.send(version) : versionNotFound();
     }
 
     // If the box is private, check if the user is member of the organization
@@ -125,13 +135,12 @@ export const findOne = async (req, res) => {
       return unauthorized(req, res);
     }
 
-    const membership = await resolveOrgMembership(caller, organizationData.id);
     if (!canReadInOrg(membership, box)) {
       return unauthorized(req, res);
     }
 
     // User is member, allow access
-    return res.send(version);
+    return withinReach(reach, version) ? res.send(version) : versionNotFound();
   } catch (err) {
     log.error.error('Error retrieving version:', err);
     return problem(res, req, {

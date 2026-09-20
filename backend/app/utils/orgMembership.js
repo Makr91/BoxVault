@@ -278,7 +278,141 @@ const canWritePendingUpload = (caller, pending, membership) =>
   canWriteInOrg(membership) &&
   (ownsDownload(caller, pending, membership) || MANAGING_ROLES.includes(membership.role));
 
+const TIER = { unpublished: 0, private: 1, guest: 2, public: 3 };
+
+const VISIBILITY_CHANGES = {
+  make_public: { isPublic: true },
+  make_private: { isPublic: false },
+  publish: { published: true },
+  unpublish: { published: false },
+  allow_guests: { guestAccess: true },
+  deny_guests: { guestAccess: false },
+};
+
+/**
+ * The tier a row stands at by its own three words: unpublished, else public,
+ * guest or private by the widest word set.
+ * @param {{isPublic: boolean, guestAccess: boolean, published: boolean}} row - An item, version, release or patch
+ * @returns {number} TIER.unpublished to TIER.public
+ */
+const tierOf = row => {
+  if (!row.published) {
+    return TIER.unpublished;
+  }
+  if (row.isPublic) {
+    return TIER.public;
+  }
+  if (row.guestAccess) {
+    return TIER.guest;
+  }
+  return TIER.private;
+};
+
+/**
+ * The tier a viewer reaches on an item: unpublished, every row, for a writer
+ * of the item, an admin or owner of its organization or its uploader in a
+ * writing seat; private for any other writing member; guest for a guest of
+ * the organization; public for anyone else.
+ * @param {{userId: number, isServiceAccount: boolean, orgIds: number[], guestOrgIds: number[], managedOrgIds: number[]}|null} viewer - From resolveViewer
+ * @param {{userId: number, organizationId: number}} item - The box, ISO or download
+ * @returns {number} The tier the viewer reaches
+ */
+const reachOf = (viewer, item) => {
+  if (!viewer) {
+    return TIER.public;
+  }
+  if (viewer.managedOrgIds.includes(item.organizationId)) {
+    return TIER.unpublished;
+  }
+  if (viewer.orgIds.includes(item.organizationId)) {
+    return item.userId === viewer.userId ? TIER.unpublished : TIER.private;
+  }
+  if (viewer.guestOrgIds.includes(item.organizationId)) {
+    return TIER.guest;
+  }
+  return TIER.public;
+};
+
+/**
+ * The tier a caller with a resolved membership reaches on an item, the rule
+ * of reachOf for the routes that carry a membership instead of a viewer.
+ * @param {{userId: number, isServiceAccount?: boolean}|null} caller - The caller
+ * @param {{userId: number}} item - The box, ISO or download
+ * @param {{role: string}|null} membership - The caller's membership in the item's organization
+ * @returns {number} The tier the caller reaches
+ */
+const reachOfMembership = (caller, item, membership) => {
+  if (!caller || !membership) {
+    return TIER.public;
+  }
+  if (canWriteInOrg(membership)) {
+    const writer = MANAGING_ROLES.includes(membership.role) || ownsBox(caller, item, membership);
+    return writer ? TIER.unpublished : TIER.private;
+  }
+  return isGuestMembership(membership) ? TIER.guest : TIER.public;
+};
+
+/**
+ * Whether the rows beneath an item, parent first, are within a reach on that
+ * item: the narrowest row stands at the reach or wider; the item itself is
+ * judged by its own read rule before this is asked.
+ * @param {number} reach - From reachOf or reachOfMembership
+ * @param {...Object} rows - The rows beneath the item, parent first
+ * @returns {boolean}
+ */
+const withinReach = (reach, ...rows) => Math.min(...rows.map(tierOf)) >= reach;
+
+/**
+ * The three visibility words a body carries, model-named, present ones only.
+ * @param {Object} body - The request body
+ * @returns {{isPublic?: boolean, guestAccess?: boolean, published?: boolean}} The words given
+ */
+const visibilityOf = body => {
+  const words = {};
+  if (typeof body.is_public !== 'undefined') {
+    words.isPublic = body.is_public;
+  }
+  if (typeof body.guest_access !== 'undefined') {
+    words.guestAccess = body.guest_access;
+  }
+  if (typeof body.published !== 'undefined') {
+    words.published = body.published;
+  }
+  return words;
+};
+
+/**
+ * The validation error of a child that would hold a word its parent does not:
+ * published under an unpublished parent, public under a parent that is not
+ * public, open to guests under a parent that is neither; pointing at the word
+ * with the value it may hold, null while every word stays within the parent.
+ * @param {{isPublic: boolean, guestAccess: boolean, published: boolean}} child - The child's words after the write
+ * @param {Object} parent - The parent row
+ * @returns {{pointer: string, rule: string, params: {enum: string}}|null} The error
+ */
+const widerThanParent = (child, parent) => {
+  const params = { enum: 'false' };
+  if (child.published && !parent.published) {
+    return { pointer: '/published', rule: 'enum', params };
+  }
+  if (child.isPublic && !parent.isPublic) {
+    return { pointer: '/is_public', rule: 'enum', params };
+  }
+  if (child.guestAccess && !parent.guestAccess && !parent.isPublic) {
+    return { pointer: '/guest_access', rule: 'enum', params };
+  }
+  return null;
+};
+
 export {
+  TIER,
+  VISIBILITY_CHANGES,
+  tierOf,
+  reachOf,
+  reachOfMembership,
+  withinReach,
+  visibilityOf,
+  widerThanParent,
   ORG_ROLES,
   ROLE_RANK,
   lowerRole,

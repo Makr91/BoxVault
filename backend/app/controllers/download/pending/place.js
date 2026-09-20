@@ -295,10 +295,22 @@ const place = async (req, res) => {
       });
     }
     if (!release) {
-      release = await DownloadRelease.create({ versionNumber, downloadId: download.id });
+      release = await DownloadRelease.create({
+        versionNumber,
+        isPublic: false,
+        guestAccess: false,
+        published: false,
+        downloadId: download.id,
+      });
     }
     if (!patch) {
-      patch = await DownloadPatch.create({ name: patchName, downloadReleaseId: release.id });
+      patch = await DownloadPatch.create({
+        name: patchName,
+        isPublic: false,
+        guestAccess: false,
+        published: false,
+        downloadReleaseId: release.id,
+      });
     }
 
     file = await settleFileRow(file, patch, key, fileName, attributesOf(given));

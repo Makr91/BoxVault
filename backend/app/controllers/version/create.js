@@ -31,6 +31,15 @@
  *           type: string
  *           nullable: true
  *           description: Why this version is deprecated
+ *         is_public:
+ *           type: boolean
+ *           description: Whether anyone may read the version; never wider than the box
+ *         guest_access:
+ *           type: boolean
+ *           description: Whether guests of the organization may read the version while it is published; never wider than the box
+ *         published:
+ *           type: boolean
+ *           description: An unpublished version is readable by the box's writers alone
  *         created_at:
  *           type: string
  *           format: date-time
@@ -96,6 +105,17 @@
  *         description:
  *           type: string
  *           description: Description of the version
+ *         is_public:
+ *           type: boolean
+ *           default: false
+ *           description: Never wider than the box
+ *         guest_access:
+ *           type: boolean
+ *           default: false
+ *           description: Never wider than the box
+ *         published:
+ *           type: boolean
+ *           default: false
  *       example:
  *         version_number: "1.0.0"
  *         description: "Initial release"
@@ -113,6 +133,15 @@
  *           type: string
  *           nullable: true
  *           description: Version release notes (absent = unchanged)
+ *         is_public:
+ *           type: boolean
+ *           description: Whether anyone may read the version; never wider than the box (absent = unchanged)
+ *         guest_access:
+ *           type: boolean
+ *           description: Whether guests of the organization may read the version while it is published; never wider than the box (absent = unchanged)
+ *         published:
+ *           type: boolean
+ *           description: An unpublished version is readable by the box's writers alone (absent = unchanged)
  *         deprecated:
  *           type: boolean
  *           description: Whether the version is deprecated. Setting true requires a non-empty deprecation_reason in this request.
@@ -130,9 +159,14 @@
 
 // create.js
 import { log } from '../../utils/Logger.js';
-import { conflict, problem } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 import { notifyVersionCreated } from './notifications.js';
 const { versions: Version } = db;
 
@@ -141,7 +175,7 @@ const { versions: Version } = db;
  * /api/organization/{organization}/box/{boxId}/version:
  *   post:
  *     summary: Create a new version for a box
- *     description: The box owner, or an admin or owner of the organization, may create a version; a service account acts inside its own organization at its effective role.
+ *     description: The box owner, or an admin or owner of the organization, may create a version; a service account acts inside its own organization at its effective role. A version is born private and unpublished unless the body names is_public, guest_access or published, and it may never stand wider than its box, a wider word answering 422 with the pointer.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -228,16 +262,28 @@ export const create = async (req, res) => {
       return conflict(res, req, '/version_number', box.name);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, box);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     // Create the version
     const version = await Version.create({
       versionNumber,
       description,
+      ...visibility,
       boxId: box.id,
     });
 
     // Fan out to the org's notification hub (published boxes in externally
     // managed orgs only). Fire-and-forget — never blocks or fails the request.
-    if (box.published) {
+    if (box.published && visibility.published) {
       notifyVersionCreated(organizationData, box.name, versionNumber);
     }
 

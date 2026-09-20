@@ -8,7 +8,6 @@
       "pattern": "\\S",
       "enum": [
         "delete",
-        "deprecate",
         "make_public",
         "make_private",
         "publish",
@@ -17,9 +16,6 @@
         "deny_guests"
       ]
     },
-    "names": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-    "deprecation_reason": { "type": "string", "maxLength": 512 }
-  },
-  "if": { "properties": { "action": { "const": "deprecate" } }, "required": ["action"] },
-  "then": { "required": ["deprecation_reason"] }
+    "names": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  }
 }

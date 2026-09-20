@@ -237,6 +237,60 @@ describe('Box guest access', () => {
       }
     );
 
+    it('should hide a version narrower than the guest reach and never wider than its box', async () => {
+      const box = await db.box.findOne({ where: { name: flaggedName, organizationId: org.id } });
+      await db.versions.update(
+        { isPublic: false, guestAccess: false },
+        { where: { boxId: box.id } }
+      );
+      expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, guestToken)).statusCode).toBe(404);
+      const versions = await get(`${boxBase(flaggedName)}/version`, guestToken);
+      expect(versions.body).toEqual([]);
+      const page = await get(boxBase(flaggedName), guestToken);
+      expect(page.body.versions).toEqual([]);
+      expect((await get(`${fileBase(flaggedName)}/info`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${fileBase(flaggedName)}/download`, guestToken)).statusCode).toBe(404);
+      const metadata = await request(app)
+        .get(boxBase(flaggedName))
+        .set('Authorization', `Bearer ${guestAccountKey}`)
+        .set('User-Agent', 'Vagrant/2.3.4');
+      expect(metadata.body.versions).toEqual([]);
+      expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, memberToken)).statusCode).toBe(
+        200
+      );
+      const listed = await get(`/api/organization/${orgName}/box`, guestToken);
+      expect(listed.body.find(entry => entry.name === flaggedName).versions).toEqual([]);
+
+      const wider = await request(app)
+        .put(`${boxBase(flaggedName)}/version/1.0.0`)
+        .set('x-access-token', ownerToken)
+        .send({ is_public: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+      ]);
+      const allowed = await request(app)
+        .post(`${boxBase(flaggedName)}/version/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'allow_guests', names: ['1.0.0'] });
+      expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, guestToken)).statusCode).toBe(200);
+
+      await db.versions.update({ published: false }, { where: { boxId: box.id } });
+      expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, memberToken)).statusCode).toBe(
+        404
+      );
+      expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, ownerToken)).statusCode).toBe(200);
+      const published = await request(app)
+        .post(`${boxBase(flaggedName)}/version/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'publish', names: ['1.0.0'] });
+      expect(published.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, memberToken)).statusCode).toBe(
+        200
+      );
+    });
+
     it('should answer null counts to a guest and numbers to a member', async () => {
       const asGuest = await get(boxBase(flaggedName), guestToken);
       expect(asGuest.body.download_count).toBeNull();

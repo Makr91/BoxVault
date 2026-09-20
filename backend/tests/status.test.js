@@ -79,6 +79,8 @@ describe('GET /api/status per Host', () => {
     });
     expect(res.body.features).toEqual(plain.body.features);
     expect(res.body.config).toEqual(plain.body.config);
+    expect(res.body.organization).toBe('TestOrg');
+    expect(plain.body).not.toHaveProperty('organization');
   });
 
   it('should answer exactly the listed features on a hostname that declares them', async () => {
@@ -88,6 +90,7 @@ describe('GET /api/status per Host', () => {
     expect(res.body.features).toEqual(FACE_FEATURES);
     expect(res.body.brand.name).toBe('BoxVault');
     expect(res.body.links.community).toEqual(DEFAULT_COMMUNITY);
+    expect(res.body).not.toHaveProperty('organization');
 
     const plain = await request(app).get('/api/status');
     expect(plain.body.features).toEqual(DEFAULT_FEATURES);

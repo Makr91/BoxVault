@@ -10,10 +10,11 @@ import {
   canReadInOrg,
   canWriteInOrg,
   isGuestMembership,
+  reachOfMembership,
   resolveOrgMembership,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
-import { boxFilesWithCounts, sumBoxDownloads } from '../helpers.js';
+import { boxFilesWithCounts, sumBoxDownloads, versionsWithinReach } from '../helpers.js';
 import { snakeKeys } from '../../../utils/wire.js';
 import db from '../../../models/index.js';
 const {
@@ -32,7 +33,7 @@ const { verify } = jwt;
  * /api/organization/{organization}/box:
  *   get:
  *     summary: Get organization box details
- *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a guest of the organization its published private boxes flagged for guests, a service account being a member of its own organization only. Every download_count is null to a guest of the organization.
+ *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a guest of the organization its published private boxes flagged for guests, a service account being a member of its own organization only. Every download_count is null to a guest of the organization. Only the versions within the caller's reach are answered on each box.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -188,6 +189,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
 
     const ownsBoxes = Boolean(userId) && (!isServiceAccount || canWriteInOrg(membership));
     const counted = !isGuestMembership(membership);
+    const caller = userId ? { userId, isServiceAccount } : null;
 
     boxes = boxes.filter(box => {
       if (ownsBoxes && box.userId === userId) {
@@ -200,71 +202,77 @@ export const getOrganizationBoxDetails = async (req, res) => {
     });
 
     // Map boxes to response format
-    const formattedBoxes = boxes.map(box => ({
-      ...snakeKeys({
-        id: box.id,
-        name: box.name,
-        description: box.description,
-        // readme is deliberately omitted: listings don't render it and it can
-        // be arbitrarily large per box.
-        shortDescription: box.shortDescription,
-        metadata: box.metadata,
-        artwork: box.artwork,
-        published: box.published,
-        isPublic: box.isPublic,
-        guestAccess: box.guestAccess,
-        userId: box.userId,
-        createdAt: box.createdAt,
-        updatedAt: box.updatedAt,
-        versions: box.versions.map(version => ({
-          id: version.id,
-          versionNumber: version.versionNumber,
-          description: version.description,
-          releaseNotes: version.releaseNotes,
-          deprecated: version.deprecated,
-          deprecationReason: version.deprecationReason,
-          boxId: version.boxId,
-          createdAt: version.createdAt,
-          updatedAt: version.updatedAt,
-          providers: version.providers.map(provider => ({
-            id: provider.id,
-            name: provider.name,
-            description: provider.description,
-            versionId: provider.versionId,
-            createdAt: provider.createdAt,
-            updatedAt: provider.updatedAt,
-            architectures: provider.architectures.map(architecture => ({
-              id: architecture.id,
-              name: architecture.name,
-              defaultBox: architecture.defaultBox,
-              providerId: architecture.providerId,
-              createdAt: architecture.createdAt,
-              updatedAt: architecture.updatedAt,
-              files: boxFilesWithCounts(architecture.files, counted),
+    const formattedBoxes = boxes.map(box => {
+      const versions = versionsWithinReach(box, reachOfMembership(caller, box, membership));
+      return {
+        ...snakeKeys({
+          id: box.id,
+          name: box.name,
+          description: box.description,
+          // readme is deliberately omitted: listings don't render it and it can
+          // be arbitrarily large per box.
+          shortDescription: box.shortDescription,
+          metadata: box.metadata,
+          artwork: box.artwork,
+          published: box.published,
+          isPublic: box.isPublic,
+          guestAccess: box.guestAccess,
+          userId: box.userId,
+          createdAt: box.createdAt,
+          updatedAt: box.updatedAt,
+          versions: versions.map(version => ({
+            id: version.id,
+            versionNumber: version.versionNumber,
+            description: version.description,
+            releaseNotes: version.releaseNotes,
+            deprecated: version.deprecated,
+            deprecationReason: version.deprecationReason,
+            isPublic: version.isPublic,
+            guestAccess: version.guestAccess,
+            published: version.published,
+            boxId: version.boxId,
+            createdAt: version.createdAt,
+            updatedAt: version.updatedAt,
+            providers: version.providers.map(provider => ({
+              id: provider.id,
+              name: provider.name,
+              description: provider.description,
+              versionId: provider.versionId,
+              createdAt: provider.createdAt,
+              updatedAt: provider.updatedAt,
+              architectures: provider.architectures.map(architecture => ({
+                id: architecture.id,
+                name: architecture.name,
+                defaultBox: architecture.defaultBox,
+                providerId: architecture.providerId,
+                createdAt: architecture.createdAt,
+                updatedAt: architecture.updatedAt,
+                files: boxFilesWithCounts(architecture.files, counted),
+              })),
             })),
           })),
-        })),
-        // The box's OWN organization — never the owner's primary org, which can
-        // differ and would mislabel the row.
-        organization: {
-          id: organizationData.id,
-          name: organizationData.name,
-          emailHash: organizationData.emailHash,
-          logo: organizationData.logo,
-        },
-        user: box.user
-          ? {
-              id: box.user.id,
-              username: box.user.username,
-              emailHash: box.user.emailHash,
-              suspended: box.user.suspended,
-              createdAt: box.user.createdAt,
-              updatedAt: box.user.updatedAt,
-            }
-          : null,
-      }),
-      download_count: counted ? sumBoxDownloads(box) : null,
-    }));
+          // The box's OWN organization — never the owner's primary org, which can
+          // differ and would mislabel the row.
+          organization: {
+            id: organizationData.id,
+            name: organizationData.name,
+            emailHash: organizationData.emailHash,
+            logo: organizationData.logo,
+          },
+          user: box.user
+            ? {
+                id: box.user.id,
+                username: box.user.username,
+                emailHash: box.user.emailHash,
+                suspended: box.user.suspended,
+                createdAt: box.user.createdAt,
+                updatedAt: box.user.updatedAt,
+              }
+            : null,
+        }),
+        download_count: counted ? sumBoxDownloads({ versions }) : null,
+      };
+    });
 
     return res.status(200).send(formattedBoxes);
   } catch (err) {

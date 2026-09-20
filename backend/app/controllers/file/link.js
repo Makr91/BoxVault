@@ -1,7 +1,12 @@
 // download.link.file.controller.js
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  reachOfMembership,
+  resolveOrgMembership,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { problem } from '../../utils/problem.js';
 
@@ -13,7 +18,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/get-download-link:
  *   post:
  *     summary: Generate a secure download link
- *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs a writing membership of its organization, a guest of the organization minting one only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role.
+ *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs a writing membership of its organization, a guest of the organization minting one only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version beyond the caller's reach answers 404.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -89,7 +94,8 @@ const getDownloadLink = async (req, res) => {
     const authConfig = loadConfig('auth');
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
-    const { organization: organizationData, box } = req.entities;
+    const { organization: organizationData, box, version } = req.entities;
+    const membership = userId ? await resolveOrgMembership(req, organizationData.id) : null;
 
     // Check authorization
     if (!box.isPublic) {
@@ -97,10 +103,17 @@ const getDownloadLink = async (req, res) => {
         return unauthorized(req, res);
       }
 
-      const membership = await resolveOrgMembership(req, organizationData.id);
       if (!canReadInOrg(membership, box)) {
         return unauthorized(req, res);
       }
+    }
+    const caller = userId ? { userId, isServiceAccount } : null;
+    if (!withinReach(reachOfMembership(caller, box, membership), version)) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('files.notFound'),
+      });
     }
 
     // Generate a secure download token with configurable expiry

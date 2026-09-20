@@ -1,6 +1,12 @@
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
-import { resolveViewer, uploadedBy, uploaderOrgIds } from '../../utils/orgMembership.js';
+import {
+  reachOf,
+  resolveViewer,
+  uploadedBy,
+  uploaderOrgIds,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import {
   extractBearerToken,
   findServiceAccountByRawToken,
@@ -96,4 +102,14 @@ const canSeeIso = (viewer, iso) =>
   ) ||
   uploadedBy(viewer, iso);
 
-export { resolveIsoViewer, isoWhereFor, canSeeIso };
+/**
+ * Whether a viewer may read one version of an ISO they may read: the chain
+ * ISO, version stands at the viewer's reach or wider.
+ * @param {Object|null} viewer - From resolveIsoViewer
+ * @param {Object} iso - The ISO row
+ * @param {Object} version - The version row
+ * @returns {boolean} True when the version is visible to the viewer
+ */
+const canSeeIsoVersion = (viewer, iso, version) => withinReach(reachOf(viewer, iso), version);
+
+export { resolveIsoViewer, isoWhereFor, canSeeIso, canSeeIsoVersion };

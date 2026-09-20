@@ -1,5 +1,6 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { VISIBILITY_CHANGES, widerThanParent } from '../../../utils/orgMembership.js';
 import { removeUnreferencedIsoFiles } from '../helpers.js';
 const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
@@ -8,7 +9,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/bulk:
  *   post:
  *     summary: One action across a selection of versions of an ISO
- *     description: An admin or owner of the organization acts on every row; each row is isolated, a missing version is counted as skipped and named in errors with not_found, a thrown row with internal. A delete removes the file records the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
+ *     description: An admin or owner of the organization acts on every row; each row is isolated, a missing version is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the version wider than its ISO with forbidden. A delete removes the file records the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -35,7 +36,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete, deprecate]
+ *                 enum: [delete, deprecate, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -84,7 +85,15 @@ const bulk = async (req, res) => {
       await removeUnreferencedIsoFiles(files);
       return null;
     }
-    await version.update({ deprecated: true, deprecationReason });
+    if (action === 'deprecate') {
+      await version.update({ deprecated: true, deprecationReason });
+      return null;
+    }
+    const change = VISIBILITY_CHANGES[action];
+    if (widerThanParent({ ...version.get({ plain: true }), ...change }, iso)) {
+      return 'forbidden';
+    }
+    await version.update(change);
     return null;
   };
 

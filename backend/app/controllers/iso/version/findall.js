@@ -1,9 +1,9 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { isGuestOf } from '../../../utils/orgMembership.js';
+import { isGuestOf, reachOf } from '../../../utils/orgMembership.js';
 import { canSeeIso, resolveIsoViewer } from '../visibility.js';
-import { isoVersionsWithCounts } from '../helpers.js';
+import { isoVersionsWithCounts, isoVersionsWithinReach } from '../helpers.js';
 const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
 
 /**
@@ -11,7 +11,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version:
  *   get:
  *     summary: List the versions of an ISO
- *     description: Retrieve every version of an ISO with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file download_count is null to a guest of the organization.
+ *     description: Retrieve the versions of an ISO within the caller's reach, each with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file download_count is null to a guest of the organization; a writer of the ISO sees every version.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -60,7 +60,13 @@ const findAll = async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
 
-    return res.send(isoVersionsWithCounts(versions, !isGuestOf(viewer, iso.organizationId)));
+    iso.versions = versions;
+    return res.send(
+      isoVersionsWithCounts(
+        isoVersionsWithinReach(iso, reachOf(viewer, iso)),
+        !isGuestOf(viewer, iso.organizationId)
+      )
+    );
   } catch (err) {
     log.error.error('Error retrieving ISO versions', err);
     return problem(res, req, {

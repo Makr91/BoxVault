@@ -1,7 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
-import { isGuestOf } from '../../utils/orgMembership.js';
+import { isGuestOf, reachOf } from '../../utils/orgMembership.js';
 import { isoWhereFor, resolveIsoViewer } from './visibility.js';
 import { isoWithCounts } from './helpers.js';
 const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Organization } = db;
@@ -11,7 +11,7 @@ const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/isos/discover:
  *   get:
  *     summary: Discover ISOs
- *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, the published ISOs flagged for guests of the organizations they are a guest of, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes. Every download_count is null to a guest of the ISO's organization.
+ *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, the published ISOs flagged for guests of the organizations they are a guest of, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes. Every download_count is null to a guest of the ISO's organization. Only the versions within the caller's reach are answered on each ISO.
  *     tags: [ISOs]
  *     security:
  *       - bearerAuth: []
@@ -44,7 +44,11 @@ export const discoverAll = async (req, res) => {
     });
     return res
       .status(200)
-      .send(isos.map(iso => isoWithCounts(iso, !isGuestOf(viewer, iso.organizationId))));
+      .send(
+        isos.map(iso =>
+          isoWithCounts(iso, !isGuestOf(viewer, iso.organizationId), reachOf(viewer, iso))
+        )
+      );
   } catch (err) {
     log.error.error('Error discovering ISOs:', {
       error: err.message,

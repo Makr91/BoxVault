@@ -25,6 +25,15 @@
  *         deprecation_reason:
  *           type: string
  *           nullable: true
+ *         is_public:
+ *           type: boolean
+ *           description: Whether anyone may read the release; never wider than the product
+ *         guest_access:
+ *           type: boolean
+ *           description: Whether guests of the organization may read the release while it is published; never wider than the product
+ *         published:
+ *           type: boolean
+ *           description: An unpublished release is readable by the product's writers alone
  *         created_at:
  *           type: string
  *           format: date-time
@@ -55,6 +64,15 @@
  *         notes_url:
  *           type: string
  *           nullable: true
+ *         is_public:
+ *           type: boolean
+ *           description: Whether anyone may read the patch; never wider than the release
+ *         guest_access:
+ *           type: boolean
+ *           description: Whether guests of the organization may read the patch while it is published; never wider than the release
+ *         published:
+ *           type: boolean
+ *           description: An unpublished patch is readable by the product's writers alone
  *         download_release_id:
  *           type: integer
  *         created_at:
@@ -116,8 +134,13 @@
 import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import {
+  canWriteDownload,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getSecureDownloadPath } from '../helpers.js';
 const { downloadReleases: DownloadRelease } = db;
 
@@ -126,7 +149,7 @@ const { downloadReleases: DownloadRelease } = db;
  * /api/organization/{organization}/download/{name}/release:
  *   post:
  *     summary: Create a release of a download product
- *     description: The product's owner, or an admin or owner of the organization, may create a release; a service account acts inside its own organization at its effective role.
+ *     description: The product's owner, or an admin or owner of the organization, may create a release; a service account acts inside its own organization at its effective role. A release is born private and unpublished unless the body names is_public, guest_access or published, and it may never stand wider than its product, a wider word answering 422 with the pointer.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -157,6 +180,15 @@ const { downloadReleases: DownloadRelease } = db;
  *                 description: Release identifier (the identifier pattern of /api/rules, unique in the product)
  *               description:
  *                 type: string
+ *               is_public:
+ *                 type: boolean
+ *                 default: false
+ *               guest_access:
+ *                 type: boolean
+ *                 default: false
+ *               published:
+ *                 type: boolean
+ *                 default: false
  *     responses:
  *       201:
  *         description: Release created
@@ -206,6 +238,17 @@ const create = async (req, res) => {
       return conflict(res, req, '/version_number', download.name);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, download);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     const newFilePath = getSecureDownloadPath(organization, download.name, versionNumber);
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
@@ -214,6 +257,7 @@ const create = async (req, res) => {
     const release = await DownloadRelease.create({
       versionNumber,
       description,
+      ...visibility,
       downloadId: download.id,
     });
 

@@ -448,6 +448,22 @@ const options = {
               description: 'Why the version is deprecated',
               nullable: true,
             },
+            is_public: {
+              type: 'boolean',
+              description: 'Whether anyone may read the version; never wider than the box',
+              example: false,
+            },
+            guest_access: {
+              type: 'boolean',
+              description:
+                'Whether guests of the organization may read the version while it is published; never wider than the box',
+              example: false,
+            },
+            published: {
+              type: 'boolean',
+              description: "An unpublished version is readable by the box's writers alone",
+              example: true,
+            },
             box_id: {
               type: 'integer',
               description: 'Box ID this version belongs to',

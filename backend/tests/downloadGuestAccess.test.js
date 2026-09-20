@@ -53,6 +53,15 @@ describe('Download guest access', () => {
   const patchBase = name => `${productBase(name)}/release/1.0.0/patch/release`;
   const fileBase = name => `${patchBase(name)}/file/linux-x64`;
 
+  const setLevels = async (name, values) => {
+    const product = await db.download.findOne({ where: { name, organizationId: org.id } });
+    const releases = await db.downloadReleases.findAll({ where: { downloadId: product.id } });
+    await db.downloadReleases.update(values, { where: { downloadId: product.id } });
+    await db.downloadPatches.update(values, {
+      where: { downloadReleaseId: releases.map(release => release.id) },
+    });
+  };
+
   const createProduct = async (name, values) => {
     await request(app)
       .post(`${fileBase(name)}/upload`)
@@ -62,6 +71,11 @@ describe('Download guest access', () => {
       .send(Buffer.from(`${name}-${uniqueId}`))
       .expect(200);
     await db.download.update(values, { where: { name, organizationId: org.id } });
+    await setLevels(name, {
+      isPublic: Boolean(values.isPublic),
+      guestAccess: true,
+      published: Boolean(values.published),
+    });
   };
 
   const get = (url, token) => {
@@ -222,6 +236,62 @@ describe('Download guest access', () => {
         });
       }
     );
+
+    it('should hide a release or patch narrower than the guest reach and never wider than its parent', async () => {
+      await setLevels(flaggedName, { guestAccess: false });
+      const release = await get(`${productBase(flaggedName)}/release/1.0.0`, guestToken);
+      expect(release.statusCode).toBe(404);
+      const releases = await get(`${productBase(flaggedName)}/release`, guestToken);
+      expect(releases.body).toEqual([]);
+      const product = await get(productBase(flaggedName), guestToken);
+      expect(product.statusCode).toBe(200);
+      expect(product.body.releases).toEqual([]);
+      expect((await get(`${fileBase(flaggedName)}/download`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${fileBase(flaggedName)}/info`, guestToken)).statusCode).toBe(404);
+      const asMember = await get(`${productBase(flaggedName)}/release/1.0.0`, memberToken);
+      expect(asMember.statusCode).toBe(200);
+      const search = await request(app)
+        .get('/api/search')
+        .query({ q: '1.0.0', kinds: 'version' })
+        .set('x-access-token', guestToken);
+      expect(search.body.results.some(row => row.name === flaggedName)).toBe(false);
+
+      await setLevels(flaggedName, { guestAccess: true });
+      await db.downloadPatches.update(
+        { guestAccess: false },
+        {
+          where: {
+            downloadReleaseId: (
+              await db.downloadReleases.findOne({
+                where: {
+                  downloadId: (
+                    await db.download.findOne({
+                      where: { name: flaggedName, organizationId: org.id },
+                    })
+                  ).id,
+                },
+              })
+            ).id,
+          },
+        }
+      );
+      const patch = await get(patchBase(flaggedName), guestToken);
+      expect(patch.statusCode).toBe(404);
+      const withoutPatch = await get(`${productBase(flaggedName)}/release/1.0.0`, guestToken);
+      expect(withoutPatch.statusCode).toBe(200);
+      expect(withoutPatch.body.patches).toEqual([]);
+      expect((await get(patchBase(flaggedName), memberToken)).statusCode).toBe(200);
+
+      const wider = await request(app)
+        .put(`${productBase(flaggedName)}/release/1.0.0`)
+        .set('x-access-token', ownerToken)
+        .send({ is_public: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+      ]);
+      await setLevels(flaggedName, { guestAccess: true });
+    });
 
     it('should answer null counts to a guest everywhere and numbers to a member', async () => {
       const product = await get(productBase(flaggedName), guestToken);

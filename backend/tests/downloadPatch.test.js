@@ -51,7 +51,7 @@ describe('Download patch API', () => {
     await request(app)
       .post(`/api/organization/${orgName}/download/${productName}/release`)
       .set('x-access-token', ownerToken)
-      .send({ version_number: releaseNumber })
+      .send({ version_number: releaseNumber, published: true })
       .expect(201);
   });
 
@@ -70,11 +70,14 @@ describe('Download patch API', () => {
     const base = await request(app)
       .post(`${releaseBase}/patch`)
       .set('x-access-token', ownerToken)
-      .send({ name: 'release', released_at: '2026-03-19' });
+      .send({ name: 'release', released_at: '2026-03-19', published: true });
     expect(base.statusCode).toBe(201);
     expect(base.body.name).toBe('release');
     expect(base.body.kind).toBe('release');
     expect(base.body.released_at).toBe('2026-03-19');
+    expect(base.body.published).toBe(true);
+    expect(base.body.is_public).toBe(false);
+    expect(base.body.guest_access).toBe(false);
     expect(
       fs.existsSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'release'))
     ).toBe(true);
@@ -87,10 +90,72 @@ describe('Download patch API', () => {
         kind: 'fixpack',
         released_at: '2026-07-16',
         notes_url: 'https://support.hcl-software.com/fp1',
+        published: true,
       });
     expect(fixpack.statusCode).toBe(201);
     expect(fixpack.body.kind).toBe('fixpack');
     expect(fixpack.body.notes_url).toBe('https://support.hcl-software.com/fp1');
+  });
+
+  it('should be born private and unpublished without the words and never wider than the release', async () => {
+    const closed = await request(app)
+      .post(`${releaseBase}/patch`)
+      .set('x-access-token', ownerToken)
+      .send({ name: 'HF1', kind: 'hotfix' });
+    expect(closed.statusCode).toBe(201);
+    expect(closed.body.published).toBe(false);
+    expect(closed.body.is_public).toBe(false);
+    expect(closed.body.guest_access).toBe(false);
+
+    const hidden = await request(app)
+      .get(`${releaseBase}/patch/HF1`)
+      .set('x-access-token', memberToken);
+    expect(hidden.statusCode).toBe(404);
+    const listed = await request(app)
+      .get(`${releaseBase}/patch`)
+      .set('x-access-token', memberToken);
+    expect(listed.body.map(entry => entry.name)).not.toContain('HF1');
+    const asOwner = await request(app)
+      .get(`${releaseBase}/patch/HF1`)
+      .set('x-access-token', ownerToken);
+    expect(asOwner.statusCode).toBe(200);
+
+    const wider = await request(app)
+      .put(`${releaseBase}/patch/HF1`)
+      .set('x-access-token', ownerToken)
+      .send({ guest_access: true, published: true });
+    expect(wider.statusCode).toBe(422);
+    expect(wider.body.errors).toEqual([
+      expect.objectContaining({
+        pointer: '/guest_access',
+        rule: 'enum',
+        params: { enum: 'false' },
+      }),
+    ]);
+
+    const published = await request(app)
+      .post(`${releaseBase}/patch/bulk`)
+      .set('x-access-token', ownerToken)
+      .send({ action: 'publish', names: ['HF1', 'HF9'] });
+    expect(published.body).toEqual({
+      processed: 1,
+      skipped: 1,
+      errors: [{ name: 'HF9', code: 'not_found' }],
+    });
+    const shown = await request(app)
+      .get(`${releaseBase}/patch/HF1`)
+      .set('x-access-token', memberToken);
+    expect(shown.statusCode).toBe(200);
+    const opened = await request(app)
+      .post(`${releaseBase}/patch/bulk`)
+      .set('x-access-token', ownerToken)
+      .send({ action: 'allow_guests', names: ['HF1'] });
+    expect(opened.body).toEqual({
+      processed: 0,
+      skipped: 1,
+      errors: [{ name: 'HF1', code: 'forbidden' }],
+    });
+    await request(app).delete(`${releaseBase}/patch/HF1`).set('x-access-token', ownerToken);
   });
 
   it('should reject a released_at that is not a full-date', async () => {

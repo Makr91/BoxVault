@@ -618,6 +618,11 @@ properties:
               title: Pack
               description: The bare pack name stamped as data-brand, its stylesheet served at /themes/<name>/<name>.css; empty paints stock Bootstrap
               order: 5
+        organization:
+          type: string
+          title: Organization
+          description: The name of the one organization this hostname serves, answered in its status so the UI leaves that organization's crumb out; absent on a hostname of many
+          order: 0
         sign_in:
           type: array
           items:

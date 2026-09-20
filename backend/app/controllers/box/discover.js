@@ -3,7 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
-import { isGuestOf, uploaderOrgIds } from '../../utils/orgMembership.js';
+import { isGuestOf, reachOf, uploaderOrgIds } from '../../utils/orgMembership.js';
 import { boxWithCounts } from './helpers.js';
 const { box: Box, versions, providers, architectures, files, user, organization, Sequelize } = db;
 const { Op } = Sequelize;
@@ -13,7 +13,7 @@ const { Op } = Sequelize;
  * /api/discover:
  *   get:
  *     summary: Discover all boxes
- *     description: Retrieve all boxes available to the user. Authenticated users additionally see boxes of organizations they belong to, a guest of an organization its published boxes flagged for guests, a service account those of its own organization at its effective role; anonymous requests get only published public boxes. Every download_count is null to a guest of the box's organization.
+ *     description: Retrieve all boxes available to the user. Authenticated users additionally see boxes of organizations they belong to, a guest of an organization its published boxes flagged for guests, a service account those of its own organization at its effective role; anonymous requests get only published public boxes. Every download_count is null to a guest of the box's organization. Only the versions within the caller's reach are answered on each box.
  *     tags: [Boxes]
  *     security:
  *       - bearerAuth: []
@@ -95,7 +95,11 @@ export const discoverAll = async (req, res) => {
       ],
     });
 
-    return res.send(boxes.map(box => boxWithCounts(box, !isGuestOf(viewer, box.organizationId))));
+    return res.send(
+      boxes.map(box =>
+        boxWithCounts(box, !isGuestOf(viewer, box.organizationId), reachOf(viewer, box))
+      )
+    );
   } catch (err) {
     log.error.error('Error discovering boxes:', err);
     return problem(res, req, {

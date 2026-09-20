@@ -70,6 +70,17 @@ describe('Download file API', () => {
   const setProduct = values =>
     db.download.update(values, { where: { name: productName, organizationId: org.id } });
 
+  const setLevels = async values => {
+    const product = await db.download.findOne({
+      where: { name: productName, organizationId: org.id },
+    });
+    const releases = await db.downloadReleases.findAll({ where: { downloadId: product.id } });
+    await db.downloadReleases.update(values, { where: { downloadId: product.id } });
+    await db.downloadPatches.update(values, {
+      where: { downloadReleaseId: releases.map(release => release.id) },
+    });
+  };
+
   beforeAll(async () => {
     await global.testHelpers.waitForAppReady(app);
     org = await db.organization.create({ name: orgName, access_mode: 'private' });
@@ -89,12 +100,12 @@ describe('Download file API', () => {
     await request(app)
       .post(`${productBase}/release`)
       .set('x-access-token', ownerToken)
-      .send({ version_number: releaseNumber })
+      .send({ version_number: releaseNumber, published: true, guest_access: true })
       .expect(201);
     await request(app)
       .post(`${productBase}/release/${releaseNumber}/patch`)
       .set('x-access-token', ownerToken)
-      .send({ name: patchName })
+      .send({ name: patchName, published: true, guest_access: true })
       .expect(201);
   });
 
@@ -743,6 +754,11 @@ describe('Download file API', () => {
         .set('x-file-name', 'Domino_1451FP1_Linux.tar')
         .send(fileContent);
       expect(res.statusCode).toBe(200);
+      const published = await request(app)
+        .post(`${productBase}/release/${releaseNumber}/patch/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'publish', names: ['FP1'] });
+      expect(published.body).toEqual({ processed: 1, skipped: 0, errors: [] });
 
       const original = await db.downloadFiles.findOne({ where: { fileName: installerName } });
       const link = await db.downloadFiles.findOne({
@@ -899,6 +915,7 @@ describe('Download file API', () => {
 
     it('should answer null counts to a caller who is not a member', async () => {
       await setProduct({ isPublic: true });
+      await setLevels({ isPublic: true });
       const releaseBase = `${productBase}/release/${releaseNumber}`;
 
       const infoAsOutsider = await request(app)
@@ -959,6 +976,7 @@ describe('Download file API', () => {
         .find(file => file.key === 'windows-x64');
       expect(windowsRow.download_count).toBe(4);
 
+      await setLevels({ isPublic: false });
       await setProduct({ isPublic: false });
     });
 
@@ -990,8 +1008,12 @@ describe('Download file API', () => {
       expect(asOutsider.statusCode).toBe(403);
 
       await setProduct({ isPublic: true });
+      const stillClosed = await request(app).get(`${fileBase}/download`);
+      expect(stillClosed.statusCode).toBe(404);
+      await setLevels({ isPublic: true });
       const open = await request(app).get(`${fileBase}/download`);
       expect(open.statusCode).toBe(200);
+      await setLevels({ isPublic: false });
 
       await setProduct({ isPublic: false, published: false });
       const asMember = await request(app)

@@ -39,7 +39,7 @@ const renderBadgeSvg = (value, valueBg, valueText) => {
  * /badge/{organization}/{name}.svg:
  *   get:
  *     summary: Get box status badge
- *     description: Public shields-style SVG badge (root path, no /api prefix, no auth). Shows the latest version number of a public published box, or "deprecated" in red when that version is deprecated. Responds 404 for missing, private, or unpublished boxes.
+ *     description: Public shields-style SVG badge (root path, no /api prefix, no auth). Shows the latest public published version number of a public published box, or "deprecated" in red when that version is deprecated. Responds 404 for missing, private, or unpublished boxes and for a box with no public published version.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -67,7 +67,7 @@ const renderBadgeSvg = (value, valueBg, valueText) => {
  *             schema:
  *               type: string
  *       404:
- *         description: Box missing, private, unpublished, or without versions (plain text)
+ *         description: Box missing, private, unpublished, or without a public published version (plain text)
  *       500:
  *         description: Internal server error (plain text)
  */
@@ -88,7 +88,7 @@ export const getBadge = async (req, res) => {
     }
 
     const latestVersion = await Version.findOne({
-      where: { boxId: box.id },
+      where: { boxId: box.id, isPublic: true, published: true },
       order: [['createdAt', 'DESC']],
     });
     if (!latestVersion) {

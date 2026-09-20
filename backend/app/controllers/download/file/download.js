@@ -2,7 +2,7 @@ import fs from 'fs';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
 import { absolutePath } from '../helpers.js';
-import { canSeeDownload, resolveDownloadViewer } from '../visibility.js';
+import { canSeeDownload, canSeePatch, resolveDownloadViewer } from '../visibility.js';
 
 const forbidden = (req, res, key) =>
   problem(res, req, { status: 403, type: 'forbidden', title: req.__(key) });
@@ -15,7 +15,7 @@ const fileNotFound = (req, res) =>
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/download:
  *   get:
  *     summary: Download a file of a patch
- *     description: Stream the bytes of one file of a patch, by key or file name, with range support and Content-Disposition attachment carrying the file name. A public, published product can be downloaded by anyone; any other product requires a download token scoped to this file, or credentials (session JWT, service account as Basic or Bearer) of a caller the product is visible to.
+ *     description: Stream the bytes of one file of a patch, by key or file name, with range support and Content-Disposition attachment carrying the file name. A public product, release and patch can be downloaded by anyone; anything narrower requires a download token scoped to this file, or credentials (session JWT, service account as Basic or Bearer) of a caller whose reach meets the product, release and patch, a release or patch beyond it answering 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -72,8 +72,9 @@ const fileNotFound = (req, res) =>
  */
 const download = async (req, res) => {
   const { organization, name, versionNumber, patch: patchName, key } = req.params;
-  const { download: product, file } = req.entities;
+  const { download: product, release, patch: patchData, file } = req.entities;
   const isPublic = Boolean(product.isPublic && product.published);
+  const open = isPublic && canSeePatch(null, product, release, patchData);
 
   if (req.downloadTokenDecoded) {
     const decoded = req.downloadTokenDecoded;
@@ -92,10 +93,13 @@ const download = async (req, res) => {
   }
 
   try {
-    if (!isPublic) {
+    if (!open && !req.downloadTokenDecoded) {
       const viewer = await resolveDownloadViewer(req);
       if (!canSeeDownload(viewer, product)) {
         return forbidden(req, res, 'files.download.unauthorized');
+      }
+      if (!canSeePatch(viewer, product, release, patchData)) {
+        return fileNotFound(req, res);
       }
     }
 

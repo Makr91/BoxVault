@@ -3,7 +3,12 @@ import fs from 'fs';
 import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { canReadInOrg, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canReadInOrg,
+  reachOfMembership,
+  resolveOrgMembership,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 const { files: File } = db;
@@ -51,7 +56,7 @@ const handleError = (req, res, err) => {
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/download:
  *   get:
  *     summary: Download a Vagrant box file
- *     description: Download the Vagrant box file with support for range requests and authentication. A private box needs a writing membership of its organization, a guest of the organization downloading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role.
+ *     description: Download the Vagrant box file with support for range requests and authentication. A private box needs a writing membership of its organization, a guest of the organization downloading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version beyond the caller's reach answers 404 unless a download token scoped to the file is presented.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -204,7 +209,12 @@ const download = (req, res) => {
     const filePath = join(baseDir, fileName);
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
-    const { organization: organizationData, box, architecture } = req.entities;
+    const { organization: organizationData, box, version, architecture } = req.entities;
+    const caller = userId ? { userId, isServiceAccount } : null;
+    const membership = caller ? await resolveOrgMembership(req, organizationData.id) : null;
+    const reachable =
+      Boolean(req.downloadTokenDecoded) ||
+      withinReach(reachOfMembership(caller, box, membership), version);
 
     // Function to handle file download and increment counter
     const sendFile = async () => {
@@ -250,8 +260,14 @@ const download = (req, res) => {
       return undefined;
     };
 
+    const versionNotFound = () =>
+      problem(res, req, { status: 404, type: 'not-found', title: req.__('files.notFound') });
+
     // If the box is public, allow download
     if (box.isPublic) {
+      if (!reachable) {
+        return versionNotFound();
+      }
       await sendFile();
       return undefined;
     }
@@ -261,9 +277,11 @@ const download = (req, res) => {
       return forbidden(req, res, 'files.download.unauthorized');
     }
 
-    const membership = await resolveOrgMembership(req, organizationData.id);
     if (!canReadInOrg(membership, box)) {
       return forbidden(req, res, 'files.download.unauthorized');
+    }
+    if (!reachable) {
+      return versionNotFound();
     }
 
     // User is member, allow download

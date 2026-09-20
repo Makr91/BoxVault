@@ -32,6 +32,23 @@ export default (sequelize, Sequelize) => {
         allowNull: true,
         field: 'deprecation_reason',
       },
+      isPublic: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+        field: 'is_public',
+      },
+      guestAccess: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+        field: 'guest_access',
+      },
+      published: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
     },
     {
       indexes: [

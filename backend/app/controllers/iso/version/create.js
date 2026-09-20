@@ -1,6 +1,7 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import { visibilityOf, widerThanParent } from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 const { isoVersions: IsoVersion } = db;
 
 /**
@@ -8,6 +9,7 @@ const { isoVersions: IsoVersion } = db;
  * /api/organization/{organization}/iso/{name}/version:
  *   post:
  *     summary: Create a new version for an ISO
+ *     description: A version is born private and unpublished unless the body names is_public, guest_access or published, and it may never stand wider than its ISO, a wider word answering 422 with the pointer.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -38,6 +40,15 @@ const { isoVersions: IsoVersion } = db;
  *                 description: Version number (the identifier pattern of /api/rules, unique in the ISO)
  *               description:
  *                 type: string
+ *               is_public:
+ *                 type: boolean
+ *                 default: false
+ *               guest_access:
+ *                 type: boolean
+ *                 default: false
+ *               published:
+ *                 type: boolean
+ *                 default: false
  *     responses:
  *       201:
  *         description: Version created
@@ -71,9 +82,21 @@ const create = async (req, res) => {
       return conflict(res, req, '/version_number', iso.name);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, iso);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     const version = await IsoVersion.create({
       versionNumber,
       description,
+      ...visibility,
       isoId: iso.id,
     });
 

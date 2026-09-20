@@ -1,8 +1,13 @@
 import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import {
+  canWriteDownload,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getSecureDownloadPath } from '../helpers.js';
 const { downloadPatches: DownloadPatch } = db;
 
@@ -11,7 +16,7 @@ const { downloadPatches: DownloadPatch } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch:
  *   post:
  *     summary: Create a patch of a release
- *     description: Create a patch (the release itself as `release`, else FP1, IF1, FP7HF25) under a release. The product's owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role.
+ *     description: Create a patch (the release itself as `release`, else FP1, IF1, FP7HF25) under a release. The product's owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role. A patch is born private and unpublished unless the body names is_public, guest_access or published, and it may never stand wider than its release, a wider word answering 422 with the pointer.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -57,6 +62,15 @@ const { downloadPatches: DownloadPatch } = db;
  *               notes_url:
  *                 type: string
  *                 format: uri
+ *               is_public:
+ *                 type: boolean
+ *                 default: false
+ *               guest_access:
+ *                 type: boolean
+ *                 default: false
+ *               published:
+ *                 type: boolean
+ *                 default: false
  *     responses:
  *       201:
  *         description: Patch created
@@ -106,6 +120,17 @@ const create = async (req, res) => {
       return conflict(res, req, '/name', release.versionNumber);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, release);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     const newFilePath = getSecureDownloadPath(
       organization,
       download.name,
@@ -122,6 +147,7 @@ const create = async (req, res) => {
       description,
       releasedAt: releasedAt || null,
       notesUrl: notesUrl || null,
+      ...visibility,
       downloadReleaseId: release.id,
     });
 

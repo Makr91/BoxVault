@@ -1,6 +1,12 @@
 import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
-import { resolveViewer, uploadedBy, uploaderOrgIds } from '../../utils/orgMembership.js';
+import {
+  reachOf,
+  resolveViewer,
+  uploadedBy,
+  uploaderOrgIds,
+  withinReach,
+} from '../../utils/orgMembership.js';
 import {
   extractBearerToken,
   findServiceAccountByRawToken,
@@ -110,4 +116,34 @@ const canSeeDownload = (viewer, download) =>
 const isMemberOf = (viewer, organizationId) =>
   Boolean(viewer && viewer.orgIds.includes(organizationId));
 
-export { resolveDownloadViewer, downloadWhereFor, canSeeDownload, isMemberOf };
+/**
+ * Whether a viewer may read one release of a product they may read: the
+ * chain product, release stands at the viewer's reach or wider.
+ * @param {Object|null} viewer - From resolveDownloadViewer
+ * @param {Object} download - The download row
+ * @param {Object} release - The release row
+ * @returns {boolean} True when the release is visible to the viewer
+ */
+const canSeeRelease = (viewer, download, release) =>
+  withinReach(reachOf(viewer, download), release);
+
+/**
+ * Whether a viewer may read one patch of a product they may read: the chain
+ * product, release, patch stands at the viewer's reach or wider.
+ * @param {Object|null} viewer - From resolveDownloadViewer
+ * @param {Object} download - The download row
+ * @param {Object} release - The release row
+ * @param {Object} patch - The patch row
+ * @returns {boolean} True when the patch is visible to the viewer
+ */
+const canSeePatch = (viewer, download, release, patch) =>
+  withinReach(reachOf(viewer, download), release, patch);
+
+export {
+  resolveDownloadViewer,
+  downloadWhereFor,
+  canSeeDownload,
+  canSeeRelease,
+  canSeePatch,
+  isMemberOf,
+};

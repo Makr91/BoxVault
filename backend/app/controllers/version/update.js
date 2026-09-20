@@ -2,9 +2,14 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, problem } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 import { notifyVersionDeprecated } from './notifications.js';
 const { versions: Version } = db;
 
@@ -13,7 +18,7 @@ const { versions: Version } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}:
  *   put:
  *     summary: Update a specific version of a box
- *     description: The box owner, or an admin or owner of the organization, may update a version; a service account acts inside its own organization at its effective role.
+ *     description: The box owner, or an admin or owner of the organization, may update a version; a service account acts inside its own organization at its effective role. The version may never stand wider than its box, a wider is_public, guest_access or published answering 422 with the pointer.
  *     tags: [Versions]
  *     security:
  *       - bearerAuth: []
@@ -150,6 +155,12 @@ export const update = async (req, res) => {
     }
     if (typeof deprecationReason !== 'undefined') {
       updatePayload.deprecationReason = deprecationReason;
+    }
+    Object.assign(updatePayload, visibilityOf(req.body));
+
+    const wider = widerThanParent({ ...version.get({ plain: true }), ...updatePayload }, box);
+    if (wider) {
+      return refuse(res, req, [wider]);
     }
 
     const updated = await version.update(updatePayload);

@@ -118,12 +118,12 @@ describe('The downloads address', () => {
     await request(app)
       .post(`${apiBase}/${product}/release`)
       .set('x-access-token', token)
-      .send({ version_number: '1.0.0' })
+      .send({ version_number: '1.0.0', is_public: true, published: true })
       .expect(201);
     await request(app)
       .post(`${apiBase}/${product}/release/1.0.0/patch`)
       .set('x-access-token', token)
-      .send({ name: 'release', kind: 'release' })
+      .send({ name: 'release', kind: 'release', is_public: true, published: true })
       .expect(201);
     await request(app)
       .post(`${apiBase}/${product}/release/1.0.0/patch/release/file`)

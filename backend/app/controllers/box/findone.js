@@ -7,10 +7,11 @@ import {
   canReadInOrg,
   isGuestMembership,
   ownsBox,
+  reachOfMembership,
   resolveOrgMembership,
 } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
-import { boxWithCounts } from './helpers.js';
+import { boxWithCounts, versionsWithinReach } from './helpers.js';
 import { snakeKeys } from '../../utils/wire.js';
 const {
   organization: Organization,
@@ -22,13 +23,13 @@ const {
   files: File,
 } = db;
 
-const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => {
+const formatVagrantResponse = (box, organization, baseUrl, requestedName, t, reach) => {
   // Format response exactly as Vagrant expects based on box_metadata.rb
   const response = {
     // Required fields from BoxMetadata class
     name: requestedName, // Use the exact name that Vagrant requested
     description: box.description || t('boxes.defaultDescription'),
-    versions: box.versions.map(version => ({
+    versions: versionsWithinReach(box, reach).map(version => ({
       // Version must be a valid Gem::Version (no 'v' prefix)
       version: version.versionNumber.replace(/^v/, ''),
       status: 'active',
@@ -73,7 +74,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  * /{organization}/{box}:
  *   get:
  *     summary: Get Vagrant box metadata
- *     description: Vagrant CLI metadata endpoint (root path, no /api prefix). Returns box metadata in Vagrant-compatible JSON format.
+ *     description: Vagrant CLI metadata endpoint (root path, no /api prefix). Returns box metadata in Vagrant-compatible JSON format, listing only the versions within the caller's reach, a version never reaching wider than its box.
  *     tags: [Vagrant]
  *     parameters:
  *       - in: path
@@ -113,7 +114,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  * /api/organization/{organization}/box/{name}:
  *   get:
  *     summary: Get a specific box
- *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs a writing membership of its organization or ownership of the box; a guest of the organization reads it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. Every download_count is null to a guest of the organization.
+ *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs a writing membership of its organization or ownership of the box; a guest of the organization reads it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. Every download_count is null to a guest of the organization. Only the versions within the caller's reach are answered, a version never reaching wider than its box; a writer of the box sees every version.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -264,6 +265,7 @@ export const findOne = async (req, res) => {
 
     const caller = userId ? { userId, isServiceAccount, serviceAccountId } : null;
     const membership = caller ? await resolveOrgMembership(caller, organizationData.id) : null;
+    const reach = reachOfMembership(caller, box, membership);
 
     let response;
     if (req.isVagrantRequest) {
@@ -277,12 +279,13 @@ export const findOne = async (req, res) => {
         organizationData,
         baseUrl,
         requestedName,
-        req.__.bind(req)
+        req.__.bind(req),
+        reach
       );
     } else {
       // Format response for frontend
       response = {
-        ...boxWithCounts(box, !isGuestMembership(membership)),
+        ...boxWithCounts(box, !isGuestMembership(membership), reach),
         organization: snakeKeys({
           id: organizationData.id,
           name: organizationData.name,

@@ -2,7 +2,8 @@ import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
 import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility.js';
-import { filesWithCounts } from '../helpers.js';
+import { filesWithCounts, releasesWithinReach } from '../helpers.js';
+import { reachOf } from '../../../utils/orgMembership.js';
 const {
   downloadReleases: DownloadRelease,
   downloadPatches: DownloadPatch,
@@ -14,7 +15,7 @@ const {
  * /api/organization/{organization}/download/{name}/release:
  *   get:
  *     summary: List the releases of a download product
- *     description: Retrieve every release of a product, newest first, with its patches and files. The product must be visible to the caller.
+ *     description: Retrieve the releases of a product within the caller's reach, newest first, each with the patches within it and their files. The product must be visible to the caller; a writer of the product sees every row.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -70,8 +71,9 @@ const findAll = async (req, res) => {
     });
 
     const member = isMemberOf(viewer, download.organizationId);
+    download.releases = releases;
     return res.send(
-      releases.map(release => ({
+      releasesWithinReach(download, reachOf(viewer, download)).map(release => ({
         ...release.toJSON(),
         patches: release.patches.map(patch => ({
           ...patch.toJSON(),

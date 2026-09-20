@@ -1,8 +1,13 @@
 import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import {
+  canWriteDownload,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
 const { downloadPatches: DownloadPatch } = db;
 
@@ -11,7 +16,7 @@ const { downloadPatches: DownloadPatch } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}:
  *   put:
  *     summary: Update a patch of a release
- *     description: Update a patch's name, kind, description, release date or notes link. A rename moves its directory. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update a patch's name, kind, description, release date, notes link or visibility. A rename moves its directory. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role. The patch may never stand wider than its release, a wider is_public, guest_access or published answering 422 with the pointer.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -64,6 +69,15 @@ const { downloadPatches: DownloadPatch } = db;
  *                 format: uri
  *                 nullable: true
  *                 description: An empty string or null clears the link
+ *               is_public:
+ *                 type: boolean
+ *                 description: Whether anyone may read the patch; never wider than the release (absent = unchanged)
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the patch while it is published; never wider than the release (absent = unchanged)
+ *               published:
+ *                 type: boolean
+ *                 description: An unpublished patch is readable by the product's writers alone (absent = unchanged)
  *     responses:
  *       200:
  *         description: Patch updated successfully
@@ -142,6 +156,12 @@ const update = async (req, res) => {
     }
     if (typeof notesUrl !== 'undefined') {
       updatePayload.notesUrl = notesUrl === '' ? null : notesUrl;
+    }
+    Object.assign(updatePayload, visibilityOf(req.body));
+
+    const wider = widerThanParent({ ...patchData.get({ plain: true }), ...updatePayload }, release);
+    if (wider) {
+      return refuse(res, req, [wider]);
     }
 
     const updatedPatch = await patchData.update(updatePayload);

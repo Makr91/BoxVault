@@ -1,7 +1,12 @@
 import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  canWriteDownload,
+  resolveOrgMembership,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { getSecureDownloadPath, removeDownloadFiles } from '../helpers.js';
 const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
@@ -11,7 +16,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/bulk:
  *   post:
  *     summary: One action across a selection of patches of a release
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing patch is counted as skipped and named in errors with not_found, a thrown row with internal. A delete removes the file records and the directory the way the single delete does, a shared file handing its bytes to one of its links first.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing patch is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the patch wider than its release with forbidden. A delete removes the file records and the directory the way the single delete does, a shared file handing its bytes to one of its links first.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -44,7 +49,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete]
+ *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -63,7 +68,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  *       404:
  *         description: Organization, product or release not found
  *       422:
- *         description: A value breaks a rule of the bulkLeaf form
+ *         description: A value breaks a rule of the bulkPatch form
  *         content:
  *           application/problem+json:
  *             schema:
@@ -92,6 +97,14 @@ const bulk = async (req, res) => {
     });
     if (!patch) {
       return 'not_found';
+    }
+    if (action !== 'delete') {
+      const change = VISIBILITY_CHANGES[action];
+      if (widerThanParent({ ...patch.get({ plain: true }), ...change }, release)) {
+        return 'forbidden';
+      }
+      await patch.update(change);
+      return null;
     }
     const files = await DownloadFile.findAll({ where: { downloadPatchId: patch.id } });
     await removeDownloadFiles(files);

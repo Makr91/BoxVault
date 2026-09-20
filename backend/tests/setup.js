@@ -61,6 +61,7 @@ const appConfig = {
   },
   sites: {
     'downloads.test': {
+      organization: 'TestOrg',
       brand: {
         name: 'Test Downloads',
         logo_url: '/brand/test.svg',

@@ -19,3 +19,4 @@ setup.token
 .claude/
 notifications.md
 backend/tests/__test_logs__/**
+backend/tests/__test_config__/**

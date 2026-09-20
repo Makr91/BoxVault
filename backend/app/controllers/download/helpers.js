@@ -4,6 +4,7 @@ import { getSecureBoxPath, getStorageRoot } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { snakeKeys } from '../../utils/wire.js';
+import { withinReach } from '../../utils/orgMembership.js';
 const {
   download: Download,
   downloadReleases: DownloadRelease,
@@ -126,25 +127,42 @@ const filesWithCounts = (files, member) =>
   });
 
 /**
+ * The releases of a product within a reach, each with the patches within it,
+ * the chain product, release, patch judged at every row.
+ * @param {Object} download - A download row with nested releases and patches
+ * @param {number} reach - From reachOf
+ * @returns {Array<Object>} The release rows the reach meets, their patches narrowed the same way
+ */
+const releasesWithinReach = (download, reach) =>
+  (download.releases || [])
+    .filter(release => withinReach(reach, release))
+    .map(release => {
+      release.patches = (release.patches || []).filter(patch => withinReach(reach, release, patch));
+      return release;
+    });
+
+/**
  * The product's JSON with its downloadCount and every nested file's
  * downloadCount answered by membership: the numbers to a member, null to
- * anyone else.
+ * anyone else; only the releases and patches within the caller's reach.
  * @param {Object} download - A download row with nested releases, patches and files
  * @param {boolean} member - Whether the caller belongs to the organization
+ * @param {number} reach - From reachOf
  * @returns {Object} The product JSON
  */
-const withCounts = (download, member) => {
+const withCounts = (download, member, reach) => {
   const plain = snakeKeys(download.get({ plain: true }));
-  plain.releases = (download.releases || []).map(release => {
+  const releases = releasesWithinReach(download, reach);
+  plain.releases = releases.map(release => {
     const releasePlain = snakeKeys(release.get({ plain: true }));
-    releasePlain.patches = (release.patches || []).map(patch => {
+    releasePlain.patches = release.patches.map(patch => {
       const patchPlain = snakeKeys(patch.get({ plain: true }));
       patchPlain.files = filesWithCounts(patch.files, member);
       return patchPlain;
     });
     return releasePlain;
   });
-  plain.download_count = member ? sumDownloadDownloads(download) : null;
+  plain.download_count = member ? sumDownloadDownloads({ releases }) : null;
   return plain;
 };
 
@@ -306,6 +324,7 @@ export {
   pendingSummary,
   sumDownloadDownloads,
   filesWithCounts,
+  releasesWithinReach,
   withCounts,
   findOriginalByChecksum,
   promoteOriginal,

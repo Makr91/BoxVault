@@ -1,6 +1,7 @@
 // helpers.js — shared validation for the optional box content fields pushed by
 // the publish pipeline (short_description, readme, metadata).
 import { snakeKeys } from '../../utils/wire.js';
+import { withinReach } from '../../utils/orgMembership.js';
 
 // Whitelisted top-level keys of the structured box facts; unknown keys are
 // stripped silently, whitelisted values pass through as given.
@@ -131,17 +132,28 @@ const boxFilesWithCounts = (files, counted) =>
   });
 
 /**
+ * The versions of a box within a reach, the chain box, version judged at
+ * every row.
+ * @param {Object} box - A box row with nested versions
+ * @param {number} reach - From reachOf or reachOfMembership
+ * @returns {Array<Object>} The version rows the reach meets
+ */
+const versionsWithinReach = (box, reach) =>
+  (box.versions || []).filter(version => withinReach(reach, version));
+
+/**
  * The box's JSON with its download_count and every nested file's download_count
  * answered when counted and null otherwise; a guest of the organization is
- * never counted.
+ * never counted; only the versions within the caller's reach.
  * @param {Object} box - A box row with nested versions, providers, architectures and files
  * @param {boolean} counted - Whether the caller is answered the counts
+ * @param {number} reach - From reachOf or reachOfMembership
  * @returns {Object} The box JSON
  */
-const boxWithCounts = (box, counted) => ({
+const boxWithCounts = (box, counted, reach) => ({
   ...snakeKeys({
     ...box.get({ plain: true }),
-    versions: (box.versions || []).map(version => ({
+    versions: versionsWithinReach(box, reach).map(version => ({
       ...version.get({ plain: true }),
       providers: (version.providers || []).map(provider => ({
         ...provider.get({ plain: true }),
@@ -152,7 +164,13 @@ const boxWithCounts = (box, counted) => ({
       })),
     })),
   }),
-  download_count: counted ? sumBoxDownloads(box) : null,
+  download_count: counted ? sumBoxDownloads({ versions: versionsWithinReach(box, reach) }) : null,
 });
 
-export { parseBoxContentFields, sumBoxDownloads, boxFilesWithCounts, boxWithCounts };
+export {
+  parseBoxContentFields,
+  sumBoxDownloads,
+  boxFilesWithCounts,
+  versionsWithinReach,
+  boxWithCounts,
+};

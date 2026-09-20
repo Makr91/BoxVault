@@ -3,6 +3,8 @@
 // in externalId (their user UUID), scoped per issuer.
 import { log } from '../../utils/Logger.js';
 import { generateEmailHash, isHttpUrl } from '../../utils/identity.js';
+import { loadConfig } from '../../utils/config-loader.js';
+import externalUserHandler from '../../auth/external-user-handler.js';
 import db from '../../models/index.js';
 import {
   SCIM_USER_EXTENSION,
@@ -365,6 +367,7 @@ const provisionScimUser = async (externalId, issuer, state) => {
     external_email: state.email,
     linked_at: new Date(),
   });
+  await externalUserHandler.assignDefaultRoleIfNeeded(user, db, loadConfig('auth'));
 
   return { user, unverifiedEmailConflict: false };
 };

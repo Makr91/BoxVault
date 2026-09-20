@@ -392,6 +392,8 @@ const handleExistingCredentialUser = async (credential, profile, email, db, auth
     }
   }
 
+  await assignDefaultRoleIfNeeded(user, db, authConfig);
+
   return user;
 };
 
@@ -719,4 +721,5 @@ export default {
   handleExternalUser,
   determineUserOrganization,
   syncOrganizationsFromClaim,
+  assignDefaultRoleIfNeeded,
 };

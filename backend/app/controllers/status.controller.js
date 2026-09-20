@@ -76,11 +76,12 @@ const packOf = site => {
 };
 
 /**
- * The brand, collections and links of one hostname: the sites map entry over
- * the defaults, the defaults alone for the unnamed hostname; a site's
- * links.community replaces the default list whole
+ * The brand, collections, links and organization of one hostname: the sites
+ * map entry over the defaults, the defaults alone for the unnamed hostname; a
+ * site's links.community replaces the default list whole; organization is
+ * present only while the entry names the one organization the face serves
  * @param {Object|null} site - The sites map entry
- * @returns {{brand: Object, collections: string[], links: Object}} The per-host members
+ * @returns {{brand: Object, collections: string[], links: Object, organization?: string}} The per-host members
  */
 const faceOf = site => {
   if (!site) {
@@ -89,6 +90,7 @@ const faceOf = site => {
   const theme = site.brand?.default_theme;
   const pack = packOf(site);
   return {
+    ...(site.organization ? { organization: site.organization } : {}),
     brand: {
       ...STATUS.brand,
       name: site.brand?.name || STATUS.brand.name,
@@ -126,7 +128,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections, links (its community list included) and features are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections, links (its community list included), features and organization are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and no organization.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -203,6 +205,10 @@ const featuresOf = (site, localEnabled) => {
  *                       type: string
  *                       description: Prefix of the browser storage keys the UI keeps the session under
  *                       example: boxvault
+ *                 organization:
+ *                   type: string
+ *                   description: The name of the one organization this hostname serves, present only while its sites entry names one; the UI then leaves that organization's crumb out
+ *                   example: Prominic
  *                 collections:
  *                   type: array
  *                   description: Collection registry entries to mount, in order; the first is implicit (no route segment)

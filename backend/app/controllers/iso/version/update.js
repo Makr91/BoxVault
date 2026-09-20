@@ -1,6 +1,7 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { problem } from '../../../utils/problem.js';
+import { visibilityOf, widerThanParent } from '../../../utils/orgMembership.js';
+import { problem, refuse } from '../../../utils/problem.js';
 const { isoVersions: IsoVersion } = db;
 
 /**
@@ -8,6 +9,7 @@ const { isoVersions: IsoVersion } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}:
  *   put:
  *     summary: Update a specific version of an ISO
+ *     description: The version may never stand wider than its ISO, a wider is_public, guest_access or published answering 422 with the pointer.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -43,6 +45,15 @@ const { isoVersions: IsoVersion } = db;
  *                 type: string
  *                 nullable: true
  *                 description: Version release notes (absent = unchanged)
+ *               is_public:
+ *                 type: boolean
+ *                 description: Whether anyone may read the version; never wider than the ISO (absent = unchanged)
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Whether guests of the organization may read the version while it is published; never wider than the ISO (absent = unchanged)
+ *               published:
+ *                 type: boolean
+ *                 description: An unpublished version is readable by the ISO's writers alone (absent = unchanged)
  *               deprecated:
  *                 type: boolean
  *                 description: Setting true requires a non-empty deprecation_reason in this request
@@ -100,6 +111,12 @@ const update = async (req, res) => {
     }
     if (typeof deprecationReason !== 'undefined') {
       updatePayload.deprecationReason = deprecationReason;
+    }
+    Object.assign(updatePayload, visibilityOf(req.body));
+
+    const wider = widerThanParent({ ...version.get({ plain: true }), ...updatePayload }, iso);
+    if (wider) {
+      return refuse(res, req, [wider]);
     }
 
     const updatedVersion = await version.update(updatePayload);

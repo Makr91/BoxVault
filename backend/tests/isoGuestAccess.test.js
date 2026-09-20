@@ -223,6 +223,44 @@ describe('ISO guest access', () => {
       }
     );
 
+    it('should hide a version narrower than the guest reach and never wider than its ISO', async () => {
+      const iso = await db.iso.findOne({ where: { name: flaggedName, organizationId: org.id } });
+      await db.isoVersions.update(
+        { isPublic: false, guestAccess: false },
+        { where: { isoId: iso.id } }
+      );
+      expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${isoBase(flaggedName)}/version`, guestToken)).body).toEqual([]);
+      expect((await get(isoBase(flaggedName), guestToken)).body.versions).toEqual([]);
+      expect((await get(`${fileBase(flaggedName)}/info`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${fileBase(flaggedName)}/download`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, memberToken)).statusCode).toBe(
+        200
+      );
+
+      const wider = await request(app)
+        .put(`${isoBase(flaggedName)}/version/1.0.0`)
+        .set('x-access-token', adminToken)
+        .send({ is_public: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+      ]);
+      const allowed = await request(app)
+        .post(`${isoBase(flaggedName)}/version/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'allow_guests', names: ['1.0.0'] });
+      expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, guestToken)).statusCode).toBe(200);
+
+      await db.isoVersions.update({ published: false }, { where: { isoId: iso.id } });
+      expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, memberToken)).statusCode).toBe(
+        404
+      );
+      expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, adminToken)).statusCode).toBe(200);
+      await db.isoVersions.update({ published: true }, { where: { isoId: iso.id } });
+    });
+
     it('should answer null counts to a guest and numbers to a member', async () => {
       const asGuest = await get(isoBase(flaggedName), guestToken);
       expect(asGuest.body.download_count).toBeNull();

@@ -6,6 +6,9 @@
     "kind": { "type": "string", "enum": ["release", "fixpack", "interim-fix", "hotfix"] },
     "description": { "type": "string" },
     "released_at": { "type": "string", "format": "date" },
-    "notes_url": { "type": "string", "format": "uri" }
+    "notes_url": { "type": "string", "format": "uri" },
+    "is_public": { "type": "boolean" },
+    "guest_access": { "type": "boolean" },
+    "published": { "type": "boolean" }
   }
 }
