@@ -11,6 +11,13 @@ import {
 import { notifyDownloadPublished } from './notifications.js';
 const { download: Download, organization: Organization } = db;
 
+const linkOf = (value, current) => {
+  if (value === undefined) {
+    return current;
+  }
+  return value === '' ? null : value;
+};
+
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}:
@@ -59,13 +66,18 @@ const { download: Download, organization: Organization } = db;
  *               docs_url:
  *                 type: string
  *                 format: uri
+ *                 nullable: true
+ *                 description: An empty string or null clears the link
  *               notes_url:
  *                 type: string
  *                 format: uri
+ *                 nullable: true
+ *                 description: An empty string or null clears the link
  *               icon_url:
  *                 type: string
  *                 format: uri
- *                 description: The product's icon, drawn before its title; the vendor's mark when absent
+ *                 nullable: true
+ *                 description: The product's icon, drawn before its title; the vendor's mark when absent; an empty string or null clears it
  *     responses:
  *       200:
  *         description: Download updated successfully
@@ -166,9 +178,9 @@ const update = async (req, res) => {
       guestAccess: guestAccess !== undefined ? guestAccess : download.guestAccess,
       family: family !== undefined ? family : download.family,
       vendor: vendor !== undefined ? vendor : download.vendor,
-      docsUrl: docsUrl !== undefined ? docsUrl : download.docsUrl,
-      notesUrl: notesUrl !== undefined ? notesUrl : download.notesUrl,
-      iconUrl: iconUrl !== undefined ? iconUrl : download.iconUrl,
+      docsUrl: linkOf(docsUrl, download.docsUrl),
+      notesUrl: linkOf(notesUrl, download.notesUrl),
+      iconUrl: linkOf(iconUrl, download.iconUrl),
     });
 
     if (updatedDownload.published && !wasPublished) {

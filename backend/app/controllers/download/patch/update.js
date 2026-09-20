@@ -63,6 +63,7 @@ const { downloadPatches: DownloadPatch } = db;
  *                 type: string
  *                 format: uri
  *                 nullable: true
+ *                 description: An empty string or null clears the link
  *     responses:
  *       200:
  *         description: Patch updated successfully
@@ -140,7 +141,7 @@ const update = async (req, res) => {
       updatePayload.releasedAt = releasedAt;
     }
     if (typeof notesUrl !== 'undefined') {
-      updatePayload.notesUrl = notesUrl;
+      updatePayload.notesUrl = notesUrl === '' ? null : notesUrl;
     }
 
     const updatedPatch = await patchData.update(updatePayload);

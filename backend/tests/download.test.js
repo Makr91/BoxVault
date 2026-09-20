@@ -511,6 +511,30 @@ describe('Download API', () => {
       expect(published.body.published).toBe(true);
     });
 
+    it('should clear a link sent as an empty string, the edit form with blank fields', async () => {
+      await setProduct({
+        docsUrl: 'https://x.example/docs',
+        notesUrl: 'https://x.example/notes',
+        iconUrl: 'https://x.example/icon.png',
+      });
+      const res = await request(app).put(productBase).set('x-access-token', memberToken).send({
+        name: productName,
+        description: '',
+        is_public: false,
+        guest_access: false,
+        family: '',
+        vendor: '',
+        icon_url: '',
+        docs_url: '',
+        notes_url: null,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.icon_url).toBeNull();
+      expect(res.body.docs_url).toBeNull();
+      expect(res.body.notes_url).toBeNull();
+      expect(res.body.description).toBe('');
+    });
+
     it('should rename the product and move its directory', async () => {
       await request(app)
         .post(`/api/organization/${orgName}/download`)

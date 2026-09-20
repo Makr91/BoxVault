@@ -184,6 +184,13 @@ describe('Download patch API', () => {
     expect(res.body.kind).toBe('hotfix');
     expect(res.body.released_at).toBe('2026-08-01');
 
+    const cleared = await request(app)
+      .put(`${releaseBase}/patch/FP1`)
+      .set('x-access-token', ownerToken)
+      .send({ notes_url: '' });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.body.notes_url).toBeNull();
+
     const renamed = await request(app)
       .put(`${releaseBase}/patch/FP1`)
       .set('x-access-token', ownerToken)
