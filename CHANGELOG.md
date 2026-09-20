@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.0](https://github.com/Makr91/BoxVault/compare/v0.86.0...v1.0.0) (2026-09-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* every JSON answer and the session token in snake_case
+
+### Features
+
+* every JSON answer and the session token in snake_case ([89c31ef](https://github.com/Makr91/BoxVault/commit/89c31ef0450eb60cc3eed3bb66a7b2af74c6773c))
+* notifications in snake_case toward the hub ([6995668](https://github.com/Makr91/BoxVault/commit/699566803228fd5a4746b292465a157c3ee44836))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.24.0 ([f16da7b](https://github.com/Makr91/BoxVault/commit/f16da7bb848657ec2a862a401da9b53996353212))
+* bump startcloud-ui to v0.24.0 ([5312b6a](https://github.com/Makr91/BoxVault/commit/5312b6ab920bf70d141753e90ef186b07fcdaee2))
+
 ## [0.86.0](https://github.com/Makr91/BoxVault/compare/v0.85.1...v0.86.0) (2026-09-19)
 
 
