@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0](https://github.com/Makr91/BoxVault/compare/v0.86.0...v1.0.0) (2026-09-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* every JSON answer and the session token in snake_case
+
+### Features
+
+* every JSON answer and the session token in snake_case ([89c31ef](https://github.com/Makr91/BoxVault/commit/89c31ef0450eb60cc3eed3bb66a7b2af74c6773c))
+* notifications in snake_case toward the hub ([6995668](https://github.com/Makr91/BoxVault/commit/699566803228fd5a4746b292465a157c3ee44836))
+
 ## [0.86.0](https://github.com/Makr91/BoxVault/compare/v0.85.1...v0.86.0) (2026-09-19)
 
 
