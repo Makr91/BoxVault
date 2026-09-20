@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.87.2](https://github.com/Makr91/BoxVault/compare/v0.87.1...v0.87.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.25.0 ([335ffcf](https://github.com/Makr91/BoxVault/commit/335ffcfbea5d57984897c325c8cf89544de78130))
+* bump startcloud-ui to v0.25.0 ([4b8f76a](https://github.com/Makr91/BoxVault/commit/4b8f76a78d02ae032cbb436491aa5cc29a8ad97e))
+* private box count on discover only for members ([c71551f](https://github.com/Makr91/BoxVault/commit/c71551f64bb8a8a10d351d537e10089431e0b6ac))
+
 ## [0.87.1](https://github.com/Makr91/BoxVault/compare/v0.87.0...v0.87.1) (2026-09-20)
 
 
