@@ -28,6 +28,7 @@
     "emailNotVerified": "Por favor verifica tu dirección de correo electrónico antes de iniciar sesión.",
     "localAuthDisabled": "La autenticación con nombre de usuario y contraseña está deshabilitada.",
     "newOrganizationsDisabled": "El registro por cuenta propia está deshabilitado. Solicita una invitación para unirte a una organización.",
+    "registrationDisabled": "La creación de cuentas está deshabilitada en este servidor.",
     "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
     "passwordRequiresUppercase": "La contraseña debe contener al menos una letra mayúscula.",
     "passwordRequiresLowercase": "La contraseña debe contener al menos una letra minúscula.",

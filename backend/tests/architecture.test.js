@@ -1757,7 +1757,7 @@ describe('Architecture API', () => {
       expect(res.body.title).toContain('Version');
     });
 
-    it('should clean up old directory after rename if it still exists (update.js line 183)', async () => {
+    it('should move the directory when the new name is free', async () => {
       const oldName = 'cleanup-old';
       const newName = 'cleanup-new';
 
@@ -1769,7 +1769,6 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken)
         .send({ name: oldName });
 
-      // Mock fs to simulate old directory still existing after rename
       const originalExistsSync = fs.existsSync;
       const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
         if (typeof pathArg === 'string') {
@@ -1795,7 +1794,8 @@ describe('Architecture API', () => {
         .send({ name: newName });
 
       expect(res.statusCode).toBe(200);
-      expect(rmdirSpy).toHaveBeenCalled(); // Cleanup of old directory
+      expect(renameSpy).toHaveBeenCalled();
+      expect(rmdirSpy).not.toHaveBeenCalled();
 
       existsSpy.mockRestore();
       mkdirSpy.mockRestore();

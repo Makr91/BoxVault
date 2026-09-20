@@ -1,6 +1,6 @@
 // update.js
 import fs from 'fs';
-import { getSecureBoxPath } from '../../utils/paths.js';
+import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -12,7 +12,8 @@ import {
   widerThanParent,
   wordsBeneath,
 } from '../../utils/orgMembership.js';
-const { providers: Provider } = db;
+const { providers: Provider, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -123,9 +124,20 @@ export const update = async (req, res) => {
       });
     }
 
+    const current = await Provider.findOne({
+      where: { name: providerName, versionId: version.id },
+    });
+    if (!current) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('providers.notFound'),
+      });
+    }
+
     if (name && name !== providerName) {
       const existingProvider = await Provider.findOne({
-        where: { name, versionId: version.id },
+        where: { name, versionId: version.id, id: { [Op.ne]: current.id } },
       });
       if (existingProvider) {
         return conflict(res, req, '/name', version.versionNumber);
@@ -134,35 +146,15 @@ export const update = async (req, res) => {
 
     const visibility = visibilityOf(req.body);
     if (Object.keys(visibility).length > 0) {
-      const current = await Provider.findOne({
-        where: { name: providerName, versionId: version.id },
-      });
-      if (!current) {
-        return problem(res, req, {
-          status: 404,
-          type: 'not-found',
-          title: req.__('providers.notFound'),
-        });
-      }
       const wider = widerThanParent({ ...current.get({ plain: true }), ...visibility }, version);
       if (wider) {
         return refuse(res, req, [wider]);
       }
     }
 
-    // Create the new directory if it doesn't exist
+    renameDirectory(oldFilePath, newFilePath);
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
-    }
-
-    // Rename the directory if necessary
-    if (oldFilePath !== newFilePath) {
-      fs.renameSync(oldFilePath, newFilePath);
-
-      // Clean up the old directory if it still exists
-      if (fs.existsSync(oldFilePath)) {
-        fs.rmdirSync(oldFilePath, { recursive: true });
-      }
     }
 
     const updatePayload = {};

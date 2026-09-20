@@ -1121,19 +1121,22 @@ describe('Provider API', () => {
       jest.spyOn(db.providers, 'update').mockResolvedValue([1]);
       jest
         .spyOn(db.providers, 'findOne')
+        .mockResolvedValueOnce({ id: 1, name: 'virtualbox' })
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ name: 'new-name' });
+        .mockResolvedValueOnce({ id: 1, name: 'new-name' });
 
       req.body.name = 'new-name';
 
       // Mock fs calls
       jest.spyOn(fs, 'existsSync').mockReturnValue(true); // old path exists
       jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      const rmdirSpy = jest.spyOn(fs, 'rmdirSync').mockImplementation(() => {});
+      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
+      jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
+      jest.spyOn(fs, 'statSync').mockReturnValue({ ino: 1, dev: 1 });
 
       await update(req, res);
 
-      expect(rmdirSpy).toHaveBeenCalled();
+      expect(renameSpy).toHaveBeenCalled();
     });
 
     // findone.js coverage

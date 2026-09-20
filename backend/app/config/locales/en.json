@@ -28,6 +28,7 @@
     "emailNotVerified": "Please verify your email address before signing in.",
     "localAuthDisabled": "Username/password authentication is disabled.",
     "newOrganizationsDisabled": "Self-registration is disabled. Ask for an invitation to join an organization.",
+    "registrationDisabled": "Account creation is disabled on this host.",
     "passwordTooShort": "Password must be at least {{min}} characters long.",
     "passwordRequiresUppercase": "Password must contain at least one uppercase letter.",
     "passwordRequiresLowercase": "Password must contain at least one lowercase letter.",

@@ -9,7 +9,8 @@ import {
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { absolutePath, relinkTo, storagePathFor } from '../helpers.js';
-const { downloadFiles: DownloadFile } = db;
+const { downloadFiles: DownloadFile, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -135,7 +136,7 @@ const update = async (req, res) => {
 
     if (key && key !== file.key) {
       const existingFile = await DownloadFile.findOne({
-        where: { key, downloadPatchId: patch.id },
+        where: { key, downloadPatchId: patch.id, id: { [Op.ne]: file.id } },
       });
       if (existingFile) {
         return conflict(res, req, '/key', patch.name);

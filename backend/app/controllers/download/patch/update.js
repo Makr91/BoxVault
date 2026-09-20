@@ -10,8 +10,10 @@ import {
   wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
+import { renameDirectory } from '../../../utils/paths.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
-const { downloadPatches: DownloadPatch } = db;
+const { downloadPatches: DownloadPatch, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -146,7 +148,7 @@ const update = async (req, res) => {
 
     if (name && name !== patchName) {
       const existingPatch = await DownloadPatch.findOne({
-        where: { name, downloadReleaseId: release.id },
+        where: { name, downloadReleaseId: release.id, id: { [Op.ne]: patchData.id } },
       });
       if (existingPatch) {
         return conflict(res, req, '/name', release.versionNumber);
@@ -181,10 +183,7 @@ const update = async (req, res) => {
     await cascadeBeneath('patch', [patchData.id], wordsBeneath(visibility, recursive === true));
 
     if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-      if (fs.existsSync(newFilePath)) {
-        fs.rmSync(newFilePath, { recursive: true, force: true });
-      }
-      fs.renameSync(oldFilePath, newFilePath);
+      renameDirectory(oldFilePath, newFilePath);
       await renameStoragePaths(
         storagePathFor(organization, download.name, release.versionNumber, patchName),
         storagePathFor(organization, download.name, release.versionNumber, name)

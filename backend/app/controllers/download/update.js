@@ -3,6 +3,7 @@ import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
 import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
+import { renameDirectory } from '../../utils/paths.js';
 import {
   getSecureDownloadPath,
   isReservedProductName,
@@ -10,7 +11,8 @@ import {
   storagePathFor,
 } from './helpers.js';
 import { notifyDownloadPublished } from './notifications.js';
-const { download: Download, organization: Organization } = db;
+const { download: Download, organization: Organization, Sequelize } = db;
+const { Op } = Sequelize;
 
 const linkOf = (value, current) => {
   if (value === undefined) {
@@ -151,26 +153,26 @@ const update = async (req, res) => {
         return conflict(res, req, '/name', 'reserved');
       }
       const existingDownload = await Download.findOne({
-        where: { name: updatedName, organizationId: req.organizationId },
+        where: {
+          name: updatedName,
+          organizationId: req.organizationId,
+          id: { [Op.ne]: download.id },
+        },
       });
       if (existingDownload) {
         return conflict(res, req, '/name', organization);
       }
     }
 
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
-    }
-
     if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-      if (fs.existsSync(newFilePath)) {
-        fs.rmSync(newFilePath, { recursive: true, force: true });
-      }
-      fs.renameSync(oldFilePath, newFilePath);
+      renameDirectory(oldFilePath, newFilePath);
       await renameStoragePaths(
         storagePathFor(organization, name),
         storagePathFor(organization, updatedName)
       );
+    }
+    if (!fs.existsSync(newFilePath)) {
+      fs.mkdirSync(newFilePath, { recursive: true });
     }
 
     const wasPublished = download.published;

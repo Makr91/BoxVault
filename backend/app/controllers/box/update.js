@@ -1,12 +1,13 @@
 // update.js
 import fs from 'fs';
-import { getSecureBoxPath } from '../../utils/paths.js';
+import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
 import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { box: Box } = db;
+const { box: Box, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -172,24 +173,20 @@ export const update = async (req, res) => {
 
     if (updatedName && updatedName !== name) {
       const existingBox = await Box.findOne({
-        where: { name: updatedName, organizationId: req.organizationId },
+        where: {
+          name: updatedName,
+          organizationId: req.organizationId,
+          id: { [Op.ne]: box.id },
+        },
       });
       if (existingBox) {
         return conflict(res, req, '/name', organization);
       }
     }
 
-    // Create the new directory if it doesn't exist
+    renameDirectory(oldFilePath, newFilePath);
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
-    }
-
-    // Rename the directory if necessary
-    if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-      if (fs.existsSync(newFilePath)) {
-        fs.rmSync(newFilePath, { recursive: true, force: true });
-      }
-      fs.renameSync(oldFilePath, newFilePath);
     }
 
     const updatedBox = await box.update({

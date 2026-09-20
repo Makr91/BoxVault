@@ -4,7 +4,8 @@ import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from '../box/helpers.js';
 import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
 import { notifyIsoPublished } from './notifications.js';
-const { iso: ISO, organization: Organization } = db;
+const { iso: ISO, organization: Organization, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -101,7 +102,11 @@ const update = async (req, res) => {
 
     if (updatedName && updatedName !== name) {
       const existingIso = await ISO.findOne({
-        where: { name: updatedName, organizationId: req.organizationId },
+        where: {
+          name: updatedName,
+          organizationId: req.organizationId,
+          id: { [Op.ne]: iso.id },
+        },
       });
       if (existingIso) {
         return conflict(res, req, '/name', organization);

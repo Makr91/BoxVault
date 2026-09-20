@@ -749,7 +749,7 @@ describe('ISO API', () => {
       const restored = await request(app)
         .put(isoBase)
         .set('x-access-token', adminToken)
-        .send({ guest_access: true });
+        .send({ guest_access: true, recursive: true });
       expect(restored.body.guest_access).toBe(true);
     });
 

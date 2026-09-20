@@ -1932,27 +1932,15 @@ describe('Box API', () => {
       });
 
       const originalExistsSync = fs.existsSync;
-      let newPathCheckCount = 0;
 
       const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
         const p = String(pathArg);
-        // Check if this is the new path
         if (p.includes('race-box')) {
-          newPathCheckCount++;
-          // 1st call (Line 125): Return true to skip mkdir
-          if (newPathCheckCount === 1) {
-            return true;
-          }
-          // 2nd call (Line 131): Return false to skip rmSync
-          if (newPathCheckCount === 2) {
-            return false;
-          }
+          return false;
         }
-        // Check if this is the old path (Line 130)
         if (p.includes('race-test')) {
           return true;
         }
-
         return originalExistsSync(pathArg);
       });
 
@@ -1966,8 +1954,8 @@ describe('Box API', () => {
         .send({ name: `race-box-${uniqueId}` });
 
       expect(res.statusCode).toBe(200);
-      expect(rmSpy).not.toHaveBeenCalled(); // Should be skipped because new path "disappeared"
-      expect(renameSpy).toHaveBeenCalled(); // Should still rename
+      expect(rmSpy).not.toHaveBeenCalled();
+      expect(renameSpy).toHaveBeenCalled();
 
       existsSpy.mockRestore();
       rmSpy.mockRestore();

@@ -179,6 +179,24 @@ properties:
             title: Self-registration
             description: Let users create a new organization when registering
             order: 9
+          local_allow_registration:
+            type: boolean
+            default: true
+            title: Account creation
+            description: Offer and accept local account creation; off refuses every signup but the first account of a fresh install
+            order: 10
+          local_allow_password_reset:
+            type: boolean
+            default: true
+            title: Password recovery
+            description: Offer the forgot-password path on the sign-in page; off hides it, for a host whose accounts are provisioned
+            order: 11
+          local_allow_sign_in_link:
+            type: boolean
+            default: true
+            title: Sign-in link
+            description: Offer signing in by emailed link instead of a password; off hides it, for a host whose accounts are provisioned
+            order: 12
       oidc:
         type: object
         subsection: oidcSettings

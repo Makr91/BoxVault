@@ -51,6 +51,20 @@ const offersSignIn = (hostname, method) => {
 };
 
 /**
+ * Whether a hostname offers one sign-in affordance: the site's own boolean
+ * when it names one, the auth-wide default otherwise, both true unless set
+ * false
+ * @param {string} hostname - The request's hostname
+ * @param {string} member - registration, password_reset or sign_in_link of a sites entry
+ * @param {*} fallback - The auth.local value the site falls back to
+ * @returns {boolean}
+ */
+const offersAffordance = (hostname, member, fallback) => {
+  const site = getSiteConfig(hostname)?.[member];
+  return typeof site === 'boolean' ? site : fallback !== false;
+};
+
+/**
  * Refuse the username and password form on a hostname whose sites entry
  * leaves local out of its sign_in list
  * @param {import('express').Request} req - Express request
@@ -155,9 +169,43 @@ router.use((req, res, next) => {
   next();
 });
 
+/**
+ * Refuse account creation on a hostname whose sites entry sets registration
+ * false, or whose auth configuration switches creation off
+ * @param {import('express').Request} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Next handler
+ * @returns {*} The next handler's result, or the problem
+ */
+const requireRegistrationOffered = async (req, res, next) => {
+  const authConfig = loadConfig('auth');
+  const allowed = offersAffordance(
+    req.hostname,
+    'registration',
+    authConfig.auth?.local?.local_allow_registration
+  );
+  if (allowed || (await User.count()) === 0) {
+    return next();
+  }
+  log.auth.info('Account creation refused on a hostname that does not offer it', {
+    hostname: req.hostname,
+  });
+  return problem(res, req, {
+    status: 403,
+    type: 'forbidden',
+    title: req.__('auth.registrationDisabled'),
+  });
+};
+
 router.post(
   '/auth/signup',
-  [authLimiter, requireLocalOffered, validateBody('register'), verifySignUp.checkRolesExisted],
+  [
+    authLimiter,
+    requireLocalOffered,
+    requireRegistrationOffered,
+    validateBody('register'),
+    verifySignUp.checkRolesExisted,
+  ],
   signup
 );
 router.post('/auth/signin', [authLimiter, requireLocalOffered, validateBody('login')], signin);
@@ -277,7 +325,7 @@ router.get('/auth/oidc/issuers', (req, res) => {
  * /api/auth/methods:
  *   get:
  *     summary: Get available authentication methods
- *     description: Retrieve the enabled authentication methods for the login form, answered per Host header; a hostname whose sites entry names a sign_in list is answered exactly the listed methods, local disabled and the other providers left out, its default_provider the configured one while listed and the first listed provider otherwise
+ *     description: Retrieve the enabled authentication methods for the login form, answered per Host header; a hostname whose sites entry names a sign_in list is answered exactly the listed methods, local disabled and the other providers left out, its default_provider the configured one while listed and the first listed provider otherwise. The three affordance booleans are the hostname's own registration, password_reset and sign_in_link when its sites entry names them, the auth.local defaults otherwise
  *     tags: [Authentication]
  *     responses:
  *       200:
@@ -318,6 +366,12 @@ router.get('/auth/oidc/issuers', (req, res) => {
  *                 local_registration_enabled:
  *                   type: boolean
  *                   description: Whether a local account can be self-registered without an invitation
+ *                 password_reset_enabled:
+ *                   type: boolean
+ *                   description: Whether the sign-in page offers the forgot-password path
+ *                 sign_in_link_enabled:
+ *                   type: boolean
+ *                   description: Whether the sign-in page offers signing in by emailed link
  *       500:
  *         description: Internal server error
  *         content:
@@ -370,14 +424,32 @@ router.get('/auth/methods', async (req, res) => {
         : offered[0] || null;
     const silentLogin = !!authConfig.auth?.oidc?.silent_login;
     const userCount = await User.count();
+    const localConfig = authConfig.auth?.local || {};
+    const registrationOffered = offersAffordance(
+      req.hostname,
+      'registration',
+      localConfig.local_allow_registration
+    );
     const localRegistrationEnabled =
-      localEnabled && (userCount === 0 || !!authConfig.auth?.local?.local_allow_new_organizations);
+      localEnabled &&
+      registrationOffered &&
+      (userCount === 0 || !!localConfig.local_allow_new_organizations);
 
     return res.json({
       methods,
       default_provider: defaultProvider,
       silent_login: silentLogin,
       local_registration_enabled: localRegistrationEnabled,
+      password_reset_enabled: offersAffordance(
+        req.hostname,
+        'password_reset',
+        localConfig.local_allow_password_reset
+      ),
+      sign_in_link_enabled: offersAffordance(
+        req.hostname,
+        'sign_in_link',
+        localConfig.local_allow_sign_in_link
+      ),
     });
   } catch (error) {
     log.auth.error('Get auth methods error', {

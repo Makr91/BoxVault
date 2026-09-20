@@ -120,7 +120,7 @@ const getTakenValues = async (username, email) => {
  *             schema:
  *               $ref: '#/components/schemas/Problem'
  *       403:
- *         description: Local registration or new organizations are switched off
+ *         description: Local authentication, account creation or new organizations are switched off
  *         content:
  *           application/problem+json:
  *             schema:
@@ -161,6 +161,14 @@ export const signup = async (req, res) => {
         status: 403,
         type: 'forbidden',
         title: req.__('auth.localAuthDisabled'),
+      });
+    }
+
+    if (existingUsers > 0 && authConfig.auth?.local?.local_allow_registration === false) {
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('auth.registrationDisabled'),
       });
     }
 

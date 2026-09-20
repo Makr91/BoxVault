@@ -630,6 +630,21 @@ properties:
           title: Sign-in methods
           description: The sign-in methods this hostname offers, local for the username and password form and a key of auth.oidc.providers for that provider; any other method is neither listed nor accepted here; absent offers every enabled method
           order: 1
+        registration:
+          type: boolean
+          title: Account creation
+          description: Whether this hostname offers and accepts account creation; absent follows auth.local.local_allow_registration
+          order: 3
+        password_reset:
+          type: boolean
+          title: Password recovery
+          description: Whether this hostname offers the forgot-password path; absent follows auth.local.local_allow_password_reset
+          order: 4
+        sign_in_link:
+          type: boolean
+          title: Sign-in link
+          description: Whether this hostname offers signing in by emailed link; absent follows auth.local.local_allow_sign_in_link
+          order: 5
         collections:
           type: array
           items:

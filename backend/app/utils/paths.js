@@ -1,4 +1,5 @@
-import { join, resolve, sep } from 'path';
+import fs from 'fs';
+import { dirname, join, resolve, sep } from 'path';
 import { loadConfig } from './config-loader.js';
 
 let STORAGE_ROOT;
@@ -53,4 +54,43 @@ const getSecureBoxPath = (...pathSegments) => {
   return fullPath;
 };
 
-export { getStorageRoot, getSecureBoxPath, isPathInside };
+/**
+ * Whether two existing paths are the one directory, which a case-insensitive
+ * filesystem answers for a name differing only in case.
+ * @param {string} first - An existing path
+ * @param {string} second - An existing path
+ * @returns {boolean} True while both name the same entry
+ */
+const isSameEntry = (first, second) => {
+  const left = fs.statSync(first, { throwIfNoEntry: false });
+  const right = fs.statSync(second, { throwIfNoEntry: false });
+  return Boolean(left && right && left.ino === right.ino && left.dev === right.dev);
+};
+
+/**
+ * Move a storage directory to a new name: a rename differing only in case goes
+ * through a temporary name so a case-insensitive filesystem keeps the
+ * contents, any other target is replaced. A missing source or an unchanged
+ * name does nothing.
+ * @param {string} oldPath - The directory's current path
+ * @param {string} newPath - The directory's new path
+ * @returns {void}
+ */
+const renameDirectory = (oldPath, newPath) => {
+  if (oldPath === newPath || !fs.existsSync(oldPath)) {
+    return;
+  }
+  fs.mkdirSync(dirname(newPath), { recursive: true });
+  if (fs.existsSync(newPath)) {
+    if (isSameEntry(oldPath, newPath)) {
+      const staging = `${newPath}.${process.pid}.renaming`;
+      fs.renameSync(oldPath, staging);
+      fs.renameSync(staging, newPath);
+      return;
+    }
+    fs.rmSync(newPath, { recursive: true, force: true });
+  }
+  fs.renameSync(oldPath, newPath);
+};
+
+export { getStorageRoot, getSecureBoxPath, isPathInside, isSameEntry, renameDirectory };

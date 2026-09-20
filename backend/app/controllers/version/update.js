@@ -1,6 +1,5 @@
 // update.js
-import fs from 'fs';
-import { getSecureBoxPath } from '../../utils/paths.js';
+import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -13,7 +12,8 @@ import {
   wordsBeneath,
 } from '../../utils/orgMembership.js';
 import { notifyVersionDeprecated } from './notifications.js';
-const { versions: Version } = db;
+const { versions: Version, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * @swagger
@@ -131,7 +131,7 @@ export const update = async (req, res) => {
 
     if (newVersionNumber && newVersionNumber !== versionNumber) {
       const existingVersion = await Version.findOne({
-        where: { versionNumber: newVersionNumber, boxId: box.id },
+        where: { versionNumber: newVersionNumber, boxId: box.id, id: { [Op.ne]: version.id } },
       });
       if (existingVersion) {
         return conflict(res, req, '/version_number', box.name);
@@ -171,16 +171,7 @@ export const update = async (req, res) => {
     await cascadeBeneath('version', [version.id], wordsBeneath(visibility, recursive === true));
 
     if (updated) {
-      // Rename the directory if necessary
-      if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-        // If the target directory already exists (e.g. from a previous failed run),
-        // remove it so we can rename the old one to this location.
-        if (fs.existsSync(newFilePath)) {
-          fs.rmSync(newFilePath, { recursive: true, force: true });
-        }
-
-        fs.renameSync(oldFilePath, newFilePath);
-      }
+      renameDirectory(oldFilePath, newFilePath);
 
       const updatedVersion = await Version.findOne({
         where: { versionNumber: newVersionNumber || versionNumber, boxId: box.id },

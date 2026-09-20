@@ -1,5 +1,4 @@
 import fs from 'fs';
-import { dirname } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import {
@@ -11,8 +10,10 @@ import {
   wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
+import { renameDirectory } from '../../../utils/paths.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
-const { download: Download, downloadReleases: DownloadRelease } = db;
+const { download: Download, downloadReleases: DownloadRelease, Sequelize } = db;
+const { Op } = Sequelize;
 
 const forbidden = (req, res) =>
   problem(res, req, {
@@ -187,7 +188,11 @@ const update = async (req, res) => {
 
     if (moving || finalVersionNumber !== versionNumber) {
       const existingRelease = await DownloadRelease.findOne({
-        where: { versionNumber: finalVersionNumber, downloadId: target.id },
+        where: {
+          versionNumber: finalVersionNumber,
+          downloadId: target.id,
+          id: { [Op.ne]: release.id },
+        },
       });
       if (existingRelease) {
         return conflict(res, req, '/version_number', target.name);
@@ -213,11 +218,7 @@ const update = async (req, res) => {
     const oldFilePath = getSecureDownloadPath(organization, download.name, versionNumber);
     const newFilePath = getSecureDownloadPath(organization, target.name, finalVersionNumber);
     if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-      if (fs.existsSync(newFilePath)) {
-        fs.rmSync(newFilePath, { recursive: true, force: true });
-      }
-      fs.mkdirSync(dirname(newFilePath), { recursive: true });
-      fs.renameSync(oldFilePath, newFilePath);
+      renameDirectory(oldFilePath, newFilePath);
       await renameStoragePaths(
         storagePathFor(organization, download.name, versionNumber),
         storagePathFor(organization, target.name, finalVersionNumber)
