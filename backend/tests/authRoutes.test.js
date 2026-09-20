@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const authConfigPath = getConfigPath('auth');
+const appConfigPath = getConfigPath('app');
 
 const ISSUER = 'https://login-idp.example';
 const AUTHORIZE_URL = `${ISSUER}/authorize?client_id=boxvault`;
@@ -143,6 +144,45 @@ describe('OIDC login routes', () => {
       },
     ]);
     expect(methods.body.local_registration_enabled).toBe(true);
+  });
+
+  it('should refuse every login start on a hostname whose sites entry names idp', async () => {
+    const originalApp = fs.readFileSync(appConfigPath, 'utf8');
+    const appConfig = yaml.load(originalApp);
+    appConfig.sites['face.test'].auth = 'idp';
+    fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
+    await reloadConfig();
+    try {
+      const responses = await Promise.all([
+        request(app).get('/api/auth/oidc/loginidp').set('Host', 'face.test'),
+        request(app)
+          .post('/api/auth/signin')
+          .set('Host', 'face.test')
+          .send({ username: user.username, password: 'external' }),
+        request(app)
+          .post('/api/auth/signup')
+          .set('Host', 'face.test')
+          .send({
+            username: `face-${uniqueId}`,
+            email: `face-${uniqueId}@example.com`,
+            password: 'password',
+          }),
+      ]);
+      responses.forEach(res => {
+        expect(res.statusCode).toBe(403);
+        expect(res.headers['content-type']).toContain('application/problem+json');
+        expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+        expect(res.body.title).toBe('This site signs in through the identity provider.');
+      });
+      expect(buildAuthorizationUrl).not.toHaveBeenCalled();
+
+      buildAuthorizationUrl.mockResolvedValueOnce(new URL(AUTHORIZE_URL));
+      const plain = await startLogin(request.agent(app));
+      expect(plain.statusCode).toBe(302);
+    } finally {
+      fs.writeFileSync(appConfigPath, originalApp);
+      await reloadConfig();
+    }
   });
 
   it('should refuse to start a login with an unknown or disabled provider', async () => {

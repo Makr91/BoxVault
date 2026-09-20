@@ -618,6 +618,14 @@ properties:
               title: Pack
               description: The bare pack name stamped as data-brand, its stylesheet served at /themes/<name>/<name>.css; empty paints stock Bootstrap
               order: 5
+        auth:
+          type: string
+          enum:
+            - backend
+            - idp
+          title: Session method
+          description: The session the UI creates on this hostname; idp sends the browser straight to the enabled identity provider with no login page and refuses local and provider logins here, backend draws the login page; absent follows auth.jwt.local_enabled
+          order: 1
         collections:
           type: array
           items:

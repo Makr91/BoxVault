@@ -21,7 +21,7 @@ import { buildAuthorizationUrl, handleOidcCallback, buildEndSessionUrl } from '.
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { randomState, randomPKCECodeVerifier } from 'openid-client';
-import { loadConfig, getOrigin } from '../utils/config-loader.js';
+import { loadConfig, getOrigin, getSiteConfig } from '../utils/config-loader.js';
 import { getJwtClaimOptions } from '../utils/auth.js';
 import { log } from '../utils/Logger.js';
 import { problem } from '../utils/problem.js';
@@ -36,6 +36,27 @@ const internal = (req, res, key) =>
   problem(res, req, { status: 500, type: 'internal', title: req.__(key) });
 
 const router = Router();
+
+/**
+ * Refuse a login or signup started on a hostname whose sites entry names
+ * auth idp: that face signs in through the identity provider in the browser
+ * and has no login page, so a local or provider login here is answered 403
+ * @param {import('express').Request} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Next handler
+ * @returns {*} The next handler's result, or the problem
+ */
+const refuseIdpHost = (req, res, next) => {
+  if (getSiteConfig(req.hostname)?.auth !== 'idp') {
+    return next();
+  }
+  log.auth.info('Login refused on an idp hostname', { hostname: req.hostname, path: req.path });
+  return problem(res, req, {
+    status: 403,
+    type: 'forbidden',
+    title: req.__('auth.hostSignsInAtIdp'),
+  });
+};
 
 // One-time login handoff codes (#15): after a successful OIDC callback the
 // signed BoxVault JWT is parked here behind an opaque, single-use, short-lived
@@ -121,10 +142,10 @@ router.use((req, res, next) => {
 
 router.post(
   '/auth/signup',
-  [authLimiter, validateBody('register'), verifySignUp.checkRolesExisted],
+  [authLimiter, refuseIdpHost, validateBody('register'), verifySignUp.checkRolesExisted],
   signup
 );
-router.post('/auth/signin', [authLimiter, validateBody('login')], signin);
+router.post('/auth/signin', [authLimiter, refuseIdpHost, validateBody('login')], signin);
 router.get('/auth/verify-mail/:token', verifyMail);
 router.get('/auth/validate-invitation/:token', validateInvitationToken);
 router.post(
@@ -614,7 +635,7 @@ router.post('/auth/oidc/backchannel-logout', backchannelLogout);
  * /api/auth/oidc/{provider}:
  *   get:
  *     summary: Initiate OIDC authentication for specific provider
- *     description: Redirect user to specific OIDC provider for authentication
+ *     description: Redirect user to specific OIDC provider for authentication; refused with 403 on a hostname whose sites entry names auth idp, which signs in through the identity provider in the browser
  *     tags: [Authentication]
  *     parameters:
  *       - in: path
@@ -629,10 +650,16 @@ router.post('/auth/oidc/backchannel-logout', backchannelLogout);
  *         description: Redirect to OIDC provider
  *       400:
  *         description: OIDC provider not enabled or not found
+ *       403:
+ *         description: The hostname signs in through the identity provider
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  */
-router.get('/auth/oidc/:provider', async (req, res) => {
+router.get('/auth/oidc/:provider', refuseIdpHost, async (req, res) => {
   const { provider } = req.params;
 
   try {
