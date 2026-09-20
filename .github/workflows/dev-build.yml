@@ -254,13 +254,12 @@ jobs:
       #            pfexec svcadm restart pkg/server:r151054_STARTcloud
       #          "
 
-      - name: Create development draft release
+      - name: Create development pre-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Create or update draft release for development version
           RELEASE_TAG="v${VERSION}-dev"
-          RELEASE_TITLE="Development Release ${VERSION}"
+          RELEASE_TITLE="v${VERSION}-dev"
           RELEASE_NOTES="🚧 **Development Release** 🚧
 
           This is an automated development build from the main branch.
@@ -274,11 +273,9 @@ jobs:
           ## Packages
           - \`boxvault-dev_${VERSION}_amd64.deb\` - Debian package"
 
-          # Delete existing dev release if it exists
-          gh release delete "$RELEASE_TAG" --yes || true
+          gh release delete "$RELEASE_TAG" --yes --cleanup-tag || true
 
-          # Create new draft release
-          gh release create "$RELEASE_TAG" --draft --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+          gh release create "$RELEASE_TAG" --prerelease --target "${{ github.sha }}" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
 
       - name: Upload development packages to release
         env:
@@ -315,5 +312,5 @@ jobs:
           echo "Development packages built and published:"
           echo "- Version: ${VERSION}"
           echo "- Debian package: ${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
-          echo "- Draft release: v${VERSION}-dev"
+          echo "- Pre-release: v${VERSION}-dev"
           echo "- Packages published to repositories"
