@@ -50,7 +50,7 @@ const { organization: Organization, user: User, role: Role } = db;
  *                     description: Number of public boxes
  *                   total_box_count:
  *                     type: integer
- *                     description: Total number of boxes
+ *                     description: Total number of boxes, public and private; present only for a member of the organization or a global admin
  *       500:
  *         description: Internal server error
  *         content:
@@ -72,16 +72,22 @@ const discoverOrganizations = async (req, res) => {
     const organizations = await Organization.getDiscoverable(isAdmin);
 
     // Format response for frontend (counts already calculated in getDiscoverable)
-    const formattedOrgs = organizations.map(org => ({
-      id: org.id,
-      name: org.name,
-      description: org.description,
-      access_mode: org.access_mode,
-      email_hash: org.emailHash || '',
-      member_count: org.memberCount || 0,
-      public_box_count: org.publicBoxCount || 0,
-      total_box_count: org.totalBoxCount || 0,
-    }));
+    const formattedOrgs = organizations.map(org => {
+      const row = {
+        id: org.id,
+        name: org.name,
+        description: org.description,
+        access_mode: org.access_mode,
+        email_hash: org.emailHash || '',
+        member_count: org.memberCount || 0,
+        public_box_count: org.publicBoxCount || 0,
+      };
+      const isMember = (org.members || []).some(member => member.id === req.userId);
+      if (isAdmin || isMember) {
+        row.total_box_count = org.totalBoxCount || 0;
+      }
+      return row;
+    });
 
     log.api.info('Discoverable organizations retrieved', {
       count: formattedOrgs.length,

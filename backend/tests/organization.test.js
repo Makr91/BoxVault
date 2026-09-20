@@ -776,6 +776,36 @@ describe('Organization API', () => {
       expect(found).toBeDefined();
       expect(['invite', 'request']).toContain(found.access_mode);
       expect(found).not.toHaveProperty('accessMode');
+      expect(found).toHaveProperty('public_box_count');
+      expect(found).toHaveProperty('total_box_count');
+    });
+
+    it('should omit total_box_count from a signed-in non-member', async () => {
+      await organization.update({ access_mode: 'invite', suspended: false });
+      const outsider = await db.user.create({
+        username: `disc-outsider-${uniqueId}`,
+        email: `disc-outsider-${uniqueId}@example.com`,
+        password: 'password',
+        verified: true,
+      });
+      const outsiderToken = jwt.sign({ id: outsider.id }, 'test-secret', {
+        expiresIn: '1h',
+        issuer: 'boxvault',
+        audience: 'boxvault-api',
+      });
+
+      const res = await request(app)
+        .get('/api/organizations/discover')
+        .set('x-access-token', outsiderToken);
+
+      expect(res.statusCode).toBe(200);
+      const found = res.body.find(o => o.name === orgName);
+      expect(found).toBeDefined();
+      expect(found).toHaveProperty('public_box_count');
+      expect(found).toHaveProperty('member_count');
+      expect(found).not.toHaveProperty('total_box_count');
+
+      await outsider.destroy();
     });
   });
 
@@ -1787,6 +1817,7 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
       const found = res.body.find(o => o.name === privOrg.name);
       expect(found).toBeDefined(); // Admin sees private orgs
+      expect(found).toHaveProperty('total_box_count', 0);
 
       await privOrg.destroy();
     });
@@ -1803,6 +1834,10 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
       const found = res.body.find(o => o.name === privOrg.name);
       expect(found).toBeUndefined(); // Unauth user does NOT see private orgs
+      const visible = res.body.find(o => o.name === orgName);
+      expect(visible).toBeDefined();
+      expect(visible).toHaveProperty('public_box_count');
+      expect(visible).not.toHaveProperty('total_box_count');
 
       await privOrg.destroy();
     });
