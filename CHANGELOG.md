@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.91.0](https://github.com/Makr91/BoxVault/compare/v0.90.0...v0.91.0) (2026-09-20)
+
+
+### Features
+
+* every row of the hierarchy carries its own visibility ([a7f79ec](https://github.com/Makr91/BoxVault/commit/a7f79ece734da40666cd9fe3bd83a39ee8e6e9d1))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.29.0 ([8c87c50](https://github.com/Makr91/BoxVault/commit/8c87c502f0b4b7ade10e5ae479dd836127f5cf7c))
+* bump startcloud-ui to v0.29.0 ([540e4fc](https://github.com/Makr91/BoxVault/commit/540e4fc230cd27cfa034eaaf3f59f0921901b0b0))
+
 ## [0.90.0](https://github.com/Makr91/BoxVault/compare/v0.89.0...v0.90.0) (2026-09-20)
 
 
