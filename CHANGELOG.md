@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.87.1](https://github.com/Makr91/BoxVault/compare/v0.87.0...v0.87.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* NO AI SHOULD EVER CFUCKING USE A EXCLAMATION, THEY ONLY EVER USE A "FEAT" OR A "FIX" NO OTHER RELASE PLEASE COMMANDS, DO NOT EVER INCLUDE A FUCKING EXLAMATION MARK IN THE FUCKING RELEASE PELASE COMMIT MESSAGE ([0626d01](https://github.com/Makr91/BoxVault/commit/0626d0154edaecc9b2e070664f0588b73ff82aa2))
+
 ## [0.86.0](https://github.com/Makr91/BoxVault/compare/v0.85.1...v0.86.0) (2026-09-19)
 
 
