@@ -68,25 +68,6 @@ const enabledIdp = providers => {
   };
 };
 
-/**
- * The idp block of one hostname: the enabled provider when the site names
- * idp, or when no site word is given and local accounts are off; null when
- * the site names backend or local accounts are on with no site word
- * @param {Object|null} site - The sites map entry
- * @param {boolean} localEnabled - Whether auth.jwt.local_enabled is on
- * @param {Object} providers - The auth.oidc.providers map
- * @returns {{issuer: string, client_id: string, scopes: string, storage_prefix: string}|null} The idp block, or null for a backend session
- */
-const idpOf = (site, localEnabled, providers) => {
-  if (site?.auth === 'backend') {
-    return null;
-  }
-  if (site?.auth !== 'idp' && localEnabled) {
-    return null;
-  }
-  return enabledIdp(providers);
-};
-
 const packOf = site => {
   const name = site?.brand?.pack;
   return typeof name === 'string' && name.trim() !== ''
@@ -145,7 +126,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from the hostname's sites entry when it names auth and from auth.jwt.local_enabled otherwise, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections, links (its community list included) and features are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections, links (its community list included) and features are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -198,7 +179,7 @@ const featuresOf = (site, localEnabled) => {
  *                           example: /themes/prominic/prominic.css
  *                 auth:
  *                   type: array
- *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session, idp is browser OIDC against the issuer named in idp. A sites entry naming auth decides its hostname, idp needing an enabled provider; without that word backend is answered while local accounts are on and idp while they are off and a provider is enabled
+ *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session, answered while local accounts are on; idp is browser OIDC against the issuer named in idp, answered while local accounts are off and a provider is enabled
  *                   items:
  *                     type: string
  *                     enum: [backend, idp]
@@ -289,8 +270,8 @@ const featuresOf = (site, localEnabled) => {
 const getStatus = (req, res) => {
   const authConfig = loadConfig('auth');
   const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
+  const idp = localEnabled ? null : enabledIdp(authConfig.auth?.oidc?.providers || {});
   const site = getSiteConfig(req.hostname);
-  const idp = idpOf(site, localEnabled, authConfig.auth?.oidc?.providers || {});
   return res.json({
     ...STATUS,
     ...faceOf(site),

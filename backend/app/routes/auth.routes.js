@@ -38,23 +38,38 @@ const internal = (req, res, key) =>
 const router = Router();
 
 /**
- * Refuse a login or signup started on a hostname whose sites entry names
- * auth idp: that face signs in through the identity provider in the browser
- * and has no login page, so a local or provider login here is answered 403
+ * Whether a hostname offers one sign-in method: every method while its sites
+ * entry names no sign_in list, exactly the listed ones otherwise, local for
+ * the username and password form and a provider key for that provider
+ * @param {string} hostname - The request's hostname
+ * @param {string} method - local, or a key of auth.oidc.providers
+ * @returns {boolean}
+ */
+const offersSignIn = (hostname, method) => {
+  const list = getSiteConfig(hostname)?.sign_in;
+  return !Array.isArray(list) || list.includes(method);
+};
+
+/**
+ * Refuse the username and password form on a hostname whose sites entry
+ * leaves local out of its sign_in list
  * @param {import('express').Request} req - Express request
  * @param {import('express').Response} res - Express response
  * @param {import('express').NextFunction} next - Next handler
  * @returns {*} The next handler's result, or the problem
  */
-const refuseIdpHost = (req, res, next) => {
-  if (getSiteConfig(req.hostname)?.auth !== 'idp') {
+const requireLocalOffered = (req, res, next) => {
+  if (offersSignIn(req.hostname, 'local')) {
     return next();
   }
-  log.auth.info('Login refused on an idp hostname', { hostname: req.hostname, path: req.path });
+  log.auth.info('Local sign-in refused on a hostname that does not offer it', {
+    hostname: req.hostname,
+    path: req.path,
+  });
   return problem(res, req, {
     status: 403,
     type: 'forbidden',
-    title: req.__('auth.hostSignsInAtIdp'),
+    title: req.__('auth.localAuthDisabled'),
   });
 };
 
@@ -142,10 +157,10 @@ router.use((req, res, next) => {
 
 router.post(
   '/auth/signup',
-  [authLimiter, refuseIdpHost, validateBody('register'), verifySignUp.checkRolesExisted],
+  [authLimiter, requireLocalOffered, validateBody('register'), verifySignUp.checkRolesExisted],
   signup
 );
-router.post('/auth/signin', [authLimiter, refuseIdpHost, validateBody('login')], signin);
+router.post('/auth/signin', [authLimiter, requireLocalOffered, validateBody('login')], signin);
 router.get('/auth/verify-mail/:token', verifyMail);
 router.get('/auth/validate-invitation/:token', validateInvitationToken);
 router.post(
@@ -262,7 +277,7 @@ router.get('/auth/oidc/issuers', (req, res) => {
  * /api/auth/methods:
  *   get:
  *     summary: Get available authentication methods
- *     description: Retrieve list of enabled authentication methods for the login form
+ *     description: Retrieve the enabled authentication methods for the login form, answered per Host header; a hostname whose sites entry names a sign_in list is answered exactly the listed methods, local disabled and the other providers left out, its default_provider the configured one while listed and the first listed provider otherwise
  *     tags: [Authentication]
  *     responses:
  *       200:
@@ -313,7 +328,8 @@ router.get('/auth/oidc/issuers', (req, res) => {
 router.get('/auth/methods', async (req, res) => {
   try {
     const authConfig = loadConfig('auth');
-    const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
+    const localEnabled =
+      authConfig.auth?.jwt?.local_enabled !== false && offersSignIn(req.hostname, 'local');
     const methods = [
       {
         id: 'local',
@@ -323,9 +339,15 @@ router.get('/auth/methods', async (req, res) => {
     ];
 
     const oidcProvidersConfig = authConfig.auth?.oidc?.providers || {};
+    const offered = [];
 
     Object.entries(oidcProvidersConfig).forEach(([providerName, providerConfig]) => {
-      if (providerConfig.enabled === true && providerConfig.display_name) {
+      if (
+        providerConfig.enabled === true &&
+        providerConfig.display_name &&
+        offersSignIn(req.hostname, providerName)
+      ) {
+        offered.push(providerName);
         methods.push({
           id: `oidc-${providerName}`,
           name: providerConfig.display_name,
@@ -336,11 +358,16 @@ router.get('/auth/methods', async (req, res) => {
     });
 
     log.auth.debug('Available auth methods', {
+      hostname: req.hostname,
       count: methods.length,
       methods: methods.map(m => m.id),
     });
 
-    const defaultProvider = authConfig.auth?.oidc?.default_provider || null;
+    const configuredDefault = authConfig.auth?.oidc?.default_provider || null;
+    const defaultProvider =
+      configuredDefault && offered.includes(configuredDefault)
+        ? configuredDefault
+        : offered[0] || null;
     const silentLogin = !!authConfig.auth?.oidc?.silent_login;
     const userCount = await User.count();
     const localRegistrationEnabled =
@@ -635,7 +662,7 @@ router.post('/auth/oidc/backchannel-logout', backchannelLogout);
  * /api/auth/oidc/{provider}:
  *   get:
  *     summary: Initiate OIDC authentication for specific provider
- *     description: Redirect user to specific OIDC provider for authentication; refused with 403 on a hostname whose sites entry names auth idp, which signs in through the identity provider in the browser
+ *     description: Redirect user to specific OIDC provider for authentication; a provider left out of the hostname's sign_in list is answered as not enabled
  *     tags: [Authentication]
  *     parameters:
  *       - in: path
@@ -650,16 +677,10 @@ router.post('/auth/oidc/backchannel-logout', backchannelLogout);
  *         description: Redirect to OIDC provider
  *       400:
  *         description: OIDC provider not enabled or not found
- *       403:
- *         description: The hostname signs in through the identity provider
- *         content:
- *           application/problem+json:
- *             schema:
- *               $ref: '#/components/schemas/Problem'
  *       500:
  *         description: Internal server error
  */
-router.get('/auth/oidc/:provider', refuseIdpHost, async (req, res) => {
+router.get('/auth/oidc/:provider', async (req, res) => {
   const { provider } = req.params;
 
   try {
@@ -674,8 +695,8 @@ router.get('/auth/oidc/:provider', refuseIdpHost, async (req, res) => {
       return res.redirect('/?error=provider_not_found');
     }
 
-    if (providerConfig.enabled !== true) {
-      log.auth.error('OIDC provider not enabled', { provider });
+    if (providerConfig.enabled !== true || !offersSignIn(req.hostname, provider)) {
+      log.auth.error('OIDC provider not enabled', { provider, hostname: req.hostname });
       return res.redirect('/?error=provider_not_enabled');
     }
 

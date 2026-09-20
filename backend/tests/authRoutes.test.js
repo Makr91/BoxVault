@@ -146,42 +146,70 @@ describe('OIDC login routes', () => {
     expect(methods.body.local_registration_enabled).toBe(true);
   });
 
-  it('should refuse every login start on a hostname whose sites entry names idp', async () => {
+  it('should offer a hostname exactly the sign-in methods its sites entry lists', async () => {
     const originalApp = fs.readFileSync(appConfigPath, 'utf8');
     const appConfig = yaml.load(originalApp);
-    appConfig.sites['face.test'].auth = 'idp';
+    appConfig.sites['face.test'].sign_in = ['loginidp'];
     fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
-    await reloadConfig();
+    const restoreAuth = await writeAuthConfig(config => {
+      config.auth.oidc.default_provider = 'social';
+      config.auth.oidc.providers.social = {
+        enabled: true,
+        issuer: 'https://social.example',
+        client_id: 'social',
+        display_name: 'Social',
+      };
+    });
     try {
-      const responses = await Promise.all([
-        request(app).get('/api/auth/oidc/loginidp').set('Host', 'face.test'),
-        request(app)
-          .post('/api/auth/signin')
-          .set('Host', 'face.test')
-          .send({ username: user.username, password: 'external' }),
-        request(app)
-          .post('/api/auth/signup')
-          .set('Host', 'face.test')
-          .send({
-            username: `face-${uniqueId}`,
-            email: `face-${uniqueId}@example.com`,
-            password: 'password',
-          }),
+      const face = await request(app).get('/api/auth/methods').set('Host', 'face.test');
+      expect(face.statusCode).toBe(200);
+      expect(face.body.methods).toEqual([
+        { id: 'local', name: 'Local Account', enabled: false },
+        {
+          id: 'oidc-loginidp',
+          name: 'Login IdP',
+          enabled: true,
+          icon_url: 'https://login-idp.example/icon.svg',
+        },
       ]);
-      responses.forEach(res => {
-        expect(res.statusCode).toBe(403);
-        expect(res.headers['content-type']).toContain('application/problem+json');
-        expect(res.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
-        expect(res.body.title).toBe('This site signs in through the identity provider.');
-      });
+      expect(face.body.default_provider).toBe('loginidp');
+      expect(face.body.local_registration_enabled).toBe(false);
+
+      const plain = await request(app).get('/api/auth/methods');
+      expect(plain.body.methods.map(method => method.id)).toEqual([
+        'local',
+        'oidc-loginidp',
+        'oidc-social',
+      ]);
+      expect(plain.body.default_provider).toBe('social');
+
+      const social = await request(app).get('/api/auth/oidc/social').set('Host', 'face.test');
+      expect(social.headers.location).toBe('/?error=provider_not_enabled');
+      const signin = await request(app)
+        .post('/api/auth/signin')
+        .set('Host', 'face.test')
+        .send({ username: user.username, password: 'external' });
+      expect(signin.statusCode).toBe(403);
+      expect(signin.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+      expect(signin.body.title).toBe('Username/password authentication is disabled.');
+      const signup = await request(app)
+        .post('/api/auth/signup')
+        .set('Host', 'face.test')
+        .send({
+          username: `face-${uniqueId}`,
+          email: `face-${uniqueId}@example.com`,
+          password: 'password',
+        });
+      expect(signup.statusCode).toBe(403);
       expect(buildAuthorizationUrl).not.toHaveBeenCalled();
 
       buildAuthorizationUrl.mockResolvedValueOnce(new URL(AUTHORIZE_URL));
-      const plain = await startLogin(request.agent(app));
-      expect(plain.statusCode).toBe(302);
+      const offered = await request(app).get('/api/auth/oidc/loginidp').set('Host', 'face.test');
+      expect(offered.statusCode).toBe(302);
+      expect(offered.headers.location).toBe(AUTHORIZE_URL);
     } finally {
       fs.writeFileSync(appConfigPath, originalApp);
-      await reloadConfig();
+      await restoreAuth();
     }
   });
 

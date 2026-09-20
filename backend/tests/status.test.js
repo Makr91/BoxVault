@@ -124,58 +124,6 @@ describe('GET /api/status per Host', () => {
     }
   });
 
-  it('should answer the session method a sites entry names, per hostname', async () => {
-    const appConfigPath = getConfigPath('app');
-    const authConfigPath = getConfigPath('auth');
-    const originalApp = fs.readFileSync(appConfigPath, 'utf8');
-    const originalAuth = fs.readFileSync(authConfigPath, 'utf8');
-    try {
-      const authConfig = yaml.load(originalAuth);
-      authConfig.auth.oidc.providers = {
-        loginidp: {
-          enabled: true,
-          issuer: 'https://login-idp.example',
-          client_id: 'boxvault',
-          scope: 'openid profile email',
-        },
-      };
-      fs.writeFileSync(authConfigPath, yaml.dump(authConfig));
-      const appConfig = yaml.load(originalApp);
-      appConfig.sites['face.test'].auth = 'idp';
-      fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
-      await reloadConfig();
-
-      const face = await request(app).get('/api/status').set('Host', 'face.test');
-      expect(face.body.auth).toEqual(['idp']);
-      expect(face.body.idp).toEqual({
-        issuer: 'https://login-idp.example',
-        client_id: 'boxvault',
-        scopes: 'openid profile email',
-        storage_prefix: 'boxvault',
-      });
-
-      const plain = await request(app).get('/api/status');
-      expect(plain.body.auth).toEqual(['backend']);
-      expect(plain.body).not.toHaveProperty('idp');
-
-      authConfig.auth.jwt.local_enabled = false;
-      fs.writeFileSync(authConfigPath, yaml.dump(authConfig));
-      appConfig.sites['face.test'].auth = 'backend';
-      fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
-      await reloadConfig();
-
-      const off = await request(app).get('/api/status');
-      expect(off.body.auth).toEqual(['idp']);
-      const backendFace = await request(app).get('/api/status').set('Host', 'face.test');
-      expect(backendFace.body.auth).toEqual(['backend']);
-      expect(backendFace.body).not.toHaveProperty('idp');
-    } finally {
-      fs.writeFileSync(appConfigPath, originalApp);
-      fs.writeFileSync(authConfigPath, originalAuth);
-      await reloadConfig();
-    }
-  });
-
   it('should allow the origin of a sites entry cross-origin', async () => {
     const res = await request(app).get('/api/status').set('Origin', 'https://face.test');
     expect(res.statusCode).toBe(200);

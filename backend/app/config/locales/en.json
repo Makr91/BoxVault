@@ -27,7 +27,6 @@
     "forbidden": "Access denied.",
     "emailNotVerified": "Please verify your email address before signing in.",
     "localAuthDisabled": "Username/password authentication is disabled.",
-    "hostSignsInAtIdp": "This site signs in through the identity provider.",
     "newOrganizationsDisabled": "Self-registration is disabled. Ask for an invitation to join an organization.",
     "passwordTooShort": "Password must be at least {{min}} characters long.",
     "passwordRequiresUppercase": "Password must contain at least one uppercase letter.",

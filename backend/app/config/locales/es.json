@@ -27,7 +27,6 @@
     "forbidden": "Acceso denegado.",
     "emailNotVerified": "Por favor verifica tu dirección de correo electrónico antes de iniciar sesión.",
     "localAuthDisabled": "La autenticación con nombre de usuario y contraseña está deshabilitada.",
-    "hostSignsInAtIdp": "Este sitio inicia sesión a través del proveedor de identidad.",
     "newOrganizationsDisabled": "El registro por cuenta propia está deshabilitado. Solicita una invitación para unirte a una organización.",
     "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
     "passwordRequiresUppercase": "La contraseña debe contener al menos una letra mayúscula.",
