@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.92.0](https://github.com/Makr91/BoxVault/compare/v0.91.1...v0.92.0) (2026-09-20)
+
+
+### Features
+
+* visibility cascades down every tree ([425328c](https://github.com/Makr91/BoxVault/commit/425328ca009eccce2bad6307d27b07b33e533e11))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.31.0 ([2f97c93](https://github.com/Makr91/BoxVault/commit/2f97c93c0532a4b130363e91dc4575711cba33d5))
+* bump startcloud-ui to v0.31.0 ([03775a9](https://github.com/Makr91/BoxVault/commit/03775a97cb22c07671e4350c510c642bb433fe9d))
+
 ## [0.91.1](https://github.com/Makr91/BoxVault/compare/v0.91.0...v0.91.1) (2026-09-20)
 
 
