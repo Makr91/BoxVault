@@ -113,7 +113,7 @@ describe('Events API', () => {
     await other.setRoles([userRole]);
     otherToken = signFor(other);
 
-    serviceToken = signFor(user, { isServiceAccount: true });
+    serviceToken = signFor(user, { is_service_account: true });
   });
 
   afterAll(async () => {

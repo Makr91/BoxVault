@@ -88,8 +88,8 @@ export const findOne = async (req, res) => {
       userId = decoded.id;
       caller = {
         userId,
-        isServiceAccount: Boolean(decoded.isServiceAccount),
-        serviceAccountId: decoded.serviceAccountId,
+        isServiceAccount: Boolean(decoded.is_service_account),
+        serviceAccountId: decoded.service_account_id,
       };
     } catch {
       return problem(res, req, {

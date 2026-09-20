@@ -70,17 +70,17 @@ const downloadAuth = async (req, res, next) => {
     try {
       const decoded = await verifyDownloadToken(downloadToken);
       // Suspended users may not redeem download tokens
-      if (decoded.userId) {
-        const tokenUser = await User.findByPk(decoded.userId);
+      if (decoded.user_id) {
+        const tokenUser = await User.findByPk(decoded.user_id);
         if (tokenUser?.suspended) {
           return forbidden(req, res, 'auth.accountSuspended');
         }
       }
 
       req.downloadTokenDecoded = decoded;
-      req.userId = decoded.userId;
-      req.isServiceAccount = decoded.isServiceAccount;
-      req.serviceAccountId = decoded.serviceAccountId;
+      req.userId = decoded.user_id;
+      req.isServiceAccount = decoded.is_service_account;
+      req.serviceAccountId = decoded.service_account_id;
       return next();
     } catch {
       // Already logged by verifyDownloadToken

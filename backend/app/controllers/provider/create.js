@@ -6,7 +6,7 @@
  *       type: object
  *       required:
  *         - name
- *         - versionId
+ *         - version_id
  *       properties:
  *         id:
  *           type: integer
@@ -17,14 +17,14 @@
  *         description:
  *           type: string
  *           description: Description of the provider
- *         versionId:
+ *         version_id:
  *           type: integer
  *           description: ID of the version this provider belongs to
- *         createdAt:
+ *         created_at:
  *           type: string
  *           format: date-time
  *           description: Provider creation timestamp
- *         updatedAt:
+ *         updated_at:
  *           type: string
  *           format: date-time
  *           description: Provider last update timestamp
@@ -32,9 +32,9 @@
  *         id: 1
  *         name: "virtualbox"
  *         description: "VirtualBox provider"
- *         versionId: 1
- *         createdAt: "2023-01-01T00:00:00.000Z"
- *         updatedAt: "2023-01-01T00:00:00.000Z"
+ *         version_id: 1
+ *         created_at: "2023-01-01T00:00:00.000Z"
+ *         updated_at: "2023-01-01T00:00:00.000Z"
  *
  *     CreateProviderRequest:
  *       type: object

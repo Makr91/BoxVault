@@ -32,7 +32,7 @@ const {
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: List of download products with releases, patches, files and total downloadCount; every downloadCount is null to a caller who is not a member of the organization
+ *         description: List of download products with releases, patches, files and total download_count; every download_count is null to a caller who is not a member of the organization
  *       404:
  *         description: Organization not found
  *       500:

@@ -154,7 +154,7 @@ export default (sequelize, Sequelize) => {
   /**
    * Get user's pending requests
    * @param {number} userId - User ID
-   * @returns {Promise<Request[]>}
+   * @returns {Promise<Array<Object>>}
    */
   Request.getUserPendingRequests = async function (userId) {
     const { default: db } = await import('./index.js');
@@ -163,16 +163,17 @@ export default (sequelize, Sequelize) => {
       order: [['created_at', 'DESC']],
     });
 
-    // Load organizations in parallel
-    await Promise.all(
+    return Promise.all(
       results.map(async result => {
-        result.organization = await db.organization.findByPk(result.organization_id, {
+        const organization = await db.organization.findByPk(result.organization_id, {
           attributes: ['id', 'name', 'description'],
         });
+        return {
+          ...result.get({ plain: true }),
+          organization: organization ? organization.get({ plain: true }) : null,
+        };
       })
     );
-
-    return results;
   };
 
   /**

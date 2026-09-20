@@ -8,7 +8,7 @@ import { resolvePending } from './resolve.js';
  * /api/organization/{organization}/download/pending/{id}/info:
  *   get:
  *     summary: Get pending upload information
- *     description: The assembled size of a pending upload for the upload zone's poll, with the members the file info route answers where they apply; `fileSize` is null until the bytes are assembled. Any member of the organization may read it; an id of another organization answers 404.
+ *     description: The assembled size of a pending upload for the upload zone's poll, with the members the file info route answers where they apply; `file_size` is null until the bytes are assembled. Any member of the organization may read it; an id of another organization answers 404.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -33,18 +33,16 @@ import { resolvePending } from './resolve.js';
  *                 - $ref: '#/components/schemas/PendingUpload'
  *                 - type: object
  *                   properties:
- *                     fileName:
- *                       type: string
- *                     fileSize:
+ *                     file_size:
  *                       type: integer
  *                       nullable: true
  *                     checksum:
  *                       type: string
  *                       nullable: true
- *                     checksumType:
+ *                     checksum_type:
  *                       type: string
  *                       nullable: true
- *                     createdAt:
+ *                     created_at:
  *                       type: string
  *                       format: date-time
  *       403:
@@ -64,11 +62,10 @@ const info = async (req, res) => {
 
     return res.send({
       ...pendingSummary(pending),
-      fileName: pending.fileName,
-      fileSize: pending.checksum ? Number(pending.size) : null,
+      file_size: pending.checksum ? Number(pending.size) : null,
       checksum: pending.checksum,
-      checksumType: pending.checksumType,
-      createdAt: pending.createdAt,
+      checksum_type: pending.checksumType,
+      created_at: pending.createdAt,
     });
   } catch (err) {
     log.error.error('Error retrieving pending upload info', err);

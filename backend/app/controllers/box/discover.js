@@ -13,7 +13,7 @@ const { Op } = Sequelize;
  * /api/discover:
  *   get:
  *     summary: Discover all boxes
- *     description: Retrieve all boxes available to the user. Authenticated users additionally see boxes of organizations they belong to, a guest of an organization its published boxes flagged for guests, a service account those of its own organization at its effective role; anonymous requests get only published public boxes. Every downloadCount is null to a guest of the box's organization.
+ *     description: Retrieve all boxes available to the user. Authenticated users additionally see boxes of organizations they belong to, a guest of an organization its published boxes flagged for guests, a service account those of its own organization at its effective role; anonymous requests get only published public boxes. Every download_count is null to a guest of the box's organization.
  *     tags: [Boxes]
  *     security:
  *       - bearerAuth: []

@@ -54,20 +54,20 @@ const findPersonalOrgUuids = async orgUuids => {
  *                   description:
  *                     type: string
  *                     description: Organization description
- *                   emailHash:
+ *                   email_hash:
  *                     type: string
  *                     description: Email hash for Gravatar
  *                   role:
  *                     type: string
  *                     enum: [member, admin, owner]
  *                     description: User's role in this organization
- *                   isPrimary:
+ *                   is_primary:
  *                     type: boolean
  *                     description: Whether this is the user's primary organization
  *                   personal:
  *                     type: boolean
  *                     description: Whether the identity provider marks this organization as a personal org
- *                   joinedAt:
+ *                   joined_at:
  *                     type: string
  *                     format: date-time
  *                     description: When user joined this organization
@@ -114,15 +114,15 @@ const getUserOrganizations = async (req, res) => {
             id: org.id,
             name: org.name,
             description: org.description,
-            emailHash: org.emailHash,
+            email_hash: org.emailHash,
             logo: org.logo,
             display_name: org.display_name,
             url: org.url,
             access_mode: org.access_mode,
           },
           role: membership.role,
-          isPrimary: true,
-          joinedAt: serviceAccount.createdAt,
+          is_primary: true,
+          joined_at: serviceAccount.createdAt,
         },
       ];
 
@@ -152,16 +152,16 @@ const getUserOrganizations = async (req, res) => {
         id: userOrg.organization.id,
         name: userOrg.organization.name,
         description: userOrg.organization.description,
-        emailHash: userOrg.organization.emailHash,
+        email_hash: userOrg.organization.emailHash,
         logo: userOrg.organization.logo,
         display_name: userOrg.organization.display_name,
         url: userOrg.organization.url,
         access_mode: userOrg.organization.access_mode,
       },
       role: userOrg.role,
-      isPrimary: userOrg.organization.id === primaryOrganizationId,
+      is_primary: userOrg.organization.id === primaryOrganizationId,
       personal: personalOrgUuids.has(userOrg.organization.external_org_id),
-      joinedAt: userOrg.joined_at,
+      joined_at: userOrg.joined_at,
     }));
 
     log.api.info('User organizations retrieved', {

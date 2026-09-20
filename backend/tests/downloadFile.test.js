@@ -117,14 +117,15 @@ describe('Download file API', () => {
         .send({ key: 'linux-x64', file_name: installerName, kind: 'installer' });
       expect(res.statusCode).toBe(201);
       expect(res.body.key).toBe('linux-x64');
-      expect(res.body.fileName).toBe(installerName);
+      expect(res.body.file_name).toBe(installerName);
       expect(res.body.kind).toBe('installer');
       expect(res.body.platform).toBe('any');
       expect(res.body.architecture).toBe('any');
       expect(res.body.language).toBe('any');
-      expect(Number(res.body.fileSize)).toBe(0);
-      expect(res.body.original).toBe(true);
-      expect(res.body.storagePath).toBeNull();
+      expect(Number(res.body.file_size)).toBe(0);
+      expect(res.body.original).toBeUndefined();
+      expect(res.body.storage_path).toBeUndefined();
+      expect(res.body.links_to).toBeUndefined();
     });
 
     it('should reject a platform outside the enum and a duplicate key', async () => {
@@ -170,7 +171,7 @@ describe('Download file API', () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toBe('File upload completed');
-      expect(res.body.details.fileSize).toBe(fileContent.length);
+      expect(res.body.details.file_size).toBe(fileContent.length);
       expect(fs.existsSync(filePath(releaseNumber, patchName, installerName))).toBe(true);
 
       const info = await request(app)
@@ -179,18 +180,18 @@ describe('Download file API', () => {
       expect(info.statusCode).toBe(200);
       expect(info.body).toEqual({
         key: 'linux-x64',
-        fileName: installerName,
+        file_name: installerName,
         kind: 'installer',
         platform: 'any',
         architecture: 'any',
         language: 'any',
         variant: null,
-        fileSize: expect.anything(),
+        file_size: expect.anything(),
         checksum: sha256(fileContent),
-        checksumType: 'SHA256',
-        downloadCount: 0,
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
+        checksum_type: 'SHA256',
+        download_count: 0,
+        created_at: expect.any(String),
+        updated_at: expect.any(String),
       });
     });
 
@@ -224,8 +225,8 @@ describe('Download file API', () => {
         'x-total-chunks': '2',
       });
       expect(first.statusCode).toBe(200);
-      expect(first.body.details.isComplete).toBe(false);
-      expect(first.body.details.chunksReceived).toBe(1);
+      expect(first.body.details.is_complete).toBe(false);
+      expect(first.body.details.chunks_received).toBe(1);
       expect(first.body.details).toMatchObject({
         product: productName,
         release: releaseNumber,
@@ -239,13 +240,13 @@ describe('Download file API', () => {
         'x-total-chunks': '2',
       });
       expect(second.statusCode).toBe(200);
-      expect(second.body.details.isComplete).toBe(true);
-      expect(second.body.details.fileSize).toBe(content.length);
+      expect(second.body.details.is_complete).toBe(true);
+      expect(second.body.details.file_size).toBe(content.length);
 
       const info = await request(app)
         .get(`${patchBase}/file/container/info`)
         .set('x-access-token', ownerToken);
-      expect(info.body.fileSize).toBe(content.length);
+      expect(info.body.file_size).toBe(content.length);
       expect(info.body.checksum).toBe(sha256(content));
       expect(
         fs.readFileSync(filePath(releaseNumber, patchName, 'Domino_14.5.1_Container_Image.tgz'))
@@ -409,11 +410,11 @@ describe('Download file API', () => {
         .get(`${patchBase}/file/linux-x64/info`)
         .set('x-access-token', guestToken);
       expect(info.statusCode).toBe(200);
-      expect(info.body.downloadCount).toBeNull();
+      expect(info.body.download_count).toBeNull();
 
       const files = await request(app).get(`${patchBase}/file`).set('x-access-token', guestToken);
       expect(files.statusCode).toBe(200);
-      files.body.forEach(entry => expect(entry.downloadCount).toBeNull());
+      files.body.forEach(entry => expect(entry.download_count).toBeNull());
 
       const releases = await request(app)
         .get(`${productBase}/release`)
@@ -421,7 +422,7 @@ describe('Download file API', () => {
       expect(releases.statusCode).toBe(200);
       releases.body.forEach(entry =>
         entry.patches.forEach(patchEntry =>
-          patchEntry.files.forEach(file => expect(file.downloadCount).toBeNull())
+          patchEntry.files.forEach(file => expect(file.download_count).toBeNull())
         )
       );
 
@@ -429,9 +430,9 @@ describe('Download file API', () => {
         .post(`${patchBase}/file/linux-x64/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
-      expect(link.body).toHaveProperty('downloadUrl');
+      expect(link.body).toHaveProperty('download_url');
 
-      const [, token] = link.body.downloadUrl.split('token=');
+      const [, token] = link.body.download_url.split('token=');
       const byToken = await request(app).get(`${patchBase}/file/linux-x64/download?token=${token}`);
       expect(byToken.statusCode).toBe(200);
 
@@ -446,7 +447,7 @@ describe('Download file API', () => {
       const memberInfo = await request(app)
         .get(`${patchBase}/file/linux-x64/info`)
         .set('x-access-token', memberToken);
-      expect(memberInfo.body.downloadCount).toBe(2);
+      expect(memberInfo.body.download_count).toBe(2);
     });
 
     it('should be refused the files of the product while the flag is off', async () => {
@@ -540,7 +541,7 @@ describe('Download file API', () => {
         'Traveler_14.0.0_Linux.tar.gz'
       );
       expect(res.statusCode).toBe(200);
-      expect(res.body.details.fileSize).toBe(content.length);
+      expect(res.body.details.file_size).toBe(content.length);
       expect(res.body.details).toMatchObject({
         product: 'traveler',
         release: '14.0.0',
@@ -843,12 +844,12 @@ describe('Download file API', () => {
         .post(`${fileBase}/get-download-link`)
         .set('x-access-token', memberToken);
       expect(res.statusCode).toBe(200);
-      const [, token] = res.body.downloadUrl.split('token=');
+      const [, token] = res.body.download_url.split('token=');
       const decoded = jwt.verify(token, 'test-secret');
       expect(decoded.type).toBe('download');
       expect(decoded.organization).toBe(orgName);
       expect(decoded.download).toBe(productName);
-      expect(decoded.versionNumber).toBe(releaseNumber);
+      expect(decoded.version_number).toBe(releaseNumber);
       expect(decoded.patch).toBe(patchName);
       expect(decoded.key).toBe('windows-x64');
 
@@ -881,10 +882,10 @@ describe('Download file API', () => {
       expect(Buffer.compare(byName.body, byKey.body)).toBe(0);
 
       const info = await request(app).get(`${fileBase}/info`).set('x-access-token', memberToken);
-      expect(info.body.downloadCount).toBe(3);
+      expect(info.body.download_count).toBe(3);
 
       const product = await request(app).get(productBase).set('x-access-token', memberToken);
-      expect(product.body.downloadCount).toBeGreaterThanOrEqual(3);
+      expect(product.body.download_count).toBeGreaterThanOrEqual(3);
     });
 
     it('should handle range requests', async () => {
@@ -904,59 +905,59 @@ describe('Download file API', () => {
         .get(`${fileBase}/info`)
         .set('x-access-token', outsiderToken);
       expect(infoAsOutsider.statusCode).toBe(200);
-      expect(infoAsOutsider.body.downloadCount).toBeNull();
+      expect(infoAsOutsider.body.download_count).toBeNull();
 
       const infoAnonymous = await request(app).get(`${fileBase}/info`);
-      expect(infoAnonymous.body.downloadCount).toBeNull();
+      expect(infoAnonymous.body.download_count).toBeNull();
 
       const infoAsMember = await request(app)
         .get(`${fileBase}/info`)
         .set('x-access-token', memberToken);
-      expect(infoAsMember.body.downloadCount).toBe(4);
+      expect(infoAsMember.body.download_count).toBe(4);
 
       const files = await request(app).get(`${patchBase}/file`);
       expect(files.statusCode).toBe(200);
-      files.body.forEach(entry => expect(entry.downloadCount).toBeNull());
+      files.body.forEach(entry => expect(entry.download_count).toBeNull());
 
       const patch = await request(app).get(patchBase).set('x-access-token', outsiderToken);
       expect(patch.statusCode).toBe(200);
-      patch.body.files.forEach(entry => expect(entry.downloadCount).toBeNull());
+      patch.body.files.forEach(entry => expect(entry.download_count).toBeNull());
 
       const patches = await request(app).get(`${releaseBase}/patch`);
       patches.body.forEach(entry =>
-        entry.files.forEach(file => expect(file.downloadCount).toBeNull())
+        entry.files.forEach(file => expect(file.download_count).toBeNull())
       );
 
       const release = await request(app).get(releaseBase);
       expect(release.statusCode).toBe(200);
       release.body.patches.forEach(entry =>
-        entry.files.forEach(file => expect(file.downloadCount).toBeNull())
+        entry.files.forEach(file => expect(file.download_count).toBeNull())
       );
 
       const releases = await request(app).get(`${productBase}/release`);
       releases.body.forEach(entry =>
         entry.patches.forEach(patchEntry =>
-          patchEntry.files.forEach(file => expect(file.downloadCount).toBeNull())
+          patchEntry.files.forEach(file => expect(file.download_count).toBeNull())
         )
       );
 
       const product = await request(app).get(productBase);
-      expect(product.body.downloadCount).toBeNull();
+      expect(product.body.download_count).toBeNull();
       product.body.releases.forEach(entry =>
         entry.patches.forEach(patchEntry =>
-          patchEntry.files.forEach(file => expect(file.downloadCount).toBeNull())
+          patchEntry.files.forEach(file => expect(file.download_count).toBeNull())
         )
       );
 
       const productAsMember = await request(app)
         .get(productBase)
         .set('x-access-token', memberToken);
-      expect(productAsMember.body.downloadCount).toBeGreaterThanOrEqual(3);
+      expect(productAsMember.body.download_count).toBeGreaterThanOrEqual(3);
       const windowsRow = productAsMember.body.releases
         .flatMap(entry => entry.patches)
         .flatMap(patchEntry => patchEntry.files)
         .find(file => file.key === 'windows-x64');
-      expect(windowsRow.downloadCount).toBe(4);
+      expect(windowsRow.download_count).toBe(4);
 
       await setProduct({ isPublic: false });
     });
@@ -964,10 +965,10 @@ describe('Download file API', () => {
     it('should refuse a download token issued for another file', async () => {
       const token = jwt.sign(
         {
-          userId: member.id,
+          user_id: member.id,
           organization: orgName,
           download: productName,
-          versionNumber: releaseNumber,
+          version_number: releaseNumber,
           patch: patchName,
           key: 'container',
           type: 'download',
@@ -1014,7 +1015,7 @@ describe('Download file API', () => {
         userId: owner.id,
       });
       const saToken = jwt.sign(
-        { id: owner.id, isServiceAccount: true, serviceAccountId: account.id },
+        { id: owner.id, is_service_account: true, service_account_id: account.id },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
@@ -1073,9 +1074,6 @@ describe('Download file API', () => {
         .set('x-access-token', ownerToken)
         .send({ file_name: 'Domino_14.5.1_Windows_English.exe' });
       expect(renamed.statusCode).toBe(200);
-      expect(renamed.body.storagePath).toBe(
-        `${orgName}/downloads/${productName}/${releaseNumber}/${patchName}/Domino_14.5.1_Windows_English.exe`
-      );
       expect(
         fs.existsSync(filePath(releaseNumber, patchName, 'Domino_14.5.1_Windows_English.exe'))
       ).toBe(true);

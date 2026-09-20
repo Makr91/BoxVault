@@ -52,7 +52,9 @@ const deleteIso = async (req, res) => {
       return problem(res, req, { status: 404, type: 'not-found', title: req.__('isos.notFound') });
     }
 
-    const files = iso.versions.flatMap(version => version.files.map(file => file.toJSON()));
+    const files = iso.versions.flatMap(version =>
+      version.files.map(file => file.get({ plain: true }))
+    );
 
     await iso.destroy();
     await removeUnreferencedIsoFiles(files);

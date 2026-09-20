@@ -55,14 +55,14 @@ Response:
   "verified": true,
   "roles": ["ROLE_USER"],
   "organization": "myorg",
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "isServiceAccount": false,
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "is_service_account": false,
   "provider": "local",
-  "stayLoggedIn": false
+  "stay_logged_in": false
 }
 ```
 
-The body also carries `organizations`, `preferredLanguage`, `preferredTheme`, `emailHash`, `avatarUrl` and `entitlements`. There is no refresh token.
+The body also carries `organizations`, `preferred_language`, `preferred_theme`, `email_hash`, `avatar_url` and `entitlements`. There is no refresh token.
 
 ### Using JWT Tokens
 
@@ -99,7 +99,7 @@ curl -X POST https://boxvault.example.com/api/auth/refresh-token \
   -d '{"stay_logged_in":true}'
 ```
 
-The answer is the sign-in body again with a new `accessToken`. The STARTcloud UI refreshes four minutes after the last refresh while the session was kept.
+The answer is the sign-in body again with a new `access_token`. The STARTcloud UI refreshes four minutes after the last refresh while the session was kept.
 
 ### Token Revocation
 
@@ -165,7 +165,7 @@ curl -X POST https://boxvault.example.com/api/service-accounts \
   }'
 ```
 
-`expiration_days` may not exceed `auth.jwt.service_account_max_expiry_days` (365 by default). The answer carries `id`, `username` (`<creator>-<8 hex>`), `description`, `expiresAt`, `organization_id`, `createdAt` and `token`. `GET /api/service-accounts` lists yours, `GET /api/service-accounts/organizations` the organizations you may create one in, and `DELETE /api/service-accounts/:id` revokes one.
+`expiration_days` may not exceed `auth.jwt.service_account_max_expiry_days` (365 by default). The answer carries `id`, `username` (`<creator>-<8 hex>`), `description`, `role`, `expires_at`, `organization_id`, `created_at` and `token`. `GET /api/service-accounts` lists yours, `GET /api/service-accounts/organizations` the organizations you may create one in, and `DELETE /api/service-accounts/:id` revokes one.
 
 ### Service Account Authentication
 

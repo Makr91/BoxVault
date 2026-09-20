@@ -81,7 +81,7 @@ const download = async (req, res) => {
     if (
       decoded.organization !== organization ||
       decoded.download !== name ||
-      decoded.versionNumber !== versionNumber ||
+      decoded.version_number !== versionNumber ||
       decoded.patch !== patchName ||
       (decoded.key !== key && decoded.key !== file.key)
     ) {

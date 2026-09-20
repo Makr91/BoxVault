@@ -5,30 +5,30 @@
  *     DownloadRelease:
  *       type: object
  *       required:
- *         - versionNumber
- *         - downloadId
+ *         - version_number
+ *         - download_id
  *       properties:
  *         id:
  *           type: integer
- *         versionNumber:
+ *         version_number:
  *           type: string
  *           description: The release identifier (14.5.1)
  *         description:
  *           type: string
- *         downloadId:
+ *         download_id:
  *           type: integer
- *         releaseNotes:
+ *         release_notes:
  *           type: string
  *           nullable: true
  *         deprecated:
  *           type: boolean
- *         deprecationReason:
+ *         deprecation_reason:
  *           type: string
  *           nullable: true
- *         createdAt:
+ *         created_at:
  *           type: string
  *           format: date-time
- *         updatedAt:
+ *         updated_at:
  *           type: string
  *           format: date-time
  *
@@ -36,7 +36,7 @@
  *       type: object
  *       required:
  *         - name
- *         - downloadReleaseId
+ *         - download_release_id
  *       properties:
  *         id:
  *           type: integer
@@ -48,19 +48,19 @@
  *         kind:
  *           type: string
  *           enum: [release, fixpack, interim-fix, hotfix]
- *         releasedAt:
+ *         released_at:
  *           type: string
  *           format: date
  *           nullable: true
- *         notesUrl:
+ *         notes_url:
  *           type: string
  *           nullable: true
- *         downloadReleaseId:
+ *         download_release_id:
  *           type: integer
- *         createdAt:
+ *         created_at:
  *           type: string
  *           format: date-time
- *         updatedAt:
+ *         updated_at:
  *           type: string
  *           format: date-time
  *
@@ -68,15 +68,15 @@
  *       type: object
  *       required:
  *         - key
- *         - fileName
- *         - downloadPatchId
+ *         - file_name
+ *         - download_patch_id
  *       properties:
  *         id:
  *           type: integer
  *         key:
  *           type: string
  *           description: The file's key (linux-x64)
- *         fileName:
+ *         file_name:
  *           type: string
  *         kind:
  *           type: string
@@ -93,32 +93,22 @@
  *         variant:
  *           type: string
  *           nullable: true
- *         fileSize:
+ *         file_size:
  *           type: integer
  *         checksum:
  *           type: string
  *           nullable: true
- *         checksumType:
+ *         checksum_type:
  *           type: string
  *           nullable: true
- *         downloadCount:
+ *         download_count:
  *           type: integer
- *         storagePath:
- *           type: string
- *           nullable: true
- *         original:
- *           type: boolean
- *           description: Whether this row owns the bytes on disk
- *         linksTo:
+ *         download_patch_id:
  *           type: integer
- *           nullable: true
- *           description: The original row when this path is a symlink
- *         downloadPatchId:
- *           type: integer
- *         createdAt:
+ *         created_at:
  *           type: string
  *           format: date-time
- *         updatedAt:
+ *         updated_at:
  *           type: string
  *           format: date-time
  */

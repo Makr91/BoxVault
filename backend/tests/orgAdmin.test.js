@@ -164,7 +164,7 @@ describe('Organization administration guards', () => {
         expect.objectContaining({
           organization: expect.objectContaining({ id: orgA.id, name: orgAName }),
           role: 'member',
-          isPrimary: true,
+          is_primary: true,
         }),
       ]);
     });
@@ -184,7 +184,7 @@ describe('Organization administration guards', () => {
           .get('/api/user/organizations')
           .set(
             'x-access-token',
-            signFor(ownerA, { isServiceAccount: true, serviceAccountId: serviceAccount.id })
+            signFor(ownerA, { is_service_account: true, service_account_id: serviceAccount.id })
           );
         expect(res.statusCode).toBe(403);
       } finally {
@@ -216,7 +216,7 @@ describe('Organization administration guards', () => {
         .get(`/api/organization/${orgAName}/users`)
         .set('x-access-token', signFor(guestA));
       expect(listed.statusCode).toBe(200);
-      expect(listed.body.find(entry => entry.id === guestA.id).orgRole).toBe('guest');
+      expect(listed.body.find(entry => entry.id === guestA.id).org_role).toBe('guest');
 
       const removed = await request(app)
         .delete(`/api/organization/${orgAName}/members/${memberA.id}`)
@@ -330,7 +330,7 @@ describe('Organization administration guards', () => {
         .set('x-access-token', signFor(ownerA))
         .send({ role: 'owner' });
       expect(promote.statusCode).toBe(200);
-      expect(promote.body.newRole).toBe('owner');
+      expect(promote.body.new_role).toBe('owner');
 
       const stepDown = await request(app)
         .put(`/api/organization/${orgAName}/users/${ownerA.id}/role`)

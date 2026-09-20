@@ -69,7 +69,7 @@ describe('Provider API', () => {
       password: 'SoomePass',
     });
 
-    authToken = authResponse.body.accessToken;
+    authToken = authResponse.body.access_token;
 
     // Setup Regular User (Member, but not Admin)
     regularUser = await db.user.create({

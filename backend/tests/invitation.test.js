@@ -251,8 +251,8 @@ describe('Invitation API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('message', 'Invitation sent successfully!');
-      expect(res.body).toHaveProperty('invitationToken');
-      ({ invitationToken } = res.body); // Save for next test
+      expect(res.body).toHaveProperty('invitation_token');
+      ({ invitation_token: invitationToken } = res.body); // Save for next test
 
       // Verify email was sent
       expect(mockSendMail).toHaveBeenCalledWith(
@@ -394,7 +394,7 @@ describe('Invitation API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('message', 'Invitation token is valid.');
       expect(res.body).toHaveProperty('email', inviteeEmail);
-      expect(res.body).toHaveProperty('organizationName', orgName);
+      expect(res.body).toHaveProperty('organization_name', orgName);
     });
 
     it('should return 400 or 404 for an invalid invitation token', async () => {

@@ -29,7 +29,7 @@ const { user: User } = db;
  *                 message:
  *                   type: string
  *                   example: "Email verified successfully."
- *                 expirationTime:
+ *                 expiration_time:
  *                   type: number
  *                   description: Token expiration timestamp
  *       400:
@@ -73,7 +73,7 @@ export const verifyMail = async (req, res) => {
 
     return res.send({
       message: req.__('auth.emailVerified'),
-      expirationTime: user.verificationTokenExpires,
+      expiration_time: user.verificationTokenExpires,
     });
   } catch (err) {
     log.error.error('Error verifying email:', err);

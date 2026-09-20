@@ -48,7 +48,7 @@ curl -X POST https://boxvault.example.com/api/auth/signin \
   "id": "user_id",
   "username": "username",
   "email": "email@example.com",
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "roles": ["ROLE_USER", "ROLE_ADMIN"],
   "organization": "myorg"
 }
@@ -272,7 +272,8 @@ curl "https://boxvault.example.com/api/organization/myorg/box/debian12/metadata"
           "url": "https://boxvault.example.com/myorg/boxes/debian12/versions/1.0.0/providers/virtualbox/amd64/vagrant.box",
           "checksum_type": "sha256",
           "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "fileSize": "1508591037"
+          "architecture": "amd64",
+          "default_architecture": true
         }
       ]
     }
@@ -357,7 +358,7 @@ curl -X POST https://boxvault.example.com/api/organization/myorg/download/domino
 
 ### Upload File in Chunks
 
-The web interface uploads in 5 MB chunks; the same route takes them from curl. Split the file, send one request per chunk with its index, and poll the file info until `fileSize` is set:
+The web interface uploads in 5 MB chunks; the same route takes them from curl. Split the file, send one request per chunk with its index, and poll the file info until `file_size` is set:
 
 ```bash
 split -b 5m -d -a 4 Domino_1451FP1_Linux_English.tar chunk-
@@ -406,7 +407,7 @@ A product name that is not a slug, or a release or patch that is not an identifi
 
 ### Upload File in Two Steps
 
-A person's upload lands the bytes first and names the levels after. The pending route takes the same chunks (or the whole file) into the organization's pending store and validates nothing but the upload headers and the file name; every chunk answers `details.isComplete` and `details.status` beside `{ id, file_name, size, guess }`, the guess read from the file name and empty where the name gives nothing:
+A person's upload lands the bytes first and names the levels after. The pending route takes the same chunks (or the whole file) into the organization's pending store and validates nothing but the upload headers and the file name; every chunk answers `details.is_complete` and `details.status` beside `{ id, file_name, size, guess }`, the guess read from the file name and empty where the name gives nothing:
 
 ```bash
 curl -X POST "https://boxvault.example.com/api/organization/myorg/download/pending/upload" \
@@ -422,9 +423,9 @@ curl -X POST "https://boxvault.example.com/api/organization/myorg/download/pendi
 {
   "message": "File upload completed",
   "details": {
-    "isComplete": true,
+    "is_complete": true,
     "status": "complete",
-    "fileSize": 1508591037,
+    "file_size": 1508591037,
     "id": "3f9c2a7e0b6d4e1f8a2c5d7b9e0f1a2b",
     "file_name": "Domino_14.5.1_Linux_English.tar",
     "size": 1508591037,
@@ -502,7 +503,7 @@ curl -X POST "https://boxvault.example.com/api/organization/myorg/download/domin
 
 ```json
 {
-  "downloadUrl": "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/download?token=..."
+  "download_url": "https://boxvault.example.com/api/organization/myorg/download/domino-server/release/14.5.1/patch/FP1/file/linux-x64/download?token=..."
 }
 ```
 
@@ -559,9 +560,10 @@ curl -X POST https://boxvault.example.com/api/service-accounts \
   "id": 1,
   "username": "mark-7fb6603d",
   "description": "CI/CD Service Account",
-  "expiresAt": "2025-12-28T10:51:02.000Z",
+  "role": "member",
+  "expires_at": "2025-12-28T10:51:02.000Z",
   "organization_id": 1,
-  "createdAt": "2024-12-28T10:51:02.000Z",
+  "created_at": "2024-12-28T10:51:02.000Z",
   "token": "319b8554ee85c3df139dbbb98169b64a4b50f338968bdc145fd851eb68eff0f0"
 }
 ```

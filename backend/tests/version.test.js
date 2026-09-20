@@ -58,7 +58,7 @@ describe('Version API', () => {
       password: 'SoomePass',
     });
 
-    authToken = authResponse.body.accessToken;
+    authToken = authResponse.body.access_token;
 
     // Create test box
     await request(app)
@@ -152,7 +152,7 @@ describe('Version API', () => {
         .send(newVersion);
 
       expect(res.statusCode).toBe(201);
-      expect(res.body).toHaveProperty('versionNumber', newVersion.version_number);
+      expect(res.body).toHaveProperty('version_number', newVersion.version_number);
       expect(res.body).toHaveProperty('description', newVersion.description);
     });
 
@@ -235,7 +235,7 @@ describe('Version API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('versionNumber', version.version_number);
+      expect(res.body).toHaveProperty('version_number', version.version_number);
       expect(res.body).toHaveProperty('description', version.description);
     });
 
@@ -491,7 +491,7 @@ describe('Version API', () => {
         .send({ version_number: newVNum });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.versionNumber).toBe(newVNum);
+      expect(res.body.version_number).toBe(newVNum);
 
       const newPath = getSecureBoxPath(orgName, testBox.name, newVNum);
       expect(fs.existsSync(newPath)).toBe(true);

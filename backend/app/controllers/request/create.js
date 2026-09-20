@@ -51,12 +51,12 @@ const badRequest = (req, res, key) =>
  *                   properties:
  *                     id:
  *                       type: integer
- *                     organizationName:
+ *                     organization_name:
  *                       type: string
  *                     status:
  *                       type: string
  *                       example: "pending"
- *                     createdAt:
+ *                     created_at:
  *                       type: string
  *                       format: date-time
  *       400:
@@ -139,9 +139,9 @@ export const createJoinRequest = async (req, res) => {
       message: req.__('requests.submitted'),
       request: {
         id: joinRequest.id,
-        organizationName: orgName,
+        organization_name: orgName,
         status: 'pending',
-        createdAt: joinRequest.created_at,
+        created_at: joinRequest.created_at,
       },
     });
   } catch (err) {

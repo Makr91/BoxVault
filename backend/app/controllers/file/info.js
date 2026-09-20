@@ -26,7 +26,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/info:
  *   get:
  *     summary: Get file information
- *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs a writing membership of its organization, a guest of the organization reading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. downloadCount is null to a guest of the organization.
+ *     description: Retrieve information about a Vagrant box file including download URL and metadata. A private box needs a writing membership of its organization, a guest of the organization reading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. download_count is null to a guest of the organization.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -72,15 +72,15 @@ const unauthorized = (req, res) =>
  *             schema:
  *               type: object
  *               properties:
- *                 fileName:
+ *                 file_name:
  *                   type: string
  *                   example: "vagrant.box"
  *                   description: Name of the file
- *                 downloadUrl:
+ *                 download_url:
  *                   type: string
  *                   example: "https://api.example.com/organization/myorg/box/mybox/version/1.0.0/provider/virtualbox/architecture/amd64/file/download?token=..."
  *                   description: Secure download URL with token
- *                 downloadCount:
+ *                 download_count:
  *                   type: integer
  *                   nullable: true
  *                   example: 42
@@ -89,19 +89,19 @@ const unauthorized = (req, res) =>
  *                   type: string
  *                   example: "a1b2c3d4e5f6..."
  *                   description: File checksum
- *                 checksumType:
+ *                 checksum_type:
  *                   type: string
  *                   example: "sha256"
  *                   description: Checksum algorithm used
- *                 fileSize:
+ *                 file_size:
  *                   type: integer
  *                   example: 1073741824
  *                   description: File size in bytes
- *                 createdAt:
+ *                 created_at:
  *                   type: string
  *                   format: date-time
  *                   description: When the file record was created
- *                 updatedAt:
+ *                 updated_at:
  *                   type: string
  *                   format: date-time
  *                   description: When the file record was last updated
@@ -157,14 +157,14 @@ const info = async (req, res) => {
         // Generate a secure, typed download token (type:'download' + iss/aud)
         const downloadToken = generateDownloadToken(
           {
-            userId,
-            isServiceAccount,
-            serviceAccountId,
+            user_id: userId,
+            is_service_account: isServiceAccount,
+            service_account_id: serviceAccountId,
             organization,
-            boxId,
-            versionNumber,
-            providerName,
-            architectureName,
+            box_id: boxId,
+            version_number: versionNumber,
+            provider_name: providerName,
+            architecture_name: architectureName,
           },
           authConfig.auth?.jwt?.download_link_expiry || '1h'
         );
@@ -173,14 +173,14 @@ const info = async (req, res) => {
         const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
         return res.send({
-          fileName: fileRecord.fileName,
-          downloadUrl,
-          downloadCount: counted ? fileRecord.downloadCount : null,
+          file_name: fileRecord.fileName,
+          download_url: downloadUrl,
+          download_count: counted ? fileRecord.downloadCount : null,
           checksum: fileRecord.checksum,
-          checksumType: fileRecord.checksumType,
-          fileSize: fileRecord.fileSize,
-          createdAt: fileRecord.createdAt,
-          updatedAt: fileRecord.updatedAt,
+          checksum_type: fileRecord.checksumType,
+          file_size: fileRecord.fileSize,
+          created_at: fileRecord.createdAt,
+          updated_at: fileRecord.updatedAt,
         });
       }
       return fileNotFound(req, res);
@@ -207,13 +207,14 @@ const info = async (req, res) => {
       // Generate a secure, typed download token (type:'download' + iss/aud)
       const downloadToken = generateDownloadToken(
         {
-          userId,
-          isServiceAccount,
+          user_id: userId,
+          is_service_account: isServiceAccount,
+          service_account_id: serviceAccountId,
           organization,
-          boxId,
-          versionNumber,
-          providerName,
-          architectureName,
+          box_id: boxId,
+          version_number: versionNumber,
+          provider_name: providerName,
+          architecture_name: architectureName,
         },
         authConfig.auth?.jwt?.download_link_expiry || '1h'
       );
@@ -222,14 +223,14 @@ const info = async (req, res) => {
       const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
       return res.send({
-        fileName: fileRecord.fileName,
-        downloadUrl,
-        downloadCount: counted ? fileRecord.downloadCount : null,
+        file_name: fileRecord.fileName,
+        download_url: downloadUrl,
+        download_count: counted ? fileRecord.downloadCount : null,
         checksum: fileRecord.checksum,
-        checksumType: fileRecord.checksumType,
-        fileSize: fileRecord.fileSize,
-        createdAt: fileRecord.createdAt,
-        updatedAt: fileRecord.updatedAt,
+        checksum_type: fileRecord.checksumType,
+        file_size: fileRecord.fileSize,
+        created_at: fileRecord.createdAt,
+        updated_at: fileRecord.updatedAt,
       });
     }
     return fileNotFound(req, res);

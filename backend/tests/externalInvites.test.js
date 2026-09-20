@@ -416,7 +416,7 @@ describe('Identity-provider delegation', () => {
         axiosPost.mockResolvedValue({ data: { invite_id: 'inv-1' } });
         const res = await approve(ownerToken);
         expect(res.statusCode).toBe(200);
-        expect(res.body.assignedRole).toBe('member');
+        expect(res.body.assigned_role).toBe('member');
         expect(axiosPost).toHaveBeenCalledWith(
           `${ISSUER}/api/org/invites`,
           { email: requester.email, org_uuid: externalOrg.external_org_id, role: 'member' },
@@ -468,7 +468,7 @@ describe('Identity-provider delegation', () => {
           accepted: false,
           accepted_at: null,
           expired: false,
-          createdAt: null,
+          created_at: null,
         },
         {
           id: `ext:${externalOrgName}:i2`,
@@ -478,7 +478,7 @@ describe('Identity-provider delegation', () => {
           accepted: true,
           accepted_at: '2029-01-01',
           expired: false,
-          createdAt: null,
+          created_at: null,
         },
         {
           id: `ext:${externalOrgName}:i3`,
@@ -488,7 +488,7 @@ describe('Identity-provider delegation', () => {
           accepted: false,
           accepted_at: null,
           expired: true,
-          createdAt: null,
+          created_at: null,
         },
         {
           id: `ext:${externalOrgName}:i4`,
@@ -498,7 +498,7 @@ describe('Identity-provider delegation', () => {
           accepted: false,
           accepted_at: null,
           expired: false,
-          createdAt: null,
+          created_at: null,
         },
       ]);
     });
@@ -545,10 +545,10 @@ describe('Identity-provider delegation', () => {
       const res = await invite(ownerToken);
       expect(res.statusCode).toBe(200);
       expect(res.body).toMatchObject({
-        invitationToken: null,
-        invitationTokenExpires: '2031-01-01',
-        organizationId: externalOrg.id,
-        invitationLink: null,
+        invitation_token: null,
+        invitation_token_expires: '2031-01-01',
+        organization_id: externalOrg.id,
+        invitation_link: null,
       });
     });
 
@@ -559,7 +559,7 @@ describe('Identity-provider delegation', () => {
         .set('x-access-token', ownerToken)
         .send({ email: requester.email, organization_name: externalOrgName });
       expect(res.statusCode).toBe(200);
-      expect(res.body.invitationTokenExpires).toBeNull();
+      expect(res.body.invitation_token_expires).toBeNull();
     });
 
     it('should surface a hub validation or authorization refusal', async () => {

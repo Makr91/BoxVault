@@ -55,7 +55,7 @@ import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility
  *               properties:
  *                 key:
  *                   type: string
- *                 fileName:
+ *                 file_name:
  *                   type: string
  *                 kind:
  *                   type: string
@@ -68,20 +68,20 @@ import { canSeeDownload, isMemberOf, resolveDownloadViewer } from '../visibility
  *                 variant:
  *                   type: string
  *                   nullable: true
- *                 fileSize:
+ *                 file_size:
  *                   type: integer
  *                 checksum:
  *                   type: string
- *                 checksumType:
+ *                 checksum_type:
  *                   type: string
- *                 downloadCount:
+ *                 download_count:
  *                   type: integer
  *                   nullable: true
  *                   description: The count for a member of the organization, null for anyone else
- *                 createdAt:
+ *                 created_at:
  *                   type: string
  *                   format: date-time
- *                 updatedAt:
+ *                 updated_at:
  *                   type: string
  *                   format: date-time
  *       403:
@@ -106,18 +106,18 @@ const info = async (req, res) => {
 
     return res.send({
       key: file.key,
-      fileName: file.fileName,
+      file_name: file.fileName,
       kind: file.kind,
       platform: file.platform,
       architecture: file.architecture,
       language: file.language,
       variant: file.variant,
-      fileSize: file.fileSize,
+      file_size: file.fileSize,
       checksum: file.checksum,
-      checksumType: file.checksumType,
-      downloadCount: isMemberOf(viewer, download.organizationId) ? file.downloadCount : null,
-      createdAt: file.createdAt,
-      updatedAt: file.updatedAt,
+      checksum_type: file.checksumType,
+      download_count: isMemberOf(viewer, download.organizationId) ? file.downloadCount : null,
+      created_at: file.createdAt,
+      updated_at: file.updatedAt,
     });
   } catch (err) {
     log.error.error('Error retrieving download file info', err);

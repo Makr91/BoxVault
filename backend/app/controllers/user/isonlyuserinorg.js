@@ -28,7 +28,7 @@ const { organization: Organization } = db;
  *             schema:
  *               type: object
  *               properties:
- *                 isOnlyUser:
+ *                 is_only_user:
  *                   type: boolean
  *                   description: Whether the user is the only user in the organization
  *       404:
@@ -65,9 +65,9 @@ export const isOnlyUserInOrg = async (req, res) => {
     const userCount = await organization.countMembers();
 
     if (userCount === 1) {
-      return res.status(200).send({ isOnlyUser: true });
+      return res.status(200).send({ is_only_user: true });
     }
-    return res.status(200).send({ isOnlyUser: false });
+    return res.status(200).send({ is_only_user: false });
   } catch (err) {
     log.error.error('Error checking organization users:', err);
     return problem(res, req, {

@@ -2,6 +2,7 @@
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
+import { snakeKeys } from '../../utils/wire.js';
 const { organization: Organization, user: User, role: Role, box: Box } = db;
 
 const MEMBER_ATTRIBUTES = [
@@ -45,17 +46,20 @@ const MEMBER_ATTRIBUTES = [
  *                   - $ref: '#/components/schemas/Organization'
  *                   - type: object
  *                     properties:
- *                       users:
+ *                       members:
  *                         type: array
  *                         items:
  *                           allOf:
  *                             - $ref: '#/components/schemas/User'
  *                             - type: object
  *                               properties:
- *                                 totalBoxes:
+ *                                 org_role:
+ *                                   type: string
+ *                                   description: The member's role in this organization
+ *                                 total_boxes:
  *                                   type: integer
  *                                   description: Number of boxes accessible to the requesting user
- *                       totalBoxes:
+ *                       total_boxes:
  *                         type: integer
  *                         description: Total number of boxes in the organization accessible to the requesting user
  *       401:
@@ -110,14 +114,16 @@ export const findAllWithUsers = async (req, res) => {
       return {
         ...org.toJSON(),
         members: org.members.map(user => {
-          const { UserOrg: membership, ...member } = user.toJSON();
+          const { UserOrg: membership, ...member } = user.get({ plain: true });
+          const rest = snakeKeys(member);
+          delete rest.box;
           return {
-            ...member,
-            orgRole: membership?.role || null,
-            totalBoxes: countOrgBoxes(user),
+            ...rest,
+            org_role: membership?.role || null,
+            total_boxes: countOrgBoxes(user),
           };
         }),
-        totalBoxes: org.members.reduce((acc, user) => acc + countOrgBoxes(user), 0),
+        total_boxes: org.members.reduce((acc, user) => acc + countOrgBoxes(user), 0),
       };
     });
 

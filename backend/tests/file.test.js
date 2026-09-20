@@ -122,7 +122,7 @@ describe('File API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('message', 'File upload completed');
-      expect(res.body.details).toHaveProperty('fileSize', fileContent.length);
+      expect(res.body.details).toHaveProperty('file_size', fileContent.length);
     });
 
     it('should fail upload if unauthorized', async () => {
@@ -223,9 +223,9 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('fileName', 'vagrant.box');
-      expect(res.body).toHaveProperty('downloadUrl');
-      expect(res.body.downloadUrl).toContain('?token=');
+      expect(res.body).toHaveProperty('file_name', 'vagrant.box');
+      expect(res.body).toHaveProperty('download_url');
+      expect(res.body.download_url).toContain('?token=');
     });
   });
 
@@ -238,8 +238,8 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
-      expect(res.body.downloadUrl).toContain('?token=');
+      expect(res.body).toHaveProperty('download_url');
+      expect(res.body.download_url).toContain('?token=');
     });
   });
 
@@ -265,7 +265,7 @@ describe('File API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('message', 'File updated successfully');
-      expect(res.body.details).toHaveProperty('fileSize', updatedContent.length);
+      expect(res.body.details).toHaveProperty('file_size', updatedContent.length);
     });
 
     it('should fail update if user does not have permission', async () => {
@@ -408,12 +408,12 @@ describe('File API', () => {
       // Generate a real download token (carries the required type:'download'
       // claim plus issuer/audience) via the production util
       const payload = {
-        userId: testUser.id,
+        user_id: testUser.id,
         organization: testOrg.name,
-        boxId: testBox.name,
-        versionNumber: testVersion.versionNumber,
-        providerName: testProvider.name,
-        architectureName: testArchitecture.name,
+        box_id: testBox.name,
+        version_number: testVersion.versionNumber,
+        provider_name: testProvider.name,
+        architecture_name: testArchitecture.name,
       };
       const token = generateDownloadToken(payload, '1h');
 
@@ -427,12 +427,12 @@ describe('File API', () => {
     it('should fail download with token for different resource', async () => {
       // Generate a real download token for a different version
       const payload = {
-        userId: testUser.id,
+        user_id: testUser.id,
         organization: testOrg.name,
-        boxId: testBox.name,
-        versionNumber: '9.9.9', // Mismatch
-        providerName: testProvider.name,
-        architectureName: testArchitecture.name,
+        box_id: testBox.name,
+        version_number: '9.9.9', // Mismatch
+        provider_name: testProvider.name,
+        architecture_name: testArchitecture.name,
       };
       const token = generateDownloadToken(payload, '1h');
 
@@ -669,8 +669,8 @@ describe('File API', () => {
       const saJwt = jwt.sign(
         {
           id: testUser.id,
-          isServiceAccount: true,
-          serviceAccountId: serviceAccount.id,
+          is_service_account: true,
+          service_account_id: serviceAccount.id,
         },
         'test-secret',
         testJwtOpts
@@ -695,8 +695,8 @@ describe('File API', () => {
       const saJwt = jwt.sign(
         {
           id: testUser.id,
-          isServiceAccount: true,
-          serviceAccountId: serviceAccount.id,
+          is_service_account: true,
+          service_account_id: serviceAccount.id,
         },
         'test-secret',
         testJwtOpts
@@ -715,8 +715,8 @@ describe('File API', () => {
       const saJwt = jwt.sign(
         {
           id: testUser.id,
-          isServiceAccount: true,
-          serviceAccountId: serviceAccount.id,
+          is_service_account: true,
+          service_account_id: serviceAccount.id,
         },
         'test-secret',
         testJwtOpts
@@ -729,10 +729,10 @@ describe('File API', () => {
         .set('x-access-token', saJwt);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
+      expect(res.body).toHaveProperty('download_url');
 
-      const token = new URL(res.body.downloadUrl).searchParams.get('token');
-      expect(jwt.verify(token, 'test-secret').serviceAccountId).toBe(serviceAccount.id);
+      const token = new URL(res.body.download_url).searchParams.get('token');
+      expect(jwt.verify(token, 'test-secret').service_account_id).toBe(serviceAccount.id);
       const download = await request(app).get(
         `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download?token=${token}`
       );
@@ -749,7 +749,7 @@ describe('File API', () => {
         userId: testUser.id,
       });
       const saJwt = jwt.sign(
-        { id: testUser.id, isServiceAccount: true, serviceAccountId: otherAccount.id },
+        { id: testUser.id, is_service_account: true, service_account_id: otherAccount.id },
         'test-secret',
         testJwtOpts
       );
@@ -825,21 +825,21 @@ describe('File API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
+      expect(res.body).toHaveProperty('download_url');
 
       // Verify the token in the URL is valid
-      const url = new URL(res.body.downloadUrl);
+      const url = new URL(res.body.download_url);
       const token = url.searchParams.get('token');
       expect(token).toBeDefined();
 
       // Decode and verify token structure
       const decoded = jwt.verify(token, 'test-secret');
-      expect(decoded).toHaveProperty('userId', testUser.id);
+      expect(decoded).toHaveProperty('user_id', testUser.id);
       expect(decoded).toHaveProperty('organization', testOrg.name);
-      expect(decoded).toHaveProperty('boxId', testBox.name);
-      expect(decoded).toHaveProperty('versionNumber', testVersion.versionNumber);
-      expect(decoded).toHaveProperty('providerName', testProvider.name);
-      expect(decoded).toHaveProperty('architectureName', testArchitecture.name);
+      expect(decoded).toHaveProperty('box_id', testBox.name);
+      expect(decoded).toHaveProperty('version_number', testVersion.versionNumber);
+      expect(decoded).toHaveProperty('provider_name', testProvider.name);
+      expect(decoded).toHaveProperty('architecture_name', testArchitecture.name);
     });
   });
 
@@ -1222,7 +1222,7 @@ describe('File API', () => {
         userId: testUser.id,
       });
       const saJwt = jwt.sign(
-        { id: testUser.id, isServiceAccount: true, serviceAccountId: serviceAccount.id },
+        { id: testUser.id, is_service_account: true, service_account_id: serviceAccount.id },
         'test-secret',
         testJwtOpts
       );

@@ -180,12 +180,12 @@ const pendingFor = async (organization, userId, fileName, chunkIndex) => {
  *                     - $ref: '#/components/schemas/PendingUpload'
  *                     - type: object
  *                       properties:
- *                         isComplete:
+ *                         is_complete:
  *                           type: boolean
  *                         status:
  *                           type: string
  *                           enum: [uploading, complete]
- *                         fileSize:
+ *                         file_size:
  *                           type: integer
  *       400:
  *         description: An upload header breaks its rule, or the file name is missing or not allowed

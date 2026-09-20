@@ -165,7 +165,7 @@ const upload = async (req, res) => {
 
       let fileRecord;
       if (previous) {
-        const replaced = previous.toJSON();
+        const replaced = { ...previous.get({ plain: true }) };
         fileRecord = await previous.update(fileData);
         if (replaced.storagePath !== storagePath) {
           await removeUnreferencedIsoFiles([replaced]);

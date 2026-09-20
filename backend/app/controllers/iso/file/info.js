@@ -10,7 +10,7 @@ const { isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/info:
  *   get:
  *     summary: Get ISO file information
- *     description: Retrieve the file record of one architecture of an ISO version. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. downloadCount is null to a guest of the organization.
+ *     description: Retrieve the file record of one architecture of an ISO version. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. download_count is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -50,22 +50,22 @@ const { isoFiles: IsoFile } = db;
  *             schema:
  *               type: object
  *               properties:
- *                 fileName:
+ *                 file_name:
  *                   type: string
- *                 fileSize:
+ *                 file_size:
  *                   type: integer
  *                 checksum:
  *                   type: string
- *                 checksumType:
+ *                 checksum_type:
  *                   type: string
- *                 downloadCount:
+ *                 download_count:
  *                   type: integer
  *                   nullable: true
  *                   description: The count, null to a guest of the organization
- *                 createdAt:
+ *                 created_at:
  *                   type: string
  *                   format: date-time
- *                 updatedAt:
+ *                 updated_at:
  *                   type: string
  *                   format: date-time
  *       403:
@@ -102,13 +102,13 @@ const info = async (req, res) => {
     }
 
     return res.send({
-      fileName: fileRecord.fileName,
-      fileSize: fileRecord.fileSize,
+      file_name: fileRecord.fileName,
+      file_size: fileRecord.fileSize,
       checksum: fileRecord.checksum,
-      checksumType: fileRecord.checksumType,
-      downloadCount: isGuestOf(viewer, iso.organizationId) ? null : fileRecord.downloadCount,
-      createdAt: fileRecord.createdAt,
-      updatedAt: fileRecord.updatedAt,
+      checksum_type: fileRecord.checksumType,
+      download_count: isGuestOf(viewer, iso.organizationId) ? null : fileRecord.downloadCount,
+      created_at: fileRecord.createdAt,
+      updated_at: fileRecord.updatedAt,
     });
   } catch (err) {
     log.error.error('Error retrieving ISO file info', err);

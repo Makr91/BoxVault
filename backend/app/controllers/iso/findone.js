@@ -11,7 +11,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/organization/{organization}/iso/{name}:
  *   get:
  *     summary: Get ISO details
- *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, by JWT or by a service-account key of the organization, a guest of the organization reading it only while it is published and flagged for guests. Every downloadCount is null to a guest of the organization.
+ *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, by JWT or by a service-account key of the organization, a guest of the organization reading it only while it is published and flagged for guests. Every download_count is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -33,7 +33,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: ISO details with versions, files, organization and total downloadCount
+ *         description: ISO details with versions, files, organization and total download_count
  *       403:
  *         description: The ISO is not visible to the caller
  *       404:

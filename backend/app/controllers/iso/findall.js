@@ -11,7 +11,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/organization/{organization}/iso:
  *   get:
  *     summary: List ISOs for an organization
- *     description: Retrieve the ISOs of an organization visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs; a member of the organization, by JWT or by a service-account key of the organization, gets every ISO, a guest of the organization the published ISOs flagged for guests — the same rule as the organization box list. Every downloadCount is null to a guest of the organization.
+ *     description: Retrieve the ISOs of an organization visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs; a member of the organization, by JWT or by a service-account key of the organization, gets every ISO, a guest of the organization the published ISOs flagged for guests — the same rule as the organization box list. Every download_count is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -27,7 +27,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: List of ISOs with versions, files and total downloadCount
+ *         description: List of ISOs with versions, files and total download_count
  *       404:
  *         description: Organization not found
  *       500:

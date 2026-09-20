@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from 'fs';
 import Sequelize from 'sequelize';
 import { loadConfig, getSetupTokenPath } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
+import { snakeKeys } from '../utils/wire.js';
 
 const db = {};
 
@@ -128,6 +129,22 @@ const initializeDatabase = async () => {
     if (db[modelName].associate) {
       db[modelName].associate(db);
     }
+  });
+
+  const DROP_STORAGE_FACTS = new Set(['isoFiles', 'downloadFiles']);
+  Object.keys(db).forEach(modelName => {
+    if (modelName === 'scimGroup' || !(db[modelName].prototype instanceof Sequelize.Model)) {
+      return;
+    }
+    db[modelName].prototype.toJSON = function () {
+      const plain = snakeKeys(this.get({ plain: true }));
+      if (DROP_STORAGE_FACTS.has(modelName)) {
+        delete plain.storage_path;
+        delete plain.original;
+        delete plain.links_to;
+      }
+      return plain;
+    };
   });
 };
 

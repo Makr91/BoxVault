@@ -216,10 +216,10 @@ describe('System API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('isAptManaged');
-      expect(res.body).toHaveProperty('updateAvailable');
-      expect(res.body).toHaveProperty('currentVersion');
-      expect(res.body).toHaveProperty('latestVersion');
+      expect(res.body).toHaveProperty('is_apt_managed');
+      expect(res.body).toHaveProperty('update_available');
+      expect(res.body).toHaveProperty('current_version');
+      expect(res.body).toHaveProperty('latest_version');
     });
 
     it('should fail for non-admin user', async () => {
@@ -241,8 +241,8 @@ describe('System API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.isAptManaged).toBe(false);
-      expect(res.body.updateAvailable).toBe(false);
+      expect(res.body.is_apt_managed).toBe(false);
+      expect(res.body.update_available).toBe(false);
     });
 
     it('should check repository URL if configured', async () => {
@@ -288,8 +288,8 @@ describe('System API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.updateAvailable).toBe(true);
-      expect(res.body.latestVersion).toBe('1.2.0');
+      expect(res.body.update_available).toBe(true);
+      expect(res.body.latest_version).toBe('1.2.0');
     });
 
     it('should handle repository URL check failure and fallback', async () => {
@@ -329,7 +329,7 @@ describe('System API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.updateAvailable).toBe(false); // Fallback used
+      expect(res.body.update_available).toBe(false); // Fallback used
     });
 
     it('should handle synchronous error in https.get callback', async () => {
@@ -410,7 +410,7 @@ describe('System API', () => {
         .get('/api/system/update-check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.latestVersion).toBe('1.0.1');
+      expect(res.body.latest_version).toBe('1.0.1');
     });
 
     it('should handle exec errors without stderr', async () => {
@@ -424,7 +424,7 @@ describe('System API', () => {
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.isAptManaged).toBe(false);
+      expect(res.body.is_apt_managed).toBe(false);
     });
 
     it('should handle non-200 response from repository', async () => {
@@ -459,7 +459,7 @@ describe('System API', () => {
         .get('/api/system/update-check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.updateAvailable).toBe(false);
+      expect(res.body.update_available).toBe(false);
     });
 
     it('should handle missing package in repository response', async () => {
@@ -500,7 +500,7 @@ describe('System API', () => {
         .get('/api/system/update-check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.updateAvailable).toBe(false);
+      expect(res.body.update_available).toBe(false);
     });
 
     it('should support HTTP repository URLs', async () => {
@@ -541,7 +541,7 @@ describe('System API', () => {
         .get('/api/system/update-check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.latestVersion).toBe('1.2.0');
+      expect(res.body.latest_version).toBe('1.2.0');
       expect(mockHttpGet).toHaveBeenCalled();
     });
 
@@ -587,7 +587,7 @@ describe('System API', () => {
       // Should fall back to apt-cache or return unknown if apt-cache also fails/returns same
       // Since we mocked exec to return 1.0.0 for installed, and didn't mock apt-cache specifically to return something else,
       // it might return updateAvailable: false.
-      expect(res.body.updateAvailable).toBe(false);
+      expect(res.body.update_available).toBe(false);
     });
   });
 });

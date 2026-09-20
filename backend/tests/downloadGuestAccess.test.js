@@ -103,7 +103,7 @@ describe('Download guest access', () => {
     guestAccountUsername = minted.body.username;
     guestAccountKey = minted.body.token;
     guestAccountToken = jwt.sign(
-      { id: member.id, isServiceAccount: true, serviceAccountId: guestAccountId },
+      { id: member.id, is_service_account: true, service_account_id: guestAccountId },
       'test-secret',
       { expiresIn: '1h', ...TEST_JWT_CLAIMS }
     );
@@ -151,7 +151,7 @@ describe('Download guest access', () => {
         .get(`/api/organization/${orgName}/download`)
         .set('Authorization', `Bearer ${guestAccountKey}`);
       expect(byKey.body.map(entry => entry.name).sort()).toEqual([flaggedName, publicName].sort());
-      byKey.body.forEach(entry => expect(entry.downloadCount).toBeNull());
+      byKey.body.forEach(entry => expect(entry.download_count).toBeNull());
     });
 
     it('should discover by role', async () => {
@@ -161,12 +161,12 @@ describe('Download guest access', () => {
       expect(guestNames).not.toContain(unflaggedName);
       expect(guestNames).not.toContain(pendingName);
       asGuest.body
-        .filter(entry => entry.organizationId === org.id)
-        .forEach(entry => expect(entry.downloadCount).toBeNull());
+        .filter(entry => entry.organization_id === org.id)
+        .forEach(entry => expect(entry.download_count).toBeNull());
 
       const asMember = await get('/api/downloads/discover', memberToken);
       expect(asMember.body.map(entry => entry.name)).toContain(unflaggedName);
-      expect(asMember.body.find(entry => entry.name === flaggedName).downloadCount).toBe(0);
+      expect(asMember.body.find(entry => entry.name === flaggedName).download_count).toBe(0);
       const asUploader = await get('/api/downloads/discover', uploaderToken);
       expect(asUploader.body.map(entry => entry.name)).toContain(pendingName);
     });
@@ -225,33 +225,33 @@ describe('Download guest access', () => {
 
     it('should answer null counts to a guest everywhere and numbers to a member', async () => {
       const product = await get(productBase(flaggedName), guestToken);
-      expect(product.body.downloadCount).toBeNull();
+      expect(product.body.download_count).toBeNull();
       product.body.releases.forEach(release =>
         release.patches.forEach(patch =>
-          patch.files.forEach(file => expect(file.downloadCount).toBeNull())
+          patch.files.forEach(file => expect(file.download_count).toBeNull())
         )
       );
       const releases = await get(`${productBase(flaggedName)}/release`, guestAccountToken);
       releases.body.forEach(release =>
         release.patches.forEach(patch =>
-          patch.files.forEach(file => expect(file.downloadCount).toBeNull())
+          patch.files.forEach(file => expect(file.download_count).toBeNull())
         )
       );
       const patches = await get(`${productBase(flaggedName)}/release/1.0.0/patch`, guestToken);
       patches.body.forEach(patch =>
-        patch.files.forEach(file => expect(file.downloadCount).toBeNull())
+        patch.files.forEach(file => expect(file.download_count).toBeNull())
       );
       const files = await get(`${patchBase(flaggedName)}/file`, guestToken);
-      files.body.forEach(file => expect(file.downloadCount).toBeNull());
+      files.body.forEach(file => expect(file.download_count).toBeNull());
       const info = await get(`${fileBase(flaggedName)}/info`, guestToken);
-      expect(info.body.downloadCount).toBeNull();
+      expect(info.body.download_count).toBeNull();
       const publicInfo = await get(`${fileBase(publicName)}/info`, guestAccountToken);
-      expect(publicInfo.body.downloadCount).toBeNull();
+      expect(publicInfo.body.download_count).toBeNull();
 
       const asMember = await get(productBase(flaggedName), memberToken);
-      expect(typeof asMember.body.downloadCount).toBe('number');
+      expect(typeof asMember.body.download_count).toBe('number');
       const memberInfo = await get(`${fileBase(flaggedName)}/info`, memberToken);
-      expect(typeof memberInfo.body.downloadCount).toBe('number');
+      expect(typeof memberInfo.body.download_count).toBe('number');
     });
   });
 
@@ -261,7 +261,7 @@ describe('Download guest access', () => {
         .post(`${fileBase(flaggedName)}/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
-      const [, token] = link.body.downloadUrl.split('token=');
+      const [, token] = link.body.download_url.split('token=');
       expect(
         (await request(app).get(`${fileBase(flaggedName)}/download?token=${token}`)).statusCode
       ).toBe(200);
@@ -357,14 +357,14 @@ describe('Download guest access', () => {
         .set('x-access-token', uploaderToken)
         .send({ guest_access: false });
       expect(asUploader.statusCode).toBe(200);
-      expect(asUploader.body.guestAccess).toBe(false);
+      expect(asUploader.body.guest_access).toBe(false);
 
       const asAdmin = await request(app)
         .put(productBase(pendingName))
         .set('x-access-token', adminToken)
         .send({ guest_access: true });
       expect(asAdmin.statusCode).toBe(200);
-      expect(asAdmin.body.guestAccess).toBe(true);
+      expect(asAdmin.body.guest_access).toBe(true);
 
       const asGuest = await request(app)
         .put(productBase(flaggedName))
@@ -388,7 +388,7 @@ describe('Download guest access', () => {
         .set('x-access-token', memberToken)
         .send({ name: `dg-created-${uniqueId}`, published: true, guest_access: true });
       expect(created.statusCode).toBe(201);
-      expect(created.body.guestAccess).toBe(true);
+      expect(created.body.guest_access).toBe(true);
       expect((await get(productBase(`dg-created-${uniqueId}`), guestToken)).statusCode).toBe(200);
 
       const defaulted = await request(app)
@@ -396,7 +396,7 @@ describe('Download guest access', () => {
         .set('x-access-token', memberToken)
         .send({ name: `dg-defaulted-${uniqueId}`, published: true });
       expect(defaulted.statusCode).toBe(201);
-      expect(defaulted.body.guestAccess).toBe(false);
+      expect(defaulted.body.guest_access).toBe(false);
       expect((await get(productBase(`dg-defaulted-${uniqueId}`), guestToken)).statusCode).toBe(403);
 
       const dropped = await request(app)

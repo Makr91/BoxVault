@@ -99,7 +99,7 @@ export const testSmtp = async (req, res) => {
     log.app.info('Test email sent successfully:', info.messageId);
     return res
       .status(200)
-      .send({ message: req.__('mail.testEmailSent'), messageId: info.messageId });
+      .send({ message: req.__('mail.testEmailSent'), message_id: info.messageId });
   } catch (error) {
     log.error.error('Error in SMTP test:', error);
     if (error.response) {

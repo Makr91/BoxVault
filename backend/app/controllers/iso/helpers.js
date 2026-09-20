@@ -4,6 +4,7 @@ import { loadConfig } from '../../utils/config-loader.js';
 import { isPathInside } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { snakeKeys } from '../../utils/wire.js';
 const { isoFiles: IsoFile, Sequelize } = db;
 const { Op } = Sequelize;
 
@@ -58,10 +59,12 @@ const sumIsoDownloads = iso =>
  * @returns {Array<Object>} The files as JSON
  */
 const isoFilesWithCounts = (files, counted) =>
-  (files || []).map(file => ({
-    ...(typeof file.toJSON === 'function' ? file.toJSON() : file),
-    downloadCount: counted ? file.downloadCount : null,
-  }));
+  (files || []).map(file => {
+    const plain = snakeKeys(typeof file.get === 'function' ? file.get({ plain: true }) : file);
+    plain.download_count = counted ? file.downloadCount : null;
+    delete plain.storage_path;
+    return plain;
+  });
 
 /**
  * The version rows of an ISO as JSON with their files' downloadCount answered
@@ -71,10 +74,11 @@ const isoFilesWithCounts = (files, counted) =>
  * @returns {Array<Object>} The versions as JSON
  */
 const isoVersionsWithCounts = (versions, counted) =>
-  (versions || []).map(version => ({
-    ...version.toJSON(),
-    files: isoFilesWithCounts(version.files, counted),
-  }));
+  (versions || []).map(version => {
+    const plain = snakeKeys(version.get({ plain: true }));
+    plain.files = isoFilesWithCounts(version.files, counted);
+    return plain;
+  });
 
 /**
  * The ISO's JSON with its downloadCount and every nested file's downloadCount
@@ -84,11 +88,12 @@ const isoVersionsWithCounts = (versions, counted) =>
  * @param {boolean} counted - Whether the caller is answered the counts
  * @returns {Object} The ISO JSON
  */
-const isoWithCounts = (iso, counted) => ({
-  ...iso.toJSON(),
-  versions: isoVersionsWithCounts(iso.versions, counted),
-  downloadCount: counted ? sumIsoDownloads(iso) : null,
-});
+const isoWithCounts = (iso, counted) => {
+  const plain = snakeKeys(iso.get({ plain: true }));
+  plain.versions = isoVersionsWithCounts(iso.versions, counted);
+  plain.download_count = counted ? sumIsoDownloads(iso) : null;
+  return plain;
+};
 
 /**
  * Remove the physical files behind iso_files rows that have already been

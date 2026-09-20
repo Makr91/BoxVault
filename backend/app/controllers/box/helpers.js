@@ -1,5 +1,6 @@
 // helpers.js — shared validation for the optional box content fields pushed by
 // the publish pipeline (short_description, readme, metadata).
+import { snakeKeys } from '../../utils/wire.js';
 
 // Whitelisted top-level keys of the structured box facts; unknown keys are
 // stripped silently, whitelisted values pass through as given.
@@ -117,20 +118,20 @@ const sumBoxDownloads = box =>
     .reduce((total, file) => total + (file.downloadCount || 0), 0);
 
 /**
- * The file rows of a box as JSON with their downloadCount kept when counted
+ * The file rows of a box as JSON with their download_count kept when counted
  * and answered null otherwise.
  * @param {Array<Object>} files - File rows or their JSON
  * @param {boolean} counted - Whether the caller is answered the counts
  * @returns {Array<Object>} The files as JSON
  */
 const boxFilesWithCounts = (files, counted) =>
-  (files || []).map(file => ({
-    ...(typeof file.toJSON === 'function' ? file.toJSON() : file),
-    downloadCount: counted ? file.downloadCount : null,
-  }));
+  (files || []).map(file => {
+    const plain = typeof file.get === 'function' ? file.get({ plain: true }) : file;
+    return { ...snakeKeys(plain), download_count: counted ? plain.downloadCount : null };
+  });
 
 /**
- * The box's JSON with its downloadCount and every nested file's downloadCount
+ * The box's JSON with its download_count and every nested file's download_count
  * answered when counted and null otherwise; a guest of the organization is
  * never counted.
  * @param {Object} box - A box row with nested versions, providers, architectures and files
@@ -138,18 +139,20 @@ const boxFilesWithCounts = (files, counted) =>
  * @returns {Object} The box JSON
  */
 const boxWithCounts = (box, counted) => ({
-  ...box.toJSON(),
-  versions: (box.versions || []).map(version => ({
-    ...version.toJSON(),
-    providers: (version.providers || []).map(provider => ({
-      ...provider.toJSON(),
-      architectures: (provider.architectures || []).map(architecture => ({
-        ...architecture.toJSON(),
-        files: boxFilesWithCounts(architecture.files, counted),
+  ...snakeKeys({
+    ...box.get({ plain: true }),
+    versions: (box.versions || []).map(version => ({
+      ...version.get({ plain: true }),
+      providers: (version.providers || []).map(provider => ({
+        ...provider.get({ plain: true }),
+        architectures: (provider.architectures || []).map(architecture => ({
+          ...architecture.get({ plain: true }),
+          files: boxFilesWithCounts(architecture.files, counted),
+        })),
       })),
     })),
-  })),
-  downloadCount: counted ? sumBoxDownloads(box) : null,
+  }),
+  download_count: counted ? sumBoxDownloads(box) : null,
 });
 
 export { parseBoxContentFields, sumBoxDownloads, boxFilesWithCounts, boxWithCounts };

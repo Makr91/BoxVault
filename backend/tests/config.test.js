@@ -81,12 +81,12 @@ describe('Config API', () => {
     const adminAuth = await request(app)
       .post('/api/auth/signin')
       .send({ username: adminUser.username, password: 'password' });
-    adminToken = adminAuth.body.accessToken;
+    adminToken = adminAuth.body.access_token;
 
     const nonAdminAuth = await request(app)
       .post('/api/auth/signin')
       .send({ username: nonAdminUser.username, password: 'password' });
-    nonAdminToken = nonAdminAuth.body.accessToken;
+    nonAdminToken = nonAdminAuth.body.access_token;
   });
 
   afterAll(async () => {

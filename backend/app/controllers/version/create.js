@@ -5,50 +5,50 @@
  *     Version:
  *       type: object
  *       required:
- *         - versionNumber
- *         - boxId
+ *         - version_number
+ *         - box_id
  *       properties:
  *         id:
  *           type: integer
  *           description: The auto-generated id of the version
- *         versionNumber:
+ *         version_number:
  *           type: string
  *           description: The version number (e.g., 1.0.0)
  *         description:
  *           type: string
  *           description: Description of the version
- *         boxId:
+ *         box_id:
  *           type: integer
  *           description: ID of the box this version belongs to
- *         releaseNotes:
+ *         release_notes:
  *           type: string
  *           nullable: true
  *           description: Version release notes (markdown)
  *         deprecated:
  *           type: boolean
  *           description: Whether this version is deprecated
- *         deprecationReason:
+ *         deprecation_reason:
  *           type: string
  *           nullable: true
  *           description: Why this version is deprecated
- *         createdAt:
+ *         created_at:
  *           type: string
  *           format: date-time
  *           description: Version creation timestamp
- *         updatedAt:
+ *         updated_at:
  *           type: string
  *           format: date-time
  *           description: Version last update timestamp
  *       example:
  *         id: 1
- *         versionNumber: "1.0.0"
+ *         version_number: "1.0.0"
  *         description: "Initial release"
- *         boxId: 1
- *         releaseNotes: "First stable build"
+ *         box_id: 1
+ *         release_notes: "First stable build"
  *         deprecated: false
- *         deprecationReason: null
- *         createdAt: "2023-01-01T00:00:00.000Z"
- *         updatedAt: "2023-01-01T00:00:00.000Z"
+ *         deprecation_reason: null
+ *         created_at: "2023-01-01T00:00:00.000Z"
+ *         updated_at: "2023-01-01T00:00:00.000Z"
  *
  *     VersionWithProviders:
  *       allOf:

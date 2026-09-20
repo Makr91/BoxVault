@@ -116,9 +116,9 @@ describe('Box watches, badges and artwork', () => {
       expect(listed.statusCode).toBe(200);
       expect(listed.body).toEqual([
         {
-          boxId: publicBox.id,
+          box_id: publicBox.id,
           name: publicBoxName,
-          shortDescription: 'Short and public',
+          short_description: 'Short and public',
           organization: orgName,
           logo: null,
         },

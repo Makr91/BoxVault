@@ -86,18 +86,18 @@ const options = {
               description: 'Global user roles (per-organization roles live in UserOrg)',
               example: ['user', 'admin'],
             },
-            organizationId: {
+            organization_id: {
               type: 'integer',
               description: 'Organization ID',
               example: 1,
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Account creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -147,7 +147,7 @@ const options = {
               description: 'User roles',
               example: ['ROLE_USER', 'ROLE_ADMIN'],
             },
-            accessToken: {
+            access_token: {
               type: 'string',
               description: 'JWT authentication token',
               example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -266,7 +266,7 @@ const options = {
               example: 'Ubuntu Server 22.04 LTS base box',
               nullable: true,
             },
-            shortDescription: {
+            short_description: {
               type: 'string',
               maxLength: 255,
               description: 'Short one-line box description',
@@ -295,34 +295,34 @@ const options = {
               description: 'Whether the box is published (visible beyond its owner)',
               example: true,
             },
-            isPublic: {
+            is_public: {
               type: 'boolean',
               description: 'Whether the box is publicly accessible without authentication',
               example: false,
             },
-            guestAccess: {
+            guest_access: {
               type: 'boolean',
               description:
                 'Whether guests of the organization may read the box while it is published',
               example: false,
             },
-            organizationId: {
+            organization_id: {
               type: 'integer',
               description: 'Organization ID that owns the box',
               example: 1,
             },
-            userId: {
+            user_id: {
               type: 'integer',
               description: 'User ID of the box creator',
               example: 1,
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Box creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -361,13 +361,13 @@ const options = {
               example: 'HCL',
               nullable: true,
             },
-            docsUrl: {
+            docs_url: {
               type: 'string',
               format: 'uri',
               description: 'Documentation link',
               nullable: true,
             },
-            notesUrl: {
+            notes_url: {
               type: 'string',
               format: 'uri',
               description: 'Release notes link',
@@ -378,34 +378,34 @@ const options = {
               description: 'Whether the product is published (visible beyond its uploader)',
               example: false,
             },
-            isPublic: {
+            is_public: {
               type: 'boolean',
               description: 'Whether the product is publicly accessible without authentication',
               example: false,
             },
-            guestAccess: {
+            guest_access: {
               type: 'boolean',
               description:
                 'Whether guests of the organization may read the product while it is published',
               example: false,
             },
-            organizationId: {
+            organization_id: {
               type: 'integer',
               description: 'Organization ID that owns the product',
               example: 1,
             },
-            userId: {
+            user_id: {
               type: 'integer',
               description: 'User ID of the product creator',
               example: 1,
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Product creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -432,7 +432,7 @@ const options = {
               example: 'Initial release with basic Ubuntu setup',
               nullable: true,
             },
-            releaseNotes: {
+            release_notes: {
               type: 'string',
               description: 'Version release notes',
               nullable: true,
@@ -442,24 +442,24 @@ const options = {
               description: 'Whether the version is deprecated',
               example: false,
             },
-            deprecationReason: {
+            deprecation_reason: {
               type: 'string',
               maxLength: 512,
               description: 'Why the version is deprecated',
               nullable: true,
             },
-            boxId: {
+            box_id: {
               type: 'integer',
               description: 'Box ID this version belongs to',
               example: 1,
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Version creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -507,13 +507,13 @@ const options = {
                 'Default role for new members; guest is the read-only fourth organization role',
               example: 'member',
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Organization creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -534,13 +534,13 @@ const options = {
               description: 'Provider name',
               example: 'virtualbox',
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Provider creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -561,13 +561,13 @@ const options = {
               description: 'Architecture name',
               example: 'amd64',
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Architecture creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -796,7 +796,7 @@ const options = {
                 'Stored role. guest, member, admin and owner act inside the organization only, at the lower of this role and the creator’s current role there, a guest reading only what is flagged for guests; superadmin acts as a global admin on every organization while its creator keeps ROLE_ADMIN.',
               example: 'member',
             },
-            expiresAt: {
+            expires_at: {
               type: 'string',
               format: 'date-time',
               description: 'Token expiration timestamp',
@@ -810,18 +810,18 @@ const options = {
                 'When a raw key or session JWT of this service account was last accepted; null until its first use',
               example: '2025-01-20T08:41:12.004Z',
             },
-            userId: {
+            user_id: {
               type: 'integer',
               description: 'ID of the user who created this service account',
               example: 1,
             },
-            createdAt: {
+            created_at: {
               type: 'string',
               format: 'date-time',
               description: 'Service account creation timestamp',
               example: '2025-01-04T17:18:00.324Z',
             },
-            updatedAt: {
+            updated_at: {
               type: 'string',
               format: 'date-time',
               description: 'Last update timestamp',
@@ -995,7 +995,7 @@ const options = {
               description: 'Success message',
               example: 'Test email sent successfully',
             },
-            messageId: {
+            message_id: {
               type: 'string',
               description: 'SMTP message ID',
               example: '<abc123@example.com>',

@@ -63,7 +63,7 @@ const remove = async (req, res) => {
       });
     }
 
-    const removed = fileRecord.toJSON();
+    const removed = fileRecord.get({ plain: true });
 
     const transaction = await sequelize.transaction();
     try {

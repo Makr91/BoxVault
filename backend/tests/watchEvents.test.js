@@ -169,8 +169,8 @@ describe('Version events fanned out to watchers', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toMatchObject({
       deprecated: true,
-      deprecationReason: 'superseded',
-      releaseNotes: 'notes',
+      deprecation_reason: 'superseded',
+      release_notes: 'notes',
     });
     await settle();
 

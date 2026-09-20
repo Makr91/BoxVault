@@ -91,7 +91,7 @@ const bulk = async (req, res) => {
     if (!fileRecord) {
       return 'not_found';
     }
-    const removed = fileRecord.toJSON();
+    const removed = fileRecord.get({ plain: true });
     const transaction = await sequelize.transaction();
     try {
       await fileRecord.destroy({ transaction });

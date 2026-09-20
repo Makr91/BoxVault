@@ -32,7 +32,7 @@ const { Op } = Sequelize;
  *                   - $ref: '#/components/schemas/Organization'
  *                   - type: object
  *                     properties:
- *                       totalBoxes:
+ *                       total_boxes:
  *                         type: integer
  *                         description: Total number of boxes accessible to the requesting user
  *       401:
@@ -74,14 +74,24 @@ export const findAll = async (req, res) => {
       ],
     });
 
-    const result = organizations.map(org => ({
-      ...org.toJSON(),
-      totalBoxes: org.members.reduce(
-        (acc, user) =>
-          acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
-        0
-      ),
-    }));
+    const result = organizations.map(org => {
+      const orgJson = org.toJSON();
+      if (Array.isArray(orgJson.members)) {
+        orgJson.members = orgJson.members.map(member => {
+          const rest = { ...member };
+          delete rest.box;
+          return rest;
+        });
+      }
+      return {
+        ...orgJson,
+        total_boxes: org.members.reduce(
+          (acc, user) =>
+            acc + user.box.filter(box => box.isPublic || (userId && user.id === userId)).length,
+          0
+        ),
+      };
+    });
 
     return res.status(200).send(result);
   } catch (err) {

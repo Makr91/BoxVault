@@ -112,7 +112,7 @@ describe('Box guest access', () => {
     guestAccountId = minted.body.id;
     guestAccountKey = minted.body.token;
     guestAccountToken = jwt.sign(
-      { id: owner.id, isServiceAccount: true, serviceAccountId: guestAccountId },
+      { id: owner.id, is_service_account: true, service_account_id: guestAccountId },
       'test-secret',
       { expiresIn: '1h', ...TEST_JWT_CLAIMS }
     );
@@ -239,25 +239,25 @@ describe('Box guest access', () => {
 
     it('should answer null counts to a guest and numbers to a member', async () => {
       const asGuest = await get(boxBase(flaggedName), guestToken);
-      expect(asGuest.body.downloadCount).toBeNull();
+      expect(asGuest.body.download_count).toBeNull();
       asGuest.body.versions.forEach(version =>
         version.providers.forEach(provider =>
           provider.architectures.forEach(architecture =>
-            architecture.files.forEach(file => expect(file.downloadCount).toBeNull())
+            architecture.files.forEach(file => expect(file.download_count).toBeNull())
           )
         )
       );
       const guestInfo = await get(`${fileBase(flaggedName)}/info`, guestToken);
-      expect(guestInfo.body.downloadCount).toBeNull();
+      expect(guestInfo.body.download_count).toBeNull();
       const guestList = await get(`/api/organization/${orgName}/box`, guestToken);
-      guestList.body.forEach(entry => expect(entry.downloadCount).toBeNull());
+      guestList.body.forEach(entry => expect(entry.download_count).toBeNull());
       const guestPublic = await get(boxBase(publicName), guestAccountToken);
-      expect(guestPublic.body.downloadCount).toBeNull();
+      expect(guestPublic.body.download_count).toBeNull();
 
       const asMember = await get(boxBase(flaggedName), memberToken);
-      expect(typeof asMember.body.downloadCount).toBe('number');
+      expect(typeof asMember.body.download_count).toBe('number');
       const memberInfo = await get(`${fileBase(flaggedName)}/info`, memberToken);
-      expect(typeof memberInfo.body.downloadCount).toBe('number');
+      expect(typeof memberInfo.body.download_count).toBe('number');
     });
   });
 
@@ -267,7 +267,7 @@ describe('Box guest access', () => {
         .post(`${fileBase(flaggedName)}/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
-      const [, token] = link.body.downloadUrl.split('token=');
+      const [, token] = link.body.download_url.split('token=');
       const followed = await request(app).get(`${fileBase(flaggedName)}/download?token=${token}`);
       expect(followed.statusCode).toBe(200);
 
@@ -280,7 +280,7 @@ describe('Box guest access', () => {
         .post(`${fileBase(flaggedName)}/get-download-link`)
         .set('x-access-token', guestAccountToken);
       expect(accountLink.statusCode).toBe(200);
-      const [, accountToken] = accountLink.body.downloadUrl.split('token=');
+      const [, accountToken] = accountLink.body.download_url.split('token=');
       const accountFollowed = await request(app).get(
         `${fileBase(flaggedName)}/download?token=${accountToken}`
       );
@@ -363,14 +363,14 @@ describe('Box guest access', () => {
         .set('x-access-token', uploaderToken)
         .send({ guest_access: false });
       expect(asUploader.statusCode).toBe(200);
-      expect(asUploader.body.guestAccess).toBe(false);
+      expect(asUploader.body.guest_access).toBe(false);
 
       const asAdmin = await request(app)
         .put(boxBase(pendingName))
         .set('x-access-token', adminToken)
         .send({ guest_access: true });
       expect(asAdmin.statusCode).toBe(200);
-      expect(asAdmin.body.guestAccess).toBe(true);
+      expect(asAdmin.body.guest_access).toBe(true);
 
       const asGuest = await request(app)
         .put(boxBase(flaggedName))
@@ -394,7 +394,7 @@ describe('Box guest access', () => {
         .set('x-access-token', memberToken)
         .send({ name: `bg-created-${uniqueId}`, published: true, guest_access: true });
       expect(created.statusCode).toBe(201);
-      expect(created.body.guestAccess).toBe(true);
+      expect(created.body.guest_access).toBe(true);
       expect((await get(boxBase(`bg-created-${uniqueId}`), guestToken)).statusCode).toBe(200);
 
       const defaulted = await request(app)
@@ -402,7 +402,7 @@ describe('Box guest access', () => {
         .set('x-access-token', memberToken)
         .send({ name: `bg-defaulted-${uniqueId}`, published: true });
       expect(defaulted.statusCode).toBe(201);
-      expect(defaulted.body.guestAccess).toBe(false);
+      expect(defaulted.body.guest_access).toBe(false);
       expect((await get(boxBase(`bg-defaulted-${uniqueId}`), guestToken)).statusCode).toBe(403);
     });
   });

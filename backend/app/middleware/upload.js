@@ -398,9 +398,9 @@ const handleChunkedUpload = async (
         response: {
           message,
           details: {
-            isComplete: true,
+            is_complete: true,
             status: 'complete',
-            fileSize: finalSize,
+            file_size: finalSize,
           },
         },
       };
@@ -412,11 +412,11 @@ const handleChunkedUpload = async (
       response: {
         message: req.__('files.upload.chunkCompleted'),
         details: {
-          isComplete: false,
+          is_complete: false,
           status: 'uploading',
-          chunksReceived: chunks.length,
-          totalChunks,
-          currentChunk: chunkIndex,
+          chunks_received: chunks.length,
+          total_chunks: totalChunks,
+          current_chunk: chunkIndex,
         },
       },
     };
@@ -585,9 +585,9 @@ const handleSingleUpload = async (
     response: {
       message,
       details: {
-        isComplete: true,
+        is_complete: true,
         status: 'complete',
-        fileSize: finalSize,
+        file_size: finalSize,
       },
     },
   };

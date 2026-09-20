@@ -46,10 +46,10 @@ export const idpClaimsOf = source =>
  *             schema:
  *               type: object
  *               properties:
- *                 accessToken:
+ *                 access_token:
  *                   type: string
  *                   description: New JWT access token
- *                 stayLoggedIn:
+ *                 stay_logged_in:
  *                   type: boolean
  *                   description: Stay-logged-in status
  *                 entitlements:
@@ -114,19 +114,19 @@ export const refreshToken = async (req, res) => {
       id: user.id,
       username: user.username,
       name: user.name || null,
-      preferredLanguage: user.preferredLanguage || null,
-      preferredTheme: user.preferredTheme || null,
+      preferred_language: user.preferredLanguage || null,
+      preferred_theme: user.preferredTheme || null,
       email: user.email,
       verified: user.verified,
-      emailHash: user.emailHash,
+      email_hash: user.emailHash,
       roles: authorities,
       organization: primaryOrgName,
       organizations: userOrganizations,
-      accessToken: token,
-      isServiceAccount: false,
+      access_token: token,
+      is_service_account: false,
       provider,
-      stayLoggedIn: finalStayLoggedIn,
-      avatarUrl: user.avatar_url,
+      stay_logged_in: finalStayLoggedIn,
+      avatar_url: user.avatar_url,
       entitlements: user.entitlements || [],
     });
   } catch (err) {

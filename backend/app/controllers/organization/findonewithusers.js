@@ -44,7 +44,7 @@ const { organization: Organization, user: User, role: Role, box: Box, UserOrg } 
  *                     type: string
  *                     format: email
  *                     description: User email
- *                   emailHash:
+ *                   email_hash:
  *                     type: string
  *                     description: Hashed email for the Gravatar fallback
  *                   avatar_url:
@@ -62,7 +62,10 @@ const { organization: Organization, user: User, role: Role, box: Box, UserOrg } 
  *                     items:
  *                       type: string
  *                     description: User roles
- *                   totalBoxes:
+ *                   org_role:
+ *                     type: string
+ *                     description: The user's role in this organization
+ *                   total_boxes:
  *                     type: integer
  *                     description: Number of boxes accessible to the requesting user
  *       404:
@@ -114,13 +117,13 @@ export const findOneWithUsers = async (req, res) => {
       username: user.username,
       name: user.name || null,
       email: user.email,
-      emailHash: user.emailHash,
+      email_hash: user.emailHash,
       avatar_url: user.avatar_url,
       verified: user.verified,
       suspended: user.suspended,
       roles: user.roles.map(role => role.name),
-      orgRole: orgRoleByUserId.get(user.id) || null,
-      totalBoxes: user.box.filter(
+      org_role: orgRoleByUserId.get(user.id) || null,
+      total_boxes: user.box.filter(
         box =>
           box.organizationId === organization.id && (box.isPublic || (userId && user.id === userId))
       ).length,

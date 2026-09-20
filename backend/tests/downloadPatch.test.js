@@ -74,7 +74,7 @@ describe('Download patch API', () => {
     expect(base.statusCode).toBe(201);
     expect(base.body.name).toBe('release');
     expect(base.body.kind).toBe('release');
-    expect(base.body.releasedAt).toBe('2026-03-19');
+    expect(base.body.released_at).toBe('2026-03-19');
     expect(
       fs.existsSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'release'))
     ).toBe(true);
@@ -90,7 +90,7 @@ describe('Download patch API', () => {
       });
     expect(fixpack.statusCode).toBe(201);
     expect(fixpack.body.kind).toBe('fixpack');
-    expect(fixpack.body.notesUrl).toBe('https://support.hcl-software.com/fp1');
+    expect(fixpack.body.notes_url).toBe('https://support.hcl-software.com/fp1');
   });
 
   it('should reject a released_at that is not a full-date', async () => {
@@ -182,7 +182,7 @@ describe('Download patch API', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.description).toBe('Fix Pack 1');
     expect(res.body.kind).toBe('hotfix');
-    expect(res.body.releasedAt).toBe('2026-08-01');
+    expect(res.body.released_at).toBe('2026-08-01');
 
     const renamed = await request(app)
       .put(`${releaseBase}/patch/FP1`)

@@ -52,7 +52,7 @@ import { canSeeDownload, resolveDownloadViewer } from '../visibility.js';
  *             schema:
  *               type: object
  *               properties:
- *                 downloadUrl:
+ *                 download_url:
  *                   type: string
  *       403:
  *         description: The product is not visible to the caller
@@ -82,12 +82,12 @@ const getDownloadLink = async (req, res) => {
 
     const downloadToken = generateDownloadToken(
       {
-        userId,
-        isServiceAccount,
-        serviceAccountId,
+        user_id: userId,
+        is_service_account: isServiceAccount,
+        service_account_id: serviceAccountId,
         organization,
         download: name,
-        versionNumber,
+        version_number: versionNumber,
         patch,
         key: file.key,
       },
@@ -96,7 +96,7 @@ const getDownloadLink = async (req, res) => {
 
     const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/download/${name}/release/${versionNumber}/patch/${patch}/file/${file.key}/download?token=${downloadToken}`;
 
-    return res.status(200).json({ downloadUrl });
+    return res.status(200).json({ download_url: downloadUrl });
   } catch (err) {
     log.error.error('Error generating download file link', err);
     return problem(res, req, {

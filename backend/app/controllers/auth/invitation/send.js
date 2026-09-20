@@ -78,10 +78,10 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
     const externalInvite = await createExternalInvite(organization, email, role, oidcAccessToken);
     return res.status(200).send({
       message: req.__('invitations.sent'),
-      invitationToken: null,
-      invitationTokenExpires: externalInvite?.expires_at || null,
-      organizationId: organization.id,
-      invitationLink: null,
+      invitation_token: null,
+      invitation_token_expires: externalInvite?.expires_at || null,
+      organization_id: organization.id,
+      invitation_link: null,
     });
   } catch (delegationErr) {
     return surfaceDelegationError(req, res, delegationErr);
@@ -129,16 +129,16 @@ const sendDelegatedInvitation = async (req, res, organization, email, role) => {
  *                 message:
  *                   type: string
  *                   example: "Invitation sent successfully!"
- *                 invitationToken:
+ *                 invitation_token:
  *                   type: string
  *                   description: The invitation token
- *                 invitationTokenExpires:
+ *                 invitation_token_expires:
  *                   type: number
  *                   description: Expiration timestamp
- *                 organizationId:
+ *                 organization_id:
  *                   type: integer
  *                   description: ID of the organization
- *                 invitationLink:
+ *                 invitation_link:
  *                   type: string
  *                   description: Direct link to accept invitation
  *       400:
@@ -284,10 +284,10 @@ export const sendInvitation = async (req, res) => {
 
     return res.status(200).send({
       message: req.__('invitations.sent'),
-      invitationToken,
-      invitationTokenExpires,
-      organizationId: organization.id,
-      invitationLink,
+      invitation_token: invitationToken,
+      invitation_token_expires: invitationTokenExpires,
+      organization_id: organization.id,
+      invitation_link: invitationLink,
     });
   } catch (err) {
     log.error.error('Failed to send invitation:', err);

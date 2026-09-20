@@ -66,7 +66,7 @@ describe('Download release API', () => {
       .set('x-access-token', ownerToken)
       .send({ version_number: '14.5', description: 'First' });
     expect(res.statusCode).toBe(201);
-    expect(res.body.versionNumber).toBe('14.5');
+    expect(res.body.version_number).toBe('14.5');
     expect(res.body.description).toBe('First');
     expect(res.body.deprecated).toBe(false);
     expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5'))).toBe(true);
@@ -130,7 +130,7 @@ describe('Download release API', () => {
       .expect(201);
     const res = await request(app).get(`${productBase}/release`).set('x-access-token', memberToken);
     expect(res.statusCode).toBe(200);
-    expect(res.body.map(entry => entry.versionNumber)).toEqual(['14.5.1', '14.5']);
+    expect(res.body.map(entry => entry.version_number)).toEqual(['14.5.1', '14.5']);
     expect(Array.isArray(res.body[0].patches)).toBe(true);
   });
 
@@ -144,7 +144,7 @@ describe('Download release API', () => {
       .get(`${productBase}/release/14.5`)
       .set('x-access-token', memberToken);
     expect(res.statusCode).toBe(200);
-    expect(res.body.versionNumber).toBe('14.5');
+    expect(res.body.version_number).toBe('14.5');
     const missing = await request(app)
       .get(`${productBase}/release/9.9.9`)
       .set('x-access-token', memberToken);
@@ -172,9 +172,9 @@ describe('Download release API', () => {
       });
     expect(res.statusCode).toBe(200);
     expect(res.body.description).toBe('Updated');
-    expect(res.body.releaseNotes).toBe('Notes');
+    expect(res.body.release_notes).toBe('Notes');
     expect(res.body.deprecated).toBe(true);
-    expect(res.body.deprecationReason).toBe('Superseded');
+    expect(res.body.deprecation_reason).toBe('Superseded');
 
     const asMember = await request(app)
       .put(`${productBase}/release/14.5`)
@@ -195,7 +195,7 @@ describe('Download release API', () => {
       .set('x-access-token', ownerToken)
       .send({ version_number: '14.5.2' });
     expect(res.statusCode).toBe(200);
-    expect(res.body.versionNumber).toBe('14.5.2');
+    expect(res.body.version_number).toBe('14.5.2');
     expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5.2'))).toBe(true);
     expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5.1'))).toBe(false);
 
@@ -264,8 +264,8 @@ describe('Download release API', () => {
       .set('x-access-token', ownerToken)
       .send({ download: targetName });
     expect(moved.statusCode).toBe(200);
-    expect(moved.body.downloadId).toBe(target.id);
-    expect(moved.body.versionNumber).toBe('14.5');
+    expect(moved.body.download_id).toBe(target.id);
+    expect(moved.body.version_number).toBe('14.5');
     expect(
       fs.existsSync(getSecureDownloadPath(orgName, targetName, '14.5', 'release', 'a.bin'))
     ).toBe(true);
@@ -305,7 +305,7 @@ describe('Download release API', () => {
       .set('x-access-token', ownerToken)
       .send({ download: targetName, version_number: '14.5-again' });
     expect(renamedIn.statusCode).toBe(200);
-    expect(renamedIn.body.downloadId).toBe(target.id);
+    expect(renamedIn.body.download_id).toBe(target.id);
     expect(fs.existsSync(getSecureDownloadPath(orgName, targetName, '14.5-again'))).toBe(true);
   });
 

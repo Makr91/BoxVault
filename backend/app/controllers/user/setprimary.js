@@ -31,7 +31,7 @@ const { organization: Organization, user: User, UserOrg } = db;
  *                 message:
  *                   type: string
  *                   example: "Primary organization set to acme-corp"
- *                 primaryOrganization:
+ *                 primary_organization:
  *                   type: object
  *                   properties:
  *                     id:
@@ -105,7 +105,7 @@ const setPrimaryOrganization = async (req, res) => {
 
     return res.send({
       message: req.__('users.primaryOrgSet', { orgName }),
-      primaryOrganization: {
+      primary_organization: {
         id: organization.id,
         name: organization.name,
         role: membership.role,

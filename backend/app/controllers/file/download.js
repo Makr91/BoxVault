@@ -164,14 +164,14 @@ const download = (req, res) => {
   // Check if downloadAuth middleware successfully verified a token
   if (req.downloadTokenDecoded) {
     const decoded = req.downloadTokenDecoded;
-    ({ userId, isServiceAccount } = decoded);
+    ({ user_id: userId, is_service_account: isServiceAccount } = decoded);
 
     if (
       decoded.organization !== organization ||
-      decoded.boxId !== boxId ||
-      decoded.versionNumber !== versionNumber ||
-      decoded.providerName !== providerName ||
-      decoded.architectureName !== architectureName
+      decoded.box_id !== boxId ||
+      decoded.version_number !== versionNumber ||
+      decoded.provider_name !== providerName ||
+      decoded.architecture_name !== architectureName
     ) {
       return forbidden(req, res, 'files.invalidDownloadToken');
     }

@@ -116,8 +116,8 @@ describe('Stale chunk directory sweep', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.details).toMatchObject({
       status: 'uploading',
-      chunksReceived: 1,
-      totalChunks: 3,
+      chunks_received: 1,
+      total_chunks: 3,
     });
 
     expect(fs.existsSync(stale)).toBe(false);
@@ -144,7 +144,7 @@ describe('Stale chunk directory sweep', () => {
     const stale = makeTempDir([staleOrg, 'later', '1.0.0', 'vb', 'amd64'], 48 * HOUR_MS);
     const res = await sendChunk(1);
     expect(res.statusCode).toBe(200);
-    expect(res.body.details.chunksReceived).toBe(2);
+    expect(res.body.details.chunks_received).toBe(2);
     expect(fs.existsSync(stale)).toBe(true);
   });
 
@@ -194,7 +194,7 @@ describe('Stale chunk directory sweep', () => {
     });
     expect(response.status).toBe(200);
     const payload = await response.json();
-    expect(payload.details).toMatchObject({ isComplete: true, status: 'complete' });
+    expect(payload.details).toMatchObject({ is_complete: true, status: 'complete' });
     const assembled = getSecureBoxPath(orgName, boxName, '1.0.0', 'virtualbox', 'amd64');
     expect(fs.readFileSync(path.join(assembled, 'vagrant.box')).toString()).toBe(
       'chunk-0chunk-1chunk-2'

@@ -109,7 +109,7 @@ describe('ISO guest access', () => {
     guestAccountId = minted.body.id;
     guestAccountKey = minted.body.token;
     guestAccountToken = jwt.sign(
-      { id: admin.id, isServiceAccount: true, serviceAccountId: guestAccountId },
+      { id: admin.id, is_service_account: true, service_account_id: guestAccountId },
       'test-secret',
       { expiresIn: '1h', ...TEST_JWT_CLAIMS }
     );
@@ -165,8 +165,8 @@ describe('ISO guest access', () => {
       expect(guestNames).not.toContain(unflaggedName);
       expect(guestNames).not.toContain(pendingName);
       asGuest.body
-        .filter(entry => entry.organizationId === org.id)
-        .forEach(entry => expect(entry.downloadCount).toBeNull());
+        .filter(entry => entry.organization_id === org.id)
+        .forEach(entry => expect(entry.download_count).toBeNull());
 
       const asMember = await get('/api/isos/discover', memberToken);
       expect(asMember.body.map(entry => entry.name)).toContain(unflaggedName);
@@ -225,25 +225,25 @@ describe('ISO guest access', () => {
 
     it('should answer null counts to a guest and numbers to a member', async () => {
       const asGuest = await get(isoBase(flaggedName), guestToken);
-      expect(asGuest.body.downloadCount).toBeNull();
+      expect(asGuest.body.download_count).toBeNull();
       asGuest.body.versions.forEach(version =>
-        version.files.forEach(file => expect(file.downloadCount).toBeNull())
+        version.files.forEach(file => expect(file.download_count).toBeNull())
       );
       const versions = await get(`${isoBase(flaggedName)}/version`, guestAccountToken);
       versions.body.forEach(version =>
-        version.files.forEach(file => expect(file.downloadCount).toBeNull())
+        version.files.forEach(file => expect(file.download_count).toBeNull())
       );
       const version = await get(`${isoBase(flaggedName)}/version/1.0.0`, guestToken);
-      version.body.files.forEach(file => expect(file.downloadCount).toBeNull());
+      version.body.files.forEach(file => expect(file.download_count).toBeNull());
       const info = await get(`${fileBase(flaggedName)}/info`, guestToken);
-      expect(info.body.downloadCount).toBeNull();
+      expect(info.body.download_count).toBeNull();
       const publicInfo = await get(`${fileBase(publicName)}/info`, guestToken);
-      expect(publicInfo.body.downloadCount).toBeNull();
+      expect(publicInfo.body.download_count).toBeNull();
 
       const asMember = await get(isoBase(flaggedName), memberToken);
-      expect(typeof asMember.body.downloadCount).toBe('number');
+      expect(typeof asMember.body.download_count).toBe('number');
       const memberInfo = await get(`${fileBase(flaggedName)}/info`, memberToken);
-      expect(typeof memberInfo.body.downloadCount).toBe('number');
+      expect(typeof memberInfo.body.download_count).toBe('number');
     });
   });
 
@@ -253,7 +253,7 @@ describe('ISO guest access', () => {
         .post(`${fileBase(flaggedName)}/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
-      const [, token] = link.body.downloadUrl.split('token=');
+      const [, token] = link.body.download_url.split('token=');
       expect(
         (await request(app).get(`${fileBase(flaggedName)}/download?token=${token}`)).statusCode
       ).toBe(200);
@@ -339,14 +339,14 @@ describe('ISO guest access', () => {
         .set('x-access-token', adminToken)
         .send({ guest_access: false });
       expect(closed.statusCode).toBe(200);
-      expect(closed.body.guestAccess).toBe(false);
+      expect(closed.body.guest_access).toBe(false);
       expect((await get(isoBase(flaggedName), guestToken)).statusCode).toBe(403);
 
       const opened = await request(app)
         .put(isoBase(flaggedName))
         .set('x-access-token', adminToken)
         .send({ guest_access: true });
-      expect(opened.body.guestAccess).toBe(true);
+      expect(opened.body.guest_access).toBe(true);
       expect((await get(isoBase(flaggedName), guestToken)).statusCode).toBe(200);
 
       const notBoolean = await request(app)
@@ -362,7 +362,7 @@ describe('ISO guest access', () => {
         .set('x-access-token', adminToken)
         .send({ name: `ig-created-${uniqueId}`, guest_access: true });
       expect(created.statusCode).toBe(201);
-      expect(created.body.guestAccess).toBe(true);
+      expect(created.body.guest_access).toBe(true);
       expect((await get(isoBase(`ig-created-${uniqueId}`), guestToken)).statusCode).toBe(200);
 
       const defaulted = await request(app)
@@ -370,7 +370,7 @@ describe('ISO guest access', () => {
         .set('x-access-token', adminToken)
         .send({ name: `ig-defaulted-${uniqueId}` });
       expect(defaulted.statusCode).toBe(201);
-      expect(defaulted.body.guestAccess).toBe(false);
+      expect(defaulted.body.guest_access).toBe(false);
       expect((await get(isoBase(`ig-defaulted-${uniqueId}`), guestToken)).statusCode).toBe(403);
     });
   });

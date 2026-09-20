@@ -84,7 +84,9 @@ const bulk = async (req, res) => {
       return 'not_found';
     }
     if (action === 'delete') {
-      const files = iso.versions.flatMap(version => version.files.map(file => file.toJSON()));
+      const files = iso.versions.flatMap(version =>
+        version.files.map(file => file.get({ plain: true }))
+      );
       await iso.destroy();
       await removeUnreferencedIsoFiles(files);
       return null;

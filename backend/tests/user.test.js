@@ -88,12 +88,12 @@ describe('User API', () => {
     const userAuth = await request(app)
       .post('/api/auth/signin')
       .send({ username: testUser.username, password: 'aSecurePassword123' });
-    userToken = userAuth.body.accessToken;
+    userToken = userAuth.body.access_token;
 
     const adminAuth = await request(app)
       .post('/api/auth/signin')
       .send({ username: adminUser.username, password: 'aSecurePassword123' });
-    adminToken = adminAuth.body.accessToken;
+    adminToken = adminAuth.body.access_token;
   });
 
   describe('GET /api/user', () => {
@@ -473,7 +473,7 @@ describe('User API', () => {
         .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('newRole', 'admin');
+      expect(res.body).toHaveProperty('new_role','admin');
     });
 
     it('should allow an admin to demote a orgAdmin to member', async () => {
@@ -489,7 +489,7 @@ describe('User API', () => {
         .send({ role: 'member' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('newRole', 'member');
+      expect(res.body).toHaveProperty('new_role','member');
     });
 
     it('should allow a user to leave their primary organization if they have others', async () => {
@@ -681,7 +681,7 @@ describe('User API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('isOnlyUser', true);
+      expect(res.body).toHaveProperty('is_only_user', true);
 
       await db.organization.destroy({ where: { id: soloOrg.id } });
     });
@@ -735,7 +735,7 @@ describe('User API', () => {
         .post('/api/auth/signin')
         .send({ username: tempUser.username, password: 'password' });
       expect(tempAuth.statusCode).toBe(200);
-      const tempToken = tempAuth.body.accessToken;
+      const tempToken = tempAuth.body.access_token;
 
       const res = await request(app)
         .delete(`/api/users/${tempUser.id}`)
@@ -950,7 +950,7 @@ describe('User API', () => {
         .set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.isOnlyUser).toBe(false);
+      expect(res.body.is_only_user).toBe(false);
 
       await otherUser.destroy();
     });
@@ -1011,7 +1011,7 @@ describe('User API', () => {
         const res = await request(app).get('/api/user').set('x-access-token', userToken);
 
         expect(res.statusCode).toBe(200);
-        expect(res.body).toHaveProperty('accessToken');
+        expect(res.body).toHaveProperty('access_token');
         // We can't easily verify the expiration time of the returned token without decoding it
         // and checking the 'exp' claim, but the fact that it didn't crash and returned 200
         // means the fallback '24h' was likely used (or it would have thrown an error).

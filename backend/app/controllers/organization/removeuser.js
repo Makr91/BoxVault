@@ -93,7 +93,7 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
 
   return res.send({
     message: req.__('organizations.userRemoved', { username: user.username }),
-    userId: user.id,
+    user_id: user.id,
     username: user.username,
   });
 };
@@ -137,7 +137,7 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
  *                 message:
  *                   type: string
  *                   example: "User john_user removed from organization"
- *                 userId:
+ *                 user_id:
  *                   type: integer
  *                 username:
  *                   type: string

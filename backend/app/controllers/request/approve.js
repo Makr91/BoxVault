@@ -76,7 +76,7 @@ const approveViaIdpInvite = async (
 
   return res.send({
     message: req.__('requests.approvedDelegated'),
-    assignedRole,
+    assigned_role: assignedRole,
   });
 };
 
@@ -127,7 +127,7 @@ const approveViaIdpInvite = async (
  *                 message:
  *                   type: string
  *                   example: "Join request approved successfully!"
- *                 assignedRole:
+ *                 assigned_role:
  *                   type: string
  *                   example: "member"
  *       400:
@@ -224,7 +224,7 @@ export const approveJoinRequest = async (req, res) => {
 
     return res.send({
       message: req.__('requests.approved'),
-      assignedRole,
+      assigned_role: assignedRole,
     });
   } catch (err) {
     log.error.error('Error approving join request:', {

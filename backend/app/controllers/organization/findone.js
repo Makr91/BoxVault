@@ -5,7 +5,14 @@ import db from '../../models/index.js';
 import { resolveJwtUser } from '../../utils/jwtUser.js';
 const { organization: Organization, user: User, box: Box } = db;
 
-const PUBLIC_FIELDS = ['id', 'name', 'display_name', 'description', 'logo', 'emailHash'];
+const PUBLIC_FIELDS = [
+  ['id', 'id'],
+  ['name', 'name'],
+  ['display_name', 'display_name'],
+  ['description', 'description'],
+  ['logo', 'logo'],
+  ['emailHash', 'email_hash'],
+];
 
 /**
  * The organization as anyone may see it: the fields the box and ISO listings
@@ -14,14 +21,14 @@ const PUBLIC_FIELDS = ['id', 'name', 'display_name', 'description', 'logo', 'ema
  * @returns {Object} The public profile
  */
 const publicProfile = organization =>
-  Object.fromEntries(PUBLIC_FIELDS.map(field => [field, organization[field]]));
+  Object.fromEntries(PUBLIC_FIELDS.map(([attribute, key]) => [key, organization[attribute]]));
 
 /**
  * @swagger
  * /api/organization/{organizationName}:
  *   get:
  *     summary: Get a specific organization
- *     description: Retrieve an organization. A signed-in caller (x-access-token JWT or an external bearer token) gets the full organization with the box count visible to them; an anonymous caller gets the public profile only (id, name, display name, description, logo, emailHash).
+ *     description: Retrieve an organization. A signed-in caller (x-access-token JWT or an external bearer token) gets the full organization with the box count visible to them; an anonymous caller gets the public profile only (id, name, display name, description, logo, email_hash).
  *     tags: [Organizations]
  *     security:
  *       - bearerAuth: []
@@ -43,7 +50,7 @@ const publicProfile = organization =>
  *                 - $ref: '#/components/schemas/Organization'
  *                 - type: object
  *                   properties:
- *                     totalBoxes:
+ *                     total_boxes:
  *                       type: integer
  *                       description: Total number of boxes accessible to the requesting user (signed-in callers only)
  *       404:
@@ -109,7 +116,16 @@ export const findOne = async (req, res) => {
       }, 0);
     }
 
-    return res.send({ ...organization.toJSON(), totalBoxes });
+    const organizationJson = organization.toJSON();
+    if (Array.isArray(organizationJson.members)) {
+      organizationJson.members = organizationJson.members.map(member => {
+        const rest = { ...member };
+        delete rest.box;
+        return rest;
+      });
+    }
+
+    return res.send({ ...organizationJson, total_boxes: totalBoxes });
   } catch (err) {
     log.error.error('Error in findOne:', err);
     return problem(res, req, {

@@ -791,7 +791,7 @@ describe('Middleware Tests', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: 'files.upload.completed',
-          details: expect.objectContaining({ fileSize: 100 }),
+          details: expect.objectContaining({ file_size: 100 }),
         })
       );
       expect(mockLog.app.info).toHaveBeenCalledWith(
@@ -1632,7 +1632,7 @@ describe('Middleware Tests', () => {
       const token = jwt.sign(
         {
           id: 1,
-          isServiceAccount: true,
+          is_service_account: true,
         },
         'test-secret',
         JWT_CLAIM_OPTIONS
@@ -2276,7 +2276,7 @@ describe('Middleware Tests', () => {
         auth: { jwt: { jwt_secret: 'test-secret' } },
       });
 
-      const token = jwt.sign({ id: 1, isServiceAccount: true }, 'test-secret', JWT_CLAIM_OPTIONS);
+      const token = jwt.sign({ id: 1, is_service_account: true }, 'test-secret', JWT_CLAIM_OPTIONS);
       req.headers['x-access-token'] = token;
       req.path = '/api/auth/refresh-token';
 

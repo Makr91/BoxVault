@@ -3,6 +3,7 @@ import { join } from 'path';
 import { getSecureBoxPath, getStorageRoot } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
+import { snakeKeys } from '../../utils/wire.js';
 const {
   download: Download,
   downloadReleases: DownloadRelease,
@@ -115,10 +116,14 @@ const sumDownloadDownloads = download =>
  * @returns {Array<Object>} The files as JSON
  */
 const filesWithCounts = (files, member) =>
-  (files || []).map(file => ({
-    ...(typeof file.toJSON === 'function' ? file.toJSON() : file),
-    downloadCount: member ? file.downloadCount : null,
-  }));
+  (files || []).map(file => {
+    const plain = snakeKeys(typeof file.get === 'function' ? file.get({ plain: true }) : file);
+    plain.download_count = member ? file.downloadCount : null;
+    delete plain.storage_path;
+    delete plain.original;
+    delete plain.links_to;
+    return plain;
+  });
 
 /**
  * The product's JSON with its downloadCount and every nested file's
@@ -128,17 +133,20 @@ const filesWithCounts = (files, member) =>
  * @param {boolean} member - Whether the caller belongs to the organization
  * @returns {Object} The product JSON
  */
-const withCounts = (download, member) => ({
-  ...download.toJSON(),
-  releases: (download.releases || []).map(release => ({
-    ...release.toJSON(),
-    patches: (release.patches || []).map(patch => ({
-      ...patch.toJSON(),
-      files: filesWithCounts(patch.files, member),
-    })),
-  })),
-  downloadCount: member ? sumDownloadDownloads(download) : null,
-});
+const withCounts = (download, member) => {
+  const plain = snakeKeys(download.get({ plain: true }));
+  plain.releases = (download.releases || []).map(release => {
+    const releasePlain = snakeKeys(release.get({ plain: true }));
+    releasePlain.patches = (release.patches || []).map(patch => {
+      const patchPlain = snakeKeys(patch.get({ plain: true }));
+      patchPlain.files = filesWithCounts(patch.files, member);
+      return patchPlain;
+    });
+    return releasePlain;
+  });
+  plain.download_count = member ? sumDownloadDownloads(download) : null;
+  return plain;
+};
 
 /**
  * The original download_file of an organization carrying a checksum, the row

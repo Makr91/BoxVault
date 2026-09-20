@@ -11,7 +11,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version:
  *   get:
  *     summary: List the versions of an ISO
- *     description: Retrieve every version of an ISO with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file downloadCount is null to a guest of the organization.
+ *     description: Retrieve every version of an ISO with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file download_count is null to a guest of the organization.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path

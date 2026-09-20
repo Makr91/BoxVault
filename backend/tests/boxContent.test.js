@@ -192,7 +192,7 @@ describe('Box and ISO content validation and visibility', () => {
         });
       expect(created.statusCode).toBe(201);
       expect(created.body.metadata).toEqual({ distro: 'debian' });
-      expect(created.body.shortDescription).toBe('short');
+      expect(created.body.short_description).toBe('short');
 
       const badUpdate = await request(app)
         .put(boxUrl(`/${boxName}`))
@@ -205,7 +205,7 @@ describe('Box and ISO content validation and visibility', () => {
         .set('x-access-token', ownerToken)
         .send({ short_description: null, readme: null, metadata: null });
       expect(cleared.statusCode).toBe(200);
-      expect(cleared.body.shortDescription).toBeNull();
+      expect(cleared.body.short_description).toBeNull();
       expect(cleared.body.readme).toBeNull();
       expect(cleared.body.metadata).toBeNull();
     });
@@ -303,7 +303,7 @@ describe('Box and ISO content validation and visibility', () => {
           )
           .set('x-access-token', memberToken);
         expect(res.statusCode).toBe(200);
-        const token = new URL(res.body.downloadUrl).searchParams.get('token');
+        const token = new URL(res.body.download_url).searchParams.get('token');
         const claims = jwt.verify(token, 'test-secret', TEST_JWT_CLAIMS);
         expect(claims.exp - claims.iat).toBe(2 * 60 * 60);
       } finally {
@@ -368,7 +368,9 @@ describe('Box and ISO content validation and visibility', () => {
       fs.rmSync(getIsoStorageRoot(), { recursive: true, force: true });
       const first = await upload(Buffer.from(`first-${uniqueId}`), { 'x-file-name': 'a.iso' });
       expect(first.statusCode).toBe(201);
-      const firstPath = path.join(getIsoStorageRoot(), first.body.storagePath);
+      expect(first.body.storage_path).toBeUndefined();
+      const firstRow = await db.isoFiles.findByPk(first.body.id);
+      const firstPath = path.join(getIsoStorageRoot(), firstRow.storagePath);
       expect(fs.existsSync(firstPath)).toBe(true);
 
       const second = await upload(Buffer.from(`second-${uniqueId}`), { 'x-file-name': 'b.iso' });
@@ -376,14 +378,15 @@ describe('Box and ISO content validation and visibility', () => {
       expect(second.body.id).toBe(first.body.id);
       expect(second.body.checksum).not.toBe(first.body.checksum);
       expect(fs.existsSync(firstPath)).toBe(false);
-      expect(fs.existsSync(path.join(getIsoStorageRoot(), second.body.storagePath))).toBe(true);
+      const secondRow = await db.isoFiles.findByPk(second.body.id);
+      expect(fs.existsSync(path.join(getIsoStorageRoot(), secondRow.storagePath))).toBe(true);
     });
 
     it('should refuse a download token that names no user for a private ISO', async () => {
       const token = generateDownloadToken({
         organization: orgName,
         iso: privateIsoName,
-        versionNumber: '1.0.0',
+        version_number: '1.0.0',
         architecture: 'amd64',
       });
       const res = await request(app).get(isoFileUrl(privateIsoName, 'download')).query({ token });

@@ -250,14 +250,14 @@ const resolveSessionAuth = async token => {
       });
       return null;
     }
-    if (claims.isServiceAccount && claims.serviceAccountId) {
-      await touchServiceAccount(claims.serviceAccountId);
+    if (claims.is_service_account && claims.service_account_id) {
+      await touchServiceAccount(claims.service_account_id);
     }
     return {
       userId: claims.id,
-      isServiceAccount: claims.isServiceAccount || false,
-      serviceAccountId: claims.serviceAccountId,
-      stayLoggedIn: claims.stayLoggedIn,
+      isServiceAccount: claims.is_service_account || false,
+      serviceAccountId: claims.service_account_id,
+      stayLoggedIn: claims.stay_logged_in,
       organizations: claims.organizations,
       claims,
     };

@@ -90,19 +90,19 @@ describe('Service Account API', () => {
     const resAdmin = await request(app)
       .post('/api/auth/signin')
       .send({ username: adminUser.username, password: 'password' });
-    adminToken = resAdmin.body.accessToken;
+    adminToken = resAdmin.body.access_token;
 
     // Get Token for Regular User
     const resUser = await request(app)
       .post('/api/auth/signin')
       .send({ username: regularUser.username, password: 'password' });
-    userToken = resUser.body.accessToken;
+    userToken = resUser.body.access_token;
 
     // Get Token for Outsider User
     const resOutsider = await request(app)
       .post('/api/auth/signin')
       .send({ username: outsiderUser.username, password: 'password' });
-    outsiderToken = resOutsider.body.accessToken;
+    outsiderToken = resOutsider.body.access_token;
   });
 
   afterAll(async () => {
@@ -495,7 +495,7 @@ describe('Service Account API', () => {
 
     const signFor = account =>
       jwt.sign(
-        { id: account.userId, isServiceAccount: true, serviceAccountId: account.id },
+        { id: account.userId, is_service_account: true, service_account_id: account.id },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
@@ -676,13 +676,13 @@ describe('Service Account API', () => {
       const names = list.body.map(entry => entry.name);
       expect(names).toContain(flagged.name);
       expect(names).not.toContain(hidden.name);
-      expect(list.body.find(entry => entry.name === flagged.name).downloadCount).toBeNull();
+      expect(list.body.find(entry => entry.name === flagged.name).download_count).toBeNull();
 
       const readFlagged = await request(app)
         .get(`/api/organization/${orgName}/box/${flagged.name}`)
         .set('x-access-token', signFor(guestAccount));
       expect(readFlagged.statusCode).toBe(200);
-      expect(readFlagged.body.downloadCount).toBeNull();
+      expect(readFlagged.body.download_count).toBeNull();
 
       const readHidden = await request(app)
         .get(`/api/organization/${orgName}/box/${hidden.name}`)

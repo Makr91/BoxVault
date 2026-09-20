@@ -112,8 +112,8 @@ const resolveRequestCaller = req => {
     const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
     return {
       userId: decoded.id,
-      isServiceAccount: Boolean(decoded.isServiceAccount),
-      serviceAccountId: decoded.serviceAccountId,
+      isServiceAccount: Boolean(decoded.is_service_account),
+      serviceAccountId: decoded.service_account_id,
     };
   } catch {
     return null;

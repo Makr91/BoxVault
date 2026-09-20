@@ -31,7 +31,7 @@ const { invitation: Invitation, organization: Organization } = db;
  *                 email:
  *                   type: string
  *                   example: "invitee@example.com"
- *                 organizationName:
+ *                 organization_name:
  *                   type: string
  *                   example: "MyOrg"
  *       400:
@@ -86,8 +86,8 @@ export const validateInvitationToken = async (req, res) => {
     return res.status(200).send({
       message: req.__('invitations.valid'),
       email: invitation.email,
-      organizationName: invitation.organization.name,
-      invitedRole: invitation.invited_role,
+      organization_name: invitation.organization.name,
+      invited_role: invitation.invited_role,
     });
   } catch (err) {
     log.error.error('Error in validateInvitationToken:', err);

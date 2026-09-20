@@ -56,7 +56,7 @@ const unauthorized = (req, res) =>
  *             schema:
  *               type: object
  *               properties:
- *                 downloadUrl:
+ *                 download_url:
  *                   type: string
  *                   example: "https://api.example.com/organization/myorg/box/mybox/version/1.0.0/provider/virtualbox/architecture/amd64/file/download?token=..."
  *                   description: Secure download URL with embedded token (expires in 1 hour)
@@ -107,14 +107,14 @@ const getDownloadLink = async (req, res) => {
     const downloadLinkExpiry = authConfig.auth?.jwt?.download_link_expiry || '1h';
     const downloadToken = generateDownloadToken(
       {
-        userId,
-        isServiceAccount,
-        serviceAccountId,
+        user_id: userId,
+        is_service_account: isServiceAccount,
+        service_account_id: serviceAccountId,
         organization,
-        boxId,
-        versionNumber,
-        providerName,
-        architectureName,
+        box_id: boxId,
+        version_number: versionNumber,
+        provider_name: providerName,
+        architecture_name: architectureName,
       },
       downloadLinkExpiry
     );
@@ -122,7 +122,7 @@ const getDownloadLink = async (req, res) => {
     // Return the secure download URL
     const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
-    return res.status(200).json({ downloadUrl });
+    return res.status(200).json({ download_url: downloadUrl });
   } catch (err) {
     log.error.error('Error generating download link:', err);
     return problem(res, req, {

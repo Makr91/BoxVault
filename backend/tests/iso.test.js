@@ -113,7 +113,7 @@ describe('ISO API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body.name).toBe(isoName);
       expect(res.body.published).toBe(true);
-      expect(res.body.isPublic).toBe(false);
+      expect(res.body.is_public).toBe(false);
       expect(res.body.metadata).toEqual({ distro: 'debian' });
     });
 
@@ -166,7 +166,7 @@ describe('ISO API', () => {
       const entry = res.body.find(candidate => candidate.name === isoName);
       expect(entry).toBeDefined();
       expect(Array.isArray(entry.versions)).toBe(true);
-      expect(entry.downloadCount).toBe(0);
+      expect(entry.download_count).toBe(0);
       expect(entry.organization.name).toBe(orgName);
     });
 
@@ -266,7 +266,7 @@ describe('ISO API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.name).toBe(isoName);
       expect(Array.isArray(res.body.versions)).toBe(true);
-      expect(res.body.downloadCount).toBe(0);
+      expect(res.body.download_count).toBe(0);
     });
 
     it('should refuse a private ISO to an anonymous caller', async () => {
@@ -307,7 +307,7 @@ describe('ISO API', () => {
         .send({ name: 'renamed-iso', is_public: true });
       expect(res.statusCode).toBe(200);
       expect(res.body.name).toBe('renamed-iso');
-      expect(res.body.isPublic).toBe(true);
+      expect(res.body.is_public).toBe(true);
 
       const conflict = await request(app)
         .put(`/api/organization/${orgName}/iso/renamed-iso`)
@@ -441,7 +441,7 @@ describe('ISO API', () => {
         .set('x-access-token', adminToken)
         .send({ version_number: versionNumber, description: 'First' });
       expect(res.statusCode).toBe(201);
-      expect(res.body.versionNumber).toBe(versionNumber);
+      expect(res.body.version_number).toBe(versionNumber);
       expect(res.body.description).toBe('First');
       expect(res.body.deprecated).toBe(false);
     });
@@ -495,7 +495,7 @@ describe('ISO API', () => {
     it('should list versions with their files for a member', async () => {
       const res = await request(app).get(`${isoBase}/version`).set('x-access-token', authToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.some(entry => entry.versionNumber === versionNumber)).toBe(true);
+      expect(res.body.some(entry => entry.version_number === versionNumber)).toBe(true);
       expect(Array.isArray(res.body[0].files)).toBe(true);
     });
 
@@ -507,7 +507,7 @@ describe('ISO API', () => {
     it('should get one version', async () => {
       const res = await request(app).get(versionBase).set('x-access-token', authToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body.versionNumber).toBe(versionNumber);
+      expect(res.body.version_number).toBe(versionNumber);
     });
 
     it('should return 404 for an unknown version', async () => {
@@ -535,9 +535,9 @@ describe('ISO API', () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.body.description).toBe('Updated');
-      expect(res.body.releaseNotes).toBe('Notes');
+      expect(res.body.release_notes).toBe('Notes');
       expect(res.body.deprecated).toBe(true);
-      expect(res.body.deprecationReason).toBe('Superseded');
+      expect(res.body.deprecation_reason).toBe('Superseded');
 
       const restored = await request(app)
         .put(versionBase)
@@ -615,25 +615,25 @@ describe('ISO API', () => {
       expect(list.statusCode).toBe(200);
       const listed = list.body.find(entry => entry.name === isoName);
       expect(listed).toBeDefined();
-      expect(listed.guestAccess).toBe(true);
-      expect(listed.downloadCount).toBeNull();
+      expect(listed.guest_access).toBe(true);
+      expect(listed.download_count).toBeNull();
 
       const one = await request(app).get(isoBase).set('x-access-token', guestToken);
       expect(one.statusCode).toBe(200);
       expect(one.body.name).toBe(isoName);
-      expect(one.body.downloadCount).toBeNull();
+      expect(one.body.download_count).toBeNull();
 
       const versions = await request(app)
         .get(`${isoBase}/version`)
         .set('x-access-token', guestToken);
       expect(versions.statusCode).toBe(200);
-      expect(versions.body.some(entry => entry.versionNumber === versionNumber)).toBe(true);
+      expect(versions.body.some(entry => entry.version_number === versionNumber)).toBe(true);
 
       const discovered = await request(app)
         .get('/api/isos/discover')
         .set('x-access-token', guestToken);
       expect(discovered.statusCode).toBe(200);
-      expect(discovered.body.find(entry => entry.name === isoName).downloadCount).toBeNull();
+      expect(discovered.body.find(entry => entry.name === isoName).download_count).toBeNull();
     });
 
     it('should be hidden once the flag is withdrawn and shown again by allow_guests', async () => {
@@ -659,7 +659,7 @@ describe('ISO API', () => {
       expect(watched.statusCode).toBe(403);
       const asMember = await request(app).get(isoBase).set('x-access-token', authToken);
       expect(asMember.statusCode).toBe(200);
-      expect(asMember.body.downloadCount).toBe(0);
+      expect(asMember.body.download_count).toBe(0);
 
       const allowed = await request(app)
         .post(`/api/organization/${orgName}/iso/bulk`)
@@ -669,14 +669,14 @@ describe('ISO API', () => {
       expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
       const again = await request(app).get(isoBase).set('x-access-token', guestToken);
       expect(again.statusCode).toBe(200);
-      expect(again.body.guestAccess).toBe(true);
+      expect(again.body.guest_access).toBe(true);
 
       const denied = await request(app)
         .put(isoBase)
         .set('x-access-token', adminToken)
         .send({ guest_access: false });
       expect(denied.statusCode).toBe(200);
-      expect(denied.body.guestAccess).toBe(false);
+      expect(denied.body.guest_access).toBe(false);
       const gone = await request(app).get(isoBase).set('x-access-token', guestToken);
       expect(gone.statusCode).toBe(403);
 
@@ -684,7 +684,7 @@ describe('ISO API', () => {
         .put(isoBase)
         .set('x-access-token', adminToken)
         .send({ guest_access: true });
-      expect(restored.body.guestAccess).toBe(true);
+      expect(restored.body.guest_access).toBe(true);
     });
 
     it('should be refused every ISO write', async () => {
@@ -755,22 +755,22 @@ describe('ISO API', () => {
         .get(`${guestFileBase}/info`)
         .set('x-access-token', guestToken);
       expect(info.statusCode).toBe(200);
-      expect(info.body.downloadCount).toBeNull();
+      expect(info.body.download_count).toBeNull();
 
       const versions = await request(app)
         .get(`${isoBase}/version`)
         .set('x-access-token', guestToken);
       versions.body.forEach(entry =>
-        entry.files.forEach(file => expect(file.downloadCount).toBeNull())
+        entry.files.forEach(file => expect(file.download_count).toBeNull())
       );
 
       const link = await request(app)
         .post(`${guestFileBase}/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
-      expect(link.body).toHaveProperty('downloadUrl');
+      expect(link.body).toHaveProperty('download_url');
 
-      const [, token] = link.body.downloadUrl.split('token=');
+      const [, token] = link.body.download_url.split('token=');
       const byToken = await request(app).get(`${guestFileBase}/download?token=${token}`);
       expect(byToken.statusCode).toBe(200);
 
@@ -782,7 +782,7 @@ describe('ISO API', () => {
       const memberInfo = await request(app)
         .get(`${guestFileBase}/info`)
         .set('x-access-token', authToken);
-      expect(memberInfo.body.downloadCount).toBe(2);
+      expect(memberInfo.body.download_count).toBe(2);
 
       const watched = await request(app).post(`${isoBase}/watch`).set('x-access-token', guestToken);
       expect(watched.statusCode).toBe(201);
@@ -833,10 +833,10 @@ describe('ISO API', () => {
         .send(fileContent);
       expect(res.statusCode).toBe(201);
       expect(res.body.architecture).toBe('amd64');
-      expect(res.body.fileName).toBe('debian-13-amd64.iso');
+      expect(res.body.file_name).toBe('debian-13-amd64.iso');
       expect(res.body.checksum).toBe(checksum);
-      expect(res.body.checksumType).toBe('SHA256');
-      expect(Number(res.body.fileSize)).toBe(fileContent.length);
+      expect(res.body.checksum_type).toBe('SHA256');
+      expect(Number(res.body.file_size)).toBe(fileContent.length);
       expect(fs.existsSync(storedPath())).toBe(true);
     });
 
@@ -848,7 +848,7 @@ describe('ISO API', () => {
         .set('Content-Type', 'application/octet-stream')
         .send(fileContent);
       expect(res.statusCode).toBe(201);
-      expect(res.body.fileName).toBe('debian-13-amd64-again.iso');
+      expect(res.body.file_name).toBe('debian-13-amd64-again.iso');
       const count = await db.isoFiles.count({ where: { architecture: 'amd64' } });
       expect(count).toBe(1);
     });
@@ -862,7 +862,6 @@ describe('ISO API', () => {
         .send(fileContent);
       expect(res.statusCode).toBe(201);
       expect(res.body.checksum).toBe(checksum);
-      expect(res.body.storagePath).toBe(storagePath());
     });
 
     it('should reject a path traversal filename', async () => {
@@ -938,13 +937,13 @@ describe('ISO API', () => {
       const res = await request(app).get(`${fileBase}/info`).set('x-access-token', authToken);
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({
-        fileName: 'debian-13-amd64-again.iso',
-        fileSize: expect.anything(),
+        file_name: 'debian-13-amd64-again.iso',
+        file_size: expect.anything(),
         checksum,
-        checksumType: 'SHA256',
-        downloadCount: 0,
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
+        checksum_type: 'SHA256',
+        download_count: 0,
+        created_at: expect.any(String),
+        updated_at: expect.any(String),
       });
     });
 
@@ -965,13 +964,13 @@ describe('ISO API', () => {
         .post(`${fileBase}/get-download-link`)
         .set('x-access-token', authToken);
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('downloadUrl');
-      const [, token] = res.body.downloadUrl.split('token=');
+      expect(res.body).toHaveProperty('download_url');
+      const [, token] = res.body.download_url.split('token=');
       const decoded = jwt.verify(token, 'test-secret');
       expect(decoded.type).toBe('download');
       expect(decoded.organization).toBe(orgName);
       expect(decoded.iso).toBe(isoName);
-      expect(decoded.versionNumber).toBe(versionNumber);
+      expect(decoded.version_number).toBe(versionNumber);
       expect(decoded.architecture).toBe('amd64');
     });
 
@@ -997,7 +996,7 @@ describe('ISO API', () => {
         userId: user.id,
       });
       const saToken = jwt.sign(
-        { id: user.id, isServiceAccount: true, serviceAccountId: sa.id },
+        { id: user.id, is_service_account: true, service_account_id: sa.id },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
@@ -1006,8 +1005,8 @@ describe('ISO API', () => {
         .post(`${fileBase}/get-download-link`)
         .set('x-access-token', saToken);
       expect(res.statusCode).toBe(200);
-      const [, token] = res.body.downloadUrl.split('token=');
-      expect(jwt.verify(token, 'test-secret').isServiceAccount).toBe(true);
+      const [, token] = res.body.download_url.split('token=');
+      expect(jwt.verify(token, 'test-secret').is_service_account).toBe(true);
 
       await sa.destroy();
     });
@@ -1028,10 +1027,10 @@ describe('ISO API', () => {
       expect(Buffer.compare(res.body, fileContent)).toBe(0);
 
       const info = await request(app).get(`${fileBase}/info`).set('x-access-token', authToken);
-      expect(info.body.downloadCount).toBe(1);
+      expect(info.body.download_count).toBe(1);
 
       const iso = await request(app).get(isoBase).set('x-access-token', authToken);
-      expect(iso.body.downloadCount).toBe(1);
+      expect(iso.body.download_count).toBe(1);
     });
 
     it('should handle range requests', async () => {
@@ -1046,10 +1045,10 @@ describe('ISO API', () => {
     it('should download using a valid download token', async () => {
       const token = jwt.sign(
         {
-          userId: user.id,
+          user_id: user.id,
           organization: orgName,
           iso: isoName,
-          versionNumber,
+          version_number: versionNumber,
           architecture: 'amd64',
           type: 'download',
         },
@@ -1063,10 +1062,10 @@ describe('ISO API', () => {
     it('should refuse a download token issued for another file', async () => {
       const token = jwt.sign(
         {
-          userId: user.id,
+          user_id: user.id,
           organization: orgName,
           iso: isoName,
-          versionNumber,
+          version_number: versionNumber,
           architecture: 'arm64',
           type: 'download',
         },

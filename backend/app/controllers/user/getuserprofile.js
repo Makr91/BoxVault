@@ -39,7 +39,7 @@ const { user: User, role: Role, organization: Organization } = db;
  *                 verified:
  *                   type: boolean
  *                   description: Email verification status
- *                 emailHash:
+ *                 email_hash:
  *                   type: string
  *                   description: Hashed email for Gravatar
  *                 roles:
@@ -50,13 +50,13 @@ const { user: User, role: Role, organization: Organization } = db;
  *                 organization:
  *                   type: string
  *                   description: Organization name
- *                 accessToken:
+ *                 access_token:
  *                   type: string
  *                   description: JWT access token
- *                 avatarUrl:
+ *                 avatar_url:
  *                   type: string
  *                   nullable: true
- *                   description: Stored avatar URL from the identity provider (clients fall back to the emailHash gravatar)
+ *                   description: Stored avatar URL from the identity provider (clients fall back to the email_hash gravatar)
  *                 given_name:
  *                   type: string
  *                   nullable: true
@@ -167,18 +167,18 @@ export const getUserProfile = async (req, res) => {
       id: user.id,
       username: user.username,
       name: user.name || null,
-      preferredLanguage: user.preferredLanguage || null,
-      preferredTheme: user.preferredTheme || null,
+      preferred_language: user.preferredLanguage || null,
+      preferred_theme: user.preferredTheme || null,
       email: user.email,
       verified: user.verified,
-      emailHash: user.emailHash,
-      avatarUrl: user.avatar_url,
+      email_hash: user.emailHash,
+      avatar_url: user.avatar_url,
       ...profileOf(user),
       roles: authorities,
       organization: user.primaryOrganization ? user.primaryOrganization.name : null,
       organizations,
       entitlements: user.entitlements || [],
-      accessToken: token,
+      access_token: token,
     });
   } catch (error) {
     log.error.error('Error retrieving user profile:', error);

@@ -92,13 +92,13 @@ describe('Organization API', () => {
       username: userName,
       password: 'password',
     });
-    authToken = userAuth.body.accessToken;
+    authToken = userAuth.body.access_token;
 
     const adminAuth = await request(app).post('/api/auth/signin').send({
       username: adminName,
       password: 'password',
     });
-    adminToken = adminAuth.body.accessToken;
+    adminToken = adminAuth.body.access_token;
   });
 
   afterAll(async () => {
@@ -180,7 +180,7 @@ describe('Organization API', () => {
 
     it('should handle missing associations in getDiscoverable (coverage)', async () => {
       const mockOrg = {
-        toJSON: () => ({ id: 1 }),
+        get: () => ({ id: 1 }),
         box: null, // Force default []
         members: null, // Force default 0
       };
@@ -201,7 +201,7 @@ describe('Organization API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('name', orgName);
-      expect(res.body).toHaveProperty('totalBoxes');
+      expect(res.body).toHaveProperty('total_boxes');
     });
 
     it('should fail for non-existent organization', async () => {
@@ -218,8 +218,8 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('name', orgName);
       expect(res.body).toHaveProperty('logo');
-      expect(res.body).toHaveProperty('emailHash');
-      expect(res.body).not.toHaveProperty('totalBoxes');
+      expect(res.body).toHaveProperty('email_hash');
+      expect(res.body).not.toHaveProperty('total_boxes');
       expect(res.body).not.toHaveProperty('members');
       expect(res.body).not.toHaveProperty('access_mode');
       expect(res.body).not.toHaveProperty('email');
@@ -244,7 +244,7 @@ describe('Organization API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.totalBoxes).toBe(0);
+      expect(res.body.total_boxes).toBe(0);
     });
 
     it('should handle organization with undefined members', async () => {
@@ -261,7 +261,7 @@ describe('Organization API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.totalBoxes).toBe(0);
+      expect(res.body.total_boxes).toBe(0);
     });
 
     it('should count public boxes correctly', async () => {
@@ -278,7 +278,7 @@ describe('Organization API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.totalBoxes).toBeGreaterThanOrEqual(1);
+      expect(res.body.total_boxes).toBeGreaterThanOrEqual(1);
 
       await pubBox.destroy();
     });
@@ -302,7 +302,7 @@ describe('Organization API', () => {
         .set('x-access-token', authToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.totalBoxes).toBe(0);
+      expect(res.body.total_boxes).toBe(0);
     });
   });
 
@@ -1216,7 +1216,7 @@ describe('Organization API', () => {
 
       expect(res.statusCode).toBe(200);
       const foundUser = res.body.find(u => u.id === user.id);
-      expect(foundUser.totalBoxes).toBeGreaterThanOrEqual(1);
+      expect(foundUser.total_boxes).toBeGreaterThanOrEqual(1);
 
       await pubBox.destroy();
     });
@@ -1256,7 +1256,7 @@ describe('Organization API', () => {
 
       expect(resSelf.statusCode).toBe(200);
       const selfUser = resSelf.body.find(u => u.id === boxUser.id);
-      expect(selfUser.totalBoxes).toBe(1);
+      expect(selfUser.total_boxes).toBe(1);
 
       // 2. Request as other user (should see 0 boxes)
       // authToken is for 'user' (different from boxUser)
@@ -1266,7 +1266,7 @@ describe('Organization API', () => {
 
       expect(resOther.statusCode).toBe(200);
       const otherViewUser = resOther.body.find(u => u.id === boxUser.id);
-      expect(otherViewUser.totalBoxes).toBe(0);
+      expect(otherViewUser.total_boxes).toBe(0);
 
       await privBox.destroy();
       await boxUser.destroy();
@@ -1642,7 +1642,7 @@ describe('Organization API', () => {
         .set('x-access-token', authToken); // user token
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.totalBoxes).toBeGreaterThanOrEqual(1);
+      expect(res.body.total_boxes).toBeGreaterThanOrEqual(1);
 
       await userPrivateBox.destroy();
     });
@@ -1682,7 +1682,7 @@ describe('Organization API', () => {
 
       expect(resSelf.statusCode).toBe(200);
       const selfUser = resSelf.body.find(u => u.id === boxUser.id);
-      expect(selfUser.totalBoxes).toBe(1);
+      expect(selfUser.total_boxes).toBe(1);
 
       // 2. Request as other user (should see 0 boxes)
       // authToken is for 'user' (different from boxUser)
@@ -1692,7 +1692,7 @@ describe('Organization API', () => {
 
       expect(resOther.statusCode).toBe(200);
       const otherViewUser = resOther.body.find(u => u.id === boxUser.id);
-      expect(otherViewUser.totalBoxes).toBe(0);
+      expect(otherViewUser.total_boxes).toBe(0);
 
       await privBox.destroy();
       await boxUser.destroy();
@@ -1937,7 +1937,7 @@ describe('Organization API', () => {
         .set('x-access-token', authToken); // user token
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.totalBoxes).toBeGreaterThanOrEqual(1);
+      expect(res.body.total_boxes).toBeGreaterThanOrEqual(1);
 
       await userPrivateBox.destroy();
     });
@@ -1973,7 +1973,7 @@ describe('Organization API', () => {
       const otherAuth = await request(app)
         .post('/api/auth/signin')
         .send({ username: otherUser.username, password: 'password' });
-      otherUserToken = otherAuth.body.accessToken;
+      otherUserToken = otherAuth.body.access_token;
 
       await db.box.create({
         name: `public-box-findall-${uniqueId}`,
@@ -2008,7 +2008,7 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
       const foundOrg = res.body.find(o => o.name === otherOrg.name);
       expect(foundOrg).toBeDefined();
-      expect(foundOrg.totalBoxes).toBe(2); // Public + own private
+      expect(foundOrg.total_boxes).toBe(2); // Public + own private
     });
 
     it('should count only public boxes for authenticated user who does not own private boxes', async () => {
@@ -2016,7 +2016,7 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
       const foundOrg = res.body.find(o => o.name === otherOrg.name);
       expect(foundOrg).toBeDefined();
-      expect(foundOrg.totalBoxes).toBe(1); // Only the public box
+      expect(foundOrg.total_boxes).toBe(1); // Only the public box
     });
 
     it('should filter organizations by name', async () => {
@@ -2140,7 +2140,7 @@ describe('Organization API', () => {
       expect(res.statusCode).toBe(200);
       const self = res.body.find(u => u.id === guest.id);
       expect(self).toBeDefined();
-      expect(self.orgRole).toBe('guest');
+      expect(self.org_role).toBe('guest');
     });
 
     it('should refuse a guest every console write', async () => {
@@ -2182,7 +2182,7 @@ describe('Organization API', () => {
         .set('x-access-token', adminToken)
         .send({ role: 'guest' });
       expect(role.statusCode).toBe(200);
-      expect(role.body.newRole).toBe('guest');
+      expect(role.body.new_role).toBe('guest');
       expect((await db.UserOrg.findUserOrgRole(demoted.id, organization.id)).role).toBe('guest');
 
       const accessMode = await request(app)

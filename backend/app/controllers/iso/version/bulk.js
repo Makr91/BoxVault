@@ -79,7 +79,7 @@ const bulk = async (req, res) => {
       return 'not_found';
     }
     if (action === 'delete') {
-      const files = version.files.map(file => file.toJSON());
+      const files = version.files.map(file => file.get({ plain: true }));
       await version.destroy();
       await removeUnreferencedIsoFiles(files);
       return null;

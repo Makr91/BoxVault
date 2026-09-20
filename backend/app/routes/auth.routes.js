@@ -488,7 +488,7 @@ router.get('/auth/oidc/callback', async (req, res) => {
     const token = jwt.sign(
       {
         id: user.id,
-        isServiceAccount: false,
+        is_service_account: false,
         provider: `oidc-${provider}`,
         id_token: tokens.id_token, // Store for RP-initiated logout
         oidc_access_token: tokens.access_token, // Store for auth server API calls (favorites, etc.)

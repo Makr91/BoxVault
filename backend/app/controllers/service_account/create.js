@@ -136,9 +136,9 @@ export const create = async (req, res) => {
       username: serviceAccount.username,
       description: serviceAccount.description,
       role: serviceAccount.role,
-      expiresAt: serviceAccount.expiresAt,
+      expires_at: serviceAccount.expiresAt,
       organization_id: serviceAccount.organization_id,
-      createdAt: serviceAccount.createdAt,
+      created_at: serviceAccount.createdAt,
       token: rawToken,
     });
   } catch (err) {

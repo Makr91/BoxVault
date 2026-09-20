@@ -76,12 +76,12 @@ const download = async (req, res) => {
 
   if (req.downloadTokenDecoded) {
     const decoded = req.downloadTokenDecoded;
-    ({ userId } = decoded);
+    ({ user_id: userId } = decoded);
 
     if (
       decoded.organization !== organization ||
       decoded.iso !== name ||
-      decoded.versionNumber !== versionNumber ||
+      decoded.version_number !== versionNumber ||
       decoded.architecture !== architecture
     ) {
       return forbidden(req, res, 'files.invalidDownloadToken');

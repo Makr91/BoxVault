@@ -143,7 +143,7 @@ Common status codes:
 
 ## Response Format
 
-Successful responses are flat: the record or list itself, with no envelope. A creation answers `201` with the created record, a sign-in answers the account fields and `accessToken` at the top level, and a message-only answer is `{ "message": "…" }`.
+Successful responses are flat: the record or list itself, with no envelope. A creation answers `201` with the created record, a sign-in answers the account fields and `access_token` at the top level, and a message-only answer is `{ "message": "…" }`. Every member of every answer is `snake_case`, the same case every request body and query uses.
 
 ```json
 {
@@ -151,9 +151,10 @@ Successful responses are flat: the record or list itself, with no envelope. A cr
   "name": "debian12",
   "description": "Debian 12 Server",
   "published": false,
-  "isPublic": false,
-  "organizationId": 1,
-  "userId": 1
+  "is_public": false,
+  "guest_access": false,
+  "organization_id": 1,
+  "user_id": 1
 }
 ```
 

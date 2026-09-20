@@ -83,9 +83,9 @@ describe('Architecture API', () => {
     const regAuth = await request(app)
       .post('/api/auth/signin')
       .send({ username: regularUser.username, password: 'SoomePass' });
-    regularUserToken = regAuth.body.accessToken;
+    regularUserToken = regAuth.body.access_token;
 
-    authToken = authResponse.body.accessToken;
+    authToken = authResponse.body.access_token;
 
     // Create test box
     await request(app)
@@ -182,7 +182,7 @@ describe('Architecture API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('name', newArchitecture.name);
       expect(res.body).toHaveProperty('description', newArchitecture.description);
-      expect(res.body).toHaveProperty('defaultBox', newArchitecture.default_box);
+      expect(res.body).toHaveProperty('default_box', newArchitecture.default_box);
     });
 
     it('should fail creating duplicate architecture', async () => {
@@ -278,7 +278,7 @@ describe('Architecture API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('name', architecture.name);
       expect(res.body).toHaveProperty('description', architecture.description);
-      expect(res.body).toHaveProperty('defaultBox', architecture.default_box);
+      expect(res.body).toHaveProperty('default_box', architecture.default_box);
     });
 
     it('should fail with invalid architecture name', async () => {
@@ -338,7 +338,7 @@ describe('Architecture API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('description', updateData.description);
-      expect(res.body).toHaveProperty('defaultBox', false);
+      expect(res.body).toHaveProperty('default_box', false);
     });
   });
 
@@ -1208,7 +1208,7 @@ describe('Architecture API', () => {
       });
 
       serviceAccountToken = jwt.sign(
-        { id: user.id, isServiceAccount: true, serviceAccountId: serviceAccount.id },
+        { id: user.id, is_service_account: true, service_account_id: serviceAccount.id },
         'test-secret',
         {
           expiresIn: '1h',
@@ -1443,7 +1443,7 @@ describe('Architecture API', () => {
         .send({ default_box: true }); // Only default_box, no name or description
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.defaultBox).toBe(true);
+      expect(res.body.default_box).toBe(true);
 
       // Cleanup
       await request(app)

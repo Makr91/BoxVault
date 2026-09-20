@@ -68,7 +68,7 @@ const _delete = async (req, res) => {
     });
     const isoFiles = isos
       .flatMap(iso => iso.versions)
-      .flatMap(version => version.files.map(file => file.toJSON()));
+      .flatMap(version => version.files.map(file => file.get({ plain: true })));
 
     const transaction = await db.sequelize.transaction();
     try {

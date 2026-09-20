@@ -58,7 +58,7 @@ const deleteVersion = async (req, res) => {
       });
     }
 
-    const files = version.files.map(file => file.toJSON());
+    const files = version.files.map(file => file.get({ plain: true }));
 
     await version.destroy();
     await removeUnreferencedIsoFiles(files);

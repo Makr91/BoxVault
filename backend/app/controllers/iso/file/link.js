@@ -46,7 +46,7 @@ import { canSeeIso, resolveIsoViewer } from '../visibility.js';
  *             schema:
  *               type: object
  *               properties:
- *                 downloadUrl:
+ *                 download_url:
  *                   type: string
  *       403:
  *         description: The ISO is not visible to the caller
@@ -76,12 +76,12 @@ const getDownloadLink = async (req, res) => {
 
     const downloadToken = generateDownloadToken(
       {
-        userId,
-        isServiceAccount,
-        serviceAccountId,
+        user_id: userId,
+        is_service_account: isServiceAccount,
+        service_account_id: serviceAccountId,
         organization,
         iso: name,
-        versionNumber,
+        version_number: versionNumber,
         architecture,
       },
       authConfig.auth?.jwt?.download_link_expiry || '1h'
@@ -89,7 +89,7 @@ const getDownloadLink = async (req, res) => {
 
     const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/iso/${name}/version/${versionNumber}/architecture/${architecture}/file/download?token=${downloadToken}`;
 
-    return res.status(200).json({ downloadUrl });
+    return res.status(200).json({ download_url: downloadUrl });
   } catch (err) {
     log.error.error('Error generating ISO download link', err);
     return problem(res, req, {

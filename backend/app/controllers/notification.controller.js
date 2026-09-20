@@ -176,7 +176,7 @@ const buildListQuery = query => {
  *             schema:
  *               type: object
  *               properties:
- *                 publicKey:
+ *                 public_key:
  *                   type: string
  *       503:
  *         description: Push notifications are disabled or unconfigured
@@ -192,7 +192,7 @@ export const getVapidKey = (req, res) => {
     return pushNotConfigured(req, res);
   }
 
-  return res.json({ publicKey });
+  return res.json({ public_key: publicKey });
 };
 
 const isValidSubscription = body =>

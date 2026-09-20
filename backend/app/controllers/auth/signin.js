@@ -154,9 +154,9 @@ export const buildSigninToken = ({
   return jwt.sign(
     {
       id: isServiceAccount ? user.userId : user.id, // For service accounts, use creator's user ID
-      serviceAccountId: isServiceAccount ? user.id : null, // Store service account's own ID
-      isServiceAccount,
-      stayLoggedIn,
+      service_account_id: isServiceAccount ? user.id : null, // Store service account's own ID
+      is_service_account: isServiceAccount,
+      stay_logged_in: stayLoggedIn,
       provider,
       organizations: userOrganizations, // Multi-org data for frontend
       ...idpClaims,
@@ -219,7 +219,7 @@ export const buildSigninToken = ({
  *                 verified:
  *                   type: boolean
  *                   description: Email verification status (null for service accounts)
- *                 emailHash:
+ *                 email_hash:
  *                   type: string
  *                   description: Hashed email for Gravatar (null for service accounts)
  *                 roles:
@@ -230,16 +230,16 @@ export const buildSigninToken = ({
  *                 organization:
  *                   type: string
  *                   description: Organization name (null for service accounts)
- *                 accessToken:
+ *                 access_token:
  *                   type: string
  *                   description: JWT access token
- *                 isServiceAccount:
+ *                 is_service_account:
  *                   type: boolean
  *                   description: Whether this is a service account
- *                 avatarUrl:
+ *                 avatar_url:
  *                   type: string
  *                   nullable: true
- *                   description: Stored avatar URL from the identity provider (null for service accounts or when unset; clients fall back to the emailHash gravatar)
+ *                   description: Stored avatar URL from the identity provider (null for service accounts or when unset; clients fall back to the email_hash gravatar)
  *                 entitlements:
  *                   type: array
  *                   items:
@@ -339,19 +339,19 @@ export const signin = async (req, res) => {
       id: user.id,
       username: user.username,
       name: isServiceAccount ? null : user.name || null,
-      preferredLanguage: isServiceAccount ? null : user.preferredLanguage || null,
-      preferredTheme: isServiceAccount ? null : user.preferredTheme || null,
+      preferred_language: isServiceAccount ? null : user.preferredLanguage || null,
+      preferred_theme: isServiceAccount ? null : user.preferredTheme || null,
       email: isServiceAccount ? null : user.email,
       verified: isServiceAccount ? null : user.verified,
-      emailHash: isServiceAccount ? null : user.emailHash,
+      email_hash: isServiceAccount ? null : user.emailHash,
       roles: authorities,
       organization: primaryOrgName,
       organizations: userOrganizations, // All orgs for frontend
-      accessToken: token,
-      isServiceAccount,
+      access_token: token,
+      is_service_account: isServiceAccount,
       provider,
-      stayLoggedIn: !!stayLoggedIn,
-      avatarUrl: isServiceAccount ? null : user.avatar_url,
+      stay_logged_in: !!stayLoggedIn,
+      avatar_url: isServiceAccount ? null : user.avatar_url,
       entitlements: isServiceAccount ? [] : user.entitlements || [],
     });
   } catch (err) {

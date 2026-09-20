@@ -168,7 +168,7 @@ describe('Request authentication', () => {
     });
 
     it('resolves a service-account session JWT', async () => {
-      const token = sessionToken({ id: 4, isServiceAccount: true, serviceAccountId: 9 });
+      const token = sessionToken({ id: 4, is_service_account: true, service_account_id: 9 });
       const auth = await resolveRequestAuth(requestWith({ 'x-access-token': token }));
       expect(auth).toMatchObject({ userId: 4, isServiceAccount: true, serviceAccountId: 9 });
     });

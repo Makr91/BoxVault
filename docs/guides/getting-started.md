@@ -116,7 +116,7 @@ curl -H "x-access-token: YOUR_TOKEN" \
   https://boxvault.example.com/api/organization/myorg/box
 ```
 
-The sign-in answers `accessToken`; every request carries it as `x-access-token`. Request bodies are `snake_case`, and the rules every form and route enforce are served at `GET /api/rules`. See the [API Examples](../api-examples/).
+The sign-in answers `access_token`; every request carries it as `x-access-token`. Request bodies and every answer are `snake_case`, and the rules every form and route enforce are served at `GET /api/rules`. See the [API Examples](../api-examples/).
 
 ### Vagrant Integration
 

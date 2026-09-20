@@ -213,7 +213,7 @@ describe('OIDC login routes', () => {
     const claims = jwt.verify(exchanged.body.token, 'test-secret', TEST_JWT_CLAIMS);
     expect(claims).toMatchObject({
       id: user.id,
-      isServiceAccount: false,
+      is_service_account: false,
       provider: 'oidc-loginidp',
       id_token: 'id-token',
       oidc_access_token: 'access-token',

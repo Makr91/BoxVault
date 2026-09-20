@@ -101,9 +101,9 @@ export const listUserWatches = async (req, res) => {
     const watchedBoxes = watches
       .filter(watch => watch.box)
       .map(watch => ({
-        boxId: watch.box.id,
+        box_id: watch.box.id,
         name: watch.box.name,
-        shortDescription: watch.box.shortDescription,
+        short_description: watch.box.shortDescription,
         organization: watch.box.organization?.name || null,
         logo: watch.box.organization?.logo || null,
       }));

@@ -192,7 +192,7 @@ export default (sequelize, Sequelize) => {
     return organizations.map(org => {
       const boxes = org.box || [];
       const publicBoxes = boxes.filter(b => b.isPublic);
-      const orgData = org.toJSON();
+      const orgData = { ...org.get({ plain: true }) };
 
       orgData.memberCount = org.members ? org.members.length : 0;
       orgData.publicBoxCount = publicBoxes.length;

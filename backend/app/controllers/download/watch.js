@@ -142,7 +142,7 @@ export const unwatchDownload = async (req, res) => {
  *               items:
  *                 type: object
  *                 properties:
- *                   downloadId:
+ *                   download_id:
  *                     type: integer
  *                   name:
  *                     type: string
@@ -179,7 +179,7 @@ export const listUserDownloadWatches = async (req, res) => {
     const watchedDownloads = watches
       .filter(watch => watch.download)
       .map(watch => ({
-        downloadId: watch.download.id,
+        download_id: watch.download.id,
         name: watch.download.name,
         description: watch.download.description,
         organization: watch.download.organization?.name || null,

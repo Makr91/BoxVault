@@ -144,7 +144,7 @@ describe('Local authentication policy', () => {
     it('should sign a service account in and refuse it once expired or orphaned', async () => {
       const ok = await signin({ username: serviceAccount.username, password: rawKey });
       expect(ok.statusCode).toBe(200);
-      expect(ok.body.isServiceAccount).toBe(true);
+      expect(ok.body.is_service_account).toBe(true);
       expect(ok.body.organization).toBe(orgName);
 
       await account.update({ suspended: true });
@@ -355,7 +355,7 @@ describe('Local authentication policy', () => {
         });
         expect(res.statusCode).toBe(200);
         expect(res.body.provider).toBe('local');
-        expect(res.body.stayLoggedIn).toBe(true);
+        expect(res.body.stay_logged_in).toBe(true);
       } finally {
         await account.update({ authProvider: 'local' });
       }

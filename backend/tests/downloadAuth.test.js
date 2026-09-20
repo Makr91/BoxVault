@@ -108,12 +108,12 @@ describe('Download authentication', () => {
     await owner.update({ suspended: true });
     try {
       const token = generateDownloadToken({
-        userId: owner.id,
+        user_id: owner.id,
         organization: orgName,
-        boxId: `dl-private-${uniqueId}`,
-        versionNumber,
-        providerName,
-        architectureName,
+        box_id: `dl-private-${uniqueId}`,
+        version_number: versionNumber,
+        provider_name: providerName,
+        architecture_name: architectureName,
       });
       const res = await download(`dl-private-${uniqueId}`).query({ token });
       expect(res.statusCode).toBe(403);
@@ -124,12 +124,12 @@ describe('Download authentication', () => {
 
   it('should serve a private box to a valid download token', async () => {
     const token = generateDownloadToken({
-      userId: owner.id,
+      user_id: owner.id,
       organization: orgName,
-      boxId: `dl-private-${uniqueId}`,
-      versionNumber,
-      providerName,
-      architectureName,
+      box_id: `dl-private-${uniqueId}`,
+      version_number: versionNumber,
+      provider_name: providerName,
+      architecture_name: architectureName,
     });
     const res = await download(`dl-private-${uniqueId}`).query({ token });
     expect(res.statusCode).toBe(200);

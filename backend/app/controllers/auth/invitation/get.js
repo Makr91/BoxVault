@@ -57,7 +57,7 @@ const { organization: Organization, invitation: Invitation } = db;
  *                   expired:
  *                     type: boolean
  *                     description: Whether invitation has expired
- *                   createdAt:
+ *                   created_at:
  *                     type: string
  *                     format: date-time
  *                     description: Creation date
@@ -123,7 +123,7 @@ export const getActiveInvitations = async (req, res) => {
             accepted: status === 'accepted' || !!invite.accepted_at,
             accepted_at: invite.accepted_at || null,
             expired: status === 'expired',
-            createdAt: null,
+            created_at: null,
           };
         });
         return res.status(200).send(mapped);

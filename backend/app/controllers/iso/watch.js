@@ -142,7 +142,7 @@ export const unwatchIso = async (req, res) => {
  *               items:
  *                 type: object
  *                 properties:
- *                   isoId:
+ *                   iso_id:
  *                     type: integer
  *                   name:
  *                     type: string
@@ -179,7 +179,7 @@ export const listUserIsoWatches = async (req, res) => {
     const watchedIsos = watches
       .filter(watch => watch.iso)
       .map(watch => ({
-        isoId: watch.iso.id,
+        iso_id: watch.iso.id,
         name: watch.iso.name,
         description: watch.iso.description,
         organization: watch.iso.organization?.name || null,

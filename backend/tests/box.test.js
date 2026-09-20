@@ -71,7 +71,7 @@ describe('Box API', () => {
     if (authResponse.statusCode !== 200) {
       console.error('Failed to sign in for box tests:', authResponse.body);
     }
-    authToken = authResponse.body.accessToken;
+    authToken = authResponse.body.access_token;
   });
 
   afterAll(async () => {
@@ -103,7 +103,7 @@ describe('Box API', () => {
 
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('name', boxData.name);
-      expect(res.body).toHaveProperty('organizationId', organization.id);
+      expect(res.body).toHaveProperty('organization_id', organization.id);
     });
 
     it('should fail creating a duplicate box', async () => {
@@ -242,7 +242,7 @@ describe('Box API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveProperty('description', updateData.description);
-      expect(res.body).toHaveProperty('isPublic', true);
+      expect(res.body).toHaveProperty('is_public', true);
     });
 
     it('PUT /api/organization/:organization/box/:name - should fail if organization does not exist', async () => {
@@ -365,7 +365,7 @@ describe('Box API', () => {
         username: memberUser.username,
         password: 'password',
       });
-      memberToken = authRes.body.accessToken;
+      memberToken = authRes.body.access_token;
 
       // Create boxes owned by the admin (user)
       publicBox = await db.box.create({
@@ -510,8 +510,8 @@ describe('Box API', () => {
       const saJwt = jwt.sign(
         {
           id: user.id,
-          isServiceAccount: true,
-          serviceAccountId: serviceAccount.id,
+          is_service_account: true,
+          service_account_id: serviceAccount.id,
         },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
@@ -594,7 +594,7 @@ describe('Box API', () => {
         userId: user.id,
       });
       saToken = jwt.sign(
-        { id: user.id, isServiceAccount: true, serviceAccountId: serviceAccount.id },
+        { id: user.id, is_service_account: true, service_account_id: serviceAccount.id },
         'test-secret',
         { expiresIn: '1h' }
       );
@@ -706,7 +706,7 @@ describe('Box API', () => {
         userId: leaver.id,
       });
       const leaverToken = jwt.sign(
-        { id: leaver.id, isServiceAccount: true, serviceAccountId: leaverAccount.id },
+        { id: leaver.id, is_service_account: true, service_account_id: leaverAccount.id },
         'test-secret',
         { expiresIn: '1h' }
       );
@@ -1305,8 +1305,8 @@ describe('Box API', () => {
       const found = res.body.find(b => b.name === nullHashBoxName);
       expect(found).toBeDefined();
       // Default emailHash is empty string, discover controller converts it to null
-      if (found.user.primaryOrganization) {
-        expect(found.user.primaryOrganization.emailHash).toBeNull();
+      if (found.user.primary_organization) {
+        expect(found.user.primary_organization.email_hash).toBeNull();
       }
 
       await db.box.destroy({ where: { name: nullHashBoxName } });
@@ -1411,7 +1411,7 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
       const found = res.body.find(b => b.name === box.name);
       expect(found).toBeDefined();
-      expect(found.user.primaryOrganization).toBeUndefined();
+      expect(found.user.primary_organization).toBeUndefined();
       expect(found.organization).toBeDefined();
       expect(found.organization.name).toBe(orgName);
 
@@ -1719,9 +1719,9 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
       const found = res.body.find(b => b.name === box.name);
       expect(found).toBeDefined();
-      expect(found.user.primaryOrganization).toBeUndefined();
+      expect(found.user.primary_organization).toBeUndefined();
       expect(found.organization).toBeDefined();
-      expect(found.organization.emailHash).toBe('');
+      expect(found.organization.email_hash).toBe('');
 
       await box.destroy();
       await emptyHashUser.destroy();
@@ -1783,7 +1783,7 @@ describe('Box API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.description).toBe('Original Desc'); // Should be preserved
-      expect(res.body.isPublic).toBe(true); // Should be preserved
+      expect(res.body.is_public).toBe(true); // Should be preserved
       expect(res.body.published).toBe(true); // Should be updated
 
       await box.destroy();
@@ -1831,29 +1831,11 @@ describe('Box API', () => {
 
     it('should handle various emailHash values in discover (mocked)', async () => {
       // Mock db.box.findAll to return specific structures to test line 86 exhaustively
-      const mockBoxes = [
-        {
-          toJSON: () => ({
-            user: {
-              primaryOrganization: { emailHash: 'valid' },
-            },
-          }),
-        },
-        {
-          toJSON: () => ({
-            user: {
-              primaryOrganization: { emailHash: '' },
-            },
-          }),
-        },
-        {
-          toJSON: () => ({
-            user: {
-              primaryOrganization: { emailHash: null },
-            },
-          }),
-        },
-      ];
+      const mockBox = emailHash => ({
+        versions: [],
+        get: () => ({ user: { primaryOrganization: { emailHash } } }),
+      });
+      const mockBoxes = [mockBox('valid'), mockBox(''), mockBox(null)];
 
       const findAllSpy = jest.spyOn(db.box, 'findAll').mockResolvedValue(mockBoxes);
 
@@ -1862,9 +1844,9 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toHaveLength(3);
       const [box1, box2, box3] = res.body;
-      expect(box1.user.primaryOrganization.emailHash).toBe('valid');
-      expect(box2.user.primaryOrganization.emailHash).toBe('');
-      expect(box3.user.primaryOrganization.emailHash).toBeNull();
+      expect(box1.user.primary_organization.email_hash).toBe('valid');
+      expect(box2.user.primary_organization.email_hash).toBe('');
+      expect(box3.user.primary_organization.email_hash).toBeNull();
 
       findAllSpy.mockRestore();
     });
@@ -1890,7 +1872,7 @@ describe('Box API', () => {
 
     it('should allow service account to access organization details', async () => {
       const saToken = jwt.sign(
-        { id: user.id, isServiceAccount: true, serviceAccountOrgId: organization.id },
+        { id: user.id, is_service_account: true },
         'test-secret',
         { expiresIn: '1h' }
       );
@@ -2016,9 +1998,9 @@ describe('Box API', () => {
         .send(updateData);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.githubRepo).toBe(updateData.github_repo);
-      expect(res.body.workflowFile).toBe(updateData.workflow_file);
-      expect(res.body.cicdUrl).toBe(updateData.cicd_url);
+      expect(res.body.github_repo).toBe(updateData.github_repo);
+      expect(res.body.workflow_file).toBe(updateData.workflow_file);
+      expect(res.body.cicd_url).toBe(updateData.cicd_url);
 
       await box.destroy();
     });
@@ -2185,16 +2167,16 @@ describe('Box API', () => {
       expect(names).not.toContain(pendingName);
       expect(names).not.toContain(hiddenName);
       const listed = list.body.find(b => b.name === publishedName);
-      expect(listed.guestAccess).toBe(true);
-      expect(listed.downloadCount).toBeNull();
+      expect(listed.guest_access).toBe(true);
+      expect(listed.download_count).toBeNull();
 
       const one = await request(app)
         .get(`/api/organization/${orgName}/box/${publishedName}`)
         .set('x-access-token', guestToken);
       expect(one.statusCode).toBe(200);
       expect(one.body.name).toBe(publishedName);
-      expect(one.body.guestAccess).toBe(true);
-      expect(one.body.downloadCount).toBeNull();
+      expect(one.body.guest_access).toBe(true);
+      expect(one.body.download_count).toBeNull();
 
       const hidden = await request(app)
         .get(`/api/organization/${orgName}/box/${hiddenName}`)
@@ -2206,13 +2188,13 @@ describe('Box API', () => {
       const discoveredNames = discovered.body.map(b => b.name);
       expect(discoveredNames).toContain(publishedName);
       expect(discoveredNames).not.toContain(hiddenName);
-      expect(discovered.body.find(b => b.name === publishedName).downloadCount).toBeNull();
+      expect(discovered.body.find(b => b.name === publishedName).download_count).toBeNull();
 
       const asMember = await request(app)
         .get(`/api/organization/${orgName}/box/${hiddenName}`)
         .set('x-access-token', authToken);
       expect(asMember.statusCode).toBe(200);
-      expect(asMember.body.downloadCount).toBe(0);
+      expect(asMember.body.download_count).toBe(0);
     });
 
     it('should be refused every deeper level of an unflagged box', async () => {
@@ -2277,7 +2259,7 @@ describe('Box API', () => {
       expect(architectures.statusCode).toBe(200);
       const info = await request(app).get(`${fileBase}/info`).set('x-access-token', guestToken);
       expect(info.statusCode).toBe(200);
-      expect(info.body.downloadCount).toBeNull();
+      expect(info.body.download_count).toBeNull();
     });
 
     it('should download a file of a published private box flagged for guests', async () => {
@@ -2285,9 +2267,9 @@ describe('Box API', () => {
         .post(`${fileBase}/get-download-link`)
         .set('x-access-token', guestToken);
       expect(link.statusCode).toBe(200);
-      expect(link.body).toHaveProperty('downloadUrl');
+      expect(link.body).toHaveProperty('download_url');
 
-      const [, token] = link.body.downloadUrl.split('token=');
+      const [, token] = link.body.download_url.split('token=');
       const byToken = await request(app).get(`${fileBase}/download?token=${token}`);
       expect(byToken.statusCode).toBe(200);
 
@@ -2338,7 +2320,7 @@ describe('Box API', () => {
         .set('x-access-token', authToken)
         .send({ guest_access: true });
       expect(updated.statusCode).toBe(200);
-      expect(updated.body.guestAccess).toBe(true);
+      expect(updated.body.guest_access).toBe(true);
     });
 
     it('should create a box with guest_access and answer the flag', async () => {
@@ -2347,14 +2329,14 @@ describe('Box API', () => {
         .set('x-access-token', authToken)
         .send({ name: `guest-created-${uniqueId}`, guest_access: true, published: true });
       expect(created.statusCode).toBe(201);
-      expect(created.body.guestAccess).toBe(true);
+      expect(created.body.guest_access).toBe(true);
 
       const defaulted = await request(app)
         .post(`/api/organization/${orgName}/box`)
         .set('x-access-token', authToken)
         .send({ name: `guest-default-${uniqueId}` });
       expect(defaulted.statusCode).toBe(201);
-      expect(defaulted.body.guestAccess).toBe(false);
+      expect(defaulted.body.guest_access).toBe(false);
 
       await db.box.destroy({
         where: { name: [`guest-created-${uniqueId}`, `guest-default-${uniqueId}`] },

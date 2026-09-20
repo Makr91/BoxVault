@@ -62,13 +62,13 @@ const fetchLatestVersionFromRepo = url =>
  *             schema:
  *               type: object
  *               properties:
- *                 isAptManaged:
+ *                 is_apt_managed:
  *                   type: boolean
- *                 updateAvailable:
+ *                 update_available:
  *                   type: boolean
- *                 currentVersion:
+ *                 current_version:
  *                   type: string
- *                 latestVersion:
+ *                 latest_version:
  *                   type: string
  *       403:
  *         description: The caller is not a global admin, or is a service account other than a live superadmin one
@@ -128,18 +128,18 @@ export const getUpdateStatus = async (req, res) => {
     const updateAvailable = gt(candidateVersion, installedVersion);
 
     return res.status(200).json({
-      isAptManaged: true,
-      updateAvailable,
-      currentVersion: installedVersion,
-      latestVersion: candidateVersion,
+      is_apt_managed: true,
+      update_available: updateAvailable,
+      current_version: installedVersion,
+      latest_version: candidateVersion,
     });
   } catch (error) {
     log.app.warn('Update check failed, assuming not managed by apt.', { error: error.message });
     return res.status(200).json({
-      isAptManaged: false,
-      updateAvailable: false,
-      currentVersion: 'unknown',
-      latestVersion: 'unknown',
+      is_apt_managed: false,
+      update_available: false,
+      current_version: 'unknown',
+      latest_version: 'unknown',
     });
   }
 };

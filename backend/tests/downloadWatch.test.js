@@ -126,7 +126,7 @@ describe('Download watches', () => {
     expect(listed.statusCode).toBe(200);
     expect(listed.body).toEqual([
       {
-        downloadId: publicDownload.id,
+        download_id: publicDownload.id,
         name: publicName,
         description: 'public download',
         organization: orgName,

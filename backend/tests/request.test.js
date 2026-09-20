@@ -77,7 +77,7 @@ describe('Request API Integration Tests', () => {
       const res = await request(app)
         .post('/api/auth/signin')
         .send({ username: user.username, password: 'password' });
-      return res.body.accessToken;
+      return res.body.access_token;
     };
 
     adminToken = await getToken(adminUser);
@@ -135,7 +135,7 @@ describe('Request API Integration Tests', () => {
       const tempTokenRes = await request(app)
         .post('/api/auth/signin')
         .send({ username: tempUser.username, password: 'password' });
-      const tempToken = tempTokenRes.body.accessToken;
+      const tempToken = tempTokenRes.body.access_token;
 
       const res = await request(app)
         .post(`/api/organization/${orgName}/requests`)
@@ -205,7 +205,7 @@ describe('Request API Integration Tests', () => {
         .set('x-access-token', orgAdminToken)
         .send({ assigned_role: 'guest' });
       expect(res.statusCode).toBe(200);
-      expect(res.body.assignedRole).toBe('guest');
+      expect(res.body.assigned_role).toBe('guest');
       const membership = await UserOrg.findUserOrgRole(outsiderUser.id, testOrg.id);
       expect(membership.role).toBe('guest');
 
@@ -315,7 +315,7 @@ describe('Request API Integration Tests', () => {
         await request(app)
           .post('/api/auth/signin')
           .send({ username: tempUser.username, password: 'password' })
-      ).body.accessToken;
+      ).body.access_token;
 
       await request(app)
         .post(`/api/organization/${orgName}/requests`)

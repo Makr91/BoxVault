@@ -221,11 +221,11 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body).toHaveProperty('access_token');
       expect(res.body).toHaveProperty('username', testUsername);
       expect(res.body.provider).toBe('local');
 
-      const decoded = jwt.decode(res.body.accessToken);
+      const decoded = jwt.decode(res.body.access_token);
       expect(decoded.provider).toBe('local');
     });
 
@@ -339,7 +339,7 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.stayLoggedIn).toBe(true);
+      expect(res.body.stay_logged_in).toBe(true);
 
       await user.destroy();
     });
@@ -399,7 +399,7 @@ describe('Authentication API', () => {
           .post('/api/auth/signin')
           .send({ username: user.username, password: 'password' });
         expect(res.statusCode).toBe(200);
-        expect(res.body).toHaveProperty('accessToken');
+        expect(res.body).toHaveProperty('access_token');
       } finally {
         await restore();
       }
@@ -449,11 +449,11 @@ describe('Authentication API', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('accessToken');
-      expect(res.body.isServiceAccount).toBe(true);
+      expect(res.body).toHaveProperty('access_token');
+      expect(res.body.is_service_account).toBe(true);
       expect(res.body.provider).toBe('service_account');
 
-      const decoded = jwt.decode(res.body.accessToken);
+      const decoded = jwt.decode(res.body.access_token);
       expect(decoded.provider).toBe('service_account');
     });
 
@@ -521,7 +521,7 @@ describe('Authentication API', () => {
           username: `refresh-${uniqueId}`,
           password: 'password',
         });
-      userToken = res.body.accessToken;
+      userToken = res.body.access_token;
     });
 
     afterAll(async () => {
@@ -539,8 +539,8 @@ describe('Authentication API', () => {
         .send({ stay_logged_in: true });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('accessToken');
-      expect(res.body.accessToken).not.toBe(userToken);
+      expect(res.body).toHaveProperty('access_token');
+      expect(res.body.access_token).not.toBe(userToken);
     });
 
     it('should fail without token', async () => {
@@ -550,7 +550,7 @@ describe('Authentication API', () => {
 
     it('should fail if user not found during refresh', async () => {
       // Create a token for a non-existent user
-      const fakeToken = jwt.sign({ id: 999999, stayLoggedIn: true }, 'test-secret', {
+      const fakeToken = jwt.sign({ id: 999999, stay_logged_in: true }, 'test-secret', {
         expiresIn: '1h',
         ...TEST_JWT_CLAIMS,
       });
@@ -578,7 +578,7 @@ describe('Authentication API', () => {
 
     it('should prevent service accounts from refreshing tokens', async () => {
       const saToken = jwt.sign(
-        { id: 1, isServiceAccount: true, stayLoggedIn: true },
+        { id: 1, is_service_account: true, stay_logged_in: true },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
@@ -605,7 +605,7 @@ describe('Authentication API', () => {
           provider: 'oidc-testprovider',
           oidc_expires_at: soon,
           oidc_refresh_token: 'mock-refresh-token',
-          stayLoggedIn: true,
+          stay_logged_in: true,
         },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
@@ -678,8 +678,8 @@ describe('Authentication API', () => {
     });
 
     it('should preserve stayLoggedIn from previous token (token.js line 86)', async () => {
-      // Create token with stayLoggedIn: true
-      const token = jwt.sign({ id: testUserForRefresh.id, stayLoggedIn: true }, 'test-secret', {
+      // Create token with stay_logged_in: true
+      const token = jwt.sign({ id: testUserForRefresh.id, stay_logged_in: true }, 'test-secret', {
         expiresIn: '1h',
         ...TEST_JWT_CLAIMS,
       });
@@ -690,10 +690,10 @@ describe('Authentication API', () => {
         .send({}); // No stayLoggedIn in body
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.stayLoggedIn).toBe(true);
+      expect(res.body.stay_logged_in).toBe(true);
 
-      const decoded = jwt.decode(res.body.accessToken);
-      expect(decoded.stayLoggedIn).toBe(true);
+      const decoded = jwt.decode(res.body.access_token);
+      expect(decoded.stay_logged_in).toBe(true);
     });
 
     it('should use authProvider from user in refreshed token (token.js line 87)', async () => {
@@ -725,8 +725,8 @@ describe('Authentication API', () => {
     });
 
     it('should allow refresh even if stayLoggedIn is false (token.js line 63)', async () => {
-      // Create token with stayLoggedIn: false
-      const token = jwt.sign({ id: testUserForRefresh.id, stayLoggedIn: false }, 'test-secret', {
+      // Create token with stay_logged_in: false
+      const token = jwt.sign({ id: testUserForRefresh.id, stay_logged_in: false }, 'test-secret', {
         expiresIn: '1h',
         ...TEST_JWT_CLAIMS,
       });
@@ -737,11 +737,11 @@ describe('Authentication API', () => {
         .send({ stay_logged_in: false });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body).toHaveProperty('access_token');
     });
 
     it('should mint the refreshed token with the signin lifetimes', async () => {
-      const token = jwt.sign({ id: testUserForRefresh.id, stayLoggedIn: false }, 'test-secret', {
+      const token = jwt.sign({ id: testUserForRefresh.id, stay_logged_in: false }, 'test-secret', {
         expiresIn: '1h',
         ...TEST_JWT_CLAIMS,
       });
@@ -751,18 +751,18 @@ describe('Authentication API', () => {
         .set('x-access-token', token)
         .send({ stay_logged_in: false });
       expect(plain.statusCode).toBe(200);
-      const plainClaims = jwt.decode(plain.body.accessToken);
+      const plainClaims = jwt.decode(plain.body.access_token);
       expect(plainClaims.exp - plainClaims.iat).toBe(60 * 60);
-      expect(plainClaims.serviceAccountId).toBeNull();
+      expect(plainClaims.service_account_id).toBeNull();
 
       const kept = await request(app)
         .post('/api/auth/refresh-token')
         .set('x-access-token', token)
         .send({ stay_logged_in: true });
       expect(kept.statusCode).toBe(200);
-      const keptClaims = jwt.decode(kept.body.accessToken);
+      const keptClaims = jwt.decode(kept.body.access_token);
       expect(keptClaims.exp - keptClaims.iat).toBe(24 * 60 * 60);
-      expect(keptClaims.stayLoggedIn).toBe(true);
+      expect(keptClaims.stay_logged_in).toBe(true);
     });
 
     it('should keep the identity-provider claims and provider tag through a refresh', async () => {
@@ -771,7 +771,7 @@ describe('Authentication API', () => {
         {
           id: testUserForRefresh.id,
           provider: 'oidc-testprovider',
-          stayLoggedIn: true,
+          stay_logged_in: true,
           id_token: 'kept-id-token',
           oidc_access_token: 'kept-access-token',
           oidc_refresh_token: 'kept-refresh-token',
@@ -789,7 +789,7 @@ describe('Authentication API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.provider).toBe('oidc-testprovider');
 
-      const decoded = jwt.decode(res.body.accessToken);
+      const decoded = jwt.decode(res.body.access_token);
       expect(decoded.provider).toBe('oidc-testprovider');
       expect(decoded.id_token).toBe('kept-id-token');
       expect(decoded.oidc_access_token).toBe('kept-access-token');
@@ -799,7 +799,7 @@ describe('Authentication API', () => {
 
     it('should carry no identity-provider claims for a local session refresh', async () => {
       const token = jwt.sign(
-        { id: testUserForRefresh.id, provider: 'local', stayLoggedIn: true },
+        { id: testUserForRefresh.id, provider: 'local', stay_logged_in: true },
         'test-secret',
         { expiresIn: '1h', ...TEST_JWT_CLAIMS }
       );
@@ -811,7 +811,7 @@ describe('Authentication API', () => {
 
       expect(res.statusCode).toBe(200);
 
-      const decoded = jwt.decode(res.body.accessToken);
+      const decoded = jwt.decode(res.body.access_token);
       expect(decoded.provider).toBe('local');
       expect(decoded).not.toHaveProperty('id_token');
       expect(decoded).not.toHaveProperty('oidc_access_token');
@@ -831,7 +831,7 @@ describe('Authentication API', () => {
       const role = await db.role.findOne({ where: { name: 'user' } });
       await nullProviderUser.setRoles([role]);
 
-      const token = jwt.sign({ id: nullProviderUser.id, stayLoggedIn: true }, 'test-secret', {
+      const token = jwt.sign({ id: nullProviderUser.id, stay_logged_in: true }, 'test-secret', {
         expiresIn: '1h',
         ...TEST_JWT_CLAIMS,
       });
@@ -1358,7 +1358,7 @@ describe('Authentication API', () => {
         password: 'password',
         verified: true,
       });
-      const userToken = jwt.sign({ id: user.id, stayLoggedIn: true }, 'test-secret', {
+      const userToken = jwt.sign({ id: user.id, stay_logged_in: true }, 'test-secret', {
         expiresIn: '1h',
         ...TEST_JWT_CLAIMS,
       });

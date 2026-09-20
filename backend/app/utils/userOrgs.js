@@ -14,7 +14,7 @@ const resolveUserOrganizations = async user => {
   const userOrganizations = userOrgs.map(userOrg => ({
     name: userOrg.organization.name,
     role: userOrg.role,
-    isPrimary: userOrg.organization.id === pointerId,
+    is_primary: userOrg.organization.id === pointerId,
   }));
   // primaryOrganization is the association behind the pointer, so it wins;
   // the is_primary row only fills in when the pointer is unset.

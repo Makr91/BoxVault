@@ -11,6 +11,7 @@ import {
 } from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 import { boxWithCounts } from './helpers.js';
+import { snakeKeys } from '../../utils/wire.js';
 const {
   organization: Organization,
   user: Users,
@@ -112,7 +113,7 @@ const formatVagrantResponse = (box, organization, baseUrl, requestedName, t) => 
  * /api/organization/{organization}/box/{name}:
  *   get:
  *     summary: Get a specific box
- *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs a writing membership of its organization or ownership of the box; a guest of the organization reads it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. Every downloadCount is null to a guest of the organization.
+ *     description: Retrieve detailed information about a specific box. Supports both web API and Vagrant metadata requests. A private box needs a writing membership of its organization or ownership of the box; a guest of the organization reads it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. Every download_count is null to a guest of the organization.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -188,8 +189,8 @@ export const findOne = async (req, res) => {
       try {
         const decoded = jwt.verify(token, authConfig.auth.jwt.jwt_secret);
         userId = decoded.id;
-        isServiceAccount = decoded.isServiceAccount || false;
-        ({ serviceAccountId } = decoded);
+        isServiceAccount = decoded.is_service_account || false;
+        serviceAccountId = decoded.service_account_id;
       } catch {
         // Don't warn about invalid tokens - user might be trying to access a public box
         userId = null;
@@ -282,12 +283,12 @@ export const findOne = async (req, res) => {
       // Format response for frontend
       response = {
         ...boxWithCounts(box, !isGuestMembership(membership)),
-        organization: {
+        organization: snakeKeys({
           id: organizationData.id,
           name: organizationData.name,
           emailHash: organizationData.emailHash,
           logo: organizationData.logo,
-        },
+        }),
       };
     }
 

@@ -118,7 +118,7 @@ describe('ISO watches and ISO route guards', () => {
     expect(listed.statusCode).toBe(200);
     expect(listed.body).toEqual([
       {
-        isoId: publicIso.id,
+        iso_id: publicIso.id,
         name: publicName,
         description: 'public iso',
         organization: orgName,
@@ -226,9 +226,9 @@ describe('ISO watches and ISO route guards', () => {
       expect(updated.statusCode).toBe(200);
       expect(updated.body).toMatchObject({
         description: 'first',
-        releaseNotes: 'notes',
+        release_notes: 'notes',
         deprecated: true,
-        deprecationReason: 'old',
+        deprecation_reason: 'old',
       });
     });
 

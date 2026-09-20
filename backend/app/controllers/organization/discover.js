@@ -39,16 +39,16 @@ const { organization: Organization, user: User, role: Role } = db;
  *                     type: string
  *                     enum: [private, invite, request]
  *                     description: Organization access mode
- *                   emailHash:
+ *                   email_hash:
  *                     type: string
  *                     description: Email hash for Gravatar
- *                   memberCount:
+ *                   member_count:
  *                     type: integer
  *                     description: Number of members in organization
- *                   publicBoxCount:
+ *                   public_box_count:
  *                     type: integer
  *                     description: Number of public boxes
- *                   totalBoxCount:
+ *                   total_box_count:
  *                     type: integer
  *                     description: Total number of boxes
  *       500:
@@ -77,10 +77,10 @@ const discoverOrganizations = async (req, res) => {
       name: org.name,
       description: org.description,
       access_mode: org.access_mode,
-      emailHash: org.emailHash || '',
-      memberCount: org.memberCount || 0,
-      publicBoxCount: org.publicBoxCount || 0,
-      totalBoxCount: org.totalBoxCount || 0,
+      email_hash: org.emailHash || '',
+      member_count: org.memberCount || 0,
+      public_box_count: org.publicBoxCount || 0,
+      total_box_count: org.totalBoxCount || 0,
     }));
 
     log.api.info('Discoverable organizations retrieved', {

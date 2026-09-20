@@ -47,41 +47,32 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  *         schema:
  *           type: string
  *         description: Architecture name
+ *       - in: header
+ *         name: x-checksum
+ *         schema:
+ *           type: string
+ *         description: Declared checksum of the whole file, verified after assembly
+ *       - in: header
+ *         name: x-checksum-type
+ *         schema:
+ *           type: string
+ *           enum: [NULL, MD5, SHA1, SHA256, SHA384, SHA512]
+ *       - in: header
+ *         name: x-chunk-index
+ *         schema:
+ *           type: integer
+ *       - in: header
+ *         name: x-total-chunks
+ *         schema:
+ *           type: integer
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/octet-stream:
  *           schema:
- *             type: object
- *             required:
- *               - file
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: Updated Vagrant box file
- *               checksum:
- *                 type: string
- *                 description: File checksum for verification
- *               checksumType:
- *                 type: string
- *                 description: Checksum algorithm
- *                 enum: [sha256, md5, sha1, NULL]
- *               newOrganization:
- *                 type: string
- *                 description: New organization name (optional)
- *               newBoxId:
- *                 type: string
- *                 description: New box name (optional)
- *               newVersionNumber:
- *                 type: string
- *                 description: New version number (optional)
- *               newProviderName:
- *                 type: string
- *                 description: New provider name (optional)
- *               newArchitectureName:
- *                 type: string
- *                 description: New architecture name (optional)
+ *             type: string
+ *             format: binary
+ *             description: The replacing box bytes, whole or one chunk of a chunked upload
  *     responses:
  *       200:
  *         description: File updated successfully
@@ -93,15 +84,24 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  *                 message:
  *                   type: string
  *                   example: "Updated the file successfully"
- *                 fileName:
- *                   type: string
- *                   example: "vagrant.box"
- *                 fileSize:
- *                   type: integer
- *                   description: File size in bytes
- *                 path:
- *                   type: string
- *                   description: File path on server
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     is_complete:
+ *                       type: boolean
+ *                     status:
+ *                       type: string
+ *                       enum: [complete, uploading]
+ *                     file_size:
+ *                       type: integer
+ *                       description: File size in bytes (single upload or completed chunked upload)
+ *                     chunks_received:
+ *                       type: integer
+ *                       description: Chunks received so far (chunked upload in progress)
+ *                     total_chunks:
+ *                       type: integer
+ *                     current_chunk:
+ *                       type: integer
  *       400:
  *         description: An upload header breaks its rule
  *         content:

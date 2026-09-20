@@ -68,7 +68,7 @@ describe('Download pending upload API', () => {
   const dropWhole = async (token, content, fileName) => {
     const res = await drop(token, content, fileName);
     expect(res.statusCode).toBe(200);
-    expect(res.body.details.isComplete).toBe(true);
+    expect(res.body.details.is_complete).toBe(true);
     return res.body.details;
   };
 
@@ -111,9 +111,9 @@ describe('Download pending upload API', () => {
         'x-total-chunks': '2',
       });
       expect(first.statusCode).toBe(200);
-      expect(first.body.details.isComplete).toBe(false);
+      expect(first.body.details.is_complete).toBe(false);
       expect(first.body.details.status).toBe('uploading');
-      expect(first.body.details.chunksReceived).toBe(1);
+      expect(first.body.details.chunks_received).toBe(1);
       expect(first.body.details.file_name).toBe('test.nsf');
       expect(first.body.details.size).toBe(0);
       expect(first.body.details.guess.release).toBe('');
@@ -126,9 +126,9 @@ describe('Download pending upload API', () => {
         'x-total-chunks': '2',
       });
       expect(second.statusCode).toBe(200);
-      expect(second.body.details.isComplete).toBe(true);
+      expect(second.body.details.is_complete).toBe(true);
       expect(second.body.details.status).toBe('complete');
-      expect(second.body.details.fileSize).toBe(nsfContent.length);
+      expect(second.body.details.file_size).toBe(nsfContent.length);
       expect(second.body.details).toMatchObject({
         id: pendingId,
         file_name: 'test.nsf',
@@ -152,9 +152,9 @@ describe('Download pending upload API', () => {
       expect(info.statusCode).toBe(200);
       expect(info.body.id).toBe(pendingId);
       expect(info.body.file_name).toBe('test.nsf');
-      expect(info.body.fileSize).toBe(nsfContent.length);
+      expect(info.body.file_size).toBe(nsfContent.length);
       expect(info.body.checksum).toBe(sha256(nsfContent));
-      expect(info.body.checksumType).toBe('SHA256');
+      expect(info.body.checksum_type).toBe('SHA256');
       expect(info.body.guess.release).toBe('');
     });
 
@@ -410,7 +410,7 @@ describe('Download pending upload API', () => {
         'x-total-chunks': '2',
       });
       expect(second.statusCode).toBe(200);
-      expect(second.body.details.isComplete).toBe(true);
+      expect(second.body.details.is_complete).toBe(true);
       await request(app)
         .delete(`${pendingBase}/${first.body.details.id}`)
         .set('x-access-token', memberToken)

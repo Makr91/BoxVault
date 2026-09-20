@@ -892,7 +892,7 @@ describe('SCIM receiver', () => {
       expect(res.statusCode).toBe(200);
       const mirrored = res.body.find(entry => entry.organization.name === `Scim-Org-${uniqueId}`);
       expect(mirrored.personal).toBe(true);
-      expect(mirrored.isPrimary).toBe(true);
+      expect(mirrored.is_primary).toBe(true);
       expect(mirrored.role).toBe('member');
     });
   });

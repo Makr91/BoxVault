@@ -11,7 +11,7 @@ const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/isos/discover:
  *   get:
  *     summary: Discover ISOs
- *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, the published ISOs flagged for guests of the organizations they are a guest of, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes. Every downloadCount is null to a guest of the ISO's organization.
+ *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, the published ISOs flagged for guests of the organizations they are a guest of, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes. Every download_count is null to a guest of the ISO's organization.
  *     tags: [ISOs]
  *     security:
  *       - bearerAuth: []
@@ -23,7 +23,7 @@ const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: A list of ISOs, each with versions, files, total downloadCount and its organization's name, emailHash and logo.
+ *         description: A list of ISOs, each with versions, files, total download_count and its organization's name, email_hash and logo.
  *       500:
  *         description: Internal server error.
  */

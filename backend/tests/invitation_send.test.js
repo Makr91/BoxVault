@@ -143,7 +143,7 @@ describe('Invitation send - one live invitation per organization and address', (
       })
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(sentPayload(res).invitationToken).toMatch(/^[0-9a-f]{40}$/);
+    expect(sentPayload(res).invitation_token).toMatch(/^[0-9a-f]{40}$/);
   });
 
   it('should reuse the pending row instead of creating a second one', async () => {
@@ -178,7 +178,7 @@ describe('Invitation send - one live invitation per organization and address', (
     const [[patch]] = pending.update.mock.calls;
     expect(patch.token).toMatch(/^[0-9a-f]{40}$/);
     expect(patch.token).not.toBe('stale-token');
-    expect(sentPayload(res).invitationToken).toBe(patch.token);
+    expect(sentPayload(res).invitation_token).toBe(patch.token);
     expect(mockMail.sendInvitationMail).toHaveBeenCalledWith(
       INVITEE,
       patch.token,
@@ -302,10 +302,10 @@ describe('Invitation send - one live invitation per organization and address', (
     const [[patch]] = pending.update.mock.calls;
     expect(sentPayload(res)).toEqual({
       message: 'invitations.sent',
-      invitationToken: patch.token,
-      invitationTokenExpires: patch.expires,
-      organizationId: 3,
-      invitationLink: 'https://boxvault.example.com/invite/token',
+      invitation_token: patch.token,
+      invitation_token_expires: patch.expires,
+      organization_id: 3,
+      invitation_link: 'https://boxvault.example.com/invite/token',
     });
   });
 
@@ -334,10 +334,10 @@ describe('Invitation send - one live invitation per organization and address', (
     expect(mockDb.invitation.create).not.toHaveBeenCalled();
     expect(sentPayload(res)).toEqual({
       message: 'invitations.sent',
-      invitationToken: null,
-      invitationTokenExpires: 1234,
-      organizationId: 3,
-      invitationLink: null,
+      invitation_token: null,
+      invitation_token_expires: 1234,
+      organization_id: 3,
+      invitation_link: null,
     });
   });
 });

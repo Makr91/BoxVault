@@ -28,7 +28,7 @@ const {
  *         description: Optional JWT token (or raw service-account key) for member visibility
  *     responses:
  *       200:
- *         description: A list of download products, each with releases, patches, files, total downloadCount and its organization's name, emailHash and logo; every downloadCount is null to a caller who is not a member of the product's organization.
+ *         description: A list of download products, each with releases, patches, files, total download_count and its organization's name, email_hash and logo; every download_count is null to a caller who is not a member of the product's organization.
  *       500:
  *         description: Internal server error.
  */

@@ -58,11 +58,11 @@ const notFound = (req, res, key) =>
  *                 message:
  *                   type: string
  *                   example: "User role updated to admin"
- *                 userId:
+ *                 user_id:
  *                   type: integer
  *                 username:
  *                   type: string
- *                 newRole:
+ *                 new_role:
  *                   type: string
  *       400:
  *         description: Invalid role
@@ -144,9 +144,9 @@ const updateUserOrgRole = async (req, res) => {
 
     return res.send({
       message: req.__('organizations.userRoleUpdated', { role }),
-      userId: user.id,
+      user_id: user.id,
       username: user.username,
-      newRole: role,
+      new_role: role,
     });
   } catch (err) {
     log.error.error('Error updating user organization role:', {

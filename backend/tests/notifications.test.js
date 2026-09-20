@@ -141,7 +141,7 @@ describe('Notifications API', () => {
     it('should expose the configured public key', async () => {
       const res = await request(app).get('/api/notifications/vapid-key');
       expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual({ publicKey: 'public-key' });
+      expect(res.body).toEqual({ public_key: 'public-key' });
     });
 
     it('should reject a malformed subscription', async () => {

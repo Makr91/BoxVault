@@ -90,13 +90,13 @@ describe('Download API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body.name).toBe(productName);
       expect(res.body.published).toBe(false);
-      expect(res.body.isPublic).toBe(false);
-      expect(res.body.guestAccess).toBe(false);
+      expect(res.body.is_public).toBe(false);
+      expect(res.body.guest_access).toBe(false);
       expect(res.body.family).toBe('HCL Domino');
       expect(res.body.vendor).toBe('HCL');
-      expect(res.body.docsUrl).toBe('https://help.hcl-software.com/domino');
-      expect(res.body.iconUrl).toBe('https://www.hcl-software.com/domino.svg');
-      expect(res.body.userId).toBe(member.id);
+      expect(res.body.docs_url).toBe('https://help.hcl-software.com/domino');
+      expect(res.body.icon_url).toBe('https://www.hcl-software.com/domino.svg');
+      expect(res.body.user_id).toBe(member.id);
       expect(fs.existsSync(getSecureDownloadPath(orgName, productName))).toBe(true);
     });
 
@@ -213,12 +213,12 @@ describe('Download API', () => {
       expect(asCreator.statusCode).toBe(200);
       expect(asCreator.body.name).toBe(productName);
       expect(Array.isArray(asCreator.body.releases)).toBe(true);
-      expect(asCreator.body.downloadCount).toBe(0);
-      expect(asCreator.body.iconUrl).toBe('https://www.hcl-software.com/domino.svg');
+      expect(asCreator.body.download_count).toBe(0);
+      expect(asCreator.body.icon_url).toBe('https://www.hcl-software.com/domino.svg');
       expect(asCreator.body.organization.name).toBe(orgName);
       const listedEntry = creator.body.find(entry => entry.name === productName);
-      expect(listedEntry.iconUrl).toBe('https://www.hcl-software.com/domino.svg');
-      expect(listedEntry.downloadCount).toBe(0);
+      expect(listedEntry.icon_url).toBe('https://www.hcl-software.com/domino.svg');
+      expect(listedEntry.download_count).toBe(0);
     });
 
     it('should show a published private product to every member and nobody else', async () => {
@@ -251,29 +251,31 @@ describe('Download API', () => {
 
       const anonymous = await request(app).get(productBase);
       expect(anonymous.statusCode).toBe(200);
-      expect(anonymous.body.downloadCount).toBeNull();
+      expect(anonymous.body.download_count).toBeNull();
 
       const anonymousList = await request(app).get(`/api/organization/${orgName}/download`);
       expect(anonymousList.body.some(entry => entry.name === productName)).toBe(true);
-      expect(anonymousList.body.find(entry => entry.name === productName).downloadCount).toBeNull();
+      expect(
+        anonymousList.body.find(entry => entry.name === productName).download_count
+      ).toBeNull();
 
       const asOutsider = await request(app).get(productBase).set('x-access-token', outsiderToken);
       expect(asOutsider.statusCode).toBe(200);
-      expect(asOutsider.body.downloadCount).toBeNull();
+      expect(asOutsider.body.download_count).toBeNull();
 
       const asMember = await request(app).get(productBase).set('x-access-token', otherToken);
-      expect(asMember.body.downloadCount).toBe(0);
+      expect(asMember.body.download_count).toBe(0);
 
       const discovered = await request(app).get('/api/downloads/discover');
       expect(discovered.statusCode).toBe(200);
       expect(discovered.body.some(entry => entry.name === productName)).toBe(true);
       discovered.body.forEach(entry => expect(Array.isArray(entry.releases)).toBe(true));
-      expect(discovered.body.find(entry => entry.name === productName).downloadCount).toBeNull();
+      expect(discovered.body.find(entry => entry.name === productName).download_count).toBeNull();
 
       const discoveredAsMember = await request(app)
         .get('/api/downloads/discover')
         .set('x-access-token', otherToken);
-      expect(discoveredAsMember.body.find(entry => entry.name === productName).downloadCount).toBe(
+      expect(discoveredAsMember.body.find(entry => entry.name === productName).download_count).toBe(
         0
       );
     });
@@ -332,23 +334,23 @@ describe('Download API', () => {
       expect(listed.statusCode).toBe(200);
       const entry = listed.body.find(candidate => candidate.name === productName);
       expect(entry).toBeDefined();
-      expect(entry.guestAccess).toBe(true);
-      expect(entry.downloadCount).toBeNull();
+      expect(entry.guest_access).toBe(true);
+      expect(entry.download_count).toBeNull();
 
       const one = await request(app).get(productBase).set('x-access-token', guestToken);
       expect(one.statusCode).toBe(200);
-      expect(one.body.downloadCount).toBeNull();
+      expect(one.body.download_count).toBeNull();
 
       const discovered = await request(app)
         .get('/api/downloads/discover')
         .set('x-access-token', guestToken);
       expect(discovered.statusCode).toBe(200);
-      expect(discovered.body.find(candidate => candidate.name === productName).downloadCount).toBe(
+      expect(discovered.body.find(candidate => candidate.name === productName).download_count).toBe(
         null
       );
 
       const asMember = await request(app).get(productBase).set('x-access-token', otherToken);
-      expect(asMember.body.downloadCount).toBe(0);
+      expect(asMember.body.download_count).toBe(0);
     });
 
     it('should be hidden while the flag is off and shown again by allow_guests', async () => {
@@ -382,14 +384,14 @@ describe('Download API', () => {
       expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
       const again = await request(app).get(productBase).set('x-access-token', guestToken);
       expect(again.statusCode).toBe(200);
-      expect(again.body.guestAccess).toBe(true);
+      expect(again.body.guest_access).toBe(true);
 
       const denied = await request(app)
         .put(productBase)
         .set('x-access-token', memberToken)
         .send({ guest_access: false });
       expect(denied.statusCode).toBe(200);
-      expect(denied.body.guestAccess).toBe(false);
+      expect(denied.body.guest_access).toBe(false);
       const gone = await request(app).get(productBase).set('x-access-token', guestToken);
       expect(gone.statusCode).toBe(403);
 
@@ -412,7 +414,7 @@ describe('Download API', () => {
         .get(`/api/organization/${orgName}/download/guest-own`)
         .set('x-access-token', guestToken);
       expect(one.statusCode).toBe(200);
-      expect(one.body.downloadCount).toBeNull();
+      expect(one.body.download_count).toBeNull();
       const asOther = await request(app)
         .get(`/api/organization/${orgName}/download/guest-own`)
         .set('x-access-token', otherToken);
@@ -497,8 +499,8 @@ describe('Download API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.description).toBe('Updated');
       expect(res.body.vendor).toBe('HCL Software');
-      expect(res.body.notesUrl).toBe('https://x.example');
-      expect(res.body.iconUrl).toBe('https://x.example/icon.png');
+      expect(res.body.notes_url).toBe('https://x.example');
+      expect(res.body.icon_url).toBe('https://x.example/icon.png');
 
       await setProduct({ published: false });
       const published = await request(app)
@@ -522,7 +524,7 @@ describe('Download API', () => {
         .send({ name: 'renamed-product', is_public: true });
       expect(res.statusCode).toBe(200);
       expect(res.body.name).toBe('renamed-product');
-      expect(res.body.isPublic).toBe(true);
+      expect(res.body.is_public).toBe(true);
       expect(fs.existsSync(getSecureDownloadPath(orgName, 'renamed-product'))).toBe(true);
       expect(fs.existsSync(getSecureDownloadPath(orgName, 'rename-me'))).toBe(false);
 
