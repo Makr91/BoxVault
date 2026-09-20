@@ -473,7 +473,7 @@ describe('User API', () => {
         .send({ role: 'admin' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('new_role','admin');
+      expect(res.body).toHaveProperty('new_role', 'admin');
     });
 
     it('should allow an admin to demote a orgAdmin to member', async () => {
@@ -489,7 +489,7 @@ describe('User API', () => {
         .send({ role: 'member' });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('new_role','member');
+      expect(res.body).toHaveProperty('new_role', 'member');
     });
 
     it('should allow a user to leave their primary organization if they have others', async () => {

@@ -163,7 +163,7 @@ describe('Hub notification producer', () => {
       expect(posted.recipient).toEqual({ user_uuid: 'u-1' });
       expect(posted.type).toBe('SYSTEM');
       expect(posted.severity).toBe('INFO');
-      expect(posted.idempotencyKey).toBe('event-1');
+      expect(posted.idempotency_key).toBe('event-1');
       expect(posted.delivery).toEqual({ ttl: 86400, urgency: 'normal' });
     });
 

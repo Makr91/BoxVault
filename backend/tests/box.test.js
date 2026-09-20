@@ -1871,11 +1871,9 @@ describe('Box API', () => {
     });
 
     it('should allow service account to access organization details', async () => {
-      const saToken = jwt.sign(
-        { id: user.id, is_service_account: true },
-        'test-secret',
-        { expiresIn: '1h' }
-      );
+      const saToken = jwt.sign({ id: user.id, is_service_account: true }, 'test-secret', {
+        expiresIn: '1h',
+      });
 
       const res = await request(app)
         .get(`/api/organization/${orgName}/box`)

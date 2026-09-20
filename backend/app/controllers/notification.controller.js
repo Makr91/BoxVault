@@ -152,7 +152,7 @@ export const proxyNotificationRequest = async (
 
 const buildListQuery = query => {
   const params = new URLSearchParams();
-  for (const key of ['page', 'size', 'unreadOnly']) {
+  for (const key of ['page', 'size', 'unread_only']) {
     if (typeof query[key] !== 'undefined') {
       params.set(key, query[key]);
     }

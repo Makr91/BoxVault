@@ -285,7 +285,7 @@ describe('Identity-provider delegation', () => {
           type: 'SYSTEM',
           severity: 'INFO',
           delivery: { ttl: 86400, urgency: 'normal' },
-          idempotencyKey: `boxvault:test:${uniqueId}`,
+          idempotency_key: `boxvault:test:${uniqueId}`,
         });
       });
 

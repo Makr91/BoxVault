@@ -130,7 +130,7 @@ const sendHubNotification = async ({
       type,
       severity,
       delivery,
-      idempotencyKey,
+      idempotency_key: idempotencyKey,
     });
 
     const response = await axios.post(`${issuer.replace(/\/+$/, '')}/api/notify`, body, {

@@ -299,12 +299,12 @@ describe('Notifications API', () => {
       axiosGet.mockResolvedValue({ status: 200, data: { items: [{ id: 'n1' }] } });
       const res = await request(app)
         .get('/api/notifications')
-        .query({ page: 2, size: 10, unreadOnly: 'true' })
+        .query({ page: 2, size: 10, unread_only: 'true' })
         .set('x-access-token', oidcToken);
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({ items: [{ id: 'n1' }] });
       expect(axiosGet).toHaveBeenCalledWith(
-        `${ISSUER}/api/notifications?page=2&size=10&unreadOnly=true`,
+        `${ISSUER}/api/notifications?page=2&size=10&unread_only=true`,
         {
           headers: { Authorization: 'Bearer idp-access-token', 'Content-Type': 'application/json' },
         }
