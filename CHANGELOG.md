@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.88.0](https://github.com/Makr91/BoxVault/compare/v0.87.2...v0.88.0) (2026-09-20)
+
+
+### Features
+
+* a sites entry names the session method of its hostname ([79651e8](https://github.com/Makr91/BoxVault/commit/79651e811facc813f0e5059fd54017021e6b0ae3))
+
+
+### Bug Fixes
+
+* a blank link in a download edit clears it ([f233bcd](https://github.com/Makr91/BoxVault/commit/f233bcde8d7c0fcd2ba015e98d9592758fd7e497))
+* bump startcloud-ui to v0.26.0 ([d809a64](https://github.com/Makr91/BoxVault/commit/d809a64bf990454e47644dac5c2b65bf441aea77))
+* bump startcloud-ui to v0.26.0 ([263996a](https://github.com/Makr91/BoxVault/commit/263996a84997a2cd1dd5a10de28a7ebb89697830))
+
 ## [0.87.2](https://github.com/Makr91/BoxVault/compare/v0.87.1...v0.87.2) (2026-09-20)
 
 
