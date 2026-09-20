@@ -1,8 +1,9 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
+import { reachOf } from '../../../utils/orgMembership.js';
 import { canSeeDownload, canSeePatch, isMemberOf, resolveDownloadViewer } from '../visibility.js';
-import { filesWithCounts } from '../helpers.js';
+import { filesWithCounts, filesWithinReach } from '../helpers.js';
 const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
 
 /**
@@ -10,7 +11,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}:
  *   get:
  *     summary: Get a patch of a release
- *     description: Retrieve one patch of a release with its files. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
+ *     description: Retrieve one patch of a release with the files within the caller's reach. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -79,7 +80,10 @@ const findOne = async (req, res) => {
 
     return res.send({
       ...patch.toJSON(),
-      files: filesWithCounts(patch.files, isMemberOf(viewer, download.organizationId)),
+      files: filesWithCounts(
+        filesWithinReach(release, patch, reachOf(viewer, download)),
+        isMemberOf(viewer, download.organizationId)
+      ),
     });
   } catch (err) {
     log.error.error('Error retrieving download patch', err);

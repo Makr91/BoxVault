@@ -139,11 +139,25 @@ const canSeeRelease = (viewer, download, release) =>
 const canSeePatch = (viewer, download, release, patch) =>
   withinReach(reachOf(viewer, download), release, patch);
 
+/**
+ * Whether a viewer may read one file of a product they may read: the chain
+ * product, release, patch, file stands at the viewer's reach or wider.
+ * @param {Object|null} viewer - From resolveDownloadViewer
+ * @param {Object} download - The download row
+ * @param {Object} release - The release row
+ * @param {Object} patch - The patch row
+ * @param {Object} file - The file row
+ * @returns {boolean} True when the file is visible to the viewer
+ */
+const canSeeFile = (viewer, download, release, patch, file) =>
+  withinReach(reachOf(viewer, download), release, patch, file);
+
 export {
   resolveDownloadViewer,
   downloadWhereFor,
   canSeeDownload,
   canSeeRelease,
   canSeePatch,
+  canSeeFile,
   isMemberOf,
 };

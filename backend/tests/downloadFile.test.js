@@ -58,9 +58,11 @@ describe('Download file API', () => {
   const filePath = (release, patch, fileName) =>
     getSecureDownloadPath(orgName, productName, release, patch, fileName);
 
+  const OPEN_ROWS = 'published=true&guest_access=true';
+
   const uploadTo = (key, token, content, headers = {}) => {
     const req = request(app)
-      .post(`${patchBase}/file/${key}/upload`)
+      .post(`${patchBase}/file/${key}/upload?${OPEN_ROWS}`)
       .set('x-access-token', token)
       .set('Content-Type', 'application/octet-stream');
     Object.entries(headers).forEach(([header, value]) => req.set(header, value));
@@ -76,8 +78,14 @@ describe('Download file API', () => {
     });
     const releases = await db.downloadReleases.findAll({ where: { downloadId: product.id } });
     await db.downloadReleases.update(values, { where: { downloadId: product.id } });
+    const patches = await db.downloadPatches.findAll({
+      where: { downloadReleaseId: releases.map(release => release.id) },
+    });
     await db.downloadPatches.update(values, {
       where: { downloadReleaseId: releases.map(release => release.id) },
+    });
+    await db.downloadFiles.update(values, {
+      where: { downloadPatchId: patches.map(patch => patch.id) },
     });
   };
 
@@ -125,7 +133,13 @@ describe('Download file API', () => {
       const res = await request(app)
         .post(`${patchBase}/file`)
         .set('x-access-token', ownerToken)
-        .send({ key: 'linux-x64', file_name: installerName, kind: 'installer' });
+        .send({
+          key: 'linux-x64',
+          file_name: installerName,
+          kind: 'installer',
+          published: true,
+          guest_access: true,
+        });
       expect(res.statusCode).toBe(201);
       expect(res.body.key).toBe('linux-x64');
       expect(res.body.file_name).toBe(installerName);
@@ -133,10 +147,75 @@ describe('Download file API', () => {
       expect(res.body.platform).toBe('any');
       expect(res.body.architecture).toBe('any');
       expect(res.body.language).toBe('any');
+      expect(res.body.is_public).toBe(false);
+      expect(res.body.guest_access).toBe(true);
+      expect(res.body.published).toBe(true);
       expect(Number(res.body.file_size)).toBe(0);
       expect(res.body.original).toBeUndefined();
       expect(res.body.storage_path).toBeUndefined();
       expect(res.body.links_to).toBeUndefined();
+    });
+
+    it('should be born closed and never wider than its patch', async () => {
+      const closed = await request(app)
+        .post(`${patchBase}/file`)
+        .set('x-access-token', ownerToken)
+        .send({ key: 'closed-file' });
+      expect(closed.statusCode).toBe(201);
+      expect(closed.body.published).toBe(false);
+      expect(closed.body.is_public).toBe(false);
+      expect(closed.body.guest_access).toBe(false);
+      const hidden = await request(app)
+        .get(`${patchBase}/file/closed-file/info`)
+        .set('x-access-token', memberToken);
+      expect(hidden.statusCode).toBe(404);
+      const listed = await request(app).get(`${patchBase}/file`).set('x-access-token', memberToken);
+      expect(listed.body.map(entry => entry.key)).not.toContain('closed-file');
+      const asOwner = await request(app)
+        .get(`${patchBase}/file/closed-file/info`)
+        .set('x-access-token', ownerToken);
+      expect(asOwner.statusCode).toBe(200);
+
+      const wider = await request(app)
+        .put(`${patchBase}/file/closed-file`)
+        .set('x-access-token', ownerToken)
+        .send({ is_public: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'guests' },
+        }),
+      ]);
+      const bornWide = await request(app)
+        .post(`${patchBase}/file`)
+        .set('x-access-token', ownerToken)
+        .send({ key: 'wide-file', is_public: true });
+      expect(bornWide.statusCode).toBe(422);
+
+      const published = await request(app)
+        .post(`${patchBase}/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'publish', names: ['closed-file'] });
+      expect(published.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const shown = await request(app)
+        .get(`${patchBase}/file/closed-file/info`)
+        .set('x-access-token', memberToken);
+      expect(shown.statusCode).toBe(200);
+      const opened = await request(app)
+        .post(`${patchBase}/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'make_public', names: ['closed-file'] });
+      expect(opened.body).toEqual({
+        processed: 0,
+        skipped: 1,
+        errors: [{ name: 'closed-file', code: 'forbidden' }],
+      });
+
+      await request(app)
+        .delete(`${patchBase}/file/closed-file/delete`)
+        .set('x-access-token', ownerToken);
     });
 
     it('should reject a platform outside the enum and a duplicate key', async () => {
@@ -201,6 +280,9 @@ describe('Download file API', () => {
         checksum: sha256(fileContent),
         checksum_type: 'SHA256',
         download_count: 0,
+        is_public: false,
+        guest_access: true,
+        published: true,
         created_at: expect.any(String),
         updated_at: expect.any(String),
       });
@@ -748,7 +830,9 @@ describe('Download file API', () => {
 
     it('should link a second upload of the same bytes to the original', async () => {
       const res = await request(app)
-        .post(`${productBase}/release/${releaseNumber}/patch/FP1/file/linux-x64/upload`)
+        .post(
+          `${productBase}/release/${releaseNumber}/patch/FP1/file/linux-x64/upload?${OPEN_ROWS}`
+        )
         .set('x-access-token', ownerToken)
         .set('Content-Type', 'application/octet-stream')
         .set('x-file-name', 'Domino_1451FP1_Linux.tar')
@@ -785,7 +869,9 @@ describe('Download file API', () => {
 
     it('should promote the link when the original is deleted', async () => {
       const third = await request(app)
-        .post(`${productBase}/release/${releaseNumber}/patch/FP1/file/linux-x64-again/upload`)
+        .post(
+          `${productBase}/release/${releaseNumber}/patch/FP1/file/linux-x64-again/upload?${OPEN_ROWS}`
+        )
         .set('x-access-token', ownerToken)
         .set('Content-Type', 'application/octet-stream')
         .set('x-file-name', 'Domino_1451FP1_Linux_again.tar')
@@ -818,7 +904,9 @@ describe('Download file API', () => {
 
     it('should drop the last link with the patch and keep the bytes elsewhere untouched', async () => {
       await request(app)
-        .post(`${productBase}/release/${releaseNumber}/patch/FP1/file/linux-x64/upload`)
+        .post(
+          `${productBase}/release/${releaseNumber}/patch/FP1/file/linux-x64/upload?${OPEN_ROWS}`
+        )
         .set('x-access-token', ownerToken)
         .set('Content-Type', 'application/octet-stream')
         .set('x-file-name', 'Domino_1451FP1_Linux.tar')

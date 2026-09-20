@@ -106,7 +106,11 @@ describe('Download release API', () => {
       .send({ is_public: true, published: true });
     expect(wider.statusCode).toBe(422);
     expect(wider.body.errors).toEqual([
-      expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+      expect.objectContaining({
+        pointer: '/is_public',
+        rule: 'withinParent',
+        params: { parent: 'private' },
+      }),
     ]);
     const bornWide = await request(app)
       .post(`${productBase}/release`)
@@ -114,7 +118,7 @@ describe('Download release API', () => {
       .send({ version_number: '9.0.2', is_public: true, published: true });
     expect(bornWide.statusCode).toBe(422);
     expect(bornWide.body.errors).toEqual([
-      expect.objectContaining({ pointer: '/is_public', rule: 'enum' }),
+      expect.objectContaining({ pointer: '/is_public', rule: 'withinParent' }),
     ]);
 
     const published = await request(app)

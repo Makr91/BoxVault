@@ -11,7 +11,7 @@ const { iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/organization/{organization}/iso/{name}:
  *   get:
  *     summary: Get ISO details
- *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, by JWT or by a service-account key of the organization, a guest of the organization reading it only while it is published and flagged for guests. Every download_count is null to a guest of the organization. Only the versions within the caller's reach are answered, a version never reaching wider than its ISO; a writer of the ISO sees every version.
+ *     description: Retrieve an ISO with its versions and per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, by JWT or by a service-account key of the organization, a guest of the organization reading it only while it is published and flagged for guests. Every download_count is null to a guest of the organization. Only the versions and files within the caller's reach are answered, a row never reaching wider than its parent; a writer of the ISO sees every row.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path

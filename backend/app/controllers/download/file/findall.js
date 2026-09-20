@@ -1,6 +1,7 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
+import { reachOf, withinReach } from '../../../utils/orgMembership.js';
 import { canSeeDownload, canSeePatch, isMemberOf, resolveDownloadViewer } from '../visibility.js';
 import { filesWithCounts } from '../helpers.js';
 const { downloadFiles: DownloadFile } = db;
@@ -10,7 +11,7 @@ const { downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file:
  *   get:
  *     summary: List the files of a patch
- *     description: Retrieve every file row of a patch. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
+ *     description: Retrieve the file rows of a patch within the caller's reach. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -77,7 +78,13 @@ const findAll = async (req, res) => {
       order: [['createdAt', 'ASC']],
     });
 
-    return res.send(filesWithCounts(files, isMemberOf(viewer, download.organizationId)));
+    const reach = reachOf(viewer, download);
+    return res.send(
+      filesWithCounts(
+        files.filter(file => withinReach(reach, release, patch, file)),
+        isMemberOf(viewer, download.organizationId)
+      )
+    );
   } catch (err) {
     log.error.error('Error retrieving download files', err);
     return problem(res, req, {

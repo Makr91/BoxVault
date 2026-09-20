@@ -74,6 +74,73 @@ const likeClauses = (columns, pattern) =>
   columns.map(column => ({ [column]: { [Op.like]: pattern } }));
 
 /**
+ * The words of a search term, split on whitespace.
+ * @param {string} term - The trimmed search term
+ * @returns {string[]} The words, at least one
+ */
+const wordsOf = term => term.split(/\s+/).filter(Boolean);
+
+/**
+ * The spellings one word is looked for under: the word itself and, when it
+ * carries dots, the word with its dots dropped, so 14.5.1 also finds 1451.
+ * @param {string} word - One word of the term
+ * @returns {string[]} The spellings, lower-cased
+ */
+const spellingsOf = word => {
+  const lower = word.toLowerCase();
+  const compact = lower.replace(/\./g, '');
+  return compact && compact !== lower ? [lower, compact] : [lower];
+};
+
+/**
+ * The tokens of a search term: every word with its spellings and the LIKE
+ * patterns of those spellings.
+ * @param {string} term - The trimmed search term
+ * @returns {Array<{spellings: string[], patterns: string[]}>} One token per word
+ */
+const tokensOf = term =>
+  wordsOf(term).map(word => {
+    const spellings = spellingsOf(word);
+    return { spellings, patterns: spellings.map(spelling => `%${escapeTerm(spelling)}%`) };
+  });
+
+/**
+ * The where clause of a token search: every token must match at least one
+ * of the columns under one of its spellings; `extra` adds clauses per
+ * pattern beyond the columns, the metadata column read as text for one.
+ * @param {string[]} columns - Attribute names, `$include.column$` names included
+ * @param {Array<{patterns: string[]}>} tokens - From tokensOf
+ * @param {Function} [extra] - Pattern to extra clauses
+ * @returns {Object} The where clause
+ */
+const tokenClauses = (columns, tokens, extra = () => []) => ({
+  [Op.and]: tokens.map(({ patterns }) => ({
+    [Op.or]: patterns.flatMap(pattern => [...likeClauses(columns, pattern), ...extra(pattern)]),
+  })),
+});
+
+/**
+ * The first field of a chain that answers the search, or null when a token
+ * appears in none of them: every token must be found, under one of its
+ * spellings, in at least one entry; the answer names the first entry the
+ * first token is found in.
+ * @param {Array<[string, *]>} entries - Field name and text, in match priority order
+ * @param {Array<{spellings: string[]}>} tokens - From tokensOf
+ * @returns {string|null} The matched field name
+ */
+const matchedChain = (entries, tokens) => {
+  const texts = entries
+    .filter(([, text]) => typeof text === 'string')
+    .map(([field, text]) => [field, text.toLowerCase()]);
+  const holder = token =>
+    texts.find(([, text]) => token.spellings.some(spelling => text.includes(spelling)));
+  if (!tokens.every(token => holder(token))) {
+    return null;
+  }
+  return holder(tokens[0])[0];
+};
+
+/**
  * A LIKE clause over the JSON metadata column read as text.
  * @param {string} alias - The main model alias in the query
  * @param {string} pattern - The LIKE pattern
@@ -146,61 +213,46 @@ const isGlobalAdmin = async viewer => {
 };
 
 /**
- * The first of the given string fields containing the term, case-insensitively.
- * @param {Object} record - The row
- * @param {string[]} fields - Field names in match priority order
- * @param {string} term - The search term
- * @returns {string|null} The matched field name
- */
-const matchedField = (record, fields, term) => {
-  const needle = term.toLowerCase();
-  const field = fields.find(
-    candidate =>
-      typeof record[candidate] === 'string' && record[candidate].toLowerCase().includes(needle)
-  );
-  return field || null;
-};
-
-/**
- * The first whitelisted metadata key whose value contains the term; the
- * password key is never consulted.
+ * The whitelisted metadata keys of a row as chain entries, `metadata.<key>`
+ * with the value as text; the password key is never consulted, unreadable
+ * metadata yields none.
  * @param {*} metadata - The row's metadata column
- * @param {string} term - The search term
- * @returns {string|null} The matched key as metadata.<key>
+ * @returns {Array<[string, string]>} The entries
  */
-const matchedMetadataKey = (metadata, term) => {
+const metadataEntries = metadata => {
   let facts = metadata;
   if (typeof facts === 'string') {
     try {
       facts = JSON.parse(facts);
     } catch {
-      return null;
+      return [];
     }
   }
   if (!facts || typeof facts !== 'object') {
-    return null;
+    return [];
   }
-  const needle = term.toLowerCase();
-  const key = METADATA_KEYS.find(candidate => {
-    const value = facts[candidate];
-    if (value === null || value === undefined) {
-      return false;
-    }
-    const text = typeof value === 'string' ? value : JSON.stringify(value);
-    return text.toLowerCase().includes(needle);
-  });
-  return key ? `metadata.${key}` : null;
+  return METADATA_KEYS.filter(key => facts[key] !== null && facts[key] !== undefined).map(key => [
+    `metadata.${key}`,
+    typeof facts[key] === 'string' ? facts[key] : JSON.stringify(facts[key]),
+  ]);
 };
 
 /**
- * Whether a checksum starts with the term, when the term is long enough to
- * identify one.
+ * Whether a term could be the prefix of a checksum: one word, long enough
+ * to identify one.
+ * @param {string} term - The trimmed search term
+ * @returns {boolean}
+ */
+const isChecksumTerm = term => term.length >= MIN_CHECKSUM_LENGTH && wordsOf(term).length === 1;
+
+/**
+ * Whether a checksum starts with the term, when the term could be one.
  * @param {string|null} checksum - The stored checksum
  * @param {string} term - The search term
  * @returns {boolean} True on an exact or prefix match
  */
 const checksumMatches = (checksum, term) =>
-  term.length >= MIN_CHECKSUM_LENGTH &&
+  isChecksumTerm(term) &&
   typeof checksum === 'string' &&
   checksum.toLowerCase().startsWith(term.toLowerCase());
 
@@ -218,7 +270,7 @@ const buildContext = async (req, term, kinds) => {
   const escaped = escapeTerm(term);
   return {
     term,
-    contains: `%${escaped}%`,
+    tokens: tokensOf(term),
     prefix: `${escaped}%`,
     viewer,
     isAdmin,
@@ -237,9 +289,13 @@ export {
   parseLimit,
   parseKinds,
   likeClauses,
+  wordsOf,
+  tokensOf,
+  tokenClauses,
+  matchedChain,
   metadataLike,
-  matchedField,
-  matchedMetadataKey,
+  metadataEntries,
+  isChecksumTerm,
   checksumMatches,
   buildContext,
 };

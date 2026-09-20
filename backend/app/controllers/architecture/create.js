@@ -1,8 +1,13 @@
 // create.js
 import { log } from '../../utils/Logger.js';
-import { conflict, problem } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 const { architectures: Architecture } = db;
 
 /**
@@ -10,7 +15,7 @@ const { architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
  *   post:
  *     summary: Create a new architecture for a provider
- *     description: Create a new architecture (e.g., amd64, arm64) for a specific provider within a box version. The box owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role.
+ *     description: Create a new architecture (e.g., amd64, arm64) for a specific provider within a box version. The box owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role. An architecture is born private, closed to guests and unpublished unless the body says otherwise, and never wider than its provider, a wider word answered 422.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -70,6 +75,15 @@ const { architectures: Architecture } = db;
  *               checksum:
  *                 type: string
  *                 description: Hex checksum of the file uploaded afterwards
+ *               is_public:
+ *                 type: boolean
+ *                 description: False when absent; never wider than the provider
+ *               guest_access:
+ *                 type: boolean
+ *                 description: False when absent; never wider than the provider
+ *               published:
+ *                 type: boolean
+ *                 description: False when absent; never wider than the provider
  *     responses:
  *       201:
  *         description: Architecture created successfully
@@ -133,6 +147,17 @@ export const create = async (req, res) => {
       return conflict(res, req, '/name', provider.name);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, provider);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     if (defaultBox) {
       // Set all other architectures' defaultBox to false
       await Architecture.update({ defaultBox: false }, { where: { providerId: provider.id } });
@@ -142,6 +167,7 @@ export const create = async (req, res) => {
       name,
       description,
       defaultBox: defaultBox || false,
+      ...visibility,
       providerId: provider.id,
     });
 

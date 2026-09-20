@@ -6,6 +6,8 @@ import {
   canWriteDownload,
   canWriteInOrg,
   resolveOrgMembership,
+  visibilityOfQuery,
+  widerThanParent,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getRulesDocument } from '../../../utils/rules.js';
@@ -125,7 +127,7 @@ const levelsOf = (params, fileName) => {
  * /api/organization/{organization}/download/file/upload:
  *   post:
  *     summary: Upload a download file into the organization
- *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. `?is_public=true` makes a product the upload creates public, `?guest_access=true` opens it to guests of the organization. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value, the defaults other, any, any, any on a row the upload creates.
+ *     description: The same upload as the full path, the product slug and the release identifier read from x-file-name (Domino_14.5.1_Linux_English.tar names product domino and release 14.5.1), the patch `release` and the key the file name; every absent level is created. Every row the upload creates, product, release, patch and file, is born private, closed to guests and unpublished unless the query members `is_public`, `guest_access` and `published` say otherwise, never wider than the row above it, a wider word answered 422. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value, the defaults other, any, any, any on a row the upload creates.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -141,6 +143,10 @@ const levelsOf = (params, fileName) => {
  *           type: boolean
  *       - in: query
  *         name: guest_access
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: published
  *         schema:
  *           type: boolean
  *       - in: header
@@ -289,7 +295,7 @@ const levelsOf = (params, fileName) => {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/upload:
  *   post:
  *     summary: Upload a download file
- *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. `?is_public=true` makes a product the upload creates public, `?guest_access=true` opens it to guests of the organization. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value.
+ *     description: Stream the bytes of one file of a patch, whole or in chunks (x-chunk-index, x-total-chunks, 5 MB chunks assembled on the last one, the info route polled meanwhile). The product, the release, the patch and the file row are created when absent, the caller holding what a create needs (any member of the organization creates a product; its owner, or an admin or owner of the organization, adds to it). The stored name is the real file name from x-file-name. An upload whose checksum matches an original of the organization becomes a symlink to it. Every row the upload creates, product, release, patch and file, is born private, closed to guests and unpublished unless the query members `is_public`, `guest_access` and `published` say otherwise, never wider than the row above it, a wider word answered 422; a row the upload replaces keeps its words. The optional query members `kind`, `platform`, `architecture`, `language` and `variant` are set on the file row, validated by the downloadFile form; an absent member keeps the row's value.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -464,12 +470,28 @@ const upload = (req, res) => {
       return refusal;
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOfQuery(req.query),
+    };
+    const parents = [
+      [download, release],
+      [release, patch],
+      [patch, file],
+    ];
+    const wider = parents
+      .filter(([parent, child]) => parent && !child)
+      .reduce((found, [parent]) => found || widerThanParent(visibility, parent), null);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     if (!download) {
       download = await Download.create({
         name,
-        published: false,
-        isPublic: req.query.is_public === 'true',
-        guestAccess: req.query.guest_access === 'true',
+        ...visibility,
         userId: req.userId,
         organizationId: organization.id,
       });
@@ -477,18 +499,14 @@ const upload = (req, res) => {
     if (!release) {
       release = await DownloadRelease.create({
         versionNumber,
-        isPublic: false,
-        guestAccess: false,
-        published: false,
+        ...visibility,
         downloadId: download.id,
       });
     }
     if (!patch) {
       patch = await DownloadPatch.create({
         name: patchName,
-        isPublic: false,
-        guestAccess: false,
-        published: false,
+        ...visibility,
         downloadReleaseId: release.id,
       });
     }
@@ -517,6 +535,7 @@ const upload = (req, res) => {
         fileName,
         ...FILE_DEFAULTS,
         ...members,
+        ...visibility,
         fileSize: 0,
         original: true,
         downloadPatchId: patch.id,

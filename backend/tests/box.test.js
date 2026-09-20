@@ -480,7 +480,7 @@ describe('Box API', () => {
       const fileContent = Buffer.from('dummy content');
       await request(app)
         .post(
-          `/api/organization/${orgName}/box/${vagrantTestBox.name}/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload`
+          `/api/organization/${orgName}/box/${vagrantTestBox.name}/version/1.0.0/provider/virtualbox/architecture/amd64/file/upload?is_public=true&published=true`
         )
         .set('x-access-token', authToken)
         .set('Content-Type', 'application/octet-stream')
@@ -2130,7 +2130,7 @@ describe('Box API', () => {
       const provider = await db.providers.create({ name: 'virtualbox', versionId: version.id });
       await db.architectures.create({ name: 'amd64', providerId: provider.id });
       await request(app)
-        .post(`${fileBase}/upload`)
+        .post(`${fileBase}/upload?published=true&guest_access=true`)
         .set('x-access-token', authToken)
         .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from('guest download content'));

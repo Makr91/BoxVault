@@ -378,6 +378,21 @@ describe('File API', () => {
       // Make box public
       await testBox.update({ isPublic: true });
 
+      const closed = await request(app).get(
+        `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download`
+      );
+      expect(closed.statusCode).toBe(404);
+
+      const opened = await request(app)
+        .put(
+          `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file`
+        )
+        .set('x-access-token', userToken)
+        .send({ is_public: true, published: true });
+      expect(opened.statusCode).toBe(200);
+      expect(opened.body.is_public).toBe(true);
+      expect(opened.body.published).toBe(true);
+
       const res = await request(app).get(
         `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file/download`
       );
@@ -386,6 +401,36 @@ describe('File API', () => {
 
       // Revert to private
       await testBox.update({ isPublic: false });
+      const narrowed = await request(app)
+        .put(
+          `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file`
+        )
+        .set('x-access-token', userToken)
+        .send({ is_public: true });
+      expect(narrowed.statusCode).toBe(200);
+      const wider = await request(app)
+        .put(
+          `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file`
+        )
+        .set('x-access-token', userToken)
+        .send({ guest_access: true });
+      expect(wider.statusCode).toBe(200);
+      await db.architectures.update({ isPublic: false }, { where: { id: testArchitecture.id } });
+      const refused = await request(app)
+        .put(
+          `/api/organization/${testOrg.name}/box/${testBox.name}/version/${testVersion.versionNumber}/provider/${testProvider.name}/architecture/${testArchitecture.name}/file`
+        )
+        .set('x-access-token', userToken)
+        .send({ is_public: true });
+      expect(refused.statusCode).toBe(422);
+      expect(refused.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'guests' },
+        }),
+      ]);
+      await db.architectures.update({ isPublic: true }, { where: { id: testArchitecture.id } });
     });
 
     it('should download with valid query token', async () => {
@@ -1823,7 +1868,8 @@ describe('File API', () => {
           organization: { id: 1 },
           box: { id: 1, isPublic: true },
           version: { id: 1, isPublic: true, guestAccess: true, published: true },
-          architecture: { id: 1 },
+          provider: { id: 1, isPublic: true, guestAccess: true, published: true },
+          architecture: { id: 1, isPublic: true, guestAccess: true, published: true },
         },
         __: (k, params) => params?.error || k,
       };
@@ -1843,7 +1889,9 @@ describe('File API', () => {
 
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'statSync').mockReturnValue({ size: 100 });
-      jest.spyOn(db.files, 'findOne').mockResolvedValue({ increment: jest.fn() });
+      jest
+        .spyOn(db.files, 'findOne')
+        .mockResolvedValue({ increment: jest.fn(), isPublic: true, published: true });
     });
 
     it('download controller - should handle res.download errors (headers NOT sent)', async () => {
@@ -1883,7 +1931,13 @@ describe('File API', () => {
 
     it('download controller - should stream the file via res.download', async () => {
       const increment = jest.fn();
-      db.files.findOne.mockResolvedValue({ increment, fileName: 'vagrant.box', downloadCount: 0 });
+      db.files.findOne.mockResolvedValue({
+        increment,
+        fileName: 'vagrant.box',
+        downloadCount: 0,
+        isPublic: true,
+        published: true,
+      });
 
       await downloadController(req, res);
 

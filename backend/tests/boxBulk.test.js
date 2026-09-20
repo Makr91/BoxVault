@@ -356,7 +356,7 @@ describe('Box bulk API', () => {
       const badAction = await request(app)
         .post(`${versionBase}/provider/bulk`)
         .set('x-access-token', ownerToken)
-        .send({ action: 'make_public', names: ['libvirt'] });
+        .send({ action: 'deprecate', names: ['libvirt'] });
       expect(badAction.statusCode).toBe(422);
       expect(badAction.body.errors).toEqual([
         expect.objectContaining({ pointer: '/action', rule: 'enum' }),

@@ -58,13 +58,17 @@ describe('Box guest access', () => {
     });
     const version = await db.versions.create({ versionNumber: '1.0.0', boxId: box.id });
     const provider = await db.providers.create({ name: 'virtualbox', versionId: version.id });
-    await db.architectures.create({ name: 'amd64', providerId: provider.id });
+    const architecture = await db.architectures.create({ name: 'amd64', providerId: provider.id });
     await request(app)
       .post(`${fileBase(name)}/upload`)
       .set('x-access-token', ownerToken)
       .set('Content-Type', 'application/octet-stream')
       .send(content)
       .expect(200);
+    await db.files.update(
+      { isPublic: true, guestAccess: true, published: true },
+      { where: { architectureId: architecture.id } }
+    );
     return box;
   };
 
@@ -267,7 +271,11 @@ describe('Box guest access', () => {
         .send({ is_public: true });
       expect(wider.statusCode).toBe(422);
       expect(wider.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'guests' },
+        }),
       ]);
       const allowed = await request(app)
         .post(`${boxBase(flaggedName)}/version/bulk`)
@@ -289,6 +297,64 @@ describe('Box guest access', () => {
       expect((await get(`${boxBase(flaggedName)}/version/1.0.0`, memberToken)).statusCode).toBe(
         200
       );
+    });
+
+    it('should hide a provider, an architecture or a file narrower than the guest reach', async () => {
+      const box = await db.box.findOne({ where: { name: flaggedName, organizationId: org.id } });
+      const version = await db.versions.findOne({ where: { boxId: box.id } });
+      const provider = await db.providers.findOne({ where: { versionId: version.id } });
+      const architecture = await db.architectures.findOne({ where: { providerId: provider.id } });
+      const providerUrl = `${boxBase(flaggedName)}/version/1.0.0/provider/virtualbox`;
+      const architectureUrl = `${providerUrl}/architecture/amd64`;
+
+      await db.files.update(
+        { isPublic: false, guestAccess: false },
+        { where: { architectureId: architecture.id } }
+      );
+      expect((await get(`${fileBase(flaggedName)}/info`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${fileBase(flaggedName)}/download`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${fileBase(flaggedName)}/info`, memberToken)).statusCode).toBe(200);
+      const page = await get(boxBase(flaggedName), guestToken);
+      expect(page.body.versions[0].providers[0].architectures[0].files).toEqual([]);
+      await db.files.update({ guestAccess: true }, { where: { architectureId: architecture.id } });
+
+      await db.architectures.update(
+        { isPublic: false, guestAccess: false },
+        { where: { id: architecture.id } }
+      );
+      expect((await get(architectureUrl, guestToken)).statusCode).toBe(404);
+      expect((await get(`${providerUrl}/architecture`, guestToken)).body).toEqual([]);
+      expect((await get(`${fileBase(flaggedName)}/download`, guestToken)).statusCode).toBe(404);
+      expect((await get(architectureUrl, memberToken)).statusCode).toBe(200);
+      await db.architectures.update({ guestAccess: true }, { where: { id: architecture.id } });
+
+      await db.providers.update(
+        { isPublic: false, guestAccess: false },
+        { where: { id: provider.id } }
+      );
+      expect((await get(providerUrl, guestToken)).statusCode).toBe(404);
+      expect(
+        (await get(`${boxBase(flaggedName)}/version/1.0.0/provider`, guestToken)).body
+      ).toEqual([]);
+      expect((await get(architectureUrl, guestToken)).statusCode).toBe(404);
+      const metadata = await request(app)
+        .get(boxBase(flaggedName))
+        .set('Authorization', `Bearer ${guestAccountKey}`)
+        .set('User-Agent', 'Vagrant/2.3.4');
+      expect(metadata.body.versions[0].providers).toEqual([]);
+      expect((await get(providerUrl, memberToken)).statusCode).toBe(200);
+
+      const wider = await request(app)
+        .put(providerUrl)
+        .set('x-access-token', ownerToken)
+        .send({ is_public: true });
+      expect(wider.statusCode).toBe(422);
+      const allowed = await request(app)
+        .post(`${boxBase(flaggedName)}/version/1.0.0/provider/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'allow_guests', names: ['virtualbox'] });
+      expect(allowed.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      expect((await get(providerUrl, guestToken)).statusCode).toBe(200);
     });
 
     it('should answer null counts to a guest and numbers to a member', async () => {

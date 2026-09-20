@@ -2,7 +2,12 @@ import fs from 'fs';
 import { dirname, join } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, canWritePendingUpload } from '../../../utils/orgMembership.js';
+import {
+  canWriteDownload,
+  canWritePendingUpload,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getRulesDocument } from '../../../utils/rules.js';
 import { validateObject } from '../../../utils/validation.js';
@@ -35,6 +40,9 @@ const FILE_MEMBERS = [
   'variant',
   'checksum_type',
   'checksum',
+  'is_public',
+  'guest_access',
+  'published',
 ];
 
 const FILE_DEFAULTS = { kind: 'other', platform: 'any', architecture: 'any', language: 'any' };
@@ -74,7 +82,7 @@ const attributesOf = given => ({
   variant: given.variant,
 });
 
-const settleFileRow = async (file, patch, key, fileName, attributes) => {
+const settleFileRow = async (file, patch, key, fileName, attributes, visibility) => {
   if (!file) {
     return DownloadFile.create({
       key,
@@ -84,6 +92,7 @@ const settleFileRow = async (file, patch, key, fileName, attributes) => {
       architecture: attributes.architecture || FILE_DEFAULTS.architecture,
       language: attributes.language || FILE_DEFAULTS.language,
       variant: attributes.variant || null,
+      ...visibility,
       fileSize: 0,
       original: true,
       downloadPatchId: patch.id,
@@ -107,7 +116,7 @@ const settleFileRow = async (file, patch, key, fileName, attributes) => {
  * /api/organization/{organization}/download/pending/{id}/place:
  *   post:
  *     summary: Place a pending upload
- *     description: The second step of a person's upload. Takes `product`, `release`, `patch` (`release` when absent) and the downloadFile form's members (`key` the file name when absent), validated as the level routes validate them (the download, release, patch and downloadFile forms, 422 with pointers); creates the product, the release and the patch when absent (`is_public` and `guest_access` for a product it creates), moves the bytes to the product path with the checksum, deduplication and symlink rules of the level upload, drops the pending upload and answers the file's address. The member who uploaded it, or an admin or owner of the organization, may place it; an existing product takes its owner, or an admin or owner of the organization.
+ *     description: The second step of a person's upload. Takes `product`, `release`, `patch` (`release` when absent) and the downloadFile form's members (`key` the file name when absent), validated as the level routes validate them (the download, release, patch and downloadFile forms, 422 with pointers); creates the product, the release, the patch and the file row when absent, every row it creates born private, closed to guests and unpublished unless `is_public`, `guest_access` and `published` say otherwise, never wider than the row above it, a wider word answered 422; moves the bytes to the product path with the checksum, deduplication and symlink rules of the level upload, drops the pending upload and answers the file's address. The member who uploaded it, or an admin or owner of the organization, may place it; an existing product takes its owner, or an admin or owner of the organization.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -143,10 +152,13 @@ const settleFileRow = async (file, patch, key, fileName, attributes) => {
  *                 description: Patch name, release when absent
  *               is_public:
  *                 type: boolean
- *                 description: Whether a product this call creates is public
+ *                 description: Whether every row this call creates is public
  *               guest_access:
  *                 type: boolean
- *                 description: Whether a product this call creates is open to guests of the organization
+ *                 description: Whether every row this call creates is open to guests of the organization
+ *               published:
+ *                 type: boolean
+ *                 description: Whether every row this call creates is published
  *               key:
  *                 type: string
  *                 description: File key, the file name when absent
@@ -263,7 +275,7 @@ const place = async (req, res) => {
       : null;
 
     const checks = [
-      [download, 'download', { name, is_public: body.is_public, guest_access: body.guest_access }],
+      [download, 'download', { name }],
       [release, 'release', { version_number: versionNumber }],
       [patch, 'patch', { name: patchName }],
       [null, 'downloadFile', { key, file_name: fileName, ...given }],
@@ -284,12 +296,28 @@ const place = async (req, res) => {
       });
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(body),
+    };
+    const parents = [
+      [download, release],
+      [release, patch],
+      [patch, file],
+    ];
+    const wider = parents
+      .filter(([parent, child]) => parent && !child)
+      .reduce((found, [parent]) => found || widerThanParent(visibility, parent), null);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     if (!download) {
       download = await Download.create({
         name,
-        published: false,
-        isPublic: body.is_public === true,
-        guestAccess: body.guest_access === true,
+        ...visibility,
         userId: req.userId,
         organizationId: organization.id,
       });
@@ -297,23 +325,19 @@ const place = async (req, res) => {
     if (!release) {
       release = await DownloadRelease.create({
         versionNumber,
-        isPublic: false,
-        guestAccess: false,
-        published: false,
+        ...visibility,
         downloadId: download.id,
       });
     }
     if (!patch) {
       patch = await DownloadPatch.create({
         name: patchName,
-        isPublic: false,
-        guestAccess: false,
-        published: false,
+        ...visibility,
         downloadReleaseId: release.id,
       });
     }
 
-    file = await settleFileRow(file, patch, key, fileName, attributesOf(given));
+    file = await settleFileRow(file, patch, key, fileName, attributesOf(given), visibility);
 
     const entities = { organization, download, release, patch, file };
     const finalPath = join(

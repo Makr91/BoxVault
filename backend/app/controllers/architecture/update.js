@@ -2,9 +2,14 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, problem } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 const { architectures: Architecture } = db;
 
 /**
@@ -12,7 +17,7 @@ const { architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
  *   put:
  *     summary: Update an architecture by name
- *     description: Update an architecture's properties including name and default status. Also handles file system directory renaming when architecture name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update an architecture's properties including name, default status and the visibility words is_public, guest_access and published, a word wider than the provider answered 422. Also handles file system directory renaming when architecture name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -70,6 +75,15 @@ const { architectures: Architecture } = db;
  *                 type: boolean
  *                 description: Whether this should be the default architecture for the provider
  *                 example: true
+ *               is_public:
+ *                 type: boolean
+ *                 description: Never wider than the provider
+ *               guest_access:
+ *                 type: boolean
+ *                 description: Never wider than the provider
+ *               published:
+ *                 type: boolean
+ *                 description: Never wider than the provider
  *     responses:
  *       200:
  *         description: Architecture updated successfully
@@ -151,6 +165,24 @@ export const update = async (req, res) => {
       }
     }
 
+    const visibility = visibilityOf(req.body);
+    if (Object.keys(visibility).length > 0) {
+      const current = await Architecture.findOne({
+        where: { name: architectureName, providerId: provider.id },
+      });
+      if (!current) {
+        return problem(res, req, {
+          status: 404,
+          type: 'not-found',
+          title: req.__('architectures.notFound'),
+        });
+      }
+      const wider = widerThanParent({ ...current.get({ plain: true }), ...visibility }, provider);
+      if (wider) {
+        return refuse(res, req, [wider]);
+      }
+    }
+
     // Create the new directory if it doesn't exist
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
@@ -180,6 +212,7 @@ export const update = async (req, res) => {
     if (typeof defaultBox !== 'undefined') {
       updatePayload.defaultBox = defaultBox;
     }
+    Object.assign(updatePayload, visibility);
 
     const [updated] = await Architecture.update(updatePayload, {
       where: { name: architectureName, providerId: provider.id },

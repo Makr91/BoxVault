@@ -243,7 +243,7 @@ const verifyChecksum = (filePath, expectedChecksum, checksumType) => {
 };
 
 // Helper: Update database with file information
-const updateDatabase = async (params, finalSize, headers) => {
+const updateDatabase = async (params, finalSize, headers, visibility) => {
   const { versionNumber, boxId, providerName, architectureName } = params;
 
   const version = await versions.findOne({
@@ -301,7 +301,7 @@ const updateDatabase = async (params, finalSize, headers) => {
   if (fileRecord) {
     await fileRecord.update(fileData);
   } else {
-    await files.create(fileData);
+    await files.create({ ...fileData, ...visibility });
   }
 };
 
@@ -378,7 +378,7 @@ const handleChunkedUpload = async (
       }
 
       // Update database
-      await updateDatabase(params, finalSize, req.headers);
+      await updateDatabase(params, finalSize, req.headers, req.fileVisibility);
 
       // Calculate stats
       const duration = Date.now() - startTime;
@@ -565,7 +565,7 @@ const handleSingleUpload = async (
   }
 
   // Update database
-  await updateDatabase(params, finalSize, req.headers);
+  await updateDatabase(params, finalSize, req.headers, req.fileVisibility);
 
   // Calculate stats
   const duration = Date.now() - startTime;

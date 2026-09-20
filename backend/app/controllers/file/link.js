@@ -9,6 +9,8 @@ import {
 } from '../../utils/orgMembership.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { problem } from '../../utils/problem.js';
+import db from '../../models/index.js';
+const { files: File } = db;
 
 const unauthorized = (req, res) =>
   problem(res, req, { status: 403, type: 'forbidden', title: req.__('files.unauthorized') });
@@ -18,7 +20,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/get-download-link:
  *   post:
  *     summary: Generate a secure download link
- *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs a writing membership of its organization, a guest of the organization minting one only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version beyond the caller's reach answers 404.
+ *     description: Generate a time-limited secure download link for a Vagrant box file. A private box needs a writing membership of its organization, a guest of the organization minting one only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version, provider, architecture or file beyond the caller's reach answers 404.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -94,7 +96,7 @@ const getDownloadLink = async (req, res) => {
     const authConfig = loadConfig('auth');
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
-    const { organization: organizationData, box, version } = req.entities;
+    const { organization: organizationData, box, version, provider, architecture } = req.entities;
     const membership = userId ? await resolveOrgMembership(req, organizationData.id) : null;
 
     // Check authorization
@@ -108,7 +110,11 @@ const getDownloadLink = async (req, res) => {
       }
     }
     const caller = userId ? { userId, isServiceAccount } : null;
-    if (!withinReach(reachOfMembership(caller, box, membership), version)) {
+    const reach = reachOfMembership(caller, box, membership);
+    const fileRecord = withinReach(reach, version, provider, architecture)
+      ? await File.findOne({ where: { fileName: 'vagrant.box', architectureId: architecture.id } })
+      : null;
+    if (!fileRecord || !withinReach(reach, version, provider, architecture, fileRecord)) {
       return problem(res, req, {
         status: 404,
         type: 'not-found',

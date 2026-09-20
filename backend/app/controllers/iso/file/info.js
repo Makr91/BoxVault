@@ -2,7 +2,7 @@ import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
 import { isGuestOf } from '../../../utils/orgMembership.js';
-import { canSeeIso, canSeeIsoVersion, resolveIsoViewer } from '../visibility.js';
+import { canSeeIso, canSeeIsoFile, canSeeIsoVersion, resolveIsoViewer } from '../visibility.js';
 const { isoFiles: IsoFile } = db;
 
 /**
@@ -10,7 +10,7 @@ const { isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/info:
  *   get:
  *     summary: Get ISO file information
- *     description: Retrieve the file record of one architecture of an ISO version. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. download_count is null to a guest of the organization; a version beyond the caller's reach answers 404.
+ *     description: Retrieve the file record of one architecture of an ISO version. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. download_count is null to a guest of the organization; a version or file beyond the caller's reach answers 404.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -93,7 +93,7 @@ const info = async (req, res) => {
     const fileRecord = canSeeIsoVersion(viewer, iso, version)
       ? await IsoFile.findOne({ where: { isoVersionId: version.id, architecture } })
       : null;
-    if (!fileRecord) {
+    if (!fileRecord || !canSeeIsoFile(viewer, iso, version, fileRecord)) {
       return problem(res, req, {
         status: 404,
         type: 'not-found',

@@ -112,4 +112,16 @@ const canSeeIso = (viewer, iso) =>
  */
 const canSeeIsoVersion = (viewer, iso, version) => withinReach(reachOf(viewer, iso), version);
 
-export { resolveIsoViewer, isoWhereFor, canSeeIso, canSeeIsoVersion };
+/**
+ * Whether a viewer may read one file of a version they may read: the chain
+ * ISO, version, file stands at the viewer's reach or wider.
+ * @param {Object|null} viewer - From resolveIsoViewer
+ * @param {Object} iso - The ISO row
+ * @param {Object} version - The version row
+ * @param {Object} file - The file row
+ * @returns {boolean} True when the file is visible to the viewer
+ */
+const canSeeIsoFile = (viewer, iso, version, file) =>
+  withinReach(reachOf(viewer, iso), version, file);
+
+export { resolveIsoViewer, isoWhereFor, canSeeIso, canSeeIsoVersion, canSeeIsoFile };

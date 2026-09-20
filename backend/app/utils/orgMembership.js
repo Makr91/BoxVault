@@ -381,25 +381,49 @@ const visibilityOf = body => {
   return words;
 };
 
+const VISIBILITY_WORDS = ['is_public', 'guest_access', 'published'];
+
+/**
+ * The three visibility words a query string carries, `true` and `false` as
+ * text, model-named, present ones only; the reader the upload routes use.
+ * @param {Object} query - The request query
+ * @returns {{isPublic?: boolean, guestAccess?: boolean, published?: boolean}} The words given
+ */
+const visibilityOfQuery = query =>
+  visibilityOf(
+    Object.fromEntries(
+      VISIBILITY_WORDS.filter(word => typeof query[word] === 'string').map(word => [
+        word,
+        query[word] === 'true',
+      ])
+    )
+  );
+
 /**
  * The validation error of a child that would hold a word its parent does not:
  * published under an unpublished parent, public under a parent that is not
- * public, open to guests under a parent that is neither; pointing at the word
- * with the value it may hold, null while every word stays within the parent.
+ * public, open to guests under a parent that is neither; the withinParent
+ * rule of the validation contract, pointing at the word, its params naming
+ * the parent's own word, pending, guests or private; null while every word
+ * stays within the parent.
  * @param {{isPublic: boolean, guestAccess: boolean, published: boolean}} child - The child's words after the write
  * @param {Object} parent - The parent row
- * @returns {{pointer: string, rule: string, params: {enum: string}}|null} The error
+ * @returns {{pointer: string, rule: string, params: {parent: string}}|null} The error
  */
 const widerThanParent = (child, parent) => {
-  const params = { enum: 'false' };
+  const rule = 'withinParent';
   if (child.published && !parent.published) {
-    return { pointer: '/published', rule: 'enum', params };
+    return { pointer: '/published', rule, params: { parent: 'pending' } };
   }
   if (child.isPublic && !parent.isPublic) {
-    return { pointer: '/is_public', rule: 'enum', params };
+    return {
+      pointer: '/is_public',
+      rule,
+      params: { parent: parent.guestAccess ? 'guests' : 'private' },
+    };
   }
   if (child.guestAccess && !parent.guestAccess && !parent.isPublic) {
-    return { pointer: '/guest_access', rule: 'enum', params };
+    return { pointer: '/guest_access', rule, params: { parent: 'private' } };
   }
   return null;
 };
@@ -412,6 +436,7 @@ export {
   reachOfMembership,
   withinReach,
   visibilityOf,
+  visibilityOfQuery,
   widerThanParent,
   ORG_ROLES,
   ROLE_RANK,

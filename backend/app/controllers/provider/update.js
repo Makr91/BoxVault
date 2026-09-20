@@ -2,9 +2,14 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, problem } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 const { providers: Provider } = db;
 
 /**
@@ -12,7 +17,7 @@ const { providers: Provider } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   put:
  *     summary: Update a provider by name
- *     description: Update a provider's properties including name and description. Also handles file system directory renaming when provider name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update a provider's properties including name, description and the visibility words is_public, guest_access and published, a word wider than the version answered 422. Also handles file system directory renaming when provider name changes. The box owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -125,6 +130,24 @@ export const update = async (req, res) => {
       }
     }
 
+    const visibility = visibilityOf(req.body);
+    if (Object.keys(visibility).length > 0) {
+      const current = await Provider.findOne({
+        where: { name: providerName, versionId: version.id },
+      });
+      if (!current) {
+        return problem(res, req, {
+          status: 404,
+          type: 'not-found',
+          title: req.__('providers.notFound'),
+        });
+      }
+      const wider = widerThanParent({ ...current.get({ plain: true }), ...visibility }, version);
+      if (wider) {
+        return refuse(res, req, [wider]);
+      }
+    }
+
     // Create the new directory if it doesn't exist
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
@@ -147,6 +170,7 @@ export const update = async (req, res) => {
     if (typeof description !== 'undefined') {
       updatePayload.description = description;
     }
+    Object.assign(updatePayload, visibility);
 
     const [updated] = await Provider.update(updatePayload, {
       where: { name: providerName, versionId: version.id },

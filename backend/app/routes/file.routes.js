@@ -1,10 +1,17 @@
 import { Router } from 'express';
-import { authJwt, sessionAuth, downloadAuth, verifyBoxFilePath } from '../middleware/index.js';
+import {
+  authJwt,
+  sessionAuth,
+  downloadAuth,
+  validateBody,
+  verifyBoxFilePath,
+} from '../middleware/index.js';
 import {
   fileOperationLimiter,
   getDownloadLinkLimiter,
   downloadLimiter,
 } from '../middleware/rateLimiter.js';
+import { edit } from '../controllers/file/edit.js';
 import { update } from '../controllers/file/update.js';
 import { upload } from '../controllers/file/upload.js';
 import { info } from '../controllers/file/info.js';
@@ -36,6 +43,15 @@ router.post(
   authJwt.isUserOrServiceAccount,
   verifyBoxFilePath,
   upload
+);
+
+router.put(
+  '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file',
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyBoxFilePath,
+  validateBody('boxFile'),
+  edit
 );
 
 router.get(

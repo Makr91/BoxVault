@@ -20,7 +20,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}:
  *   get:
  *     summary: Get a specific provider by name
- *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication, a guest of the organization reading a private box only while it is published and flagged for guests; a service account is a member of its own organization only. A version beyond the caller's reach answers 404.
+ *     description: Retrieve details of a specific provider within a box version. Access depends on box visibility and user authentication, a guest of the organization reading a private box only while it is published and flagged for guests; a service account is a member of its own organization only. A version or provider beyond the caller's reach answers 404.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -129,7 +129,8 @@ export const findOne = async (req, res) => {
     if (!version) {
       return versionNotFound();
     }
-    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
+    const reach = reachOfMembership(caller, box, membership);
+    const reachable = withinReach(reach, version);
 
     const providerNotFound = () =>
       notFound(
@@ -137,19 +138,22 @@ export const findOne = async (req, res) => {
         res,
         req.__('providers.providerNotFoundInVersion', { providerName, versionNumber, boxId })
       );
+    const answer = async () => {
+      const provider = await Provider.findOne({
+        where: { name: providerName, versionId: version.id },
+      });
+      if (!provider || !withinReach(reach, version, provider)) {
+        return providerNotFound();
+      }
+      return res.send(provider);
+    };
 
     // If the box is public, allow access
     if (box.isPublic) {
       if (!reachable) {
         return versionNotFound();
       }
-      const provider = await Provider.findOne({
-        where: { name: providerName, versionId: version.id },
-      });
-      if (!provider) {
-        return providerNotFound();
-      }
-      return res.send(provider);
+      return answer();
     }
 
     // If the box is private, check if the user is member of the organization
@@ -165,13 +169,7 @@ export const findOne = async (req, res) => {
     }
 
     // User is member, allow access
-    const provider = await Provider.findOne({
-      where: { name: providerName, versionId: version.id },
-    });
-    if (!provider) {
-      return providerNotFound();
-    }
-    return res.send(provider);
+    return answer();
   } catch (err) {
     log.error.error('Error retrieving provider:', err);
     return problem(res, req, {

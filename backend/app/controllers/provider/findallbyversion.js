@@ -20,7 +20,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   get:
  *     summary: Get all providers for a version
- *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only. A version beyond the caller's reach answers 404.
+ *     description: A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only. A version beyond the caller's reach answers 404; only the providers within the caller's reach are answered.
  *     tags: [Providers]
  *     parameters:
  *       - in: path
@@ -121,15 +121,19 @@ export const findAllByVersion = async (req, res) => {
     if (!version) {
       return versionNotFound();
     }
-    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
+    const reach = reachOfMembership(caller, box, membership);
+    const reachable = withinReach(reach, version);
+    const list = async () => {
+      const providers = await Provider.findAll({ where: { versionId: version.id } });
+      return res.send(providers.filter(provider => withinReach(reach, version, provider)));
+    };
 
     // If the box is public, allow access
     if (box.isPublic) {
       if (!reachable) {
         return versionNotFound();
       }
-      const providers = await Provider.findAll({ where: { versionId: version.id } });
-      return res.send(providers);
+      return list();
     }
 
     // If the box is private, check if the user is member of the organization
@@ -145,8 +149,7 @@ export const findAllByVersion = async (req, res) => {
     }
 
     // User is member, allow access
-    const providers = await Provider.findAll({ where: { versionId: version.id } });
-    return res.send(providers);
+    return list();
   } catch (err) {
     log.error.error('Error retrieving providers:', err);
     return problem(res, req, {

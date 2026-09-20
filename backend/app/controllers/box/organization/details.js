@@ -14,7 +14,7 @@ import {
   resolveOrgMembership,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
-import { boxFilesWithCounts, sumBoxDownloads, versionsWithinReach } from '../helpers.js';
+import { boxFilesWithCounts, sumBoxDownloads, treeWithinReach } from '../helpers.js';
 import { snakeKeys } from '../../../utils/wire.js';
 import db from '../../../models/index.js';
 const {
@@ -33,7 +33,7 @@ const { verify } = jwt;
  * /api/organization/{organization}/box:
  *   get:
  *     summary: Get organization box details
- *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a guest of the organization its published private boxes flagged for guests, a service account being a member of its own organization only. Every download_count is null to a guest of the organization. Only the versions within the caller's reach are answered on each box.
+ *     description: Retrieve detailed information about all boxes in an organization, including versions, providers, and architectures. Access is controlled based on authentication and box visibility; a member of the organization sees its private boxes, a guest of the organization its published private boxes flagged for guests, a service account being a member of its own organization only. Every download_count is null to a guest of the organization. Only the versions, providers, architectures and files within the caller's reach are answered on each box.
  *     tags: [Boxes]
  *     parameters:
  *       - in: path
@@ -203,7 +203,7 @@ export const getOrganizationBoxDetails = async (req, res) => {
 
     // Map boxes to response format
     const formattedBoxes = boxes.map(box => {
-      const versions = versionsWithinReach(box, reachOfMembership(caller, box, membership));
+      const versions = treeWithinReach(box, reachOfMembership(caller, box, membership));
       return {
         ...snakeKeys({
           id: box.id,
@@ -237,6 +237,9 @@ export const getOrganizationBoxDetails = async (req, res) => {
               id: provider.id,
               name: provider.name,
               description: provider.description,
+              isPublic: provider.isPublic,
+              guestAccess: provider.guestAccess,
+              published: provider.published,
               versionId: provider.versionId,
               createdAt: provider.createdAt,
               updatedAt: provider.updatedAt,
@@ -244,6 +247,9 @@ export const getOrganizationBoxDetails = async (req, res) => {
                 id: architecture.id,
                 name: architecture.name,
                 defaultBox: architecture.defaultBox,
+                isPublic: architecture.isPublic,
+                guestAccess: architecture.guestAccess,
+                published: architecture.published,
                 providerId: architecture.providerId,
                 createdAt: architecture.createdAt,
                 updatedAt: architecture.updatedAt,

@@ -4,7 +4,8 @@ import { createHash } from 'crypto';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { loadConfig } from '../../../utils/config-loader.js';
-import { problem } from '../../../utils/problem.js';
+import { visibilityOfQuery, widerThanParent } from '../../../utils/orgMembership.js';
+import { problem, refuse } from '../../../utils/problem.js';
 import { getSecureIsoPath, cleanupTempFile, removeUnreferencedIsoFiles } from '../helpers.js';
 
 const { isoFiles: IsoFile } = db;
@@ -17,7 +18,7 @@ const FILENAME_MAX_LENGTH = 255;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/upload:
  *   post:
  *     summary: Upload an ISO file
- *     description: Stream the raw ISO body for one architecture of a version. The sha256 checksum is computed while streaming and the file is stored once per checksum within the organization (deduplication never crosses organizations). Uploading again for the same architecture replaces its file record.
+ *     description: Stream the raw ISO body for one architecture of a version. The sha256 checksum is computed while streaming and the file is stored once per checksum within the organization (deduplication never crosses organizations). Uploading again for the same architecture replaces its file record, which keeps its visibility words; a record the upload creates is born private, closed to guests and unpublished unless the query members is_public, guest_access and published say otherwise, never wider than its version, a wider word answered 422 before any byte is read.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -46,6 +47,18 @@ const FILENAME_MAX_LENGTH = 255;
  *         schema:
  *           type: string
  *         description: Architecture (e.g. amd64, arm64)
+ *       - in: query
+ *         name: is_public
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: guest_access
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: published
+ *         schema:
+ *           type: boolean
  *       - in: header
  *         name: x-file-name
  *         schema:
@@ -98,6 +111,17 @@ const upload = async (req, res) => {
         type: 'bad-request',
         title: req.__('files.invalidFileName'),
       });
+    }
+
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOfQuery(req.query),
+    };
+    const wider = widerThanParent(visibility, version);
+    if (wider) {
+      return refuse(res, req, [wider]);
     }
 
     const organizationDir = getSecureIsoPath(String(organization.id));
@@ -171,7 +195,7 @@ const upload = async (req, res) => {
           await removeUnreferencedIsoFiles([replaced]);
         }
       } else {
-        fileRecord = await IsoFile.create(fileData);
+        fileRecord = await IsoFile.create({ ...fileData, ...visibility });
       }
 
       return res.status(201).send(fileRecord);

@@ -3,8 +3,13 @@ import { join } from 'path';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import { log } from '../../utils/Logger.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
-import { problem } from '../../utils/problem.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOfQuery,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
+import { problem, refuse } from '../../utils/problem.js';
 import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
 
 /**
@@ -12,7 +17,7 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/upload:
  *   post:
  *     summary: Upload a Vagrant box file
- *     description: Upload a new Vagrant box file for a specific architecture and provider. The box owner, or an admin or owner of the organization, may upload; a service account acts inside its own organization at its effective role.
+ *     description: Upload a new Vagrant box file for a specific architecture and provider. The box owner, or an admin or owner of the organization, may upload; a service account acts inside its own organization at its effective role. A file row the upload creates is born private, closed to guests and unpublished unless the query members is_public, guest_access and published say otherwise, never wider than its architecture, a wider word answered 422 before any byte is read; a replaced row keeps its words.
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -23,6 +28,18 @@ import { uploadFile as uploadFileMiddleware } from '../../middleware/upload.js';
  *         schema:
  *           type: string
  *         description: Organization name
+ *       - in: query
+ *         name: is_public
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: guest_access
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: published
+ *         schema:
+ *           type: boolean
  *       - in: path
  *         name: boxId
  *         required: true
@@ -192,6 +209,18 @@ const upload = (req, res) => {
         title: req.__('files.upload.permissionDenied'),
       });
     }
+
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOfQuery(req.query),
+    };
+    const wider = widerThanParent(visibility, architectureData);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+    req.fileVisibility = visibility;
 
     log.app.info('Architecture found, calling upload middleware...', {
       architectureId: architectureData.id,

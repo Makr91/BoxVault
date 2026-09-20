@@ -78,7 +78,8 @@
     "blocklist": "{{field}} is on the blocklist.",
     "writable": "{{field}} is not writable by the service user.",
     "reachable": "{{field}} did not answer.",
-    "readOnly": "{{field}} is managed by the identity provider."
+    "readOnly": "{{field}} is managed by the identity provider.",
+    "withinParent": "Keep {{field}} within {{parent}}, the setting one level up."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organization not found with name: {{organization}}.",

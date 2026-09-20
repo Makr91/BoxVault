@@ -128,8 +128,8 @@ describe('Download patch API', () => {
     expect(wider.body.errors).toEqual([
       expect.objectContaining({
         pointer: '/guest_access',
-        rule: 'enum',
-        params: { enum: 'false' },
+        rule: 'withinParent',
+        params: { parent: 'private' },
       }),
     ]);
 

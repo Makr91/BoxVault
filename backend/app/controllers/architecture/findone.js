@@ -30,7 +30,7 @@ const unauthorized = (req, res) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}:
  *   get:
  *     summary: Get a specific architecture
- *     description: Retrieve details of a specific architecture. A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version beyond the caller's reach answers 404.
+ *     description: Retrieve details of a specific architecture. A private box needs a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version, provider or architecture beyond the caller's reach answers 404.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -160,29 +160,33 @@ export const findOne = async (req, res) => {
     if (!version) {
       return versionNotFound();
     }
-    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
+    const reach = reachOfMembership(caller, box, membership);
+    const reachable = withinReach(reach, version);
 
     const provider = version.providers.find(p => p.name === providerName);
-    if (reachable && !provider) {
+    if (reachable && (!provider || !withinReach(reach, version, provider))) {
       return notFound(
         req,
         res,
         req.__('providers.providerNotFoundInVersion', { providerName, versionNumber, boxId })
       );
     }
+    const answer = async () => {
+      const architecture = await Architecture.findOne({
+        where: { name: architectureName, providerId: provider.id },
+      });
+      if (!architecture || !withinReach(reach, version, provider, architecture)) {
+        return notFound(req, res, req.__('architectures.notFound'));
+      }
+      return res.send(architecture);
+    };
 
     // If the box is public, allow access
     if (box.isPublic) {
       if (!reachable) {
         return versionNotFound();
       }
-      const architecture = await Architecture.findOne({
-        where: { name: architectureName, providerId: provider.id },
-      });
-      if (!architecture) {
-        return notFound(req, res, req.__('architectures.notFound'));
-      }
-      return res.send(architecture);
+      return answer();
     }
 
     // If the box is private, check if the user is member of the organization
@@ -197,13 +201,7 @@ export const findOne = async (req, res) => {
     }
 
     // If the user belongs to the organization, allow access
-    const architecture = await Architecture.findOne({
-      where: { name: architectureName, providerId: provider.id },
-    });
-    if (!architecture) {
-      return notFound(req, res, req.__('architectures.notFound'));
-    }
-    return res.send(architecture);
+    return answer();
   } catch (err) {
     log.error.error('Error retrieving architecture:', err);
     return problem(res, req, {

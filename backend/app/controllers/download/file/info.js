@@ -1,13 +1,13 @@
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { canSeeDownload, canSeePatch, isMemberOf, resolveDownloadViewer } from '../visibility.js';
+import { canSeeDownload, canSeeFile, isMemberOf, resolveDownloadViewer } from '../visibility.js';
 
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/info:
  *   get:
  *     summary: Get download file information
- *     description: Retrieve the file row of one file of a patch, by key or file name. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
+ *     description: Retrieve the file row of one file of a patch, by key or file name. The product must be visible to the caller; a release, patch or file beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -78,6 +78,12 @@ import { canSeeDownload, canSeePatch, isMemberOf, resolveDownloadViewer } from '
  *                   type: integer
  *                   nullable: true
  *                   description: The count for a member of the organization, null for anyone else
+ *                 is_public:
+ *                   type: boolean
+ *                 guest_access:
+ *                   type: boolean
+ *                 published:
+ *                   type: boolean
  *                 created_at:
  *                   type: string
  *                   format: date-time
@@ -103,7 +109,7 @@ const info = async (req, res) => {
         title: req.__('files.info.unauthorized'),
       });
     }
-    if (!canSeePatch(viewer, download, release, patch)) {
+    if (!canSeeFile(viewer, download, release, patch, file)) {
       return problem(res, req, {
         status: 404,
         type: 'not-found',
@@ -123,6 +129,9 @@ const info = async (req, res) => {
       checksum: file.checksum,
       checksum_type: file.checksumType,
       download_count: isMemberOf(viewer, download.organizationId) ? file.downloadCount : null,
+      is_public: file.isPublic,
+      guest_access: file.guestAccess,
+      published: file.published,
       created_at: file.createdAt,
       updated_at: file.updatedAt,
     });

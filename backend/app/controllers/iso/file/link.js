@@ -2,14 +2,16 @@ import { loadConfig } from '../../../utils/config-loader.js';
 import { generateDownloadToken } from '../../../utils/auth.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { canSeeIso, canSeeIsoVersion, resolveIsoViewer } from '../visibility.js';
+import db from '../../../models/index.js';
+import { canSeeIso, canSeeIsoFile, canSeeIsoVersion, resolveIsoViewer } from '../visibility.js';
+const { isoFiles: IsoFile } = db;
 
 /**
  * @swagger
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/get-download-link:
  *   post:
  *     summary: Generate a secure ISO download link
- *     description: Generate a time-limited download link for one architecture of an ISO version. The token is scoped to the organization, ISO name, version and architecture. A version beyond the caller's reach answers 404.
+ *     description: Generate a time-limited download link for one architecture of an ISO version. The token is scoped to the organization, ISO name, version and architecture. A version or file beyond the caller's reach answers 404.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -73,7 +75,10 @@ const getDownloadLink = async (req, res) => {
         title: req.__('files.unauthorized'),
       });
     }
-    if (!canSeeIsoVersion(viewer, iso, version)) {
+    const fileRecord = canSeeIsoVersion(viewer, iso, version)
+      ? await IsoFile.findOne({ where: { isoVersionId: version.id, architecture } })
+      : null;
+    if (!fileRecord || !canSeeIsoFile(viewer, iso, version, fileRecord)) {
       return problem(res, req, {
         status: 404,
         type: 'not-found',

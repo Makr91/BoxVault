@@ -2,14 +2,14 @@ import { loadConfig } from '../../../utils/config-loader.js';
 import { generateDownloadToken } from '../../../utils/auth.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
-import { canSeeDownload, canSeePatch, resolveDownloadViewer } from '../visibility.js';
+import { canSeeDownload, canSeeFile, resolveDownloadViewer } from '../visibility.js';
 
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/get-download-link:
  *   post:
  *     summary: Generate a secure download link for a file
- *     description: Generate a time-limited download link for one file of a patch. The token is scoped to the organization, product, release, patch and file key. The product must be visible to the caller; a release or patch beyond the caller's reach answers 404.
+ *     description: Generate a time-limited download link for one file of a patch. The token is scoped to the organization, product, release, patch and file key. The product must be visible to the caller; a release, patch or file beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -79,7 +79,7 @@ const getDownloadLink = async (req, res) => {
         title: req.__('files.unauthorized'),
       });
     }
-    if (!canSeePatch(viewer, download, release, patchData)) {
+    if (!canSeeFile(viewer, download, release, patchData, file)) {
       return problem(res, req, {
         status: 404,
         type: 'not-found',

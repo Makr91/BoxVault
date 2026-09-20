@@ -1,6 +1,11 @@
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  canWriteBox,
+  resolveOrgMembership,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 const { architectures: Architecture } = db;
 
@@ -9,7 +14,7 @@ const { architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/bulk:
  *   post:
  *     summary: One action across a selection of architectures of a provider
- *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing architecture is counted as skipped and named in errors with not_found, a thrown row with internal.
+ *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing architecture is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the architecture wider than its provider with forbidden.
  *     tags: [Architectures]
  *     security:
  *       - JwtAuth: []
@@ -48,7 +53,7 @@ const { architectures: Architecture } = db;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete]
+ *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -98,10 +103,24 @@ const bulk = async (req, res) => {
   let processed = 0;
 
   const row = async architectureName => {
-    const deleted = await Architecture.destroy({
+    if (action === 'delete') {
+      const deleted = await Architecture.destroy({
+        where: { name: architectureName, providerId: provider.id },
+      });
+      return deleted ? null : 'not_found';
+    }
+    const architecture = await Architecture.findOne({
       where: { name: architectureName, providerId: provider.id },
     });
-    return deleted ? null : 'not_found';
+    if (!architecture) {
+      return 'not_found';
+    }
+    const change = VISIBILITY_CHANGES[action];
+    if (widerThanParent({ ...architecture.get({ plain: true }), ...change }, provider)) {
+      return 'forbidden';
+    }
+    await architecture.update(change);
+    return null;
   };
 
   const run = async index => {

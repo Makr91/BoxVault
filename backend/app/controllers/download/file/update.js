@@ -1,8 +1,13 @@
 import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import {
+  canWriteDownload,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { absolutePath, relinkTo, storagePathFor } from '../helpers.js';
 const { downloadFiles: DownloadFile } = db;
 
@@ -11,7 +16,7 @@ const { downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}:
  *   put:
  *     summary: Update a file row of a patch
- *     description: Update the key, file name, kind, platform, architecture, language, variant or declared checksum of a file. A new file name renames the stored file. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update the key, file name, kind, platform, architecture, language, variant, declared checksum or the visibility words is_public, guest_access and published of a file, a word wider than the patch answered 422. A new file name renames the stored file. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -71,6 +76,12 @@ const { downloadFiles: DownloadFile } = db;
  *                 type: string
  *               checksum:
  *                 type: string
+ *               is_public:
+ *                 type: boolean
+ *               guest_access:
+ *                 type: boolean
+ *               published:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: File updated successfully
@@ -155,6 +166,12 @@ const update = async (req, res) => {
     }
     if (typeof checksum !== 'undefined') {
       updatePayload.checksum = checksum ? checksum.toLowerCase() : null;
+    }
+    Object.assign(updatePayload, visibilityOf(req.body));
+
+    const wider = widerThanParent({ ...file.get({ plain: true }), ...updatePayload }, patch);
+    if (wider) {
+      return refuse(res, req, [wider]);
     }
 
     if (fileName && fileName !== file.fileName) {

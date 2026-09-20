@@ -27,6 +27,7 @@ describe('Provider API', () => {
     name: boxName,
     description: 'Test box for provider API testing',
     is_public: true,
+    published: true,
   };
   const testVersion = {
     version_number: '1.0.0',
@@ -215,6 +216,76 @@ describe('Provider API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('name', newProvider.name);
       expect(res.body).toHaveProperty('description', newProvider.description);
+      expect(res.body.is_public).toBe(false);
+      expect(res.body.guest_access).toBe(false);
+      expect(res.body.published).toBe(false);
+    });
+
+    it('should be born closed and never wider than its version', async () => {
+      const providerBase = `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider`;
+      const versionPublished = await request(app)
+        .put(
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}`
+        )
+        .set('x-access-token', authToken)
+        .send({ published: true });
+      expect(versionPublished.statusCode).toBe(200);
+
+      const closed = await request(app)
+        .post(providerBase)
+        .set('x-access-token', authToken)
+        .send({ name: 'closed-provider' });
+      expect(closed.statusCode).toBe(201);
+      const hidden = await request(app)
+        .get(`${providerBase}/closed-provider`)
+        .set('x-access-token', regularToken);
+      expect(hidden.statusCode).toBe(404);
+      const listed = await request(app).get(providerBase).set('x-access-token', regularToken);
+      expect(listed.statusCode).toBe(200);
+      expect(listed.body.some(entry => entry.name === 'closed-provider')).toBe(false);
+      const asOwner = await request(app)
+        .get(`${providerBase}/closed-provider`)
+        .set('x-access-token', authToken);
+      expect(asOwner.statusCode).toBe(200);
+
+      const wider = await request(app)
+        .put(`${providerBase}/closed-provider`)
+        .set('x-access-token', authToken)
+        .send({ is_public: true, published: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'private' },
+        }),
+      ]);
+      const bornWide = await request(app)
+        .post(providerBase)
+        .set('x-access-token', authToken)
+        .send({ name: 'wide-provider', guest_access: true });
+      expect(bornWide.statusCode).toBe(422);
+
+      const published = await request(app)
+        .post(`${providerBase}/bulk`)
+        .set('x-access-token', authToken)
+        .send({ action: 'publish', names: ['closed-provider'] });
+      expect(published.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const shown = await request(app)
+        .get(`${providerBase}/closed-provider`)
+        .set('x-access-token', regularToken);
+      expect(shown.statusCode).toBe(200);
+      const guests = await request(app)
+        .post(`${providerBase}/bulk`)
+        .set('x-access-token', authToken)
+        .send({ action: 'allow_guests', names: ['closed-provider'] });
+      expect(guests.body).toEqual({
+        processed: 0,
+        skipped: 1,
+        errors: [{ name: 'closed-provider', code: 'forbidden' }],
+      });
+
+      await request(app).delete(`${providerBase}/closed-provider`).set('x-access-token', authToken);
     });
 
     it('should fail creating duplicate provider', async () => {

@@ -577,6 +577,23 @@ const options = {
               description: 'Architecture name',
               example: 'amd64',
             },
+            is_public: {
+              type: 'boolean',
+              description:
+                'Whether anyone may read the architecture; never wider than the provider',
+              example: false,
+            },
+            guest_access: {
+              type: 'boolean',
+              description:
+                'Whether guests of the organization may read the architecture while it is published; never wider than the provider',
+              example: false,
+            },
+            published: {
+              type: 'boolean',
+              description: "An unpublished architecture is readable by the box's writers alone",
+              example: true,
+            },
             created_at: {
               type: 'string',
               format: 'date-time',
@@ -643,6 +660,22 @@ const options = {
               type: 'string',
               description: 'File checksum',
               example: 'sha256:abc123...',
+            },
+            is_public: {
+              type: 'boolean',
+              description: 'Whether anyone may read the file; never wider than the architecture',
+              example: false,
+            },
+            guest_access: {
+              type: 'boolean',
+              description:
+                'Whether guests of the organization may read the file while it is published; never wider than the architecture',
+              example: false,
+            },
+            published: {
+              type: 'boolean',
+              description: "An unpublished file is readable by the box's writers alone",
+              example: true,
             },
             uploadedAt: {
               type: 'string',

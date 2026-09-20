@@ -26,7 +26,7 @@ const forbidden = (req, res, key) =>
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture:
  *   get:
  *     summary: Get all architectures for a provider
- *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication, a guest of the organization reading a private box only while it is published and flagged for guests; a service account is a member of its own organization only. A version beyond the caller's reach answers 404.
+ *     description: Retrieve all architectures available for a specific provider within a box version. Access depends on box visibility and user authentication, a guest of the organization reading a private box only while it is published and flagged for guests; a service account is a member of its own organization only. A version or provider beyond the caller's reach answers 404; only the architectures within the caller's reach are answered.
  *     tags: [Architectures]
  *     parameters:
  *       - in: path
@@ -139,26 +139,32 @@ export const findAllByProvider = async (req, res) => {
     if (!version) {
       return versionNotFound();
     }
-    const reachable = withinReach(reachOfMembership(caller, box, membership), version);
+    const reach = reachOfMembership(caller, box, membership);
+    const reachable = withinReach(reach, version);
 
     const provider = version.providers.find(p => p.name === providerName);
-    if (reachable && !provider) {
+    if (reachable && (!provider || !withinReach(reach, version, provider))) {
       return notFound(
         req,
         res,
         req.__('providers.providerNotFoundInVersion', { providerName, versionNumber, boxId })
       );
     }
+    const list = async () => {
+      const architectures = await Architecture.findAll({
+        where: { providerId: provider.id },
+      });
+      return res.send(
+        architectures.filter(architecture => withinReach(reach, version, provider, architecture))
+      );
+    };
 
     // Public boxes are readable by anyone
     if (box.isPublic) {
       if (!reachable) {
         return versionNotFound();
       }
-      const architectures = await Architecture.findAll({
-        where: { providerId: provider.id },
-      });
-      return res.send(architectures);
+      return list();
     }
 
     // Private boxes require an authenticated, resolved user who is an org member
@@ -173,10 +179,7 @@ export const findAllByProvider = async (req, res) => {
       return versionNotFound();
     }
 
-    const architectures = await Architecture.findAll({
-      where: { providerId: provider.id },
-    });
-    return res.send(architectures);
+    return list();
   } catch (err) {
     log.error.error('Error retrieving architectures:', err);
     return problem(res, req, {

@@ -1,11 +1,11 @@
 import db from '../../models/index.js';
 import { reachOf, withinReach } from '../../utils/orgMembership.js';
 import {
-  MIN_CHECKSUM_LENGTH,
-  likeClauses,
+  tokenClauses,
+  matchedChain,
   metadataLike,
-  matchedField,
-  matchedMetadataKey,
+  metadataEntries,
+  isChecksumTerm,
   checksumMatches,
 } from './scope.js';
 
@@ -38,6 +38,7 @@ const PROVIDER_FIELDS = ['name', 'description'];
 const PATCH_FIELDS = ['name', 'description'];
 const ARCHITECTURE_FIELDS = ['name'];
 const FILE_FIELDS = ['fileName'];
+const USER_FIELDS = ['username', 'email'];
 const ITEM_REACH_FIELDS = ['organizationId', 'userId', 'isPublic', 'guestAccess', 'published'];
 const ROW_REACH_FIELDS = ['isPublic', 'guestAccess', 'published'];
 
@@ -50,6 +51,14 @@ const ROW_REACH_FIELDS = ['isPublic', 'guestAccess', 'published'];
  * @returns {boolean}
  */
 const reaches = (viewer, item, ...rows) => withinReach(reachOf(viewer, item), ...rows);
+
+/**
+ * The chain entries of a row's own fields, in match priority order.
+ * @param {Object} record - The row
+ * @param {string[]} fields - Field names
+ * @returns {Array<[string, *]>} The entries
+ */
+const own = (record, fields) => fields.map(field => [field, record[field]]);
 
 /**
  * One result row; the subtitle is the plain-text chain above the hit.
@@ -100,7 +109,7 @@ const providerInclude = boxWhere => ({
   model: Provider,
   as: 'provider',
   required: true,
-  attributes: ['name'],
+  attributes: ['name', ...ROW_REACH_FIELDS],
   include: [versionInclude(boxWhere)],
 });
 
@@ -108,7 +117,7 @@ const architectureInclude = boxWhere => ({
   model: Architecture,
   as: 'architecture',
   required: true,
-  attributes: ['name'],
+  attributes: ['name', ...ROW_REACH_FIELDS],
   include: [providerInclude(boxWhere)],
 });
 
@@ -154,31 +163,43 @@ const patchInclude = downloadWhere => ({
   include: [releaseInclude(downloadWhere)],
 });
 
-const fileClauses = ({ contains, prefix, term }) => {
-  const clauses = likeClauses(FILE_FIELDS, contains);
-  if (term.length >= MIN_CHECKSUM_LENGTH) {
-    clauses.push({ checksum: { [Op.like]: prefix } });
-  }
-  return clauses;
+/**
+ * The where clause of a file finder: the token search over the chain, or a
+ * checksum prefix when the term is one word long enough to be one.
+ * @param {string[]} columns - The chain columns
+ * @param {{tokens: Object[], term: string, prefix: string}} context - The search context
+ * @returns {Object} The where clause
+ */
+const fileWhere = (columns, { tokens, term, prefix }) => {
+  const clauses = tokenClauses(columns, tokens);
+  return isChecksumTerm(term)
+    ? { [Op.or]: [clauses, { checksum: { [Op.like]: prefix } }] }
+    : clauses;
 };
 
-const matchedFileField = (file, term) => {
+/**
+ * The field a file hit matched on: the checksum when the term is its prefix,
+ * else the first of the chain entries.
+ * @param {Object} file - The file row
+ * @param {Array<[string, *]>} entries - The chain entries after the file name
+ * @param {{tokens: Object[], term: string}} context - The search context
+ * @returns {string|null} The matched field name
+ */
+const matchedFile = (file, entries, { tokens, term }) => {
   if (checksumMatches(file.checksum, term)) {
     return 'checksum';
   }
-  return matchedField(file, FILE_FIELDS, term);
+  return matchedChain([['fileName', file.fileName], ...entries], tokens);
 };
 
-const findOrganizations = async ({ term, contains, organizationWhere }) => {
+const findOrganizations = async ({ tokens, organizationWhere }) => {
   const organizations = await Organization.findAll({
-    where: {
-      [Op.and]: [organizationWhere, { [Op.or]: likeClauses(ORGANIZATION_FIELDS, contains) }],
-    },
+    where: { [Op.and]: [organizationWhere, tokenClauses(ORGANIZATION_FIELDS, tokens)] },
     attributes: ['id', ...ORGANIZATION_FIELDS],
   });
   return organizations
     .map(organization => {
-      const matched = matchedField(organization, ORGANIZATION_FIELDS, term);
+      const matched = matchedChain(own(organization, ORGANIZATION_FIELDS), tokens);
       if (!matched) {
         return null;
       }
@@ -196,12 +217,12 @@ const findOrganizations = async ({ term, contains, organizationWhere }) => {
     .filter(Boolean);
 };
 
-const findBoxes = async ({ term, contains, boxWhere }) => {
+const findBoxes = async ({ tokens, boxWhere }) => {
   const boxes = await Box.findAll({
     where: {
       [Op.and]: [
         boxWhere,
-        { [Op.or]: [...likeClauses(BOX_FIELDS, contains), metadataLike('box', contains)] },
+        tokenClauses(BOX_FIELDS, tokens, pattern => [metadataLike('box', pattern)]),
       ],
     },
     attributes: ['id', ...BOX_FIELDS, 'metadata'],
@@ -209,7 +230,10 @@ const findBoxes = async ({ term, contains, boxWhere }) => {
   });
   return boxes
     .map(box => {
-      const matched = matchedField(box, BOX_FIELDS, term) || matchedMetadataKey(box.metadata, term);
+      const matched = matchedChain(
+        [...own(box, BOX_FIELDS), ...metadataEntries(box.metadata)],
+        tokens
+      );
       if (!matched) {
         return null;
       }
@@ -222,12 +246,12 @@ const findBoxes = async ({ term, contains, boxWhere }) => {
     .filter(Boolean);
 };
 
-const findIsos = async ({ term, contains, isoWhere }) => {
+const findIsos = async ({ tokens, isoWhere }) => {
   const isos = await Iso.findAll({
     where: {
       [Op.and]: [
         isoWhere,
-        { [Op.or]: [...likeClauses(ISO_FIELDS, contains), metadataLike('iso', contains)] },
+        tokenClauses(ISO_FIELDS, tokens, pattern => [metadataLike('iso', pattern)]),
       ],
     },
     attributes: ['id', ...ISO_FIELDS, 'metadata'],
@@ -235,7 +259,10 @@ const findIsos = async ({ term, contains, isoWhere }) => {
   });
   return isos
     .map(iso => {
-      const matched = matchedField(iso, ISO_FIELDS, term) || matchedMetadataKey(iso.metadata, term);
+      const matched = matchedChain(
+        [...own(iso, ISO_FIELDS), ...metadataEntries(iso.metadata)],
+        tokens
+      );
       if (!matched) {
         return null;
       }
@@ -248,17 +275,15 @@ const findIsos = async ({ term, contains, isoWhere }) => {
     .filter(Boolean);
 };
 
-const findDownloads = async ({ term, contains, downloadWhere }) => {
+const findDownloads = async ({ tokens, downloadWhere }) => {
   const downloads = await Download.findAll({
-    where: {
-      [Op.and]: [downloadWhere, { [Op.or]: likeClauses(DOWNLOAD_FIELDS, contains) }],
-    },
+    where: { [Op.and]: [downloadWhere, tokenClauses(DOWNLOAD_FIELDS, tokens)] },
     attributes: ['id', ...DOWNLOAD_FIELDS],
     include: [organizationInclude()],
   });
   return downloads
     .map(download => {
-      const matched = matchedField(download, DOWNLOAD_FIELDS, term);
+      const matched = matchedChain(own(download, DOWNLOAD_FIELDS), tokens);
       if (!matched) {
         return null;
       }
@@ -278,15 +303,18 @@ const findDownloads = async ({ term, contains, downloadWhere }) => {
     .filter(Boolean);
 };
 
-const findBoxVersions = async ({ term, contains, boxWhere, viewer }) => {
+const findBoxVersions = async ({ tokens, boxWhere, viewer }) => {
   const versions = await Version.findAll({
-    where: { [Op.or]: likeClauses(VERSION_FIELDS, contains) },
+    where: tokenClauses([...VERSION_FIELDS, '$box.name$'], tokens),
     attributes: ['id', ...VERSION_FIELDS, ...ROW_REACH_FIELDS],
     include: [boxInclude(boxWhere)],
   });
   return versions
     .map(version => {
-      const matched = matchedField(version, VERSION_FIELDS, term);
+      const matched = matchedChain(
+        [...own(version, VERSION_FIELDS), ['box', version.box.name]],
+        tokens
+      );
       if (!matched || !reaches(viewer, version.box, version)) {
         return null;
       }
@@ -308,15 +336,18 @@ const findBoxVersions = async ({ term, contains, boxWhere, viewer }) => {
     .filter(Boolean);
 };
 
-const findIsoVersions = async ({ term, contains, isoWhere, viewer }) => {
+const findIsoVersions = async ({ tokens, isoWhere, viewer }) => {
   const versions = await IsoVersion.findAll({
-    where: { [Op.or]: likeClauses(VERSION_FIELDS, contains) },
+    where: tokenClauses([...VERSION_FIELDS, '$iso.name$'], tokens),
     attributes: ['id', ...VERSION_FIELDS, ...ROW_REACH_FIELDS],
     include: [isoInclude(isoWhere)],
   });
   return versions
     .map(version => {
-      const matched = matchedField(version, VERSION_FIELDS, term);
+      const matched = matchedChain(
+        [...own(version, VERSION_FIELDS), ['iso', version.iso.name]],
+        tokens
+      );
       if (!matched || !reaches(viewer, version.iso, version)) {
         return null;
       }
@@ -338,15 +369,18 @@ const findIsoVersions = async ({ term, contains, isoWhere, viewer }) => {
     .filter(Boolean);
 };
 
-const findReleases = async ({ term, contains, downloadWhere, viewer }) => {
+const findReleases = async ({ tokens, downloadWhere, viewer }) => {
   const releases = await DownloadRelease.findAll({
-    where: { [Op.or]: likeClauses(VERSION_FIELDS, contains) },
+    where: tokenClauses([...VERSION_FIELDS, '$download.name$'], tokens),
     attributes: ['id', ...VERSION_FIELDS, ...ROW_REACH_FIELDS],
     include: [downloadInclude(downloadWhere)],
   });
   return releases
     .map(release => {
-      const matched = matchedField(release, VERSION_FIELDS, term);
+      const matched = matchedChain(
+        [...own(release, VERSION_FIELDS), ['download', release.download.name]],
+        tokens
+      );
       if (!matched || !reaches(viewer, release.download, release)) {
         return null;
       }
@@ -368,19 +402,29 @@ const findReleases = async ({ term, contains, downloadWhere, viewer }) => {
     .filter(Boolean);
 };
 
-const findProviders = async ({ term, contains, boxWhere, viewer }) => {
+const findProviders = async ({ tokens, boxWhere, viewer }) => {
   const providers = await Provider.findAll({
-    where: { [Op.or]: likeClauses(PROVIDER_FIELDS, contains) },
-    attributes: ['id', ...PROVIDER_FIELDS],
+    where: tokenClauses(
+      [...PROVIDER_FIELDS, '$version.versionNumber$', '$version.box.name$'],
+      tokens
+    ),
+    attributes: ['id', ...PROVIDER_FIELDS, ...ROW_REACH_FIELDS],
     include: [versionInclude(boxWhere)],
   });
   return providers
     .map(provider => {
-      const matched = matchedField(provider, PROVIDER_FIELDS, term);
-      if (!matched || !reaches(viewer, provider.version.box, provider.version)) {
+      const { version } = provider;
+      const matched = matchedChain(
+        [
+          ...own(provider, PROVIDER_FIELDS),
+          ['version', version.versionNumber],
+          ['box', version.box.name],
+        ],
+        tokens
+      );
+      if (!matched || !reaches(viewer, version.box, version, provider)) {
         return null;
       }
-      const { version } = provider;
       const org = version.box.organization.name;
       const { name } = version.box;
       return row(
@@ -400,19 +444,29 @@ const findProviders = async ({ term, contains, boxWhere, viewer }) => {
     .filter(Boolean);
 };
 
-const findPatches = async ({ term, contains, downloadWhere, viewer }) => {
+const findPatches = async ({ tokens, downloadWhere, viewer }) => {
   const patches = await DownloadPatch.findAll({
-    where: { [Op.or]: likeClauses(PATCH_FIELDS, contains) },
+    where: tokenClauses(
+      [...PATCH_FIELDS, '$release.versionNumber$', '$release.download.name$'],
+      tokens
+    ),
     attributes: ['id', ...PATCH_FIELDS, ...ROW_REACH_FIELDS],
     include: [releaseInclude(downloadWhere)],
   });
   return patches
     .map(patch => {
-      const matched = matchedField(patch, PATCH_FIELDS, term);
-      if (!matched || !reaches(viewer, patch.release.download, patch.release, patch)) {
+      const { release } = patch;
+      const matched = matchedChain(
+        [
+          ...own(patch, PATCH_FIELDS),
+          ['release', release.versionNumber],
+          ['download', release.download.name],
+        ],
+        tokens
+      );
+      if (!matched || !reaches(viewer, release.download, release, patch)) {
         return null;
       }
-      const { release } = patch;
       const org = release.download.organization.name;
       const { name } = release.download;
       return row(
@@ -432,18 +486,34 @@ const findPatches = async ({ term, contains, downloadWhere, viewer }) => {
     .filter(Boolean);
 };
 
-const findArchitectures = async ({ term, contains, boxWhere, viewer }) => {
+const findArchitectures = async ({ tokens, boxWhere, viewer }) => {
   const architectures = await Architecture.findAll({
-    where: { [Op.or]: likeClauses(ARCHITECTURE_FIELDS, contains) },
-    attributes: ['id', ...ARCHITECTURE_FIELDS],
+    where: tokenClauses(
+      [
+        ...ARCHITECTURE_FIELDS,
+        '$provider.name$',
+        '$provider.version.versionNumber$',
+        '$provider.version.box.name$',
+      ],
+      tokens
+    ),
+    attributes: ['id', ...ARCHITECTURE_FIELDS, ...ROW_REACH_FIELDS],
     include: [providerInclude(boxWhere)],
   });
   return architectures
     .map(architecture => {
-      const matched = matchedField(architecture, ARCHITECTURE_FIELDS, term);
       const { provider } = architecture;
       const { version } = provider;
-      if (!matched || !reaches(viewer, version.box, version)) {
+      const matched = matchedChain(
+        [
+          ...own(architecture, ARCHITECTURE_FIELDS),
+          ['provider', provider.name],
+          ['version', version.versionNumber],
+          ['box', version.box.name],
+        ],
+        tokens
+      );
+      if (!matched || !reaches(viewer, version.box, version, provider, architecture)) {
         return null;
       }
       const org = version.box.organization.name;
@@ -467,18 +537,36 @@ const findArchitectures = async ({ term, contains, boxWhere, viewer }) => {
 };
 
 const findDownloadFiles = async context => {
-  const { term, downloadWhere, viewer } = context;
+  const { downloadWhere, viewer } = context;
   const files = await DownloadFile.findAll({
-    where: { [Op.or]: fileClauses(context) },
-    attributes: ['id', 'key', 'fileName', 'checksum'],
+    where: fileWhere(
+      [
+        ...FILE_FIELDS,
+        'key',
+        '$patch.name$',
+        '$patch.release.versionNumber$',
+        '$patch.release.download.name$',
+      ],
+      context
+    ),
+    attributes: ['id', 'key', 'fileName', 'checksum', ...ROW_REACH_FIELDS],
     include: [patchInclude(downloadWhere)],
   });
   return files
     .map(file => {
-      const matched = matchedFileField(file, term);
       const { patch } = file;
       const { release } = patch;
-      if (!matched || !reaches(viewer, release.download, release, patch)) {
+      const matched = matchedFile(
+        file,
+        [
+          ['key', file.key],
+          ['patch', patch.name],
+          ['release', release.versionNumber],
+          ['download', release.download.name],
+        ],
+        context
+      );
+      if (!matched || !reaches(viewer, release.download, release, patch, file)) {
         return null;
       }
       const org = release.download.organization.name;
@@ -502,19 +590,37 @@ const findDownloadFiles = async context => {
 };
 
 const findBoxFiles = async context => {
-  const { term, boxWhere, viewer } = context;
+  const { boxWhere, viewer } = context;
   const files = await File.findAll({
-    where: { [Op.or]: fileClauses(context) },
-    attributes: ['id', 'fileName', 'checksum'],
+    where: fileWhere(
+      [
+        ...FILE_FIELDS,
+        '$architecture.name$',
+        '$architecture.provider.name$',
+        '$architecture.provider.version.versionNumber$',
+        '$architecture.provider.version.box.name$',
+      ],
+      context
+    ),
+    attributes: ['id', 'fileName', 'checksum', ...ROW_REACH_FIELDS],
     include: [architectureInclude(boxWhere)],
   });
   return files
     .map(file => {
-      const matched = matchedFileField(file, term);
       const { architecture } = file;
       const { provider } = architecture;
       const { version } = provider;
-      if (!matched || !reaches(viewer, version.box, version)) {
+      const matched = matchedFile(
+        file,
+        [
+          ['architecture', architecture.name],
+          ['provider', provider.name],
+          ['version', version.versionNumber],
+          ['box', version.box.name],
+        ],
+        context
+      );
+      if (!matched || !reaches(viewer, version.box, version, provider, architecture, file)) {
         return null;
       }
       const org = version.box.organization.name;
@@ -538,19 +644,30 @@ const findBoxFiles = async context => {
 };
 
 const findIsoFiles = async context => {
-  const { term, isoWhere, viewer } = context;
+  const { isoWhere, viewer } = context;
   const files = await IsoFile.findAll({
-    where: { [Op.or]: fileClauses(context) },
-    attributes: ['id', 'fileName', 'checksum', 'architecture'],
+    where: fileWhere(
+      [...FILE_FIELDS, 'architecture', '$version.versionNumber$', '$version.iso.name$'],
+      context
+    ),
+    attributes: ['id', 'fileName', 'checksum', 'architecture', ...ROW_REACH_FIELDS],
     include: [isoVersionInclude(isoWhere)],
   });
   return files
     .map(file => {
-      const matched = matchedFileField(file, term);
-      if (!matched || !reaches(viewer, file.version.iso, file.version)) {
+      const { version } = file;
+      const matched = matchedFile(
+        file,
+        [
+          ['architecture', file.architecture],
+          ['version', version.versionNumber],
+          ['iso', version.iso.name],
+        ],
+        context
+      );
+      if (!matched || !reaches(viewer, version.iso, version, file)) {
         return null;
       }
-      const { version } = file;
       const org = version.iso.organization.name;
       const { name } = version.iso;
       return row(
@@ -570,21 +687,19 @@ const findIsoFiles = async context => {
     .filter(Boolean);
 };
 
-const USER_FIELDS = ['username', 'email'];
-
-const userRow = (user, org, term) => {
-  const matched = matchedField(user, USER_FIELDS, term);
+const userRow = (user, org, tokens) => {
+  const matched = matchedChain(own(user, USER_FIELDS), tokens);
   if (!matched) {
     return null;
   }
   return row({ kind: 'user', org, name: user.username, title: user.username, matched }, [org]);
 };
 
-const findUsers = async ({ term, contains, viewer, isAdmin, managedOrgIds }) => {
+const findUsers = async ({ tokens, viewer, isAdmin, managedOrgIds }) => {
   if (!viewer) {
     return [];
   }
-  const where = { [Op.or]: likeClauses(USER_FIELDS, contains) };
+  const where = tokenClauses(USER_FIELDS, tokens);
   if (isAdmin) {
     const users = await User.findAll({
       where,
@@ -592,7 +707,7 @@ const findUsers = async ({ term, contains, viewer, isAdmin, managedOrgIds }) => 
       include: [{ model: Organization, as: 'primaryOrganization', attributes: ['name'] }],
     });
     return users
-      .map(user => userRow(user, user.primaryOrganization?.name || '', term))
+      .map(user => userRow(user, user.primaryOrganization?.name || '', tokens))
       .filter(Boolean);
   }
   if (managedOrgIds.length === 0) {
@@ -607,7 +722,7 @@ const findUsers = async ({ term, contains, viewer, isAdmin, managedOrgIds }) => 
     ],
   });
   return memberships
-    .map(membership => userRow(membership.user, membership.organization.name, term))
+    .map(membership => userRow(membership.user, membership.organization.name, tokens))
     .filter(Boolean);
 };
 

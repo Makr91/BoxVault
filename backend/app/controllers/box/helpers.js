@@ -142,35 +142,65 @@ const versionsWithinReach = (box, reach) =>
   (box.versions || []).filter(version => withinReach(reach, version));
 
 /**
+ * The tree beneath a box within a reach as plain versions, providers and
+ * architectures, the file rows left as rows, every level judged by the chain
+ * above it: version, provider, architecture, file.
+ * @param {Object} box - A box row with nested versions, providers, architectures and files
+ * @param {number} reach - From reachOf or reachOfMembership
+ * @returns {Array<Object>} The versions the reach meets, each narrowed beneath
+ */
+const treeWithinReach = (box, reach) =>
+  versionsWithinReach(box, reach).map(version => ({
+    ...version.get({ plain: true }),
+    providers: (version.providers || [])
+      .filter(provider => withinReach(reach, version, provider))
+      .map(provider => ({
+        ...provider.get({ plain: true }),
+        architectures: (provider.architectures || [])
+          .filter(architecture => withinReach(reach, version, provider, architecture))
+          .map(architecture => ({
+            ...architecture.get({ plain: true }),
+            files: (architecture.files || []).filter(file =>
+              withinReach(reach, version, provider, architecture, file)
+            ),
+          })),
+      })),
+  }));
+
+/**
  * The box's JSON with its download_count and every nested file's download_count
  * answered when counted and null otherwise; a guest of the organization is
- * never counted; only the versions within the caller's reach.
+ * never counted; only the rows within the caller's reach at every level.
  * @param {Object} box - A box row with nested versions, providers, architectures and files
  * @param {boolean} counted - Whether the caller is answered the counts
  * @param {number} reach - From reachOf or reachOfMembership
  * @returns {Object} The box JSON
  */
-const boxWithCounts = (box, counted, reach) => ({
-  ...snakeKeys({
-    ...box.get({ plain: true }),
-    versions: versionsWithinReach(box, reach).map(version => ({
-      ...version.get({ plain: true }),
-      providers: (version.providers || []).map(provider => ({
-        ...provider.get({ plain: true }),
-        architectures: (provider.architectures || []).map(architecture => ({
-          ...architecture.get({ plain: true }),
-          files: boxFilesWithCounts(architecture.files, counted),
+const boxWithCounts = (box, counted, reach) => {
+  const versions = treeWithinReach(box, reach);
+  return {
+    ...snakeKeys({
+      ...box.get({ plain: true }),
+      versions: versions.map(version => ({
+        ...version,
+        providers: version.providers.map(provider => ({
+          ...provider,
+          architectures: provider.architectures.map(architecture => ({
+            ...architecture,
+            files: boxFilesWithCounts(architecture.files, counted),
+          })),
         })),
       })),
-    })),
-  }),
-  download_count: counted ? sumBoxDownloads({ versions: versionsWithinReach(box, reach) }) : null,
-});
+    }),
+    download_count: counted ? sumBoxDownloads({ versions }) : null,
+  };
+};
 
 export {
   parseBoxContentFields,
   sumBoxDownloads,
   boxFilesWithCounts,
   versionsWithinReach,
+  treeWithinReach,
   boxWithCounts,
 };

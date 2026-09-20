@@ -22,6 +22,8 @@ const FORMS = [
   'release',
   'patch',
   'downloadFile',
+  'boxFile',
+  'isoFile',
   'bulkItem',
   'bulkVersion',
   'bulkPatch',
@@ -203,7 +205,15 @@ describe('GET /api/rules', () => {
       'allow_guests',
       'deny_guests',
     ]);
-    expect(document.forms.bulkLeaf.properties.action.enum).toEqual(['delete']);
+    expect(document.forms.bulkLeaf.properties.action.enum).toEqual([
+      'delete',
+      'make_public',
+      'make_private',
+      'publish',
+      'unpublish',
+      'allow_guests',
+      'deny_guests',
+    ]);
     ['bulkItem', 'bulkVersion', 'bulkPatch', 'bulkLeaf'].forEach(form => {
       expect(document.forms[form].required).toEqual(['action', 'names']);
       expect(document.forms[form].properties.names.minItems).toBe(1);

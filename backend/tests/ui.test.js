@@ -135,6 +135,8 @@ describe('The downloads address', () => {
         platform: 'linux',
         architecture: 'x64',
         language: 'en',
+        is_public: true,
+        published: true,
       })
       .expect(201);
     await request(app)

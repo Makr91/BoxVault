@@ -57,8 +57,14 @@ describe('Download guest access', () => {
     const product = await db.download.findOne({ where: { name, organizationId: org.id } });
     const releases = await db.downloadReleases.findAll({ where: { downloadId: product.id } });
     await db.downloadReleases.update(values, { where: { downloadId: product.id } });
+    const patches = await db.downloadPatches.findAll({
+      where: { downloadReleaseId: releases.map(release => release.id) },
+    });
     await db.downloadPatches.update(values, {
       where: { downloadReleaseId: releases.map(release => release.id) },
+    });
+    await db.downloadFiles.update(values, {
+      where: { downloadPatchId: patches.map(patch => patch.id) },
     });
   };
 
@@ -288,7 +294,11 @@ describe('Download guest access', () => {
         .send({ is_public: true });
       expect(wider.statusCode).toBe(422);
       expect(wider.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'guests' },
+        }),
       ]);
       await setLevels(flaggedName, { guestAccess: true });
     });

@@ -183,6 +183,50 @@ describe('Architecture API', () => {
       expect(res.body).toHaveProperty('name', newArchitecture.name);
       expect(res.body).toHaveProperty('description', newArchitecture.description);
       expect(res.body).toHaveProperty('default_box', newArchitecture.default_box);
+      expect(res.body.is_public).toBe(false);
+      expect(res.body.guest_access).toBe(false);
+      expect(res.body.published).toBe(false);
+    });
+
+    it('should be born closed and never wider than its provider', async () => {
+      const architectureBase = `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`;
+      const closed = await request(app)
+        .post(architectureBase)
+        .set('x-access-token', authToken)
+        .send({ name: 'closed-arch' });
+      expect(closed.statusCode).toBe(201);
+      const hidden = await request(app)
+        .get(`${architectureBase}/closed-arch`)
+        .set('x-access-token', regularUserToken);
+      expect(hidden.statusCode).toBe(404);
+      const asOwner = await request(app)
+        .get(`${architectureBase}/closed-arch`)
+        .set('x-access-token', authToken);
+      expect(asOwner.statusCode).toBe(200);
+
+      const wider = await request(app)
+        .put(`${architectureBase}/closed-arch`)
+        .set('x-access-token', authToken)
+        .send({ published: true });
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/published',
+          rule: 'withinParent',
+          params: { parent: 'pending' },
+        }),
+      ]);
+      const forbidden = await request(app)
+        .post(`${architectureBase}/bulk`)
+        .set('x-access-token', authToken)
+        .send({ action: 'publish', names: ['closed-arch'] });
+      expect(forbidden.body).toEqual({
+        processed: 0,
+        skipped: 1,
+        errors: [{ name: 'closed-arch', code: 'forbidden' }],
+      });
+
+      await request(app).delete(`${architectureBase}/closed-arch`).set('x-access-token', authToken);
     });
 
     it('should fail creating duplicate architecture', async () => {

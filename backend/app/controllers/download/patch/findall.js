@@ -1,6 +1,7 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
+import { reachOf } from '../../../utils/orgMembership.js';
 import {
   canSeeDownload,
   canSeePatch,
@@ -8,7 +9,7 @@ import {
   isMemberOf,
   resolveDownloadViewer,
 } from '../visibility.js';
-import { filesWithCounts } from '../helpers.js';
+import { filesWithCounts, filesWithinReach } from '../helpers.js';
 const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
 
 /**
@@ -16,7 +17,7 @@ const { downloadPatches: DownloadPatch, downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch:
  *   get:
  *     summary: List the patches of a release
- *     description: Retrieve the patches of a release within the caller's reach, each with its files. The product must be visible to the caller; a release beyond the caller's reach answers 404.
+ *     description: Retrieve the patches of a release within the caller's reach, each with the files within it. The product must be visible to the caller; a release beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -80,12 +81,13 @@ const findAll = async (req, res) => {
     });
 
     const member = isMemberOf(viewer, download.organizationId);
+    const reach = reachOf(viewer, download);
     return res.send(
       patches
         .filter(patch => canSeePatch(viewer, download, release, patch))
         .map(patch => ({
           ...patch.toJSON(),
-          files: filesWithCounts(patch.files, member),
+          files: filesWithCounts(filesWithinReach(release, patch, reach), member),
         }))
     );
   } catch (err) {

@@ -1,7 +1,12 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
-import { conflict, problem } from '../../../utils/problem.js';
+import {
+  canWriteDownload,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
+import { conflict, problem, refuse } from '../../../utils/problem.js';
 const { downloadFiles: DownloadFile } = db;
 
 /**
@@ -9,7 +14,7 @@ const { downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file:
  *   post:
  *     summary: Create a file row of a patch
- *     description: Create the record of a file under a patch before its bytes are uploaded. The product's owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role.
+ *     description: Create the record of a file under a patch before its bytes are uploaded. The product's owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role. A file is born private, closed to guests and unpublished unless the body says otherwise, and never wider than its patch, a wider word answered 422.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -72,6 +77,15 @@ const { downloadFiles: DownloadFile } = db;
  *                 enum: [NULL, MD5, SHA1, SHA256, SHA384, SHA512]
  *               checksum:
  *                 type: string
+ *               is_public:
+ *                 type: boolean
+ *                 description: False when absent; never wider than the patch
+ *               guest_access:
+ *                 type: boolean
+ *                 description: False when absent; never wider than the patch
+ *               published:
+ *                 type: boolean
+ *                 description: False when absent; never wider than the patch
  *     responses:
  *       201:
  *         description: File row created
@@ -130,6 +144,17 @@ const create = async (req, res) => {
       return conflict(res, req, '/key', patch.name);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, patch);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     const file = await DownloadFile.create({
       key,
       fileName: fileName || key,
@@ -144,6 +169,7 @@ const create = async (req, res) => {
       storagePath: null,
       original: true,
       linksTo: null,
+      ...visibility,
       downloadPatchId: patch.id,
     });
 

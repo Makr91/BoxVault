@@ -11,7 +11,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile } = db;
  * /api/organization/{organization}/iso/{name}/version:
  *   get:
  *     summary: List the versions of an ISO
- *     description: Retrieve the versions of an ISO within the caller's reach, each with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file download_count is null to a guest of the organization; a writer of the ISO sees every version.
+ *     description: Retrieve the versions of an ISO within the caller's reach, each with its per-architecture files. A public, published ISO is readable by anyone; any other ISO requires a writing membership of its organization, a guest of the organization reading it only while it is published and flagged for guests. Every file download_count is null to a guest of the organization; only the files within the caller's reach are answered; a writer of the ISO sees every row.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -61,10 +61,12 @@ const findAll = async (req, res) => {
     });
 
     iso.versions = versions;
+    const reach = reachOf(viewer, iso);
     return res.send(
       isoVersionsWithCounts(
-        isoVersionsWithinReach(iso, reachOf(viewer, iso)),
-        !isGuestOf(viewer, iso.organizationId)
+        isoVersionsWithinReach(iso, reach),
+        !isGuestOf(viewer, iso.organizationId),
+        reach
       )
     );
   } catch (err) {

@@ -1,6 +1,11 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
-import { canWriteDownload, resolveOrgMembership } from '../../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  canWriteDownload,
+  resolveOrgMembership,
+  widerThanParent,
+} from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { removeDownloadFile } from '../helpers.js';
 const { downloadFiles: DownloadFile, sequelize, Sequelize } = db;
@@ -11,7 +16,7 @@ const { Op } = Sequelize;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/bulk:
  *   post:
  *     summary: One action across a selection of files of a patch
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row, named by its key or its file name, is isolated; a missing file is counted as skipped and named in errors with not_found, a thrown row with internal. A delete removes the row and its bytes in a transaction the way the single delete does, an original handing its bytes to one of its links first.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row, named by its key or its file name, is isolated; a missing file is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the file wider than its patch with forbidden. A delete removes the row and its bytes in a transaction the way the single delete does, an original handing its bytes to one of its links first.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -50,7 +55,7 @@ const { Op } = Sequelize;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete]
+ *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -97,6 +102,14 @@ const bulk = async (req, res) => {
     });
     if (!file) {
       return 'not_found';
+    }
+    if (action !== 'delete') {
+      const change = VISIBILITY_CHANGES[action];
+      if (widerThanParent({ ...file.get({ plain: true }), ...change }, patch)) {
+        return 'forbidden';
+      }
+      await file.update(change);
+      return null;
     }
     await removeDownloadFile(file);
     const transaction = await sequelize.transaction();

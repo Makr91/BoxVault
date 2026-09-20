@@ -474,7 +474,11 @@ describe('ISO API', () => {
         .send({ is_public: true, published: true });
       expect(wider.statusCode).toBe(422);
       expect(wider.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'private' },
+        }),
       ]);
       const bornWide = await request(app)
         .post(`${isoBase}/version`)
@@ -482,7 +486,7 @@ describe('ISO API', () => {
         .send({ version_number: '0.6.0', guest_access: true, published: true });
       expect(bornWide.statusCode).toBe(422);
       expect(bornWide.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/guest_access', rule: 'enum' }),
+        expect.objectContaining({ pointer: '/guest_access', rule: 'withinParent' }),
       ]);
 
       const published = await request(app)
@@ -806,7 +810,7 @@ describe('ISO API', () => {
 
     it('should download a file and watch the ISO', async () => {
       await request(app)
-        .post(`${guestFileBase}/upload`)
+        .post(`${guestFileBase}/upload?published=true&guest_access=true`)
         .set('x-access-token', adminToken)
         .set('x-file-name', 'debian-13-guest64.iso')
         .set('Content-Type', 'application/octet-stream')
@@ -888,7 +892,7 @@ describe('ISO API', () => {
 
     it('should upload a file for an architecture', async () => {
       const res = await request(app)
-        .post(`${fileBase}/upload`)
+        .post(`${fileBase}/upload?published=true`)
         .set('x-access-token', adminToken)
         .set('x-file-name', 'debian-13-amd64.iso')
         .set('Content-Type', 'application/octet-stream')
@@ -898,8 +902,58 @@ describe('ISO API', () => {
       expect(res.body.file_name).toBe('debian-13-amd64.iso');
       expect(res.body.checksum).toBe(checksum);
       expect(res.body.checksum_type).toBe('SHA256');
+      expect(res.body.published).toBe(true);
+      expect(res.body.is_public).toBe(false);
+      expect(res.body.guest_access).toBe(false);
       expect(Number(res.body.file_size)).toBe(fileContent.length);
       expect(fs.existsSync(storedPath())).toBe(true);
+    });
+
+    it('should refuse a file born wider than its version and be born closed without the words', async () => {
+      const wider = await request(app)
+        .post(`${versionBase}/architecture/ppc64/file/upload?is_public=true`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'debian-13-ppc64.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(fileContent);
+      expect(wider.statusCode).toBe(422);
+      expect(wider.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'guests' },
+        }),
+      ]);
+      const closed = await request(app)
+        .post(`${versionBase}/architecture/ppc64/file/upload`)
+        .set('x-access-token', adminToken)
+        .set('x-file-name', 'debian-13-ppc64.iso')
+        .set('Content-Type', 'application/octet-stream')
+        .send(fileContent);
+      expect(closed.statusCode).toBe(201);
+      expect(closed.body.published).toBe(false);
+      const hidden = await request(app)
+        .get(`${versionBase}/architecture/ppc64/file/info`)
+        .set('x-access-token', authToken);
+      expect(hidden.statusCode).toBe(404);
+      const asAdmin = await request(app)
+        .get(`${versionBase}/architecture/ppc64/file/info`)
+        .set('x-access-token', adminToken);
+      expect(asAdmin.statusCode).toBe(200);
+      const published = await request(app)
+        .put(`${versionBase}/architecture/ppc64/file`)
+        .set('x-access-token', adminToken)
+        .send({ published: true });
+      expect(published.statusCode).toBe(200);
+      expect(published.body.published).toBe(true);
+      const shown = await request(app)
+        .get(`${versionBase}/architecture/ppc64/file/info`)
+        .set('x-access-token', authToken);
+      expect(shown.statusCode).toBe(200);
+      await request(app)
+        .delete(`${versionBase}/architecture/ppc64/file/delete`)
+        .set('x-access-token', adminToken)
+        .expect(200);
     });
 
     it('should replace the file record when uploading the same architecture again', async () => {
@@ -911,13 +965,14 @@ describe('ISO API', () => {
         .send(fileContent);
       expect(res.statusCode).toBe(201);
       expect(res.body.file_name).toBe('debian-13-amd64-again.iso');
+      expect(res.body.published).toBe(true);
       const count = await db.isoFiles.count({ where: { architecture: 'amd64' } });
       expect(count).toBe(1);
     });
 
     it('should deduplicate identical content across architectures', async () => {
       const res = await request(app)
-        .post(`${versionBase}/architecture/arm64/file/upload`)
+        .post(`${versionBase}/architecture/arm64/file/upload?published=true`)
         .set('x-access-token', adminToken)
         .set('x-file-name', 'debian-13-arm64.iso')
         .set('Content-Type', 'application/octet-stream')
@@ -1153,12 +1208,23 @@ describe('ISO API', () => {
     it('should allow an anonymous download of a public published ISO', async () => {
       await db.iso.update({ isPublic: true }, { where: { name: isoName, organizationId: org.id } });
       const iso = await db.iso.findOne({ where: { name: isoName, organizationId: org.id } });
+      const version = await db.isoVersions.findOne({ where: { versionNumber, isoId: iso.id } });
       const closed = await request(app).get(`${fileBase}/download`);
       expect(closed.statusCode).toBe(403);
-      await db.isoVersions.update({ isPublic: true }, { where: { versionNumber, isoId: iso.id } });
+      await db.isoVersions.update({ isPublic: true }, { where: { id: version.id } });
+      const stillClosed = await request(app).get(`${fileBase}/download`);
+      expect(stillClosed.statusCode).toBe(403);
+      await db.isoFiles.update(
+        { isPublic: true },
+        { where: { isoVersionId: version.id, architecture: 'amd64' } }
+      );
       const res = await request(app).get(`${fileBase}/download`);
       expect(res.statusCode).toBe(200);
-      await db.isoVersions.update({ isPublic: false }, { where: { versionNumber, isoId: iso.id } });
+      await db.isoFiles.update(
+        { isPublic: false },
+        { where: { isoVersionId: version.id, architecture: 'amd64' } }
+      );
+      await db.isoVersions.update({ isPublic: false }, { where: { id: version.id } });
       await db.iso.update(
         { isPublic: false },
         { where: { name: isoName, organizationId: org.id } }

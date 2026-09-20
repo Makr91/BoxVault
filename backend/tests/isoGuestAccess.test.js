@@ -56,7 +56,7 @@ describe('ISO guest access', () => {
       userId: owner.id,
       ...values,
     });
-    await db.isoVersions.create({ versionNumber: '1.0.0', isoId: iso.id });
+    const version = await db.isoVersions.create({ versionNumber: '1.0.0', isoId: iso.id });
     await request(app)
       .post(`${fileBase(name)}/upload`)
       .set('x-access-token', ownerToken)
@@ -64,6 +64,10 @@ describe('ISO guest access', () => {
       .set('Content-Type', 'application/octet-stream')
       .send(Buffer.from(`${name}-${uniqueId}`))
       .expect(201);
+    await db.isoFiles.update(
+      { isPublic: true, guestAccess: true, published: true },
+      { where: { isoVersionId: version.id } }
+    );
     return iso;
   };
 
@@ -244,7 +248,11 @@ describe('ISO guest access', () => {
         .send({ is_public: true });
       expect(wider.statusCode).toBe(422);
       expect(wider.body.errors).toEqual([
-        expect.objectContaining({ pointer: '/is_public', rule: 'enum', params: { enum: 'false' } }),
+        expect.objectContaining({
+          pointer: '/is_public',
+          rule: 'withinParent',
+          params: { parent: 'guests' },
+        }),
       ]);
       const allowed = await request(app)
         .post(`${isoBase(flaggedName)}/version/bulk`)
@@ -259,6 +267,29 @@ describe('ISO guest access', () => {
       );
       expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, adminToken)).statusCode).toBe(200);
       await db.isoVersions.update({ published: true }, { where: { isoId: iso.id } });
+
+      const version = await db.isoVersions.findOne({ where: { isoId: iso.id } });
+      await db.isoFiles.update(
+        { isPublic: false, guestAccess: false },
+        { where: { isoVersionId: version.id } }
+      );
+      expect((await get(`${fileBase(flaggedName)}/info`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${fileBase(flaggedName)}/download`, guestToken)).statusCode).toBe(404);
+      expect((await get(`${isoBase(flaggedName)}/version/1.0.0`, guestToken)).body.files).toEqual(
+        []
+      );
+      expect((await get(`${fileBase(flaggedName)}/info`, memberToken)).statusCode).toBe(200);
+      const widerFile = await request(app)
+        .put(`${fileBase(flaggedName)}`)
+        .set('x-access-token', adminToken)
+        .send({ is_public: true });
+      expect(widerFile.statusCode).toBe(422);
+      const allowedFile = await request(app)
+        .post(`${isoBase(flaggedName)}/version/1.0.0/architecture/bulk`)
+        .set('x-access-token', adminToken)
+        .send({ action: 'allow_guests', names: ['amd64'] });
+      expect(allowedFile.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      expect((await get(`${fileBase(flaggedName)}/info`, guestToken)).statusCode).toBe(200);
     });
 
     it('should answer null counts to a guest and numbers to a member', async () => {

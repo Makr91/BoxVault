@@ -2,7 +2,12 @@ import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  VISIBILITY_CHANGES,
+  canWriteBox,
+  resolveOrgMembership,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 import { problem } from '../../utils/problem.js';
 const { providers: Provider, architectures: Architecture } = db;
 
@@ -11,7 +16,7 @@ const { providers: Provider, architectures: Architecture } = db;
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/bulk:
  *   post:
  *     summary: One action across a selection of providers of a version
- *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing provider is counted as skipped and named in errors with not_found, a thrown row with internal. A delete removes the provider's architectures and directories the way the single delete does.
+ *     description: The box owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing provider is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the provider wider than its version with forbidden. A delete removes the provider's architectures and directories the way the single delete does.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -44,7 +49,7 @@ const { providers: Provider, architectures: Architecture } = db;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete]
+ *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -100,6 +105,14 @@ const bulk = async (req, res) => {
     });
     if (!provider) {
       return 'not_found';
+    }
+    if (action !== 'delete') {
+      const change = VISIBILITY_CHANGES[action];
+      if (widerThanParent({ ...provider.get({ plain: true }), ...change }, version)) {
+        return 'forbidden';
+      }
+      await provider.update(change);
+      return null;
     }
     const architectures = await Architecture.findAll({ where: { providerId: provider.id } });
     await Promise.all(

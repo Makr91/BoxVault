@@ -1,5 +1,6 @@
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
+import { VISIBILITY_CHANGES, widerThanParent } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { removeUnreferencedIsoFiles } from '../helpers.js';
 const { isoVersions: IsoVersion, isoFiles: IsoFile, sequelize } = db;
@@ -9,7 +10,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile, sequelize } = db;
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/bulk:
  *   post:
  *     summary: One action across a selection of architectures of an ISO version
- *     description: An admin or owner of the organization acts on every row; each row is one architecture's file record, deleted in a transaction and its physical file removed only when no other record shares its storage path, the way the single delete does. A missing architecture is counted as skipped and named in errors with not_found, a thrown row with internal.
+ *     description: An admin or owner of the organization acts on every row; each row is one architecture's file record, deleted in a transaction and its physical file removed only when no other record shares its storage path, the way the single delete does, or its visibility words changed, a change that would set the file wider than its version answered forbidden. A missing architecture is counted as skipped and named in errors with not_found, a thrown row with internal.
  *     tags: [ISOs]
  *     security:
  *       - JwtAuth: []
@@ -42,7 +43,7 @@ const { isoVersions: IsoVersion, isoFiles: IsoFile, sequelize } = db;
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete]
+ *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -90,6 +91,14 @@ const bulk = async (req, res) => {
     });
     if (!fileRecord) {
       return 'not_found';
+    }
+    if (action !== 'delete') {
+      const change = VISIBILITY_CHANGES[action];
+      if (widerThanParent({ ...fileRecord.get({ plain: true }), ...change }, version)) {
+        return 'forbidden';
+      }
+      await fileRecord.update(change);
+      return null;
     }
     const removed = fileRecord.get({ plain: true });
     const transaction = await sequelize.transaction();

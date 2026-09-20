@@ -1,9 +1,6 @@
 {
   "type": "object",
-  "required": ["name"],
   "properties": {
-    "name": { "$ref": "#/$defs/identifier", "minLength": 1, "pattern": "\\S", "unique": "version" },
-    "description": { "type": "string" },
     "is_public": { "type": "boolean" },
     "guest_access": { "type": "boolean" },
     "published": { "type": "boolean" }

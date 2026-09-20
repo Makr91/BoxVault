@@ -76,6 +76,23 @@ export default (sequelize, Sequelize) => {
         allowNull: false,
         defaultValue: true,
       },
+      isPublic: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+        field: 'is_public',
+      },
+      guestAccess: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+        field: 'guest_access',
+      },
+      published: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
       linksTo: {
         type: Sequelize.INTEGER,
         allowNull: true,

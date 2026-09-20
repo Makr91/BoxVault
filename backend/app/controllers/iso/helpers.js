@@ -69,15 +69,20 @@ const isoFilesWithCounts = (files, counted) =>
 
 /**
  * The version rows of an ISO as JSON with their files' downloadCount answered
- * when counted and null otherwise.
+ * when counted and null otherwise, only the files within the reach, the
+ * chain version, file judged at every row.
  * @param {Array<Object>} versions - Version rows with nested files
  * @param {boolean} counted - Whether the caller is answered the counts
+ * @param {number} reach - From reachOf
  * @returns {Array<Object>} The versions as JSON
  */
-const isoVersionsWithCounts = (versions, counted) =>
+const isoVersionsWithCounts = (versions, counted, reach) =>
   (versions || []).map(version => {
     const plain = snakeKeys(version.get({ plain: true }));
-    plain.files = isoFilesWithCounts(version.files, counted);
+    plain.files = isoFilesWithCounts(
+      (version.files || []).filter(file => withinReach(reach, version, file)),
+      counted
+    );
     return plain;
   });
 
@@ -103,8 +108,14 @@ const isoVersionsWithinReach = (iso, reach) =>
 const isoWithCounts = (iso, counted, reach) => {
   const plain = snakeKeys(iso.get({ plain: true }));
   const versions = isoVersionsWithinReach(iso, reach);
-  plain.versions = isoVersionsWithCounts(versions, counted);
-  plain.download_count = counted ? sumIsoDownloads({ versions }) : null;
+  plain.versions = isoVersionsWithCounts(versions, counted, reach);
+  plain.download_count = counted
+    ? sumIsoDownloads({
+        versions: versions.map(version => ({
+          files: (version.files || []).filter(file => withinReach(reach, version, file)),
+        })),
+      })
+    : null;
   return plain;
 };
 

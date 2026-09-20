@@ -25,6 +25,7 @@ import { findOne as findOneVersion } from '../controllers/iso/version/findone.js
 import { update as updateVersion } from '../controllers/iso/version/update.js';
 import { delete as deleteVersion } from '../controllers/iso/version/delete.js';
 import { upload as uploadFile } from '../controllers/iso/file/upload.js';
+import { edit as editFile } from '../controllers/iso/file/edit.js';
 import { info as fileInfo } from '../controllers/iso/file/info.js';
 import { download as downloadFile } from '../controllers/iso/file/download.js';
 import { getDownloadLink } from '../controllers/iso/file/link.js';
@@ -175,6 +176,17 @@ router.post(
   verifyOrgAccess.isOrgAdminOrOwner,
   verifyIsoFilePath,
   uploadFile
+);
+
+router.put(
+  '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyIsoFilePath,
+  validateBody('isoFile'),
+  editFile
 );
 
 router.get(

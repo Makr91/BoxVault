@@ -78,7 +78,8 @@
     "blocklist": "{{field}} está en la lista de bloqueo.",
     "writable": "{{field}} no es escribible por el usuario del servicio.",
     "reachable": "{{field}} no respondió.",
-    "readOnly": "{{field}} lo gestiona el proveedor de identidad."
+    "readOnly": "{{field}} lo gestiona el proveedor de identidad.",
+    "withinParent": "Mantén {{field}} dentro de {{parent}}, el ajuste del nivel superior."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organización no encontrada con el nombre: {{organization}}.",

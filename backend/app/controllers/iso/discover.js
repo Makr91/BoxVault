@@ -11,7 +11,7 @@ const { iso: Iso, isoVersions: IsoVersion, isoFiles: IsoFile, organization: Orga
  * /api/isos/discover:
  *   get:
  *     summary: Discover ISOs
- *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, the published ISOs flagged for guests of the organizations they are a guest of, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes. Every download_count is null to a guest of the ISO's organization. Only the versions within the caller's reach are answered on each ISO.
+ *     description: Retrieve the ISOs visible to the caller, each with its versions and per-architecture files. Anonymous requests get the public, published ISOs of every organization; a signed-in user additionally gets every ISO of the organizations they belong to, the published ISOs flagged for guests of the organizations they are a guest of, and a service-account key the ISOs of its own organization — the same rule as /api/discover for boxes. Every download_count is null to a guest of the ISO's organization. Only the versions and files within the caller's reach are answered on each ISO.
  *     tags: [ISOs]
  *     security:
  *       - bearerAuth: []

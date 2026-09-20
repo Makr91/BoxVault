@@ -29,6 +29,8 @@ const FORMS = [
   'release',
   'patch',
   'downloadFile',
+  'boxFile',
+  'isoFile',
   'bulkItem',
   'bulkVersion',
   'bulkPatch',

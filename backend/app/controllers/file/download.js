@@ -56,7 +56,7 @@ const handleError = (req, res, err) => {
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider/{providerName}/architecture/{architectureName}/file/download:
  *   get:
  *     summary: Download a Vagrant box file
- *     description: Download the Vagrant box file with support for range requests and authentication. A private box needs a writing membership of its organization, a guest of the organization downloading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version beyond the caller's reach answers 404 unless a download token scoped to the file is presented.
+ *     description: Download the Vagrant box file with support for range requests and authentication. A private box needs a writing membership of its organization, a guest of the organization downloading it only while the box is published and flagged for guests; a service account is a member of its own organization only, at its effective role. A version, provider, architecture or file beyond the caller's reach answers 404 unless a download token scoped to the file is presented.
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -209,12 +209,19 @@ const download = (req, res) => {
     const filePath = join(baseDir, fileName);
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
-    const { organization: organizationData, box, version, architecture } = req.entities;
+    const { organization: organizationData, box, version, provider, architecture } = req.entities;
     const caller = userId ? { userId, isServiceAccount } : null;
     const membership = caller ? await resolveOrgMembership(req, organizationData.id) : null;
+    const reach = reachOfMembership(caller, box, membership);
+    const fileRecord = await File.findOne({
+      where: {
+        fileName: 'vagrant.box',
+        architectureId: architecture.id,
+      },
+    });
     const reachable =
       Boolean(req.downloadTokenDecoded) ||
-      withinReach(reachOfMembership(caller, box, membership), version);
+      withinReach(reach, version, provider, architecture, ...(fileRecord ? [fileRecord] : []));
 
     // Function to handle file download and increment counter
     const sendFile = async () => {
@@ -225,14 +232,6 @@ const download = (req, res) => {
           title: req.__('files.notFound'),
         });
       }
-
-      // Find and increment download count
-      const fileRecord = await File.findOne({
-        where: {
-          fileName: 'vagrant.box',
-          architectureId: architecture.id,
-        },
-      });
 
       if (fileRecord) {
         await fileRecord.increment('downloadCount');

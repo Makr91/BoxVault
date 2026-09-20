@@ -121,6 +121,15 @@
  *           nullable: true
  *         download_count:
  *           type: integer
+ *         is_public:
+ *           type: boolean
+ *           description: Whether anyone may read the file; never wider than the patch
+ *         guest_access:
+ *           type: boolean
+ *           description: Whether guests of the organization may read the file while it is published; never wider than the patch
+ *         published:
+ *           type: boolean
+ *           description: An unpublished file is readable by the product's writers alone
  *         download_patch_id:
  *           type: integer
  *         created_at:

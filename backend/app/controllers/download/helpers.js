@@ -127,24 +127,41 @@ const filesWithCounts = (files, member) =>
   });
 
 /**
- * The releases of a product within a reach, each with the patches within it,
- * the chain product, release, patch judged at every row.
- * @param {Object} download - A download row with nested releases and patches
+ * The files of a patch within a reach, the chain release, patch, file judged
+ * at every row.
+ * @param {Object} release - The release row
+ * @param {Object} patch - The patch row with nested files
  * @param {number} reach - From reachOf
- * @returns {Array<Object>} The release rows the reach meets, their patches narrowed the same way
+ * @returns {Array<Object>} The file rows the reach meets
+ */
+const filesWithinReach = (release, patch, reach) =>
+  (patch.files || []).filter(file => withinReach(reach, release, patch, file));
+
+/**
+ * The releases of a product within a reach, each with the patches within it
+ * and each patch with the files within it, the chain product, release,
+ * patch, file judged at every row.
+ * @param {Object} download - A download row with nested releases, patches and files
+ * @param {number} reach - From reachOf
+ * @returns {Array<Object>} The release rows the reach meets, narrowed beneath the same way
  */
 const releasesWithinReach = (download, reach) =>
   (download.releases || [])
     .filter(release => withinReach(reach, release))
     .map(release => {
-      release.patches = (release.patches || []).filter(patch => withinReach(reach, release, patch));
+      release.patches = (release.patches || [])
+        .filter(patch => withinReach(reach, release, patch))
+        .map(patch => {
+          patch.files = filesWithinReach(release, patch, reach);
+          return patch;
+        });
       return release;
     });
 
 /**
  * The product's JSON with its downloadCount and every nested file's
  * downloadCount answered by membership: the numbers to a member, null to
- * anyone else; only the releases and patches within the caller's reach.
+ * anyone else; only the releases, patches and files within the caller's reach.
  * @param {Object} download - A download row with nested releases, patches and files
  * @param {boolean} member - Whether the caller belongs to the organization
  * @param {number} reach - From reachOf
@@ -324,6 +341,7 @@ export {
   pendingSummary,
   sumDownloadDownloads,
   filesWithCounts,
+  filesWithinReach,
   releasesWithinReach,
   withCounts,
   findOriginalByChecksum,

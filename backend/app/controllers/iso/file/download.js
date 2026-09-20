@@ -5,7 +5,7 @@ import { log } from '../../../utils/Logger.js';
 import { resolveViewer } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
 import { getIsoStorageRoot } from '../helpers.js';
-import { canSeeIso, canSeeIsoVersion, resolveIsoViewer } from '../visibility.js';
+import { canSeeIso, canSeeIsoFile, resolveIsoViewer } from '../visibility.js';
 const { isoFiles: IsoFile } = db;
 
 const forbidden = (req, res, key) =>
@@ -19,7 +19,7 @@ const fileNotFound = (req, res) =>
  * /api/organization/{organization}/iso/{name}/version/{versionNumber}/architecture/{architecture}/file/download:
  *   get:
  *     summary: Download an ISO file
- *     description: Stream the ISO file of one architecture of a version, with range support. A public ISO and version can be downloaded by anyone; anything narrower requires a download token scoped to this file or the same visibility as the ISO itself, a writing member of the organization while it is published, its uploader always, a guest of the organization only while it is published and flagged for guests, a service account being a member of its own organization only; a version beyond the caller's reach answers 404.
+ *     description: Stream the ISO file of one architecture of a version, with range support. A public ISO, version and file can be downloaded by anyone; anything narrower requires a download token scoped to this file or the same visibility as the ISO itself, a writing member of the organization while it is published, its uploader always, a guest of the organization only while it is published and flagged for guests, a service account being a member of its own organization only; a version or file beyond the caller's reach answers 404.
  *     tags: [ISOs]
  *     parameters:
  *       - in: path
@@ -72,7 +72,10 @@ const download = async (req, res) => {
   const { organization, name, versionNumber, architecture } = req.params;
   const { iso, version } = req.entities;
   const isPublic = Boolean(iso.isPublic && iso.published);
-  const open = isPublic && canSeeIsoVersion(null, iso, version);
+  const fileRecord = await IsoFile.findOne({
+    where: { isoVersionId: version.id, architecture },
+  });
+  const open = isPublic && Boolean(fileRecord) && canSeeIsoFile(null, iso, version, fileRecord);
   let userId;
 
   if (req.downloadTokenDecoded) {
@@ -105,14 +108,14 @@ const download = async (req, res) => {
       if (!canSeeIso(viewer, iso)) {
         return forbidden(req, res, 'files.download.unauthorized');
       }
-      if (!req.downloadTokenDecoded && !canSeeIsoVersion(viewer, iso, version)) {
+      if (
+        !req.downloadTokenDecoded &&
+        (!fileRecord || !canSeeIsoFile(viewer, iso, version, fileRecord))
+      ) {
         return fileNotFound(req, res);
       }
     }
 
-    const fileRecord = await IsoFile.findOne({
-      where: { isoVersionId: version.id, architecture },
-    });
     if (!fileRecord) {
       return fileNotFound(req, res);
     }

@@ -17,6 +17,15 @@
  *         description:
  *           type: string
  *           description: Description of the provider
+ *         is_public:
+ *           type: boolean
+ *           description: Whether anyone may read the provider; never wider than the version
+ *         guest_access:
+ *           type: boolean
+ *           description: Whether guests of the organization may read the provider while it is published; never wider than the version
+ *         published:
+ *           type: boolean
+ *           description: An unpublished provider is readable by the box's writers alone
  *         version_id:
  *           type: integer
  *           description: ID of the version this provider belongs to
@@ -47,6 +56,15 @@
  *         description:
  *           type: string
  *           description: Description of the provider
+ *         is_public:
+ *           type: boolean
+ *           description: False when absent; never wider than the version
+ *         guest_access:
+ *           type: boolean
+ *           description: False when absent; never wider than the version
+ *         published:
+ *           type: boolean
+ *           description: False when absent; never wider than the version
  *       example:
  *         name: "virtualbox"
  *         description: "VirtualBox provider"
@@ -60,6 +78,15 @@
  *         description:
  *           type: string
  *           description: Updated description of the provider
+ *         is_public:
+ *           type: boolean
+ *           description: Never wider than the version
+ *         guest_access:
+ *           type: boolean
+ *           description: Never wider than the version
+ *         published:
+ *           type: boolean
+ *           description: Never wider than the version
  *       example:
  *         name: "virtualbox"
  *         description: "Updated VirtualBox provider"
@@ -69,16 +96,21 @@
 import fs from 'fs';
 import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
-import { conflict, problem } from '../../utils/problem.js';
+import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { canWriteBox, resolveOrgMembership } from '../../utils/orgMembership.js';
+import {
+  canWriteBox,
+  resolveOrgMembership,
+  visibilityOf,
+  widerThanParent,
+} from '../../utils/orgMembership.js';
 const { providers: Provider } = db;
 /**
  * @swagger
  * /api/organization/{organization}/box/{boxId}/version/{versionNumber}/provider:
  *   post:
  *     summary: Create a new provider for a version
- *     description: The box owner, or an admin or owner of the organization, may create a provider; a service account acts inside its own organization at its effective role.
+ *     description: The box owner, or an admin or owner of the organization, may create a provider; a service account acts inside its own organization at its effective role. A provider is born private, closed to guests and unpublished unless the body says otherwise, and never wider than its version, a wider word answered 422.
  *     tags: [Providers]
  *     security:
  *       - bearerAuth: []
@@ -172,6 +204,17 @@ export const create = async (req, res) => {
       return conflict(res, req, '/name', version.versionNumber);
     }
 
+    const visibility = {
+      isPublic: false,
+      guestAccess: false,
+      published: false,
+      ...visibilityOf(req.body),
+    };
+    const wider = widerThanParent(visibility, version);
+    if (wider) {
+      return refuse(res, req, [wider]);
+    }
+
     // Create the new directory if it doesn't exist
     if (!fs.existsSync(newFilePath)) {
       fs.mkdirSync(newFilePath, { recursive: true });
@@ -181,6 +224,7 @@ export const create = async (req, res) => {
     const provider = await Provider.create({
       name,
       description,
+      ...visibility,
       versionId: version.id,
     });
 

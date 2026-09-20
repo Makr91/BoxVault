@@ -144,6 +144,12 @@ describe('Search finders across the catalog', () => {
       fileSize: 10,
       downloadPatchId: patch.id,
     });
+    await db.downloadFiles.create({
+      key: 'win-x64',
+      fileName: `Notes_1451FP1_${uniqueId}.exe`,
+      fileSize: 10,
+      downloadPatchId: patch.id,
+    });
   });
 
   afterAll(async () => {
@@ -219,6 +225,33 @@ describe('Search finders across the catalog', () => {
     const byFileName = await search({ q: downloadFileName, kinds: 'architecture' });
     expect(byFileName.body.results).toEqual([
       expect.objectContaining({ architecture: 'linux-x64', matched: 'fileName' }),
+    ]);
+  });
+
+  it('should find a file by several words spread over its chain, dots dropped', async () => {
+    const byChain = await search({ q: `${downloadName} ${releaseNumber}`, kinds: 'architecture' });
+    expect(byChain.statusCode).toBe(200);
+    expect(byChain.body.results.map(row => row.architecture).sort()).toEqual([
+      'linux-x64',
+      'win-x64',
+    ]);
+    expect(byChain.body.results[0].matched).toBe('download');
+
+    const compact = await search({ q: `notes 14.5.1 fp1 ${uniqueId}`, kinds: 'architecture' });
+    expect(compact.body.results).toEqual([
+      expect.objectContaining({ architecture: 'win-x64', matched: 'fileName' }),
+    ]);
+    const reordered = await search({ q: `${uniqueId} NOTES`, kinds: 'architecture' });
+    expect(reordered.body.results).toEqual([expect.objectContaining({ architecture: 'win-x64' })]);
+    const missing = await search({ q: `notes 9.0.1 ${uniqueId}`, kinds: 'architecture' });
+    expect(missing.body.results).toEqual([]);
+
+    const patchByChain = await search({
+      q: `${patchName} ${downloadName}`,
+      kinds: 'provider',
+    });
+    expect(patchByChain.body.results).toEqual([
+      expect.objectContaining({ provider: patchName, matched: 'name' }),
     ]);
   });
 

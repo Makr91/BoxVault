@@ -105,7 +105,12 @@ describe('Box and ISO content validation and visibility', () => {
     });
     const version = await db.versions.create({ versionNumber: '1.0.0', boxId: privateBox.id });
     const provider = await db.providers.create({ name: 'virtualbox', versionId: version.id });
-    await db.architectures.create({ name: 'amd64', providerId: provider.id });
+    const architecture = await db.architectures.create({ name: 'amd64', providerId: provider.id });
+    await db.files.create({
+      fileName: 'vagrant.box',
+      fileSize: 9,
+      architectureId: architecture.id,
+    });
     const dir = getSecureBoxPath(orgName, privateName);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'artwork.png'), Buffer.from('png-bytes'));
