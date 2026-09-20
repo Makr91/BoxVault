@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.93.0](https://github.com/Makr91/BoxVault/compare/v0.92.0...v0.93.0) (2026-09-20)
+
+
+### Features
+
+* per-site sign-in switches and safe renames ([7bf6e3d](https://github.com/Makr91/BoxVault/commit/7bf6e3dcbbc339c066e45db5431ee0a0cbf1007d))
+
 ## [0.92.0](https://github.com/Makr91/BoxVault/compare/v0.91.1...v0.92.0) (2026-09-20)
 
 
