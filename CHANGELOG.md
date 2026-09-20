@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.89.0](https://github.com/Makr91/BoxVault/compare/v0.88.0...v0.89.0) (2026-09-20)
+
+
+### Features
+
+* a sites entry names the sign-in methods of its hostname ([13bd3bd](https://github.com/Makr91/BoxVault/commit/13bd3bd6d4525a2097ce5d81733f3a94b5e16d57))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.27.0 ([0fed63f](https://github.com/Makr91/BoxVault/commit/0fed63ff65efcb11106d380b194e93b26dd58958))
+* bump startcloud-ui to v0.27.0 ([ff846f7](https://github.com/Makr91/BoxVault/commit/ff846f7ba7274c7b21a246da2d59798377b62b6d))
+
 ## [0.88.0](https://github.com/Makr91/BoxVault/compare/v0.87.2...v0.88.0) (2026-09-20)
 
 
