@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.94.0](https://github.com/Makr91/BoxVault/compare/v0.93.0...v0.94.0) (2026-09-21)
+
+
+### Features
+
+* move, set and reconcile across the download tree ([a70a494](https://github.com/Makr91/BoxVault/commit/a70a4942019facd66ff83cd58151056d14344657))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.32.0 ([1c4491e](https://github.com/Makr91/BoxVault/commit/1c4491ec9832399fcec8dbbf3bb762150c1129cf))
+* bump startcloud-ui to v0.32.0 ([4e62c26](https://github.com/Makr91/BoxVault/commit/4e62c260dec435f25c573825fd3485ea8c64b5a6))
+
 ## [0.93.0](https://github.com/Makr91/BoxVault/compare/v0.92.0...v0.93.0) (2026-09-20)
 
 
