@@ -1208,6 +1208,119 @@ describe('Download file API', () => {
     });
   });
 
+  describe('PUT .../file/:key with a target address', () => {
+    const otherProduct = 'notes-client';
+    const otherBase = `/api/organization/${orgName}/download/${otherProduct}`;
+
+    beforeAll(async () => {
+      await request(app)
+        .post(`${productBase}/release/${releaseNumber}/patch`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'FP2', published: true, guest_access: true })
+        .expect(201);
+      await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken)
+        .send({ name: otherProduct, published: true, guest_access: true })
+        .expect(201);
+      await request(app)
+        .post(`${otherBase}/release`)
+        .set('x-access-token', ownerToken)
+        .send({ version_number: '14.5.1', published: true, guest_access: true })
+        .expect(201);
+      await request(app)
+        .post(`${otherBase}/release/14.5.1/patch`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'release', published: true, guest_access: true })
+        .expect(201);
+    });
+
+    it('should move a file to another patch with its bytes and answer 404, 409 and 403 for a bad target', async () => {
+      const content = Buffer.from(`moving-${uniqueId}`);
+      await uploadTo('mover', ownerToken, content, { 'x-file-name': 'Mover.bin' }).expect(200);
+
+      const noPatch = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', ownerToken)
+        .send({ patch: 'FP9' });
+      expect(noPatch.statusCode).toBe(404);
+      const noProduct = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', ownerToken)
+        .send({ download: 'no-such-product' });
+      expect(noProduct.statusCode).toBe(404);
+      const notASlug = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', ownerToken)
+        .send({ download: 'bad name' });
+      expect(notASlug.statusCode).toBe(422);
+      expect(notASlug.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/download', rule: 'pattern' }),
+      ]);
+      const asMember = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', memberToken)
+        .send({ patch: 'FP2' });
+      expect(asMember.statusCode).toBe(403);
+
+      const moved = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', ownerToken)
+        .send({ patch: 'FP2' });
+      expect(moved.statusCode).toBe(200);
+      expect(fs.readFileSync(filePath(releaseNumber, 'FP2', 'Mover.bin'))).toEqual(content);
+      expect(fs.existsSync(filePath(releaseNumber, patchName, 'Mover.bin'))).toBe(false);
+      const row = await db.downloadFiles.findOne({ where: { fileName: 'Mover.bin' } });
+      expect(row.storagePath).toBe(
+        `${orgName}/downloads/${productName}/${releaseNumber}/FP2/Mover.bin`
+      );
+      const gone = await request(app)
+        .get(`${patchBase}/file/mover/info`)
+        .set('x-access-token', ownerToken);
+      expect(gone.statusCode).toBe(404);
+
+      await uploadTo('mover', ownerToken, Buffer.from(`taken-${uniqueId}`), {
+        'x-file-name': 'Taken.bin',
+      }).expect(200);
+      const taken = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', ownerToken)
+        .send({ patch: 'FP2' });
+      expect(taken.statusCode).toBe(409);
+      expect(taken.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/key', rule: 'unique', params: { scope: 'FP2' } }),
+      ]);
+
+      const renamedIn = await request(app)
+        .put(`${patchBase}/file/mover`)
+        .set('x-access-token', ownerToken)
+        .send({ key: 'taken', patch: 'FP2' });
+      expect(renamedIn.statusCode).toBe(200);
+      expect(renamedIn.body.key).toBe('taken');
+
+      const noPatchThere = await request(app)
+        .put(`${productBase}/release/${releaseNumber}/patch/FP2/file/taken`)
+        .set('x-access-token', ownerToken)
+        .send({ download: otherProduct });
+      expect(noPatchThere.statusCode).toBe(404);
+
+      const across = await request(app)
+        .put(`${productBase}/release/${releaseNumber}/patch/FP2/file/taken`)
+        .set('x-access-token', ownerToken)
+        .send({ download: otherProduct, patch: 'release' });
+      expect(across.statusCode).toBe(200);
+      expect(
+        fs.readFileSync(
+          getSecureDownloadPath(orgName, otherProduct, '14.5.1', 'release', 'Taken.bin')
+        )
+      ).toEqual(Buffer.from(`taken-${uniqueId}`));
+      const arrived = await request(app)
+        .get(`${otherBase}/release/14.5.1/patch/release/file/taken/info`)
+        .set('x-access-token', ownerToken);
+      expect(arrived.statusCode).toBe(200);
+    });
+  });
+
   describe('DELETE .../file/:key/delete', () => {
     it('should refuse a plain member and remove the file for the owner', async () => {
       const asMember = await request(app)

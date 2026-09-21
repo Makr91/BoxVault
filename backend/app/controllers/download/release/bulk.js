@@ -10,19 +10,43 @@ import {
   wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
-import { getSecureDownloadPath, removeDownloadFiles } from '../helpers.js';
+import { renameDirectory } from '../../../utils/paths.js';
+import {
+  getSecureDownloadPath,
+  ownWords,
+  removeDownloadFiles,
+  renameStoragePaths,
+  storagePathFor,
+} from '../helpers.js';
 const {
+  download: Download,
   downloadReleases: DownloadRelease,
   downloadPatches: DownloadPatch,
   downloadFiles: DownloadFile,
 } = db;
 
 /**
+ * The columns a `set` writes on a release, present values only.
+ * @param {Object} values - The body's values member
+ * @returns {Object} The model-named payload
+ */
+const releaseValues = values => {
+  const payload = {};
+  if (typeof values.description !== 'undefined') {
+    payload.description = values.description;
+  }
+  if (typeof values.release_notes !== 'undefined') {
+    payload.releaseNotes = values.release_notes;
+  }
+  return payload;
+};
+
+/**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/bulk:
  *   post:
  *     summary: One action across a selection of releases of a download product
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing release is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the release wider than its product with forbidden. A closing verb closes every patch and file beneath each release as well; an opening verb reaches them only while recursive is true. A delete removes patches, file records and the directory the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row is isolated; a missing release is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the release wider than its product with forbidden. A closing verb closes every patch and file beneath each release as well; an opening verb reaches them only while recursive is true. `set` writes the given values (description, release_notes) on every named release. `move` moves every named release, with its patches, files and directory, to the product `download` names in the same organization, the caller having to be allowed to write both products, a release whose identifier is taken there counted as conflict and one wider than the target product as forbidden. `reconcile` carries every word a release holds off down to its patches and files. A delete removes patches, file records and the directory the way the single delete does; a deprecate carries the required deprecation_reason as the single update does.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -49,7 +73,7 @@ const {
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete, deprecate, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
+ *                 enum: [delete, deprecate, set, move, reconcile, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -63,6 +87,17 @@ const {
  *               recursive:
  *                 type: boolean
  *                 description: Carry an opening verb down to every row beneath each release; a closing verb always goes down
+ *               download:
+ *                 type: string
+ *                 description: The product the releases move to; required while action is move
+ *               values:
+ *                 type: object
+ *                 description: Required while action is set
+ *                 properties:
+ *                   description:
+ *                     type: string
+ *                   release_notes:
+ *                     type: string
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -71,9 +106,9 @@ const {
  *             schema:
  *               $ref: '#/components/schemas/BulkResult'
  *       403:
- *         description: The caller may not write the product
+ *         description: The caller may not write the product, or the target product
  *       404:
- *         description: Organization or product not found
+ *         description: Organization, product or target product not found
  *       422:
  *         description: A value breaks a rule of the bulkVersion form
  *         content:
@@ -83,7 +118,14 @@ const {
  */
 const bulk = async (req, res) => {
   const { organization } = req.params;
-  const { action, names, deprecation_reason: deprecationReason, recursive } = req.body;
+  const {
+    action,
+    names,
+    deprecation_reason: deprecationReason,
+    recursive,
+    values,
+    download: targetName,
+  } = req.body;
   const { organizationData, downloadData: download } = req;
 
   const membership = await resolveOrgMembership(req, organizationData.id);
@@ -95,8 +137,65 @@ const bulk = async (req, res) => {
     });
   }
 
+  const missing =
+    (action === 'set' && !values && '/values') || (action === 'move' && !targetName && '/download');
+  if (missing) {
+    return problem(res, req, {
+      status: 422,
+      type: 'validation',
+      errors: [{ pointer: missing, rule: 'required', params: {} }],
+    });
+  }
+
+  let target = download;
+  if (action === 'move' && targetName !== download.name) {
+    target = await Download.findOne({
+      where: { name: targetName, organizationId: organizationData.id },
+    });
+    if (!target) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__('downloads.notFoundWithName', { name: targetName, organization }),
+      });
+    }
+    if (!canWriteDownload(req, target, membership)) {
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('downloads.permissionDenied'),
+      });
+    }
+  }
+
   const errors = [];
   let processed = 0;
+
+  const move = async release => {
+    if (target.id === download.id) {
+      return null;
+    }
+    const taken = await DownloadRelease.findOne({
+      where: { versionNumber: release.versionNumber, downloadId: target.id },
+    });
+    if (taken) {
+      return 'conflict';
+    }
+    if (widerThanParent(release, target)) {
+      return 'forbidden';
+    }
+    await release.update({ downloadId: target.id });
+    const oldFilePath = getSecureDownloadPath(organization, download.name, release.versionNumber);
+    const newFilePath = getSecureDownloadPath(organization, target.name, release.versionNumber);
+    if (fs.existsSync(oldFilePath)) {
+      renameDirectory(oldFilePath, newFilePath);
+      await renameStoragePaths(
+        storagePathFor(organization, download.name, release.versionNumber),
+        storagePathFor(organization, target.name, release.versionNumber)
+      );
+    }
+    return null;
+  };
 
   const row = async versionNumber => {
     const release = await DownloadRelease.findOne({
@@ -128,6 +227,17 @@ const bulk = async (req, res) => {
     }
     if (action === 'deprecate') {
       await release.update({ deprecated: true, deprecationReason });
+      return null;
+    }
+    if (action === 'set') {
+      await release.update(releaseValues(values));
+      return null;
+    }
+    if (action === 'move') {
+      return move(release);
+    }
+    if (action === 'reconcile') {
+      await cascadeBeneath('release', [release.id], wordsBeneath(ownWords(release), false));
       return null;
     }
     const change = VISIBILITY_CHANGES[action];

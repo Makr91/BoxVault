@@ -1,4 +1,3 @@
-import fs from 'fs';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import {
@@ -10,17 +9,21 @@ import {
   wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
-import { renameDirectory } from '../../../utils/paths.js';
-import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
+import { relocatePatch, resolveTarget } from '../helpers.js';
 const { downloadPatches: DownloadPatch, Sequelize } = db;
 const { Op } = Sequelize;
+
+const MISSING_TITLES = {
+  download: 'downloads.notFound',
+  release: 'downloads.releases.notFound',
+};
 
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}:
  *   put:
- *     summary: Update a patch of a release
- *     description: Update a patch's name, kind, description, release date, notes link or visibility. A rename moves its directory. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role. The patch may never stand wider than its release, a wider is_public, guest_access or published answering 422 with the pointer. A word turned off is turned off on every file beneath the patch as well; a word turned on reaches them only while recursive is true.
+ *     summary: Update a patch of a release, or move it to another release
+ *     description: Update a patch's name, kind, description, release date, notes link or visibility. A rename moves its directory. The members `download` and `release` name the release the patch moves to, each defaulting to the current one, the caller having to be allowed to write both products; the directory moves with it and every file keeps downloading; a name already taken in the target release answers 409, a target that does not exist 404. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role. The patch may never stand wider than the release it sits in, a wider is_public, guest_access or published answering 422 with the pointer. A word turned off is turned off on every file beneath the patch as well; a word turned on reaches them only while recursive is true.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -59,6 +62,12 @@ const { Op } = Sequelize;
  *               name:
  *                 type: string
  *                 description: The new patch name (the identifier pattern of /api/rules, unique in the release)
+ *               download:
+ *                 type: string
+ *                 description: The product of the same organization the patch moves to (the slug pattern of /api/rules); absent or the current one leaves it in place
+ *               release:
+ *                 type: string
+ *                 description: The release the patch moves to, under `download`; absent means the current release identifier
  *               kind:
  *                 type: string
  *                 enum: [release, fixpack, interim-fix, hotfix]
@@ -93,11 +102,11 @@ const { Op } = Sequelize;
  *             schema:
  *               $ref: '#/components/schemas/DownloadPatch'
  *       403:
- *         description: The caller may not write the product
+ *         description: The caller may not write the product, or the target product
  *       404:
- *         description: Organization, product, release or patch not found
+ *         description: Organization, product, release, patch or target not found
  *       409:
- *         description: A patch with the new name already exists for the release
+ *         description: A patch with the name already exists for the release it would sit in
  *         content:
  *           application/problem+json:
  *             schema:
@@ -124,18 +133,6 @@ const update = async (req, res) => {
 
   try {
     const { organizationData, downloadData: download, releaseData: release, patchData } = req;
-    const oldFilePath = getSecureDownloadPath(
-      organization,
-      download.name,
-      release.versionNumber,
-      patchName
-    );
-    const newFilePath = getSecureDownloadPath(
-      organization,
-      download.name,
-      release.versionNumber,
-      name || patchName
-    );
 
     const membership = await resolveOrgMembership(req, organizationData.id);
     if (!canWriteDownload(req, download, membership)) {
@@ -146,19 +143,41 @@ const update = async (req, res) => {
       });
     }
 
-    if (name && name !== patchName) {
+    const target = await resolveTarget(
+      { organizationId: organizationData.id, download, release },
+      req.body
+    );
+    if (target.missing) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__(MISSING_TITLES[target.missing]),
+      });
+    }
+    if (target.download.id !== download.id && !canWriteDownload(req, target.download, membership)) {
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('downloads.permissionDenied'),
+      });
+    }
+    const moving = target.release.id !== release.id;
+    const finalName = name || patchName;
+
+    if (moving || finalName !== patchName) {
       const existingPatch = await DownloadPatch.findOne({
-        where: { name, downloadReleaseId: release.id, id: { [Op.ne]: patchData.id } },
+        where: {
+          name: finalName,
+          downloadReleaseId: target.release.id,
+          id: { [Op.ne]: patchData.id },
+        },
       });
       if (existingPatch) {
-        return conflict(res, req, '/name', release.versionNumber);
+        return conflict(res, req, '/name', target.release.versionNumber);
       }
     }
 
     const updatePayload = {};
-    if (name) {
-      updatePayload.name = name;
-    }
     if (typeof kind !== 'undefined') {
       updatePayload.kind = kind;
     }
@@ -174,21 +193,24 @@ const update = async (req, res) => {
     const visibility = visibilityOf(req.body);
     Object.assign(updatePayload, visibility);
 
-    const wider = widerThanParent({ ...patchData.get({ plain: true }), ...updatePayload }, release);
+    const wider = widerThanParent(
+      { ...patchData.get({ plain: true }), ...updatePayload },
+      target.release
+    );
     if (wider) {
       return refuse(res, req, [wider]);
     }
 
-    const updatedPatch = await patchData.update(updatePayload);
+    await patchData.update(updatePayload);
     await cascadeBeneath('patch', [patchData.id], wordsBeneath(visibility, recursive === true));
 
-    if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-      renameDirectory(oldFilePath, newFilePath);
-      await renameStoragePaths(
-        storagePathFor(organization, download.name, release.versionNumber, patchName),
-        storagePathFor(organization, download.name, release.versionNumber, name)
-      );
-    }
+    const updatedPatch = await relocatePatch(
+      organization,
+      patchData,
+      { download, release },
+      target,
+      finalName
+    );
 
     return res.send(updatedPatch);
   } catch (err) {

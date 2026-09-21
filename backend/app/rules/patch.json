@@ -3,6 +3,8 @@
   "required": ["name"],
   "properties": {
     "name": { "$ref": "#/$defs/identifier", "minLength": 1, "pattern": "\\S", "unique": "release" },
+    "download": { "$ref": "#/$defs/slug" },
+    "release": { "$ref": "#/$defs/identifier" },
     "kind": { "type": "string", "enum": ["release", "fixpack", "interim-fix", "hotfix"] },
     "description": { "type": "string" },
     "released_at": { "type": "string", "format": "date" },

@@ -18,6 +18,7 @@ import { findOne } from '../controllers/download/findone.js';
 import { update } from '../controllers/download/update.js';
 import { delete as deleteDownload } from '../controllers/download/delete.js';
 import { discoverAll } from '../controllers/download/discover.js';
+import { duplicates } from '../controllers/download/duplicates.js';
 import { watchDownload, unwatchDownload } from '../controllers/download/watch.js';
 import { create as createRelease } from '../controllers/download/release/create.js';
 import { findAll as findAllReleases } from '../controllers/download/release/findall.js';
@@ -56,6 +57,12 @@ router.use((req, res, next) => {
 
 router.get('/downloads/discover', sessionAuth, discoverAll);
 router.get('/organization/:organization/download', sessionAuth, findAll);
+
+router.get(
+  '/organization/:organization/download/duplicates',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
+  duplicates
+);
 
 router.post(
   '/organization/:organization/download/pending/upload',

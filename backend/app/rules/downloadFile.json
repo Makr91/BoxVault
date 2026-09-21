@@ -4,6 +4,9 @@
   "properties": {
     "key": { "$ref": "#/$defs/identifier", "minLength": 1, "pattern": "\\S", "unique": "patch" },
     "file_name": { "type": "string" },
+    "download": { "$ref": "#/$defs/slug" },
+    "release": { "$ref": "#/$defs/identifier" },
+    "patch": { "$ref": "#/$defs/identifier" },
     "kind": {
       "type": "string",
       "enum": [

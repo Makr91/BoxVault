@@ -282,6 +282,81 @@ describe('Download patch API', () => {
     expect(asMember.statusCode).toBe(403);
   });
 
+  it('should move a patch to another release with its directory', async () => {
+    const productBase = `/api/organization/${orgName}/download/${productName}`;
+    await request(app)
+      .post(`${productBase}/release`)
+      .set('x-access-token', ownerToken)
+      .send({ version_number: '14.5.2', published: true })
+      .expect(201);
+    await request(app)
+      .post(`${releaseBase}/patch`)
+      .set('x-access-token', ownerToken)
+      .send({ name: 'IF3', kind: 'interim-fix', published: true })
+      .expect(201);
+    fs.writeFileSync(
+      getSecureDownloadPath(orgName, productName, releaseNumber, 'IF3', 'if3.bin'),
+      'if3'
+    );
+    const release = await db.downloadReleases.findOne({ where: { versionNumber: releaseNumber } });
+    const patch = await db.downloadPatches.findOne({
+      where: { name: 'IF3', downloadReleaseId: release.id },
+    });
+    const file = await db.downloadFiles.create({
+      key: 'if3.bin',
+      fileName: 'if3.bin',
+      fileSize: 3,
+      storagePath: `${orgName}/downloads/${productName}/${releaseNumber}/IF3/if3.bin`,
+      downloadPatchId: patch.id,
+    });
+
+    const noRelease = await request(app)
+      .put(`${releaseBase}/patch/IF3`)
+      .set('x-access-token', ownerToken)
+      .send({ release: '9.9.9' });
+    expect(noRelease.statusCode).toBe(404);
+    const asMember = await request(app)
+      .put(`${releaseBase}/patch/IF3`)
+      .set('x-access-token', memberToken)
+      .send({ release: '14.5.2' });
+    expect(asMember.statusCode).toBe(403);
+
+    const moved = await request(app)
+      .put(`${releaseBase}/patch/IF3`)
+      .set('x-access-token', ownerToken)
+      .send({ release: '14.5.2', name: 'IF1' });
+    expect(moved.statusCode).toBe(200);
+    expect(moved.body.name).toBe('IF1');
+    expect(
+      fs.readFileSync(getSecureDownloadPath(orgName, productName, '14.5.2', 'IF1', 'if3.bin'))
+    ).toEqual(Buffer.from('if3'));
+    expect(fs.existsSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'IF3'))).toBe(
+      false
+    );
+    await file.reload();
+    expect(file.storagePath).toBe(`${orgName}/downloads/${productName}/14.5.2/IF1/if3.bin`);
+    const arrived = await request(app)
+      .get(`${productBase}/release/14.5.2/patch/IF1`)
+      .set('x-access-token', memberToken);
+    expect(arrived.statusCode).toBe(200);
+
+    await request(app)
+      .post(`${releaseBase}/patch`)
+      .set('x-access-token', ownerToken)
+      .send({ name: 'IF1', kind: 'interim-fix' })
+      .expect(201);
+    const taken = await request(app)
+      .put(`${releaseBase}/patch/IF1`)
+      .set('x-access-token', ownerToken)
+      .send({ release: '14.5.2' });
+    expect(taken.statusCode).toBe(409);
+    expect(taken.body.errors).toEqual([
+      expect.objectContaining({ pointer: '/name', rule: 'unique', params: { scope: '14.5.2' } }),
+    ]);
+    await request(app).delete(`${releaseBase}/patch/IF1`).set('x-access-token', ownerToken);
+    await request(app).delete(`${productBase}/release/14.5.2`).set('x-access-token', ownerToken);
+  });
+
   it('should delete a patch and answer 404 afterwards', async () => {
     const asMember = await request(app)
       .delete(`${releaseBase}/patch/FP2`)

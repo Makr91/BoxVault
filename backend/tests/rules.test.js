@@ -196,51 +196,77 @@ describe('GET /api/rules', () => {
   });
 
   it('should carry one bulk form per level shape', () => {
-    expect(document.forms.bulkItem.properties.action.enum).toEqual([
-      'delete',
+    const words = [
       'make_public',
       'make_private',
       'publish',
       'unpublish',
       'allow_guests',
       'deny_guests',
+    ];
+    expect(document.forms.bulkItem.properties.action.enum).toEqual([
+      'delete',
+      'set',
+      'reconcile',
+      ...words,
     ]);
     expect(document.forms.bulkVersion.properties.action.enum).toEqual([
       'delete',
       'deprecate',
-      'make_public',
-      'make_private',
-      'publish',
-      'unpublish',
-      'allow_guests',
-      'deny_guests',
+      'set',
+      'move',
+      'reconcile',
+      ...words,
     ]);
     expect(document.forms.bulkPatch.properties.action.enum).toEqual([
       'delete',
-      'make_public',
-      'make_private',
-      'publish',
-      'unpublish',
-      'allow_guests',
-      'deny_guests',
+      'set',
+      'move',
+      'reconcile',
+      ...words,
     ]);
     expect(document.forms.bulkLeaf.properties.action.enum).toEqual([
       'delete',
-      'make_public',
-      'make_private',
-      'publish',
-      'unpublish',
-      'allow_guests',
-      'deny_guests',
+      'set',
+      'move',
+      ...words,
     ]);
     ['bulkItem', 'bulkVersion', 'bulkPatch', 'bulkLeaf'].forEach(form => {
       expect(document.forms[form].required).toEqual(['action', 'names']);
       expect(document.forms[form].properties.names.minItems).toBe(1);
+      expect(document.forms[form].properties.values.type).toBe('object');
     });
+    expect(Object.keys(document.forms.bulkItem.properties.values.properties)).toEqual([
+      'description',
+      'family',
+      'vendor',
+      'docs_url',
+      'notes_url',
+      'icon_url',
+    ]);
+    expect(Object.keys(document.forms.bulkLeaf.properties.values.properties)).toEqual([
+      'kind',
+      'platform',
+      'architecture',
+      'language',
+      'variant',
+    ]);
+    expect(document.forms.bulkVersion.properties.download.$ref).toBe('#/$defs/slug');
+    expect(document.forms.bulkPatch.properties.release.$ref).toBe('#/$defs/identifier');
+    expect(document.forms.bulkLeaf.properties.patch.$ref).toBe('#/$defs/identifier');
+    expect(document.forms.downloadFile.properties.download.$ref).toBe('#/$defs/slug');
+    expect(document.forms.patch.properties.release.$ref).toBe('#/$defs/identifier');
     expect(document.forms.bulkVersion.if).toEqual({
       properties: { action: { const: 'deprecate' } },
       required: ['action'],
     });
     expect(document.forms.bulkVersion.then).toEqual({ required: ['deprecation_reason'] });
+    ['bulkItem', 'bulkPatch', 'bulkLeaf'].forEach(form => {
+      expect(document.forms[form].if).toEqual({
+        properties: { action: { const: 'set' } },
+        required: ['action'],
+      });
+      expect(document.forms[form].then).toEqual({ required: ['values'] });
+    });
   });
 });

@@ -114,6 +114,243 @@ describe('Download bulk API', () => {
     });
   });
 
+  describe('set and move across the levels', () => {
+    it('should set file attributes and move files to another patch', async () => {
+      await upload('14.5.1', 'release', 'set-a', 'Set_A.bin', Buffer.from(`a-${uniqueId}`)).expect(
+        200
+      );
+      await upload('14.5.1', 'release', 'set-b', 'Set_B.bin', Buffer.from(`b-${uniqueId}`)).expect(
+        200
+      );
+      await upload(
+        '14.5.1',
+        'FP3',
+        'set-b',
+        'Set_B_taken.bin',
+        Buffer.from(`c-${uniqueId}`)
+      ).expect(200);
+
+      const noValues = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/release/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'set', names: ['set-a'] });
+      expect(noValues.statusCode).toBe(422);
+      expect(noValues.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/values', rule: 'required' }),
+      ]);
+      const badValue = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/release/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'set', names: ['set-a'], values: { platform: 'amiga' } });
+      expect(badValue.statusCode).toBe(422);
+      expect(badValue.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/values/platform', rule: 'enum' }),
+      ]);
+
+      const set = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/release/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({
+          action: 'set',
+          names: ['set-a', 'Set_B.bin', 'missing'],
+          values: { kind: 'installer', platform: 'linux', architecture: 'x64' },
+        });
+      expect(set.body).toEqual({
+        processed: 2,
+        skipped: 1,
+        errors: [{ name: 'missing', code: 'not_found' }],
+      });
+      const rowA = await db.downloadFiles.findOne({ where: { fileName: 'Set_A.bin' } });
+      expect(rowA.kind).toBe('installer');
+      expect(rowA.platform).toBe('linux');
+      expect(rowA.architecture).toBe('x64');
+
+      const noTarget = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/release/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'move', names: ['set-a'], patch: 'FP9' });
+      expect(noTarget.statusCode).toBe(404);
+
+      const moved = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/release/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'move', names: ['set-a', 'set-b'], patch: 'FP3' });
+      expect(moved.body).toEqual({
+        processed: 1,
+        skipped: 1,
+        errors: [{ name: 'set-b', code: 'conflict' }],
+      });
+      expect(fs.readFileSync(filePath('14.5.1', 'FP3', 'Set_A.bin'))).toEqual(
+        Buffer.from(`a-${uniqueId}`)
+      );
+      expect(fs.existsSync(filePath('14.5.1', 'release', 'Set_A.bin'))).toBe(false);
+      await rowA.reload();
+      expect(rowA.storagePath).toBe(`${orgName}/downloads/${productName}/14.5.1/FP3/Set_A.bin`);
+    });
+
+    it('should set patch values and move patches to another release', async () => {
+      await request(app)
+        .post(`${productBase}/release`)
+        .set('x-access-token', ownerToken)
+        .send({ version_number: '14.5.2' })
+        .expect(201);
+
+      const set = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({
+          action: 'set',
+          names: ['FP3', 'FP9'],
+          values: { kind: 'fixpack', released_at: '2026-01-15' },
+        });
+      expect(set.body).toEqual({
+        processed: 1,
+        skipped: 1,
+        errors: [{ name: 'FP9', code: 'not_found' }],
+      });
+      const badDate = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'set', names: ['FP3'], values: { released_at: 'Jan 2026' } });
+      expect(badDate.statusCode).toBe(422);
+      expect(badDate.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/values/released_at', rule: 'format' }),
+      ]);
+
+      const moved = await request(app)
+        .post(`${productBase}/release/14.5.1/patch/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'move', names: ['FP3'], release: '14.5.2' });
+      expect(moved.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      expect(fs.readFileSync(filePath('14.5.2', 'FP3', 'Set_A.bin'))).toEqual(
+        Buffer.from(`a-${uniqueId}`)
+      );
+      expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5.1', 'FP3'))).toBe(
+        false
+      );
+      const product = await db.download.findOne({
+        where: { name: productName, organizationId: org.id },
+      });
+      const release = await db.downloadReleases.findOne({
+        where: { versionNumber: '14.5.2', downloadId: product.id },
+      });
+      const patch = await db.downloadPatches.findOne({
+        where: { name: 'FP3', downloadReleaseId: release.id },
+      });
+      expect(patch.kind).toBe('fixpack');
+      expect(patch.releasedAt).toBe('2026-01-15');
+    });
+
+    it('should set release values, move releases to another product and reconcile a tree', async () => {
+      await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'domino-archive' })
+        .expect(201);
+
+      const set = await request(app)
+        .post(`${productBase}/release/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'set', names: ['14.5.2'], values: { release_notes: 'Archived' } });
+      expect(set.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+
+      const noTarget = await request(app)
+        .post(`${productBase}/release/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'move', names: ['14.5.2'] });
+      expect(noTarget.statusCode).toBe(422);
+      expect(noTarget.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/download', rule: 'required' }),
+      ]);
+      const unknown = await request(app)
+        .post(`${productBase}/release/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'move', names: ['14.5.2'], download: 'no-such-product' });
+      expect(unknown.statusCode).toBe(404);
+
+      const moved = await request(app)
+        .post(`${productBase}/release/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'move', names: ['14.5.2', '9.9.9'], download: 'domino-archive' });
+      expect(moved.body).toEqual({
+        processed: 1,
+        skipped: 1,
+        errors: [{ name: '9.9.9', code: 'not_found' }],
+      });
+      expect(
+        fs.readFileSync(
+          getSecureDownloadPath(orgName, 'domino-archive', '14.5.2', 'FP3', 'Set_A.bin')
+        )
+      ).toEqual(Buffer.from(`a-${uniqueId}`));
+      const archive = await db.download.findOne({
+        where: { name: 'domino-archive', organizationId: org.id },
+      });
+      const release = await db.downloadReleases.findOne({
+        where: { versionNumber: '14.5.2', downloadId: archive.id },
+      });
+      expect(release.releaseNotes).toBe('Archived');
+
+      await db.downloadPatches.update(
+        { isPublic: true, published: true },
+        {
+          where: { downloadReleaseId: release.id },
+        }
+      );
+      const reconciled = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'reconcile', names: ['domino-archive'] });
+      expect(reconciled.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const patches = await db.downloadPatches.findAll({
+        where: { downloadReleaseId: release.id },
+      });
+      patches.forEach(patch => {
+        expect(patch.isPublic).toBe(false);
+        expect(patch.published).toBe(false);
+      });
+
+      const setProduct = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({
+          action: 'set',
+          names: ['domino-archive', productName],
+          values: { vendor: 'HCL', family: 'HCL Domino', icon_url: 'https://example.com/d.svg' },
+        });
+      expect(setProduct.body).toEqual({ processed: 2, skipped: 0, errors: [] });
+      await archive.reload();
+      expect(archive.vendor).toBe('HCL');
+      expect(archive.family).toBe('HCL Domino');
+      expect(archive.iconUrl).toBe('https://example.com/d.svg');
+      const badUrl = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'set', names: ['domino-archive'], values: { icon_url: 'not a url' } });
+      expect(badUrl.statusCode).toBe(422);
+      expect(badUrl.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/values/icon_url', rule: 'format' }),
+      ]);
+
+      await upload('14.5.1', 'release', 'dup-a', 'Dup_A.bin', fileContent).expect(200);
+      const duplicates = await request(app)
+        .get(`/api/organization/${orgName}/download/duplicates`)
+        .set('x-access-token', ownerToken);
+      expect(duplicates.statusCode).toBe(200);
+      const group = duplicates.body.find(entry => entry.files.length >= 2);
+      expect(group).toBeDefined();
+      expect(group.files.filter(entry => entry.original)).toHaveLength(1);
+      expect(group.files[0]).toEqual(
+        expect.objectContaining({ product: expect.any(String), release: expect.any(String) })
+      );
+
+      await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'delete', names: ['domino-archive'] })
+        .expect(200);
+    });
+  });
+
   describe('POST .../release/:versionNumber/patch/bulk', () => {
     it('should delete the named patches with their files', async () => {
       await upload('14.5.1', 'FP1', 'linux-x64', 'Domino_FP1.tar', fileContent).expect(200);

@@ -8,16 +8,22 @@ import {
   widerThanParent,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
-import { absolutePath, relinkTo, storagePathFor } from '../helpers.js';
+import { absolutePath, relinkTo, relocateFile, resolveTarget, storagePathFor } from '../helpers.js';
 const { downloadFiles: DownloadFile, Sequelize } = db;
 const { Op } = Sequelize;
+
+const MISSING_TITLES = {
+  download: 'downloads.notFound',
+  release: 'downloads.releases.notFound',
+  patch: 'downloads.patches.notFound',
+};
 
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}:
  *   put:
- *     summary: Update a file row of a patch
- *     description: Update the key, file name, kind, platform, architecture, language, variant, declared checksum or the visibility words is_public, guest_access and published of a file, a word wider than the patch answered 422. A new file name renames the stored file. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     summary: Update a file row of a patch, or move it to another patch
+ *     description: Update the key, file name, kind, platform, architecture, language, variant, declared checksum or the visibility words is_public, guest_access and published of a file, a word wider than the patch answered 422. A new file name renames the stored file. The members `download`, `release` and `patch` name the patch the file moves to, each defaulting to the current one, the caller having to be allowed to write both products; the bytes move with the row and every link keeps working; a key already taken in the target patch answers 409, a target that does not exist 404, and the file may never stand wider than the patch it lands in. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -63,6 +69,15 @@ const { Op } = Sequelize;
  *                 type: string
  *               file_name:
  *                 type: string
+ *               download:
+ *                 type: string
+ *                 description: The product of the same organization the file moves to (the slug pattern of /api/rules); absent or the current one leaves it in place
+ *               release:
+ *                 type: string
+ *                 description: The release the file moves to, under `download`; absent means the current release identifier
+ *               patch:
+ *                 type: string
+ *                 description: The patch the file moves to, under `release`; absent means the current patch name
  *               kind:
  *                 type: string
  *               platform:
@@ -91,11 +106,11 @@ const { Op } = Sequelize;
  *             schema:
  *               $ref: '#/components/schemas/DownloadFile'
  *       403:
- *         description: The caller may not write the product
+ *         description: The caller may not write the product, or the target product
  *       404:
- *         description: Organization, product, release, patch or file not found
+ *         description: Organization, product, release, patch, file or target not found
  *       409:
- *         description: A file with the new key already exists for the patch
+ *         description: A file with the key already exists for the patch it would sit in
  *         content:
  *           application/problem+json:
  *             schema:
@@ -134,12 +149,33 @@ const update = async (req, res) => {
       });
     }
 
-    if (key && key !== file.key) {
+    const target = await resolveTarget(
+      { organizationId: organization.id, download, release, patch },
+      req.body
+    );
+    if (target.missing) {
+      return problem(res, req, {
+        status: 404,
+        type: 'not-found',
+        title: req.__(MISSING_TITLES[target.missing]),
+      });
+    }
+    if (target.download.id !== download.id && !canWriteDownload(req, target.download, membership)) {
+      return problem(res, req, {
+        status: 403,
+        type: 'forbidden',
+        title: req.__('downloads.permissionDenied'),
+      });
+    }
+    const moving = target.patch.id !== patch.id;
+    const finalKey = key || file.key;
+
+    if (moving || finalKey !== file.key) {
       const existingFile = await DownloadFile.findOne({
-        where: { key, downloadPatchId: patch.id, id: { [Op.ne]: file.id } },
+        where: { key: finalKey, downloadPatchId: target.patch.id, id: { [Op.ne]: file.id } },
       });
       if (existingFile) {
-        return conflict(res, req, '/key', patch.name);
+        return conflict(res, req, '/key', target.patch.name);
       }
     }
 
@@ -170,7 +206,7 @@ const update = async (req, res) => {
     }
     Object.assign(updatePayload, visibilityOf(req.body));
 
-    const wider = widerThanParent({ ...file.get({ plain: true }), ...updatePayload }, patch);
+    const wider = widerThanParent({ ...file.get({ plain: true }), ...updatePayload }, target.patch);
     if (wider) {
       return refuse(res, req, [wider]);
     }
@@ -187,16 +223,18 @@ const update = async (req, res) => {
         );
         const oldPath = absolutePath(file.storagePath);
         if (fs.lstatSync(oldPath, { throwIfNoEntry: false })) {
-          fs.copyFileSync(oldPath, absolutePath(newStoragePath));
-          fs.unlinkSync(oldPath);
+          fs.renameSync(oldPath, absolutePath(newStoragePath));
         }
         updatePayload.storagePath = newStoragePath;
       }
     }
 
-    const updatedFile = await file.update(updatePayload);
+    let updatedFile = await file.update(updatePayload);
     if (updatePayload.storagePath && updatedFile.original) {
       await relinkTo(updatedFile);
+    }
+    if (moving) {
+      updatedFile = await relocateFile(organization.name, updatedFile, target);
     }
 
     return res.send(updatedFile);

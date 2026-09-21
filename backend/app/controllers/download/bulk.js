@@ -1,8 +1,9 @@
 import fs from 'fs';
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
+import { problem } from '../../utils/problem.js';
 import { VISIBILITY_CHANGES, cascadeBeneath, wordsBeneath } from '../../utils/orgMembership.js';
-import { getSecureDownloadPath, removeDownloadFiles } from './helpers.js';
+import { getSecureDownloadPath, ownWords, removeDownloadFiles } from './helpers.js';
 import { notifyDownloadPublished } from './notifications.js';
 const {
   download: Download,
@@ -12,12 +13,42 @@ const {
   organization: Organization,
 } = db;
 
+const linkOf = value => (value === '' ? null : value);
+
+/**
+ * The columns a `set` writes on a product, present values only.
+ * @param {Object} values - The body's values member
+ * @returns {Object} The model-named payload
+ */
+const productValues = values => {
+  const payload = {};
+  if (typeof values.description !== 'undefined') {
+    payload.description = values.description;
+  }
+  if (typeof values.family !== 'undefined') {
+    payload.family = values.family;
+  }
+  if (typeof values.vendor !== 'undefined') {
+    payload.vendor = values.vendor;
+  }
+  if (typeof values.docs_url !== 'undefined') {
+    payload.docsUrl = linkOf(values.docs_url);
+  }
+  if (typeof values.notes_url !== 'undefined') {
+    payload.notesUrl = linkOf(values.notes_url);
+  }
+  if (typeof values.icon_url !== 'undefined') {
+    payload.iconUrl = linkOf(values.icon_url);
+  }
+  return payload;
+};
+
 /**
  * @swagger
  * /api/organization/{organization}/download/bulk:
  *   post:
  *     summary: One action across a selection of download products
- *     description: Each row is isolated and checked against the single route's permission (the product's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A closing verb (make_private, unpublish, deny_guests) closes every release, patch and file beneath each product as well; an opening verb reaches them only while recursive is true. A delete removes releases, patches, file records and the directory the way the single delete does.
+ *     description: Each row is isolated and checked against the single route's permission (the product's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A closing verb (make_private, unpublish, deny_guests) closes every release, patch and file beneath each product as well; an opening verb reaches them only while recursive is true. `set` writes the given values (description, family, vendor, docs_url, notes_url, icon_url) on every named product, an empty string clearing a link. `reconcile` carries every word a product holds off down to every release, patch and file beneath it, so the tree stands within the product again. A delete removes releases, patches, file records and the directory the way the single delete does.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -38,7 +69,7 @@ const {
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [delete, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
+ *                 enum: [delete, set, reconcile, make_public, make_private, publish, unpublish, allow_guests, deny_guests]
  *               names:
  *                 type: array
  *                 minItems: 1
@@ -48,6 +79,25 @@ const {
  *               recursive:
  *                 type: boolean
  *                 description: Carry an opening verb down to every row beneath each product; a closing verb always goes down
+ *               values:
+ *                 type: object
+ *                 description: Required while action is set
+ *                 properties:
+ *                   description:
+ *                     type: string
+ *                   family:
+ *                     type: string
+ *                   vendor:
+ *                     type: string
+ *                   docs_url:
+ *                     type: string
+ *                     format: uri
+ *                   notes_url:
+ *                     type: string
+ *                     format: uri
+ *                   icon_url:
+ *                     type: string
+ *                     format: uri
  *     responses:
  *       200:
  *         description: The outcome per row
@@ -68,9 +118,17 @@ const {
  */
 const bulk = async (req, res) => {
   const { organization } = req.params;
-  const { action, names, recursive } = req.body;
+  const { action, names, recursive, values } = req.body;
   const errors = [];
   let processed = 0;
+
+  if (action === 'set' && !values) {
+    return problem(res, req, {
+      status: 422,
+      type: 'validation',
+      errors: [{ pointer: '/values', rule: 'required', params: {} }],
+    });
+  }
 
   const row = async name => {
     const download = await Download.findOne({
@@ -110,6 +168,14 @@ const bulk = async (req, res) => {
       } catch (err) {
         log.app.info(`Could not delete the download directory: ${err}`);
       }
+      return null;
+    }
+    if (action === 'set') {
+      await download.update(productValues(values));
+      return null;
+    }
+    if (action === 'reconcile') {
+      await cascadeBeneath('download', [download.id], wordsBeneath(ownWords(download), false));
       return null;
     }
     const wasPublished = download.published;
