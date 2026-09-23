@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.95.0](https://github.com/Makr91/BoxVault/compare/v0.94.4...v0.95.0) (2026-09-23)
+
+
+### Features
+
+* sites carry the order their tables open in ([72623a4](https://github.com/Makr91/BoxVault/commit/72623a43e5ad5845a51d213666703dd3c7332be8))
+
+
+### Bug Fixes
+
+* small test changes ([533dca7](https://github.com/Makr91/BoxVault/commit/533dca7b72183c7e230ca2ba6613cf86c48ad881))
+
 ## [0.94.4](https://github.com/Makr91/BoxVault/compare/v0.94.3...v0.94.4) (2026-09-23)
 
 
