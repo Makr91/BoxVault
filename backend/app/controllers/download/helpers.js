@@ -110,6 +110,49 @@ const sumDownloadDownloads = download =>
     .flatMap(patch => patch.files || [])
     .reduce((total, file) => total + (file.downloadCount || 0), 0);
 
+const plainOf = row => (typeof row.get === 'function' ? row.get({ plain: true }) : row);
+
+/**
+ * The date a release shipped: its `release` patch's released_at, else the
+ * earliest released_at among its patches, else null. The release row keeps
+ * no date of its own; the patches carry them.
+ * @param {Object} release - A release row with nested patches
+ * @returns {string|null} A full-date string, or null
+ */
+const releaseDateOf = release => {
+  const patches = (release.patches || []).map(plainOf);
+  const own = patches.find(patch => patch.name === 'release' && patch.releasedAt);
+  if (own) {
+    return own.releasedAt;
+  }
+  const dated = patches
+    .map(patch => patch.releasedAt)
+    .filter(Boolean)
+    .sort();
+  return dated[0] || null;
+};
+
+/**
+ * The date a product last shipped: the latest release date among its
+ * releases, else null.
+ * @param {Object} download - A download row with nested releases and patches
+ * @returns {string|null} A full-date string, or null
+ */
+const latestReleaseDateOf = download =>
+  (download.releases || []).map(releaseDateOf).filter(Boolean).sort().pop() || null;
+
+/**
+ * A release's JSON with its released_at and each patch's JSON as given.
+ * @param {Object} release - A release row with nested patches
+ * @param {Function} patchJson - Maps a patch row to its JSON
+ * @returns {Object} The release JSON
+ */
+const releaseJson = (release, patchJson) => ({
+  ...snakeKeys(plainOf(release)),
+  released_at: releaseDateOf(release),
+  patches: (release.patches || []).map(patchJson),
+});
+
 /**
  * The file rows with their downloadCount kept for a member of the
  * organization and answered null to anyone else.
@@ -171,15 +214,13 @@ const releasesWithinReach = (download, reach) =>
 const withCounts = (download, member, reach) => {
   const plain = snakeKeys(download.get({ plain: true }));
   const releases = releasesWithinReach(download, reach);
-  plain.releases = releases.map(release => {
-    const releasePlain = snakeKeys(release.get({ plain: true }));
-    releasePlain.patches = release.patches.map(patch => {
-      const patchPlain = snakeKeys(patch.get({ plain: true }));
-      patchPlain.files = filesWithCounts(patch.files, member);
-      return patchPlain;
-    });
-    return releasePlain;
-  });
+  plain.releases = releases.map(release =>
+    releaseJson(release, patch => ({
+      ...snakeKeys(patch.get({ plain: true })),
+      files: filesWithCounts(patch.files, member),
+    }))
+  );
+  plain.latest_release_at = latestReleaseDateOf({ releases });
   plain.download_count = member ? sumDownloadDownloads({ releases }) : null;
   return plain;
 };
@@ -480,6 +521,9 @@ export {
   pendingGuess,
   pendingSummary,
   sumDownloadDownloads,
+  releaseDateOf,
+  latestReleaseDateOf,
+  releaseJson,
   filesWithCounts,
   filesWithinReach,
   releasesWithinReach,

@@ -656,6 +656,38 @@ properties:
           title: Collections
           description: The collections this hostname mounts, in order; the first owns the root
           order: 2
+        sorts:
+          type: object
+          title: Table order
+          description: The order each table of this hostname opens in, per collection and level, a sort stack the UI applies before a person sorts; absent leaves every table at the UI's own default
+          order: 6
+          additionalProperties:
+            type: object
+            title: Collection
+            description: One of boxes, isos or downloads; each member names a level of that collection's pages
+            additionalProperties:
+              type: array
+              title: Sort stack
+              description: One of items, versions, providers or architectures; the entries apply in order, each naming a column key of that level's table
+              items:
+                type: object
+                title: Sort
+                required:
+                  - column
+                  - direction
+                properties:
+                  column:
+                    type: string
+                    title: Column
+                    description: The column key the UI draws for that table
+                    order: 1
+                  direction:
+                    type: string
+                    enum:
+                      - asc
+                      - desc
+                    title: Direction
+                    order: 2
         features:
           type: array
           items:

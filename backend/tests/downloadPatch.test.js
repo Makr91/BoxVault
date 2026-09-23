@@ -97,6 +97,40 @@ describe('Download patch API', () => {
     expect(fixpack.body.notes_url).toBe('https://support.hcl-software.com/fp1');
   });
 
+  it('should answer the release date from its release patch and the product its latest', async () => {
+    const productBase = `/api/organization/${orgName}/download/${productName}`;
+    const one = await request(app).get(`${releaseBase}`).set('x-access-token', ownerToken);
+    expect(one.statusCode).toBe(200);
+    expect(one.body.released_at).toBe('2026-03-19');
+
+    const list = await request(app).get(`${productBase}/release`).set('x-access-token', ownerToken);
+    expect(list.body.find(entry => entry.version_number === releaseNumber).released_at).toBe(
+      '2026-03-19'
+    );
+
+    const product = await request(app).get(productBase).set('x-access-token', ownerToken);
+    expect(product.body.latest_release_at).toBe('2026-03-19');
+    expect(product.body.releases[0].released_at).toBe('2026-03-19');
+
+    await request(app)
+      .post(`${productBase}/release`)
+      .set('x-access-token', ownerToken)
+      .send({ version_number: '14.5.2', published: true })
+      .expect(201);
+    await request(app)
+      .post(`${productBase}/release/14.5.2/patch`)
+      .set('x-access-token', ownerToken)
+      .send({ name: 'FP1', kind: 'fixpack', released_at: '2026-09-01', published: true })
+      .expect(201);
+    const undated = await request(app)
+      .get(`${productBase}/release/14.5.2`)
+      .set('x-access-token', ownerToken);
+    expect(undated.body.released_at).toBe('2026-09-01');
+    const latest = await request(app).get(productBase).set('x-access-token', ownerToken);
+    expect(latest.body.latest_release_at).toBe('2026-09-01');
+    await request(app).delete(`${productBase}/release/14.5.2`).set('x-access-token', ownerToken);
+  });
+
   it('should be born private and unpublished without the words and never wider than the release', async () => {
     const closed = await request(app)
       .post(`${releaseBase}/patch`)

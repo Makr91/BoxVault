@@ -9,7 +9,7 @@ import {
   isMemberOf,
   resolveDownloadViewer,
 } from '../visibility.js';
-import { filesWithCounts, filesWithinReach } from '../helpers.js';
+import { filesWithCounts, filesWithinReach, releaseDateOf } from '../helpers.js';
 const {
   downloadReleases: DownloadRelease,
   downloadPatches: DownloadPatch,
@@ -21,7 +21,7 @@ const {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}:
  *   get:
  *     summary: Get a release of a download product
- *     description: Retrieve one release of a product with the patches within the caller's reach and the files within it. The product must be visible to the caller; a release beyond the caller's reach answers 404.
+ *     description: Retrieve one release of a product with the patches within the caller's reach and the files within it, and its released_at, the date of its release patch or else the earliest dated patch beneath it. The product must be visible to the caller; a release beyond the caller's reach answers 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -94,6 +94,7 @@ const findOne = async (req, res) => {
     const reach = reachOf(viewer, download);
     return res.send({
       ...release.toJSON(),
+      released_at: releaseDateOf(release),
       patches: release.patches
         .filter(patch => canSeePatch(viewer, download, release, patch))
         .map(patch => ({
