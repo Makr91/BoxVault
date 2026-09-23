@@ -69,6 +69,7 @@ const appConfig = {
         pack: 'testpack',
       },
       collections: ['downloads'],
+      sorts: { downloads: { providers: [{ column: 'name', direction: 'desc' }] } },
       links: {
         docs: 'https://docs.test',
         contact: 'help@test',
