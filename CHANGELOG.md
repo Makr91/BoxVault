@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.99.0](https://github.com/Makr91/BoxVault/compare/v0.98.1...v0.99.0) (2026-09-25)
+
+
+### Features
+
+* a site names the field each downloads level groups by ([12f7f2e](https://github.com/Makr91/BoxVault/commit/12f7f2e962354309d7494c240dd2cb447271ea91))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.42.0 ([30bd1e8](https://github.com/Makr91/BoxVault/commit/30bd1e8ba98df846e82ff7e262ef2dd043e3c7ad))
+* bump startcloud-ui to v0.42.0 ([15e3e66](https://github.com/Makr91/BoxVault/commit/15e3e66abb7164953df5e21a55c62daee2b306c1))
+* bump startcloud-ui to v0.43.0 ([62673ec](https://github.com/Makr91/BoxVault/commit/62673ec4376957c111875df41c878882e6e77061))
+* bump startcloud-ui to v0.43.0 ([51e0b5c](https://github.com/Makr91/BoxVault/commit/51e0b5c4580f14ec1a132719726e14d946a373bf))
+
 ## [0.98.1](https://github.com/Makr91/BoxVault/compare/v0.98.0...v0.98.1) (2026-09-25)
 
 
