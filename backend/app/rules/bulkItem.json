@@ -24,6 +24,7 @@
       "type": "object",
       "properties": {
         "description": { "type": "string" },
+        "details": { "type": "string" },
         "family": { "type": "string" },
         "vendor": { "type": "string" },
         "docs_url": { "type": "string", "format": "uri" },

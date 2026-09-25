@@ -26,6 +26,7 @@ const FORMS = [
   'provider',
   'architecture',
   'download',
+  'family',
   'release',
   'patch',
   'downloadFile',

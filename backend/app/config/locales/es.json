@@ -480,6 +480,11 @@
       "notFound": "Parche no encontrado.",
       "deleted": "¡Parche eliminado exitosamente!"
     },
+    "families": {
+      "notFound": "Familia no encontrada.",
+      "deleted": "Familia eliminada exitosamente.",
+      "permissionDenied": "Necesitas una membresía con escritura en la organización para cambiar sus familias."
+    },
     "watch": {
       "error": "Ocurrió un error al actualizar el seguimiento de la descarga.",
       "listError": "Ocurrió un error al recuperar las descargas seguidas."

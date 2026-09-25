@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { canSeeDownload, isMemberOf, resolveDownloadViewer } from './visibility.js';
 import { withCounts } from './helpers.js';
+import { familiesOf } from './family.js';
 import { reachOf } from '../../utils/orgMembership.js';
 const {
   download: Download,
@@ -90,7 +91,12 @@ const findOne = async (req, res) => {
       return problem(res, req, { status: 403, type: 'forbidden', title: req.__('auth.forbidden') });
     }
     return res.send(
-      withCounts(download, isMemberOf(viewer, organization.id), reachOf(viewer, download))
+      withCounts(
+        download,
+        isMemberOf(viewer, organization.id),
+        reachOf(viewer, download),
+        await familiesOf(organization.id)
+      )
     );
   } catch (err) {
     log.error.error('Error finding download', err);

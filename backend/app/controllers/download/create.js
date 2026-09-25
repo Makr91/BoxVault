@@ -35,6 +35,10 @@ const { download: Download } = db;
  *                 description: Product name (the slug pattern of /api/rules, unique in the organization)
  *               description:
  *                 type: string
+ *                 description: The short Markdown line a card and the heading draw
+ *               details:
+ *                 type: string
+ *                 description: The longer Markdown text the product page draws under its heading
  *               published:
  *                 type: boolean
  *                 default: false
@@ -83,6 +87,7 @@ const create = async (req, res) => {
   const {
     name,
     description,
+    details,
     published,
     is_public: isPublic,
     guest_access: guestAccess,
@@ -113,6 +118,7 @@ const create = async (req, res) => {
     const download = await Download.create({
       name,
       description,
+      details: details || null,
       published: published || false,
       isPublic: isPublic || false,
       guestAccess: guestAccess === true,

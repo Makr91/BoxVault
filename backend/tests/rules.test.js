@@ -19,6 +19,7 @@ const FORMS = [
   'provider',
   'architecture',
   'download',
+  'family',
   'release',
   'patch',
   'downloadFile',
@@ -236,8 +237,13 @@ describe('GET /api/rules', () => {
       expect(document.forms[form].properties.names.minItems).toBe(1);
       expect(document.forms[form].properties.values.type).toBe('object');
     });
+    expect(document.forms.download.properties.details).toEqual({ type: 'string' });
+    expect(document.forms.family.required).toEqual(['name']);
+    expect(document.forms.family.properties.name.unique).toBe('organization');
+    expect(document.forms.family.properties.icon_url.format).toBe('uri');
     expect(Object.keys(document.forms.bulkItem.properties.values.properties)).toEqual([
       'description',
+      'details',
       'family',
       'vendor',
       'docs_url',

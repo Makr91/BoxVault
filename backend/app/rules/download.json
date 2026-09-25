@@ -4,6 +4,7 @@
   "properties": {
     "name": { "$ref": "#/$defs/slug", "minLength": 1, "pattern": "\\S", "unique": "organization" },
     "description": { "type": "string" },
+    "details": { "type": "string" },
     "is_public": { "type": "boolean" },
     "published": { "type": "boolean" },
     "guest_access": { "type": "boolean" },

@@ -25,6 +25,9 @@ const productValues = values => {
   if (typeof values.description !== 'undefined') {
     payload.description = values.description;
   }
+  if (typeof values.details !== 'undefined') {
+    payload.details = linkOf(values.details);
+  }
   if (typeof values.family !== 'undefined') {
     payload.family = values.family;
   }
@@ -48,7 +51,7 @@ const productValues = values => {
  * /api/organization/{organization}/download/bulk:
  *   post:
  *     summary: One action across a selection of download products
- *     description: Each row is isolated and checked against the single route's permission (the product's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A closing verb (make_private, unpublish, deny_guests) closes every release, patch and file beneath each product as well; an opening verb reaches them only while recursive is true. `set` writes the given values (description, family, vendor, docs_url, notes_url, icon_url) on every named product, an empty string clearing a link. `reconcile` carries every word a product holds off down to every release, patch and file beneath it, so the tree stands within the product again. A delete removes releases, patches, file records and the directory the way the single delete does.
+ *     description: Each row is isolated and checked against the single route's permission (the product's owner, or an admin or owner of the organization); a refused row is counted as skipped and named in errors with its code (not_found, forbidden, internal). A closing verb (make_private, unpublish, deny_guests) closes every release, patch and file beneath each product as well; an opening verb reaches them only while recursive is true. `set` writes the given values (description, details, family, vendor, docs_url, notes_url, icon_url) on every named product, an empty string clearing a link or the details. `reconcile` carries every word a product holds off down to every release, patch and file beneath it, so the tree stands within the product again. A delete removes releases, patches, file records and the directory the way the single delete does.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -84,6 +87,8 @@ const productValues = values => {
  *                 description: Required while action is set
  *                 properties:
  *                   description:
+ *                     type: string
+ *                   details:
  *                     type: string
  *                   family:
  *                     type: string

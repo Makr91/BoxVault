@@ -6,6 +6,10 @@ export default (sequelize, Sequelize) => {
     description: {
       type: Sequelize.STRING,
     },
+    details: {
+      type: Sequelize.TEXT,
+      allowNull: true,
+    },
     published: {
       type: Sequelize.BOOLEAN,
       defaultValue: false,

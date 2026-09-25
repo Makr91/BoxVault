@@ -19,6 +19,14 @@ import { update } from '../controllers/download/update.js';
 import { delete as deleteDownload } from '../controllers/download/delete.js';
 import { discoverAll } from '../controllers/download/discover.js';
 import { duplicates } from '../controllers/download/duplicates.js';
+import {
+  attachOrganization as attachFamilyOrganization,
+  findAll as findAllFamilies,
+  findOne as findOneFamily,
+  create as createFamily,
+  update as updateFamily,
+  remove as removeFamily,
+} from '../controllers/download/family.js';
 import { watchDownload, unwatchDownload } from '../controllers/download/watch.js';
 import { create as createRelease } from '../controllers/download/release/create.js';
 import { findAll as findAllReleases } from '../controllers/download/release/findall.js';
@@ -62,6 +70,46 @@ router.get(
   '/organization/:organization/download/duplicates',
   [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   duplicates
+);
+
+router.get(
+  '/organization/:organization/download-family',
+  [sessionAuth, attachFamilyOrganization(false)],
+  findAllFamilies
+);
+
+router.post(
+  '/organization/:organization/download-family',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    attachFamilyOrganization(true),
+    validateBody('family'),
+  ],
+  createFamily
+);
+
+router.get(
+  '/organization/:organization/download-family/:name',
+  [sessionAuth, attachFamilyOrganization(false)],
+  findOneFamily
+);
+
+router.put(
+  '/organization/:organization/download-family/:name',
+  [
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    attachFamilyOrganization(true),
+    validateBody('family', { partial: true }),
+  ],
+  updateFamily
+);
+
+router.delete(
+  '/organization/:organization/download-family/:name',
+  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, attachFamilyOrganization(true)],
+  removeFamily
 );
 
 router.post(

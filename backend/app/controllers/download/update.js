@@ -26,7 +26,7 @@ const linkOf = (value, current) => {
  * /api/organization/{organization}/download/{name}:
  *   put:
  *     summary: Update a download product
- *     description: Update the name, description, visibility, publication state, family, vendor or links of a download product. Absent fields stay unchanged. A visibility word turned off is turned off on every release, patch and file beneath the product as well; a word turned on reaches them only while recursive is true. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update the name, description, details, visibility, publication state, family, vendor or links of a download product. Absent fields stay unchanged. A visibility word turned off is turned off on every release, patch and file beneath the product as well; a word turned on reaches them only while recursive is true. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -54,6 +54,11 @@ const linkOf = (value, current) => {
  *                 description: New product name (the slug pattern of /api/rules, unique in the organization)
  *               description:
  *                 type: string
+ *                 description: The short Markdown line a card and the heading draw
+ *               details:
+ *                 type: string
+ *                 nullable: true
+ *                 description: The longer Markdown text the product page draws under its heading; an empty string clears it
  *               is_public:
  *                 type: boolean
  *               guest_access:
@@ -112,6 +117,7 @@ const update = async (req, res) => {
   const {
     name: updatedName,
     description,
+    details,
     published,
     is_public: isPublic,
     guest_access: guestAccess,
@@ -180,6 +186,7 @@ const update = async (req, res) => {
     const updatedDownload = await download.update({
       name: updatedName || name,
       description: description !== undefined ? description : download.description,
+      details: linkOf(details, download.details),
       published: published !== undefined ? published : download.published,
       isPublic: isPublic !== undefined ? isPublic : download.isPublic,
       guestAccess: guestAccess !== undefined ? guestAccess : download.guestAccess,

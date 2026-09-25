@@ -202,17 +202,55 @@ const releasesWithinReach = (download, reach) =>
       return release;
     });
 
+const FAMILY_MEMBERS = ['vendor', 'docsUrl', 'notesUrl', 'iconUrl'];
+
+const snakeOf = member => member.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
+/**
+ * A product's JSON with its family's vendor, docs_url, notes_url and
+ * icon_url standing in wherever the product's own member is empty, and
+ * family_details carrying the family row it names; the product's own
+ * columns are never written, so an override stays an override.
+ * @param {Object} plain - The product JSON, snake_cased
+ * @param {Map<string, Object>|undefined} families - The organization's family rows by name
+ * @returns {Object} The product JSON with the inherited members filled
+ */
+const withFamily = (plain, families) => {
+  const family = plain.family && families ? families.get(plain.family) : null;
+  if (!family) {
+    return plain;
+  }
+  const filled = { ...plain };
+  FAMILY_MEMBERS.forEach(member => {
+    if (!filled[snakeOf(member)]) {
+      filled[snakeOf(member)] = family[member] ?? null;
+    }
+  });
+  filled.family_details = {
+    name: family.name,
+    description: family.description ?? null,
+    vendor: family.vendor ?? null,
+    docs_url: family.docsUrl ?? null,
+    notes_url: family.notesUrl ?? null,
+    icon_url: family.iconUrl ?? null,
+  };
+  return filled;
+};
+
 /**
  * The product's JSON with its downloadCount and every nested file's
  * downloadCount answered by membership: the numbers to a member, null to
- * anyone else; only the releases, patches and files within the caller's reach.
+ * anyone else; only the releases, patches and files within the caller's
+ * reach; the family's shared members filled in wherever the product's own
+ * are empty.
  * @param {Object} download - A download row with nested releases, patches and files
  * @param {boolean} member - Whether the caller belongs to the organization
  * @param {number} reach - From reachOf
+ * @param {Map<string, Object>} [families] - The organization's family rows by name
  * @returns {Object} The product JSON
  */
-const withCounts = (download, member, reach) => {
-  const plain = snakeKeys(download.get({ plain: true }));
+const withCounts = (download, member, reach, families) => {
+  const plain = withFamily(snakeKeys(download.get({ plain: true })), families);
   const releases = releasesWithinReach(download, reach);
   plain.releases = releases.map(release =>
     releaseJson(release, patch => ({
@@ -524,6 +562,7 @@ export {
   releaseDateOf,
   latestReleaseDateOf,
   releaseJson,
+  withFamily,
   filesWithCounts,
   filesWithinReach,
   releasesWithinReach,

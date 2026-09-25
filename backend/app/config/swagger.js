@@ -345,13 +345,21 @@ const options = {
             },
             description: {
               type: 'string',
-              description: 'Product description',
+              description:
+                'Product description, the short Markdown line a card and the heading draw',
               example: 'HCL Domino server installers and fix packs',
+              nullable: true,
+            },
+            details: {
+              type: 'string',
+              description:
+                'Product details, the longer Markdown text the product page draws under its heading; never on a card',
               nullable: true,
             },
             family: {
               type: 'string',
-              description: 'Product family, a group heading in the UI',
+              description:
+                'Product family, the name of a family row of the organization; the product answers the family’s vendor, docs_url, notes_url and icon_url wherever its own is empty',
               example: 'HCL Domino',
               nullable: true,
             },

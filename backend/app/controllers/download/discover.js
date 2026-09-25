@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { downloadWhereFor, isMemberOf, resolveDownloadViewer } from './visibility.js';
 import { withCounts } from './helpers.js';
+import { familiesOfAll } from './family.js';
 import { reachOf } from '../../utils/orgMembership.js';
 const {
   download: Download,
@@ -54,6 +55,7 @@ export const discoverAll = async (req, res) => {
       ],
       order: [['createdAt', 'DESC']],
     });
+    const families = await familiesOfAll();
     return res
       .status(200)
       .send(
@@ -61,7 +63,8 @@ export const discoverAll = async (req, res) => {
           withCounts(
             download,
             isMemberOf(viewer, download.organizationId),
-            reachOf(viewer, download)
+            reachOf(viewer, download),
+            families.get(download.organizationId)
           )
         )
       );

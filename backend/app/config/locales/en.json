@@ -480,6 +480,11 @@
       "notFound": "Patch not found.",
       "deleted": "Patch deleted successfully!"
     },
+    "families": {
+      "notFound": "Family not found.",
+      "deleted": "Family deleted successfully.",
+      "permissionDenied": "You need a writing membership of the organization to change its families."
+    },
     "watch": {
       "error": "Some error occurred while updating the download watch.",
       "listError": "Some error occurred while retrieving watched downloads."

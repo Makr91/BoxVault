@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "maxLength": 255,
+      "unique": "organization"
+    },
+    "description": { "type": "string" },
+    "vendor": { "type": "string" },
+    "docs_url": { "type": "string", "format": "uri" },
+    "notes_url": { "type": "string", "format": "uri" },
+    "icon_url": { "type": "string", "format": "uri" }
+  }
+}

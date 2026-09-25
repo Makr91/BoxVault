@@ -71,6 +71,7 @@ const initializeDatabase = async () => {
   db.boxWatcher = (await import('./box-watcher.model.js')).default(sequelize, Sequelize);
   db.isoWatcher = (await import('./iso-watcher.model.js')).default(sequelize, Sequelize);
   db.download = (await import('./download.model.js')).default(sequelize, Sequelize);
+  db.downloadFamilies = (await import('./download-family.model.js')).default(sequelize, Sequelize);
   db.downloadReleases = (await import('./download-release.model.js')).default(sequelize, Sequelize);
   db.downloadPatches = (await import('./download-patch.model.js')).default(sequelize, Sequelize);
   db.downloadFiles = (await import('./download-file.model.js')).default(sequelize, Sequelize);

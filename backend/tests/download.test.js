@@ -511,6 +511,33 @@ describe('Download API', () => {
       expect(published.body.published).toBe(true);
     });
 
+    it('should carry details apart from the description and clear them with an empty string', async () => {
+      const res = await request(app)
+        .put(productBase)
+        .set('x-access-token', memberToken)
+        .send({ details: 'If you need an earlier version, ask **support**.' });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.details).toBe('If you need an earlier version, ask **support**.');
+      expect(res.body.description).toBe('Updated');
+
+      const read = await request(app).get(productBase).set('x-access-token', memberToken);
+      expect(read.body.details).toBe('If you need an earlier version, ask **support**.');
+
+      const cleared = await request(app)
+        .put(productBase)
+        .set('x-access-token', memberToken)
+        .send({ details: '' });
+      expect(cleared.body.details).toBeNull();
+
+      const bulk = await request(app)
+        .post(`/api/organization/${orgName}/download/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({ action: 'set', names: [productName], values: { details: 'Bulk details' } });
+      expect(bulk.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const afterBulk = await request(app).get(productBase).set('x-access-token', memberToken);
+      expect(afterBulk.body.details).toBe('Bulk details');
+    });
+
     it('should clear a link sent as an empty string, the edit form with blank fields', async () => {
       await setProduct({
         docsUrl: 'https://x.example/docs',

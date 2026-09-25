@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { downloadWhereFor, isMemberOf, resolveDownloadViewer } from './visibility.js';
 import { withCounts } from './helpers.js';
+import { familiesOf } from './family.js';
 import { reachOf } from '../../utils/orgMembership.js';
 const {
   download: Download,
@@ -71,8 +72,9 @@ const findAll = async (req, res) => {
     });
 
     const member = isMemberOf(viewer, organization.id);
+    const families = await familiesOf(organization.id);
     return res.send(
-      downloads.map(download => withCounts(download, member, reachOf(viewer, download)))
+      downloads.map(download => withCounts(download, member, reachOf(viewer, download), families))
     );
   } catch (err) {
     log.error.error('Error finding all downloads', err);
