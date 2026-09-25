@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.98.1](https://github.com/Makr91/BoxVault/compare/v0.98.0...v0.98.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.41.0 ([815488b](https://github.com/Makr91/BoxVault/commit/815488baac9fd33e1dc12fa56f50d228f0e5d040))
+* bump startcloud-ui to v0.41.0 ([2115624](https://github.com/Makr91/BoxVault/commit/2115624ff6079a24ba620c0e072979dad49b679a))
+* every route names its rate limiter where CodeQL reads it ([bd7aac9](https://github.com/Makr91/BoxVault/commit/bd7aac954b5c2a3137b562f0d24b509dc7b9d980))
+* the last eleven routes name a limiter CodeQL follows ([fd436bf](https://github.com/Makr91/BoxVault/commit/fd436bf8e841a52270488db76526c7e07b408d9e))
+
 ## [0.98.0](https://github.com/Makr91/BoxVault/compare/v0.97.0...v0.98.0) (2026-09-25)
 
 
