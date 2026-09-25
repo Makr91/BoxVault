@@ -22,10 +22,16 @@ export default (sequelize, Sequelize) => {
           'template',
           'notes',
           'tool',
+          'link',
           'other',
         ],
         allowNull: false,
         defaultValue: 'other',
+      },
+      sourceUrl: {
+        type: Sequelize.STRING(2048),
+        allowNull: true,
+        field: 'source_url',
       },
       platform: {
         type: Sequelize.ENUM,

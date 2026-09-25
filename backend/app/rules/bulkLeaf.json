@@ -38,6 +38,7 @@
             "template",
             "notes",
             "tool",
+            "link",
             "other"
           ]
         },
@@ -47,7 +48,8 @@
         },
         "architecture": { "type": "string", "enum": ["x64", "x86", "arm64", "other", "any"] },
         "language": { "$ref": "#/$defs/languageTag" },
-        "variant": { "type": "string" }
+        "variant": { "type": "string" },
+        "source_url": { "type": "string", "format": "uri" }
       }
     }
   },

@@ -14,7 +14,7 @@ const { downloadFiles: DownloadFile } = db;
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file:
  *   post:
  *     summary: Create a file row of a patch
- *     description: Create the record of a file under a patch before its bytes are uploaded. The product's owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role. A file is born private, closed to guests and unpublished unless the body says otherwise, and never wider than its patch, a wider word answered 422.
+ *     description: Create the record of a file under a patch before its bytes are uploaded, or a link to a file published elsewhere. The product's owner, or an admin or owner of the organization, may create; a service account acts inside its own organization at its effective role. A file is born private, closed to guests and unpublished unless the body says otherwise, and never wider than its patch, a wider word answered 422. A row carrying `source_url` and no bytes is a link, its download answered as a redirect to that URL and counted like any other; the kind `link` names it as such.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -60,7 +60,11 @@ const { downloadFiles: DownloadFile } = db;
  *                 description: The name the file is stored and served under; the key when absent
  *               kind:
  *                 type: string
- *                 enum: [installer, fixpack, hotfix, interim-fix, container-image, package, template, notes, tool, other]
+ *                 enum: [installer, fixpack, hotfix, interim-fix, container-image, package, template, notes, tool, link, other]
+ *               source_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: The URL the download of this row redirects to while the row holds no bytes; an upload of bytes clears it
  *               platform:
  *                 type: string
  *                 enum: [linux, windows, macos, omnios, other, any]
@@ -123,6 +127,7 @@ const create = async (req, res) => {
     variant,
     checksum_type: checksumType,
     checksum,
+    source_url: sourceUrl,
   } = req.body;
 
   try {
@@ -165,6 +170,7 @@ const create = async (req, res) => {
       variant: variant || null,
       checksumType: checksumType || null,
       checksum: checksum ? checksum.toLowerCase() : null,
+      sourceUrl: sourceUrl || null,
       fileSize: 0,
       storagePath: null,
       original: true,

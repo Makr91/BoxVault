@@ -23,7 +23,7 @@ const MISSING_TITLES = {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}:
  *   put:
  *     summary: Update a file row of a patch, or move it to another patch
- *     description: Update the key, file name, kind, platform, architecture, language, variant, declared checksum or the visibility words is_public, guest_access and published of a file, a word wider than the patch answered 422. A new file name renames the stored file. The members `download`, `release` and `patch` name the patch the file moves to, each defaulting to the current one, the caller having to be allowed to write both products; the bytes move with the row and every link keeps working; a key already taken in the target patch answers 409, a target that does not exist 404, and the file may never stand wider than the patch it lands in. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
+ *     description: Update the key, file name, kind, platform, architecture, language, variant, declared checksum, source URL or the visibility words is_public, guest_access and published of a file, a word wider than the patch answered 422; `source_url` null or empty clears the link. A new file name renames the stored file. The members `download`, `release` and `patch` name the patch the file moves to, each defaulting to the current one, the caller having to be allowed to write both products; the bytes move with the row and every link keeps working; a key already taken in the target patch answers 409, a target that does not exist 404, and the file may never stand wider than the patch it lands in. The product's owner, or an admin or owner of the organization, may update; a service account acts inside its own organization at its effective role.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -92,6 +92,11 @@ const MISSING_TITLES = {
  *                 type: string
  *               checksum:
  *                 type: string
+ *               source_url:
+ *                 type: string
+ *                 format: uri
+ *                 nullable: true
+ *                 description: The URL the download redirects to while the row holds no bytes; null or empty clears it
  *               is_public:
  *                 type: boolean
  *               guest_access:
@@ -135,6 +140,7 @@ const update = async (req, res) => {
     variant,
     checksum_type: checksumType,
     checksum,
+    source_url: sourceUrl,
   } = req.body;
 
   try {
@@ -203,6 +209,9 @@ const update = async (req, res) => {
     }
     if (typeof checksum !== 'undefined') {
       updatePayload.checksum = checksum ? checksum.toLowerCase() : null;
+    }
+    if (typeof sourceUrl !== 'undefined') {
+      updatePayload.sourceUrl = sourceUrl || null;
     }
     Object.assign(updatePayload, visibilityOf(req.body));
 

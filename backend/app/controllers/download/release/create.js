@@ -98,7 +98,7 @@
  *           type: string
  *         kind:
  *           type: string
- *           enum: [installer, fixpack, hotfix, interim-fix, container-image, package, template, notes, tool, other]
+ *           enum: [installer, fixpack, hotfix, interim-fix, container-image, package, template, notes, tool, link, other]
  *         platform:
  *           type: string
  *           enum: [linux, windows, macos, omnios, other, any]

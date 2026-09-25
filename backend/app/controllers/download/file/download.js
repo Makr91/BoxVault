@@ -15,7 +15,7 @@ const fileNotFound = (req, res) =>
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}/download:
  *   get:
  *     summary: Download a file of a patch
- *     description: Stream the bytes of one file of a patch, by key or file name, with range support and Content-Disposition attachment carrying the file name. A public product, release, patch and file can be downloaded by anyone; anything narrower requires a download token scoped to this file, or credentials (session JWT, service account as Basic or Bearer) of a caller whose reach meets the product, release, patch and file, a row beyond it answering 404.
+ *     description: Stream the bytes of one file of a patch, by key or file name, with range support and Content-Disposition attachment carrying the file name; a row holding no bytes but a source URL answers 302 to that URL instead, counted the same. A public product, release, patch and file can be downloaded by anyone; anything narrower requires a download token scoped to this file, or credentials (session JWT, service account as Basic or Bearer) of a caller whose reach meets the product, release, patch and file, a row beyond it answering 404.
  *     tags: [Downloads]
  *     parameters:
  *       - in: path
@@ -63,6 +63,8 @@ const fileNotFound = (req, res) =>
  *         description: File download stream
  *       206:
  *         description: Partial content
+ *       302:
+ *         description: The row is a link; Location carries its source URL
  *       403:
  *         description: Forbidden
  *       404:
@@ -101,6 +103,11 @@ const download = async (req, res) => {
       if (!canSeeFile(viewer, product, release, patchData, file)) {
         return fileNotFound(req, res);
       }
+    }
+
+    if (!file.storagePath && file.sourceUrl) {
+      await file.increment('downloadCount');
+      return res.redirect(302, file.sourceUrl);
     }
 
     if (!file.storagePath) {

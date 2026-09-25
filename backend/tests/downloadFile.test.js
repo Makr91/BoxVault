@@ -279,6 +279,7 @@ describe('Download file API', () => {
         file_size: expect.anything(),
         checksum: sha256(fileContent),
         checksum_type: 'SHA256',
+        source_url: null,
         download_count: 0,
         is_public: false,
         guest_access: true,
@@ -1164,6 +1165,120 @@ describe('Download file API', () => {
       const res = await request(app).get(`${fileBase}/download`).set('x-access-token', memberToken);
       expect(res.statusCode).toBe(500);
       statSpy.mockRestore();
+    });
+  });
+
+  describe('link rows', () => {
+    const sourceUrl = 'https://x.prominic.net/flex/GBAuth-Installer.exe';
+
+    it('should create a link row, answer its URL and redirect its download', async () => {
+      const created = await request(app)
+        .post(`${patchBase}/file`)
+        .set('x-access-token', ownerToken)
+        .send({
+          key: 'gbauth-win',
+          file_name: 'GBAuth-Installer.exe',
+          kind: 'link',
+          platform: 'windows',
+          source_url: sourceUrl,
+          published: true,
+          guest_access: true,
+        });
+      expect(created.statusCode).toBe(201);
+      expect(created.body.kind).toBe('link');
+      expect(created.body.source_url).toBe(sourceUrl);
+
+      const info = await request(app)
+        .get(`${patchBase}/file/gbauth-win/info`)
+        .set('x-access-token', memberToken);
+      expect(info.body.source_url).toBe(sourceUrl);
+      const listed = await request(app).get(`${patchBase}/file`).set('x-access-token', memberToken);
+      expect(listed.body.find(entry => entry.key === 'gbauth-win').source_url).toBe(sourceUrl);
+
+      const download = await request(app)
+        .get(`${patchBase}/file/gbauth-win/download`)
+        .set('x-access-token', memberToken)
+        .redirects(0);
+      expect(download.statusCode).toBe(302);
+      expect(download.headers.location).toBe(sourceUrl);
+
+      const link = await request(app)
+        .post(`${patchBase}/file/gbauth-win/get-download-link`)
+        .set('x-access-token', guestToken);
+      expect(link.statusCode).toBe(200);
+      const [, token] = link.body.download_url.split('token=');
+      const byToken = await request(app)
+        .get(`${patchBase}/file/gbauth-win/download?token=${token}`)
+        .redirects(0);
+      expect(byToken.statusCode).toBe(302);
+      expect(byToken.headers.location).toBe(sourceUrl);
+
+      const counted = await request(app)
+        .get(`${patchBase}/file/gbauth-win/info`)
+        .set('x-access-token', memberToken);
+      expect(counted.body.download_count).toBe(2);
+    });
+
+    it('should refuse a source URL that is not a URL', async () => {
+      const res = await request(app)
+        .post(`${patchBase}/file`)
+        .set('x-access-token', ownerToken)
+        .send({ key: 'bad-link', kind: 'link', source_url: 'not a url' });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/source_url', rule: 'format' }),
+      ]);
+    });
+
+    it('should clear the URL on update and when bytes are uploaded onto the row', async () => {
+      const set = await request(app)
+        .post(`${patchBase}/file/bulk`)
+        .set('x-access-token', ownerToken)
+        .send({
+          action: 'set',
+          names: ['gbauth-win'],
+          values: { source_url: 'https://x.prominic.net/flex/GBAuth.pkg' },
+        });
+      expect(set.body).toEqual({ processed: 1, skipped: 0, errors: [] });
+      const moved = await request(app)
+        .get(`${patchBase}/file/gbauth-win/info`)
+        .set('x-access-token', ownerToken);
+      expect(moved.body.source_url).toBe('https://x.prominic.net/flex/GBAuth.pkg');
+
+      const cleared = await request(app)
+        .put(`${patchBase}/file/gbauth-win`)
+        .set('x-access-token', ownerToken)
+        .send({ source_url: null });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.body.source_url).toBeNull();
+      const noBytes = await request(app)
+        .get(`${patchBase}/file/gbauth-win/download`)
+        .set('x-access-token', memberToken);
+      expect(noBytes.statusCode).toBe(404);
+
+      const relinked = await request(app)
+        .put(`${patchBase}/file/gbauth-win`)
+        .set('x-access-token', ownerToken)
+        .send({ source_url: sourceUrl });
+      expect(relinked.body.source_url).toBe(sourceUrl);
+      const uploaded = await uploadTo('gbauth-win', ownerToken, Buffer.from(`gbauth-${uniqueId}`), {
+        'x-file-name': 'GBAuth-Installer.exe',
+      });
+      expect(uploaded.statusCode).toBe(200);
+      const withBytes = await request(app)
+        .get(`${patchBase}/file/gbauth-win/info`)
+        .set('x-access-token', ownerToken);
+      expect(withBytes.body.source_url).toBeNull();
+      const served = await request(app)
+        .get(`${patchBase}/file/gbauth-win/download`)
+        .set('x-access-token', memberToken)
+        .redirects(0);
+      expect(served.statusCode).toBe(200);
+
+      await request(app)
+        .delete(`${patchBase}/file/gbauth-win/delete`)
+        .set('x-access-token', ownerToken)
+        .expect(200);
     });
   });
 

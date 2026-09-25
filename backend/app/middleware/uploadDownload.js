@@ -287,7 +287,8 @@ const checksumOf = async (headers, finalPath) => {
 /**
  * Record the bytes at their product path on the file row: deduplicated by
  * checksum against the organization's originals, the storagePath the
- * product path of the row's file name.
+ * product path of the row's file name, any source URL the row carried
+ * cleared since the bytes now answer its download.
  * @param {Object} entities - The organization, download, release, patch and file rows
  * @param {number} finalSize - The size of the bytes
  * @param {string} checksum - The checksum of the bytes
@@ -303,6 +304,7 @@ const recordFile = async (entities, finalSize, checksum, checksumType, finalPath
     fileSize: finalSize,
     checksum,
     checksumType,
+    sourceUrl: null,
     storagePath: storagePathFor(
       organization.name,
       download.name,

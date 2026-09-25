@@ -74,6 +74,10 @@ import { canSeeDownload, canSeeFile, isMemberOf, resolveDownloadViewer } from '.
  *                   type: string
  *                 checksum_type:
  *                   type: string
+ *                 source_url:
+ *                   type: string
+ *                   nullable: true
+ *                   description: The URL a link row redirects its download to; null for a row with bytes
  *                 download_count:
  *                   type: integer
  *                   nullable: true
@@ -128,6 +132,7 @@ const info = async (req, res) => {
       file_size: file.fileSize,
       checksum: file.checksum,
       checksum_type: file.checksumType,
+      source_url: file.sourceUrl || null,
       download_count: isMemberOf(viewer, download.organizationId) ? file.downloadCount : null,
       is_public: file.isPublic,
       guest_access: file.guestAccess,

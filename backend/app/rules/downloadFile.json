@@ -19,6 +19,7 @@
         "template",
         "notes",
         "tool",
+        "link",
         "other"
       ]
     },
@@ -29,6 +30,7 @@
     "architecture": { "type": "string", "enum": ["x64", "x86", "arm64", "other", "any"] },
     "language": { "$ref": "#/$defs/languageTag" },
     "variant": { "type": "string" },
+    "source_url": { "type": "string", "format": "uri" },
     "checksum_type": {
       "type": "string",
       "enum": ["NULL", "MD5", "SHA1", "SHA256", "SHA384", "SHA512"]

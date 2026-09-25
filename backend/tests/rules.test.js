@@ -256,7 +256,10 @@ describe('GET /api/rules', () => {
       'architecture',
       'language',
       'variant',
+      'source_url',
     ]);
+    expect(document.forms.downloadFile.properties.source_url.format).toBe('uri');
+    expect(document.forms.downloadFile.properties.kind.enum).toContain('link');
     expect(document.forms.bulkVersion.properties.download.$ref).toBe('#/$defs/slug');
     expect(document.forms.bulkPatch.properties.release.$ref).toBe('#/$defs/identifier');
     expect(document.forms.bulkLeaf.properties.patch.$ref).toBe('#/$defs/identifier');

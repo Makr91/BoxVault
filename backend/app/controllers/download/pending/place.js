@@ -167,7 +167,7 @@ const settleFileRow = async (file, patch, key, fileName, attributes, visibility)
  *                 description: The name the file is stored under, the uploaded name when absent
  *               kind:
  *                 type: string
- *                 enum: [installer, fixpack, hotfix, interim-fix, container-image, package, template, notes, tool, other]
+ *                 enum: [installer, fixpack, hotfix, interim-fix, container-image, package, template, notes, tool, link, other]
  *               platform:
  *                 type: string
  *                 enum: [linux, windows, macos, omnios, other, any]
