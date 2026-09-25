@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.96.0](https://github.com/Makr91/BoxVault/compare/v0.95.1...v0.96.0) (2026-09-25)
+
+
+### Features
+
+* product details and family rows ([b453c91](https://github.com/Makr91/BoxVault/commit/b453c912a1f1189336f5908a0ef654bfdf1288e4))
+
 ## [0.95.1](https://github.com/Makr91/BoxVault/compare/v0.95.0...v0.95.1) (2026-09-24)
 
 
