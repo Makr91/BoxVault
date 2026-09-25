@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import {
@@ -340,8 +340,11 @@ const place = async (req, res) => {
     file = await settleFileRow(file, patch, key, fileName, attributesOf(given), visibility);
 
     const entities = { organization, download, release, patch, file };
-    const finalPath = join(
-      getSecureDownloadPath(organization.name, download.name, release.versionNumber, patch.name),
+    const finalPath = getSecureDownloadPath(
+      organization.name,
+      download.name,
+      release.versionNumber,
+      patch.name,
       fileName
     );
     ensureDirSync(dirname(finalPath));

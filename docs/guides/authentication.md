@@ -62,7 +62,7 @@ Response:
 }
 ```
 
-The body also carries `organizations`, `preferred_language`, `preferred_theme`, `email_hash`, `avatar_url` and `entitlements`. There is no refresh token.
+The body also carries `organizations`, `preferred_language`, `preferred_theme`, `preferred_pack`, `email_hash`, `avatar_url` and `entitlements`. There is no refresh token.
 
 ### Using JWT Tokens
 

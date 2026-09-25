@@ -36,9 +36,29 @@ const membersOf = query =>
       ([, value]) => typeof value === 'string' && value !== ''
     )
   );
-const EXTENSION_PATTERN = /(?:\.[A-Za-z][A-Za-z0-9]*)+$/;
+const EXTENSION_PART = /^[A-Za-z][A-Za-z0-9]*$/;
 const TOKEN_SEPARATOR = /[_\- ]+/;
 const VERSION_PATTERN = /^\d+(?:\.\d+)*$/;
+
+/**
+ * Where a file name's extension chain starts: the index of the first dot
+ * whose every following dot-part is letters and digits led by a letter
+ * (`.tar.gz`), the name's length when it carries no such chain. Walked from
+ * the end one part at a time, never by a nested repetition.
+ * @param {string} fileName - The real file name
+ * @returns {number} The index the chain starts at
+ */
+const extensionStart = fileName => {
+  const parts = fileName.split('.');
+  let start = fileName.length;
+  for (let index = parts.length - 1; index > 0; index -= 1) {
+    if (!EXTENSION_PART.test(parts[index])) {
+      break;
+    }
+    start -= parts[index].length + 1;
+  }
+  return start;
+};
 
 /**
  * Refuse the write when the values break the named form of the rules
@@ -71,7 +91,7 @@ const isAllowedFileName = fileName =>
  * @param {string} fileName - The real file name
  * @returns {string} The extension chain
  */
-const extensionOf = fileName => (fileName.match(EXTENSION_PATTERN) || [''])[0].toLowerCase();
+const extensionOf = fileName => fileName.slice(extensionStart(fileName)).toLowerCase();
 
 /**
  * The tokens of a file name's stem: the extension chain stripped, the stem
@@ -80,7 +100,7 @@ const extensionOf = fileName => (fileName.match(EXTENSION_PATTERN) || [''])[0].t
  * @returns {Array<string>} The tokens
  */
 const tokensOf = fileName =>
-  fileName.replace(EXTENSION_PATTERN, '').split(TOKEN_SEPARATOR).filter(Boolean);
+  fileName.slice(0, extensionStart(fileName)).split(TOKEN_SEPARATOR).filter(Boolean);
 
 /**
  * The product slug and the release identifier a file name carries: the

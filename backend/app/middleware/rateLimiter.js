@@ -37,6 +37,22 @@ const rateLimiter = rateLimit({
   handler: throttled,
 });
 
+/**
+ * The limiter a route lists first in its own chain: the same window and
+ * ceiling as the application-wide limiter, counted on its own, so a route
+ * that reads the database or the disk carries its limit where the route is
+ * declared and the ceiling a client meets stays the one rate_limiting names.
+ */
+const apiLimiter = rateLimit({
+  windowMs,
+  max: rateLimitConfig.max_requests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: rateLimitConfig.skip_successful_requests,
+  skipFailedRequests: rateLimitConfig.skip_failed_requests,
+  handler: throttled,
+});
+
 // Explicit rate limiter for file operations (CodeQL requirement)
 const fileOperationLimiter = rateLimit({
   windowMs,
@@ -82,8 +98,22 @@ const authLimiter = rateLimit({
   handler: throttled,
 });
 
+/**
+ * The limiter of the pages the server itself answers: index.html, its
+ * callback twin and the SPA catch-all, at the file-operation ceiling.
+ */
+const spaLimiter = rateLimit({
+  windowMs,
+  max: rateLimitConfig.file_operations_max_requests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: throttled,
+});
+
 export {
   rateLimiter,
+  apiLimiter,
+  spaLimiter,
   fileOperationLimiter,
   architectureOperationLimiter,
   getDownloadLinkLimiter,

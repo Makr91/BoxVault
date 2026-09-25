@@ -6,7 +6,7 @@ const verifyOrgAccess = { ..._verifyOrgAccess };
 
 import vagrantHandler from './vagrantHandler.js';
 import downloadsHandler from './downloadsHandler.js';
-import { uiIndex } from './uiIndex.js';
+import { uiIndex, uiManifest } from './uiIndex.js';
 import { rateLimiter, fileOperationLimiter, architectureOperationLimiter } from './rateLimiter.js';
 import { verifyBoxFilePath } from './verifyBoxFilePath.js';
 import { verifyIsoFilePath } from './verifyIsoFilePath.js';
@@ -25,6 +25,7 @@ export {
   vagrantHandler,
   downloadsHandler,
   uiIndex,
+  uiManifest,
   rateLimiter,
   verifyBoxFilePath,
   verifyIsoFilePath,

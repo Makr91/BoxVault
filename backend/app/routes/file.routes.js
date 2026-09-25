@@ -27,10 +27,9 @@ router.use((req, res, next) => {
   next();
 });
 
-router.use(fileOperationLimiter);
-
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyBoxFilePath,
@@ -39,6 +38,7 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyBoxFilePath,
@@ -47,6 +47,7 @@ router.post(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file',
+  fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   verifyBoxFilePath,
@@ -56,6 +57,7 @@ router.put(
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/info',
+  fileOperationLimiter,
   verifyBoxFilePath,
   sessionAuth,
   info
@@ -80,6 +82,7 @@ router.post(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/delete',
+  fileOperationLimiter,
   authJwt.verifyToken,
   verifyBoxFilePath,
   authJwt.isUserOrServiceAccount,

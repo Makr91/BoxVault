@@ -15,7 +15,7 @@ const STATUS = {
   version,
   brand: {
     name: 'BoxVault',
-    logo_url: '/brand/boxvault.svg',
+    logo_url: '/brand/boxvault/mark.svg',
     repo: 'https://github.com/Makr91/BoxVault',
     changelog: 'https://github.com/Makr91/BoxVault/releases',
   },
@@ -76,6 +76,18 @@ const packOf = site => {
 };
 
 /**
+ * The packs a person may choose on one hostname: its brand.packs list of
+ * bare names in order, each with the stylesheet path built as pack.css is
+ * and the name as its label; empty for a site without a list
+ * @param {Object|null} site - The sites map entry
+ * @returns {Array<{name: string, css: string, label: string}>} The offered packs
+ */
+const packsOf = site =>
+  (Array.isArray(site?.brand?.packs) ? site.brand.packs : [])
+    .filter(name => typeof name === 'string' && name.trim() !== '')
+    .map(name => ({ name, css: `/themes/${name}/${name}.css`, label: name }));
+
+/**
  * The brand, collections, links, organization and sorts of one hostname: the
  * sites map entry over the defaults, the defaults alone for the unnamed
  * hostname; a site's links.community replaces the default list whole;
@@ -90,6 +102,7 @@ const faceOf = site => {
   }
   const theme = site.brand?.default_theme;
   const pack = packOf(site);
+  const packs = packsOf(site);
   return {
     ...(site.organization ? { organization: site.organization } : {}),
     ...(site.sorts && Object.keys(site.sorts).length > 0 ? { sorts: site.sorts } : {}),
@@ -99,6 +112,7 @@ const faceOf = site => {
       logo_url: site.brand?.logo_url || STATUS.brand.logo_url,
       ...(theme ? { theme } : {}),
       ...(pack ? { pack } : {}),
+      ...(packs.length > 0 ? { packs } : {}),
     },
     collections: site.collections?.length ? site.collections : STATUS.collections,
     links: {
@@ -130,7 +144,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand, collections, links (its community list included), features, organization and sorts are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and neither organization nor sorts.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its packs list included), collections, links (its community list included), features, organization and sorts are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and neither organization nor sorts.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -156,8 +170,8 @@ const featuresOf = (site, localEnabled) => {
  *                       example: BoxVault
  *                     logo_url:
  *                       type: string
- *                       description: Path this host serves the brand mark from
- *                       example: /brand/boxvault.svg
+ *                       description: Path this host serves the brand mark from, the mark.svg of a folder under /brand/, the same folder the host's manifest and icon links name
+ *                       example: /brand/boxvault/mark.svg
  *                     repo:
  *                       type: string
  *                       example: https://github.com/Makr91/BoxVault
@@ -181,6 +195,22 @@ const featuresOf = (site, localEnabled) => {
  *                         css:
  *                           type: string
  *                           example: /themes/prominic/prominic.css
+ *                     packs:
+ *                       type: array
+ *                       description: The packs a person may choose on this hostname, in the order of its sites entry's brand.packs, present only while that list exists; the UI draws its Look picker from this list alone and a person's choice persists as the pack preference
+ *                       items:
+ *                         type: object
+ *                         required: [name, css, label]
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                             example: prominic
+ *                           css:
+ *                             type: string
+ *                             example: /themes/prominic/prominic.css
+ *                           label:
+ *                             type: string
+ *                             example: prominic
  *                 auth:
  *                   type: array
  *                   description: Session methods, first entry is the one the UI creates. backend is this app's own session, answered while local accounts are on; idp is browser OIDC against the issuer named in idp, answered while local accounts are off and a provider is enabled

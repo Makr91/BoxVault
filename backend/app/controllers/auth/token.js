@@ -116,6 +116,7 @@ export const refreshToken = async (req, res) => {
       name: user.name || null,
       preferred_language: user.preferredLanguage || null,
       preferred_theme: user.preferredTheme || null,
+      preferred_pack: user.preferredPack || null,
       email: user.email,
       verified: user.verified,
       email_hash: user.emailHash,

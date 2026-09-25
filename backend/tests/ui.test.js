@@ -45,6 +45,41 @@ describe('The served UI build', () => {
     );
   });
 
+  it('should point the icon links of a named hostname into its brand folder', async () => {
+    const res = await request(app).get('/').set('Host', 'downloads.test');
+    expect(res.text).toContain('href="/brand/test/favicon.ico" sizes="32x32"');
+    expect(res.text).toContain('href="/brand/test/mark.svg" type="image/svg+xml"');
+    expect(res.text).toContain('rel="apple-touch-icon" href="/brand/test/mark-192.png"');
+    expect(res.text).not.toContain('/brand/startcloud/');
+
+    const plain = await request(app).get('/');
+    expect(plain.text).toContain('href="/brand/startcloud/favicon.ico" sizes="32x32"');
+  });
+
+  it('should answer the manifest per hostname and the built file on the unnamed one', async () => {
+    const named = await request(app).get('/manifest.json').set('Host', 'downloads.test');
+    expect(named.statusCode).toBe(200);
+    expect(named.headers['content-type']).toContain('application/manifest+json');
+    expect(named.headers['cache-control']).toBe('no-cache');
+    expect(named.body.name).toBe('Test Downloads');
+    expect(named.body.short_name).toBe('Test Downloads');
+    expect(named.body.icons.map(icon => icon.src)).toEqual([
+      '/brand/test/mark.svg',
+      '/brand/test/mark-192.png',
+      '/brand/test/mark-512.png',
+    ]);
+
+    const plain = await request(app).get('/manifest.json');
+    expect(plain.statusCode).toBe(200);
+    expect(plain.headers['cache-control']).toBe('no-cache');
+    expect(plain.body.name).toBe('STARTcloud');
+    expect(plain.body.icons[0].src).toBe('/brand/startcloud/mark.svg');
+
+    const face = await request(app).get('/manifest.json').set('Host', 'face.test');
+    expect(face.statusCode).toBe(200);
+    expect(face.body.name).toBe('STARTcloud');
+  });
+
   it('should serve an asset no-cache with an ETag and answer 304 to If-None-Match', async () => {
     const first = await request(app).get('/assets/main.js');
     expect(first.statusCode).toBe(200);
@@ -58,7 +93,7 @@ describe('The served UI build', () => {
   });
 
   it('should serve the favicon and the push worker no-cache', async () => {
-    const favicon = await request(app).get('/favicon.ico');
+    const favicon = await request(app).get('/brand/startcloud/favicon.ico');
     expect(favicon.statusCode).toBe(200);
     expect(favicon.headers['content-type']).toBe('image/x-icon');
     expect(favicon.headers['cache-control']).toBe('no-cache');

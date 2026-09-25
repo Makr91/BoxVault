@@ -8,6 +8,7 @@ import {
   sessionAuth,
 } from '../middleware/index.js';
 import {
+  apiLimiter,
   fileOperationLimiter,
   getDownloadLinkLimiter,
   downloadLimiter,
@@ -63,24 +64,25 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/downloads/discover', sessionAuth, discoverAll);
-router.get('/organization/:organization/download', sessionAuth, findAll);
+router.get('/downloads/discover', apiLimiter, sessionAuth, discoverAll);
+router.get('/organization/:organization/download', apiLimiter, sessionAuth, findAll);
 
 router.get(
   '/organization/:organization/download/duplicates',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   duplicates
 );
 
 router.get(
   '/organization/:organization/download-family',
-  [sessionAuth, attachFamilyOrganization(false)],
+  [apiLimiter, sessionAuth, attachFamilyOrganization(false)],
   findAllFamilies
 );
 
 router.post(
   '/organization/:organization/download-family',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     attachFamilyOrganization(true),
@@ -91,13 +93,14 @@ router.post(
 
 router.get(
   '/organization/:organization/download-family/:name',
-  [sessionAuth, attachFamilyOrganization(false)],
+  [apiLimiter, sessionAuth, attachFamilyOrganization(false)],
   findOneFamily
 );
 
 router.put(
   '/organization/:organization/download-family/:name',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     attachFamilyOrganization(true),
@@ -108,7 +111,7 @@ router.put(
 
 router.delete(
   '/organization/:organization/download-family/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, attachFamilyOrganization(true)],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount, attachFamilyOrganization(true)],
   removeFamily
 );
 
@@ -130,21 +133,22 @@ router.get(
 
 router.post(
   '/organization/:organization/download/pending/:id/place',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount],
   placePending
 );
 
 router.delete(
   '/organization/:organization/download/pending/:id',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount],
   removePending
 );
 
-router.get('/organization/:organization/download/:name', sessionAuth, findOne);
+router.get('/organization/:organization/download/:name', apiLimiter, sessionAuth, findOne);
 
 router.post(
   '/organization/:organization/download',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgWriter,
@@ -156,6 +160,7 @@ router.post(
 router.put(
   '/organization/:organization/download/:name',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgWriter,
@@ -166,25 +171,26 @@ router.put(
 
 router.post(
   '/organization/:organization/download/:name/watch',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   watchDownload
 );
 
 router.delete(
   '/organization/:organization/download/:name/watch',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   unwatchDownload
 );
 
 router.delete(
   '/organization/:organization/download/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   deleteDownload
 );
 
 router.post(
   '/organization/:organization/download/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgWriter,
@@ -196,6 +202,7 @@ router.post(
 router.post(
   '/organization/:organization/download/:name/release',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -207,6 +214,7 @@ router.post(
 router.put(
   '/organization/:organization/download/:name/release/:versionNumber',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -217,25 +225,26 @@ router.put(
 
 router.get(
   '/organization/:organization/download/:name/release',
-  [sessionAuth, verifyOrgAccess.attachDownload],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachDownload],
   findAllReleases
 );
 
 router.get(
   '/organization/:organization/download/:name/release/:versionNumber',
-  [sessionAuth, verifyOrgAccess.attachDownload],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachDownload],
   findOneRelease
 );
 
 router.delete(
   '/organization/:organization/download/:name/release/:versionNumber',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachDownload],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachDownload],
   deleteRelease
 );
 
 router.post(
   '/organization/:organization/download/:name/release/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -247,6 +256,7 @@ router.post(
 router.post(
   '/organization/:organization/download/:name/release/:versionNumber/patch',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -259,6 +269,7 @@ router.post(
 router.put(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -270,19 +281,20 @@ router.put(
 
 router.get(
   '/organization/:organization/download/:name/release/:versionNumber/patch',
-  [sessionAuth, verifyOrgAccess.attachDownload, verifyOrgAccess.attachRelease],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachDownload, verifyOrgAccess.attachRelease],
   findAllPatches
 );
 
 router.get(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch',
-  [sessionAuth, verifyOrgAccess.attachDownload, verifyOrgAccess.attachRelease],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachDownload, verifyOrgAccess.attachRelease],
   findOnePatch
 );
 
 router.delete(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -294,6 +306,7 @@ router.delete(
 router.post(
   '/organization/:organization/download/:name/release/:versionNumber/patch/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -305,13 +318,14 @@ router.post(
 
 router.get(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file',
-  [sessionAuth, verifyOrgAccess.attachDownload, verifyOrgAccess.attachRelease],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachDownload, verifyOrgAccess.attachRelease],
   findAllFiles
 );
 
 router.post(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,
@@ -324,6 +338,7 @@ router.post(
 router.put(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file/:key',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyDownloadFilePath,
@@ -409,6 +424,7 @@ router.delete(
 router.post(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.attachDownload,

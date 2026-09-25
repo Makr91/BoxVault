@@ -2222,7 +2222,7 @@ describe('Middleware Tests', () => {
     it('every limiter should answer through the same handler', async () => {
       const limiters = await import('../app/middleware/rateLimiter.js');
       const handlers = Object.values(limiters).map(limiter => limiter.options.handler);
-      expect(handlers).toHaveLength(6);
+      expect(handlers).toHaveLength(8);
       handlers.forEach(handler => {
         expect(handler).toBe(rateLimiter.options.handler);
       });

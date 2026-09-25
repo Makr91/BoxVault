@@ -24,7 +24,6 @@ import session from 'express-session';
 import connectSessionSequelize from 'connect-session-sequelize';
 import { initializeStrategies } from './app/auth/passport.js';
 import lusca from 'lusca';
-import { rateLimit } from 'express-rate-limit';
 import { execSync } from 'child_process';
 
 // Import routes and middleware
@@ -33,10 +32,11 @@ import {
   vagrantHandler,
   downloadsHandler,
   uiIndex,
+  uiManifest,
   i18nMiddleware,
-  rateLimiter,
   errorHandler,
 } from './app/middleware/index.js';
+import { rateLimiter, spaLimiter } from './app/middleware/rateLimiter.js';
 import db, { initializeDatabase } from './app/models/index.js';
 import statusRoutes from './app/routes/status.routes.js';
 import rulesRoutes from './app/routes/rules.routes.js';
@@ -213,8 +213,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/index.html', uiIndex(404));
-app.get('/callback/index.html', uiIndex(404));
+app.get('/index.html', spaLimiter, uiIndex(404));
+app.get('/callback/index.html', spaLimiter, uiIndex(404));
+app.get('/manifest.json', spaLimiter, uiManifest);
 
 // Configure static file serving with proper content types first
 app.use(
@@ -278,10 +279,16 @@ log.app.info('i18n internationalization middleware applied');
 // Configure body parsers with appropriate limits, but exclude file upload route
 app.use((req, res, next) => {
   // Skip body parsing for file uploads
+  const segments = req.url.split('?')[0].split('/');
+  const keyedUpload =
+    segments.length >= 4 &&
+    segments.includes('download') &&
+    segments[segments.length - 1] === 'upload' &&
+    segments[segments.length - 3] === 'file';
   if (
     req.url.includes('/file/upload') ||
     req.url.includes('/download/pending/upload') ||
-    /\/download\/.+\/file\/[^/]+\/upload/.test(req.url)
+    keyedUpload
   ) {
     // Set upload-specific headers
     res.setHeader('Cache-Control', 'no-transform');
@@ -538,14 +545,6 @@ const initializeApp = async () => {
     } catch (error) {
       log.app.warn('Swagger configuration not available:', error.message);
     }
-
-    // Explicit rate limiter for SPA catch-all (CodeQL requirement)
-    const spaLimiter = rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 2000,
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
 
     // SPA catch-all route
     app.get('*splat', spaLimiter, uiIndex());

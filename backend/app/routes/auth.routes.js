@@ -16,7 +16,7 @@ import { acceptInvitation } from '../controllers/auth/invitation/accept.js';
 import { refreshToken } from '../controllers/auth/token.js';
 import { backchannelLogout } from '../controllers/auth/backchannelLogout.js';
 import { validateInvitationToken } from '../controllers/auth/invitation/validate.js';
-import { authLimiter } from '../middleware/rateLimiter.js';
+import { apiLimiter, authLimiter } from '../middleware/rateLimiter.js';
 import { buildAuthorizationUrl, handleOidcCallback, buildEndSessionUrl } from '../auth/passport.js';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
@@ -209,11 +209,11 @@ router.post(
   signup
 );
 router.post('/auth/signin', [authLimiter, requireLocalOffered, validateBody('login')], signin);
-router.get('/auth/verify-mail/:token', verifyMail);
-router.get('/auth/validate-invitation/:token', validateInvitationToken);
+router.get('/auth/verify-mail/:token', authLimiter, verifyMail);
+router.get('/auth/validate-invitation/:token', authLimiter, validateInvitationToken);
 router.post(
   '/auth/invitations/:token/accept',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   acceptInvitation
 );
 // Invite management is gated per-org: the org's owners (UserOrg owner) and
@@ -222,12 +222,19 @@ router.post(
 // bypass inside isOrgAdminOrOwner).
 router.get(
   '/invitations/active/:organization',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdminOrOwner],
+  [
+    apiLimiter,
+    oidcTokenRefresh,
+    authJwt.verifyToken,
+    authJwt.isUser,
+    verifyOrgAccess.isOrgAdminOrOwner,
+  ],
   getActiveInvitations
 );
 router.post(
   '/auth/invite',
   [
+    apiLimiter,
     oidcTokenRefresh,
     authJwt.verifyToken,
     authJwt.isUser,
@@ -242,6 +249,7 @@ router.post(
 router.delete(
   '/invitations/:invitationId',
   [
+    apiLimiter,
     oidcTokenRefresh,
     authJwt.verifyToken,
     authJwt.isUser,
@@ -252,7 +260,11 @@ router.delete(
 );
 
 // Token refresh endpoint - protected by verifyToken middleware
-router.post('/auth/refresh-token', [authJwt.verifyToken, oidcTokenRefresh], refreshToken);
+router.post(
+  '/auth/refresh-token',
+  [apiLimiter, authJwt.verifyToken, oidcTokenRefresh],
+  refreshToken
+);
 
 /**
  * @swagger
@@ -289,7 +301,7 @@ router.post('/auth/refresh-token', [authJwt.verifyToken, oidcTokenRefresh], refr
  *             schema:
  *               $ref: '#/components/schemas/Problem'
  */
-router.get('/auth/oidc/issuers', (req, res) => {
+router.get('/auth/oidc/issuers', apiLimiter, (req, res) => {
   try {
     const authConfig = loadConfig('auth');
     const trustedIssuers = [];
@@ -379,7 +391,7 @@ router.get('/auth/oidc/issuers', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Problem'
  */
-router.get('/auth/methods', async (req, res) => {
+router.get('/auth/methods', apiLimiter, async (req, res) => {
   try {
     const authConfig = loadConfig('auth');
     const localEnabled =
@@ -491,7 +503,7 @@ router.get('/auth/methods', async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/auth/oidc/callback', async (req, res) => {
+router.get('/auth/oidc/callback', authLimiter, async (req, res) => {
   log.auth.info('OIDC callback received - ENHANCED', {
     sessionId: req.sessionID,
     hasSession: !!req.session,
@@ -711,7 +723,7 @@ router.get('/auth/oidc/callback', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Problem'
  */
-router.post('/auth/oidc/exchange', (req, res) => {
+router.post('/auth/oidc/exchange', authLimiter, (req, res) => {
   const { code } = req.body || {};
   const token = consumeLoginHandoffCode(code);
 
@@ -727,7 +739,7 @@ router.post('/auth/oidc/exchange', (req, res) => {
   return res.json({ token });
 });
 
-router.post('/auth/oidc/backchannel-logout', backchannelLogout);
+router.post('/auth/oidc/backchannel-logout', apiLimiter, backchannelLogout);
 
 /**
  * @swagger
@@ -752,7 +764,7 @@ router.post('/auth/oidc/backchannel-logout', backchannelLogout);
  *       500:
  *         description: Internal server error
  */
-router.get('/auth/oidc/:provider', async (req, res) => {
+router.get('/auth/oidc/:provider', authLimiter, async (req, res) => {
   const { provider } = req.params;
 
   try {
@@ -863,7 +875,7 @@ router.get('/auth/oidc/:provider', async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/auth/oidc/logout', (req, res) => {
+router.post('/auth/oidc/logout', apiLimiter, (req, res) => {
   const token = req.headers['x-access-token'];
 
   if (!token) {
@@ -965,7 +977,7 @@ router.post('/auth/oidc/logout', (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/auth/oidc/logout/local', (req, res) => {
+router.post('/auth/oidc/logout/local', apiLimiter, (req, res) => {
   void req;
   log.auth.info('Local-only logout requested');
   return res.json({

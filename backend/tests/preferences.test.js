@@ -24,8 +24,9 @@ jest.unstable_mockModule('../app/controllers/favorites/helpers.js', () => mockFa
 
 const { updatePreferences } = await import('../app/controllers/user/preferences.js');
 
-const buildRequest = body => ({
+const buildRequest = (body, hostname) => ({
   body,
+  hostname,
   userId: 42,
   headers: {},
   __: (key, replacements) => (replacements ? `${key}:${replacements.invalidField}` : key),
@@ -248,6 +249,7 @@ describe('User Preferences', () => {
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
         theme: 'dark',
+        pack: null,
         timezone: 'America/Chicago',
       });
     });
@@ -264,6 +266,7 @@ describe('User Preferences', () => {
       expect(res.send).toHaveBeenCalledWith({
         language: null,
         theme: 'light',
+        pack: null,
         timezone: 'America/Chicago',
       });
     });
@@ -280,6 +283,7 @@ describe('User Preferences', () => {
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
         theme: 'light',
+        pack: null,
         timezone: null,
       });
     });
@@ -329,6 +333,7 @@ describe('User Preferences', () => {
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
         theme: 'light',
+        pack: null,
         timezone: 'America/Chicago',
       });
     });
@@ -344,6 +349,77 @@ describe('User Preferences', () => {
 
       expect(user.update).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe('PATCH /api/user/preferences - the pack', () => {
+    it('should accept a pack the hostname offers and answer it back', async () => {
+      const user = buildStoredUser({ preferredPack: null });
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ pack: 'otherpack' }, 'downloads.test'), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(user.update).toHaveBeenCalledWith({ preferredPack: 'otherpack' });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ pack: 'otherpack' }));
+    });
+
+    it('should refuse a pack the hostname does not offer as 422 enum at /pack', async () => {
+      const user = buildStoredUser();
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ pack: 'sibling' }, 'downloads.test'), res);
+
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'https://auth.startcloud.com/probs/validation',
+          errors: [
+            expect.objectContaining({
+              pointer: '/pack',
+              rule: 'enum',
+              params: { enum: 'testpack, otherpack' },
+            }),
+          ],
+        })
+      );
+      expect(user.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse every pack on a hostname that offers none', async () => {
+      const user = buildStoredUser();
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ pack: 'testpack' }, 'face.test'), res);
+
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(user.update).not.toHaveBeenCalled();
+    });
+
+    it('should clear the pack passed as null', async () => {
+      const user = buildStoredUser({ preferredPack: 'testpack' });
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ pack: null }, 'downloads.test'), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(user.update).toHaveBeenCalledWith({ preferredPack: null });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ pack: null }));
+    });
+
+    it('should leave the pack untouched when omitted', async () => {
+      const user = buildStoredUser({ preferredPack: 'testpack' });
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ theme: 'dark' }, 'downloads.test'), res);
+
+      expect(user.update).toHaveBeenCalledWith({ preferredTheme: 'dark' });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ pack: 'testpack' }));
     });
   });
 

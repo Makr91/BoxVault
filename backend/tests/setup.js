@@ -64,9 +64,10 @@ const appConfig = {
       organization: 'TestOrg',
       brand: {
         name: 'Test Downloads',
-        logo_url: '/brand/test.svg',
+        logo_url: '/brand/test/mark.svg',
         default_theme: 'dark',
         pack: 'testpack',
+        packs: ['testpack', 'otherpack'],
       },
       collections: ['downloads'],
       sorts: { downloads: { providers: [{ column: 'name', direction: 'desc' }] } },

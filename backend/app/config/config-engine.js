@@ -47,8 +47,17 @@ const line = (level, name, entry) => {
   process.stderr.write(`${JSON.stringify({ level, category: 'app', config: name, ...entry })}\n`);
 };
 
-const filePath = name =>
-  join(state.configDir, state.development ? `${name}.dev.config.yaml` : `${name}.config.yaml`);
+const filePath = name => {
+  const root = resolve(state.configDir);
+  const target = resolve(
+    root,
+    state.development ? `${name}.dev.config.yaml` : `${name}.config.yaml`
+  );
+  if (!target.startsWith(root + sep)) {
+    throw new Error(`Invalid config name: ${name}`);
+  }
+  return target;
+};
 
 const setupTokenPath = () => join(state.configDir, SETUP_TOKEN_FILE);
 

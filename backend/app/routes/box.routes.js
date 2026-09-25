@@ -1,6 +1,7 @@
 // box.routes.js
 import { Router } from 'express';
 import { authJwt, sessionAuth, validateBody, verifyOrgAccess } from '../middleware/index.js';
+import { apiLimiter, fileOperationLimiter } from '../middleware/rateLimiter.js';
 import { discoverAll } from '../controllers/box/discover.js';
 import { getOrganizationBoxDetails } from '../controllers/box/organization/details.js';
 import { findOne } from '../controllers/box/findone.js';
@@ -13,24 +14,23 @@ import { bulk as bulkBoxes } from '../controllers/box/bulk.js';
 
 const router = Router();
 
-// Apply rate limiting to this router
-
 router.use((req, res, next) => {
   void req;
   res.header('Access-Control-Allow-Headers', 'x-access-token, Origin, Content-Type, Accept');
   next();
 });
 
-router.get('/discover', discoverAll);
-router.get('/organization/:organization/box', sessionAuth, getOrganizationBoxDetails);
-router.get('/organization/:organization/box/:name', sessionAuth, findOne);
-router.get('/organization/:organization/box/:name/metadata', sessionAuth, findOne);
-router.get('/organization/:organization/box/:name/artwork', sessionAuth, getArtwork);
+router.get('/discover', apiLimiter, discoverAll);
+router.get('/organization/:organization/box', apiLimiter, sessionAuth, getOrganizationBoxDetails);
+router.get('/organization/:organization/box/:name', apiLimiter, sessionAuth, findOne);
+router.get('/organization/:organization/box/:name/metadata', apiLimiter, sessionAuth, findOne);
+router.get('/organization/:organization/box/:name/artwork', apiLimiter, sessionAuth, getArtwork);
 
 // Administrative Actions - Now require organization membership
 router.post(
   '/organization/:organization/box',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgWriter,
@@ -42,6 +42,7 @@ router.post(
 router.put(
   '/organization/:organization/box/:name',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgWriter,
@@ -54,31 +55,37 @@ router.put(
 // create/rename; auth matches the box update chain.
 router.post(
   '/organization/:organization/box/:name/artwork',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
+  [
+    fileOperationLimiter,
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgWriter,
+  ],
   uploadArtwork
 );
 
 router.post(
   '/organization/:organization/box/:name/watch',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   watchBox
 );
 
 router.delete(
   '/organization/:organization/box/:name/watch',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   unwatchBox
 );
 
 router.delete(
   '/organization/:organization/box/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
   deleteBox
 );
 
 router.post(
   '/organization/:organization/box/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgWriter,

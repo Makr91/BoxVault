@@ -602,7 +602,7 @@ properties:
             logo_url:
               type: string
               title: Logo URL
-              description: Path or URL of the brand mark served for this hostname
+              description: Path of the brand mark served for this hostname, the mark.svg of a folder under /brand/; that folder also names the icons of the hostname's manifest and page
               order: 3
             default_theme:
               type: string
@@ -618,6 +618,13 @@ properties:
               title: Pack
               description: The bare pack name stamped as data-brand, its stylesheet served at /themes/<name>/<name>.css; empty paints stock Bootstrap
               order: 5
+            packs:
+              type: array
+              items:
+                type: string
+              title: Packs
+              description: The bare pack names a person may choose on this hostname, in order, each served at /themes/<name>/<name>.css and answered in the status payload as brand.packs; absent or empty offers no choice
+              order: 6
         organization:
           type: string
           title: Organization

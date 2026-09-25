@@ -51,7 +51,7 @@ describe('GET /api/status per Host', () => {
     expect(res.body.collections).toEqual(['boxes', 'isos', 'downloads']);
     expect(res.body.brand).toEqual({
       name: 'BoxVault',
-      logo_url: '/brand/boxvault.svg',
+      logo_url: '/brand/boxvault/mark.svg',
       repo: 'https://github.com/Makr91/BoxVault',
       changelog: 'https://github.com/Makr91/BoxVault/releases',
     });
@@ -66,12 +66,17 @@ describe('GET /api/status per Host', () => {
     expect(res.body.collections).toEqual(['downloads']);
     expect(res.body.brand).toEqual({
       name: 'Test Downloads',
-      logo_url: '/brand/test.svg',
+      logo_url: '/brand/test/mark.svg',
       repo: 'https://github.com/Makr91/BoxVault',
       changelog: 'https://github.com/Makr91/BoxVault/releases',
       theme: 'dark',
       pack: { name: 'testpack', css: '/themes/testpack/testpack.css' },
+      packs: [
+        { name: 'testpack', css: '/themes/testpack/testpack.css', label: 'testpack' },
+        { name: 'otherpack', css: '/themes/otherpack/otherpack.css', label: 'otherpack' },
+      ],
     });
+    expect(plain.body.brand).not.toHaveProperty('packs');
     expect(res.body.links).toEqual({
       docs: 'https://docs.test',
       contact: 'help@test',

@@ -55,6 +55,11 @@ export default (sequelize, Sequelize) => {
           'Colour-scheme preference: light, dark, or auto. Variant only — the brand pack is a property of the site, never of the user. Null means unset and the browser-local choice applies',
         field: 'preferred_theme',
       },
+      preferredPack: {
+        type: Sequelize.STRING(64),
+        allowNull: true,
+        field: 'preferred_pack',
+      },
       timezone: {
         type: Sequelize.STRING(64),
         allowNull: true,

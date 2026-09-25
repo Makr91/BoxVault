@@ -1,5 +1,6 @@
 import { Router, json } from 'express';
 import { scimAuth } from '../middleware/scimAuth.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { createUser, findUsers, putUser, deleteScimUser } from '../controllers/scim/users.js';
 import { createGroup, findGroups, putGroup, deleteGroup } from '../controllers/scim/groups.js';
 
@@ -14,21 +15,17 @@ import { createGroup, findGroups, putGroup, deleteGroup } from '../controllers/s
  */
 const router = Router();
 
-// Apply rate limiting to this router
-
 // SCIM clients send application/scim+json (RFC 7644); the global body parser
 // only handles application/json, so parse both here.
 router.use(json({ type: ['application/json', 'application/scim+json'] }));
 
-router.use(scimAuth);
-
-router.post('/Users', createUser);
-router.get('/Users', findUsers);
-router.put('/Users/:id', putUser);
-router.delete('/Users/:id', deleteScimUser);
-router.post('/Groups', createGroup);
-router.get('/Groups', findGroups);
-router.put('/Groups/:id', putGroup);
-router.delete('/Groups/:id', deleteGroup);
+router.post('/Users', apiLimiter, scimAuth, createUser);
+router.get('/Users', apiLimiter, scimAuth, findUsers);
+router.put('/Users/:id', apiLimiter, scimAuth, putUser);
+router.delete('/Users/:id', apiLimiter, scimAuth, deleteScimUser);
+router.post('/Groups', apiLimiter, scimAuth, createGroup);
+router.get('/Groups', apiLimiter, scimAuth, findGroups);
+router.put('/Groups/:id', apiLimiter, scimAuth, putGroup);
+router.delete('/Groups/:id', apiLimiter, scimAuth, deleteGroup);
 
 export default router;

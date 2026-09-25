@@ -341,6 +341,7 @@ export const signin = async (req, res) => {
       name: isServiceAccount ? null : user.name || null,
       preferred_language: isServiceAccount ? null : user.preferredLanguage || null,
       preferred_theme: isServiceAccount ? null : user.preferredTheme || null,
+      preferred_pack: isServiceAccount ? null : user.preferredPack || null,
       email: isServiceAccount ? null : user.email,
       verified: isServiceAccount ? null : user.verified,
       email_hash: isServiceAccount ? null : user.emailHash,

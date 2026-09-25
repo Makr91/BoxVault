@@ -8,7 +8,8 @@
 // Local accounts have no provider, so the BoxVault columns are the whole story.
 import axios from 'axios';
 import { log } from '../../utils/Logger.js';
-import { problem } from '../../utils/problem.js';
+import { problem, refuse } from '../../utils/problem.js';
+import { getSiteConfig } from '../../utils/config-loader.js';
 import db from '../../models/index.js';
 import { getAuthServerUrl, extractOidcAccessToken } from '../favorites/helpers.js';
 
@@ -25,7 +26,41 @@ const LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})*$/;
 // set to something a federated one would be refused.
 const MAX_LANGUAGE_LENGTH = 10;
 
+const PACK_PATTERN = /^[a-z0-9-]+$/;
+
 const isClearing = value => value === null || value === '';
+
+/**
+ * The packs a hostname lets a person choose: the bare names of its sites
+ * entry's brand.packs, none for the unnamed hostname or a site without a list.
+ * @param {string} hostname - The request's hostname
+ * @returns {string[]} The offered pack names
+ */
+const offeredPacks = hostname => {
+  const packs = getSiteConfig(hostname)?.brand?.packs;
+  return Array.isArray(packs)
+    ? packs.filter(name => typeof name === 'string' && name.trim() !== '')
+    : [];
+};
+
+/**
+ * The failing rule of the pack member: a value that is not a bare name the
+ * host offers is refused enum at /pack; an absent or clearing value passes.
+ * @param {Object} body - Request body
+ * @param {string} hostname - The request's hostname
+ * @returns {{pointer: string, rule: string, params: Object}|null} The failing rule, or null
+ */
+const packError = (body, hostname) => {
+  const { pack } = body;
+  if (typeof pack === 'undefined' || isClearing(pack)) {
+    return null;
+  }
+  const offered = offeredPacks(hostname);
+  if (typeof pack === 'string' && PACK_PATTERN.test(pack) && offered.includes(pack)) {
+    return null;
+  }
+  return { pointer: '/pack', rule: 'enum', params: { enum: offered.join(', ') } };
+};
 
 // Asking the runtime beats pattern-matching the string: plenty of valid IANA
 // zone ids carry no region prefix (UTC, GMT, EST5EDT), so any shape rule
@@ -80,6 +115,7 @@ const buildPatch = body => {
   const columns = {
     language: 'preferredLanguage',
     theme: 'preferredTheme',
+    pack: 'preferredPack',
     timezone: 'timezone',
   };
 
@@ -94,6 +130,7 @@ const buildPatch = body => {
 const toWireShape = user => ({
   language: user.preferredLanguage || null,
   theme: user.preferredTheme || null,
+  pack: user.preferredPack || null,
   timezone: user.timezone || null,
 });
 
@@ -117,7 +154,7 @@ const delegateToProvider = async (req, body) => {
  * /api/user/preferences:
  *   patch:
  *     summary: Update the signed-in user's preferences
- *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
+ *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. pack is a bare pack name the hostname offers in its status payload's brand.packs, setting the person's look; a name the hostname does not offer is refused 422 enum at /pack. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -135,12 +172,39 @@ const delegateToProvider = async (req, body) => {
  *                 type: string
  *                 nullable: true
  *                 enum: [light, dark, auto]
+ *               pack:
+ *                 type: string
+ *                 nullable: true
+ *                 description: A bare pack name of this hostname's brand.packs; null follows the hostname's own pack
  *               timezone:
  *                 type: string
  *                 nullable: true
  *     responses:
  *       200:
  *         description: Updated preferences
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 language:
+ *                   type: string
+ *                   nullable: true
+ *                 theme:
+ *                   type: string
+ *                   nullable: true
+ *                 pack:
+ *                   type: string
+ *                   nullable: true
+ *                 timezone:
+ *                   type: string
+ *                   nullable: true
+ *       422:
+ *         description: The pack is not one this hostname offers
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       400:
  *         description: A supplied value failed validation, or the identity provider refused it
  *         content:
@@ -172,6 +236,10 @@ export const updatePreferences = async (req, res) => {
 
   if (invalidField) {
     return badRequest(req, res, req.__('users.preferenceInvalid', { invalidField }));
+  }
+  const packFailure = packError(body, req.hostname);
+  if (packFailure) {
+    return refuse(res, req, [packFailure]);
   }
 
   try {

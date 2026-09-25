@@ -8,6 +8,7 @@ import {
   sessionAuth,
 } from '../middleware/index.js';
 import {
+  apiLimiter,
   fileOperationLimiter,
   getDownloadLinkLimiter,
   downloadLimiter,
@@ -42,13 +43,14 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/isos/discover', sessionAuth, discoverAll);
-router.get('/organization/:organization/iso', sessionAuth, findAll);
-router.get('/organization/:organization/iso/:name', sessionAuth, findOne);
+router.get('/isos/discover', apiLimiter, sessionAuth, discoverAll);
+router.get('/organization/:organization/iso', apiLimiter, sessionAuth, findAll);
+router.get('/organization/:organization/iso/:name', apiLimiter, sessionAuth, findOne);
 
 router.post(
   '/organization/:organization/iso',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -60,6 +62,7 @@ router.post(
 router.put(
   '/organization/:organization/iso/:name',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -70,25 +73,31 @@ router.put(
 
 router.post(
   '/organization/:organization/iso/:name/watch',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   watchIso
 );
 
 router.delete(
   '/organization/:organization/iso/:name/watch',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   unwatchIso
 );
 
 router.delete(
   '/organization/:organization/iso/:name',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgAdminOrOwner],
+  [
+    apiLimiter,
+    authJwt.verifyToken,
+    authJwt.isUserOrServiceAccount,
+    verifyOrgAccess.isOrgAdminOrOwner,
+  ],
   deleteIso
 );
 
 router.post(
   '/organization/:organization/iso/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -100,6 +109,7 @@ router.post(
 router.post(
   '/organization/:organization/iso/:name/version',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -112,6 +122,7 @@ router.post(
 router.put(
   '/organization/:organization/iso/:name/version/:versionNumber',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -123,19 +134,20 @@ router.put(
 
 router.get(
   '/organization/:organization/iso/:name/version',
-  [sessionAuth, verifyOrgAccess.attachIso],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachIso],
   findAllVersions
 );
 
 router.get(
   '/organization/:organization/iso/:name/version/:versionNumber',
-  [sessionAuth, verifyOrgAccess.attachIso],
+  [apiLimiter, sessionAuth, verifyOrgAccess.attachIso],
   findOneVersion
 );
 
 router.delete(
   '/organization/:organization/iso/:name/version/:versionNumber',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -147,6 +159,7 @@ router.delete(
 router.post(
   '/organization/:organization/iso/:name/version/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,
@@ -159,6 +172,7 @@ router.post(
 router.post(
   '/organization/:organization/iso/:name/version/:versionNumber/architecture/bulk',
   [
+    apiLimiter,
     authJwt.verifyToken,
     authJwt.isUserOrServiceAccount,
     verifyOrgAccess.isOrgAdminOrOwner,

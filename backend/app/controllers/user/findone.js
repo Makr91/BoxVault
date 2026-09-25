@@ -17,6 +17,7 @@ const USER_ATTRIBUTES = [
   'preferredLanguage',
   'locale',
   'preferredTheme',
+  'preferredPack',
   'timezone',
   'authProvider',
   'avatar_url',

@@ -1,6 +1,5 @@
 // artwork.js — box artwork upload (raw image body) and serve
 import fs from 'fs';
-import { join } from 'path';
 import jwt from 'jsonwebtoken';
 import configLoader from '../../utils/config-loader.js';
 import { getSecureBoxPath } from '../../utils/paths.js';
@@ -238,7 +237,7 @@ export const uploadArtwork = async (req, res) => {
     if (!safeExistsSync(boxDir)) {
       ensureDirSync(boxDir);
     }
-    fs.writeFileSync(join(boxDir, fileName), body);
+    fs.writeFileSync(getSecureBoxPath(organization, name, fileName), body);
 
     // A re-upload under a different image type would leave the old file behind
     if (box.artwork && box.artwork !== fileName) {

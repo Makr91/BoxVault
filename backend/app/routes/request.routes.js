@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh, verifyOrgAccess, validateBody } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { createJoinRequest } from '../controllers/request/create.js';
 import { getUserJoinRequests } from '../controllers/request/getUserRequests.js';
 import { cancelJoinRequest } from '../controllers/request/cancel.js';
@@ -8,8 +9,6 @@ import { approveJoinRequest } from '../controllers/request/approve.js';
 import { denyJoinRequest } from '../controllers/request/deny.js';
 
 const router = Router();
-
-// Apply rate limiting to this router
 
 router.use((req, res, next) => {
   void req;
@@ -20,34 +19,38 @@ router.use((req, res, next) => {
 // User actions - join requests
 router.post(
   '/organization/:organization/requests',
-  [authJwt.verifyToken, authJwt.isUser, validateBody('joinRequest')],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser, validateBody('joinRequest')],
   createJoinRequest
 );
 
-router.get('/user/requests', [authJwt.verifyToken, authJwt.isUser], getUserJoinRequests);
+router.get(
+  '/user/requests',
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  getUserJoinRequests
+);
 
 router.delete(
   '/user/requests/:requestId',
-  [authJwt.verifyToken, authJwt.isUser],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
   cancelJoinRequest
 );
 
 // Admin/owner actions - manage join requests
 router.get(
   '/organization/:organization/requests',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   getOrgJoinRequests
 );
 
 router.post(
   '/organization/:organization/requests/:requestId/approve',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [apiLimiter, oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   approveJoinRequest
 );
 
 router.post(
   '/organization/:organization/requests/:requestId/deny',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  [apiLimiter, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
   denyJoinRequest
 );
 

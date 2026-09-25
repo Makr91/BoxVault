@@ -323,15 +323,23 @@ const addressOf = ({ download, release, patch, file }) => ({
 
 /**
  * The target of a level upload: the patch directory, the row's file name,
- * the address in every answer, the file row recorded on completion.
+ * the file's secure path beneath the directory, the address in every answer,
+ * the file row recorded on completion.
  * @param {Object} entities - The organization, download, release, patch and file rows
- * @returns {{dir: string, fileName: string, details: Function, complete: Function}} The target
+ * @returns {{dir: string, fileName: string, path: string, details: Function, complete: Function}} The target
  */
 const levelTarget = entities => {
   const { organization, download, release, patch, file } = entities;
   return {
     dir: getSecureDownloadPath(organization.name, download.name, release.versionNumber, patch.name),
     fileName: file.fileName,
+    path: getSecureDownloadPath(
+      organization.name,
+      download.name,
+      release.versionNumber,
+      patch.name,
+      file.fileName
+    ),
     details: () => addressOf(entities),
     complete: async (finalSize, headers, finalPath) => {
       const { checksum, checksumType } = await checksumOf(headers, finalPath);
@@ -343,14 +351,16 @@ const levelTarget = entities => {
 
 /**
  * The target of a pending upload: the organization's pending store, the
- * pending row's file name, `{ id, file_name, size, guess }` in every answer,
- * the row's size and checksum recorded on completion.
+ * pending row's file name, the file's secure path beneath the store,
+ * `{ id, file_name, size, guess }` in every answer, the row's size and
+ * checksum recorded on completion.
  * @param {{organization: Object, pending: Object}} context - The organization and the pending upload row
- * @returns {{dir: string, fileName: string, details: Function, complete: Function}} The target
+ * @returns {{dir: string, fileName: string, path: string, details: Function, complete: Function}} The target
  */
 const pendingTarget = ({ organization, pending }) => ({
   dir: getPendingPath(organization.name, pending.id),
   fileName: pending.fileName,
+  path: getPendingPath(organization.name, pending.id, pending.fileName),
   details: () => pendingSummary(pending),
   complete: async (finalSize, headers, finalPath) => {
     const { checksum, checksumType } = await checksumOf(headers, finalPath);
@@ -678,7 +688,7 @@ const handleSingleUpload = async (
  * request itself.
  * @param {import('express').Request} req - The request
  * @param {import('express').Response} res - The response
- * @param {{dir: string, fileName: string, details: Function, complete: Function}} target - Where the bytes go and what the answers carry
+ * @param {{dir: string, fileName: string, path: string, details: Function, complete: Function}} target - Where the bytes go and what the answers carry
  * @returns {Promise<void>}
  */
 const runUpload = async (req, res, target) => {
@@ -729,7 +739,7 @@ const runUpload = async (req, res, target) => {
 
     log.app.info('Creating upload directory:', { uploadDir });
     ensureDirSync(uploadDir);
-    finalPath = join(uploadDir, target.fileName);
+    finalPath = target.path;
 
     const isMultipart =
       req.headers['x-chunk-index'] !== undefined || req.headers['x-total-chunks'] !== undefined;
