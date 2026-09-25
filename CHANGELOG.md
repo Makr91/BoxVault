@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.100.0](https://github.com/Makr91/BoxVault/compare/v0.99.1...v0.100.0) (2026-09-25)
+
+
+### Features
+
+* one issuer mirrors one organization and admins write global roles ([0d482a0](https://github.com/Makr91/BoxVault/commit/0d482a0410286642401131492cceca9cfb3da412))
+
 ## [0.99.1](https://github.com/Makr91/BoxVault/compare/v0.99.0...v0.99.1) (2026-09-25)
 
 
