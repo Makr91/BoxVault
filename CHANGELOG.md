@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.97.0](https://github.com/Makr91/BoxVault/compare/v0.96.2...v0.97.0) (2026-09-25)
+
+
+### Features
+
+* a person may choose the look a host offers, the brand and manifest follow each host, and the limits and path guards CodeQL can see ([6892989](https://github.com/Makr91/BoxVault/commit/689298994b23f37c799c7a89ba9dbe82fc63c959))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.40.0 ([378db72](https://github.com/Makr91/BoxVault/commit/378db727d3353dc5ad97eb8a2cfc2fcc19824e09))
+* bump startcloud-ui to v0.40.0 ([1cc3544](https://github.com/Makr91/BoxVault/commit/1cc3544f54a122bf162354810be03933a01b1258))
+
 ## [0.96.2](https://github.com/Makr91/BoxVault/compare/v0.96.1...v0.96.2) (2026-09-25)
 
 
