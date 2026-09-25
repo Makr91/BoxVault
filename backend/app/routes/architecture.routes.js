@@ -1,7 +1,7 @@
 // architecture.routes.js
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
-import { architectureOperationLimiter } from '../middleware/rateLimiter.js';
+import { apiLimiter, architectureOperationLimiter } from '../middleware/rateLimiter.js';
 import { findAllByProvider } from '../controllers/architecture/provider/findall.js';
 import { findOne } from '../controllers/architecture/findone.js';
 import { create } from '../controllers/architecture/create.js';
@@ -45,6 +45,7 @@ router.post(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
+  apiLimiter,
   architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
@@ -56,6 +57,7 @@ router.put(
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName',
+  apiLimiter,
   architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
@@ -64,6 +66,7 @@ router.delete(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/bulk',
+  apiLimiter,
   architectureOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,

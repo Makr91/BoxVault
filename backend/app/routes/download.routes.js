@@ -415,6 +415,7 @@ router.get(
 
 router.post(
   '/organization/:organization/download/:name/release/:versionNumber/patch/:patch/file/:key/get-download-link',
+  apiLimiter,
   getDownloadLinkLimiter,
   verifyDownloadFilePath,
   sessionAuth,

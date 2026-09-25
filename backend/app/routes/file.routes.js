@@ -7,6 +7,7 @@ import {
   verifyBoxFilePath,
 } from '../middleware/index.js';
 import {
+  apiLimiter,
   fileOperationLimiter,
   getDownloadLinkLimiter,
   downloadLimiter,
@@ -38,6 +39,7 @@ router.put(
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file/upload',
+  apiLimiter,
   fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
@@ -47,6 +49,7 @@ router.post(
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName/architecture/:architectureName/file',
+  apiLimiter,
   fileOperationLimiter,
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,

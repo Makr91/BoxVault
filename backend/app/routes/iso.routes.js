@@ -203,6 +203,7 @@ router.get(
 
 router.get(
   '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/download',
+  apiLimiter,
   downloadLimiter,
   verifyIsoFilePath,
   downloadAuth,
@@ -212,6 +213,7 @@ router.get(
 
 router.post(
   '/organization/:organization/iso/:name/version/:versionNumber/architecture/:architecture/file/get-download-link',
+  apiLimiter,
   getDownloadLinkLimiter,
   verifyIsoFilePath,
   sessionAuth,

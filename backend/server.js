@@ -7,6 +7,7 @@ import responseTime from 'response-time';
 import {
   loadConfig,
   getConfigDir,
+  getRateLimitConfig,
   getSetupTokenPath,
   setupTokenGuard,
 } from './app/utils/config-loader.js';
@@ -24,6 +25,7 @@ import session from 'express-session';
 import connectSessionSequelize from 'connect-session-sequelize';
 import { initializeStrategies } from './app/auth/passport.js';
 import lusca from 'lusca';
+import { rateLimit } from 'express-rate-limit';
 import { execSync } from 'child_process';
 
 // Import routes and middleware
@@ -36,7 +38,7 @@ import {
   i18nMiddleware,
   errorHandler,
 } from './app/middleware/index.js';
-import { rateLimiter, spaLimiter } from './app/middleware/rateLimiter.js';
+import { rateLimiter, spaLimiter, throttled } from './app/middleware/rateLimiter.js';
 import db, { initializeDatabase } from './app/models/index.js';
 import statusRoutes from './app/routes/status.routes.js';
 import rulesRoutes from './app/routes/rules.routes.js';
@@ -546,8 +548,17 @@ const initializeApp = async () => {
       log.app.warn('Swagger configuration not available:', error.message);
     }
 
+    const rateLimitConfig = getRateLimitConfig();
+    const catchAllLimiter = rateLimit({
+      windowMs: rateLimitConfig.window_minutes * 60 * 1000,
+      max: rateLimitConfig.file_operations_max_requests,
+      standardHeaders: true,
+      legacyHeaders: false,
+      handler: throttled,
+    });
+
     // SPA catch-all route
-    app.get('*splat', spaLimiter, uiIndex());
+    app.get('*splat', catchAllLimiter, uiIndex());
 
     // Error handler middleware (MUST be last)
     app.use(errorHandler);

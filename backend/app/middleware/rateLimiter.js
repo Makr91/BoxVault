@@ -111,6 +111,7 @@ const spaLimiter = rateLimit({
 });
 
 export {
+  throttled,
   rateLimiter,
   apiLimiter,
   spaLimiter,
