@@ -1,6 +1,6 @@
 {
   "name": "boxvault-backend",
-  "version": "0.96.1",
+  "version": "0.96.2",
   "description": "BoxVault Backend - Vagrant box repository management system",
   "startcloudUiVersion": "0.39.0",
   "type": "module",
